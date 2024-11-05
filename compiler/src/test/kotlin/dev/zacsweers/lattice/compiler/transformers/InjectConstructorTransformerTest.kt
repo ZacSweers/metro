@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.transformers
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertCallableFactory
+import dev.zacsweers.lattice.compiler.assertNoArgCallableFactory
 import org.junit.Test
 
 class InjectConstructorTransformerTest : LatticeCompilerTest() {
@@ -27,7 +28,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "TestClass.kt",
+          "ExampleClass.kt",
           """
             package test
 
@@ -51,7 +52,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "TestClass.kt",
+          "ExampleClass.kt",
           """
             package test
 
@@ -68,5 +69,58 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
         debug = true,
       )
     result.assertCallableFactory("Hello, world!")
+  }
+
+  @Test
+  fun `class annotated with inject`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Inject
+            import java.util.concurrent.Callable
+
+            @Inject 
+            class ExampleClass(private val value: String) : Callable<String> {
+              override fun call(): String = value
+            }
+
+          """
+            .trimIndent(),
+        ),
+        debug = true,
+      )
+    result.assertCallableFactory("Hello, world!")
+  }
+
+  // TODO
+  //  - new instance should still always return new instances
+  //  - create should always return same instance
+  @Test
+  fun `class annotated with inject and no constructor or params`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Inject
+            import java.util.concurrent.Callable
+
+            @Inject 
+            class ExampleClass : Callable<String> {
+              override fun call(): String = "Hello, world!"
+            }
+
+          """
+            .trimIndent(),
+        ),
+        debug = true,
+      )
+    result.assertNoArgCallableFactory("Hello, world!")
   }
 }

@@ -26,6 +26,12 @@ fun JvmCompilationResult.assertCallableFactory(value: String) {
   assertThat(callable.call()).isEqualTo(value)
 }
 
+fun JvmCompilationResult.assertNoArgCallableFactory(expectedValue: String) {
+  val factory = ExampleClass.generatedFactoryClass()
+  val callable = factory.invokeNewInstanceAs<Callable<String>>()
+  assertThat(callable.call()).isEqualTo(expectedValue)
+}
+
 val JvmCompilationResult.ExampleClass: Class<*>
   get() {
     return classLoader.loadClass("test.ExampleClass")
