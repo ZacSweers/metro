@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildValueParameter
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -47,7 +48,6 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
@@ -85,7 +85,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     if (isInjectable) {
       val typeParams = declaration.typeParameters
       val constructorParameters =
-        primaryConstructor.valueParameters.mapNotNull { valueParameter ->
+        primaryConstructor.valueParameters.map { valueParameter ->
           valueParameter.toConstructorParameter(symbols, valueParameter.name)
         }
       generateFactoryClass(
@@ -207,6 +207,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
             )
           }
       }
+
     val newInstanceFunction =
       classToGenerateCreatorsIn
         .addFunction("newInstance", targetTypeParameterized, isStatic = true)
@@ -215,26 +216,18 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
           this.origin = LatticeOrigin
           this.visibility = DescriptorVisibilities.PUBLIC
           markJvmStatic()
-          for ((index, parameter) in allParameters.withIndex()) {
-            addValueParameter {
-              name = parameter.name
-              type = parameter.typeName
-              this.index = index
-            }
+          for (parameter in allParameters) {
+            addValueParameter(parameter.name, parameter.typeName, LatticeOrigin)
           }
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBody(
                 // TODO members injector goes here
-                IrConstructorCallImpl.fromSymbolOwner(
-                    targetConstructor.returnType,
-                    targetConstructor.symbol,
-                  )
-                  .apply {
-                    for ((index, parameter) in valueParameters.withIndex()) {
-                      putValueArgument(index, irGet(parameter))
-                    }
+                irCallConstructor(targetConstructor.symbol, emptyList()).apply {
+                  for (parameter in valueParameters) {
+                    putValueArgument(parameter.index, irGet(parameter))
                   }
+                }
               )
             }
         }

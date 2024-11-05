@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.compiler.transformers
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertCallableFactory
-import org.junit.Ignore
 import org.junit.Test
 
 class InjectConstructorTransformerTest : LatticeCompilerTest() {
@@ -47,7 +46,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
     result.assertCallableFactory("Hello, world!")
   }
 
-  @Ignore("Not supported yet")
   @Test
   fun simpleGeneric() {
     val result =

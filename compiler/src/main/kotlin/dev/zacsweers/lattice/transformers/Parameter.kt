@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.Name
 
 internal sealed interface Parameter {
@@ -124,15 +125,16 @@ private fun IrType.wrapIn(target: IrClassSymbol): IrType {
 internal fun IrValueParameter.toConstructorParameter(
   symbols: LatticeSymbols,
   uniqueName: Name,
-): ConstructorParameter? {
-  val paramTypeName = type as? IrSimpleType ?: return null
-  val rawTypeClass = type.rawTypeOrNull() ?: return null
-  val rawType = rawTypeClass.classId ?: return null
+): ConstructorParameter {
+  val paramTypeName =
+    type as? IrSimpleType ?: error("Unrecognized parameter type '${type.javaClass}': ${render()}")
+  val rawTypeClass = type.rawTypeOrNull()
+  val rawType = rawTypeClass?.classId
 
   val isWrappedInProvider = rawType in symbols.providerTypes
   val isWrappedInLazy = rawType in symbols.lazyTypes
   val isLazyWrappedInProvider =
-    isWrappedInProvider && rawTypeClass.typeWith().rawTypeOrNull()?.classId in symbols.lazyTypes
+    isWrappedInProvider && rawTypeClass?.typeWith()?.rawTypeOrNull()?.classId in symbols.lazyTypes
 
   val typeName =
     when {
