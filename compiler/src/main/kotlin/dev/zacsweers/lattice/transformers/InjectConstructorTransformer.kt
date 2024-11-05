@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.ir.createIrBuilder
-import dev.zacsweers.lattice.ir.irConstructorBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
@@ -28,7 +27,6 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addGetter
@@ -39,7 +37,6 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildValueParameter
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -55,8 +52,11 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
+import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
@@ -124,14 +124,12 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         }
         .apply { origin = LatticeOrigin }
 
-    val typeParameterIrTypes = typeParameters.map { it.defaultType }
-    for ((i, typeVariable) in typeParameters.withIndex()) {
-      factoryCls.addTypeParameter {
-        name = typeVariable.name
-        variance = typeVariable.variance
-        superTypes += typeVariable.superTypes
-        index = i
-      }
+    for (typeVariable in typeParameters) {
+      factoryCls.addTypeParameter(
+        typeVariable.name.asString(),
+        upperBound = typeVariable.superTypes.single(),
+        variance = typeVariable.variance,
+      )
     }
 
     val factoryReceiver =
@@ -150,23 +148,16 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     factoryCls.thisReceiver = factoryReceiver
     factoryCls.superTypes = listOf(symbols.latticeFactory.typeWith(declaration.defaultType))
 
-    val factoryClassParameterized = factoryCls.typeWith(typeParameterIrTypes)
-    val targetTypeParameterized = declaration.typeWith(typeParameterIrTypes)
+    val factoryClassParameterized = factoryCls.symbol.typeWithParameters(typeParameters)
+    val targetTypeParameterized = declaration.symbol.typeWithParameters(typeParameters)
 
     val ctor =
-      factoryCls
-        .addConstructor {
-          isPrimary = true
-          returnType = factoryCls.defaultType
-        }
-        .apply {
-          parent = factoryCls
-          body =
-            irConstructorBody(pluginContext) {
-              it +=
-                irDelegatingConstructorCall(context.irBuiltIns.anyClass.owner.constructors.single())
-            }
-        }
+      factoryCls.addSimpleDelegatingConstructor(
+        pluginContext.irBuiltIns.anyClass.owner.constructors.single(),
+        pluginContext.irBuiltIns,
+        isPrimary = true,
+        origin = LatticeOrigin,
+      )
 
     /*
      * Add a constructor parameter + field for every parameter. This should be the provider type.
@@ -176,19 +167,12 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     val parametersToFields = mutableMapOf<Parameter, IrField>()
     for (parameter in allParameters) {
       val irParameter =
-        ctor.addValueParameter {
-          name = parameter.name
-          type = parameter.providerTypeName
-        }
+        ctor.addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
       val irField =
         factoryCls
-          .addField {
-            name = irParameter.name
-            type = irParameter.type
-            visibility = DescriptorVisibilities.PRIVATE
-            isFinal = true
-          }
+          .addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE)
           .apply {
+            isFinal = true
             initializer =
               pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
           }
@@ -215,28 +199,19 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
             companionObject.origin = LatticeOrigin
             companionObject.parent = factoryCls
             companionObject.createImplicitParameterDeclarationWithWrappedDescriptor()
-            companionObject
-              .addConstructor {
-                isPrimary = true
-                returnType = companionObject.defaultType
-              }
-              .apply {
-                parent = companionObject
-                body =
-                  irConstructorBody(pluginContext) {
-                    it +=
-                      irDelegatingConstructorCall(
-                        context.irBuiltIns.anyClass.owner.constructors.single()
-                      )
-                  }
-              }
+            companionObject.addSimpleDelegatingConstructor(
+              pluginContext.irBuiltIns.anyClass.owner.constructors.single(),
+              pluginContext.irBuiltIns,
+              isPrimary = true,
+              origin = LatticeOrigin,
+            )
           }
       }
     val newInstanceFunction =
       classToGenerateCreatorsIn
         .addFunction("newInstance", targetTypeParameterized, isStatic = true)
         .apply {
-          this.typeParameters = typeParameters
+          copyTypeParameters(typeParameters)
           this.origin = LatticeOrigin
           this.visibility = DescriptorVisibilities.PUBLIC
           markJvmStatic()
@@ -316,16 +291,12 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     classToGenerateCreatorsIn
       .addFunction("create", factoryClassParameterized, isStatic = true)
       .apply {
-        this.typeParameters = typeParameters
+        copyTypeParameters(typeParameters)
         this.origin = LatticeOrigin
         this.visibility = DescriptorVisibilities.PUBLIC
         markJvmStatic()
-        for ((index, parameter) in allParameters.withIndex()) {
-          addValueParameter {
-            name = parameter.name
-            type = parameter.providerTypeName
-            this.index = index
-          }
+        for (parameter in allParameters) {
+          addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
         }
         body =
           pluginContext.createIrBuilder(symbol).run {
