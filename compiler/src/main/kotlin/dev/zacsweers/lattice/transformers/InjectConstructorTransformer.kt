@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -269,8 +270,9 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     allParameters: List<ConstructorParameter>,
   ): IrSimpleFunctionSymbol {
     // If this is an object, we can generate directly into this object
+    val isObject = factoryCls.kind == ClassKind.OBJECT
     val classToGenerateCreatorsIn =
-      if (factoryCls.kind == ClassKind.OBJECT) {
+      if (isObject) {
         factoryCls
       } else {
         pluginContext.irFactory
@@ -319,9 +321,13 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         body =
           pluginContext.createIrBuilder(symbol).run {
             irExprBody(
-              irCall(factoryConstructor).apply {
-                for (parameter in valueParameters) {
-                  putValueArgument(parameter.index, irGet(parameter))
+              if (isObject) {
+                irGetObject(factoryCls.symbol)
+              } else {
+                irCall(factoryConstructor).apply {
+                  for (parameter in valueParameters) {
+                    putValueArgument(parameter.index, irGet(parameter))
+                  }
                 }
               }
             )

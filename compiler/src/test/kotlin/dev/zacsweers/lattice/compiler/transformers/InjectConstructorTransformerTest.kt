@@ -15,10 +15,15 @@
  */
 package dev.zacsweers.lattice.compiler.transformers
 
+import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
+import dev.zacsweers.lattice.compiler.ExampleClass
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertCallableFactory
 import dev.zacsweers.lattice.compiler.assertNoArgCallableFactory
+import dev.zacsweers.lattice.compiler.generatedFactoryClass
+import dev.zacsweers.lattice.compiler.invokeCreate
+import dev.zacsweers.lattice.compiler.invokeNewInstance
 import org.junit.Test
 
 class InjectConstructorTransformerTest : LatticeCompilerTest() {
@@ -96,9 +101,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
     result.assertCallableFactory("Hello, world!")
   }
 
-  // TODO
-  //  - new instance should still always return new instances
-  //  - create should always return same instance
   @Test
   fun `class annotated with inject and no constructor or params`() {
     val result =
@@ -121,6 +123,19 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
         ),
         debug = true,
       )
+
+    val factoryClass = result.ExampleClass.generatedFactoryClass()
+
+    // Assert that the factory class is a singleton since there are no args
+    val factory1 = factoryClass.invokeCreate()
+    val factory2 = factoryClass.invokeCreate()
+    assertThat(factory1).isSameInstanceAs(factory2)
+
+    // Assert that newInstance still returns new instances
+    assertThat(factoryClass.invokeNewInstance())
+      .isNotSameInstanceAs(factoryClass.invokeNewInstance())
+
+    // Last smoke test on functionality
     result.assertNoArgCallableFactory("Hello, world!")
   }
 }
