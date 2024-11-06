@@ -63,7 +63,7 @@ allprojects {
       endWithNewline()
     }
     kotlin {
-      target("**/*.kt")
+      target("src/**/*.kt")
       ktfmt(libs.versions.ktfmt.get()).googleStyle()
       trimTrailingWhitespace()
       endWithNewline()
