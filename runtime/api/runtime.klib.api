@@ -43,10 +43,6 @@ open annotation class dev.zacsweers.lattice.annotations/Singleton : kotlin/Annot
     constructor <init>() // dev.zacsweers.lattice.annotations/Singleton.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Binds : kotlin/Annotation { // dev.zacsweers.lattice/Binds|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Binds.<init>|<init>(){}[0]
-}
-
 open annotation class dev.zacsweers.lattice/Component : kotlin/Annotation { // dev.zacsweers.lattice/Component|null[0]
     constructor <init>() // dev.zacsweers.lattice/Component.<init>|<init>(){}[0]
 

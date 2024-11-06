@@ -1,6 +1,3 @@
-public abstract interface annotation class dev/zacsweers/lattice/Binds : java/lang/annotation/Annotation {
-}
-
 public abstract interface annotation class dev/zacsweers/lattice/Component : java/lang/annotation/Annotation {
 }
 
