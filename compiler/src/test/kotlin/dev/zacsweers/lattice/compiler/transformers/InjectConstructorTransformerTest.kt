@@ -88,7 +88,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Inject
             import java.util.concurrent.Callable
 
-            @Inject 
+            @Inject
             class ExampleClass(private val value: String) : Callable<String> {
               override fun call(): String = value
             }
@@ -113,7 +113,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Inject
             import java.util.concurrent.Callable
 
-            @Inject 
+            @Inject
             class ExampleClass : Callable<String> {
               override fun call(): String = "Hello, world!"
             }
