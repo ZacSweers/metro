@@ -15,13 +15,10 @@
  */
 package dev.zacsweers.lattice
 
-public interface Provider<T : Any> {
-  public val value: T
+public fun interface Provider<T : Any> {
+  public operator fun invoke(): T
 }
 
 public fun <T : Any> provider(provider: () -> T): Provider<T> {
-  return object : Provider<T> {
-    override val value: T
-      get() = provider()
-  }
+  return Provider { provider() }
 }

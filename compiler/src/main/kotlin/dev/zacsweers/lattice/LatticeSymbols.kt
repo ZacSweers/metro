@@ -21,13 +21,11 @@ import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
-import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -80,11 +78,8 @@ internal class LatticeSymbols(
       ClassId(latticeRuntime.packageFqName, Name.identifier("Provider"))
     )!!
   }
-  val providerValuePropertyGetter: IrSimpleFunctionSymbol by lazy {
-    latticeProvider.getPropertyGetter("value")!!
-  }
-  val providerValueProperty: IrPropertySymbol by lazy {
-    providerValuePropertyGetter.owner.correspondingPropertySymbol!!
+  val providerInvoke: IrSimpleFunctionSymbol by lazy {
+    latticeProvider.getSimpleFunction("invoke")!!
   }
 
   val latticeFactory: IrClassSymbol by lazy {

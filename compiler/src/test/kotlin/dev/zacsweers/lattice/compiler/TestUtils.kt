@@ -63,16 +63,16 @@ fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
 
 /**
  * Exercises the whole generated factory creation flow by first creating with [invokeCreate] and
- * then calling [Factory.value] to exercise its `newInstance()`.
+ * then calling [Factory.invoke] to exercise its `newInstance()`.
  */
 fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
   val factory = invokeCreate(*args)
-  return factory.value
+  return factory()
 }
 
 /**
  * Exercises the whole generated factory creation flow by first creating with [invokeCreate] and
- * then calling [Factory.value] to exercise its `newInstance()`.
+ * then calling [Factory.invoke] to exercise its `newInstance()`.
  */
 fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")

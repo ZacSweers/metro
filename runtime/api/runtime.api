@@ -8,7 +8,7 @@ public abstract interface annotation class dev/zacsweers/lattice/Component$Facto
 }
 
 public abstract interface class dev/zacsweers/lattice/Provider {
-	public abstract fun getValue ()Ljava/lang/Object;
+	public abstract fun invoke ()Ljava/lang/Object;
 }
 
 public final class dev/zacsweers/lattice/ProviderKt {
@@ -49,6 +49,7 @@ public final class dev/zacsweers/lattice/internal/DoubleCheck : dev/zacsweers/la
 	public static final field Companion Ldev/zacsweers/lattice/internal/DoubleCheck$Companion;
 	public synthetic fun <init> (Ldev/zacsweers/lattice/Provider;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun getValue ()Ljava/lang/Object;
+	public fun invoke ()Ljava/lang/Object;
 	public fun isInitialized ()Z
 }
 
@@ -63,11 +64,15 @@ public abstract interface class dev/zacsweers/lattice/internal/Factory : dev/zac
 public final class dev/zacsweers/lattice/internal/ProviderOfLazy : dev/zacsweers/lattice/Provider {
 	public static final field Companion Ldev/zacsweers/lattice/internal/ProviderOfLazy$Companion;
 	public synthetic fun <init> (Ldev/zacsweers/lattice/Provider;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun getValue ()Ljava/lang/Object;
-	public fun getValue ()Lkotlin/Lazy;
+	public synthetic fun invoke ()Ljava/lang/Object;
+	public fun invoke ()Lkotlin/Lazy;
 }
 
 public final class dev/zacsweers/lattice/internal/ProviderOfLazy$Companion {
 	public final fun create (Ldev/zacsweers/lattice/Provider;)Ldev/zacsweers/lattice/Provider;
+}
+
+public final class dev/zacsweers/lattice/internal/ProviderOfLazyKt {
+	public static final fun asProviderOfLazy (Ldev/zacsweers/lattice/Provider;)Ldev/zacsweers/lattice/Provider;
 }
 

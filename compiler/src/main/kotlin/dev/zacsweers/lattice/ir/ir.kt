@@ -15,9 +15,9 @@
  */
 package dev.zacsweers.lattice.ir
 
-import dev.zacsweers.lattice.LatticeOrigin
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.ir.erasedUpperBound
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.Modality
@@ -29,8 +29,6 @@ import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irExprBody
-import org.jetbrains.kotlin.ir.builders.setSourceRange
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -39,7 +37,6 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrConst
@@ -56,15 +53,20 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -169,30 +171,32 @@ internal fun IrBuilderWithScope.irInvoke(
   return call
 }
 
+@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.addOverride(
-  context: IrPluginContext,
-  method: IrSimpleFunction,
-  buildBody: DeclarationIrBuilder.(List<IrValueParameter>) -> IrExpression,
-) =
-  addFunction {
-      setSourceRange(this@addOverride)
-      name = method.name
-      returnType = method.returnType
-      visibility = method.visibility
-      modality = Modality.OPEN
-      origin = LatticeOrigin
-    }
-    .apply {
-      overriddenSymbols += method.symbol
-      dispatchReceiverParameter = thisReceiver!!.copyTo(this)
-      valueParameters = method.valueParameters.map { it.copyTo(this) }
-      body =
-        context.createIrBuilder(symbol).run {
-          irExprBody(buildBody(listOf(dispatchReceiverParameter!!) + valueParameters))
+  baseFqName: FqName,
+  name: String,
+  returnType: IrType,
+  modality: Modality = Modality.FINAL,
+): IrSimpleFunction =
+  addFunction(name, returnType, modality).apply {
+    overriddenSymbols =
+      superTypes
+        .mapNotNull { superType ->
+          superType.classOrNull?.owner?.takeIf { superClass ->
+            superClass.isSubclassOfFqName(baseFqName.asString())
+          }
         }
-    }
+        .flatMap { superClass ->
+          superClass.functions
+            .filter { function ->
+              function.name.asString() == name && function.overridesFunctionIn(baseFqName)
+            }
+            .map { it.symbol }
+            .toList()
+        }
+  }
 
-internal fun <T : IrElement> IrStatementsBuilder<T>.irTemporary(
+internal fun IrStatementsBuilder<*>.irTemporary(
   value: IrExpression? = null,
   nameHint: String? = null,
   irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
@@ -220,3 +224,11 @@ internal fun IrMutableAnnotationContainer.addAnnotation(
 ) {
   annotations += IrConstructorCallImpl.fromSymbolOwner(type, constructorSymbol).apply(body)
 }
+
+internal fun IrClass.isSubclassOfFqName(fqName: String): Boolean =
+  fqNameWhenAvailable?.asString() == fqName ||
+    superTypes.any { it.erasedUpperBound.isSubclassOfFqName(fqName) }
+
+internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =
+  parentClassOrNull?.fqNameWhenAvailable == fqName ||
+    allOverridden().any { it.parentClassOrNull?.fqNameWhenAvailable == fqName }

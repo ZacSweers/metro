@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
+import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
@@ -28,8 +29,6 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addGetter
-import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addTypeParameter
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
@@ -62,6 +61,7 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -201,96 +201,83 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     Override and implement the Provider.value property
 
     // Simple
-    override val value: Example get() = newInstance(valueProvider.value)
+    override fun invoke(): Example = newInstance(valueProvider.value)
 
     // Generic
-    override val value: Example<T> get() = newInstance(valueProvider.value)
+    override fun invoke(): Example<T> = newInstance(valueProvider.value)
 
     // TODO doc Provider<T>, Lazy<T>, Provider<Lazy<T>>
     */
     factoryCls
-      .addProperty {
-        name = symbols.providerValueProperty.owner.name
-        origin = LatticeOrigin
-      }
+      .addOverride(
+        baseFqName = symbols.providerInvoke.owner.kotlinFqName,
+        name = symbols.providerInvoke.owner.name.asString(),
+        returnType = targetTypeParameterized,
+      )
       .apply {
-        parent = factoryCls
-        overriddenSymbols += symbols.providerValueProperty
-        addGetter {
-            returnType = targetTypeParameterized
-            origin = LatticeOrigin
-          }
-          .apply {
-            this.dispatchReceiverParameter = factoryReceiver
-            this.overriddenSymbols += symbols.providerValuePropertyGetter
-            body =
-              pluginContext.createIrBuilder(symbol).irBlockBody {
-                val instance =
-                  irTemporary(
-                    irInvoke(
-                      callee = newInstanceFunctionSymbol,
-                      args =
-                        allParameters
-                          .map { parameter ->
-                            // When calling value getter on Provider<T>, make sure the dispatch
-                            // receiver is the Provider instance itself
-                            val providerInstance =
-                              irGetField(
-                                irGet(factoryReceiver),
-                                parametersToFields.getValue(parameter),
-                              )
-                            when {
-                              parameter.isLazyWrappedInProvider -> {
-                                // ProviderOfLazy.create(provider)
-                                irInvoke(
-                                  dispatchReceiver =
-                                    irGetObject(symbols.providerOfLazyCompanionObject),
-                                  callee = symbols.providerOfLazyCreate,
-                                  args = arrayOf(providerInstance),
-                                  typeHint = parameter.typeName,
-                                )
-                              }
-                              parameter.isWrappedInProvider -> providerInstance
-                              // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
-                              // (usually the container is a joined type), therefore we use
-                              // `.lazy(..)` to convert the Provider to a Lazy. Assisted
-                              // parameters behave differently and the Lazy type is not changed
-                              // to a Provider and we can simply use the parameter name in the
-                              // argument list.
-                              parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
-                              parameter.isWrappedInLazy -> {
-                                // DoubleCheck.lazy(...)
-                                irInvoke(
-                                  dispatchReceiver =
-                                    irGetObject(symbols.providerOfLazyCompanionObject),
-                                  callee = symbols.providerOfLazyCreate,
-                                  args = arrayOf(providerInstance),
-                                  typeHint = parameter.typeName,
-                                )
-                                irInvoke(
-                                  dispatchReceiver =
-                                    irGetObject(symbols.doubleCheckCompanionObject),
-                                  callee = symbols.doubleCheckLazy,
-                                  args = arrayOf(providerInstance),
-                                  typeHint = parameter.typeName,
-                                )
-                              }
-                              parameter.isAssisted -> providerInstance
-                              else -> {
-                                irInvoke(
-                                  dispatchReceiver = providerInstance,
-                                  callee = symbols.providerValuePropertyGetter,
-                                  typeHint = parameter.typeName,
-                                )
-                              }
-                            }
+        this.dispatchReceiverParameter = factoryReceiver
+        this.overriddenSymbols += symbols.providerInvoke
+        body =
+          pluginContext.createIrBuilder(symbol).irBlockBody {
+            val instance =
+              irTemporary(
+                irInvoke(
+                  callee = newInstanceFunctionSymbol,
+                  args =
+                    allParameters
+                      .map { parameter ->
+                        // When calling value getter on Provider<T>, make sure the dispatch
+                        // receiver is the Provider instance itself
+                        val providerInstance =
+                          irGetField(irGet(factoryReceiver), parametersToFields.getValue(parameter))
+                        when {
+                          parameter.isLazyWrappedInProvider -> {
+                            // ProviderOfLazy.create(provider)
+                            irInvoke(
+                              dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
+                              callee = symbols.providerOfLazyCreate,
+                              args = arrayOf(providerInstance),
+                              typeHint = parameter.typeName,
+                            )
                           }
-                          .toTypedArray(),
-                    )
-                  )
-                // TODO members injector goes here
-                +irReturn(irGet(instance))
-              }
+                          parameter.isWrappedInProvider -> providerInstance
+                          // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
+                          // (usually the container is a joined type), therefore we use
+                          // `.lazy(..)` to convert the Provider to a Lazy. Assisted
+                          // parameters behave differently and the Lazy type is not changed
+                          // to a Provider and we can simply use the parameter name in the
+                          // argument list.
+                          parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
+                          parameter.isWrappedInLazy -> {
+                            // DoubleCheck.lazy(...)
+                            irInvoke(
+                              dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
+                              callee = symbols.providerOfLazyCreate,
+                              args = arrayOf(providerInstance),
+                              typeHint = parameter.typeName,
+                            )
+                            irInvoke(
+                              dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+                              callee = symbols.doubleCheckLazy,
+                              args = arrayOf(providerInstance),
+                              typeHint = parameter.typeName,
+                            )
+                          }
+                          parameter.isAssisted -> providerInstance
+                          else -> {
+                            irInvoke(
+                              dispatchReceiver = providerInstance,
+                              callee = symbols.providerInvoke,
+                              typeHint = parameter.typeName,
+                            )
+                          }
+                        }
+                      }
+                      .toTypedArray(),
+                )
+              )
+            // TODO members injector goes here
+            +irReturn(irGet(instance))
           }
       }
 

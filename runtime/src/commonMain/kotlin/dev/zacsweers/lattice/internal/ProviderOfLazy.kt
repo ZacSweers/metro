@@ -22,17 +22,16 @@ public class ProviderOfLazy<T : Any> private constructor(private val provider: P
   Provider<Lazy<T>> {
 
   /**
-   * Returns a new instance of [Lazy<T>][Lazy], which calls [Provider.value] at most once on the
+   * Returns a new instance of [Lazy<T>][Lazy], which calls [Provider.invoke] at most once on the
    * [Provider] held by this object.
    */
-  override val value: Lazy<T>
-    get() = DoubleCheck.lazy(provider)
+  override fun invoke(): Lazy<T> = DoubleCheck.lazy(provider)
 
   public companion object {
     /**
      * Creates a new [Provider<Lazy<T>>][Provider] that decorates the given [provider].
      *
-     * @see value
+     * @see invoke
      */
     public fun <T : Any> create(provider: Provider<T>): Provider<Lazy<T>> =
       ProviderOfLazy<T>(provider)

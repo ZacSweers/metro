@@ -59,12 +59,11 @@ open annotation class dev.zacsweers.lattice/Provides : kotlin/Annotation { // de
     constructor <init>() // dev.zacsweers.lattice/Provides.<init>|<init>(){}[0]
 }
 
-abstract interface <#A: kotlin/Any> dev.zacsweers.lattice.internal/Factory : dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice.internal/Factory|null[0]
-
-abstract interface <#A: kotlin/Any> dev.zacsweers.lattice/Provider { // dev.zacsweers.lattice/Provider|null[0]
-    abstract val value // dev.zacsweers.lattice/Provider.value|{}value[0]
-        abstract fun <get-value>(): #A // dev.zacsweers.lattice/Provider.value.<get-value>|<get-value>(){}[0]
+abstract fun interface <#A: kotlin/Any> dev.zacsweers.lattice/Provider { // dev.zacsweers.lattice/Provider|null[0]
+    abstract fun invoke(): #A // dev.zacsweers.lattice/Provider.invoke|invoke(){}[0]
 }
+
+abstract interface <#A: kotlin/Any> dev.zacsweers.lattice.internal/Factory : dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice.internal/Factory|null[0]
 
 abstract class dev.zacsweers.lattice.annotations/AppScope // dev.zacsweers.lattice.annotations/AppScope|null[0]
 
@@ -72,6 +71,7 @@ final class <#A: kotlin/Any> dev.zacsweers.lattice.internal/DoubleCheck : dev.za
     final val value // dev.zacsweers.lattice.internal/DoubleCheck.value|{}value[0]
         final fun <get-value>(): #A // dev.zacsweers.lattice.internal/DoubleCheck.value.<get-value>|<get-value>(){}[0]
 
+    final fun invoke(): #A // dev.zacsweers.lattice.internal/DoubleCheck.invoke|invoke(){}[0]
     final fun isInitialized(): kotlin/Boolean // dev.zacsweers.lattice.internal/DoubleCheck.isInitialized|isInitialized(){}[0]
 
     final object Companion { // dev.zacsweers.lattice.internal/DoubleCheck.Companion|null[0]
@@ -81,8 +81,7 @@ final class <#A: kotlin/Any> dev.zacsweers.lattice.internal/DoubleCheck : dev.za
 }
 
 final class <#A: kotlin/Any> dev.zacsweers.lattice.internal/ProviderOfLazy : dev.zacsweers.lattice/Provider<kotlin/Lazy<#A>> { // dev.zacsweers.lattice.internal/ProviderOfLazy|null[0]
-    final val value // dev.zacsweers.lattice.internal/ProviderOfLazy.value|{}value[0]
-        final fun <get-value>(): kotlin/Lazy<#A> // dev.zacsweers.lattice.internal/ProviderOfLazy.value.<get-value>|<get-value>(){}[0]
+    final fun invoke(): kotlin/Lazy<#A> // dev.zacsweers.lattice.internal/ProviderOfLazy.invoke|invoke(){}[0]
 
     final object Companion { // dev.zacsweers.lattice.internal/ProviderOfLazy.Companion|null[0]
         final fun <#A2: kotlin/Any> create(dev.zacsweers.lattice/Provider<#A2>): dev.zacsweers.lattice/Provider<kotlin/Lazy<#A2>> // dev.zacsweers.lattice.internal/ProviderOfLazy.Companion.create|create(dev.zacsweers.lattice.Provider<0:0>){0§<kotlin.Any>}[0]

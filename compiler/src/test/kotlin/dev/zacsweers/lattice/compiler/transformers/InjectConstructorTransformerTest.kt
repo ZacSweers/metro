@@ -158,7 +158,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
 
             @Inject
             class ExampleClass(private val value: Provider<String>) : Callable<String> {
-              override fun call(): String = value.value
+              override fun call(): String = value()
             }
 
           """
@@ -225,7 +225,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
 
             @Inject
             class ExampleClass(private val value: Provider<Lazy<String>>) : Callable<Lazy<String>> {
-              override fun call(): Lazy<String> = value.value
+              override fun call(): Lazy<String> = value()
             }
 
           """

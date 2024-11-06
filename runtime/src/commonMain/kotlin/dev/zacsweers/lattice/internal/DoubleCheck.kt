@@ -20,20 +20,12 @@ import dev.zacsweers.lattice.Provider
 /** A [Lazy] and [Provider] implementation that memoizes the value returned from a delegate. */
 // TODO inline the lazy impl?
 public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
-  Provider<T>, Lazy<T> {
-  private val instance: Lazy<T> = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { provider.value }
+  Provider<T>, Lazy<T> by lazy(LazyThreadSafetyMode.SYNCHRONIZED, { provider() }) {
 
-  override fun isInitialized(): Boolean {
-    return instance.isInitialized()
-  }
-
-  public override val value: T
-    get() = instance.value
+  override fun invoke(): T = value
 
   public companion object {
     /** Returns a [Provider] that caches the value from the given delegate provider. */
-    // This method is declared this way instead of "<T> Provider<T> provider(Provider<T> delegate)"
-    // to work around an Eclipse type inference bug: https://github.com/google/dagger/issues/949.
     public fun <P : Provider<T>, T : Any> provider(delegate: P): Provider<T> {
       if (delegate is DoubleCheck<*>) {
         /*
