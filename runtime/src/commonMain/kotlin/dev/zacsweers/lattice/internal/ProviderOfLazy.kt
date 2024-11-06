@@ -34,6 +34,7 @@ public class ProviderOfLazy<T : Any> private constructor(private val provider: P
      *
      * @see value
      */
-    public fun <T : Any> create(provider: Provider<T>): Provider<Lazy<T>> = ProviderOfLazy<T>(provider)
+    public fun <T : Any> create(provider: Provider<T>): Provider<Lazy<T>> =
+      ProviderOfLazy<T>(provider)
   }
 }
