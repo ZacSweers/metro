@@ -16,16 +16,19 @@
 package dev.zacsweers.lattice
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
+import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -36,7 +39,6 @@ internal class LatticeSymbols(
   pluginContext: IrPluginContext,
 ) {
 
-  private val irFactory: IrFactory = pluginContext.irFactory
   private val latticeRuntime: IrPackageFragment by lazy { createPackage("dev.zacsweers.lattice") }
   private val latticeRuntimeInternal: IrPackageFragment by lazy {
     createPackage("dev.zacsweers.lattice.internal")
@@ -47,10 +49,30 @@ internal class LatticeSymbols(
   private val stdlib: IrPackageFragment by lazy { createPackage("kotlin") }
   private val stdlibJvm: IrPackageFragment by lazy { createPackage("kotlin.jvm") }
 
+  val anyConstructor by lazy { pluginContext.irBuiltIns.anyClass.owner.constructors.single() }
+
   val latticeInject: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(latticeAnnotations.packageFqName, Name.identifier("Inject"))
     )!!
+  }
+
+  val doubleCheck: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("DoubleCheck"))
+    )!!
+  }
+  val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
+  val doubleCheckLazy by lazy { doubleCheckCompanionObject.getSimpleFunction("lazy")!! }
+
+  val providerOfLazy: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("ProviderOfLazy"))
+    )!!
+  }
+  val providerOfLazyCompanionObject by lazy { providerOfLazy.owner.companionObject()!!.symbol }
+  val providerOfLazyCreate: IrFunctionSymbol by lazy {
+    providerOfLazyCompanionObject.getSimpleFunction("create")!!
   }
 
   val latticeProvider: IrClassSymbol by lazy {

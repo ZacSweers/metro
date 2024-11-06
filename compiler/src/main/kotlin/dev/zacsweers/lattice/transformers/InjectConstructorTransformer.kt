@@ -58,7 +58,6 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -165,7 +164,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
     val ctor =
       factoryCls.addSimpleDelegatingConstructor(
-        pluginContext.irBuiltIns.anyClass.owner.constructors.single(),
+        symbols.anyConstructor,
         pluginContext.irBuiltIns,
         isPrimary = true,
         origin = LatticeOrigin,
@@ -206,6 +205,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
     // Generic
     override val value: Example<T> get() = newInstance(valueProvider.value)
+
+    // TODO doc Provider<T>, Lazy<T>, Provider<Lazy<T>>
     */
     factoryCls
       .addProperty {
@@ -216,7 +217,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         parent = factoryCls
         overriddenSymbols += symbols.providerValueProperty
         addGetter {
-            // TODO what goes here?
             returnType = targetTypeParameterized
             origin = LatticeOrigin
           }
@@ -233,18 +233,57 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                         allParameters
                           .map { parameter ->
                             // When calling value getter on Provider<T>, make sure the dispatch
-                            // receiver
-                            // is the Provider instance itself
+                            // receiver is the Provider instance itself
                             val providerInstance =
                               irGetField(
                                 irGet(factoryReceiver),
                                 parametersToFields.getValue(parameter),
                               )
-                            irInvoke(
-                              dispatchReceiver = providerInstance,
-                              callee = symbols.providerValuePropertyGetter,
-                              typeHint = parameter.typeName,
-                            )
+                            when {
+                              parameter.isLazyWrappedInProvider -> {
+                                // ProviderOfLazy.create(provider)
+                                irInvoke(
+                                  dispatchReceiver =
+                                    irGetObject(symbols.providerOfLazyCompanionObject),
+                                  callee = symbols.providerOfLazyCreate,
+                                  args = arrayOf(providerInstance),
+                                  typeHint = parameter.typeName,
+                                )
+                              }
+                              parameter.isWrappedInProvider -> providerInstance
+                              // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
+                              // (usually the container is a joined type), therefore we use
+                              // `.lazy(..)` to convert the Provider to a Lazy. Assisted
+                              // parameters behave differently and the Lazy type is not changed
+                              // to a Provider and we can simply use the parameter name in the
+                              // argument list.
+                              parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
+                              parameter.isWrappedInLazy -> {
+                                // DoubleCheck.lazy(...)
+                                irInvoke(
+                                  dispatchReceiver =
+                                    irGetObject(symbols.providerOfLazyCompanionObject),
+                                  callee = symbols.providerOfLazyCreate,
+                                  args = arrayOf(providerInstance),
+                                  typeHint = parameter.typeName,
+                                )
+                                irInvoke(
+                                  dispatchReceiver =
+                                    irGetObject(symbols.doubleCheckCompanionObject),
+                                  callee = symbols.doubleCheckLazy,
+                                  args = arrayOf(providerInstance),
+                                  typeHint = parameter.typeName,
+                                )
+                              }
+                              parameter.isAssisted -> providerInstance
+                              else -> {
+                                irInvoke(
+                                  dispatchReceiver = providerInstance,
+                                  callee = symbols.providerValuePropertyGetter,
+                                  typeHint = parameter.typeName,
+                                )
+                              }
+                            }
                           }
                           .toTypedArray(),
                     )
@@ -289,7 +328,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
             companionObject.parent = factoryCls
             companionObject.createImplicitParameterDeclarationWithWrappedDescriptor()
             companionObject.addSimpleDelegatingConstructor(
-              pluginContext.irBuiltIns.anyClass.owner.constructors.single(),
+              symbols.anyConstructor,
               pluginContext.irBuiltIns,
               isPrimary = true,
               origin = LatticeOrigin,
@@ -344,6 +383,10 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
      // Generic
      @JvmStatic // JVM only
      fun <T> newInstance(value: T): Example<T> = Example<T>(value)
+
+     // Provider
+     @JvmStatic // JVM only
+     fun newInstance(value: Provider<String>): Example = Example(value)
     */
     val newInstanceFunction =
       classToGenerateCreatorsIn
@@ -354,7 +397,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
           this.visibility = DescriptorVisibilities.PUBLIC
           markJvmStatic()
           for (parameter in allParameters) {
-            addValueParameter(parameter.name, parameter.typeName, LatticeOrigin)
+            addValueParameter(parameter.name, parameter.originalTypeName, LatticeOrigin)
           }
           body =
             pluginContext.createIrBuilder(symbol).run {
