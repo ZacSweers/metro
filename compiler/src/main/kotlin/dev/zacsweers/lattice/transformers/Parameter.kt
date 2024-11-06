@@ -126,28 +126,23 @@ internal fun IrValueParameter.toConstructorParameter(
   symbols: LatticeSymbols,
   uniqueName: Name,
 ): ConstructorParameter {
-  val paramTypeName =
-    type as? IrSimpleType ?: error("Unrecognized parameter type '${type.javaClass}': ${render()}")
+  val type = type
+  check(type is IrSimpleType) { "Unrecognized parameter type '${type.javaClass}': ${render()}" }
   val rawTypeClass = type.rawTypeOrNull()
   val rawType = rawTypeClass?.classId
 
   val isWrappedInProvider = rawType in symbols.providerTypes
   val isWrappedInLazy = rawType in symbols.lazyTypes
   val isLazyWrappedInProvider =
-    isWrappedInProvider && rawTypeClass?.typeWith()?.rawTypeOrNull()?.classId in symbols.lazyTypes
+    isWrappedInProvider &&
+      type.arguments[0].typeOrFail.rawTypeOrNull()?.classId in symbols.lazyTypes
 
   val typeName =
     when {
       isLazyWrappedInProvider ->
-        paramTypeName.arguments
-          .single()
-          .typeOrFail
-          .expectAs<IrSimpleType>()
-          .arguments
-          .single()
-          .typeOrFail
-      isWrappedInProvider || isWrappedInLazy -> paramTypeName.arguments.single().typeOrFail
-      else -> paramTypeName
+        type.arguments.single().typeOrFail.expectAs<IrSimpleType>().arguments.single().typeOrFail
+      isWrappedInProvider || isWrappedInLazy -> type.arguments.single().typeOrFail
+      else -> type
     }
 
   // TODO FIR better error message
