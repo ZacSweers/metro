@@ -80,4 +80,14 @@ final class <#A: kotlin/Any> dev.zacsweers.lattice.internal/DoubleCheck : dev.za
     }
 }
 
+final class <#A: kotlin/Any> dev.zacsweers.lattice.internal/ProviderOfLazy : dev.zacsweers.lattice/Provider<kotlin/Lazy<#A>> { // dev.zacsweers.lattice.internal/ProviderOfLazy|null[0]
+    final val value // dev.zacsweers.lattice.internal/ProviderOfLazy.value|{}value[0]
+        final fun <get-value>(): kotlin/Lazy<#A> // dev.zacsweers.lattice.internal/ProviderOfLazy.value.<get-value>|<get-value>(){}[0]
+
+    final object Companion { // dev.zacsweers.lattice.internal/ProviderOfLazy.Companion|null[0]
+        final fun <#A2: kotlin/Any> create(dev.zacsweers.lattice/Provider<#A2>): dev.zacsweers.lattice/Provider<kotlin/Lazy<#A2>> // dev.zacsweers.lattice.internal/ProviderOfLazy.Companion.create|create(dev.zacsweers.lattice.Provider<0:0>){0§<kotlin.Any>}[0]
+    }
+}
+
+final fun <#A: kotlin/Any> dev.zacsweers.lattice/provider(kotlin/Function0<#A>): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createComponentFactory(): #A // dev.zacsweers.lattice/createComponentFactory|createComponentFactory(){0§<kotlin.Any>}[0]
