@@ -26,7 +26,7 @@ kotlin {
   }
 }
 
-lattice { debug.set(true) }
+lattice { debug.set(false) }
 
 configurations.configureEach {
   resolutionStrategy.dependencySubstitution {

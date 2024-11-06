@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.sample
 
 import dev.zacsweers.lattice.Component
+import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Singleton
@@ -29,6 +30,18 @@ abstract class ExampleComponent(protected val fileSystemComponent: FileSystemCom
   abstract fun example1(): Example1
 
   abstract fun example2(): Example2
+
+  abstract fun <T> example3(): Example3<T>
+
+  abstract fun example4(): Example4
+
+  abstract fun <T> example5(): Example5<T>
+
+  abstract fun <T> example6(): Example6<T>
+
+  abstract fun <T> example7(): Example7<T>
+
+  abstract fun <T> example8(): Example8<T>
 
   @Component.Factory
   fun interface Factory {
@@ -44,3 +57,15 @@ interface FileSystemComponent {
 @Singleton class Example1 @Inject constructor(fs: FileSystem)
 
 @Singleton class Example2 @Inject constructor(fs: FileSystem)
+
+class Example3<T> @Inject constructor(fs: T)
+
+class Example4 @Inject constructor()
+
+class Example5<T> @Inject constructor()
+
+class Example6<T> @Inject constructor(fs: Lazy<FileSystem>)
+
+class Example7<T> @Inject constructor(fs: Provider<FileSystem>)
+
+class Example8<T> @Inject constructor(fs: Provider<Lazy<FileSystem>>)
