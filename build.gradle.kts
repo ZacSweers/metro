@@ -84,7 +84,7 @@ allprojects {
     format("license") {
       licenseHeaderFile(rootProject.file("spotless/spotless.kt"), "(package|@file:)")
       target("src/**/*.kt")
-      targetExclude("**/DoubleCheck.kt")
+      targetExclude("**/DoubleCheck.kt", "**/ProviderOfLazy.kt")
     }
   }
   configure<SpotlessExtension> {
