@@ -71,7 +71,3 @@ public final class dev/zacsweers/lattice/internal/ProviderOfLazy$Companion {
 	public final fun create (Ldev/zacsweers/lattice/Provider;)Ldev/zacsweers/lattice/Provider;
 }
 
-public final class dev/zacsweers/lattice/internal/ProviderOfLazyKt {
-	public static final fun asProviderOfLazy (Ldev/zacsweers/lattice/Provider;)Ldev/zacsweers/lattice/Provider;
-}
-
