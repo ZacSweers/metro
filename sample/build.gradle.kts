@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
   id("dev.zacsweers.lattice")
@@ -20,6 +22,9 @@ plugins {
 
 kotlin {
   jvm()
+  macosArm64()
+  js { browser() }
+  @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
   sourceSets {
     commonMain { dependencies { implementation(project(":runtime")) } }
     commonTest { dependencies { implementation(libs.kotlin.test) } }

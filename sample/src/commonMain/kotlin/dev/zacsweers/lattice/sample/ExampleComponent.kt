@@ -20,9 +20,6 @@ import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Singleton
-import java.nio.file.FileSystem
-import java.nio.file.FileSystems
-import java.nio.file.spi.FileSystemProvider
 
 @Singleton
 @Component
@@ -42,7 +39,7 @@ abstract class ExampleComponent(protected val fileSystemComponent: FileSystemCom
 
 @Component
 interface FileSystemComponent {
-  @Singleton @Provides fun provideFileSystem(): FileSystem = FileSystems.getDefault()
+  @Singleton @Provides fun provideFileSystem(): FileSystem = FileSystem()
 
   @Singleton
   @Provides
@@ -64,3 +61,11 @@ class Example6<T> @Inject constructor(fs: Lazy<FileSystem>)
 class Example7<T> @Inject constructor(fs: Provider<FileSystem>)
 
 class Example8<T> @Inject constructor(fs: Provider<Lazy<FileSystem>>)
+
+class FileSystem {
+  fun provider(): FileSystemProvider {
+    return FileSystemProvider()
+  }
+}
+
+class FileSystemProvider
