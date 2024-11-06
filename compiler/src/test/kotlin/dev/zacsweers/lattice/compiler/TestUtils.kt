@@ -18,17 +18,18 @@ package dev.zacsweers.lattice.compiler
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.JvmCompilationResult
 import dev.zacsweers.lattice.internal.Factory
+import dev.zacsweers.lattice.provider
 import java.util.concurrent.Callable
 
 fun JvmCompilationResult.assertCallableFactory(value: String) {
   val factory = ExampleClass.generatedFactoryClass()
-  val callable = factory.invokeNewInstanceAs<Callable<String>>(value)
+  val callable = factory.createNewInstanceAs<Callable<String>>(provider { value })
   assertThat(callable.call()).isEqualTo(value)
 }
 
 fun JvmCompilationResult.assertNoArgCallableFactory(expectedValue: String) {
   val factory = ExampleClass.generatedFactoryClass()
-  val callable = factory.invokeNewInstanceAs<Callable<String>>()
+  val callable = factory.createNewInstanceAs<Callable<String>>()
   assertThat(callable.call()).isEqualTo(expectedValue)
 }
 
@@ -53,4 +54,27 @@ fun <T> Class<Factory<*>>.invokeNewInstanceAs(vararg args: Any): T {
 
 fun Class<Factory<*>>.invokeCreate(vararg args: Any): Factory<*> {
   return declaredMethods.single { it.name == "create" }.invoke(null, *args) as Factory<*>
+}
+
+fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
+  @Suppress("UNCHECKED_CAST")
+  return invokeCreate(*args) as T
+}
+
+/**
+ * Exercises the whole generated factory creation flow by first creating with [invokeCreate] and
+ * then calling [Factory.value] to exercise its `newInstance()`.
+ */
+fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
+  val factory = invokeCreate(*args)
+  return factory.value
+}
+
+/**
+ * Exercises the whole generated factory creation flow by first creating with [invokeCreate] and
+ * then calling [Factory.value] to exercise its `newInstance()`.
+ */
+fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
+  @Suppress("UNCHECKED_CAST")
+  return createNewInstance(*args) as T
 }
