@@ -21,8 +21,8 @@ import org.gradle.api.provider.Property
 
 public abstract class LatticePluginExtension @Inject constructor(objects: ObjectFactory) {
   public val enabled: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   public val debug: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 }

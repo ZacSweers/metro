@@ -31,20 +31,23 @@ public class LatticeGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   override fun getCompilerPluginId(): String = "dev.zacsweers.lattice.compiler"
 
   override fun getPluginArtifact(): SubpluginArtifact =
-      SubpluginArtifact(
-          groupId = "dev.zacsweers.lattice", artifactId = "compiler", version = VERSION)
+    SubpluginArtifact(
+      groupId = "dev.zacsweers.lattice",
+      artifactId = "compiler",
+      version = BuildConfig.VERSION,
+    )
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
 
   override fun applyToCompilation(
-      kotlinCompilation: KotlinCompilation<*>
+    kotlinCompilation: KotlinCompilation<*>
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(LatticePluginExtension::class.java)
 
     project.dependencies.add(
-        kotlinCompilation.implementationConfigurationName,
-        "dev.zacsweers.lattice:runtime:$VERSION",
+      kotlinCompilation.implementationConfigurationName,
+      "dev.zacsweers.lattice:runtime:${BuildConfig.VERSION}",
     )
 
     val enabled = extension.enabled.get()
@@ -52,8 +55,8 @@ public class LatticeGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
     return project.provider {
       listOf(
-          SubpluginOption(key = "enabled", value = enabled.toString()),
-          SubpluginOption(key = "debug", value = debug.toString()),
+        SubpluginOption(key = "enabled", value = enabled.toString()),
+        SubpluginOption(key = "debug", value = debug.toString()),
       )
     }
   }
