@@ -15,9 +15,12 @@
  */
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.transformers.ComponentProcessingTransformer
 import dev.zacsweers.lattice.transformers.InjectConstructorTransformer
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
+import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 
 internal fun latticeIrTransformers(
   context: LatticeTransformerContext
-): Sequence<InjectConstructorTransformer> = sequenceOf(InjectConstructorTransformer(context))
+): Sequence<IrElementTransformerVoidWithContext> =
+  sequenceOf(InjectConstructorTransformer(context), ComponentProcessingTransformer(context))

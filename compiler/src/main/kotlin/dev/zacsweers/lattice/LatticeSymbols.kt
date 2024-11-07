@@ -55,6 +55,12 @@ internal class LatticeSymbols(
     )!!
   }
 
+  val latticeComponent: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeAnnotations.packageFqName, Name.identifier("Component"))
+    )!!
+  }
+
   val doubleCheck: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("DoubleCheck"))
@@ -96,6 +102,7 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlibJvm.packageFqName, Name.identifier("JvmStatic")))!!
   }
 
+  val componentAnnotations = setOf(latticeComponent.owner.classIdOrFail)
   val injectAnnotations = setOf(latticeInject.owner.classIdOrFail)
   // TODO
   val assistedAnnotations = setOf<ClassId>()
