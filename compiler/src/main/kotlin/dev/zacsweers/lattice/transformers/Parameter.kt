@@ -22,6 +22,8 @@ import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
 import dev.zacsweers.lattice.ir.rawTypeOrNull
 import kotlin.collections.count
 import kotlin.collections.sumOf
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -30,6 +32,7 @@ import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.Name
 
@@ -125,8 +128,18 @@ private fun IrType.wrapIn(target: IrClassSymbol): IrType {
 internal fun IrValueParameter.toConstructorParameter(
   symbols: LatticeSymbols,
   uniqueName: Name,
+  sourceTypeParametersContainer: IrTypeParametersContainer,
+  destinationTypeParametersContainer: IrTypeParametersContainer,
+  srcToDstParameterMap: Map<IrTypeParameter, IrTypeParameter>,
 ): ConstructorParameter {
-  val type = type
+  // Remap type parameters in underlying types to the new target container. This is important for
+  // type mangling
+  val type =
+    type.remapTypeParameters(
+      sourceTypeParametersContainer,
+      destinationTypeParametersContainer,
+      srcToDstParameterMap,
+    )
   check(type is IrSimpleType) { "Unrecognized parameter type '${type.javaClass}': ${render()}" }
   val rawTypeClass = type.rawTypeOrNull()
   val rawType = rawTypeClass?.classId

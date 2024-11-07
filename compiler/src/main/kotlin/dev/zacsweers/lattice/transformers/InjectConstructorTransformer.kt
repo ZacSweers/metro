@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addTypeParameter
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildValueParameter
@@ -51,7 +50,6 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
@@ -59,7 +57,6 @@ import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -86,17 +83,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
     if (isInjectable) {
       val typeParams = declaration.typeParameters
-      val constructorParameters =
-        primaryConstructor.valueParameters.map { valueParameter ->
-          valueParameter.toConstructorParameter(symbols, valueParameter.name)
-        }
-      generateFactoryClass(
-        declaration,
-        declaration.classIdOrFail,
-        primaryConstructor,
-        typeParams,
-        constructorParameters,
-      )
+      generateFactoryClass(declaration, declaration.classIdOrFail, primaryConstructor, typeParams)
     }
     return super.visitClassNew(declaration)
   }
@@ -106,15 +93,16 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     declaration: IrClass,
     injectedClassId: ClassId,
     targetConstructor: IrConstructor,
-    typeParameters: List<IrTypeParameter>,
-    constructorParameters: List<ConstructorParameter>,
+    targetTypeParameters: List<IrTypeParameter>,
     // TODO
     //    memberInjectParameters: List<MemberInjectParameter>,
   ) {
     val generatedClassName = injectedClassId.joinSimpleNames(suffix = "_Factory")
 
-    val allParameters = constructorParameters // + memberInjectParameters
-    val canGenerateAnObject = allParameters.isEmpty() && typeParameters.isEmpty()
+    val canGenerateAnObject =
+      targetConstructor.valueParameters.isEmpty() &&
+        //      memberInjectParameters.isEmpty() &&
+        targetTypeParameters.isEmpty()
 
     /*
     Create a simple Factory class that takes all injected values as providers
@@ -129,19 +117,26 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       pluginContext.irFactory
         .buildClass {
           name = generatedClassName.relativeClassName.shortName()
-          modality = Modality.FINAL
           kind = if (canGenerateAnObject) ClassKind.OBJECT else ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
         }
         .apply { origin = LatticeOrigin }
 
-    for (typeVariable in typeParameters) {
-      factoryCls.addTypeParameter(
-        typeVariable.name.asString(),
-        upperBound = typeVariable.superTypes.single(),
-        variance = typeVariable.variance,
-      )
-    }
+    val typeParameters = factoryCls.copyTypeParameters(targetTypeParameters)
+    val srcToDstParameterMap =
+      targetTypeParameters.zip(typeParameters).associate { (src, target) -> src to target }
+
+    val constructorParameters =
+      targetConstructor.valueParameters.map { valueParameter ->
+        valueParameter.toConstructorParameter(
+          symbols,
+          valueParameter.name,
+          declaration,
+          factoryCls,
+          srcToDstParameterMap,
+        )
+      }
+    val allParameters = constructorParameters // + memberInjectParameters
 
     val factoryReceiver =
       buildValueParameter(factoryCls) {
@@ -157,7 +152,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       }
 
     factoryCls.thisReceiver = factoryReceiver
-    factoryCls.superTypes = listOf(symbols.latticeFactory.typeWith(declaration.defaultType))
+    factoryCls.superTypes =
+      listOf(symbols.latticeFactory.typeWith(declaration.symbol.typeWithParameters(typeParameters)))
 
     val factoryClassParameterized = factoryCls.symbol.typeWithParameters(typeParameters)
     val targetTypeParameterized = declaration.symbol.typeWithParameters(typeParameters)
@@ -184,7 +180,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
               pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
           }
       parametersToFields[parameter] = irField
-      // TODO add private property? Does it matter?
     }
 
     val newInstanceFunctionSymbol =
@@ -201,12 +196,19 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     Override and implement the Provider.value property
 
     // Simple
-    override fun invoke(): Example = newInstance(valueProvider.value)
+    override fun invoke(): Example = newInstance(valueProvider())
 
     // Generic
-    override fun invoke(): Example<T> = newInstance(valueProvider.value)
+    override fun invoke(): Example<T> = newInstance(valueProvider())
 
-    // TODO doc Provider<T>, Lazy<T>, Provider<Lazy<T>>
+    // Provider
+    override fun invoke(): Example<T> = newInstance(valueProvider)
+
+    // Lazy
+    override fun invoke(): Example<T> = newInstance(DoubleCheck.lazy(valueProvider))
+
+    // Provider<Lazy<T>>
+    override fun invoke(): Example<T> = newInstance(ProviderOfLazy.create(valueProvider))
     */
     factoryCls
       .addOverride(
@@ -284,7 +286,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     factoryCls.dumpToLatticeLog()
 
     factoryCls.parent = declaration.file
-    declaration.declarations.add(factoryCls)
+    declaration.file.declarations.add(factoryCls)
   }
 
   private fun generateCreators(
@@ -337,7 +339,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     classToGenerateCreatorsIn
       .addFunction("create", factoryClassParameterized, isStatic = true)
       .apply {
-        copyTypeParameters(typeParameters)
+        this.copyTypeParameters(typeParameters)
         this.origin = LatticeOrigin
         this.visibility = DescriptorVisibilities.PUBLIC
         markJvmStatic()
@@ -379,7 +381,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       classToGenerateCreatorsIn
         .addFunction("newInstance", targetTypeParameterized, isStatic = true)
         .apply {
-          copyTypeParameters(typeParameters)
+          this.copyTypeParameters(typeParameters)
           this.origin = LatticeOrigin
           this.visibility = DescriptorVisibilities.PUBLIC
           markJvmStatic()
