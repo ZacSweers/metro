@@ -55,6 +55,24 @@ internal class LatticeSymbols(
     )!!
   }
 
+  val latticeProvides: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeAnnotations.packageFqName, Name.identifier("Provides"))
+    )!!
+  }
+
+  val latticeQualifier: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeAnnotations.packageFqName, Name.identifier("Qualifier"))
+    )!!
+  }
+
+  val latticeScope: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeAnnotations.packageFqName, Name.identifier("Scope"))
+    )!!
+  }
+
   val latticeComponent: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(latticeAnnotations.packageFqName, Name.identifier("Component"))
@@ -104,6 +122,9 @@ internal class LatticeSymbols(
 
   val componentAnnotations = setOf(latticeComponent.owner.classIdOrFail)
   val injectAnnotations = setOf(latticeInject.owner.classIdOrFail)
+  val qualifierAnnotations = setOf(latticeQualifier.owner.classIdOrFail)
+  val scopeAnnotations = setOf(latticeScope.owner.classIdOrFail)
+  val providesAnnotations = setOf(latticeProvides.owner.classIdOrFail)
   // TODO
   val assistedAnnotations = setOf<ClassId>()
   val providerTypes = setOf(latticeProvider.owner.classIdOrFail)
