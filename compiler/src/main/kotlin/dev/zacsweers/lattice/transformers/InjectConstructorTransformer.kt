@@ -20,7 +20,6 @@ import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
-import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.joinSimpleNames
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -59,7 +58,7 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
@@ -70,20 +69,19 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
   override fun visitClassNew(declaration: IrClass): IrStatement {
     log("Reading <$declaration>")
 
-    // Check for inject annotation on the class or primary constructor
-    // TODO FIR error if primary constructor is missing but class annotated with inject
-    val primaryConstructor =
-      declaration.primaryConstructor ?: return super.visitClassNew(declaration)
-    val isInjectable =
-      declaration.isAnnotatedWithAny(symbols.injectAnnotations) ||
-        primaryConstructor.isAnnotatedWithAny(symbols.injectAnnotations)
+    val injectableConstructor = declaration.findInjectableConstructor()
 
     // TODO FIR check for multiple inject constructors or annotations
     // TODO FIR check constructor visibility
 
-    if (isInjectable) {
+    if (injectableConstructor != null) {
       val typeParams = declaration.typeParameters
-      generateFactoryClass(declaration, declaration.classIdOrFail, primaryConstructor, typeParams)
+      generateFactoryClass(
+        declaration,
+        declaration.classIdOrFail,
+        injectableConstructor,
+        typeParams,
+      )
     }
     return super.visitClassNew(declaration)
   }
@@ -127,14 +125,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       targetTypeParameters.zip(typeParameters).associate { (src, target) -> src to target }
 
     val constructorParameters =
-      targetConstructor.valueParameters.map { valueParameter ->
-        valueParameter.toConstructorParameter(
-          symbols,
-          valueParameter.name,
-          declaration,
-          factoryCls,
-          srcToDstParameterMap,
-        )
+      targetConstructor.valueParameters.mapToConstructorParameters(symbols) { type ->
+        type.remapTypeParameters(declaration, factoryCls, srcToDstParameterMap)
       }
     val allParameters = constructorParameters // + memberInjectParameters
 
