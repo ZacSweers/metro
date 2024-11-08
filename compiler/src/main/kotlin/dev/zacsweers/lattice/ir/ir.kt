@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.ir
 
+import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.jvm.ir.erasedUpperBound
@@ -24,6 +25,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
@@ -59,12 +61,14 @@ import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
@@ -232,3 +236,21 @@ internal fun IrClass.isSubclassOfFqName(fqName: String): Boolean =
 internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =
   parentClassOrNull?.fqNameWhenAvailable == fqName ||
     allOverridden().any { it.parentClassOrNull?.fqNameWhenAvailable == fqName }
+
+/**
+ * Computes a hash key for this annotation instance composed of its underlying type and value
+ * arguments.
+ */
+internal fun IrConstructorCall.computeAnnotationHash(): Int {
+  return Objects.hash(
+    type.rawType().classIdOrFail,
+    valueArguments.map { (it as IrConst<*>).value }.toTypedArray().contentDeepHashCode(),
+  )
+}
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrClass.allCallableMembers(): Sequence<IrSimpleFunction> {
+  return functions
+    .asSequence()
+    .plus(properties.asSequence().mapNotNull { property -> property.getter })
+}
