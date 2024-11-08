@@ -33,3 +33,7 @@ internal inline fun <reified T : Any> Any.expectAs(): T {
 internal fun String.capitalizeUS() = replaceFirstChar {
   if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
 }
+
+internal fun <T, R> Iterable<T>.mapToSet(mapper: (T) -> R): Set<R> {
+  return mapTo(mutableSetOf(), mapper)
+}
