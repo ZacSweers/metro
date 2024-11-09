@@ -145,7 +145,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     val componentNode = getOrComputeComponentNode(componentDeclaration)
 
-    val bindingGraph = createBindingGraph(listOf(componentNode))
+    val bindingGraph = createBindingGraph(componentNode)
     bindingGraph.validate()
 
     val latticeComponent = generateLatticeComponent(componentNode, bindingGraph)
@@ -157,32 +157,30 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return latticeComponent
   }
 
-  private fun createBindingGraph(components: List<ComponentNode>): BindingGraph {
+  private fun createBindingGraph(component: ComponentNode): BindingGraph {
     val graph = BindingGraph(this)
 
-    components.forEach { component ->
-      // Add explicit bindings from @Provides methods
-      component.providedFunctions.forEach { method ->
-        val key = TypeKey(method.returnType, method.qualifierAnnotation())
-        val dependencies =
-          method.valueParameters.mapToConstructorParameters(this).associateBy { it.typeKey }
-        graph.addBinding(key, Binding.Provided(method, dependencies, method.qualifierAnnotation()))
-      }
-
-      // Add bindings from component dependencies
-      component.dependencies.forEach { dep ->
-        dep.exposedTypes.forEach { key ->
-          graph.addBinding(
-            key,
-            Binding.ComponentDependency(component = dep.type, getter = dep.getter),
-          )
-        }
-      }
-
-      // Don't eagerly create bindings for injectable types, they'll be created on-demand
-      // when dependencies are analyzed
-      // TODO collect unused bindings?
+    // Add explicit bindings from @Provides methods
+    component.providedFunctions.forEach { method ->
+      val key = TypeKey(method.returnType, method.qualifierAnnotation())
+      val dependencies =
+        method.valueParameters.mapToConstructorParameters(this).associateBy { it.typeKey }
+      graph.addBinding(key, Binding.Provided(method, dependencies, method.qualifierAnnotation()))
     }
+
+    // Add bindings from component dependencies
+    component.dependencies.forEach { dep ->
+      dep.exposedTypes.forEach { key ->
+        graph.addBinding(
+          key,
+          Binding.ComponentDependency(component = dep.type, getter = dep.getter),
+        )
+      }
+    }
+
+    // Don't eagerly create bindings for injectable types, they'll be created on-demand
+    // when dependencies are analyzed
+    // TODO collect unused bindings?
 
     return graph
   }
