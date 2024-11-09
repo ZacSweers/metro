@@ -17,15 +17,13 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.ir.addOverride
+import dev.zacsweers.lattice.ir.buildCompanionObject
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.joinSimpleNames
-import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -42,7 +40,6 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
-import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -58,9 +55,9 @@ import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.Name
 
-internal class InjectConstructorTransformer(context: LatticeTransformerContext) : LatticeTransformerContext by context {
+internal class InjectConstructorTransformer(context: LatticeTransformerContext) :
+  LatticeTransformerContext by context {
 
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
 
@@ -280,25 +277,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       if (isObject) {
         factoryCls
       } else {
-        pluginContext.irFactory
-          .buildClass {
-            this.name = Name.identifier("Companion")
-            this.modality = Modality.FINAL
-            this.kind = ClassKind.OBJECT
-            this.isCompanion = true
-          }
-          .apply {
-            factoryCls.addMember(this)
-            this.parent = factoryCls
-            this.origin = LatticeOrigin
-            this.createImplicitParameterDeclarationWithWrappedDescriptor()
-            this.addSimpleDelegatingConstructor(
-              symbols.anyConstructor,
-              pluginContext.irBuiltIns,
-              isPrimary = true,
-              origin = LatticeOrigin,
-            )
-          }
+        pluginContext.irFactory.buildCompanionObject(symbols, parent = factoryCls)
       }
 
     /*

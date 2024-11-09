@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.backend.jvm.ir.erasedUpperBound
 import org.jetbrains.kotlin.backend.jvm.ir.parentClassId
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
@@ -35,6 +37,7 @@ import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
+import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -44,10 +47,12 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -71,13 +76,16 @@ import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
@@ -190,6 +198,18 @@ internal fun IrBuilderWithScope.irInvoke(
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.addOverride(
+  baseFunction: IrSimpleFunction,
+  modality: Modality = Modality.FINAL,
+): IrSimpleFunction =
+  addOverride(
+    baseFunction.kotlinFqName,
+    baseFunction.name.asString(),
+    baseFunction.returnType,
+    modality,
+  )
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrClass.addOverride(
   baseFqName: FqName,
   name: String,
   returnType: IrType,
@@ -272,7 +292,7 @@ internal fun IrClass.allCallableMembers(
         // TODO optimize this?
         it.filterNot { function ->
           function.overriddenSymbols.any { symbol ->
-            symbol.owner.parentClassId == LatticeSymbols.ANY_CLASS_ID
+            symbol.owner.parentClassId == LatticeSymbols.ClassIds.AnyClass
           }
         }
       } else {
@@ -323,4 +343,31 @@ internal fun irLambda(
     origin = IrStatementOrigin.LAMBDA,
     function = lambda,
   )
+}
+
+internal fun IrFactory.buildCompanionObject(
+  symbols: LatticeSymbols,
+  parent: IrClass,
+  name: Name = LatticeSymbols.Names.CompanionObject,
+  body: IrClass.() -> Unit = {},
+): IrClass {
+  return buildClass {
+      this.name = name
+      this.modality = Modality.FINAL
+      this.kind = ClassKind.OBJECT
+      this.isCompanion = true
+    }
+    .apply {
+      this.parent = parent
+      parent.addMember(this)
+      this.origin = LatticeOrigin
+      this.createImplicitParameterDeclarationWithWrappedDescriptor()
+      this.addSimpleDelegatingConstructor(
+        symbols.anyConstructor,
+        symbols.pluginContext.irBuiltIns,
+        isPrimary = true,
+        origin = LatticeOrigin,
+      )
+      body()
+    }
 }
