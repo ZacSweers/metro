@@ -85,6 +85,7 @@ internal class LatticeSymbols(
     )!!
   }
   val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
+  val doubleCheckProvider by lazy { doubleCheckCompanionObject.getSimpleFunction("Provider")!! }
   val doubleCheckLazy by lazy { doubleCheckCompanionObject.getSimpleFunction("lazy")!! }
 
   val providerOfLazy: IrClassSymbol by lazy {
