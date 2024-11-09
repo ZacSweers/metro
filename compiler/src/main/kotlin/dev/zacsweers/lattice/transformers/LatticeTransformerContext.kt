@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LOG_PREFIX
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.ir.addAnnotation
 import dev.zacsweers.lattice.ir.irType
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
@@ -85,10 +86,10 @@ internal interface LatticeTransformerContext {
   }
 
   fun IrAnnotationContainer?.qualifierAnnotation() =
-    annotationsAnnotatedWith(symbols.qualifierAnnotations).singleOrNull()
+    annotationsAnnotatedWith(symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
 
   fun IrAnnotationContainer?.scopeAnnotation() =
-    annotationsAnnotatedWith(symbols.scopeAnnotations).singleOrNull()
+    annotationsAnnotatedWith(symbols.scopeAnnotations).singleOrNull()?.let(::IrAnnotation)
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun IrAnnotationContainer?.annotationsAnnotatedWith(
