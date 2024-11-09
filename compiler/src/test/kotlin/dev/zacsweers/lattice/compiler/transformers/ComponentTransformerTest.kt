@@ -20,8 +20,8 @@ import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.callComponentAccessor
-import dev.zacsweers.lattice.compiler.generatedLatticeComponent
 import dev.zacsweers.lattice.compiler.createComponentViaFactory
+import dev.zacsweers.lattice.compiler.generatedLatticeComponent
 import java.util.concurrent.Callable
 import org.junit.Test
 
@@ -40,6 +40,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.createComponentFactory
             import java.util.concurrent.Callable
 
             @Singleton
@@ -63,16 +64,30 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               override fun call(): String = text
             }
 
+            fun createExampleClass(): (String) -> Callable<String> {
+              val factory = createComponentFactory<ExampleComponent.Factory>()
+              return { factory.create(it).exampleClass() }
+            }
+
           """
             .trimIndent(),
         ),
         debug = true,
       )
     val component =
-      result.ExampleComponent.generatedLatticeComponent()
-        .createComponentViaFactory("Hello, world!")
+      result.ExampleComponent.generatedLatticeComponent().createComponentViaFactory("Hello, world!")
 
     val exampleClass = component.callComponentAccessor<Callable<String>>("exampleClass")
     assertThat(exampleClass.call()).isEqualTo("Hello, world!")
+
+    // 2nd pass exercising creating a component via createComponentFactory()
+    @Suppress("UNCHECKED_CAST")
+    val callableCreator =
+      result.classLoader
+        .loadClass("test.ExampleComponentKt")
+        .getDeclaredMethod("createExampleClass")
+        .invoke(null) as (String) -> Callable<String>
+    val callable = callableCreator("Hello, world!")
+    assertThat(callable.call()).isEqualTo("Hello, world!")
   }
 }

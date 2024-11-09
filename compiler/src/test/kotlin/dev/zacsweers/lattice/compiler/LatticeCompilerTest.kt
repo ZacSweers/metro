@@ -48,6 +48,7 @@ abstract class LatticeCompilerTest {
       inheritClassPath = true
       sources = sourceFiles.asList()
       verbose = false
+      jvmTarget = "11"
     }
   }
 

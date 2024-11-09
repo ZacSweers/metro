@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -48,6 +49,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -66,6 +68,7 @@ import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
@@ -84,6 +87,37 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   private val componentNodesByClass = mutableMapOf<ClassId, ComponentNode>()
   // Keyed by the source declaration
   private val latticeComponentsByClass = mutableMapOf<ClassId, IrClass>()
+
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
+  override fun visitCall(expression: IrCall, data: ComponentData): IrElement {
+    // Covers replacing createComponentFactory() compiler intrinsics with calls to the real
+    // component factory
+    val callee = expression.symbol.owner
+    if (callee.symbol == symbols.latticeCreateComponentFactory) {
+      // Get the called type
+      val type =
+        expression.getTypeArgument(0) ?: error("Missing type argument for createComponentFactory")
+      val rawType = type.rawType()
+      if (!rawType.isAnnotatedWithAny(symbols.componentFactoryAnnotations)) {
+        // TODO FIR error
+        error(
+          "Cannot create a component factory instance of non-factory type ${rawType.kotlinFqName}"
+        )
+      }
+      val componentDeclaration = rawType.parentAsClass
+      val componentClass = getOrBuildComponent(componentDeclaration)
+      val componentCompanion = componentClass.companionObject()!!
+      val factoryFunction = componentCompanion.getSimpleFunction("factory")!!
+      // Replace it with a call directly to the factory function
+      return pluginContext.createIrBuilder(expression.symbol).run {
+        irCall(callee = factoryFunction, type = type).apply {
+          dispatchReceiver = irGetObject(componentCompanion.symbol)
+        }
+      }
+    }
+
+    return super.visitCall(expression, data)
+  }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun visitClass(declaration: IrClass, data: ComponentData): IrStatement {
