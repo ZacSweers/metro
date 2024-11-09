@@ -16,6 +16,8 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.transformers.ComponentData
+import dev.zacsweers.lattice.transformers.ComponentTransformer
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -30,8 +32,9 @@ internal class LatticeIrGenerationExtension(
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = LatticeSymbols(moduleFragment, pluginContext)
     val context = LatticeTransformerContext(pluginContext, messageCollector, symbols, debug)
-    for (transformer in latticeIrTransformers(context)) {
-      moduleFragment.transform(transformer, null)
-    }
+    val componentTransformer = ComponentTransformer(context)
+    // TODO is this really necessary?
+    val componentData = ComponentData()
+    moduleFragment.transform(componentTransformer, componentData)
   }
 }
