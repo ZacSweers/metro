@@ -125,7 +125,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       targetTypeParameters.zip(typeParameters).associate { (src, target) -> src to target }
 
     val constructorParameters =
-      targetConstructor.valueParameters.mapToConstructorParameters(symbols) { type ->
+      targetConstructor.valueParameters.mapToConstructorParameters(this) { type ->
         type.remapTypeParameters(declaration, factoryCls, srcToDstParameterMap)
       }
     val allParameters = constructorParameters // + memberInjectParameters

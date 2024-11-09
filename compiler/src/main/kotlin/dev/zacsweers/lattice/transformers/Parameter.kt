@@ -46,6 +46,7 @@ internal sealed interface Parameter {
   val assistedIdentifier: Name
   val assistedParameterKey: AssistedParameterKey
   val symbols: LatticeSymbols
+  val typeKey: TypeKey
 
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
@@ -88,6 +89,7 @@ internal fun Name.uniqueParameterName(vararg superParameters: List<Parameter>): 
 
 internal data class ConstructorParameter(
   override val name: Name,
+  override val typeKey: TypeKey,
   override val originalName: Name,
   override val typeName: IrType,
   override val providerTypeName: IrType,
@@ -123,16 +125,16 @@ private fun IrType.wrapIn(target: IrClassSymbol): IrType {
 }
 
 internal fun List<IrValueParameter>.mapToConstructorParameters(
-  symbols: LatticeSymbols,
+  context: LatticeTransformerContext,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): List<ConstructorParameter> {
   return map { valueParameter ->
-    valueParameter.toConstructorParameter(symbols, valueParameter.name, typeParameterRemapper)
+    valueParameter.toConstructorParameter(context, valueParameter.name, typeParameterRemapper)
   }
 }
 
 internal fun IrValueParameter.toConstructorParameter(
-  symbols: LatticeSymbols,
+  context: LatticeTransformerContext,
   uniqueName: Name,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): ConstructorParameter {
@@ -143,11 +145,11 @@ internal fun IrValueParameter.toConstructorParameter(
   val rawTypeClass = type.rawTypeOrNull()
   val rawType = rawTypeClass?.classId
 
-  val isWrappedInProvider = rawType in symbols.providerTypes
-  val isWrappedInLazy = rawType in symbols.lazyTypes
+  val isWrappedInProvider = rawType in context.symbols.providerTypes
+  val isWrappedInLazy = rawType in context.symbols.lazyTypes
   val isLazyWrappedInProvider =
     isWrappedInProvider &&
-      type.arguments[0].typeOrFail.rawTypeOrNull()?.classId in symbols.lazyTypes
+      type.arguments[0].typeOrFail.rawTypeOrNull()?.classId in context.symbols.lazyTypes
 
   val typeName =
     when {
@@ -158,22 +160,23 @@ internal fun IrValueParameter.toConstructorParameter(
     }
 
   // TODO FIR better error message
-  val assistedAnnotation = annotationsIn(symbols.assistedAnnotations).singleOrNull()
+  val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
   val assistedIdentifier =
     Name.identifier(assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty())
 
   return ConstructorParameter(
     name = uniqueName,
+    typeKey = TypeKey.from(context, this),
     originalName = name,
     typeName = typeName,
-    providerTypeName = typeName.wrapInProvider(symbols.latticeProvider),
-    lazyTypeName = typeName.wrapInLazy(symbols),
+    providerTypeName = typeName.wrapInProvider(context.symbols.latticeProvider),
+    lazyTypeName = typeName.wrapInLazy(context.symbols),
     isWrappedInProvider = isWrappedInProvider,
     isWrappedInLazy = isWrappedInLazy,
     isLazyWrappedInProvider = isLazyWrappedInProvider,
     isAssisted = assistedAnnotation != null,
     assistedIdentifier = assistedIdentifier,
-    symbols = symbols,
+    symbols = context.symbols,
   )
 }
