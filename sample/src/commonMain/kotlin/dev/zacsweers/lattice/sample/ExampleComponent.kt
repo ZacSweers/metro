@@ -15,10 +15,10 @@
  */
 package dev.zacsweers.lattice.sample
 
-import dev.zacsweers.lattice.annotations.Component
 import dev.zacsweers.lattice.Provider
-import dev.zacsweers.lattice.annotations.Provides
+import dev.zacsweers.lattice.annotations.Component
 import dev.zacsweers.lattice.annotations.Inject
+import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
 
 @Singleton

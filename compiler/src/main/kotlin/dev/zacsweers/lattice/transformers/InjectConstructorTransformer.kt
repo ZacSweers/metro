@@ -30,7 +30,6 @@ import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.declarations.buildValueParameter
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -41,7 +40,6 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
@@ -49,7 +47,6 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
@@ -66,7 +63,7 @@ import org.jetbrains.kotlin.name.Name
 internal class InjectConstructorTransformer(context: LatticeTransformerContext) :
   IrElementTransformerVoidWithContext(), LatticeTransformerContext by context {
 
-    private val generatedFactories = mutableMapOf<ClassId, IrClass>()
+  private val generatedFactories = mutableMapOf<ClassId, IrClass>()
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun visitClassNew(declaration: IrClass): IrStatement {
@@ -85,11 +82,13 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     targetConstructor: IrConstructor,
     // TODO
     //    memberInjectParameters: List<MemberInjectParameter>,
-  ) : IrClass {
+  ): IrClass {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
     val injectedClassId: ClassId = declaration.classIdOrFail
-    generatedFactories[injectedClassId]?.let { return it }
+    generatedFactories[injectedClassId]?.let {
+      return it
+    }
 
     // TODO FIR check for multiple inject constructors or annotations
     // TODO FIR check constructor visibility
@@ -210,7 +209,10 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                         // When calling value getter on Provider<T>, make sure the dispatch
                         // receiver is the Provider instance itself
                         val providerInstance =
-                          irGetField(irGet(factoryCls.thisReceiver!!), parametersToFields.getValue(parameter))
+                          irGetField(
+                            irGet(factoryCls.thisReceiver!!),
+                            parametersToFields.getValue(parameter),
+                          )
                         when {
                           parameter.isLazyWrappedInProvider -> {
                             // ProviderOfLazy.create(provider)
@@ -218,7 +220,10 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                               dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
                               callee = symbols.providerOfLazyCreate,
                               args = arrayOf(providerInstance),
-                              typeHint = parameter.typeName.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
+                              typeHint =
+                                parameter.typeName
+                                  .wrapInLazy(symbols)
+                                  .wrapInProvider(symbols.latticeProvider),
                             )
                           }
                           parameter.isWrappedInProvider -> providerInstance
