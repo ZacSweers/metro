@@ -113,7 +113,7 @@ internal interface LatticeTransformerContext {
     return if (isAnnotatedWithAny(symbols.injectAnnotations)) {
       primaryConstructor
     } else {
-      constructors.single { constructor ->
+      constructors.singleOrNull { constructor ->
         constructor.isAnnotatedWithAny(symbols.injectAnnotations)
       }
     }
