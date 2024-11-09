@@ -27,6 +27,8 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -36,6 +38,12 @@ internal class LatticeSymbols(
   private val moduleFragment: IrModuleFragment,
   pluginContext: IrPluginContext,
 ) {
+
+  companion object {
+    val ANY_CLASS_ID = ClassId(kotlinPackageFqn, Name.identifier("Any"))
+  }
+
+  // TODO use more constants from StandardNames.FqNames
 
   private val latticeRuntime: IrPackageFragment by lazy { createPackage("dev.zacsweers.lattice") }
   private val latticeRuntimeInternal: IrPackageFragment by lazy {
@@ -85,7 +93,7 @@ internal class LatticeSymbols(
     )!!
   }
   val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
-  val doubleCheckProvider by lazy { doubleCheckCompanionObject.getSimpleFunction("Provider")!! }
+  val doubleCheckProvider by lazy { doubleCheckCompanionObject.getSimpleFunction("provider")!! }
   val doubleCheckLazy by lazy { doubleCheckCompanionObject.getSimpleFunction("lazy")!! }
 
   val providerOfLazy: IrClassSymbol by lazy {
@@ -103,6 +111,13 @@ internal class LatticeSymbols(
       ClassId(latticeRuntime.packageFqName, Name.identifier("Provider"))
     )!!
   }
+
+  val latticeProviderFunction: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(latticeRuntime.packageFqName, Name.identifier("provider")))
+      .single()
+  }
+
   val providerInvoke: IrSimpleFunctionSymbol by lazy {
     latticeProvider.getSimpleFunction("invoke")!!
   }
@@ -121,31 +136,15 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlibJvm.packageFqName, Name.identifier("JvmStatic")))!!
   }
 
-  val componentAnnotations by lazy {
-    setOf(latticeComponent.owner.classIdOrFail)
-  }
-  val injectAnnotations by lazy {
-    setOf(latticeInject.owner.classIdOrFail)
-  }
-  val qualifierAnnotations by lazy {
-    setOf(latticeQualifier.owner.classIdOrFail)
-  }
-  val scopeAnnotations by lazy {
-    setOf(latticeScope.owner.classIdOrFail)
-  }
-  val providesAnnotations by lazy {
-    setOf(latticeProvides.owner.classIdOrFail)
-  }
+  val componentAnnotations by lazy { setOf(latticeComponent.owner.classIdOrFail) }
+  val injectAnnotations by lazy { setOf(latticeInject.owner.classIdOrFail) }
+  val qualifierAnnotations by lazy { setOf(latticeQualifier.owner.classIdOrFail) }
+  val scopeAnnotations by lazy { setOf(latticeScope.owner.classIdOrFail) }
+  val providesAnnotations by lazy { setOf(latticeProvides.owner.classIdOrFail) }
   // TODO
-  val assistedAnnotations by lazy {
-    setOf<ClassId>()
-  }
-  val providerTypes by lazy {
-    setOf(latticeProvider.owner.classIdOrFail)
-  }
-  val lazyTypes by lazy {
-    setOf(stdlibLazy.owner.classIdOrFail)
-  }
+  val assistedAnnotations by lazy { setOf<ClassId>() }
+  val providerTypes by lazy { setOf(latticeProvider.owner.classIdOrFail) }
+  val lazyTypes by lazy { setOf(stdlibLazy.owner.classIdOrFail) }
 
   protected fun createPackage(packageName: String): IrPackageFragment =
     createEmptyExternalPackageFragment(moduleFragment.descriptor, FqName(packageName))
