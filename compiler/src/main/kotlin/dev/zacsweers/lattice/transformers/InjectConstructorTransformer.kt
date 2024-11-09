@@ -245,12 +245,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                           parameter.isWrappedInLazy -> {
                             // DoubleCheck.lazy(...)
                             irInvoke(
-                              dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
-                              callee = symbols.providerOfLazyCreate,
-                              args = arrayOf(providerInstance),
-                              typeHint = parameter.typeName,
-                            )
-                            irInvoke(
                               dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
                               callee = symbols.doubleCheckLazy,
                               args = arrayOf(providerInstance),
