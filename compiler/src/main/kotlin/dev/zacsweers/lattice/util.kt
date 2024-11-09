@@ -34,6 +34,8 @@ internal fun String.capitalizeUS() = replaceFirstChar {
   if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
 }
 
+internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US) }
+
 internal fun <T, R> Iterable<T>.mapToSet(mapper: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), mapper)
 }
