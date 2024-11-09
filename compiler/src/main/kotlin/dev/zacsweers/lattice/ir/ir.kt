@@ -15,27 +15,35 @@
  */
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.LatticeSymbols
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.jvm.ir.erasedUpperBound
+import org.jetbrains.kotlin.backend.jvm.ir.parentClassId
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
+import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -44,8 +52,11 @@ import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
+import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -58,6 +69,7 @@ import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
@@ -71,6 +83,7 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -164,8 +177,8 @@ internal fun IrConstructor.irConstructorBody(
 internal fun IrBuilderWithScope.irInvoke(
   dispatchReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
-  vararg args: IrExpression,
   typeHint: IrType? = null,
+  vararg args: IrExpression,
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
   val returnType = typeHint ?: callee.owner.returnType
@@ -249,8 +262,65 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun IrClass.allCallableMembers(): Sequence<IrSimpleFunction> {
+internal fun IrClass.allCallableMembers(
+  excludeAnyFunctions: Boolean = true
+): Sequence<IrSimpleFunction> {
   return functions
     .asSequence()
+    .let {
+      if (excludeAnyFunctions) {
+        // TODO optimize this?
+        it.filterNot { function ->
+          function.overriddenSymbols.any { symbol ->
+            symbol.owner.parentClassId == LatticeSymbols.ANY_CLASS_ID
+          }
+        }
+      } else {
+        it
+      }
+    }
     .plus(properties.asSequence().mapNotNull { property -> property.getter })
+}
+
+// From
+// https://kotlinlang.slack.com/archives/C7L3JB43G/p1672258639333069?thread_ts=1672258597.659509&cid=C7L3JB43G
+internal fun irLambda(
+  context: IrPluginContext,
+  parent: IrDeclarationParent,
+  valueParameters: List<IrType>,
+  returnType: IrType,
+  suspend: Boolean = false,
+  content: IrBlockBodyBuilder.(IrSimpleFunction) -> Unit,
+): IrFunctionExpression {
+  val lambda =
+    context.irFactory
+      .buildFun {
+        startOffset = SYNTHETIC_OFFSET
+        endOffset = SYNTHETIC_OFFSET
+        origin = IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA
+        name = Name.special("<anonymous>")
+        visibility = DescriptorVisibilities.LOCAL
+        isSuspend = suspend
+        this.returnType = returnType
+      }
+      .apply {
+        this.parent = parent
+        valueParameters.forEachIndexed { index, type -> addValueParameter("arg$index", type) }
+        body =
+          DeclarationIrBuilder(context, this.symbol, SYNTHETIC_OFFSET, SYNTHETIC_OFFSET)
+            .irBlockBody { content(this@apply) }
+      }
+  return IrFunctionExpressionImpl(
+    startOffset = SYNTHETIC_OFFSET,
+    endOffset = SYNTHETIC_OFFSET,
+    type =
+      run {
+        when (suspend) {
+          false -> context.irBuiltIns.functionN(valueParameters.size)
+          else -> context.irBuiltIns.suspendFunctionN(valueParameters.size)
+        }.typeWith(*valueParameters.toTypedArray(), returnType)
+      },
+    origin = IrStatementOrigin.LAMBDA,
+    function = lambda,
+  )
 }
