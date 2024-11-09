@@ -1,9 +1,3 @@
-public abstract interface annotation class dev/zacsweers/lattice/Component : java/lang/annotation/Annotation {
-}
-
-public abstract interface annotation class dev/zacsweers/lattice/Component$Factory : java/lang/annotation/Annotation {
-}
-
 public abstract interface class dev/zacsweers/lattice/Provider {
 	public abstract fun invoke ()Ljava/lang/Object;
 }
@@ -12,10 +6,13 @@ public final class dev/zacsweers/lattice/ProviderKt {
 	public static final fun provider (Lkotlin/jvm/functions/Function0;)Ldev/zacsweers/lattice/Provider;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Provides : java/lang/annotation/Annotation {
+public abstract class dev/zacsweers/lattice/annotations/AppScope {
 }
 
-public abstract class dev/zacsweers/lattice/annotations/AppScope {
+public abstract interface annotation class dev/zacsweers/lattice/annotations/Component : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/Component$Factory : java/lang/annotation/Annotation {
 }
 
 public abstract interface annotation class dev/zacsweers/lattice/annotations/ForScope : java/lang/annotation/Annotation {
@@ -27,6 +24,9 @@ public abstract interface annotation class dev/zacsweers/lattice/annotations/Inj
 
 public abstract interface annotation class dev/zacsweers/lattice/annotations/Named : java/lang/annotation/Annotation {
 	public abstract fun name ()Ljava/lang/String;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/Provides : java/lang/annotation/Annotation {
 }
 
 public abstract interface annotation class dev/zacsweers/lattice/annotations/Qualifier : java/lang/annotation/Annotation {
@@ -56,6 +56,18 @@ public final class dev/zacsweers/lattice/internal/DoubleCheck$Companion {
 }
 
 public abstract interface class dev/zacsweers/lattice/internal/Factory : dev/zacsweers/lattice/Provider {
+}
+
+public final class dev/zacsweers/lattice/internal/InstanceFactory : dev/zacsweers/lattice/internal/Factory, kotlin/Lazy {
+	public static final field Companion Ldev/zacsweers/lattice/internal/InstanceFactory$Companion;
+	public synthetic fun <init> (Ljava/lang/Object;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getValue ()Ljava/lang/Object;
+	public fun invoke ()Ljava/lang/Object;
+	public fun isInitialized ()Z
+}
+
+public final class dev/zacsweers/lattice/internal/InstanceFactory$Companion {
+	public final fun create (Ljava/lang/Object;)Ldev/zacsweers/lattice/internal/Factory;
 }
 
 public final class dev/zacsweers/lattice/internal/ProviderOfLazy : dev/zacsweers/lattice/Provider {
