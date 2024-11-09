@@ -60,9 +60,9 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getKFunctionType
+import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
@@ -233,7 +233,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // TODO consolidate logic
     latticeComponent.dumpToLatticeLog()
-    componentDeclaration.file.addChild(latticeComponent)
+    componentDeclaration.getPackageFragment().addChild(latticeComponent)
     latticeComponentsByClass[componentClassId] = latticeComponent
     return latticeComponent
   }
@@ -266,6 +266,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return graph
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun generateLatticeComponent(node: ComponentNode, graph: BindingGraph): IrClass {
     /*
     Simple object that exposes a factory function
@@ -352,21 +353,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               }
           }
         }
-
-        // public static ExampleComponent.Factory factory() {
-        //    return new Factory();
-        //  }
-        //
-        //  private static final class Factory implements ExampleComponent.Factory {
-        //    @Override
-        //    public ExampleComponent create(String text) {
-        //      Preconditions.checkNotNull(text);
-        //      return new ExampleComponentImpl(text);
-        //    }
-        //  }
       }
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun generateComponentImpl(node: ComponentNode, graph: BindingGraph): IrClass {
     return pluginContext.irFactory
       .buildClass { name = Name.identifier("${node.type.name.asString()}Impl") }

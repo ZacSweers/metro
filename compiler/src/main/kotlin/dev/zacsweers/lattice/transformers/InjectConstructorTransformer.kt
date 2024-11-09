@@ -46,12 +46,14 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
+import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.ClassId
@@ -257,8 +259,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
     factoryCls.dumpToLatticeLog()
 
-    factoryCls.parent = declaration.file
-    declaration.file.declarations.add(factoryCls)
+    factoryCls.parent = declaration.parent
+    declaration.getPackageFragment().addChild(factoryCls)
     generatedFactories[injectedClassId] = factoryCls
     return factoryCls
   }
