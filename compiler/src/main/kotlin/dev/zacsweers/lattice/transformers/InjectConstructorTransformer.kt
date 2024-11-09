@@ -86,6 +86,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     // TODO
     //    memberInjectParameters: List<MemberInjectParameter>,
   ) : IrClass {
+    // TODO if declaration is external to this compilation, look
+    //  up its factory or warn if it doesn't exist
     val injectedClassId: ClassId = declaration.classIdOrFail
     generatedFactories[injectedClassId]?.let { return it }
 
