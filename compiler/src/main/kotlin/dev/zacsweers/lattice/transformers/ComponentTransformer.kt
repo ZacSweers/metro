@@ -74,7 +74,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     log("Reading <$declaration>")
 
     // TODO need to better divvy these
-    injectConstructorTransformer.visitClassNew(declaration)
+    injectConstructorTransformer.visitClass(declaration)
 
     val isAnnotatedWithComponent = declaration.isAnnotatedWithAny(symbols.componentAnnotations)
     if (!isAnnotatedWithComponent) return super.visitClass(declaration, data)

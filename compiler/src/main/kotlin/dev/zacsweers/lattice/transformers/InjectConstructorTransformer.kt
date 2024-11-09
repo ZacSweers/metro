@@ -60,20 +60,17 @@ import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
-internal class InjectConstructorTransformer(context: LatticeTransformerContext) :
-  IrElementTransformerVoidWithContext(), LatticeTransformerContext by context {
+internal class InjectConstructorTransformer(context: LatticeTransformerContext) : LatticeTransformerContext by context {
 
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
-  override fun visitClassNew(declaration: IrClass): IrStatement {
+  fun visitClass(declaration: IrClass) {
     log("Reading <$declaration>")
 
     val injectableConstructor = declaration.findInjectableConstructor()
     if (injectableConstructor != null) {
       getOrGenerateFactoryClass(declaration, injectableConstructor)
     }
-    return super.visitClassNew(declaration)
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
