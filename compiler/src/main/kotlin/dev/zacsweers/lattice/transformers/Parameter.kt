@@ -167,7 +167,7 @@ internal fun IrValueParameter.toConstructorParameter(
 
   return ConstructorParameter(
     name = uniqueName,
-    typeKey = TypeKey.from(context, this),
+    typeKey = TypeKey.from(context, this, type = typeName),
     originalName = name,
     typeName = typeName,
     providerTypeName = typeName.wrapInProvider(context.symbols.latticeProvider),
