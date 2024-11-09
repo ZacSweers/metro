@@ -23,7 +23,7 @@ import dev.zacsweers.lattice.annotations.Singleton
 
 @Singleton
 @Component
-abstract class ExampleComponent(protected val fileSystemComponent: FileSystemComponent) {
+abstract class ExampleComponent(@get:Provides val text: String) : FileSystemComponent {
 
   abstract fun example1(): Example1
 
@@ -33,11 +33,10 @@ abstract class ExampleComponent(protected val fileSystemComponent: FileSystemCom
 
   @Component.Factory
   fun interface Factory {
-    fun create(): ExampleComponent
+    fun create(text: String): ExampleComponent
   }
 }
 
-@Component
 interface FileSystemComponent {
   @Singleton @Provides fun provideFileSystem(): FileSystem = FileSystem()
 
@@ -46,7 +45,7 @@ interface FileSystemComponent {
   fun provideFileSystemProvider(fs: FileSystem): FileSystemProvider = fs.provider()
 }
 
-@Singleton class Example1 @Inject constructor(fs: FileSystem)
+@Singleton @Inject class Example1(val text: String)
 
 @Singleton class Example2 @Inject constructor(fs: FileSystem)
 
