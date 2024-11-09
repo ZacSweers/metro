@@ -34,9 +34,7 @@ fun JvmCompilationResult.assertNoArgCallableFactory(expectedValue: String) {
 }
 
 val JvmCompilationResult.ExampleClass: Class<*>
-  get() {
-    return classLoader.loadClass("test.ExampleClass")
-  }
+  get() = classLoader.loadClass("test.ExampleClass")
 
 fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
   @Suppress("UNCHECKED_CAST")
@@ -77,4 +75,20 @@ fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
 fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
   return createNewInstance(*args) as T
+}
+
+val JvmCompilationResult.ExampleComponent: Class<*>
+  get() = classLoader.loadClass("test.ExampleComponent")
+
+fun Class<*>.generatedLatticeComponent(): Class<*> {
+  return classLoader.loadClass("$packageName.Lattice$simpleName")
+}
+
+fun Class<*>.componentImpl(): Class<*> {
+  return declaredClasses.single { it.simpleName.endsWith("Impl") }
+}
+
+fun <T> Any.callComponentAccessor(name: String): T {
+  @Suppress("UNCHECKED_CAST")
+  return javaClass.getMethod(name).invoke(this) as T
 }
