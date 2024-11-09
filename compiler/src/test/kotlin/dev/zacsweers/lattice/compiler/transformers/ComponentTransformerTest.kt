@@ -20,8 +20,8 @@ import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.callComponentAccessor
-import dev.zacsweers.lattice.compiler.componentImpl
 import dev.zacsweers.lattice.compiler.generatedLatticeComponent
+import dev.zacsweers.lattice.compiler.createComponentViaFactory
 import java.util.concurrent.Callable
 import org.junit.Test
 
@@ -53,7 +53,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Component.Factory
               fun interface Factory {
-                fun create(): ExampleComponent
+                fun create(text: String): ExampleComponent
               }
             }
 
@@ -70,10 +70,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
     val component =
       result.ExampleComponent.generatedLatticeComponent()
-        .componentImpl()
-        // TODO invoke the factory instead
-        .declaredConstructors[0]
-        .newInstance("Hello, world!")
+        .createComponentViaFactory("Hello, world!")
 
     val exampleClass = component.callComponentAccessor<Callable<String>>("exampleClass")
     assertThat(exampleClass.call()).isEqualTo("Hello, world!")

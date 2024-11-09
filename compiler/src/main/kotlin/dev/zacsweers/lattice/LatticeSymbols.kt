@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -36,11 +37,16 @@ import org.jetbrains.kotlin.name.Name
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal class LatticeSymbols(
   private val moduleFragment: IrModuleFragment,
-  pluginContext: IrPluginContext,
+  val pluginContext: IrPluginContext,
 ) {
 
-  companion object {
-    val ANY_CLASS_ID = ClassId(kotlinPackageFqn, Name.identifier("Any"))
+  object ClassIds {
+    val AnyClass = ClassId(kotlinPackageFqn, Name.identifier("Any"))
+  }
+
+  object Names {
+    val CompanionObject = Name.identifier("Companion")
+    val Factory = Name.identifier("Factory")
   }
 
   // TODO use more constants from StandardNames.FqNames
@@ -85,6 +91,11 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(
       ClassId(latticeAnnotations.packageFqName, Name.identifier("Component"))
     )!!
+  }
+  val latticeComponentFactory by lazy {
+    latticeComponent.owner.nestedClasses
+      .single { klass -> klass.name.asString() == "Factory" }
+      .symbol
   }
 
   val doubleCheck: IrClassSymbol by lazy {
@@ -137,6 +148,7 @@ internal class LatticeSymbols(
   }
 
   val componentAnnotations by lazy { setOf(latticeComponent.owner.classIdOrFail) }
+  val componentFactoryAnnotations by lazy { setOf(latticeComponentFactory.owner.classIdOrFail) }
   val injectAnnotations by lazy { setOf(latticeInject.owner.classIdOrFail) }
   val qualifierAnnotations by lazy { setOf(latticeQualifier.owner.classIdOrFail) }
   val scopeAnnotations by lazy { setOf(latticeScope.owner.classIdOrFail) }

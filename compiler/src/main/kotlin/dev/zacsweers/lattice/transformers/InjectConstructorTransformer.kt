@@ -16,8 +16,8 @@
 package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
+import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
-import dev.zacsweers.lattice.ir.buildCompanionObject
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
@@ -277,7 +277,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       if (isObject) {
         factoryCls
       } else {
-        pluginContext.irFactory.buildCompanionObject(symbols, parent = factoryCls)
+        pluginContext.irFactory.addCompanionObject(symbols, parent = factoryCls)
       }
 
     /*

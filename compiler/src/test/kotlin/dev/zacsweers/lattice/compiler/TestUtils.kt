@@ -19,6 +19,7 @@ import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.JvmCompilationResult
 import dev.zacsweers.lattice.internal.Factory
 import dev.zacsweers.lattice.provider
+import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
 
 fun JvmCompilationResult.assertCallableFactory(value: String) {
@@ -91,4 +92,26 @@ fun Class<*>.componentImpl(): Class<*> {
 fun <T> Any.callComponentAccessor(name: String): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass.getMethod(name).invoke(this) as T
+}
+
+/**
+ * Returns a new instance of a component's factory class by invoking its static "factory" function.
+ */
+fun Class<*>.invokeComponentFactory(): Any {
+  @Suppress("UNCHECKED_CAST")
+  return declaredMethods
+    .single { Modifier.isStatic(it.modifiers) && it.name == "factory" }
+    .invoke(null)
+}
+
+/**
+ * Invokes a generated Component Factory class's create() function with the supplied [args].
+ *
+ * Note the function must be called "create".
+ */
+fun Class<*>.createComponentViaFactory(vararg args: Any): Any {
+  val factoryInstance = invokeComponentFactory()
+  return factoryInstance.javaClass.declaredMethods
+    .single { it.name == "create" }
+    .invoke(factoryInstance, *args)
 }

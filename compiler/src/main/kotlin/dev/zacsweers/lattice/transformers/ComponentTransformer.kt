@@ -16,8 +16,10 @@
 package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
+import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.decapitalizeUS
 import dev.zacsweers.lattice.ir.IrAnnotation
+import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
 import dev.zacsweers.lattice.ir.createIrBuilder
@@ -31,7 +33,10 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addField
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -50,13 +55,19 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getKFunctionType
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -90,6 +101,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return super.visitClass(declaration, data)
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun getOrComputeComponentNode(componentDeclaration: IrClass): ComponentNode {
     val componentClassId = componentDeclaration.classIdOrFail
     componentNodesByClass[componentClassId]?.let {
@@ -123,6 +135,40 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           TypeKey(function.returnType, function.qualifierAnnotation()) to function
         }
 
+    val creator =
+      componentDeclaration.nestedClasses
+        .single { klass -> klass.isAnnotatedWithAny(symbols.componentFactoryAnnotations) }
+        .let { factory ->
+          val primaryConstructor = componentDeclaration.primaryConstructor!!
+          ComponentNode.Creator(
+            factory,
+            factory.functions
+              .single { function ->
+                function.modality == Modality.ABSTRACT && function.body == null
+              }
+              .also {
+                // TODO FIR error
+                val actualTypes = it.valueParameters.map { param -> param.type }
+                val expectedTypes = primaryConstructor.valueParameters.map { param -> param.type }
+                check(actualTypes == expectedTypes) {
+                  buildString {
+                    appendLine("Parameter mismatch from factory to primary constructor")
+                    val missingParameters = buildList {
+                      for (i in expectedTypes.indices) {
+                        if (i >= actualTypes.size || expectedTypes[i] != actualTypes[i]) {
+                          add(primaryConstructor.valueParameters[i])
+                        }
+                      }
+                    }
+                    appendLine(
+                      "Missing/mismatched parameters:\n${missingParameters.joinToString("\n") { "- ${it.name}: ${it.type.render()}" }}"
+                    )
+                  }
+                }
+              },
+          )
+        }
+
     val componentNode =
       ComponentNode(
         type = componentDeclaration,
@@ -132,6 +178,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         providedFunctions = providedMethods,
         exposedTypes = exposedTypes,
         isExternal = false,
+        creator = creator,
       )
     componentNodesByClass[componentClassId] = componentNode
     return componentNode
@@ -220,13 +267,69 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         )
 
         val componentImpl = generateComponentImpl(node, graph)
-        componentImpl.origin = LatticeOrigin
         componentImpl.parent = this
         addMember(componentImpl)
 
-        // TODO
-        //  generate factory impl
-        //  generate factory function
+        val factoryClass =
+          pluginContext.irFactory
+            .buildClass { name = LatticeSymbols.Names.Factory }
+            .apply {
+              this.origin = LatticeOrigin
+              superTypes += node.creator.type.symbol.typeWith()
+              createImplicitParameterDeclarationWithWrappedDescriptor()
+              addSimpleDelegatingConstructor(
+                if (!node.creator.type.isInterface) {
+                  node.creator.type.primaryConstructor!!
+                } else {
+                  symbols.anyConstructor
+                },
+                pluginContext.irBuiltIns,
+                isPrimary = true,
+                origin = LatticeOrigin,
+              )
+
+              addOverride(node.creator.createFunction).apply {
+                body =
+                  pluginContext.createIrBuilder(symbol).run {
+                    irExprBody(
+                      irCall(componentImpl.primaryConstructor!!.symbol).apply {
+                        for (param in valueParameters) {
+                          putValueArgument(param.index, irGet(param))
+                        }
+                      }
+                    )
+                  }
+              }
+            }
+
+        factoryClass.parent = this
+        addMember(factoryClass)
+
+        pluginContext.irFactory.addCompanionObject(symbols, parent = this) {
+          addFunction("factory", factoryClass.typeWith(), isStatic = true).apply {
+            this.copyTypeParameters(typeParameters)
+            this.dispatchReceiverParameter = thisReceiver?.copyTo(this)
+            this.origin = LatticeOrigin
+            this.visibility = DescriptorVisibilities.PUBLIC
+            markJvmStatic()
+            body =
+              pluginContext.createIrBuilder(symbol).run {
+                irExprBody(irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()))
+              }
+          }
+        }
+
+        // public static ExampleComponent.Factory factory() {
+        //    return new Factory();
+        //  }
+        //
+        //  private static final class Factory implements ExampleComponent.Factory {
+        //    @Override
+        //    public ExampleComponent create(String text) {
+        //      Preconditions.checkNotNull(text);
+        //      return new ExampleComponentImpl(text);
+        //    }
+        //  }
       }
   }
 
@@ -235,6 +338,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       .buildClass { name = Name.identifier("${node.type.name.asString()}Impl") }
       .apply {
         superTypes += node.type.typeWith()
+        origin = LatticeOrigin
 
         createImplicitParameterDeclarationWithWrappedDescriptor()
         addSimpleDelegatingConstructor(
@@ -576,8 +680,11 @@ internal data class ComponentNode(
   // TODO this should eventually expand to cover inject(...) calls too once we have member injection
   val exposedTypes: Map<TypeKey, IrSimpleFunction>,
   val isExternal: Boolean,
+  val creator: Creator,
 ) {
   val isInterface: Boolean = type.kind == ClassKind.INTERFACE
+
+  data class Creator(val type: IrClass, val createFunction: IrSimpleFunction)
 
   data class ComponentDependency(
     val type: IrClass,

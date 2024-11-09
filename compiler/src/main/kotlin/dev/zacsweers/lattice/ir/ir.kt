@@ -80,6 +80,8 @@ import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyValueParametersFrom
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -202,11 +204,15 @@ internal fun IrClass.addOverride(
   modality: Modality = Modality.FINAL,
 ): IrSimpleFunction =
   addOverride(
-    baseFunction.kotlinFqName,
-    baseFunction.name.asString(),
-    baseFunction.returnType,
-    modality,
-  )
+      baseFunction.kotlinFqName,
+      baseFunction.name.asString(),
+      baseFunction.returnType,
+      modality,
+    )
+    .apply {
+      dispatchReceiverParameter = this@addOverride.thisReceiver?.copyTo(this)
+      copyValueParametersFrom(baseFunction)
+    }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.addOverride(
@@ -345,7 +351,7 @@ internal fun irLambda(
   )
 }
 
-internal fun IrFactory.buildCompanionObject(
+internal fun IrFactory.addCompanionObject(
   symbols: LatticeSymbols,
   parent: IrClass,
   name: Name = LatticeSymbols.Names.CompanionObject,
