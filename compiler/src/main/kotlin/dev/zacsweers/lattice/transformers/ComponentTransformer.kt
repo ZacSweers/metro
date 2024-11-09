@@ -48,6 +48,7 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.file
@@ -68,6 +69,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   IrElementTransformer<ComponentData>, LatticeTransformerContext by context {
 
   private val injectConstructorTransformer = InjectConstructorTransformer(context)
+  // Keyed by the source declaration
+  private val componentNodesByClass = mutableMapOf<ClassId, ComponentNode>()
+  // Keyed by the source declaration
+  private val latticeComponentsByClass = mutableMapOf<ClassId, IrClass>()
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun visitClass(declaration: IrClass, data: ComponentData): IrStatement {
@@ -79,11 +84,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     val isAnnotatedWithComponent = declaration.isAnnotatedWithAny(symbols.componentAnnotations)
     if (!isAnnotatedWithComponent) return super.visitClass(declaration, data)
 
+    getOrBuildComponent(declaration)
+    // TODO dump option to detect unused
+
+    return super.visitClass(declaration, data)
+  }
+
+  private fun getOrComputeComponentNode(componentDeclaration: IrClass): ComponentNode {
+    val componentClassId = componentDeclaration.classIdOrFail
+    componentNodesByClass[componentClassId]?.let {
+      return it
+    }
+
     // TODO not currently reading supertypes yet
-    val scope = declaration.scopeAnnotation()
+    val scope = componentDeclaration.scopeAnnotation()
 
     val providedMethods =
-      declaration
+      componentDeclaration
         .allCallableMembers()
         // TODO is this enough for properties like @get:Provides
         .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
@@ -91,7 +108,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         .toList()
 
     val exposedTypes =
-      declaration
+      componentDeclaration
         .allCallableMembers()
         .filter { function ->
           function.modality == Modality.ABSTRACT &&
@@ -108,7 +125,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     val componentNode =
       ComponentNode(
-        type = declaration,
+        type = componentDeclaration,
         isAnnotatedWithComponent = true,
         dependencies = emptyList(),
         scope = scope,
@@ -116,19 +133,28 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         exposedTypes = exposedTypes,
         isExternal = false,
       )
+    componentNodesByClass[componentClassId] = componentNode
+    return componentNode
+  }
+
+  private fun getOrBuildComponent(componentDeclaration: IrClass): IrClass {
+    val componentClassId = componentDeclaration.classIdOrFail
+    latticeComponentsByClass[componentClassId]?.let {
+      return it
+    }
+
+    val componentNode = getOrComputeComponentNode(componentDeclaration)
 
     val bindingGraph = createBindingGraph(listOf(componentNode))
     bindingGraph.validate()
 
-    val componentClass = generateLatticeComponent(componentNode, bindingGraph)
+    val latticeComponent = generateLatticeComponent(componentNode, bindingGraph)
 
     // TODO consolidate logic
-    componentClass.dumpToLatticeLog()
-    declaration.file.addChild(componentClass)
-
-    // TODO dump option to detect unused
-
-    return super.visitClass(declaration, data)
+    latticeComponent.dumpToLatticeLog()
+    componentDeclaration.file.addChild(latticeComponent)
+    latticeComponentsByClass[componentClassId] = latticeComponent
+    return latticeComponent
   }
 
   private fun createBindingGraph(components: List<ComponentNode>): BindingGraph {
