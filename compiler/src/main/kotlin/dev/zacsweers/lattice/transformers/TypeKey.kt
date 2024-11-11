@@ -26,7 +26,7 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
   private val cachedToString by unsafeLazy {
     buildString {
       qualifier?.let {
-        append("@" + it.ir.render())
+        append(it)
         append(" ")
       }
       append(type.render())
