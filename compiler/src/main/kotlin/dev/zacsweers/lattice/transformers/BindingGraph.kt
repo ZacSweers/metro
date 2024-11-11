@@ -91,7 +91,13 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     val stack = ArrayDeque<TypeKey>()
 
     fun dfs(key: TypeKey) {
-      check(key !in stack) { "Dependency cycle detected: ${stack.joinToString(" -> ")} -> $key" }
+      if (key in stack) {
+        // TODO check if there's a lazy in the stack, if so we can break the cycle
+        //  A -> B -> Lazy<A> is valid
+        //  A -> B -> A is not
+        // TODO IR error instead
+        error("Dependency cycle detected: ${stack.joinToString(" -> ")} -> $key")
+      }
       if (key in visited) return
 
       visited.add(key)
