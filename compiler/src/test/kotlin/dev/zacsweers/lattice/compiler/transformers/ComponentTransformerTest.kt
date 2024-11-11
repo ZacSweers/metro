@@ -401,4 +401,14 @@ class ComponentTransformerTest : LatticeCompilerTest() {
           .trimIndent()
       )
   }
+
+  // TODO
+  //  - scoping
+  //  - advanced graph resolution (i.e. complex dep chains)
+  //  - break-the-chain deps
+  //  - provides
+  //  - @get:Provides
+  //  - Binds examples
+  //  - Component deps
+  //  - Supertype providers
 }
