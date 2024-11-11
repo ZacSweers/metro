@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.transformers
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.decapitalizeUS
+import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
@@ -44,8 +45,12 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
@@ -73,6 +78,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 internal class ComponentData {
@@ -165,15 +171,17 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         }
         // TODO validate
         .associate { function ->
-          // TODO is this enough for properties like @get:Provides
-          TypeKey(function.returnType, function.qualifierAnnotation()) to function
+          val qualifier =
+            function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
+              ?: function.qualifierAnnotation()
+          TypeKey(function.returnType, qualifier) to function
         }
 
     val creator =
       componentDeclaration.nestedClasses
         .single { klass -> klass.isAnnotatedWithAny(symbols.componentFactoryAnnotations) }
         .let { factory ->
-          val primaryConstructor = componentDeclaration.primaryConstructor!!
+          val primaryConstructor = componentDeclaration.primaryConstructor
           ComponentNode.Creator(
             factory,
             factory.functions
@@ -181,6 +189,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 function.modality == Modality.ABSTRACT && function.body == null
               }
               .also {
+                if (primaryConstructor == null) {
+                  // No params to validate
+                  return@also
+                }
                 // TODO FIR error
                 val actualTypes = it.valueParameters.map { param -> param.type }
                 val expectedTypes = primaryConstructor.valueParameters.map { param -> param.type }
@@ -205,7 +217,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     val componentNode =
       ComponentNode(
-        type = componentDeclaration,
+        sourceComponent = componentDeclaration,
         isAnnotatedWithComponent = true,
         dependencies = emptyList(),
         scope = scope,
@@ -242,11 +254,16 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     val graph = BindingGraph(this)
 
     // Add explicit bindings from @Provides methods
-    component.providedFunctions.forEach { method ->
-      val key = TypeKey(method.returnType, method.qualifierAnnotation())
+    val bindingStack = BindingStack(component.sourceComponent)
+    component.providedFunctions.forEach { function ->
+      val key = TypeKey(function.returnType, function.qualifierAnnotation())
       val dependencies =
-        method.valueParameters.mapToConstructorParameters(this).associateBy { it.typeKey }
-      graph.addBinding(key, Binding.Provided(method, dependencies, method.qualifierAnnotation()))
+        function.valueParameters.mapToConstructorParameters(this).associateBy { it.typeKey }
+      graph.addBinding(
+        key,
+        Binding.Provided(function, dependencies, function.qualifierAnnotation()),
+        bindingStack,
+      )
     }
 
     // Add bindings from component dependencies
@@ -255,6 +272,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         graph.addBinding(
           key,
           Binding.ComponentDependency(component = dep.type, getter = dep.getter),
+          bindingStack,
         )
       }
     }
@@ -288,7 +306,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     */
     return pluginContext.irFactory
       .buildClass {
-        name = Name.identifier("Lattice${node.type.name.asString()}")
+        name = Name.identifier("Lattice${node.sourceComponent.name.asString()}")
         kind = ClassKind.OBJECT
       }
       .apply {
@@ -359,14 +377,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun generateComponentImpl(node: ComponentNode, graph: BindingGraph): IrClass {
     return pluginContext.irFactory
-      .buildClass { name = Name.identifier("${node.type.name.asString()}Impl") }
+      .buildClass { name = Name.identifier("${node.sourceComponent.name.asString()}Impl") }
       .apply {
-        superTypes += node.type.typeWith()
+        superTypes += node.sourceComponent.typeWith()
         origin = LatticeOrigin
 
         createImplicitParameterDeclarationWithWrappedDescriptor()
         addSimpleDelegatingConstructor(
-          node.type.primaryConstructor!!,
+          node.sourceComponent.primaryConstructor ?: symbols.anyConstructor,
           pluginContext.irBuiltIns,
           isPrimary = true,
           origin = LatticeOrigin,
@@ -376,9 +394,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         val scopedFields = mutableMapOf<TypeKey, IrField>()
         val scopedDependencies = mutableMapOf<TypeKey, Map<TypeKey, Parameter>>()
 
+        // Track a stack for bindings
+        val bindingStack = BindingStack(node.sourceComponent)
+
         // First pass: collect scoped bindings and their dependencies for ordering
-        node.exposedTypes.forEach { (key, _) ->
-          val binding = graph.getOrCreateBinding(key)
+        node.exposedTypes.forEach { (key, accessor) ->
+          bindingStack.push(BindingStackEntry.requestedAt(key, accessor))
+          val binding = graph.getOrCreateBinding(key, bindingStack)
           val bindingScope = binding.scope
 
           if (bindingScope != null && bindingScope == node.scope) {
@@ -402,7 +424,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         // Create fields in dependency-order
         initOrder.forEach { key ->
-          val binding = graph.getOrCreateBinding(key)
+          val binding = graph.getOrCreateBinding(key, BindingStack.empty())
           scopedFields[key] =
             addField(
                 fieldName = binding.nameHint.decapitalizeUS() + "Provider",
@@ -419,7 +441,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                         dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
                         callee = symbols.doubleCheckProvider,
                         typeHint = null,
-                        generateBindingCode(binding, graph, thisReceiver!!, scopedFields),
+                        generateBindingCode(
+                          binding,
+                          graph,
+                          thisReceiver!!,
+                          scopedFields,
+                          bindingStack,
+                        ),
                       )
                     )
                   }
@@ -436,7 +464,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             addOverride(function.kotlinFqName, function.name.asString(), key.type).apply {
               this.dispatchReceiverParameter = thisReceiver!!
               this.overriddenSymbols += function.symbol
-              val binding = graph.getOrCreateBinding(key)
+              val binding = graph.getOrCreateBinding(key, BindingStack.empty())
+              bindingStack.push(BindingStackEntry.requestedAt(key, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBody(
@@ -447,10 +476,17 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                         callee = symbols.providerInvoke,
                       )
                     } else {
-                      generateBindingCode(binding, graph, thisReceiver!!, scopedFields)
+                      generateBindingCode(
+                        binding,
+                        graph,
+                        thisReceiver!!,
+                        scopedFields,
+                        bindingStack,
+                      )
                     }
                   )
                 }
+              bindingStack.pop()
             }
           }
       }
@@ -459,20 +495,38 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun DeclarationIrBuilder.generateBindingArguments(
     params: List<Parameter>,
+    paramTypeKeys: List<TypeKey>,
+    function: IrFunction,
     binding: Binding,
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
     scopedFields: Map<TypeKey, IrField>,
+    bindingStack: BindingStack,
   ): List<IrExpression> {
-    return params.map { param ->
+    return params.mapIndexed { i, param ->
+      val typeKey = paramTypeKeys[i]
       // If it's in scoped fields, invoke that field
       val providerInstance =
-        if (param.typeKey in scopedFields) {
-          irGetField(irGet(thisReceiver), scopedFields.getValue(param.typeKey))
+        if (typeKey in scopedFields) {
+          irGetField(irGet(thisReceiver), scopedFields.getValue(typeKey))
         } else {
+          val entry =
+            when (binding) {
+              is Binding.ConstructorInjected -> {
+                // TODO optimize lookup
+                val constructor = binding.type.findInjectableConstructor()!!
+                BindingStackEntry.injectedAt(typeKey, constructor, constructor.valueParameters[i])
+              }
+              is Binding.Provided -> {
+                val function = binding.providerFunction
+                BindingStackEntry.injectedAt(typeKey, function, function.valueParameters[i])
+              }
+              is Binding.ComponentDependency -> TODO()
+            }
+          bindingStack.push(entry)
           // Generate binding code for each param
-          val binding = graph.getOrCreateBinding(param.typeKey)
-          generateBindingCode(binding, graph, thisReceiver, scopedFields)
+          val binding = graph.getOrCreateBinding(typeKey, bindingStack)
+          generateBindingCode(binding, graph, thisReceiver, scopedFields, bindingStack)
         }
       // TODO share logic from InjectConstructorTransformer
       if (param.isWrappedInLazy) {
@@ -509,6 +563,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
     scopedFields: Map<TypeKey, IrField>,
+    bindingStack: BindingStack,
   ): IrExpression =
     when (binding) {
       is Binding.ConstructorInjected -> {
@@ -528,9 +583,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             factoryClass.companionObject()!!
           }
         val createFunction = creatorClass.getSimpleFunction("create")!!
+        // Must use the injectable constructor's params for TypeKey as that has qualifier
+        // annotations
+        val paramTypeKeys =
+          injectableConstructor.valueParameters.map { TypeKey.from(this@ComponentTransformer, it) }
         val params =
           createFunction.owner.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
-        val args = generateBindingArguments(params, binding, graph, thisReceiver, scopedFields)
+        val args =
+          generateBindingArguments(
+            params,
+            paramTypeKeys,
+            createFunction.owner,
+            binding,
+            graph,
+            thisReceiver,
+            scopedFields,
+            bindingStack,
+          )
         irInvoke(
           dispatchReceiver = irGetObject(creatorClass.symbol),
           callee = createFunction,
@@ -546,7 +615,17 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         val receiver = thisReceiver
         val function = binding.providerFunction
         val params = function.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
-        val args = generateBindingArguments(params, binding, graph, thisReceiver, scopedFields)
+        val args =
+          generateBindingArguments(
+            params,
+            params.map { it.typeKey },
+            function,
+            binding,
+            graph,
+            thisReceiver,
+            scopedFields,
+            bindingStack,
+          )
         // This needs to be wrapped in a provider
         // TODO if it's a property with a field we could use InstanceFactory
         irInvoke(
@@ -611,7 +690,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   private val bindings = mutableMapOf<TypeKey, Binding>()
   private val dependencies = mutableMapOf<TypeKey, Set<TypeKey>>()
 
-  fun addBinding(key: TypeKey, binding: Binding) {
+  fun addBinding(key: TypeKey, binding: Binding, bindingStack: BindingStack) {
     require(!bindings.containsKey(key)) { "Duplicate binding for $key" }
     bindings[key] = binding
 
@@ -619,15 +698,15 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       when (binding) {
         is Binding.ConstructorInjected -> {
           // Recursively follow deps from its constructor params
-          getConstructorDependencies(binding.type)
+          getConstructorDependencies(binding.type, bindingStack)
         }
-        is Binding.Provided -> getFunctionDependencies(binding.providerFunction)
+        is Binding.Provided -> getFunctionDependencies(binding.providerFunction, bindingStack)
         is Binding.ComponentDependency -> emptySet()
       }
     dependencies[key] = deps
   }
 
-  fun getOrCreateBinding(key: TypeKey): Binding {
+  fun getOrCreateBinding(key: TypeKey, bindingStack: BindingStack): Binding {
     return bindings.getOrPut(key) {
       // If no explicit binding exists, check if type is injectable
       val irClass = key.type.rawType()
@@ -637,13 +716,53 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           injectableConstructor.valueParameters.mapToConstructorParameters(context).associateBy {
             it.typeKey
           }
+        bindingStack.pop()
         Binding.ConstructorInjected(
           type = irClass,
           dependencies = dependencies,
           scope = with(context) { irClass.scopeAnnotation() },
         )
       } else {
-        throw IllegalStateException("No binding found for $key and type is not injectable")
+        // TODO IR error
+        /*
+         Dagger error
+
+          error: [Dagger/MissingBinding] java.lang.CharSequence cannot be provided without an @Provides-annotated method.
+          public abstract interface ExampleComponent {
+                          ^
+
+                java.lang.CharSequence is injected at
+                    [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.Example1(…, text2)
+                com.slack.circuit.star.Example1 is requested at
+                    [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.ExampleComponent.example1()
+
+         KI error
+
+         e: [ksp] Cannot find an @Inject constructor or provider for: String
+        .../kitest.kt:38: com.slack.circuit.sample.kotlininject.Example1(fs: java.nio.`file`.FileSystem, text: String)
+        .../kitest.kt:17: example1(): com.slack.circuit.sample.kotlininject.Example1
+
+         */
+
+        val entries = bindingStack.entries
+        val declarationToReport = entries.firstOrNull()?.declaration ?: bindingStack.component
+        val message = buildString {
+          append(
+            "Cannot find an @Inject constructor or @Provides-annotated function/property for: "
+          )
+          appendLine(key)
+          appendLine()
+          val componentName = bindingStack.component.kotlinFqName
+          for (entry in entries) {
+            entry.render(componentName).prependIndent("    ").lineSequence().forEach {
+              appendLine(it)
+            }
+          }
+        }
+
+        with(context) { declarationToReport.reportError(message) }
+
+        exitProcessing()
       }
     }
   }
@@ -676,26 +795,138 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     check(missing.isEmpty()) { "Missing bindings for: $missing" }
   }
 
-  private fun getConstructorDependencies(type: IrClass): Set<TypeKey> {
+  private fun getConstructorDependencies(type: IrClass, bindingStack: BindingStack): Set<TypeKey> {
     val constructor = with(context) { type.findInjectableConstructor() }!!
-    return getFunctionDependencies(constructor)
+    return getFunctionDependencies(constructor, bindingStack)
   }
 
-  private fun getFunctionDependencies(function: IrFunction): Set<TypeKey> {
+  private fun getFunctionDependencies(
+    function: IrFunction,
+    bindingStack: BindingStack,
+  ): Set<TypeKey> {
     return function.valueParameters
       .map { param ->
         val paramKey = TypeKey(param.type, with(context) { param.qualifierAnnotation() })
+        bindingStack.push(BindingStackEntry.injectedAt(paramKey, function, param))
         // This recursive call will create bindings for injectable types as needed
-        getOrCreateBinding(paramKey)
+        getOrCreateBinding(paramKey, bindingStack)
         paramKey
       }
       .toSet()
   }
 }
 
+internal interface BindingStack {
+  val component: IrClass
+  val entries: List<BindingStackEntry>
+
+  fun push(entry: BindingStackEntry)
+
+  fun pop()
+
+  companion object {
+    private val EMPTY =
+      object : BindingStack {
+        override val component
+          get() = throw UnsupportedOperationException()
+
+        override val entries: List<BindingStackEntry>
+          get() = emptyList<BindingStackEntry>()
+
+        override fun push(entry: BindingStackEntry) {
+          // Do nothing
+        }
+
+        override fun pop() {
+          // Do nothing
+        }
+      }
+
+    operator fun invoke(component: IrClass): BindingStack = BindingStackImpl(component)
+
+    fun empty() = EMPTY
+  }
+}
+
+internal class BindingStackImpl(override val component: IrClass) : BindingStack {
+  private val stack = ArrayDeque<BindingStackEntry>()
+  override val entries: List<BindingStackEntry> = stack
+
+  override fun push(entry: BindingStackEntry) {
+    stack.addFirst(entry)
+  }
+
+  override fun pop() {
+    stack.removeFirstOrNull()
+  }
+}
+
+internal class BindingStackEntry(
+  val typeKey: TypeKey,
+  val action: String,
+  val context: String,
+  val declaration: IrDeclaration,
+) {
+  fun render(component: FqName): String {
+    return buildString {
+      append(typeKey)
+      append(' ')
+      appendLine(action)
+      append("    ")
+      append("[${component.asString()}]")
+      append(' ')
+      append(context)
+    }
+  }
+
+  companion object {
+    /*
+    com.slack.circuit.star.Example1 is requested at
+           [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.ExampleComponent.example1()
+     */
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    fun requestedAt(typeKey: TypeKey, accessor: IrSimpleFunction): BindingStackEntry {
+      val targetFqName = accessor.parentAsClass.kotlinFqName
+      val declaration: IrDeclarationWithName =
+        accessor.correspondingPropertySymbol?.owner ?: accessor
+      val accessor =
+        if (declaration is IrProperty) {
+          declaration.name.asString()
+        } else {
+          declaration.name.asString() + "()"
+        }
+      return BindingStackEntry(
+        typeKey = typeKey,
+        action = "is requested at",
+        context = "$targetFqName.$accessor",
+        declaration = declaration,
+      )
+    }
+
+    /*
+    java.lang.CharSequence is injected at
+          [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.Example1(…, text2)
+    */
+    fun injectedAt(
+      typeKey: TypeKey,
+      function: IrFunction,
+      param: IrValueParameter,
+    ): BindingStackEntry {
+      val targetFqName = function.parent.kotlinFqName
+      val middle = if (function is IrConstructor) "" else "."
+      return BindingStackEntry(
+        typeKey = typeKey,
+        action = "is injected at",
+        context = "$targetFqName$middle(…, ${param.name.asString()})",
+        declaration = param,
+      )
+    }
+  }
+}
+
 // Represents a component's structure and relationships
 internal data class ComponentNode(
-  val type: IrClass,
+  val sourceComponent: IrClass,
   val isAnnotatedWithComponent: Boolean,
   val dependencies: List<ComponentDependency>,
   val scope: IrAnnotation?,
@@ -706,7 +937,7 @@ internal data class ComponentNode(
   val isExternal: Boolean,
   val creator: Creator,
 ) {
-  val isInterface: Boolean = type.kind == ClassKind.INTERFACE
+  val isInterface: Boolean = sourceComponent.kind == ClassKind.INTERFACE
 
   data class Creator(val type: IrClass, val createFunction: IrSimpleFunction)
 
@@ -719,7 +950,7 @@ internal data class ComponentNode(
 
   // Build a full type map including inherited providers
   fun getAllProviders(context: LatticeTransformerContext): Map<TypeKey, IrFunction> {
-    return type.getAllProviders(context)
+    return sourceComponent.getAllProviders(context)
   }
 
   private fun IrClass.getAllProviders(

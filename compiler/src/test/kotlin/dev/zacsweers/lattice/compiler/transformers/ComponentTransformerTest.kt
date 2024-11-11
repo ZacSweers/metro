@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
@@ -71,8 +72,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent(),
-        ),
-        debug = true,
+        )
       )
     val component =
       result.ExampleComponent.generatedLatticeComponent().createComponentViaFactory("Hello, world!")
@@ -89,5 +89,316 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         .invoke(null) as (String) -> Callable<String>
     val callable = callableCreator("Hello, world!")
     assertThat(callable.call()).isEqualTo("Hello, world!")
+  }
+
+  @Test
+  fun `missing binding should fail compilation and report property accessor`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Inject
+            import java.util.concurrent.Callable
+
+            @Component
+            interface ExampleComponent {
+
+              val text: String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+        ExampleComponent.kt:10:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+            kotlin.String is requested at
+                [test.ExampleComponent] test.ExampleComponent.text
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `missing binding should fail compilation and report property accessor with qualifier`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+            import java.util.concurrent.Callable
+
+            @Component
+            interface ExampleComponent {
+            
+              @Named("hello")
+              val text: String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+        ExampleComponent.kt:11:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+
+            @Named("hello") kotlin.String is requested at
+                [test.ExampleComponent] test.ExampleComponent.text
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `missing binding should fail compilation and report property accessor with get site target qualifier`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+            import java.util.concurrent.Callable
+
+            @Component
+            interface ExampleComponent {
+            
+              @get:Named("hello")
+              val text: String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+        ExampleComponent.kt:11:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+
+            @Named("hello") kotlin.String is requested at
+                [test.ExampleComponent] test.ExampleComponent.text
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `missing binding should fail compilation and function accessor`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Inject
+            import java.util.concurrent.Callable
+
+            @Component
+            interface ExampleComponent {
+
+              fun text(): String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+        ExampleComponent.kt:10:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+            kotlin.String is requested at
+                [test.ExampleComponent] test.ExampleComponent.text()
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `missing binding should fail compilation and function accessor with qualifier`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+            import java.util.concurrent.Callable
+
+            @Component
+            interface ExampleComponent {
+              
+              @Named("hello")
+              fun text(): String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+        ExampleComponent.kt:11:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        
+            @Named("hello") kotlin.String is requested at
+                [test.ExampleComponent] test.ExampleComponent.text()
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `missing binding should fail compilation and report binding stack`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Inject
+
+            @Component
+            abstract class ExampleComponent() {
+
+              abstract fun exampleClass(): ExampleClass
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+            @Inject
+            class ExampleClass(private val text: String)
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+        ExampleComponent.kt:19:20 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+            kotlin.String is injected at
+                [test.ExampleComponent] test.ExampleClass(…, text)
+            test.ExampleClass is requested at
+                [test.ExampleComponent] test.ExampleComponent.exampleClass()
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `missing binding should fail compilation and report binding stack with qualifier`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+
+            @Component
+            abstract class ExampleComponent() {
+
+              abstract fun exampleClass(): ExampleClass
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+            @Inject
+            class ExampleClass(@Named("hello") private val text: String)
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+        ExampleComponent.kt:20:20 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        
+            @Named("hello") kotlin.String is injected at
+                [test.ExampleComponent] test.ExampleClass(…, text)
+            test.ExampleClass is requested at
+                [test.ExampleComponent] test.ExampleComponent.exampleClass()
+        """
+          .trimIndent()
+      )
   }
 }
