@@ -19,7 +19,7 @@ import java.util.Locale
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-internal const val LOG_PREFIX = "*** LATTICE (IR):"
+internal const val LOG_PREFIX = "[LATTICE]"
 
 internal fun <T> unsafeLazy(initializer: () -> T) = lazy(LazyThreadSafetyMode.NONE, initializer)
 
@@ -38,4 +38,21 @@ internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US
 
 internal fun <T, R> Iterable<T>.mapToSet(mapper: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), mapper)
+}
+
+internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
+  iterable: Iterable<T>,
+  prefix: String,
+  postfix: String,
+  separator: String,
+  renderItem: Buffer.(T) -> Unit
+) {
+  append(prefix)
+  var isFirst = true
+  for (item in iterable) {
+    if (!isFirst) append(separator)
+    renderItem(item)
+    isFirst = false
+  }
+  append(postfix)
 }
