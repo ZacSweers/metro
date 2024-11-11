@@ -15,12 +15,25 @@
  */
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.appendIterableWith
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
+import dev.zacsweers.lattice.unsafeLazy
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.util.render
+import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrAnnotation(val ir: IrConstructorCall) {
-  val hashKey by lazy { ir.computeAnnotationHash() }
+  private val cachedHashKey by unsafeLazy { ir.computeAnnotationHash() }
+  private val cachedToString by unsafeLazy {
+    buildString {
+      append('@')
+      renderAsAnnotation(ir)
+    }
+  }
 
   fun LatticeTransformerContext.isQualifier() = ir.type.rawType().isQualifierAnnotation
 
@@ -32,10 +45,58 @@ internal class IrAnnotation(val ir: IrConstructorCall) {
 
     other as IrAnnotation
 
-    return hashKey == other.hashKey
+    return cachedHashKey == other.cachedHashKey
   }
 
-  override fun hashCode(): Int = hashKey
+  override fun hashCode(): Int = cachedHashKey
 
-  override fun toString() = ir.render()
+  override fun toString() = cachedToString
+}
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall) {
+  val annotationClassName =
+    irAnnotation.symbol.takeIf { it.isBound }?.owner?.parentAsClass?.name?.asString() ?: "<unbound>"
+  append(annotationClassName)
+
+  // TODO type args not supported
+
+  if (irAnnotation.valueArgumentsCount == 0) return
+
+  appendIterableWith(
+    0 until irAnnotation.valueArgumentsCount,
+    separator = ", ",
+    prefix = "(",
+    postfix = ")",
+  ) { index ->
+    renderAsAnnotationArgument(irAnnotation.getValueArgument(index))
+  }
+}
+
+private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?) {
+  when (irElement) {
+    null -> append("<null>")
+    is IrConstructorCall -> renderAsAnnotation(irElement)
+    is IrConst<*> -> {
+      renderIrConstAsAnnotationArgument(irElement)
+    }
+    is IrVararg -> {
+      appendIterableWith(irElement.elements, prefix = "[", postfix = "]", separator = ", ") {
+        renderAsAnnotationArgument(it)
+      }
+    }
+    else -> append("...")
+  }
+}
+
+private fun StringBuilder.renderIrConstAsAnnotationArgument(const: IrConst<*>) {
+  val quotes =
+    when (const.kind) {
+      IrConstKind.String -> "\""
+      IrConstKind.Char -> "'"
+      else -> ""
+    }
+  append(quotes)
+  append(const.value.toString())
+  append(quotes)
 }
