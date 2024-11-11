@@ -23,6 +23,7 @@ import dev.zacsweers.lattice.ir.irType
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.locationIn
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrElement
@@ -54,7 +55,11 @@ internal interface LatticeTransformerContext {
   }
 
   fun IrDeclaration.reportError(message: String) {
-    val location = file.locationIn(file)
+    val location = this.locationIn(file)
+    messageCollector.report(CompilerMessageSeverity.ERROR, "$LOG_PREFIX $message", location)
+  }
+
+  fun reportError(message: String, location: CompilerMessageLocation) {
     messageCollector.report(CompilerMessageSeverity.ERROR, "$LOG_PREFIX $message", location)
   }
 
