@@ -51,7 +51,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true,
       )
     result.assertCallableFactory("Hello, world!")
   }
@@ -75,7 +74,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true,
       )
     result.assertCallableFactory("Hello, world!")
   }
@@ -100,7 +98,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true,
       )
     result.assertCallableFactory("Hello, world!")
   }
@@ -125,7 +122,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true,
       )
 
     val factoryClass = result.ExampleClass.generatedFactoryClass()
@@ -164,7 +160,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true,
       )
 
     val factory = result.ExampleClass.generatedFactoryClass()
@@ -197,7 +192,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true,
       )
 
     val factoryClass = result.ExampleClass.generatedFactoryClass()
@@ -231,7 +225,6 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true,
       )
 
     val factoryClass = result.ExampleClass.generatedFactoryClass()
