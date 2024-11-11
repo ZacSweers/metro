@@ -648,4 +648,3 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       }
     }
 }
-

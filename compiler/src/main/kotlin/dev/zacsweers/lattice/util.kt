@@ -45,7 +45,7 @@ internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
   prefix: String,
   postfix: String,
   separator: String,
-  renderItem: Buffer.(T) -> Unit
+  renderItem: Buffer.(T) -> Unit,
 ) {
   append(prefix)
   var isFirst = true

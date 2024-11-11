@@ -149,7 +149,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
             @Component
             interface ExampleComponent {
-            
+
               @Named("hello")
               val text: String
 
@@ -193,7 +193,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
             @Component
             interface ExampleComponent {
-            
+
               @get:Named("hello")
               val text: String
 
@@ -279,7 +279,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
             @Component
             interface ExampleComponent {
-              
+
               @Named("hello")
               fun text(): String
 
@@ -299,7 +299,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .contains(
         """
         ExampleComponent.kt:11:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-        
+
             @Named("hello") kotlin.String is requested at
                 [test.ExampleComponent] test.ExampleComponent.text()
         """
@@ -392,7 +392,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .contains(
         """
         ExampleComponent.kt:20:20 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-        
+
             @Named("hello") kotlin.String is injected at
                 [test.ExampleComponent] test.ExampleClass(…, text)
             test.ExampleClass is requested at
