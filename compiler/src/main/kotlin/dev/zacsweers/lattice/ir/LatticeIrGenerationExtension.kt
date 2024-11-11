@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.ExitProcessingException
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.transformers.ComponentData
 import dev.zacsweers.lattice.transformers.ComponentTransformer
@@ -35,6 +36,10 @@ internal class LatticeIrGenerationExtension(
     val componentTransformer = ComponentTransformer(context)
     // TODO is this really necessary?
     val componentData = ComponentData()
-    moduleFragment.transform(componentTransformer, componentData)
+    try {
+      moduleFragment.transform(componentTransformer, componentData)
+    } catch (_: ExitProcessingException) {
+      // End processing, don't fail up because this would've been warned before
+    }
   }
 }
