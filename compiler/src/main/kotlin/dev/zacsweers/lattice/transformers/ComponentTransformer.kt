@@ -718,27 +718,6 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           scope = with(context) { irClass.scopeAnnotation() },
         )
       } else {
-        // TODO IR error
-        /*
-         Dagger error
-
-          error: [Dagger/MissingBinding] java.lang.CharSequence cannot be provided without an @Provides-annotated method.
-          public abstract interface ExampleComponent {
-                          ^
-
-                java.lang.CharSequence is injected at
-                    [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.Example1(…, text2)
-                com.slack.circuit.star.Example1 is requested at
-                    [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.ExampleComponent.example1()
-
-         KI error
-
-         e: [ksp] Cannot find an @Inject constructor or provider for: String
-        .../kitest.kt:38: com.slack.circuit.sample.kotlininject.Example1(fs: java.nio.`file`.FileSystem, text: String)
-        .../kitest.kt:17: example1(): com.slack.circuit.sample.kotlininject.Example1
-
-         */
-
         val entries = bindingStack.entries
         val declarationToReport = entries.firstOrNull()?.declaration ?: bindingStack.component
         val message = buildString {
