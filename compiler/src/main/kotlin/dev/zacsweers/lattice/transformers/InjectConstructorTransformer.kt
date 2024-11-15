@@ -247,7 +247,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       classToGenerateCreatorsIn
         .addFunction("newInstance", targetTypeParameterized, isStatic = true)
         .apply {
-          this.copyTypeParameters(typeParameters)
+          @Suppress("OPT_IN_USAGE") this.copyTypeParameters(targetConstructor.owner.typeParameters)
           this.origin = LatticeOrigin
           this.visibility = DescriptorVisibilities.PUBLIC
           markJvmStatic()
