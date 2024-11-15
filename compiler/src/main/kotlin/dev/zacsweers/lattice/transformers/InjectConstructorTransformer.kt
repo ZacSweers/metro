@@ -19,8 +19,10 @@ import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.createIrBuilder
+import dev.zacsweers.lattice.ir.irCallWithSameParameters
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
+import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.joinSimpleNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -29,11 +31,9 @@ import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
-import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -199,56 +199,13 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                 irInvoke(
                   callee = newInstanceFunctionSymbol,
                   args =
-                    allParameters
-                      .map { parameter ->
-                        // When calling value getter on Provider<T>, make sure the dispatch
-                        // receiver is the Provider instance itself
-                        val providerInstance =
-                          irGetField(
-                            irGet(factoryCls.thisReceiver!!),
-                            parametersToFields.getValue(parameter),
-                          )
-                        when {
-                          parameter.isLazyWrappedInProvider -> {
-                            // ProviderOfLazy.create(provider)
-                            irInvoke(
-                              dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
-                              callee = symbols.providerOfLazyCreate,
-                              args = arrayOf(providerInstance),
-                              typeHint =
-                                parameter.typeName
-                                  .wrapInLazy(symbols)
-                                  .wrapInProvider(symbols.latticeProvider),
-                            )
-                          }
-                          parameter.isWrappedInProvider -> providerInstance
-                          // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
-                          // (usually the container is a joined type), therefore we use
-                          // `.lazy(..)` to convert the Provider to a Lazy. Assisted
-                          // parameters behave differently and the Lazy type is not changed
-                          // to a Provider and we can simply use the parameter name in the
-                          // argument list.
-                          parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
-                          parameter.isWrappedInLazy -> {
-                            // DoubleCheck.lazy(...)
-                            irInvoke(
-                              dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-                              callee = symbols.doubleCheckLazy,
-                              args = arrayOf(providerInstance),
-                              typeHint = parameter.typeName.wrapInLazy(symbols),
-                            )
-                          }
-                          parameter.isAssisted -> providerInstance
-                          else -> {
-                            irInvoke(
-                              dispatchReceiver = providerInstance,
-                              callee = symbols.providerInvoke,
-                              typeHint = parameter.typeName,
-                            )
-                          }
-                        }
-                      }
-                      .toTypedArray(),
+                    parametersAsProviderArguments(
+                      parameters = allParameters,
+                      receiver = factoryCls.thisReceiver!!,
+                      parametersToFields = parametersToFields,
+                      symbols = symbols,
+                      component = null,
+                    ),
                 )
               )
             // TODO members injector goes here
@@ -258,7 +215,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
     factoryCls.dumpToLatticeLog()
 
-    factoryCls.parent = declaration.parent
     declaration.getPackageFragment().addChild(factoryCls)
     generatedFactories[injectedClassId] = factoryCls
     return factoryCls
@@ -295,6 +251,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     classToGenerateCreatorsIn
       .addFunction("create", factoryClassParameterized, isStatic = true)
       .apply {
+        val thisFunction = this
         this.copyTypeParameters(typeParameters)
         this.dispatchReceiverParameter = classToGenerateCreatorsIn.thisReceiver?.copyTo(this)
         this.origin = LatticeOrigin
@@ -309,11 +266,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
               if (isObject) {
                 irGetObject(factoryCls.symbol)
               } else {
-                irCall(factoryConstructor).apply {
-                  for (parameter in valueParameters) {
-                    putValueArgument(parameter.index, irGet(parameter))
-                  }
-                }
+                irCallWithSameParameters(thisFunction, factoryConstructor)
               }
             )
           }

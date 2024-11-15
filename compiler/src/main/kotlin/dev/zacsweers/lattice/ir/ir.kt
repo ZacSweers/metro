@@ -17,6 +17,9 @@ package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.transformers.Parameter
+import dev.zacsweers.lattice.transformers.wrapInLazy
+import dev.zacsweers.lattice.transformers.wrapInProvider
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -41,6 +44,9 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -48,15 +54,19 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFactory
+import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
@@ -87,6 +97,7 @@ import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
@@ -188,7 +199,7 @@ internal fun IrBuilderWithScope.irInvoke(
   dispatchReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
   typeHint: IrType? = null,
-  vararg args: IrExpression,
+  args: List<IrExpression> = emptyList(),
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
   val returnType = typeHint ?: callee.owner.returnType
@@ -376,4 +387,93 @@ internal fun IrFactory.addCompanionObject(
       )
       body()
     }
+}
+
+internal val IrClass.isCompanionObject: Boolean get() = isObject && isCompanion
+
+internal fun IrBuilderWithScope.irCallWithSameParameters(
+  source: IrSimpleFunction,
+  constructor: IrConstructorSymbol,
+): IrConstructorCall {
+  return irCall(constructor).apply {
+    for (parameter in source.valueParameters) {
+      putValueArgument(parameter.index, irGet(parameter))
+    }
+  }
+}
+
+internal fun IrBuilderWithScope.irCallWithSameParameters(
+  source: IrSimpleFunction,
+  function: IrFunctionSymbol,
+): IrFunctionAccessExpression {
+  return irCall(function).apply {
+    for (parameter in source.valueParameters) {
+      putValueArgument(parameter.index, irGet(parameter))
+    }
+  }
+}
+
+internal fun IrBuilderWithScope.parametersAsProviderArguments(
+  parameters: List<Parameter>,
+  receiver: IrValueParameter,
+  parametersToFields: Map<Parameter, IrField>,
+  symbols: LatticeSymbols,
+  component: IrValueParameter?,
+): List<IrExpression> {
+    val arguments = parameters
+      .map { parameter ->
+        // When calling value getter on Provider<T>, make sure the dispatch
+        // receiver is the Provider instance itself
+        val providerInstance =
+          irGetField(
+            irGet(receiver),
+            parametersToFields.getValue(parameter),
+          )
+        when {
+          parameter.isLazyWrappedInProvider -> {
+            // ProviderOfLazy.create(provider)
+            irInvoke(
+              dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
+              callee = symbols.providerOfLazyCreate,
+              args = listOf(providerInstance),
+              typeHint =
+                parameter.typeName
+                  .wrapInLazy(symbols)
+                  .wrapInProvider(symbols.latticeProvider),
+            )
+          }
+          parameter.isWrappedInProvider -> providerInstance
+          // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
+          // (usually the container is a joined type), therefore we use
+          // `.lazy(..)` to convert the Provider to a Lazy. Assisted
+          // parameters behave differently and the Lazy type is not changed
+          // to a Provider and we can simply use the parameter name in the
+          // argument list.
+          parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
+          parameter.isWrappedInLazy -> {
+            // DoubleCheck.lazy(...)
+            irInvoke(
+              dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+              callee = symbols.doubleCheckLazy,
+              args = listOf(providerInstance),
+              typeHint = parameter.typeName.wrapInLazy(symbols),
+            )
+          }
+          parameter.isAssisted -> providerInstance
+          else -> {
+            irInvoke(
+              dispatchReceiver = providerInstance,
+              callee = symbols.providerInvoke,
+              typeHint = parameter.typeName,
+            )
+          }
+        }
+      }
+
+  return buildList {
+    if (component != null) {
+      add(irGet(component))
+    }
+    addAll(arguments)
+  }
 }
