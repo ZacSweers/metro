@@ -81,6 +81,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   IrElementTransformer<ComponentData>, LatticeTransformerContext by context {
 
   private val injectConstructorTransformer = InjectConstructorTransformer(context)
+  private val providesTransformer = ProvidesTransformer(context)
+
   // Keyed by the source declaration
   private val componentNodesByClass = mutableMapOf<ClassId, ComponentNode>()
   // Keyed by the source declaration
@@ -123,6 +125,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // TODO need to better divvy these
     injectConstructorTransformer.visitClass(declaration)
+    providesTransformer.visitClass(declaration)
 
     val isAnnotatedWithComponent = declaration.isAnnotatedWithAny(symbols.componentAnnotations)
     if (!isAnnotatedWithComponent) return super.visitClass(declaration, data)
@@ -389,6 +392,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Track a stack for bindings
         val bindingStack = BindingStack(node.sourceComponent)
 
+        // TODO don't allow constructor params, only factories
+        // TODO use InstanceFactory for bindsinstance
+        // TODO need to collect all provided types too and create scoped fields if needed
+
         // First pass: collect scoped bindings and their dependencies for ordering
         node.exposedTypes.forEach { (key, accessor) ->
           bindingStack.push(BindingStackEntry.requestedAt(key, accessor))
@@ -433,13 +440,16 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                         dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
                         callee = symbols.doubleCheckProvider,
                         typeHint = null,
-                        generateBindingCode(
-                          binding,
-                          graph,
-                          thisReceiver!!,
-                          scopedFields,
-                          bindingStack,
-                        ),
+                        args =
+                          listOf(
+                            generateBindingCode(
+                              binding,
+                              graph,
+                              thisReceiver!!,
+                              scopedFields,
+                              bindingStack,
+                            )
+                          ),
                       )
                     )
                   }
@@ -527,14 +537,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
           callee = symbols.doubleCheckLazy,
           typeHint = param.typeName.wrapInLazy(symbols),
-          providerInstance,
+          args = listOf(providerInstance),
         )
       } else if (param.isLazyWrappedInProvider) {
         // ProviderOfLazy.create(provider)
         irInvoke(
           dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
           callee = symbols.providerOfLazyCreate,
-          args = arrayOf(providerInstance),
+          args = listOf(providerInstance),
           typeHint = param.typeName.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
         )
       } else if (param.isWrappedInProvider) {
@@ -595,7 +605,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         irInvoke(
           dispatchReceiver = irGetObject(creatorClass.symbol),
           callee = createFunction,
-          args = args.toTypedArray(),
+          args = args,
         )
       }
 
@@ -624,21 +634,24 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           dispatchReceiver = null,
           callee = symbols.latticeProviderFunction,
           typeHint = context.irBuiltIns.getKFunctionType(function.returnType, emptyList()),
-          irLambda(
-            pluginContext,
-            thisReceiver.parent, // TODO this is obvi wrong
-            valueParameters = emptyList(),
-            returnType = function.returnType,
-            suspend = false,
-          ) {
-            +irReturn(
-              irInvoke(
-                dispatchReceiver = irGet(receiver),
-                callee = function.symbol,
-                args = args.toTypedArray(),
-              )
-            )
-          },
+          args =
+            listOf(
+              irLambda(
+                pluginContext,
+                thisReceiver.parent, // TODO this is obvi wrong
+                valueParameters = emptyList(),
+                returnType = function.returnType,
+                suspend = false,
+              ) {
+                +irReturn(
+                  irInvoke(
+                    dispatchReceiver = irGet(receiver),
+                    callee = function.symbol,
+                    args = args,
+                  )
+                )
+              }
+            ),
         )
       }
 
