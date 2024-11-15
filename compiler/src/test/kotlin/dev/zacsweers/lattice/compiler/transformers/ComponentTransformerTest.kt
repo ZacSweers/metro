@@ -21,6 +21,7 @@ import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.callComponentAccessor
+import dev.zacsweers.lattice.compiler.callComponentAccessorProperty
 import dev.zacsweers.lattice.compiler.createComponentViaFactory
 import dev.zacsweers.lattice.compiler.generatedLatticeComponent
 import java.util.concurrent.Callable
@@ -400,6 +401,72 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun `scoped bindings are scoped correctly`() {
+    // Ensure scoped bindings are properly scoped
+    // This means that any calls to them should return the same instance, while any calls
+    // to unscoped bindings are called every time.
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.annotations.Singleton
+
+            @Component
+            abstract class ExampleComponent {
+            
+              private var scopedCounter = 0
+              private var unscopedCounter = 0
+
+              @Named("scoped") 
+              abstract val scoped: String
+
+              @Named("unscoped") 
+              abstract val unscoped: String
+
+              @Singleton
+              @Provides
+              @Named("scoped") 
+              fun provideScoped(): String = "text " + scopedCounter++
+
+              @Provides
+              @Named("unscoped") 
+              fun provideUnscoped(): String = "text " + unscopedCounter++
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+            @Inject
+            class ExampleClass(@Named("hello") private val text: String)
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+        debug = true,
+      )
+
+    val component = result.ExampleComponent.generatedLatticeComponent()
+
+    // Repeated calls to the scoped instance only every return one value
+    assertThat(component.callComponentAccessorProperty<String>("scoped")).isEqualTo("text 0")
+    assertThat(component.callComponentAccessorProperty<String>("scoped")).isEqualTo("text 0")
+
+    // Repeated calls to the unscoped instance recompute each time
+    assertThat(component.callComponentAccessorProperty<String>("unscoped")).isEqualTo("text 0")
+    assertThat(component.callComponentAccessorProperty<String>("unscoped")).isEqualTo("text 1")
   }
 
   // TODO
