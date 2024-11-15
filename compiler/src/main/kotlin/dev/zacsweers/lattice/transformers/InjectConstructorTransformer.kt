@@ -19,8 +19,8 @@ import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
+import dev.zacsweers.lattice.ir.buildFactoryCreateFunction
 import dev.zacsweers.lattice.ir.createIrBuilder
-import dev.zacsweers.lattice.ir.irCallWithSameParameters
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
@@ -34,7 +34,6 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -48,7 +47,6 @@ import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.getPackageFragment
@@ -221,40 +219,14 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         pluginContext.irFactory.addCompanionObject(symbols, parent = factoryCls)
       }
 
-    /*
-     Implement a static create() function
-
-     // Simple
-     @JvmStatic // JVM only
-     fun create(valueProvider: Provider<String>): Example_Factory = Example_Factory(valueProvider)
-
-     // Generic
-     @JvmStatic // JVM only
-     fun <T> create(valueProvider: Provider<T>): Example_Factory<T> = Example_Factory<T>(valueProvider)
-    */
-    classToGenerateCreatorsIn
-      .addFunction("create", factoryClassParameterized, isStatic = true)
-      .apply {
-        val thisFunction = this
-        this.copyTypeParameters(typeParameters)
-        this.dispatchReceiverParameter = classToGenerateCreatorsIn.thisReceiver?.copyTo(this)
-        this.origin = LatticeOrigin
-        this.visibility = DescriptorVisibilities.PUBLIC
-        markJvmStatic()
-        for (parameter in allParameters) {
-          addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
-        }
-        body =
-          pluginContext.createIrBuilder(symbol).run {
-            irExprBody(
-              if (isObject) {
-                irGetObject(factoryCls.symbol)
-              } else {
-                irCallWithSameParameters(thisFunction, factoryConstructor)
-              }
-            )
-          }
-      }
+    // Generate create()
+    classToGenerateCreatorsIn.buildFactoryCreateFunction(
+      this,
+      factoryCls,
+      factoryClassParameterized,
+      factoryConstructor,
+      allParameters,
+    )
 
     /*
      Implement a static newInstance() function

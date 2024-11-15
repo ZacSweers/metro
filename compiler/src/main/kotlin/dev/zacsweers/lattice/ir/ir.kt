@@ -93,6 +93,7 @@ import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.copyValueParametersFrom
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.file
@@ -484,4 +485,46 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
     parametersToFields[parameter] = irField
   }
   return parametersToFields
+}
+
+/*
+ * Implement a static `create()` function.
+ *
+ * ```kotlin
+ * // Simple
+ * @JvmStatic // JVM only
+ * fun create(valueProvider: Provider<String>): Example_Factory = Example_Factory(valueProvider)
+ *
+ * // Generic
+ * @JvmStatic // JVM only
+ * fun <T> create(valueProvider: Provider<T>): Example_Factory<T> = Example_Factory<T>(valueProvider)
+ * ```
+ */
+internal fun IrClass.buildFactoryCreateFunction(
+  context: LatticeTransformerContext,
+  factoryClass: IrClass,
+  factoryClassParameterized: IrType,
+  factoryConstructor: IrConstructorSymbol,
+  parameters: List<Parameter>,
+) {
+  addFunction("create", factoryClassParameterized, isStatic = true).apply {
+    val thisFunction = this
+    this.copyTypeParameters(factoryClass.typeParameters)
+    this.origin = LatticeOrigin
+    this.visibility = DescriptorVisibilities.PUBLIC
+    with(context) { markJvmStatic() }
+    for (parameter in parameters) {
+      addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
+    }
+    body =
+      context.pluginContext.createIrBuilder(symbol).run {
+        irExprBody(
+          if (isObject) {
+            irGetObject(factoryClass.symbol)
+          } else {
+            irCallWithSameParameters(thisFunction, factoryConstructor)
+          }
+        )
+      }
+  }
 }
