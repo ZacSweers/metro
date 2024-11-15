@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.JvmCompilationResult
+import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.internal.Factory
 import dev.zacsweers.lattice.provider
 import java.lang.reflect.Modifier
@@ -92,6 +93,11 @@ fun Class<*>.componentImpl(): Class<*> {
 fun <T> Any.callComponentAccessor(name: String): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass.getMethod(name).invoke(this) as T
+}
+
+fun <T> Any.callComponentAccessorProperty(name: String): T {
+  @Suppress("UNCHECKED_CAST")
+  return javaClass.getMethod("get${name.capitalizeUS()}").invoke(this) as T
 }
 
 /**
