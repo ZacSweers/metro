@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.transformers
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
+import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irCallWithSameParameters
 import dev.zacsweers.lattice.ir.irInvoke
@@ -26,7 +27,6 @@ import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.joinSimpleNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
@@ -38,7 +38,6 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
@@ -139,21 +138,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         origin = LatticeOrigin,
       )
 
-    // Add a constructor parameter + field for every parameter. This should be the provider type.
-    val parametersToFields = mutableMapOf<Parameter, IrField>()
-    for (parameter in allParameters) {
-      val irParameter =
-        ctor.addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
-      val irField =
-        factoryCls
-          .addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE)
-          .apply {
-            isFinal = true
-            initializer =
-              pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
-          }
-      parametersToFields[parameter] = irField
-    }
+    val parametersToFields = assignConstructorParamsToFields(ctor, factoryCls, allParameters)
 
     val newInstanceFunctionSymbol =
       generateCreators(

@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.Parameter
 import dev.zacsweers.lattice.transformers.wrapInLazy
 import dev.zacsweers.lattice.transformers.wrapInProvider
@@ -38,12 +39,14 @@ import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
+import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -460,4 +463,25 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
       }
     }
   }
+}
+
+internal fun LatticeTransformerContext.assignConstructorParamsToFields(
+  constructor: IrConstructor,
+  clazz: IrClass,
+  parameters: List<Parameter>,
+): Map<Parameter, IrField> {
+  // Add a constructor parameter + field for every parameter.
+  // This should be the provider type unless it's a special instance component type
+  val parametersToFields = mutableMapOf<Parameter, IrField>()
+  for (parameter in parameters) {
+    val irParameter =
+      constructor.addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
+    val irField =
+      clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
+        isFinal = true
+        initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
+      }
+    parametersToFields[parameter] = irField
+  }
+  return parametersToFields
 }
