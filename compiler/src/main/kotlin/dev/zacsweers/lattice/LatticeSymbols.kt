@@ -42,6 +42,7 @@ internal class LatticeSymbols(
 
   object ClassIds {
     val AnyClass = ClassId(kotlinPackageFqn, Name.identifier("Any"))
+    val PublishedApi = ClassId(kotlinPackageFqn, Name.identifier("PublishedApi"))
   }
 
   object Names {
