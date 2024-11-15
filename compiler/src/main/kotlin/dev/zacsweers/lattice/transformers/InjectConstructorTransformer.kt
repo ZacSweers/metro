@@ -204,7 +204,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                       receiver = factoryCls.thisReceiver!!,
                       parametersToFields = parametersToFields,
                       symbols = symbols,
-                      component = null,
                     ),
                 )
               )
