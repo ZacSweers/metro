@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.explicitParametersCount
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -150,6 +151,12 @@ internal class LatticeSymbols(
 
   val stdlibLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
+  }
+
+  val stdlibCheckNotNull: IrFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(stdlib.packageFqName, Name.identifier("checkNotNull")))
+      .single { it.owner.explicitParametersCount == 2 }
   }
 
   val jvmStatic: IrClassSymbol by lazy {

@@ -50,6 +50,8 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -528,3 +530,26 @@ internal fun IrClass.buildFactoryCreateFunction(
       }
   }
 }
+
+internal fun IrBuilderWithScope.checkNotNullCall(
+  context: LatticeTransformerContext,
+  parent: IrDeclarationParent,
+  firstArg: IrExpression,
+  message: String,
+): IrExpression =
+  irInvoke(
+    callee = context.symbols.stdlibCheckNotNull,
+    args =
+      listOf(
+        firstArg,
+        irLambda(
+          context.pluginContext,
+          parent = parent, // TODO this is obvi wrong
+          valueParameters = emptyList(),
+          returnType = context.pluginContext.irBuiltIns.stringType,
+          suspend = false,
+        ) {
+          +irReturn(irString(message))
+        },
+      ),
+  )
