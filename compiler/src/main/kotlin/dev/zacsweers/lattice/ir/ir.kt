@@ -457,6 +457,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
         )
       }
       parameter.isAssisted -> providerInstance
+      parameter.isComponentInstance -> providerInstance
       else -> {
         irInvoke(
           dispatchReceiver = providerInstance,

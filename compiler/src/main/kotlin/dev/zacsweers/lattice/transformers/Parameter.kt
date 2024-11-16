@@ -47,6 +47,7 @@ internal sealed interface Parameter {
   val assistedParameterKey: AssistedParameterKey
   val symbols: LatticeSymbols
   val typeKey: TypeKey
+  val isComponentInstance: Boolean
 
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
@@ -102,6 +103,7 @@ internal data class ConstructorParameter(
   override val assistedParameterKey: Parameter.AssistedParameterKey =
     Parameter.AssistedParameterKey(typeName, assistedIdentifier),
   override val symbols: LatticeSymbols,
+  override val isComponentInstance: Boolean,
 ) : Parameter
 
 internal fun IrType.wrapInProvider(providerType: IrType): IrType {
@@ -178,5 +180,6 @@ internal fun IrValueParameter.toConstructorParameter(
     isAssisted = assistedAnnotation != null,
     assistedIdentifier = assistedIdentifier,
     symbols = context.symbols,
+    isComponentInstance = false
   )
 }

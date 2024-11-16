@@ -62,8 +62,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   fun visitComponentClass(declaration: IrClass) {
     declaration.declarations.forEach { nestedDeclaration ->
       when (nestedDeclaration) {
-        is IrProperty -> visitProperty(declaration, nestedDeclaration)
-        is IrFunction -> visitFunction(declaration, nestedDeclaration)
+        is IrProperty -> visitProperty(nestedDeclaration)
+        is IrFunction -> visitFunction(nestedDeclaration)
         is IrClass -> {
           if (nestedDeclaration.isCompanionObject) {
             // Include companion object refs
@@ -74,7 +74,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  fun visitProperty(componentClass: IrClass, declaration: IrProperty) {
+  fun visitProperty(declaration: IrProperty) {
     if (
       !declaration.isAnnotatedWithAny(symbols.providesAnnotations) &&
         declaration.getter?.isAnnotatedWithAny(symbols.providesAnnotations) != true
@@ -82,12 +82,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       return
     }
 
-    getOrGenerateFactoryClass(componentClass, CallableReference.from(declaration))
+    getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
   }
 
-  fun visitFunction(componentClass: IrClass, declaration: IrFunction) {
+  fun visitFunction(declaration: IrFunction) {
     if (!declaration.isAnnotatedWithAny(symbols.providesAnnotations)) return
-    getOrGenerateFactoryClass(componentClass, CallableReference.from(declaration))
+    getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
   }
 
   fun visitClass(declaration: IrClass) {
@@ -96,7 +96,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  fun getOrGenerateFactoryClass(componentClass: IrClass, reference: CallableReference): IrClass {
+  fun getOrGenerateFactoryClass(reference: CallableReference): IrClass {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
     generatedFactories[reference.fqName]?.let {
@@ -108,7 +108,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho
 
-    val isCompanionObject = componentClass.isCompanionObject
+    val isCompanionObject = reference.componentParent.isCompanionObject
     val isInObject = isCompanionObject || reference.isInObject
 
     val isProperty = reference.isProperty
@@ -118,10 +118,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO still necessary in IR?
     val useGetPrefix = isProperty && !isWordPrefixRegex.matches(declarationName.asString())
 
-    val packageName = componentClass.packageFqName!!
+    val packageName = reference.componentParent.packageFqName!!
     val className = buildString {
       append(
-        componentClass.classIdOrFail
+        reference.componentParent.classIdOrFail
           .joinSimpleNames()
           .relativeClassName
           .pathSegments()
@@ -140,7 +140,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     val parameters = reference.constructorParameters
 
-    val returnType = reference.type
+    val returnType = reference.typeKey.type
 
     val generatedClassName = ClassId(packageName, Name.identifier(className))
     val byteCodeFunctionName =
@@ -173,23 +173,26 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         origin = LatticeOrigin,
       )
 
+    val componentType = reference.componentParent.typeWith()
+
     val allParameters = buildList {
       if (!isInObject) {
         add(
           ConstructorParameter(
             name = Name.identifier("component"),
-            typeKey = TypeKey(returnType),
-            originalName = Name.special("component"),
-            typeName = returnType,
+            typeKey = TypeKey(componentType),
+            originalName = Name.identifier("component"),
+            typeName = componentType,
             // This type is always the instance type
-            providerTypeName = returnType,
-            lazyTypeName = returnType,
+            providerTypeName = componentType,
+            lazyTypeName = componentType,
             isWrappedInProvider = false,
             isWrappedInLazy = false,
             isLazyWrappedInProvider = false,
             isAssisted = false,
             assistedIdentifier = Name.identifier(""),
             symbols = symbols,
+            isComponentInstance = true
           )
         )
       }
@@ -238,18 +241,18 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     factoryCls.dumpToLatticeLog()
 
-    componentClass.getPackageFragment().addChild(factoryCls)
+    reference.componentParent.getPackageFragment().addChild(factoryCls)
     generatedFactories[reference.fqName] = factoryCls
     return factoryCls
   }
 
-  private fun CallableReference.Companion.from(function: IrFunction): CallableReference {
+  fun getOrPutCallableReference(function: IrFunction): CallableReference {
     return references.getOrPut(function.kotlinFqName) {
       // TODO FIR error if it has a receiver param
       // TODO FIR error if it is top-level/not in component
 
-      val type = function.returnType
       val parent = function.parentAsClass
+      val typeKey = TypeKey.from(this, function)
       CallableReference(
         fqName = function.kotlinFqName,
         isInternal = function.visibility == Visibilities.Internal,
@@ -259,8 +262,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         isProperty = false,
         constructorParameters =
           function.valueParameters.mapToConstructorParameters(this@ProvidesTransformer),
-        type = type,
-        isNullable = type.isMarkedNullable(),
+        typeKey = typeKey,
+        isNullable = typeKey.type.isMarkedNullable(),
         isPublishedApi = function.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
         reportableNode = function,
         parent = parent.symbol,
@@ -269,7 +272,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  private fun CallableReference.Companion.from(property: IrProperty): CallableReference {
+  fun getOrPutCallableReference(property: IrProperty): CallableReference {
     val fqName = property.fqNameWhenAvailable ?: error("No FqName for property ${property.name}")
     return references.getOrPut(fqName) {
       // TODO FIR error if it has a receiver param
@@ -283,7 +286,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           ?: error(
             "No getter found for property $fqName. Note that field properties are not supported"
           )
-      val type = getter.returnType
+
+      val typeKey = TypeKey.from(this, getter)
 
       val parent = property.parentAsClass
       return CallableReference(
@@ -294,8 +298,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         name = property.name,
         isProperty = true,
         constructorParameters = emptyList(),
-        type = type,
-        isNullable = type.isMarkedNullable(),
+        typeKey = typeKey,
+        isNullable = typeKey.type.isMarkedNullable(),
         isPublishedApi = property.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
         reportableNode = property,
         parent = parent.symbol,
@@ -312,7 +316,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     allParameters: List<ConstructorParameter>,
     byteCodeFunctionName: String,
   ): IrSimpleFunctionSymbol {
-    val targetTypeParameterized = reference.type
+    val targetTypeParameterized = reference.typeKey.type
     val returnTypeIsNullable = reference.isNullable
 
     // If this is an object, we can generate directly into this object
@@ -428,16 +432,42 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val name: Name,
     val isProperty: Boolean,
     val constructorParameters: List<ConstructorParameter>,
-    val type: IrType,
+    val typeKey: TypeKey,
     val isNullable: Boolean,
     val isPublishedApi: Boolean,
     val reportableNode: Any,
     val parent: IrClassSymbol,
     val callee: IrFunctionSymbol,
   ) {
+    private val cachedToString by lazy {
+      buildString {
+        append(fqName.asString())
+        if (!isProperty) {
+          append('(')
+          for (parameter in constructorParameters) {
+            append(parameter.name)
+            append(": ")
+            append(parameter.typeKey)
+          }
+          append(')')
+        }
+        append(": ")
+        append(typeKey.toString())
+      }
+    }
+
     // TODO remove this support
     val isMangled: Boolean
       get() = !isProperty && isInternal && !isPublishedApi
+
+    @UnsafeDuringIrConstructionAPI
+    val componentParent = if (parent.owner.isCompanionObject) {
+      parent.owner.parentAsClass
+    } else {
+      parent.owner
+    }
+
+    override fun toString(): String = cachedToString
 
     companion object // For extension
   }

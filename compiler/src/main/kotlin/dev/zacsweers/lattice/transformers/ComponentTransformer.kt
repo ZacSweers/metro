@@ -23,7 +23,6 @@ import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irInvoke
-import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -41,7 +40,6 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -59,11 +57,11 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.getKFunctionType
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -125,12 +123,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // TODO need to better divvy these
     injectConstructorTransformer.visitClass(declaration)
-    providesTransformer.visitClass(declaration)
 
     val isAnnotatedWithComponent = declaration.isAnnotatedWithAny(symbols.componentAnnotations)
     if (!isAnnotatedWithComponent) return super.visitClass(declaration, data)
 
+    providesTransformer.visitComponentClass(declaration)
+
     getOrBuildComponent(declaration)
+
     // TODO dump option to detect unused
 
     return super.visitClass(declaration, data)
@@ -371,8 +371,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun generateComponentImpl(node: ComponentNode, graph: BindingGraph): IrClass {
+    val componentImplName = "${node.sourceComponent.name.asString()}Impl"
     return pluginContext.irFactory
-      .buildClass { name = Name.identifier("${node.sourceComponent.name.asString()}Impl") }
+      .buildClass { name = Name.identifier(componentImplName) }
       .apply {
         superTypes += node.sourceComponent.typeWith()
         origin = LatticeOrigin
@@ -384,6 +385,29 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           isPrimary = true,
           origin = LatticeOrigin,
         )
+
+        val componentTypeKey = TypeKey(node.sourceComponent.typeWith())
+
+        // Add fields for this component and other instance params
+        // TODO reevaluate later if this is necessary
+        val instanceFields = mutableMapOf<TypeKey, IrField>()
+        val thisReceiverParameter = thisReceiver!!
+        val thisComponentField =
+          addField(
+              fieldName = componentImplName.decapitalizeUS(),
+              fieldType = thisReceiverParameter.type,
+              fieldVisibility = DescriptorVisibilities.PRIVATE,
+            )
+            .apply {
+              isFinal = true
+              // DoubleCheck.provider(<provider>)
+              initializer =
+                pluginContext.createIrBuilder(symbol).run {
+                  irExprBody(irGet(thisReceiverParameter))
+                }
+            }
+
+        instanceFields[componentTypeKey] = thisComponentField
 
         // Add fields for scoped providers
         val scopedFields = mutableMapOf<TypeKey, IrField>()
@@ -445,7 +469,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                             generateBindingCode(
                               binding,
                               graph,
-                              thisReceiver!!,
+                              thisReceiverParameter,
+                              instanceFields,
                               scopedFields,
                               bindingStack,
                             )
@@ -464,7 +489,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           }
           .forEach { (key, function) ->
             addOverride(function.kotlinFqName, function.name.asString(), key.type).apply {
-              this.dispatchReceiverParameter = thisReceiver!!
+              this.dispatchReceiverParameter = thisReceiverParameter
               this.overriddenSymbols += function.symbol
               val binding = graph.getOrCreateBinding(key, BindingStack.empty())
               bindingStack.push(BindingStackEntry.requestedAt(key, function))
@@ -474,14 +499,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                     if (key in scopedFields) {
                       irInvoke(
                         dispatchReceiver =
-                          irGetField(irGet(thisReceiver!!), scopedFields.getValue(key)),
+                          irGetField(irGet(thisReceiverParameter), scopedFields.getValue(key)),
                         callee = symbols.providerInvoke,
                       )
                     } else {
                       generateBindingCode(
                         binding,
                         graph,
-                        thisReceiver!!,
+                        thisReceiverParameter,
+                        instanceFields,
                         scopedFields,
                         bindingStack,
                       )
@@ -502,14 +528,19 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     binding: Binding,
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
+    instanceFields: Map<TypeKey, IrField>,
     scopedFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
   ): List<IrExpression> {
     return params.mapIndexed { i, param ->
       val typeKey = paramTypeKeys[i]
-      // If it's in scoped fields, invoke that field
+      instanceFields[typeKey]?.let { instanceField ->
+        // If it's in scoped fields, invoke that field
+        return@mapIndexed irGetField(irGet(thisReceiver), instanceField)
+      }
       val providerInstance =
         if (typeKey in scopedFields) {
+          // If it's in scoped fields, invoke that field
           irGetField(irGet(thisReceiver), scopedFields.getValue(typeKey))
         } else {
           val entry =
@@ -528,7 +559,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           bindingStack.push(entry)
           // Generate binding code for each param
           val binding = graph.getOrCreateBinding(typeKey, bindingStack)
-          generateBindingCode(binding, graph, thisReceiver, scopedFields, bindingStack)
+          generateBindingCode(
+            binding,
+            graph,
+            thisReceiver,
+            instanceFields,
+            scopedFields,
+            bindingStack,
+          )
         }
       // TODO share logic from InjectConstructorTransformer
       if (param.isWrappedInLazy) {
@@ -564,6 +602,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     binding: Binding,
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
+    instanceFields: Map<TypeKey, IrField>,
     scopedFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
   ): IrExpression =
@@ -599,6 +638,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             binding,
             graph,
             thisReceiver,
+            instanceFields,
             scopedFields,
             bindingStack,
           )
@@ -610,48 +650,57 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       }
 
       is Binding.Provided -> {
-        // TODO eventually generate factories for these, similar to modules
-        // provider { this.provideFileSystem(...) }
         // TODO what about inherited/overridden providers?
         //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
-        val receiver = thisReceiver
-        val function = binding.providerFunction
-        val params = function.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
+        val reference =
+          binding.providerFunction.correspondingPropertySymbol?.owner?.let {
+            providesTransformer.getOrPutCallableReference(it)
+          } ?: providesTransformer.getOrPutCallableReference(binding.providerFunction)
+        val factoryClass = providesTransformer.getOrGenerateFactoryClass(reference)
+        // Invoke its factory's create() function
+        val creatorClass =
+          if (factoryClass.isObject) {
+            factoryClass
+          } else {
+            factoryClass.companionObject()!!
+          }
+        val createFunction = creatorClass.getSimpleFunction("create")!!
+        // Must use the provider's params for TypeKey as that has qualifier
+        // annotations
+        val paramTypeKeys = buildList {
+          if (!binding.providerFunction.isStatic) {
+            // The receiver param here will be the instance type
+            add(
+              TypeKey.from(
+                this@ComponentTransformer,
+                binding.providerFunction.dispatchReceiverParameter!!,
+              )
+            )
+          }
+          addAll(
+            binding.providerFunction.valueParameters.map {
+              TypeKey.from(this@ComponentTransformer, it)
+            }
+          )
+        }
+        val params =
+          createFunction.owner.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
         val args =
           generateBindingArguments(
             params,
-            params.map { it.typeKey },
-            function,
+            paramTypeKeys,
+            createFunction.owner,
             binding,
             graph,
             thisReceiver,
+            instanceFields,
             scopedFields,
             bindingStack,
           )
-        // This needs to be wrapped in a provider
-        // TODO if it's a property with a field we could use InstanceFactory
         irInvoke(
-          dispatchReceiver = null,
-          callee = symbols.latticeProviderFunction,
-          typeHint = context.irBuiltIns.getKFunctionType(function.returnType, emptyList()),
-          args =
-            listOf(
-              irLambda(
-                pluginContext,
-                thisReceiver.parent, // TODO this is obvi wrong
-                valueParameters = emptyList(),
-                returnType = function.returnType,
-                suspend = false,
-              ) {
-                +irReturn(
-                  irInvoke(
-                    dispatchReceiver = irGet(receiver),
-                    callee = function.symbol,
-                    args = args,
-                  )
-                )
-              }
-            ),
+          dispatchReceiver = irGetObject(creatorClass.symbol),
+          callee = createFunction,
+          args = args,
         )
       }
 

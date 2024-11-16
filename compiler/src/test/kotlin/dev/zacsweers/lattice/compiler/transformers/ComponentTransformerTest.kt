@@ -404,7 +404,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `scoped bindings are scoped correctly`() {
+  fun `scoped bindings from providers are scoped correctly`() {
     // Ensure scoped bindings are properly scoped
     // This means that any calls to them should return the same instance, while any calls
     // to unscoped bindings are called every time.
