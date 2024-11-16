@@ -49,6 +49,8 @@ abstract class LatticeCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = "11"
+      // TODO need to support non-JVM invoke too
+      kotlincArguments += "-Xjvm-default=all"
     }
   }
 

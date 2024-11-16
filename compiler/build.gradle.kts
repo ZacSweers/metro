@@ -21,7 +21,14 @@ plugins {
 }
 
 kotlin {
-  compilerOptions { optIn.add("org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi") }
+  compilerOptions {
+    optIn.addAll(
+      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+    )
+    freeCompilerArgs.addAll(
+      "-Xjvm-default=all"
+    )
+  }
 }
 
 dependencies {
