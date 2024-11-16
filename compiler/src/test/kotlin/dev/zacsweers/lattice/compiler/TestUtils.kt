@@ -16,9 +16,12 @@
 package dev.zacsweers.lattice.compiler
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import com.tschuchort.compiletesting.JvmCompilationResult
+import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.internal.Factory
+import dev.zacsweers.lattice.mapToSet
 import dev.zacsweers.lattice.provider
 import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
@@ -43,6 +46,48 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
   return classLoader.loadClass(name + "_Factory") as Class<Factory<*>>
 }
 
+fun Class<*>.componentFactoryClass(
+  providerMethodName: String? = null,
+  companion: Boolean = false,
+): Class<Factory<*>> {
+  val companionString = if (companion) "_Companion" else ""
+
+  val methodsOrCompanionMethods = if (companion) {
+    fields.single { it.name == "Companion" }.type.methods
+  } else {
+    methods
+  }
+
+  val providesMethods = methodsOrCompanionMethods
+    .filter { it.isAnnotationPresent(Provides::class.java) }
+    .mapToSet { it.name }
+
+  assertWithMessage("No @Provides methods found in $this")
+    .that(providesMethods)
+    .isNotEmpty()
+
+  if (providerMethodName != null) {
+    assertWithMessage(
+      "The name '$providerMethodName' must match a function annotated with @Provides",
+    )
+      .that(providesMethods)
+      .contains(providerMethodName)
+  } else {
+    assertWithMessage(
+      "You must specify a providerMethodName value when there is more than one @Provides function",
+    )
+      .that(providesMethods)
+      .hasSize(1)
+  }
+
+  val methodName = providerMethodName ?: providesMethods.single()
+
+  @Suppress("UNCHECKED_CAST")
+  return classLoader.loadClass(
+    "${generatedClassesString()}${companionString}_${methodName.capitalizeUS()}Factory",
+  ) as Class<Factory<*>>
+}
+
 fun Class<Factory<*>>.invokeNewInstance(vararg args: Any): Any {
   return declaredMethods.single { it.name == "newInstance" }.invoke(null, *args)
 }
@@ -54,6 +99,16 @@ fun <T> Class<Factory<*>>.invokeNewInstanceAs(vararg args: Any): T {
 
 fun Class<Factory<*>>.invokeCreate(vararg args: Any): Factory<*> {
   return declaredMethods.single { it.name == "create" }.invoke(null, *args) as Factory<*>
+}
+
+fun Class<Factory<*>>.invokeProvider(providerName: String, component: Any?, vararg args: Any): Any {
+  val finalArgs = buildList {
+    component?.let {
+      add(it)
+    }
+    addAll(args)
+  }
+  return declaredMethods.single { it.name == providerName }.invoke(null, *finalArgs.toTypedArray())
 }
 
 fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
@@ -71,12 +126,29 @@ fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
 }
 
 /**
+ * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
+ * then calling the component's provider
+ */
+fun Class<Factory<*>>.provideValue(providerName: String, component: Any?, vararg args: Any): Any {
+  return invokeProvider(providerName, component, *args)
+}
+
+/**
  * Exercises the whole generated factory creation flow by first creating with [invokeCreate] and
  * then calling [Factory.invoke] to exercise its `newInstance()`.
  */
 fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
   return createNewInstance(*args) as T
+}
+
+/**
+ * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
+ * then calling the component's provider
+ */
+fun <T> Class<Factory<*>>.provideValueAs(providerName: String, component: Any?, vararg args: Any): T {
+  @Suppress("UNCHECKED_CAST")
+  return provideValue(providerName, component, *args) as T
 }
 
 val JvmCompilationResult.ExampleComponent: Class<*>
@@ -120,4 +192,19 @@ fun Class<*>.createComponentViaFactory(vararg args: Any): Any {
   return factoryInstance.javaClass.declaredMethods
     .single { it.name == "create" }
     .invoke(factoryInstance, *args)
+}
+
+fun Class<*>.generatedClassesString(
+  separator: String = "_",
+): String {
+  return generateSequence(enclosingClass) { it.enclosingClass }
+    .toList()
+    .reversed()
+    .joinToString(separator = "", prefix = packageName(), postfix = simpleName) {
+      "${it.simpleName}$separator"
+    }
+}
+
+fun Class<*>.packageName(): String = `package`.name.let {
+  if (it.isBlank()) "" else "$it."
 }

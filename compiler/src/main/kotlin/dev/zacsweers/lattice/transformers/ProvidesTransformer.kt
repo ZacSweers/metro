@@ -354,6 +354,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
      @JvmStatic // JVM only
      fun newInstance(value: Provider<String>): Example = Example(value)
     */
+    // TODO need to support either calling JvmDefault or DefaultImpls?
     val newInstanceFunction =
       classToGenerateCreatorsIn
         .addFunction(byteCodeFunctionName, targetTypeParameterized, isStatic = true)

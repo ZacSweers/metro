@@ -454,7 +454,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
         debug = true,
       )
 
