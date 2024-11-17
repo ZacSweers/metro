@@ -28,7 +28,7 @@ internal data class ComponentNode(
   val isAnnotatedWithComponent: Boolean,
   val dependencies: List<ComponentDependency>,
   val scope: IrAnnotation?,
-  val providedFunctions: List<IrSimpleFunction>,
+  val providerFunctions: Map<TypeKey, IrSimpleFunction>,
   // Types accessible via this component (includes inherited)
   // TODO this should eventually expand to cover inject(...) calls too once we have member injection
   val exposedTypes: Map<TypeKey, IrSimpleFunction>,
@@ -62,9 +62,8 @@ internal data class ComponentNode(
     superTypes.forEach { superType -> result.putAll(superType.rawType().getAllProviders(context)) }
 
     // Add our providers (overriding inherited ones if needed)
-    providedFunctions.forEach { method ->
-      val key = TypeKey(method.returnType, with(context) { method.qualifierAnnotation() })
-      result[key] = method
+    providerFunctions.forEach { (typeKey, function) ->
+      result[typeKey] = function
     }
 
     return result

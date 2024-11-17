@@ -23,7 +23,7 @@ import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.callComponentAccessor
 import dev.zacsweers.lattice.compiler.callComponentAccessorProperty
 import dev.zacsweers.lattice.compiler.createComponentViaFactory
-import dev.zacsweers.lattice.compiler.generatedLatticeComponent
+import dev.zacsweers.lattice.compiler.generatedLatticeComponentClass
 import java.util.concurrent.Callable
 import org.junit.Test
 
@@ -76,7 +76,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
     val component =
-      result.ExampleComponent.generatedLatticeComponent().createComponentViaFactory("Hello, world!")
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory("Hello, world!")
 
     val exampleClass = component.callComponentAccessor<Callable<String>>("exampleClass")
     assertThat(exampleClass.call()).isEqualTo("Hello, world!")
@@ -421,6 +421,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
+            @Singleton
             @Component
             abstract class ExampleComponent {
             
@@ -457,7 +458,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         debug = true,
       )
 
-    val component = result.ExampleComponent.generatedLatticeComponent()
+    val component = result.ExampleComponent.generatedLatticeComponentClass()
+      .createComponentViaFactory()
 
     // Repeated calls to the scoped instance only every return one value
     assertThat(component.callComponentAccessorProperty<String>("scoped")).isEqualTo("text 0")

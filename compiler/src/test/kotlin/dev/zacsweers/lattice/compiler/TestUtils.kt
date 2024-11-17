@@ -154,7 +154,7 @@ fun <T> Class<Factory<*>>.provideValueAs(providerName: String, component: Any?, 
 val JvmCompilationResult.ExampleComponent: Class<*>
   get() = classLoader.loadClass("test.ExampleComponent")
 
-fun Class<*>.generatedLatticeComponent(): Class<*> {
+fun Class<*>.generatedLatticeComponentClass(): Class<*> {
   return classLoader.loadClass("$packageName.Lattice$simpleName")
 }
 

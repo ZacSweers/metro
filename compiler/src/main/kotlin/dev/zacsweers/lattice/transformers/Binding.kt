@@ -27,6 +27,7 @@ internal sealed interface Binding {
 
   data class ConstructorInjected(
     val type: IrClass,
+    val typeKey: TypeKey,
     override val dependencies: Map<TypeKey, Parameter>,
     override val scope: IrAnnotation? = null,
   ) : Binding {
@@ -35,6 +36,7 @@ internal sealed interface Binding {
 
   data class Provided(
     val providerFunction: IrSimpleFunction,
+    val typeKey: TypeKey,
     override val dependencies: Map<TypeKey, Parameter>,
     override val scope: IrAnnotation? = null,
   ) : Binding {

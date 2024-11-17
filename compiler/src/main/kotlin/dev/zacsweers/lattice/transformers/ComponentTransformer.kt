@@ -148,13 +148,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // TODO not currently reading supertypes yet
     val scope = componentDeclaration.scopeAnnotation()
 
-    val providedMethods =
+    val providerMethods =
       componentDeclaration
         .allCallableMembers()
         // TODO is this enough for properties like @get:Provides
         .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
         // TODO validate
-        .toList()
+        .associateBy { TypeKey.from(this, it) }
 
     val exposedTypes =
       componentDeclaration
@@ -218,7 +218,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         isAnnotatedWithComponent = true,
         dependencies = emptyList(),
         scope = scope,
-        providedFunctions = providedMethods,
+        providerFunctions = providerMethods,
         exposedTypes = exposedTypes,
         isExternal = false,
         creator = creator,
@@ -252,13 +252,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // Add explicit bindings from @Provides methods
     val bindingStack = BindingStack(component.sourceComponent)
-    component.providedFunctions.forEach { function ->
-      val key = TypeKey(function.returnType, function.qualifierAnnotation())
+    component.providerFunctions.forEach { (typeKey, function) ->
       val dependencies =
         function.valueParameters.mapToConstructorParameters(this).associateBy { it.typeKey }
       graph.addBinding(
-        key,
-        Binding.Provided(function, dependencies, function.qualifierAnnotation()),
+        typeKey,
+        Binding.Provided(function, typeKey, dependencies, function.scopeAnnotation()),
         bindingStack,
       )
     }
@@ -430,9 +429,24 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           val binding = graph.getOrCreateBinding(key, bindingStack)
           val bindingScope = binding.scope
 
-          if (bindingScope != null && bindingScope == node.scope) {
-            // Track scoped dependencies before creating fields
-            scopedDependencies[key] = binding.dependencies
+          if (bindingScope != null) {
+            if (node.scope != null && bindingScope == node.scope) {
+              // Track scoped dependencies before creating fields
+              scopedDependencies[key] = binding.dependencies
+            } else {
+              // TODO error if an unscoped component references scoped bindings
+              /*
+              /ExampleComponent.java:5: error: [Dagger/IncompatiblyScopedBindings] com.slack.circuit.star.ExampleComponent (unscoped) may not reference scoped bindings:
+              public abstract interface ExampleComponent {
+                              ^
+                    @Singleton class com.slack.circuit.star.Example1
+                    com.slack.circuit.star.Example1 is requested at
+                        com.slack.circuit.star.ExampleComponent.example1()
+
+                    @Singleton @Provides java.nio.file.spi.FileSystemProvider com.slack.circuit.star.FileSystemComponent.provideFileSystemProvider(java.nio.file.FileSystem)
+
+               */
+            }
           }
         }
 

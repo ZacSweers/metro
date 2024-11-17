@@ -54,6 +54,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         bindingStack.pop()
         Binding.ConstructorInjected(
           type = irClass,
+          typeKey = key,
           dependencies = dependencies,
           scope = with(context) { irClass.scopeAnnotation() },
         )

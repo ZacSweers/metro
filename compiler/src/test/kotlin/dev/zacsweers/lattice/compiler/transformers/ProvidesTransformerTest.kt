@@ -20,7 +20,7 @@ import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.createComponentViaFactory
-import dev.zacsweers.lattice.compiler.generatedLatticeComponent
+import dev.zacsweers.lattice.compiler.generatedLatticeComponentClass
 import dev.zacsweers.lattice.compiler.invokeCreateAs
 import dev.zacsweers.lattice.compiler.provideValueAs
 import dev.zacsweers.lattice.compiler.providesFactoryClass
@@ -56,7 +56,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component = result.ExampleComponent.generatedLatticeComponent().createComponentViaFactory()
+    val component = result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
     // Exercise calling the static provideValue function directly
     val providedValue =
       result.ExampleComponent.providesFactoryClass()
