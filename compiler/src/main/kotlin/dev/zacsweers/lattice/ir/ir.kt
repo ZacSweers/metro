@@ -397,7 +397,7 @@ internal fun IrFactory.addCompanionObject(
 internal val IrClass.isCompanionObject: Boolean
   get() = isObject && isCompanion
 
-internal fun IrBuilderWithScope.irCallWithSameParameters(
+internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
   source: IrSimpleFunction,
   constructor: IrConstructorSymbol,
 ): IrConstructorCall {
@@ -522,10 +522,10 @@ internal fun IrClass.buildFactoryCreateFunction(
     body =
       context.pluginContext.createIrBuilder(symbol).run {
         irExprBody(
-          if (isObject) {
+          if (factoryClass.isObject) {
             irGetObject(factoryClass.symbol)
           } else {
-            irCallWithSameParameters(thisFunction, factoryConstructor)
+            irCallConstructorWithSameParameters(thisFunction, factoryConstructor)
           }
         )
       }
