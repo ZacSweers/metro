@@ -25,6 +25,13 @@ import dev.zacsweers.lattice.mapToSet
 import dev.zacsweers.lattice.provider
 import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
+import kotlin.reflect.KCallable
+import kotlin.reflect.KProperty
+import kotlin.reflect.full.companionObject
+import kotlin.reflect.full.functions
+import kotlin.reflect.full.hasAnnotation
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.javaMethod
 
 fun JvmCompilationResult.assertCallableFactory(value: String) {
   val factory = ExampleClass.generatedFactoryClass()
@@ -47,44 +54,54 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
 }
 
 fun Class<*>.providesFactoryClass(
-  providerMethodName: String? = null,
+  providerCallableName: String? = null,
   companion: Boolean = false,
 ): Class<Factory<*>> {
   val companionString = if (companion) "_Companion" else ""
 
-  val methodsOrCompanionMethods = if (companion) {
-    fields.single { it.name == "Companion" }.type.methods
-  } else {
-    methods
-  }
+  val callables: List<KCallable<*>> =
+    if (companion) {
+      kotlin.companionObject!!.let { companionObject ->
+        companionObject.memberProperties.toList() + companionObject.functions.toList()
+      }
+    } else {
+      kotlin.memberProperties.toList() + kotlin.functions.toList()
+    }
 
-  val providesMethods = methodsOrCompanionMethods
-    .filter { it.isAnnotationPresent(Provides::class.java) }
-    .mapToSet { it.name }
+  val providesCallables =
+    callables
+      .filter {
+        // Exclude synthetic annotation holder methods
+        it.hasAnnotation<Provides>()
+      }
+      .mapToSet {
+        when (it) {
+          is KProperty<*> -> it.getter.javaMethod!!.name
+          else -> it.name
+        }
+      }
 
-  assertWithMessage("No @Provides methods found in $this")
-    .that(providesMethods)
-    .isNotEmpty()
+  assertWithMessage("No @Provides methods found in $this").that(providesCallables).isNotEmpty()
 
-  if (providerMethodName != null) {
+  if (providerCallableName != null) {
     assertWithMessage(
-      "The name '$providerMethodName' must match a function annotated with @Provides",
-    )
-      .that(providesMethods)
-      .contains(providerMethodName)
+        "The name '$providerCallableName' must match a callable annotated with @Provides"
+      )
+      .that(providesCallables)
+      .contains(providerCallableName)
   } else {
     assertWithMessage(
-      "You must specify a providerMethodName value when there is more than one @Provides function",
-    )
-      .that(providesMethods)
+        "You must specify a providerCallableName value when there is more than one @Provides callable"
+      )
+      .that(providesCallables)
       .hasSize(1)
   }
 
-  val methodName = providerMethodName ?: providesMethods.single()
+  val methodName = providerCallableName ?: providesCallables.single()
 
   @Suppress("UNCHECKED_CAST")
   return classLoader.loadClass(
-    "${generatedClassesString()}${companionString}_${methodName.capitalizeUS()}Factory",
+    "${generatedClassesString()}${companionString}_${methodName.capitalizeUS()}Factory"
   ) as Class<Factory<*>>
 }
 
@@ -103,9 +120,7 @@ fun Class<Factory<*>>.invokeCreate(vararg args: Any): Factory<*> {
 
 fun Class<Factory<*>>.invokeProvider(providerName: String, component: Any?, vararg args: Any): Any {
   val finalArgs = buildList {
-    component?.let {
-      add(it)
-    }
+    component?.let { add(it) }
     addAll(args)
   }
   return declaredMethods.single { it.name == providerName }.invoke(null, *finalArgs.toTypedArray())
@@ -146,7 +161,11 @@ fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
  * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
  * then calling the component's provider
  */
-fun <T> Class<Factory<*>>.provideValueAs(providerName: String, component: Any?, vararg args: Any): T {
+fun <T> Class<Factory<*>>.provideValueAs(
+  providerName: String,
+  component: Any?,
+  vararg args: Any,
+): T {
   @Suppress("UNCHECKED_CAST")
   return provideValue(providerName, component, *args) as T
 }
@@ -194,9 +213,7 @@ fun Class<*>.createComponentViaFactory(vararg args: Any): Any {
     .invoke(factoryInstance, *args)
 }
 
-fun Class<*>.generatedClassesString(
-  separator: String = "_",
-): String {
+fun Class<*>.generatedClassesString(separator: String = "_"): String {
   return generateSequence(enclosingClass) { it.enclosingClass }
     .toList()
     .reversed()
@@ -205,6 +222,4 @@ fun Class<*>.generatedClassesString(
     }
 }
 
-fun Class<*>.packageName(): String = `package`.name.let {
-  if (it.isBlank()) "" else "$it."
-}
+fun Class<*>.packageName(): String = `package`.name.let { if (it.isBlank()) "" else "$it." }

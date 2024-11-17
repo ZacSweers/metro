@@ -56,11 +56,53 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component = result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
     // Exercise calling the static provideValue function directly
     val providedValue =
       result.ExampleComponent.providesFactoryClass()
         .provideValueAs<String>("provideValue", component)
+    assertThat(providedValue).isEqualTo("Hello, world!")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory =
+      result.ExampleComponent.providesFactoryClass().invokeCreateAs<Factory<String>>(component)
+    assertThat(providesFactory()).isEqualTo("Hello, world!")
+  }
+
+  @Test
+  fun `simple property provider`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+
+            @Component
+            interface ExampleComponent {
+              @Provides
+              val value: String get() = "Hello, world!"
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        debug = true,
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    // Exercise calling the static provideValue function directly
+    val providedValue =
+      result.ExampleComponent.providesFactoryClass().provideValueAs<String>("getValue", component)
     assertThat(providedValue).isEqualTo("Hello, world!")
 
     // Exercise calling the create + invoke() functions
