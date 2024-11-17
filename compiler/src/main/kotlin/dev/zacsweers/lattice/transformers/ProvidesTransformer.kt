@@ -192,7 +192,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             isAssisted = false,
             assistedIdentifier = Name.identifier(""),
             symbols = symbols,
-            isComponentInstance = true
+            isComponentInstance = true,
           )
         )
       }
@@ -216,7 +216,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     factoryCls
       .addOverride(
         baseFqName = symbols.providerInvoke.owner.kotlinFqName,
-        name = symbols.providerInvoke.owner.name.asString(),
+        simpleName = symbols.providerInvoke.owner.name,
         returnType = returnType,
       )
       .apply {
@@ -462,11 +462,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       get() = !isProperty && isInternal && !isPublishedApi
 
     @UnsafeDuringIrConstructionAPI
-    val componentParent = if (parent.owner.isCompanionObject) {
-      parent.owner.parentAsClass
-    } else {
-      parent.owner
-    }
+    val componentParent =
+      if (parent.owner.isCompanionObject) {
+        parent.owner.parentAsClass
+      } else {
+        parent.owner
+      }
 
     override fun toString(): String = cachedToString
 

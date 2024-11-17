@@ -79,6 +79,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -221,7 +222,7 @@ internal fun IrClass.addOverride(
 ): IrSimpleFunction =
   addOverride(
       baseFunction.kotlinFqName,
-      baseFunction.name.asString(),
+      baseFunction.name,
       baseFunction.returnType,
       modality,
     )
@@ -233,27 +234,34 @@ internal fun IrClass.addOverride(
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.addOverride(
   baseFqName: FqName,
-  name: String,
+  simpleName: Name,
   returnType: IrType,
   modality: Modality = Modality.FINAL,
 ): IrSimpleFunction =
-  addFunction(name, returnType, modality).apply {
-    overriddenSymbols =
-      superTypes
-        .mapNotNull { superType ->
-          superType.classOrNull?.owner?.takeIf { superClass ->
-            superClass.isSubclassOfFqName(baseFqName.asString())
-          }
-        }
-        .flatMap { superClass ->
-          superClass.functions
-            .filter { function ->
-              function.name.asString() == name && function.overridesFunctionIn(baseFqName)
-            }
-            .map { it.symbol }
-            .toList()
-        }
+  addFunction(simpleName.asString(), returnType, modality).apply {
+    overriddenSymbols = findOverridesOf(simpleName, baseFqName)
   }
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrClass.findOverridesOf(
+  simpleName: Name,
+  baseFqName: FqName,
+): List<IrSimpleFunctionSymbol> {
+  return superTypes
+    .mapNotNull { superType ->
+      superType.classOrNull?.owner?.takeIf { superClass ->
+        superClass.isSubclassOfFqName(baseFqName)
+      }
+    }
+    .flatMap { superClass ->
+      superClass.functions
+        .filter { function ->
+          function.name == simpleName && function.overridesFunctionIn(baseFqName)
+        }
+        .map { it.symbol }
+        .toList()
+    }
+}
 
 internal fun IrStatementsBuilder<*>.irTemporary(
   value: IrExpression? = null,
@@ -284,8 +292,8 @@ internal fun IrMutableAnnotationContainer.addAnnotation(
   annotations += IrConstructorCallImpl.fromSymbolOwner(type, constructorSymbol).apply(body)
 }
 
-internal fun IrClass.isSubclassOfFqName(fqName: String): Boolean =
-  fqNameWhenAvailable?.asString() == fqName ||
+internal fun IrClass.isSubclassOfFqName(fqName: FqName): Boolean =
+  fqNameWhenAvailable == fqName ||
     superTypes.any { it.erasedUpperBound.isSubclassOfFqName(fqName) }
 
 internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =

@@ -169,7 +169,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     factoryCls
       .addOverride(
         baseFqName = symbols.providerInvoke.owner.kotlinFqName,
-        name = symbols.providerInvoke.owner.name.asString(),
+        simpleName = symbols.providerInvoke.owner.name,
         returnType = targetTypeParameterized,
       )
       .apply {

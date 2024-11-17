@@ -33,6 +33,8 @@ import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addGetter
+import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -303,9 +305,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       .buildClass {
         name = Name.identifier("Lattice${node.sourceComponent.name.asString()}")
         kind = ClassKind.OBJECT
+        origin = LatticeOrigin
       }
       .apply {
-        this.origin = LatticeOrigin
         createImplicitParameterDeclarationWithWrappedDescriptor()
         addSimpleDelegatingConstructor(
           symbols.anyConstructor,
@@ -409,6 +411,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         instanceFields[componentTypeKey] = thisComponentField
 
+        // TODO add fields for all unscoped providers used more than once in bindings
+
         // Add fields for scoped providers
         val scopedFields = mutableMapOf<TypeKey, IrField>()
         val scopedDependencies = mutableMapOf<TypeKey, Map<TypeKey, Parameter>>()
@@ -488,20 +492,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             function.name.asString()
           }
           .forEach { (key, function) ->
-            addOverride(function.kotlinFqName, function.name.asString(), key.type).apply {
+            val property =
+              function.correspondingPropertySymbol?.owner?.let { property ->
+                addProperty { name = property.name }
+              }
+            val getter =
+              property?.addGetter { returnType = function.returnType }
+                ?: addOverride(function.kotlinFqName, function.name, key.type)
+            getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
               this.overriddenSymbols += function.symbol
               val binding = graph.getOrCreateBinding(key, BindingStack.empty())
               bindingStack.push(BindingStackEntry.requestedAt(key, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  irExprBody(
+                  val receiver =
                     if (key in scopedFields) {
-                      irInvoke(
-                        dispatchReceiver =
-                          irGetField(irGet(thisReceiverParameter), scopedFields.getValue(key)),
-                        callee = symbols.providerInvoke,
-                      )
+                      irGetField(irGet(thisReceiverParameter), scopedFields.getValue(key))
                     } else {
                       generateBindingCode(
                         binding,
@@ -512,10 +519,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                         bindingStack,
                       )
                     }
-                  )
+                  irExprBody(irInvoke(dispatchReceiver = receiver, callee = symbols.providerInvoke))
                 }
-              bindingStack.pop()
             }
+            bindingStack.pop()
           }
       }
   }
