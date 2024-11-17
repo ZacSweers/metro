@@ -16,14 +16,15 @@
 package dev.zacsweers.lattice.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
-import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
-import dev.zacsweers.lattice.compiler.componentFactoryClass
 import dev.zacsweers.lattice.compiler.createComponentViaFactory
 import dev.zacsweers.lattice.compiler.generatedLatticeComponent
+import dev.zacsweers.lattice.compiler.invokeCreateAs
 import dev.zacsweers.lattice.compiler.provideValueAs
+import dev.zacsweers.lattice.compiler.providesFactoryClass
+import dev.zacsweers.lattice.internal.Factory
 import org.junit.Test
 
 class ProvidesTransformerTest : LatticeCompilerTest() {
@@ -52,17 +53,19 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent(),
-        ),
-        debug = true,
+        )
       )
 
-    assertThat(result.exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
     val component = result.ExampleComponent.generatedLatticeComponent().createComponentViaFactory()
+    // Exercise calling the static provideValue function directly
     val providedValue =
-      result.ExampleComponent.componentFactoryClass()
+      result.ExampleComponent.providesFactoryClass()
         .provideValueAs<String>("provideValue", component)
     assertThat(providedValue).isEqualTo("Hello, world!")
 
-    // TODO test newInstance call + invoke
+    // Exercise calling the create + invoke() functions
+    val providesFactory =
+      result.ExampleComponent.providesFactoryClass().invokeCreateAs<Factory<String>>(component)
+    assertThat(providesFactory()).isEqualTo("Hello, world!")
   }
 }

@@ -46,7 +46,7 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
   return classLoader.loadClass(name + "_Factory") as Class<Factory<*>>
 }
 
-fun Class<*>.componentFactoryClass(
+fun Class<*>.providesFactoryClass(
   providerMethodName: String? = null,
   companion: Boolean = false,
 ): Class<Factory<*>> {
