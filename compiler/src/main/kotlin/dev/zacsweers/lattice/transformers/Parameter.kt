@@ -180,6 +180,6 @@ internal fun IrValueParameter.toConstructorParameter(
     isAssisted = assistedAnnotation != null,
     assistedIdentifier = assistedIdentifier,
     symbols = context.symbols,
-    isComponentInstance = false
+    isComponentInstance = false,
   )
 }

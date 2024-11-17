@@ -220,12 +220,7 @@ internal fun IrClass.addOverride(
   baseFunction: IrSimpleFunction,
   modality: Modality = Modality.FINAL,
 ): IrSimpleFunction =
-  addOverride(
-      baseFunction.kotlinFqName,
-      baseFunction.name,
-      baseFunction.returnType,
-      modality,
-    )
+  addOverride(baseFunction.kotlinFqName, baseFunction.name, baseFunction.returnType, modality)
     .apply {
       dispatchReceiverParameter = this@addOverride.thisReceiver?.copyTo(this)
       copyValueParametersFrom(baseFunction)
@@ -293,8 +288,7 @@ internal fun IrMutableAnnotationContainer.addAnnotation(
 }
 
 internal fun IrClass.isSubclassOfFqName(fqName: FqName): Boolean =
-  fqNameWhenAvailable == fqName ||
-    superTypes.any { it.erasedUpperBound.isSubclassOfFqName(fqName) }
+  fqNameWhenAvailable == fqName || superTypes.any { it.erasedUpperBound.isSubclassOfFqName(fqName) }
 
 internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =
   parentClassOrNull?.fqNameWhenAvailable == fqName ||

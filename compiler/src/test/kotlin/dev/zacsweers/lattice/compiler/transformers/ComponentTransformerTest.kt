@@ -76,7 +76,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory("Hello, world!")
+      result.ExampleComponent.generatedLatticeComponentClass()
+        .createComponentViaFactory("Hello, world!")
 
     val exampleClass = component.callComponentAccessor<Callable<String>>("exampleClass")
     assertThat(exampleClass.call()).isEqualTo("Hello, world!")
@@ -424,23 +425,23 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             @Singleton
             @Component
             abstract class ExampleComponent {
-            
+
               private var scopedCounter = 0
               private var unscopedCounter = 0
 
-              @Named("scoped") 
+              @Named("scoped")
               abstract val scoped: String
 
-              @Named("unscoped") 
+              @Named("unscoped")
               abstract val unscoped: String
 
               @Singleton
               @Provides
-              @Named("scoped") 
+              @Named("scoped")
               fun provideScoped(): String = "text " + scopedCounter++
 
               @Provides
-              @Named("unscoped") 
+              @Named("unscoped")
               fun provideUnscoped(): String = "text " + unscopedCounter++
 
               @Component.Factory
@@ -458,8 +459,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         debug = true,
       )
 
-    val component = result.ExampleComponent.generatedLatticeComponentClass()
-      .createComponentViaFactory()
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
 
     // Repeated calls to the scoped instance only every return one value
     assertThat(component.callComponentAccessorProperty<String>("scoped")).isEqualTo("text 0")

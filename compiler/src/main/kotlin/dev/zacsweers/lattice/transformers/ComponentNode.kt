@@ -62,9 +62,7 @@ internal data class ComponentNode(
     superTypes.forEach { superType -> result.putAll(superType.rawType().getAllProviders(context)) }
 
     // Add our providers (overriding inherited ones if needed)
-    providerFunctions.forEach { (typeKey, function) ->
-      result[typeKey] = function
-    }
+    providerFunctions.forEach { (typeKey, function) -> result[typeKey] = function }
 
     return result
   }
