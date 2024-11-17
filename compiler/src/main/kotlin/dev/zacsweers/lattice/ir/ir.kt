@@ -519,7 +519,7 @@ internal fun IrClass.buildFactoryCreateFunction(
     for (parameter in parameters) {
       addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
     }
-    dispatchReceiverParameter = thisReceiver
+    dispatchReceiverParameter = this@buildFactoryCreateFunction.thisReceiver?.copyTo(this)
     body =
       context.pluginContext.createIrBuilder(symbol).run {
         irExprBody(
