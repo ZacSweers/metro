@@ -32,9 +32,8 @@ internal inline fun <reified T : Any> Any.expectAs(): T {
 }
 
 internal fun Name.capitalizeUS(): Name {
-  val newName = asString().replaceFirstChar {
-    if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
-  }
+  val newName =
+    asString().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }
   return if (isSpecial) {
     Name.special(newName)
   } else {
