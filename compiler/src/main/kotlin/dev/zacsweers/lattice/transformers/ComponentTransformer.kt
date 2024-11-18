@@ -673,11 +673,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       is Binding.Provided -> {
         // TODO what about inherited/overridden providers?
         //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
-        val reference =
-          binding.providerFunction.correspondingPropertySymbol?.owner?.let {
-            providesTransformer.getOrPutCallableReference(it)
-          } ?: providesTransformer.getOrPutCallableReference(binding.providerFunction)
-        val factoryClass = providesTransformer.getOrGenerateFactoryClass(reference)
+        val factoryClass = providesTransformer.getOrGenerateFactoryClass(binding)
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {

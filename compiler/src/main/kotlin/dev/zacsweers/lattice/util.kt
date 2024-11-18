@@ -18,6 +18,7 @@ package dev.zacsweers.lattice
 import java.util.Locale
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
+import org.jetbrains.kotlin.name.Name
 
 internal const val LOG_PREFIX = "[LATTICE]"
 
@@ -28,6 +29,17 @@ internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
   check(this is T) { "Expected $this to be of type ${T::class.qualifiedName}" }
   return this
+}
+
+internal fun Name.capitalizeUS(): Name {
+  val newName = asString().replaceFirstChar {
+    if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
+  }
+  return if (isSpecial) {
+    Name.special(newName)
+  } else {
+    Name.identifier(newName)
+  }
 }
 
 internal fun String.capitalizeUS() = replaceFirstChar {

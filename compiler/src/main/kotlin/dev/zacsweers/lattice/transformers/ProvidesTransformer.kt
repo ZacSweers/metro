@@ -29,6 +29,8 @@ import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isCompanionObject
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.joinSimpleNames
+import dev.zacsweers.lattice.unsafeLazy
+import org.jetbrains.kotlin.backend.common.serialization.kind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -40,6 +42,7 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin.Companion.IR_EXTERNAL_DECLARATION_STUB
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -58,6 +61,7 @@ import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappe
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -110,6 +114,28 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     visitComponentClass(declaration)
   }
 
+  // TODO what about inherited/overridden providers?
+  //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
+  fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass {
+    val reference =
+      binding.providerFunction.correspondingPropertySymbol?.owner?.let {
+        getOrPutCallableReference(it)
+      } ?: getOrPutCallableReference(binding.providerFunction)
+    if (binding.providerFunction.origin == IR_EXTERNAL_DECLARATION_STUB) {
+      // Look up the external class
+      // TODO do we generate it here + warn like dagger does?
+      val generatedClass =
+        pluginContext.referenceClass(reference.generatedClassId)
+          ?: error(
+            "Could not find generated factory for ${reference.fqName} in upstream module where it's defined. Run the Lattice compiler over that module too."
+          )
+      generatedFactories[reference.fqName] = generatedClass.owner
+      generatedClass.owner
+    }
+    return getOrGenerateFactoryClass(reference)
+  }
+
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateFactoryClass(reference: CallableReference): IrClass {
     // TODO if declaration is external to this compilation, look
@@ -123,52 +149,22 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho
 
-    val isCompanionObject = reference.componentParent.isCompanionObject
-    val isInObject = isCompanionObject || reference.isInObject
-
-    val isProperty = reference.isProperty
-    val declarationName = reference.name
-    // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
-    // but not for names which just start with those letters, like `issues`.
-    // TODO still necessary in IR?
-    val useGetPrefix = isProperty && !isWordPrefixRegex.matches(declarationName.asString())
-
-    val packageName = reference.componentParent.packageFqName!!
-    val className = buildString {
-      append(
-        reference.componentParent.classIdOrFail
-          .joinSimpleNames()
-          .relativeClassName
-          .pathSegments()
-          .joinToString("_")
-      )
-      append('_')
-      if (isCompanionObject) {
-        append("Companion_")
-      }
-      if (useGetPrefix) {
-        append("Get")
-      }
-      append(declarationName.asString().capitalizeUS())
-      append("Factory")
-    }
-
     val parameters = reference.constructorParameters
 
     val returnType = reference.typeKey.type
 
-    val generatedClassName = ClassId(packageName, Name.identifier(className))
+    val generatedClassId = reference.generatedClassId
     val byteCodeFunctionName =
       when {
-        useGetPrefix -> "get" + declarationName.asString().capitalizeUS()
-        else -> declarationName.asString()
+        reference.useGetPrefix -> "get" + reference.name.capitalizeUS()
+        else -> reference.name.asString()
       }
 
-    val canGenerateAnObject = isInObject && parameters.isEmpty()
+    val canGenerateAnObject = reference.isInObject && parameters.isEmpty()
     val factoryCls =
       pluginContext.irFactory
         .buildClass {
-          name = generatedClassName.relativeClassName.shortName()
+          name = generatedClassId.relativeClassName.shortName()
           kind = if (canGenerateAnObject) ClassKind.OBJECT else ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
         }
@@ -191,7 +187,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val componentType = reference.componentParent.typeWith()
 
     val allParameters = buildList {
-      if (!isInObject) {
+      if (!reference.isInObject) {
         add(
           ConstructorParameter(
             name = Name.identifier("component"),
@@ -271,8 +267,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       CallableReference(
         fqName = function.kotlinFqName,
         isInternal = function.visibility == Visibilities.Internal,
-        isCompanionObject = parent.isCompanionObject,
-        isInObject = parent.kind == ClassKind.OBJECT,
         name = function.name,
         isProperty = false,
         constructorParameters =
@@ -308,8 +302,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       return CallableReference(
         fqName = fqName,
         isInternal = property.visibility == Visibilities.Internal,
-        isCompanionObject = parent.isCompanionObject,
-        isInObject = parent.kind == ClassKind.OBJECT,
         name = property.name,
         isProperty = true,
         constructorParameters = emptyList(),
@@ -443,8 +435,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   internal class CallableReference(
     val fqName: FqName,
     val isInternal: Boolean,
-    val isCompanionObject: Boolean,
-    val isInObject: Boolean,
     val name: Name,
     val isProperty: Boolean,
     val constructorParameters: List<ConstructorParameter>,
@@ -455,6 +445,51 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val parent: IrClassSymbol,
     val callee: IrFunctionSymbol,
   ) {
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    val isInCompanionObject: Boolean
+      get() = parent.owner.kind == ClassKind.OBJECT
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    val isInObject: Boolean
+      get() = isInCompanionObject || parent.owner.isCompanionObject
+
+    @UnsafeDuringIrConstructionAPI
+    val componentParent =
+      if (parent.owner.isCompanionObject) {
+        parent.owner.parentAsClass
+      } else {
+        parent.owner
+      }
+
+    // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
+    // but not for names which just start with those letters, like `issues`.
+    // TODO still necessary in IR?
+    val useGetPrefix by unsafeLazy { isProperty && !isWordPrefixRegex.matches(name.asString()) }
+
+    @OptIn(UnsafeDuringIrConstructionAPI::class) val packageName = componentParent.packageFqName!!
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    val simpleName by lazy {
+      buildString {
+        append(
+          componentParent.classIdOrFail
+            .joinSimpleNames()
+            .relativeClassName
+            .pathSegments()
+            .joinToString("_")
+        )
+        append('_')
+        if (isInCompanionObject) {
+          append("Companion_")
+        }
+        if (useGetPrefix) {
+          append("Get")
+        }
+        append(name.capitalizeUS())
+        append("Factory")
+      }
+    }
+    val generatedClassId by lazy { ClassId(packageName, Name.identifier(simpleName)) }
+
     private val cachedToString by lazy {
       buildString {
         append(fqName.asString())
@@ -471,18 +506,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         append(typeKey.toString())
       }
     }
-
-    // TODO remove this support
-    val isMangled: Boolean
-      get() = !isProperty && isInternal && !isPublishedApi
-
-    @UnsafeDuringIrConstructionAPI
-    val componentParent =
-      if (parent.owner.isCompanionObject) {
-        parent.owner.parentAsClass
-      } else {
-        parent.owner
-      }
 
     override fun toString(): String = cachedToString
 
