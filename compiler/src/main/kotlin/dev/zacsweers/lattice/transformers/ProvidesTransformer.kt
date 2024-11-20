@@ -68,6 +68,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames
 
 internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
 
@@ -201,7 +202,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             isWrappedInLazy = false,
             isLazyWrappedInProvider = false,
             isAssisted = false,
-            assistedIdentifier = Name.identifier(""),
+            assistedIdentifier = SpecialNames.NO_NAME_PROVIDED,
             symbols = symbols,
             isComponentInstance = true,
           )
