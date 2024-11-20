@@ -277,4 +277,103 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 }, provider { true })
     assertThat(providesFactory()).isEqualTo("Hello, 2! true")
   }
+
+  @Test
+  fun `simple function provider with multiple arguments of the same type key`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Named
+
+            @Component
+            interface ExampleComponent {
+              @Provides
+              fun provideIntValue(): Int = 1
+
+              @Provides
+              fun provideStringValue(
+                intValue: Int,
+                intValue2: Int
+              ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
+
+    // Exercise calling the static provideValue function directly
+    // This is a tricky bit. This isn't how it would _actually_ work
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, 3)
+    assertThat(providedValue).isEqualTo("Hello, 2 - 3!")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 }, provider { 3 })
+    assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
+  }
+
+  @Test
+  fun `simple function provider with multiple arguments of the same type with different qualifiers`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Named
+
+            @Component
+            interface ExampleComponent {
+              @Provides
+              fun provideIntValue(): Int = 1
+              
+              @Named("int2")
+              @Provides
+              fun provideIntValue2(): Int = 1
+
+              @Provides
+              fun provideStringValue(
+                intValue: Int,
+                @Named("int2") intValue2: Int
+              ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
+
+    // Exercise calling the static provideValue function directly
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, 3)
+    assertThat(providedValue).isEqualTo("Hello, 2 - 3!")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 }, provider { 3 })
+    assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
+  }
 }
