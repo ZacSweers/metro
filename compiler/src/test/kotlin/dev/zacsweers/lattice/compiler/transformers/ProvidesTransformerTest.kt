@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.compiler.invokeCreateAs
 import dev.zacsweers.lattice.compiler.provideValueAs
 import dev.zacsweers.lattice.compiler.providesFactoryClass
 import dev.zacsweers.lattice.internal.Factory
+import dev.zacsweers.lattice.provider
 import org.junit.Test
 
 class ProvidesTransformerTest : LatticeCompilerTest() {
@@ -186,5 +187,94 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     // Exercise calling the create + invoke() functions
     val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>()
     assertThat(providesFactory()).isEqualTo("Hello, world!")
+  }
+
+  @Test
+  fun `simple function provider with arguments`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+
+            @Component
+            interface ExampleComponent {
+              @Provides
+              fun provideIntValue(): Int = 1
+
+              @Provides
+              fun provideStringValue(intValue: Int): String = "Hello, ${'$'}intValue!"
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
+
+    // Exercise calling the static provideValue function directly
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2)
+    assertThat(providedValue).isEqualTo("Hello, 2!")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 })
+    assertThat(providesFactory()).isEqualTo("Hello, 2!")
+  }
+
+  @Test
+  fun `simple function provider with multiple arguments`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+
+            @Component
+            interface ExampleComponent {
+              @Provides
+              fun provideBooleanValue(): Boolean = false
+              
+              @Provides
+              fun provideIntValue(): Int = 1
+
+              @Provides
+              fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, ${'$'}intValue! ${'$'}booleanValue"
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
+
+    // Exercise calling the static provideValue function directly
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, true)
+    assertThat(providedValue).isEqualTo("Hello, 2! true")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 }, provider { true })
+    assertThat(providesFactory()).isEqualTo("Hello, 2! true")
   }
 }
