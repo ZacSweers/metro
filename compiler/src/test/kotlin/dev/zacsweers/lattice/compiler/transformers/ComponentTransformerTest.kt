@@ -455,8 +455,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent(),
-        ),
-        debug = true,
+        )
       )
 
     val component =
@@ -469,6 +468,49 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     // Repeated calls to the unscoped instance recompute each time
     assertThat(component.callComponentAccessorProperty<String>("unscoped")).isEqualTo("text 0")
     assertThat(component.callComponentAccessorProperty<String>("unscoped")).isEqualTo("text 1")
+  }
+
+  @Test
+  fun `providers from supertypes are wired correctly`() {
+    // Ensure providers from supertypes are correctly wired. This means both incorporating them in
+    // binding resolution and being able to invoke them correctly in the resulting component.
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.annotations.Singleton
+
+            @Component
+            interface ExampleComponent : TextProvider {
+
+              val value: String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+            interface TextProvider {
+              @Provides
+              fun provideValue(): String = "Hello, world!"
+            }
+
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
   // TODO

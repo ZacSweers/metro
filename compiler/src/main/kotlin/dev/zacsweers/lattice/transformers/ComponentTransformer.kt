@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
 import dev.zacsweers.lattice.ir.createIrBuilder
+import dev.zacsweers.lattice.ir.getAllSuperTypes
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
@@ -409,6 +410,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             }
 
         instanceFields[componentTypeKey] = thisComponentField
+        // Add convenience mappings for all supertypes to this field so
+        // instance providers from inherited types use this instance
+        for (superType in node.sourceComponent.getAllSuperTypes(pluginContext)) {
+          instanceFields[TypeKey(superType)] = thisComponentField
+        }
 
         // TODO add fields for all unscoped providers used more than once in bindings
 
@@ -556,7 +562,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return params.mapIndexed { i, param ->
       val typeKey = paramTypeKeys[i]
       instanceFields[typeKey]?.let { instanceField ->
-        // If it's in scoped fields, invoke that field
+        // If it's in instance field, invoke that field
         return@mapIndexed irGetField(irGet(thisReceiver), instanceField)
       }
       val providerInstance =
