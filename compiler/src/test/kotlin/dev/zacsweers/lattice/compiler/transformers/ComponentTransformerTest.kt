@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.compiler.callComponentAccessorProperty
 import dev.zacsweers.lattice.compiler.createComponentViaFactory
 import dev.zacsweers.lattice.compiler.generatedLatticeComponentClass
 import java.util.concurrent.Callable
+import org.junit.Ignore
 import org.junit.Test
 
 class ComponentTransformerTest : LatticeCompilerTest() {
@@ -501,6 +502,51 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             interface TextProvider {
               @Provides
               fun provideValue(): String = "Hello, world!"
+            }
+
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
+  }
+
+  @Test
+  fun `providers from supertype companion objects are visible`() {
+    // Ensure providers from supertypes are correctly wired. This means both incorporating them in
+    // binding resolution and being able to invoke them correctly in the resulting component.
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.annotations.Singleton
+
+            @Component
+            interface ExampleComponent : TextProvider {
+
+              val value: String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+            interface TextProvider {
+              companion object {
+                @Provides
+                fun provideValue(): String = "Hello, world!"
+              }
             }
 
           """
