@@ -51,6 +51,7 @@ import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
@@ -151,7 +152,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     val providerMethods =
       componentDeclaration
-        .allCallableMembers()
+        .getAllSuperTypes(pluginContext, excludeSelf = false)
+        .flatMap { it.classOrFail.owner.allCallableMembers() }
         // TODO is this enough for properties like @get:Provides
         .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
         // TODO validate
@@ -161,6 +163,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       componentDeclaration
         .allCallableMembers()
         .filter { function ->
+          // Abstract check is important. We leave alone any non-providers or overridden providers
           function.modality == Modality.ABSTRACT &&
             function.valueParameters.isEmpty() &&
             function.body == null &&
