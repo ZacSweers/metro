@@ -140,6 +140,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)
+    // These should be objects since they require no parameters
+    // TODO these appear to need metadata annotations written correctly to work
+//    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue")
     assertThat(providedValue).isEqualTo("Hello, world!")
@@ -180,6 +183,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)
+    // These should be objects since they require no parameters
+    // TODO these appear to need metadata annotations written correctly to work
+//    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("getValue")
     assertThat(providedValue).isEqualTo("Hello, world!")
@@ -317,7 +323,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
-    // This is a tricky bit. This isn't how it would _actually_ work
     val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, 3)
     assertThat(providedValue).isEqualTo("Hello, 2 - 3!")
 
