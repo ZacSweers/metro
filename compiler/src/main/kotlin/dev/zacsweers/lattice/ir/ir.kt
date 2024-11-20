@@ -87,6 +87,7 @@ import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -557,3 +558,23 @@ internal fun IrBuilderWithScope.checkNotNullCall(
         },
       ),
   )
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrClass.getAllSuperTypes(
+  pluginContext: IrPluginContext,
+  excludeSelf: Boolean = true,
+  excludeAny: Boolean = true,
+): List<IrType> {
+  val self = this
+  fun allSuperInterfacesImpl(currentClass: IrClass, result: MutableList<IrType>) {
+    for (superType in currentClass.superTypes) {
+      if (excludeAny && superType == pluginContext.irBuiltIns.anyType) continue
+      val clazz = superType.classifierOrFail.owner as IrClass
+      if (excludeSelf && clazz == self) continue
+      result.add(superType)
+      allSuperInterfacesImpl(clazz, result)
+    }
+  }
+
+  return mutableListOf<IrType>().also { allSuperInterfacesImpl(this, it) }
+}
