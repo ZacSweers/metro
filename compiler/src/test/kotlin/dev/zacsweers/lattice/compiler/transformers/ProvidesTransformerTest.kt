@@ -142,7 +142,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)
     // These should be objects since they require no parameters
     // TODO these appear to need metadata annotations written correctly to work
-//    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
+    //    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue")
     assertThat(providedValue).isEqualTo("Hello, world!")
@@ -185,7 +185,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)
     // These should be objects since they require no parameters
     // TODO these appear to need metadata annotations written correctly to work
-//    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
+    //    assertThat(providesFactoryClass.kotlin.objectInstance).isNotNull()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("getValue")
     assertThat(providedValue).isEqualTo("Hello, world!")
@@ -230,11 +230,13 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
-    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2)
+    val providedValue =
+      providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2)
     assertThat(providedValue).isEqualTo("Hello, 2!")
 
     // Exercise calling the create + invoke() functions
-    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 })
+    val providesFactory =
+      providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 })
     assertThat(providesFactory()).isEqualTo("Hello, 2!")
   }
 
@@ -254,7 +256,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
               @Provides
               fun provideBooleanValue(): Boolean = false
-              
+
               @Provides
               fun provideIntValue(): Int = 1
 
@@ -276,11 +278,17 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
-    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, true)
+    val providedValue =
+      providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, true)
     assertThat(providedValue).isEqualTo("Hello, 2! true")
 
     // Exercise calling the create + invoke() functions
-    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 }, provider { true })
+    val providesFactory =
+      providesFactoryClass.invokeCreateAs<Factory<String>>(
+        component,
+        provider { 2 },
+        provider { true },
+      )
     assertThat(providesFactory()).isEqualTo("Hello, 2! true")
   }
 
@@ -323,11 +331,17 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
-    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, 3)
+    val providedValue =
+      providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, 3)
     assertThat(providedValue).isEqualTo("Hello, 2 - 3!")
 
     // Exercise calling the create + invoke() functions
-    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 }, provider { 3 })
+    val providesFactory =
+      providesFactoryClass.invokeCreateAs<Factory<String>>(
+        component,
+        provider { 2 },
+        provider { 3 },
+      )
     assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
   }
 
@@ -348,7 +362,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
               @Provides
               fun provideIntValue(): Int = 1
-              
+
               @Named("int2")
               @Provides
               fun provideIntValue2(): Int = 1
@@ -374,11 +388,17 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
-    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, 3)
+    val providedValue =
+      providesFactoryClass.provideValueAs<String>("provideStringValue", component, 2, 3)
     assertThat(providedValue).isEqualTo("Hello, 2 - 3!")
 
     // Exercise calling the create + invoke() functions
-    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component, provider { 2 }, provider { 3 })
+    val providesFactory =
+      providesFactoryClass.invokeCreateAs<Factory<String>>(
+        component,
+        provider { 2 },
+        provider { 3 },
+      )
     assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
   }
 }
