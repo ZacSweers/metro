@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.transformers
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.capitalizeUS
+import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
@@ -45,6 +46,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin.Companion.IR_EXTERNAL_DECLARATION_STUB
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -259,6 +261,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   }
 
   fun getOrPutCallableReference(function: IrFunction): CallableReference {
+    // TODO report in FIR
+    if (function.typeParameters.isNotEmpty()) {
+      function.reportError("@Provides functions may not have type parameters")
+      exitProcessing()
+    }
+
     return references.getOrPut(function.kotlinFqName) {
       // TODO FIR error if it has a receiver param
       // TODO FIR error if it is top-level/not in component

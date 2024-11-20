@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
@@ -400,5 +401,41 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         provider { 3 },
       )
     assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
+  }
+
+  @Test
+  fun `providers cannot have type parameters`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Named
+
+            @Component
+            interface ExampleComponent {
+              @Provides
+              fun <T> provideValue(): Int = 1
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages).contains(
+      """
+        ExampleComponent.kt:9:3 [LATTICE] @Provides functions may not have type parameters
+      """.trimIndent()
+    )
   }
 }
