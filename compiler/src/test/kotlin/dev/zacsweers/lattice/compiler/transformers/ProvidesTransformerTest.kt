@@ -30,7 +30,7 @@ import org.junit.Test
 class ProvidesTransformerTest : LatticeCompilerTest() {
 
   @Test
-  fun simple() {
+  fun `simple function provider`() {
     val result =
       compile(
         kotlin(
@@ -58,15 +58,13 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
     val component =
       result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass()
     // Exercise calling the static provideValue function directly
-    val providedValue =
-      result.ExampleComponent.providesFactoryClass()
-        .provideValueAs<String>("provideValue", component)
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideValue", component)
     assertThat(providedValue).isEqualTo("Hello, world!")
 
     // Exercise calling the create + invoke() functions
-    val providesFactory =
-      result.ExampleComponent.providesFactoryClass().invokeCreateAs<Factory<String>>(component)
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component)
     assertThat(providesFactory()).isEqualTo("Hello, world!")
   }
 
@@ -100,14 +98,93 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
     val component =
       result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass()
     // Exercise calling the static provideValue function directly
-    val providedValue =
-      result.ExampleComponent.providesFactoryClass().provideValueAs<String>("getValue", component)
+    val providedValue = providesFactoryClass.provideValueAs<String>("getValue", component)
     assertThat(providedValue).isEqualTo("Hello, world!")
 
     // Exercise calling the create + invoke() functions
-    val providesFactory =
-      result.ExampleComponent.providesFactoryClass().invokeCreateAs<Factory<String>>(component)
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(component)
+    assertThat(providesFactory()).isEqualTo("Hello, world!")
+  }
+
+  @Test
+  fun `simple function provider in a companion object`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+
+            @Component
+            interface ExampleComponent {
+              companion object {
+                @Provides
+                fun provideValue(): String = "Hello, world!"
+              }
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        debug = true,
+      )
+
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)
+    // Exercise calling the static provideValue function directly
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideValue")
+    assertThat(providedValue).isEqualTo("Hello, world!")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>()
+    assertThat(providesFactory()).isEqualTo("Hello, world!")
+  }
+
+  @Test
+  fun `simple property provider in a companion object`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+
+            @Component
+            interface ExampleComponent {
+              companion object {
+                @Provides
+                val value: String get() = "Hello, world!"
+              }
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        debug = true,
+      )
+
+    val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)
+    // Exercise calling the static provideValue function directly
+    val providedValue = providesFactoryClass.provideValueAs<String>("getValue")
+    assertThat(providedValue).isEqualTo("Hello, world!")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>()
     assertThat(providesFactory()).isEqualTo("Hello, world!")
   }
 }

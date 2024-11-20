@@ -118,12 +118,8 @@ fun Class<Factory<*>>.invokeCreate(vararg args: Any): Factory<*> {
   return declaredMethods.single { it.name == "create" }.invoke(null, *args) as Factory<*>
 }
 
-fun Class<Factory<*>>.invokeProvider(providerName: String, component: Any?, vararg args: Any): Any {
-  val finalArgs = buildList {
-    component?.let { add(it) }
-    addAll(args)
-  }
-  return declaredMethods.single { it.name == providerName }.invoke(null, *finalArgs.toTypedArray())
+fun Class<Factory<*>>.invokeProvider(providerName: String, vararg args: Any): Any {
+  return declaredMethods.single { it.name == providerName }.invoke(null, *args)
 }
 
 fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
@@ -144,8 +140,8 @@ fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
  * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
  * then calling the component's provider
  */
-fun Class<Factory<*>>.provideValue(providerName: String, component: Any?, vararg args: Any): Any {
-  return invokeProvider(providerName, component, *args)
+fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any {
+  return invokeProvider(providerName, *args)
 }
 
 /**
@@ -161,13 +157,9 @@ fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
  * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
  * then calling the component's provider
  */
-fun <T> Class<Factory<*>>.provideValueAs(
-  providerName: String,
-  component: Any?,
-  vararg args: Any,
-): T {
+fun <T> Class<Factory<*>>.provideValueAs(providerName: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
-  return provideValue(providerName, component, *args) as T
+  return provideValue(providerName, *args) as T
 }
 
 val JvmCompilationResult.ExampleComponent: Class<*>

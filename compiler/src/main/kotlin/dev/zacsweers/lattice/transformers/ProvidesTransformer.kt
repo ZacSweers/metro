@@ -86,7 +86,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         is IrClass -> {
           if (nestedDeclaration.isCompanionObject) {
             // Include companion object refs
-            visitClass(nestedDeclaration)
+            visitComponentClass(nestedDeclaration)
           }
         }
       }
@@ -447,11 +447,11 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   ) {
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     val isInCompanionObject: Boolean
-      get() = parent.owner.kind == ClassKind.OBJECT
+      get() = parent.owner.isCompanionObject
 
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     val isInObject: Boolean
-      get() = isInCompanionObject || parent.owner.isCompanionObject
+      get() = parent.owner.isObject
 
     @UnsafeDuringIrConstructionAPI
     val componentParent =
