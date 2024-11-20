@@ -611,8 +611,9 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps
   //  - provides
-  //  - @get:Provides
+  //  - @get:Provides?
   //  - Binds examples
   //  - Component deps
-  //  - Supertype providers
+  //  - Private providers?
+  //  - Inherited exposed types + deduping overrides?
 }
