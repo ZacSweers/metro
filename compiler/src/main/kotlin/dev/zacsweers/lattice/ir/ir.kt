@@ -96,6 +96,7 @@ import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.copyValueParametersFrom
@@ -315,6 +316,7 @@ internal fun IrClass.allCallableMembers(
     .let {
       if (excludeAnyFunctions) {
         // TODO optimize this?
+        // TODO does this even work
         it.filterNot { function ->
           function.overriddenSymbols.any { symbol ->
             symbol.owner.parentClassId == LatticeSymbols.ClassIds.AnyClass
@@ -325,6 +327,11 @@ internal fun IrClass.allCallableMembers(
       }
     }
     .plus(properties.asSequence().mapNotNull { property -> property.getter })
+    .let { parentClassCallables ->
+      companionObject()?.let { companionObject ->
+        parentClassCallables + companionObject.allCallableMembers()
+      } ?: parentClassCallables
+    }
 }
 
 // From
