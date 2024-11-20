@@ -43,10 +43,8 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin.Companion.IR_EXTERNAL_DECLARATION_STUB
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -125,17 +123,22 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       binding.providerFunction.correspondingPropertySymbol?.owner?.let {
         getOrPutCallableReference(it)
       } ?: getOrPutCallableReference(binding.providerFunction)
-    if (binding.providerFunction.origin == IR_EXTERNAL_DECLARATION_STUB) {
-      // Look up the external class
-      // TODO do we generate it here + warn like dagger does?
-      val generatedClass =
-        pluginContext.referenceClass(reference.generatedClassId)
-          ?: error(
-            "Could not find generated factory for ${reference.fqName} in upstream module where it's defined. Run the Lattice compiler over that module too."
-          )
-      generatedFactories[reference.fqName] = generatedClass.owner
-      generatedClass.owner
-    }
+
+    // If it's from another module, look up its already-generated factory
+    // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
+    //  external but no factory is found?
+    //    if (binding.providerFunction.origin == IR_EXTERNAL_DECLARATION_STUB) {
+    //      // Look up the external class
+    //      // TODO do we generate it here + warn like dagger does?
+    //      val generatedClass =
+    //        pluginContext.referenceClass(reference.generatedClassId)
+    //          ?: error(
+    //            "Could not find generated factory for ${reference.fqName} in upstream module where
+    // it's defined. Run the Lattice compiler over that module too."
+    //          )
+    //      generatedFactories[reference.fqName] = generatedClass.owner
+    //      generatedClass.owner
+    //    }
     return getOrGenerateFactoryClass(reference)
   }
 
