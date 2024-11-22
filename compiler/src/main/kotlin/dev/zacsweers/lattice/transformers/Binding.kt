@@ -23,13 +23,16 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 internal sealed interface Binding {
   val scope: IrAnnotation?
   val dependencies: Map<TypeKey, Parameter>
+  // Track the list of parameters, which may not have unique type keys
+  val parameters: List<Parameter>
   val nameHint: String
 
   data class ConstructorInjected(
     val type: IrClass,
     val typeKey: TypeKey,
-    override val dependencies: Map<TypeKey, Parameter>,
+    override val parameters: List<Parameter>,
     override val scope: IrAnnotation? = null,
+    override val dependencies: Map<TypeKey, Parameter> = parameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = type.name.asString()
   }
@@ -37,8 +40,9 @@ internal sealed interface Binding {
   data class Provided(
     val providerFunction: IrSimpleFunction,
     val typeKey: TypeKey,
-    override val dependencies: Map<TypeKey, Parameter>,
+    override val parameters: List<Parameter>,
     override val scope: IrAnnotation? = null,
+    override val dependencies: Map<TypeKey, Parameter> = parameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = providerFunction.name.asString()
   }
@@ -48,5 +52,6 @@ internal sealed interface Binding {
     // TODO what if the getter is a property getter, then it's a special name
     override val nameHint: String = component.name.asString() + getter.name.asString()
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
+    override val parameters: List<Parameter> = emptyList()
   }
 }
