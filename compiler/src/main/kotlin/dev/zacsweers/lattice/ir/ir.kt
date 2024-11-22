@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.letIf
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.Parameter
 import dev.zacsweers.lattice.transformers.wrapInLazy
@@ -39,6 +40,7 @@ import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
+import org.jetbrains.kotlin.ir.builders.declarations.IrDeclarationBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -313,17 +315,13 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<IrSimpleFunction> {
   return functions
     .asSequence()
-    .let {
-      if (excludeAnyFunctions) {
-        // TODO optimize this?
-        // TODO does this even work
-        it.filterNot { function ->
-          function.overriddenSymbols.any { symbol ->
-            symbol.owner.parentClassId == LatticeSymbols.ClassIds.AnyClass
-          }
+    .letIf(excludeAnyFunctions) {
+      // TODO optimize this?
+      // TODO does this even work
+      it.filterNot { function ->
+        function.overriddenSymbols.any { symbol ->
+          symbol.owner.parentClassId == LatticeSymbols.ClassIds.AnyClass
         }
-      } else {
-        it
       }
     }
     .plus(properties.asSequence().mapNotNull { property -> property.getter })
@@ -571,17 +569,38 @@ internal fun IrClass.getAllSuperTypes(
   pluginContext: IrPluginContext,
   excludeSelf: Boolean = true,
   excludeAny: Boolean = true,
-): List<IrType> {
+): Sequence<IrType> {
   val self = this
-  fun allSuperInterfacesImpl(currentClass: IrClass, result: MutableList<IrType>) {
+  // TODO are there ever cases where superTypes includes the current class?
+  suspend fun SequenceScope<IrType>.allSuperInterfacesImpl(currentClass: IrClass) {
     for (superType in currentClass.superTypes) {
       if (excludeAny && superType == pluginContext.irBuiltIns.anyType) continue
       val clazz = superType.classifierOrFail.owner as IrClass
       if (excludeSelf && clazz == self) continue
-      result.add(superType)
-      allSuperInterfacesImpl(clazz, result)
+      yield(superType)
+      allSuperInterfacesImpl(clazz)
     }
   }
 
-  return mutableListOf<IrType>().also { allSuperInterfacesImpl(this, it) }
+  return sequence {
+    if (!excludeSelf) {
+      yield(self.typeWith())
+    }
+    allSuperInterfacesImpl(self)
+  }
+}
+
+internal fun IrExpression.doubleCheck(
+  irBuilder: IrBuilderWithScope,
+  symbols: LatticeSymbols,
+): IrExpression = with(irBuilder) {
+  irInvoke(
+    dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+    callee = symbols.doubleCheckProvider,
+    typeHint = null,
+    args =
+      listOf(
+        this@doubleCheck
+      ),
+  )
 }
