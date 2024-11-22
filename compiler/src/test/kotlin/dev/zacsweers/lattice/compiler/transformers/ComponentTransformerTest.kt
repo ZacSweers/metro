@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.transformers
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
+import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.callComponentAccessor
@@ -560,8 +561,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun `providers overridden from supertypes take precedence`() {
-    // Ensure providers from supertypes are correctly wired. This means both incorporating them in
-    // binding resolution and being able to invoke them correctly in the resulting component.
+    // Ensure that providers overridden from supertypes take precedence
     val result =
       compile(
         kotlin(
@@ -602,6 +602,115 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
     assertThat(component.callComponentAccessorProperty<String>("value"))
       .isEqualTo("Hello, overridden world!")
+  }
+
+  @Test
+  fun `unscoped providers get reused if used multiple times`() {
+    // One aspect of provider fields is we want to reuse them if they're used from multiple places
+    // even if they're unscoped
+    //
+    // private val stringProvider: Provider<String> = StringProvider_Factory.create(...)
+    // private val stringUserProvider = StringUserProviderFactory.create(stringProvider)
+    // private val stringUserProvider2 = StringUserProvider2Factory.create(stringProvider)
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            interface ExampleComponent {
+
+              val valueLengths: Int
+
+              @Provides
+              fun provideValue(): String = "Hello, world!"
+
+              @Provides
+              fun provideValueLengths(value: String, value2: String): Int = value.length + value2.length
+        
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+
+    // Assert we generated a shared field
+    val provideValueField =
+      component.javaClass.getDeclaredField("provideValueProvider").apply { isAccessible = true }
+
+    // Get its instance
+    @Suppress("UNCHECKED_CAST")
+    val provideValueProvider = provideValueField.get(component) as Provider<String>
+
+    // Get its computed value to plug in below
+    val providerValue = provideValueProvider()
+    assertThat(component.javaClass.getDeclaredField("provideValueProvider"))
+    assertThat(component.callComponentAccessorProperty<Int>("valueLengths"))
+      .isEqualTo(providerValue.length * 2)
+  }
+
+  @Test
+  fun `unscoped providers do not get reused if used only once`() {
+    // One aspect of provider fields is we want to reuse them if they're used from multiple places
+    // even if they're unscoped. If they're not though, then we don't do this
+    //
+    // private val stringUserProvider =
+    // StringUserProviderFactory.create(StringProvider_Factory.create(...))
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            interface ExampleComponent {
+
+              val valueLengths: Int
+
+              @Provides
+              fun provideValue(): String = "Hello, world!"
+
+              @Provides
+              fun provideValueLengths(value: String): Int = value.length
+        
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        )
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+
+    assertThat(
+        component.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" }
+      )
+      .isNull()
+
+    assertThat(component.callComponentAccessorProperty<Int>("valueLengths"))
+      .isEqualTo("Hello, world!".length)
   }
 
   // TODO
