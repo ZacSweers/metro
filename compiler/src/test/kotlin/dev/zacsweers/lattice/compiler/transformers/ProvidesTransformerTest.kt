@@ -434,7 +434,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
     assertThat(result.messages).contains(
       """
-        ExampleComponent.kt:9:3 [LATTICE] @Provides functions may not have type parameters
+        ExampleComponent.kt:9:3 @Provides functions may not have type parameters
       """.trimIndent()
     )
   }

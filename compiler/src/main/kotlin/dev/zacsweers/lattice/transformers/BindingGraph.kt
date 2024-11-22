@@ -60,7 +60,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         val declarationToReport = bindingStack.lastEntryOrComponent
         val message = buildString {
           append(
-            "Cannot find an @Inject constructor or @Provides-annotated function/property for: "
+            "[Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
           )
           appendLine(key)
           appendLine()

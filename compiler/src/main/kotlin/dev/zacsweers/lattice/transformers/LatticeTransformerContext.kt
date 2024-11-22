@@ -56,11 +56,11 @@ internal interface LatticeTransformerContext {
 
   fun IrDeclaration.reportError(message: String) {
     val location = this.locationIn(file)
-    messageCollector.report(CompilerMessageSeverity.ERROR, "$LOG_PREFIX $message", location)
+    messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
   }
 
   fun reportError(message: String, location: CompilerMessageLocation) {
-    messageCollector.report(CompilerMessageSeverity.ERROR, "$LOG_PREFIX $message", location)
+    messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
   }
 
   fun IrClass.dumpToLatticeLog() {

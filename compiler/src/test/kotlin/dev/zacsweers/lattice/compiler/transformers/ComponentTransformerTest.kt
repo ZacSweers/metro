@@ -127,7 +127,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:10:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        ExampleComponent.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is requested at
                 [test.ExampleComponent] test.ExampleComponent.text
@@ -171,7 +171,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:11:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleComponent.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
                 [test.ExampleComponent] test.ExampleComponent.text
@@ -215,7 +215,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:11:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleComponent.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
                 [test.ExampleComponent] test.ExampleComponent.text
@@ -257,7 +257,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:10:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        ExampleComponent.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is requested at
                 [test.ExampleComponent] test.ExampleComponent.text()
@@ -301,7 +301,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:11:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleComponent.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
                 [test.ExampleComponent] test.ExampleComponent.text()
@@ -346,7 +346,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:19:20 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        ExampleComponent.kt:19:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.ExampleComponent] test.ExampleClass(…, text)
@@ -394,7 +394,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:20:20 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleComponent.kt:20:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is injected at
                 [test.ExampleComponent] test.ExampleClass(…, text)
@@ -750,7 +750,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:7:1 [LATTICE] [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (unscoped) may not reference scoped bindings:
+          ExampleComponent.kt:7:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (unscoped) may not reference scoped bindings:
               kotlin.String 
               kotlin.String is requested at
                   [test.ExampleComponent] test.ExampleComponent.value
@@ -796,7 +796,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:10:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
+          ExampleComponent.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
     
               kotlin.CharSequence is requested at
                   [test.ExampleComponent] test.ExampleComponent.value2
