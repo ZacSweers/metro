@@ -759,12 +759,9 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   }
 
   // TODO
-  //  - scoping
-  //  - keys are reused. Provider with the same type key multiple times should call the provider
-  //   twice. Unscoped should be the same, scoped should increment
+  //  - advanced scoping
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps
-  //  - provides
   //  - @get:Provides?
   //  - Binds examples
   //  - Component deps
