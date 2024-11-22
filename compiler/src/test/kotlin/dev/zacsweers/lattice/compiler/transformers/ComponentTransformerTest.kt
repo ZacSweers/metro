@@ -758,6 +758,55 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
   }
 
+  @Test
+  fun `binding failures should only be focused on the current context`() {
+    // small regression test to ensure that we pop the BindingStack correctly
+    // while iterating exposed types and don't leave old refs
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            interface ExampleComponent {
+
+              val value: String
+              val value2: CharSequence
+
+              @Provides
+              fun provideValue(): String = "Hello, world!"
+        
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+          ExampleComponent.kt:10:3 [LATTICE] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
+    
+              kotlin.CharSequence is requested at
+                  [test.ExampleComponent] test.ExampleComponent.value2
+        """.trimIndent()
+      )
+
+    assertThat(result.messages)
+      .doesNotContain("kotlin.String is requested at")
+  }
+
   // TODO
   //  - advanced scoping
   //  - advanced graph resolution (i.e. complex dep chains)

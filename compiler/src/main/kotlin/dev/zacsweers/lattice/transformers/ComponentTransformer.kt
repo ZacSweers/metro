@@ -492,6 +492,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               }
             }
           }
+          bindingStack.pop()
         }
 
         // Compute safe initialization order
