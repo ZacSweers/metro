@@ -57,20 +57,14 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           scope = with(context) { irClass.scopeAnnotation() },
         )
       } else {
-        val entries = bindingStack.entries
-        val declarationToReport = entries.firstOrNull()?.declaration ?: bindingStack.component
+        val declarationToReport = bindingStack.lastEntryOrComponent
         val message = buildString {
           append(
             "Cannot find an @Inject constructor or @Provides-annotated function/property for: "
           )
           appendLine(key)
           appendLine()
-          val componentName = bindingStack.component.kotlinFqName
-          for (entry in entries) {
-            entry.render(componentName).prependIndent("    ").lineSequence().forEach {
-              appendLine(it)
-            }
-          }
+          appendBindingStack(bindingStack)
         }
 
         with(context) { declarationToReport.reportError(message) }

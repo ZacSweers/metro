@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.transformers
 
+import kotlin.text.appendLine
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -60,6 +61,16 @@ internal interface BindingStack {
   }
 }
 
+internal val BindingStack.lastEntryOrComponent
+  get() = entries.firstOrNull()?.declaration ?: component
+
+internal fun Appendable.appendBindingStack(stack: BindingStack) {
+  val componentName = stack.component.kotlinFqName
+  for (entry in stack.entries) {
+    entry.render(componentName).prependIndent("    ").lineSequence().forEach { appendLine(it) }
+  }
+}
+
 internal class BindingStackImpl(override val component: IrClass) : BindingStack {
   private val stack = ArrayDeque<BindingStackEntry>()
   override val entries: List<BindingStackEntry> = stack
@@ -75,19 +86,21 @@ internal class BindingStackImpl(override val component: IrClass) : BindingStack 
 
 internal class BindingStackEntry(
   val typeKey: TypeKey,
-  val action: String,
-  val context: String,
-  val declaration: IrDeclaration,
+  val action: String?,
+  val context: String?,
+  val declaration: IrDeclaration?,
 ) {
   fun render(component: FqName): String {
     return buildString {
       append(typeKey)
       append(' ')
-      appendLine(action)
-      append("    ")
-      append("[${component.asString()}]")
-      append(' ')
-      append(context)
+      action?.let { appendLine(it) }
+      context?.let {
+        append("    ")
+        append("[${component.asString()}]")
+        append(' ')
+        append(it)
+      }
     }
   }
 
@@ -113,6 +126,14 @@ internal class BindingStackEntry(
         context = "$targetFqName.$accessor",
         declaration = declaration,
       )
+    }
+
+    /*
+    com.slack.circuit.star.Example1
+     */
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    fun simpleTypeRef(typeKey: TypeKey): BindingStackEntry {
+      return BindingStackEntry(typeKey = typeKey, action = null, context = null, declaration = null)
     }
 
     /*

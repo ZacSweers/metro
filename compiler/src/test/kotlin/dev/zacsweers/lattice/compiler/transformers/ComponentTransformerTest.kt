@@ -713,6 +713,51 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .isEqualTo("Hello, world!".length)
   }
 
+  @Test
+  fun `unscoped components may not reference scoped types`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Singleton
+
+            @Component
+            interface ExampleComponent {
+
+              val value: String
+              
+              @Singleton
+              @Provides
+              fun provideValue(): String = "Hello, world!"
+        
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+          ExampleComponent.kt:7:1 [LATTICE] [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (unscoped) may not reference scoped bindings:
+              kotlin.String 
+              kotlin.String is requested at
+                  [test.ExampleComponent] test.ExampleComponent.value
+        """.trimIndent()
+      )
+  }
+
   // TODO
   //  - scoping
   //  - keys are reused. Provider with the same type key multiple times should call the provider

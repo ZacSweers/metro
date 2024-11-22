@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.transformers
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.decapitalizeUS
+import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
@@ -447,19 +448,22 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           val bindingScope = binding.scope
 
           if (bindingScope != null) {
-            if (node.scope != null && bindingScope == node.scope) {} else {
-              // TODO error if an unscoped component references scoped bindings
-              /*
-              /ExampleComponent.java:5: error: [Dagger/IncompatiblyScopedBindings] com.slack.circuit.star.ExampleComponent (unscoped) may not reference scoped bindings:
-              public abstract interface ExampleComponent {
-                              ^
-                    @Singleton class com.slack.circuit.star.Example1
-                    com.slack.circuit.star.Example1 is requested at
-                        com.slack.circuit.star.ExampleComponent.example1()
+            if (node.scope == null || bindingScope != node.scope) {
+              // Error if an unscoped component references scoped bindings
+              val declarationToReport = node.sourceComponent
+              bindingStack.push(BindingStackEntry.simpleTypeRef(key))
+              val message = buildString {
+                append(
+                  "[Lattice/IncompatiblyScopedBindings] "
+                )
+                append(declarationToReport.kotlinFqName)
+                append(" (unscoped) may not reference scoped bindings:")
+                appendLine()
+                appendBindingStack(bindingStack)
+              }
+              declarationToReport.reportError(message)
 
-                    @Singleton @Provides java.nio.file.spi.FileSystemProvider com.slack.circuit.star.FileSystemComponent.provideFileSystemProvider(java.nio.file.FileSystem)
-
-               */
+              exitProcessing()
             }
           }
 
