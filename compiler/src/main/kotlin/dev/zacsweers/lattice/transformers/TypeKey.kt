@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.render
 
-internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) {
+internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) : Comparable<TypeKey> {
   private val cachedToString by unsafeLazy {
     buildString {
       qualifier?.let {
@@ -34,6 +34,8 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
   }
 
   override fun toString(): String = cachedToString
+
+  override fun compareTo(other: TypeKey) = toString().compareTo(other.toString())
 
   companion object {
     fun from(
