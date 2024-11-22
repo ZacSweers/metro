@@ -67,3 +67,7 @@ internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(
   }
   append(postfix)
 }
+
+internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
+  return if (condition) block(this) else this
+}
