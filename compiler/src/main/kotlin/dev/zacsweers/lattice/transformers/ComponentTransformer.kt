@@ -22,10 +22,12 @@ import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
 import dev.zacsweers.lattice.ir.createIrBuilder
+import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
+import dev.zacsweers.lattice.letIf
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -257,11 +259,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Add explicit bindings from @Provides methods
     val bindingStack = BindingStack(component.sourceComponent)
     component.providerFunctions.forEach { (typeKey, function) ->
-      val dependencies =
-        function.valueParameters.mapToConstructorParameters(this).associateBy { it.typeKey }
       graph.addBinding(
         typeKey,
-        Binding.Provided(function, typeKey, dependencies, function.scopeAnnotation()),
+        Binding.Provided(
+          function,
+          typeKey,
+          function.valueParameters.mapToConstructorParameters(this),
+          function.scopeAnnotation(),
+        ),
         bindingStack,
       )
     }
@@ -421,9 +426,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         // TODO add fields for all unscoped providers used more than once in bindings
 
-        // Add fields for scoped providers
-        val scopedFields = mutableMapOf<TypeKey, IrField>()
-        val scopedDependencies = mutableMapOf<TypeKey, Map<TypeKey, Parameter>>()
+        // Add fields for providers. May include both scoped and unscoped providers
+        val providerFields = mutableMapOf<TypeKey, IrField>()
+        // Track used unscroped bindings. We only need to generate a field if they're used more than
+        // once
+        val usedUnscopedBindings = mutableSetOf<TypeKey>()
+        val bindingDependencies = mutableMapOf<TypeKey, Map<TypeKey, Parameter>>()
 
         // Track a stack for bindings
         val bindingStack = BindingStack(node.sourceComponent)
@@ -432,17 +440,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // TODO use InstanceFactory for bindsinstance
         // TODO need to collect all provided types too and create scoped fields if needed
 
-        // First pass: collect scoped bindings and their dependencies for ordering
+        // First pass: collect bindings and their dependencies for ordering
         node.exposedTypes.forEach { (key, accessor) ->
           bindingStack.push(BindingStackEntry.requestedAt(key, accessor))
           val binding = graph.getOrCreateBinding(key, bindingStack)
           val bindingScope = binding.scope
 
           if (bindingScope != null) {
-            if (node.scope != null && bindingScope == node.scope) {
-              // Track scoped dependencies before creating fields
-              scopedDependencies[key] = binding.dependencies
-            } else {
+            if (node.scope != null && bindingScope == node.scope) {} else {
               // TODO error if an unscoped component references scoped bindings
               /*
               /ExampleComponent.java:5: error: [Dagger/IncompatiblyScopedBindings] com.slack.circuit.star.ExampleComponent (unscoped) may not reference scoped bindings:
@@ -457,25 +462,51 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                */
             }
           }
+
+          // Track dependencies before creating fields
+          if (bindingScope != null) {
+            // Scoped bindings always need fields
+            bindingDependencies[key] = binding.dependencies
+          } else {
+            // Only add unscoped binding provider fields if they're used more than once
+            if (key in usedUnscopedBindings) {
+              bindingDependencies[key] = binding.dependencies
+            } else {
+              usedUnscopedBindings += key
+            }
+            // Check its dependencies too. Note we check parameters rather than the set of
+            // dependencies
+            // because this is what matters in terms of allocating fields
+            for (param in binding.parameters) {
+              val depKey = param.typeKey
+              if (depKey in usedUnscopedBindings) {
+                bindingStack.push(BindingStackEntry.requestedAt(depKey, accessor))
+                bindingDependencies[depKey] =
+                  graph.getOrCreateBinding(key, bindingStack).dependencies
+              } else {
+                usedUnscopedBindings += depKey
+              }
+            }
+          }
         }
 
         // Compute safe initialization order
         val initOrder =
-          scopedDependencies.keys.sortedWith { a, b ->
+          bindingDependencies.keys.sortedWith { a, b ->
             when {
               // If b depends on a, a should be initialized first
-              a in (scopedDependencies[b] ?: emptyMap()) -> -1
+              a in (bindingDependencies[b] ?: emptyMap()) -> -1
               // If a depends on b, b should be initialized first
-              b in (scopedDependencies[a] ?: emptyMap()) -> 1
-              // Otherwise order doesn't matter
-              else -> 0
+              b in (bindingDependencies[a] ?: emptyMap()) -> 1
+              // Otherwise order doesn't matter, fall back to just type order for idempotence
+              else -> a.compareTo(b)
             }
           }
 
         // Create fields in dependency-order
         initOrder.forEach { key ->
           val binding = graph.getOrCreateBinding(key, BindingStack.empty())
-          scopedFields[key] =
+          providerFields[key] =
             addField(
                 fieldName = binding.nameHint.decapitalizeUS() + "Provider",
                 fieldType = symbols.latticeProvider.typeWith(key.type),
@@ -483,27 +514,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               )
               .apply {
                 isFinal = true
-                // DoubleCheck.provider(<provider>)
                 initializer =
                   pluginContext.createIrBuilder(symbol).run {
-                    irExprBody(
-                      irInvoke(
-                        dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-                        callee = symbols.doubleCheckProvider,
-                        typeHint = null,
-                        args =
-                          listOf(
-                            generateBindingCode(
-                              binding,
-                              graph,
-                              thisReceiverParameter,
-                              instanceFields,
-                              scopedFields,
-                              bindingStack,
-                            )
-                          ),
-                      )
-                    )
+                    val provider =
+                      generateBindingCode(
+                          binding,
+                          graph,
+                          thisReceiverParameter,
+                          instanceFields,
+                          providerFields,
+                          bindingStack,
+                        )
+                        .letIf(binding.scope != null) {
+                          // If it's scoped, wrap it in double-check
+                          // DoubleCheck.provider(<provider>)
+                          it.doubleCheck(this@run, symbols)
+                        }
+                    irExprBody(provider)
                   }
               }
         }
@@ -530,15 +557,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   val receiver =
-                    if (key in scopedFields) {
-                      irGetField(irGet(thisReceiverParameter), scopedFields.getValue(key))
+                    if (key in providerFields) {
+                      irGetField(irGet(thisReceiverParameter), providerFields.getValue(key))
                     } else {
                       generateBindingCode(
                         binding,
                         graph,
                         thisReceiverParameter,
                         instanceFields,
-                        scopedFields,
+                        providerFields,
                         bindingStack,
                       )
                     }
@@ -552,16 +579,30 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun DeclarationIrBuilder.generateBindingArguments(
-    params: List<Parameter>,
     paramTypeKeys: List<TypeKey>,
     function: IrFunction,
     binding: Binding,
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
     instanceFields: Map<TypeKey, IrField>,
-    scopedFields: Map<TypeKey, IrField>,
+    providerFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
   ): List<IrExpression> {
+    val params = function.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
+    if (
+      binding is Binding.Provided && binding.providerFunction.correspondingPropertySymbol == null
+    ) {
+      check(function.valueParameters.size == paramTypeKeys.size) {
+        """
+          Inconsistent parameter types!
+          Input type keys:
+            - ${paramTypeKeys.joinToString()}
+          Binding parameters (${function.kotlinFqName}):
+            - ${function.valueParameters.map { TypeKey.from(this@ComponentTransformer, it) }.joinToString()}
+        """
+          .trimIndent()
+      }
+    }
     return params.mapIndexed { i, param ->
       val typeKey = paramTypeKeys[i]
       instanceFields[typeKey]?.let { instanceField ->
@@ -569,9 +610,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         return@mapIndexed irGetField(irGet(thisReceiver), instanceField)
       }
       val providerInstance =
-        if (typeKey in scopedFields) {
-          // If it's in scoped fields, invoke that field
-          irGetField(irGet(thisReceiver), scopedFields.getValue(typeKey))
+        if (typeKey in providerFields) {
+          // If it's in provider fields, invoke that field
+          irGetField(irGet(thisReceiver), providerFields.getValue(typeKey))
         } else {
           val entry =
             when (binding) {
@@ -581,7 +622,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 BindingStackEntry.injectedAt(typeKey, constructor, constructor.valueParameters[i])
               }
               is Binding.Provided -> {
-                val function = binding.providerFunction
                 BindingStackEntry.injectedAt(typeKey, function, function.valueParameters[i])
               }
               is Binding.ComponentDependency -> TODO()
@@ -594,7 +634,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             graph,
             thisReceiver,
             instanceFields,
-            scopedFields,
+            providerFields,
             bindingStack,
           )
         }
@@ -633,7 +673,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
     instanceFields: Map<TypeKey, IrField>,
-    scopedFields: Map<TypeKey, IrField>,
+    providerFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
   ): IrExpression =
     when (binding) {
@@ -658,18 +698,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // annotations
         val paramTypeKeys =
           injectableConstructor.valueParameters.map { TypeKey.from(this@ComponentTransformer, it) }
-        val params =
-          createFunction.owner.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
         val args =
           generateBindingArguments(
-            params,
             paramTypeKeys,
             createFunction.owner,
             binding,
             graph,
             thisReceiver,
             instanceFields,
-            scopedFields,
+            providerFields,
             bindingStack,
           )
         irInvoke(
@@ -694,7 +731,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Must use the provider's params for TypeKey as that has qualifier
         // annotations
         val paramTypeKeys = buildList {
-          if (!binding.providerFunction.isStatic) {
+          // Can't use isStatic here because companion object functions actually have dispatch
+          // receivers
+          if (!binding.providerFunction.parentAsClass.isObject) {
             // The receiver param here will be the instance type
             add(
               TypeKey.from(
@@ -709,18 +748,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             }
           )
         }
-        val params =
-          createFunction.owner.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
         val args =
           generateBindingArguments(
-            params,
             paramTypeKeys,
             createFunction.owner,
             binding,
             graph,
             thisReceiver,
             instanceFields,
-            scopedFields,
+            providerFields,
             bindingStack,
           )
         irInvoke(
