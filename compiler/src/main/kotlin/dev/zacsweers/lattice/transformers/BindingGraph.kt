@@ -23,22 +23,36 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class BindingGraph(private val context: LatticeTransformerContext) {
   private val bindings = mutableMapOf<TypeKey, Binding>()
-  private val dependencies = mutableMapOf<TypeKey, Set<TypeKey>>()
+  private val dependencies = mutableMapOf<TypeKey, Lazy<Set<TypeKey>>>()
 
   fun addBinding(key: TypeKey, binding: Binding, bindingStack: BindingStack) {
     require(!bindings.containsKey(key)) { "Duplicate binding for $key" }
     bindings[key] = binding
 
-    val deps =
+    // Lazily evaluate dependencies so that we get a shallow set of keys
+    // upfront but can defer resolution of bindings from dependencies until
+    // the full graph is actualized.
+    // Otherwise, this scenario wouldn't work in this order:
+    //
+    // val charSequenceValue: CharSequence
+    // @Provides fun bind(stringValue: String): CharSequence = this
+    // @Provides fun provideString(): String = "Hi"
+    //
+    // Because it would try to eagerly look up bindings for String but String
+    // hadn't been encountered yet.
+    // TODO would this possibly deadlock in a cycle? Need reentrancy checks
+    dependencies[key] = lazy {
       when (binding) {
         is Binding.ConstructorInjected -> {
           // Recursively follow deps from its constructor params
           getConstructorDependencies(binding.type, bindingStack)
         }
+        // TODO this validates too soon, need to maybe add shallow bindings first?
+        //  or add it but defer validation until validate()
         is Binding.Provided -> getFunctionDependencies(binding.providerFunction, bindingStack)
         is Binding.ComponentDependency -> emptySet()
       }
-    dependencies[key] = deps
+    }
   }
 
   fun getOrCreateBinding(key: TypeKey, bindingStack: BindingStack): Binding {
@@ -95,7 +109,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
 
       visited.add(key)
       stack.add(key)
-      dependencies[key]?.forEach { dep -> dfs(dep) }
+      dependencies[key]?.value?.forEach { dep -> dfs(dep) }
       stack.remove(key)
     }
 
@@ -103,7 +117,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   }
 
   private fun checkMissingDependencies() {
-    val allDeps = dependencies.values.flatten().toSet()
+    val allDeps = dependencies.values.map { it.value }.flatten().toSet()
     val missing = allDeps - bindings.keys
     check(missing.isEmpty()) { "Missing bindings for: $missing" }
   }

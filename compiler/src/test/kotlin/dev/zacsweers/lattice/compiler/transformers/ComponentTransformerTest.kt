@@ -807,6 +807,51 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .doesNotContain("kotlin.String is requested at")
   }
 
+  @Test
+  fun `simple binds example`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            interface ExampleComponent {
+
+              val value: String
+              val value2: CharSequence
+              
+              @Provides
+              fun bind(value: String): CharSequence = value
+              
+              @Provides
+              fun provideValue(): String = "Hello, world!"
+        
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+      )
+
+    val component =
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+
+    assertThat(component.callComponentAccessorProperty<String>("value"))
+      .isEqualTo("Hello, world!")
+
+    assertThat(component.callComponentAccessorProperty<CharSequence>("value2"))
+      .isEqualTo("Hello, world!")
+  }
+
   // TODO
   //  - advanced scoping
   //  - advanced graph resolution (i.e. complex dep chains)
