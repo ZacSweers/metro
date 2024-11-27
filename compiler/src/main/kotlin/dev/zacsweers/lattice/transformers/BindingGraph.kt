@@ -19,7 +19,6 @@ import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.rawType
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class BindingGraph(private val context: LatticeTransformerContext) {
   private val bindings = mutableMapOf<TypeKey, Binding>()
@@ -61,8 +60,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       val irClass = key.type.rawType()
       val injectableConstructor = with(context) { irClass.findInjectableConstructor() }
       if (injectableConstructor != null) {
-        val parameters =
-          injectableConstructor.valueParameters.mapToConstructorParameters(context)
+        val parameters = injectableConstructor.valueParameters.mapToConstructorParameters(context)
         bindingStack.pop()
         Binding.ConstructorInjected(
           type = irClass,

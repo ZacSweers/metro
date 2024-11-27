@@ -432,11 +432,13 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    assertThat(result.messages).contains(
-      """
+    assertThat(result.messages)
+      .contains(
+        """
         ExampleComponent.kt:9:3 @Provides functions may not have type parameters
-      """.trimIndent()
-    )
+      """
+          .trimIndent()
+      )
   }
 
   @Test
@@ -472,7 +474,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       .contains(
         """
           ExampleComponent.kt:9:3 Extension receivers are not currently supported.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
   }
 

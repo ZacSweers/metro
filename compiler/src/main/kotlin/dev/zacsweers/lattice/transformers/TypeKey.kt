@@ -22,7 +22,8 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.render
 
-internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) : Comparable<TypeKey> {
+internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
+  Comparable<TypeKey> {
   private val cachedToString by unsafeLazy {
     buildString {
       qualifier?.let {

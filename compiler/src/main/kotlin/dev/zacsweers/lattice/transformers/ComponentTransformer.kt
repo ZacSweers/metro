@@ -453,9 +453,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               val declarationToReport = node.sourceComponent
               bindingStack.push(BindingStackEntry.simpleTypeRef(key))
               val message = buildString {
-                append(
-                  "[Lattice/IncompatiblyScopedBindings] "
-                )
+                append("[Lattice/IncompatiblyScopedBindings] ")
                 append(declarationToReport.kotlinFqName)
                 append(" (unscoped) may not reference scoped bindings:")
                 appendLine()

@@ -580,7 +580,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent : TextProvider {
 
               val value: String
-              
+
               override fun provideValue(): String = "Hello, overridden world!"
 
               @Component.Factory
@@ -633,7 +633,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValueLengths(value: String, value2: String): Int = value.length + value2.length
-        
+
               @Component.Factory
               fun interface Factory {
                 fun create(): ExampleComponent
@@ -690,7 +690,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValueLengths(value: String): Int = value.length
-        
+
               @Component.Factory
               fun interface Factory {
                 fun create(): ExampleComponent
@@ -731,11 +731,11 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
 
               val value: String
-              
+
               @Singleton
               @Provides
               fun provideValue(): String = "Hello, world!"
-        
+
               @Component.Factory
               fun interface Factory {
                 fun create(): ExampleComponent
@@ -752,10 +752,11 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .contains(
         """
           ExampleComponent.kt:7:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (unscoped) may not reference scoped bindings:
-              kotlin.String 
+              kotlin.String
               kotlin.String is requested at
                   [test.ExampleComponent] test.ExampleComponent.value
-        """.trimIndent()
+        """
+          .trimIndent()
       )
   }
 
@@ -781,7 +782,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValue(): String = "Hello, world!"
-        
+
               @Component.Factory
               fun interface Factory {
                 fun create(): ExampleComponent
@@ -798,14 +799,14 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .contains(
         """
           ExampleComponent.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
-    
+
               kotlin.CharSequence is requested at
                   [test.ExampleComponent] test.ExampleComponent.value2
-        """.trimIndent()
+        """
+          .trimIndent()
       )
 
-    assertThat(result.messages)
-      .doesNotContain("kotlin.String is requested at")
+    assertThat(result.messages).doesNotContain("kotlin.String is requested at")
   }
 
   @Test
@@ -825,13 +826,13 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               val value: String
               val value2: CharSequence
-              
+
               @Provides
               fun bind(value: String): CharSequence = value
-              
+
               @Provides
               fun provideValue(): String = "Hello, world!"
-        
+
               @Component.Factory
               fun interface Factory {
                 fun create(): ExampleComponent
@@ -840,14 +841,13 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent(),
-        ),
+        )
       )
 
     val component =
       result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
 
-    assertThat(component.callComponentAccessorProperty<String>("value"))
-      .isEqualTo("Hello, world!")
+    assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
 
     assertThat(component.callComponentAccessorProperty<CharSequence>("value2"))
       .isEqualTo("Hello, world!")
@@ -871,13 +871,13 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               val value: String
               val value2: CharSequence
-              
+
               @Provides
               fun String.bind(): CharSequence = this
-              
+
               @Provides
               fun provideValue(): String = "Hello, world!"
-        
+
               @Component.Factory
               fun interface Factory {
                 fun create(): ExampleComponent
@@ -887,14 +887,13 @@ class ComponentTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true
+        debug = true,
       )
 
     val component =
       result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
 
-    assertThat(component.callComponentAccessorProperty<String>("value"))
-      .isEqualTo("Hello, world!")
+    assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
 
     assertThat(component.callComponentAccessorProperty<CharSequence>("value2"))
       .isEqualTo("Hello, world!")
@@ -918,14 +917,14 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               val value: String
               val value2: CharSequence
-              
+
               @get:Provides
               val String.binds: CharSequence
                 get() = this
-              
+
               @Provides
               fun provideValue(): String = "Hello, world!"
-        
+
               @Component.Factory
               fun interface Factory {
                 fun create(): ExampleComponent
@@ -934,7 +933,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent(),
-        ),
+        )
       )
   }
 

@@ -40,7 +40,6 @@ import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
-import org.jetbrains.kotlin.ir.builders.declarations.IrDeclarationBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -595,14 +594,12 @@ internal fun IrClass.getAllSuperTypes(
 internal fun IrExpression.doubleCheck(
   irBuilder: IrBuilderWithScope,
   symbols: LatticeSymbols,
-): IrExpression = with(irBuilder) {
-  irInvoke(
-    dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-    callee = symbols.doubleCheckProvider,
-    typeHint = null,
-    args =
-      listOf(
-        this@doubleCheck
-      ),
-  )
-}
+): IrExpression =
+  with(irBuilder) {
+    irInvoke(
+      dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+      callee = symbols.doubleCheckProvider,
+      typeHint = null,
+      args = listOf(this@doubleCheck),
+    )
+  }
