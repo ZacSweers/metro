@@ -137,7 +137,7 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
 
 internal fun IrValueParameter.toConstructorParameter(
   context: LatticeTransformerContext,
-  uniqueName: Name,
+  uniqueName: Name = this.name,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): ConstructorParameter {
   // Remap type parameters in underlying types to the new target container. This is important for

@@ -207,6 +207,7 @@ internal fun IrConstructor.irConstructorBody(
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrBuilderWithScope.irInvoke(
   dispatchReceiver: IrExpression? = null,
+  extensionReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
   typeHint: IrType? = null,
   args: List<IrExpression> = emptyList(),
@@ -214,6 +215,7 @@ internal fun IrBuilderWithScope.irInvoke(
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
   val returnType = typeHint ?: callee.owner.returnType
   val call = irCall(callee, type = returnType)
+  call.extensionReceiver = extensionReceiver
   call.dispatchReceiver = dispatchReceiver
   args.forEachIndexed(call::putValueArgument)
   return call

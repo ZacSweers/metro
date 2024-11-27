@@ -31,7 +31,6 @@ import dev.zacsweers.lattice.ir.isCompanionObject
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.joinSimpleNames
 import dev.zacsweers.lattice.unsafeLazy
-import org.jetbrains.kotlin.backend.common.serialization.kind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -150,12 +149,23 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       return it
     }
 
+    // TODO unimplemented for now
+    if (reference.inputs.extensionReceiver != null) {
+      reference.callee.owner.reportError(
+        """
+          Extension receivers are not currently supported.
+        """
+          .trimIndent()
+      )
+      exitProcessing()
+    }
+
     // TODO FIR check parent class (if any) is a component. What about (companion) objects?
     // TODO FIR check function is not abstract
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho
 
-    val parameters = reference.constructorParameters
+    val parameters = reference.inputs.valueParameters
 
     val returnType = reference.typeKey.type
 
@@ -281,8 +291,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         isInternal = function.visibility == Visibilities.Internal,
         name = function.name,
         isProperty = false,
-        constructorParameters =
-          function.valueParameters.mapToConstructorParameters(this@ProvidesTransformer),
+        inputs = CallableInputs.from(this, function),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         isPublishedApi = function.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
@@ -290,6 +299,25 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         parent = parent.symbol,
         callee = function.symbol,
       )
+    }
+  }
+
+  data class CallableInputs(
+    val valueParameters: List<Parameter>,
+    val dispatchReceiver: Parameter? = null,
+    val extensionReceiver: Parameter? = null,
+  ) {
+    fun allAsParameters() = (valueParameters + dispatchReceiver + extensionReceiver).filterNotNull()
+
+    companion object {
+      fun from(context: LatticeTransformerContext, function: IrFunction?): CallableInputs {
+        return CallableInputs(
+          valueParameters =
+            function?.valueParameters?.mapToConstructorParameters(context).orEmpty(),
+          extensionReceiver = function?.extensionReceiverParameter?.toConstructorParameter(context),
+          dispatchReceiver = function?.dispatchReceiverParameter?.toConstructorParameter(context),
+        )
+      }
     }
   }
 
@@ -316,7 +344,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         isInternal = property.visibility == Visibilities.Internal,
         name = property.name,
         isProperty = true,
-        constructorParameters = emptyList(),
+        inputs = CallableInputs.from(this, property.getter),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         isPublishedApi = property.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
@@ -332,7 +360,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     factoryConstructor: IrConstructorSymbol,
     reference: CallableReference,
     factoryClassParameterized: IrType,
-    allParameters: List<ConstructorParameter>,
+    allParameters: List<Parameter>,
     byteCodeFunctionName: String,
   ): IrSimpleFunctionSymbol {
     val targetTypeParameterized = reference.typeKey.type
@@ -398,7 +426,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                   isObject && returnTypeIsNullable -> {
                     // Static component call, allows nullable returns
                     // ExampleComponent.$callableName$arguments
-                    irInvoke(irGetObject(reference.parent), reference.callee, args = arguments())
+                    irInvoke(
+                      dispatchReceiver = irGetObject(reference.parent),
+                      extensionReceiver = null, // TODO unimplemented
+                      callee = reference.callee,
+                      args = arguments(),
+                    )
                   }
                   isObject && !returnTypeIsNullable -> {
                     // Static component call that doesn't allow nullable
@@ -408,7 +441,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     checkNotNullCall(
                       this@ProvidesTransformer,
                       this@apply.parent, // TODO this is obvi wrong
-                      irInvoke(irGetObject(reference.parent), reference.callee, args = arguments()),
+                      irInvoke(
+                        dispatchReceiver = irGetObject(reference.parent),
+                        extensionReceiver = null, // TODO unimplemented
+                        callee = reference.callee,
+                        args = arguments(),
+                      ),
                       "Cannot return null from a non-@Nullable @Provides method",
                     )
                   }
@@ -416,7 +454,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     // Instance component call, allows nullable returns
                     // exampleComponent.$callableName$arguments
                     irInvoke(
-                      irGet(valueParameters[0]),
+                      dispatchReceiver = irGet(valueParameters[0]),
+                      extensionReceiver = null, // TODO unimplemented
                       reference.callee,
                       args = argumentsWithoutComponent(),
                     )
@@ -429,8 +468,9 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                       this@ProvidesTransformer,
                       this@apply.parent, // TODO this is obvi wrong
                       irInvoke(
-                        irGet(valueParameters[0]),
-                        reference.callee,
+                        dispatchReceiver = irGet(valueParameters[0]),
+                        extensionReceiver = null, // TODO unimplemented
+                        callee = reference.callee,
                         args = argumentsWithoutComponent(),
                       ),
                       "Cannot return null from a non-@Nullable @Provides method",
@@ -449,7 +489,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val isInternal: Boolean,
     val name: Name,
     val isProperty: Boolean,
-    val constructorParameters: List<ConstructorParameter>,
+    val inputs: CallableInputs,
     val typeKey: TypeKey,
     val isNullable: Boolean,
     val isPublishedApi: Boolean,
@@ -507,7 +547,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         append(fqName.asString())
         if (!isProperty) {
           append('(')
-          for (parameter in constructorParameters) {
+          for (parameter in inputs.allAsParameters()) {
             append(parameter.name)
             append(": ")
             append(parameter.typeKey)

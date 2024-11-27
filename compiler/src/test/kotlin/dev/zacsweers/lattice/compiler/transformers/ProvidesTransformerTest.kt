@@ -439,6 +439,43 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     )
   }
 
+  @Test
+  fun `function with receivers are not currently supported`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Named
+
+            @Component
+            interface ExampleComponent {
+              @Provides
+              fun String.provideValue(): Int = length
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+          ExampleComponent.kt:9:3 Extension receivers are not currently supported.
+        """.trimIndent()
+      )
+  }
+
   // TODO
   //  ------- from Anvil
   //  a factory class is generated for a provider method with generic type
