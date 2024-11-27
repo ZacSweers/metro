@@ -14,13 +14,12 @@
 
 [versions]
 autoService = "1.1.1"
-kotlinCompileTesting = "0.5.1"
-kotlin = "2.0.21"
+kotlinCompileTesting = "0.7.0-alpha01"
+kotlin = "2.1.0"
 jdk = "22"
 jvmTarget = "11"
-ksp = "2.0.21-1.0.26"
+ksp = "2.1.0-RC2-1.0.28"
 ktfmt = "0.53"
-moshi = "1.15.1"
 
 [plugins]
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.25.0" }
@@ -31,7 +30,7 @@ buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.5.0" }
 dokka = { id = "org.jetbrains.dokka", version = "1.9.20" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.29.0" }
-spotless = { id = "com.diffplug.spotless", version = "7.0.0.BETA2" }
+spotless = { id = "com.diffplug.spotless", version = "7.0.0.BETA4" }
 
 [libraries]
 autoService = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
@@ -52,4 +51,3 @@ ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 junit = { module = "junit:junit", version = "4.13.2" }
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
 kotlinCompileTesting = { module = "dev.zacsweers.kctfork:core", version.ref = "kotlinCompileTesting" }
-kotlinCompileTesting-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref ="kotlinCompileTesting" }

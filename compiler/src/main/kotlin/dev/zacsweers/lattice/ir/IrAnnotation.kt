@@ -77,7 +77,7 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?) {
   when (irElement) {
     null -> append("<null>")
     is IrConstructorCall -> renderAsAnnotation(irElement)
-    is IrConst<*> -> {
+    is IrConst -> {
       renderIrConstAsAnnotationArgument(irElement)
     }
     is IrVararg -> {
@@ -89,7 +89,7 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?) {
   }
 }
 
-private fun StringBuilder.renderIrConstAsAnnotationArgument(const: IrConst<*>) {
+private fun StringBuilder.renderIrConstAsAnnotationArgument(const: IrConst) {
   val quotes =
     when (const.kind) {
       IrConstKind.String -> "\""

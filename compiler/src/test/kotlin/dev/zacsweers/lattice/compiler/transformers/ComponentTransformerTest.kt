@@ -752,7 +752,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .contains(
         """
           ExampleComponent.kt:7:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (unscoped) may not reference scoped bindings:
-              kotlin.String
+              kotlin.String 
               kotlin.String is requested at
                   [test.ExampleComponent] test.ExampleComponent.value
         """

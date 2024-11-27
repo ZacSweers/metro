@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -411,7 +412,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             )
             .apply {
               isFinal = true
-              // DoubleCheck.provider(<provider>)
               initializer =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBody(irGet(thisReceiverParameter))
@@ -540,10 +540,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         // Implement abstract getters for exposed types
         node.exposedTypes.entries
-          .sortedBy { (_, function) ->
-            // TODO also sort by type keys
-            function.name.asString()
-          }
+          // Stable sort. First the name then the type
+          .sortedWith(
+            compareBy<Map.Entry<TypeKey, IrSimpleFunction>> { it.value.name }
+              .thenComparing {
+                it.key
+              }
+          )
           .forEach { (key, function) ->
             val property =
               function.correspondingPropertySymbol?.owner?.let { property ->

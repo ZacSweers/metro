@@ -77,6 +77,7 @@ import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
+import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -163,10 +164,10 @@ internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<
 
 internal fun <T> IrConstructorCall.constArgumentOfTypeAt(position: Int): T? {
   @Suppress("UNCHECKED_CAST")
-  return (getValueArgument(position) as? IrConst<*>?)?.valueAs()
+  return (getValueArgument(position) as? IrConst?)?.valueAs()
 }
 
-internal fun <T> IrConst<*>.valueAs(): T {
+internal fun <T> IrConst.valueAs(): T {
   @Suppress("UNCHECKED_CAST")
   return value as T
 }
@@ -306,7 +307,7 @@ internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =
 internal fun IrConstructorCall.computeAnnotationHash(): Int {
   return Objects.hash(
     type.rawType().classIdOrFail,
-    valueArguments.map { (it as IrConst<*>).value }.toTypedArray().contentDeepHashCode(),
+    valueArguments.map { (it as IrConst).value }.toTypedArray().contentDeepHashCode(),
   )
 }
 
