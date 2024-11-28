@@ -18,7 +18,7 @@ kotlinCompileTesting = "0.7.0-alpha01"
 kotlin = "2.1.0"
 jdk = "22"
 jvmTarget = "11"
-ksp = "2.1.0-RC2-1.0.28"
+ksp = "2.1.0-1.0.29"
 ktfmt = "0.53"
 
 [plugins]
