@@ -69,7 +69,6 @@ import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -266,7 +265,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         Binding.Provided(
           function,
           typeKey,
-          function.valueParameters.mapToConstructorParameters(this),
+          function.parameters(this),
           function.scopeAnnotation(),
         ),
         bindingStack,
@@ -477,9 +476,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               usedUnscopedBindings += key
             }
             // Check its dependencies too. Note we check parameters rather than the set of
-            // dependencies
-            // because this is what matters in terms of allocating fields
-            for (param in binding.parameters) {
+            // dependencies because this is what matters in terms of allocating fields
+            for (param in binding.parameters.nonInstanceParameters) {
               val depKey = param.typeKey
               if (depKey in usedUnscopedBindings) {
                 bindingStack.push(BindingStackEntry.requestedAt(depKey, accessor))
@@ -598,7 +596,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     providerFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
   ): List<IrExpression> {
-    val params = function.valueParameters.mapToConstructorParameters(this@ComponentTransformer)
+    val params = function.parameters(this@ComponentTransformer)
     if (
       binding is Binding.Provided && binding.providerFunction.correspondingPropertySymbol == null
     ) {
@@ -613,7 +611,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           .trimIndent()
       }
     }
-    return params.mapIndexed { i, param ->
+    // TODO only value args are supported atm
+    return params.valueParameters.mapIndexed { i, param ->
       val typeKey = paramTypeKeys[i]
       instanceFields[typeKey]?.let { instanceField ->
         // If it's in instance field, invoke that field

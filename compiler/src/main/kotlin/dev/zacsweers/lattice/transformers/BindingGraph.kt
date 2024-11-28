@@ -60,7 +60,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       val irClass = key.type.rawType()
       val injectableConstructor = with(context) { irClass.findInjectableConstructor() }
       if (injectableConstructor != null) {
-        val parameters = injectableConstructor.valueParameters.mapToConstructorParameters(context)
+        val parameters = injectableConstructor.parameters(context)
         bindingStack.pop()
         Binding.ConstructorInjected(
           type = irClass,

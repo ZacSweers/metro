@@ -51,7 +51,6 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.ClassId
 
 internal class InjectConstructorTransformer(context: LatticeTransformerContext) :
@@ -112,14 +111,9 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         .apply { origin = LatticeOrigin }
 
     val typeParameters = factoryCls.copyTypeParameters(targetTypeParameters)
-    val srcToDstParameterMap =
-      targetTypeParameters.zip(typeParameters).associate { (src, target) -> src to target }
 
-    val constructorParameters =
-      targetConstructor.valueParameters.mapToConstructorParameters(this) { type ->
-        type.remapTypeParameters(declaration, factoryCls, srcToDstParameterMap)
-      }
-    val allParameters = constructorParameters // + memberInjectParameters
+    val constructorParameters = targetConstructor.parameters(this, factoryCls, declaration)
+    val allParameters = constructorParameters.valueParameters // + memberInjectParameters
 
     factoryCls.createImplicitParameterDeclarationWithWrappedDescriptor()
     factoryCls.superTypes =
@@ -208,7 +202,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     targetConstructor: IrConstructorSymbol,
     targetTypeParameterized: IrType,
     factoryClassParameterized: IrType,
-    allParameters: List<ConstructorParameter>,
+    allParameters: List<Parameter>,
   ): IrSimpleFunctionSymbol {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT

@@ -20,8 +20,14 @@ import dev.zacsweers.lattice.expectAs
 import dev.zacsweers.lattice.ir.annotationsIn
 import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
 import dev.zacsweers.lattice.ir.rawTypeOrNull
+import dev.zacsweers.lattice.transformers.Parameter.Kind
 import kotlin.collections.count
 import kotlin.collections.sumOf
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -30,10 +36,14 @@ import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames
 
 internal sealed interface Parameter {
+  val kind: Kind
   val name: Name
   val originalName: Name
   val typeName: IrType
@@ -64,6 +74,13 @@ internal sealed interface Parameter {
         isWrappedInLazy -> lazyTypeName
         else -> typeName
       }
+
+  enum class Kind {
+    INSTANCE,
+    EXTENSION_RECEIVER,
+    VALUE,
+//    CONTEXT_PARAMETER, // Coming soon
+  }
 }
 
 /**
@@ -89,6 +106,7 @@ internal fun Name.uniqueParameterName(vararg superParameters: List<Parameter>): 
 }
 
 internal data class ConstructorParameter(
+  override val kind: Kind,
   override val name: Name,
   override val typeKey: TypeKey,
   override val originalName: Name,
@@ -126,17 +144,65 @@ private fun IrType.wrapIn(target: IrClassSymbol): IrType {
   return target.typeWith(this)
 }
 
+internal data class Parameters(
+  val instance: Parameter?,
+  val extensionReceiver: Parameter?,
+  val valueParameters: List<Parameter>,
+) {
+  val nonInstanceParameters: List<Parameter> = buildList {
+    extensionReceiver?.let(::add)
+    addAll(valueParameters)
+  }
+  val allParameters: List<Parameter> = buildList {
+    instance?.let(::add)
+    addAll(nonInstanceParameters)
+  }
+
+  companion object {
+    val EMPTY = Parameters(null, null, emptyList())
+  }
+}
+
+internal fun IrFunction.parameters(
+  context: LatticeTransformerContext,
+  parentClass: IrClass? = parentClassOrNull,
+  originClass: IrTypeParametersContainer? = null,
+): Parameters {
+  val mapper = if (this is IrConstructor && originClass != null && parentClass != null) {
+    val typeParameters = parentClass.typeParameters
+    val srcToDstParameterMap: Map<IrTypeParameter, IrTypeParameter> = originClass.typeParameters
+      .zip(typeParameters)
+      .associate { (src, target) ->
+        src to target
+      }
+    // Returning this inline breaks kotlinc for some reason
+    val innerMapper: ((IrType) -> IrType) = { type ->
+      type.remapTypeParameters(originClass, parentClass, srcToDstParameterMap)
+    }
+    innerMapper
+  } else {
+    null
+  }
+
+  return Parameters(
+    instance = dispatchReceiverParameter?.toConstructorParameter(context, Kind.INSTANCE, SpecialNames.THIS, mapper),
+    extensionReceiver = extensionReceiverParameter?.toConstructorParameter(context, Kind.EXTENSION_RECEIVER, SpecialNames.RECEIVER, mapper),
+    valueParameters = valueParameters.mapToConstructorParameters(context, mapper)
+  )
+}
+
 internal fun List<IrValueParameter>.mapToConstructorParameters(
   context: LatticeTransformerContext,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): List<ConstructorParameter> {
   return map { valueParameter ->
-    valueParameter.toConstructorParameter(context, valueParameter.name, typeParameterRemapper)
+    valueParameter.toConstructorParameter(context, Kind.VALUE, valueParameter.name, typeParameterRemapper)
   }
 }
 
 internal fun IrValueParameter.toConstructorParameter(
   context: LatticeTransformerContext,
+  kind: Kind = Kind.VALUE,
   uniqueName: Name = this.name,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): ConstructorParameter {
@@ -168,6 +234,7 @@ internal fun IrValueParameter.toConstructorParameter(
     Name.identifier(assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty())
 
   return ConstructorParameter(
+    kind = kind,
     name = uniqueName,
     typeKey = TypeKey.from(context, this, type = typeName),
     originalName = name,

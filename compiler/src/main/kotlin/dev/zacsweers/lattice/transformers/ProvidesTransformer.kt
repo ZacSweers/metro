@@ -150,7 +150,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     }
 
     // TODO unimplemented for now
-    if (reference.inputs.extensionReceiver != null) {
+    if (reference.parameters.extensionReceiver != null) {
       reference.callee.owner.reportError(
         """
           Extension receivers are not currently supported.
@@ -165,7 +165,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho
 
-    val parameters = reference.inputs.valueParameters
+    val parameters = reference.parameters.valueParameters
 
     val returnType = reference.typeKey.type
 
@@ -206,6 +206,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       if (!reference.isInObject) {
         add(
           ConstructorParameter(
+            kind = Parameter.Kind.VALUE,
             name = Name.identifier("component"),
             typeKey = TypeKey(componentType),
             originalName = Name.identifier("component"),
@@ -291,7 +292,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         isInternal = function.visibility == Visibilities.Internal,
         name = function.name,
         isProperty = false,
-        inputs = CallableInputs.from(this, function),
+        parameters = function.parameters(this),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         isPublishedApi = function.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
@@ -299,25 +300,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         parent = parent.symbol,
         callee = function.symbol,
       )
-    }
-  }
-
-  data class CallableInputs(
-    val valueParameters: List<Parameter>,
-    val dispatchReceiver: Parameter? = null,
-    val extensionReceiver: Parameter? = null,
-  ) {
-    fun allAsParameters() = (valueParameters + dispatchReceiver + extensionReceiver).filterNotNull()
-
-    companion object {
-      fun from(context: LatticeTransformerContext, function: IrFunction?): CallableInputs {
-        return CallableInputs(
-          valueParameters =
-            function?.valueParameters?.mapToConstructorParameters(context).orEmpty(),
-          extensionReceiver = function?.extensionReceiverParameter?.toConstructorParameter(context),
-          dispatchReceiver = function?.dispatchReceiverParameter?.toConstructorParameter(context),
-        )
-      }
     }
   }
 
@@ -344,7 +326,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         isInternal = property.visibility == Visibilities.Internal,
         name = property.name,
         isProperty = true,
-        inputs = CallableInputs.from(this, property.getter),
+        parameters = property.getter?.parameters(this) ?: Parameters.EMPTY,
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         isPublishedApi = property.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
@@ -489,7 +471,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val isInternal: Boolean,
     val name: Name,
     val isProperty: Boolean,
-    val inputs: CallableInputs,
+    val parameters: Parameters,
     val typeKey: TypeKey,
     val isNullable: Boolean,
     val isPublishedApi: Boolean,
@@ -547,7 +529,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         append(fqName.asString())
         if (!isProperty) {
           append('(')
-          for (parameter in inputs.allAsParameters()) {
+          for (parameter in parameters.allParameters) {
+            append('(')
+            append(parameter.kind)
+            append(')')
             append(parameter.name)
             append(": ")
             append(parameter.typeKey)
