@@ -225,8 +225,9 @@ internal fun IrBuilderWithScope.irInvoke(
 internal fun IrClass.addOverride(
   baseFunction: IrSimpleFunction,
   modality: Modality = Modality.FINAL,
+  overriddenSymbols: List<IrSimpleFunctionSymbol> = listOf(baseFunction.symbol),
 ): IrSimpleFunction =
-  addOverride(baseFunction.kotlinFqName, baseFunction.name, baseFunction.returnType, modality)
+  addOverride(baseFunction.kotlinFqName, baseFunction.name, baseFunction.returnType, modality, overriddenSymbols)
     .apply {
       dispatchReceiverParameter = this@addOverride.thisReceiver?.copyTo(this)
       copyValueParametersFrom(baseFunction)
@@ -238,9 +239,10 @@ internal fun IrClass.addOverride(
   simpleName: Name,
   returnType: IrType,
   modality: Modality = Modality.FINAL,
+  overriddenSymbols: List<IrSimpleFunctionSymbol> = findOverridesOf(simpleName, baseFqName),
 ): IrSimpleFunction =
   addFunction(simpleName.asString(), returnType, modality).apply {
-    overriddenSymbols = findOverridesOf(simpleName, baseFqName)
+    this.overriddenSymbols = overriddenSymbols
   }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)

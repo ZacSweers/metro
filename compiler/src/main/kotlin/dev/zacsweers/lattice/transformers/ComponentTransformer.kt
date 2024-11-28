@@ -543,9 +543,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           // Stable sort. First the name then the type
           .sortedWith(
             compareBy<Map.Entry<TypeKey, IrSimpleFunction>> { it.value.name }
-              .thenComparing {
-                it.key
-              }
+              .thenComparing { it.key }
           )
           .forEach { (key, function) ->
             val property =
@@ -553,11 +551,17 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 addProperty { name = property.name }
               }
             val getter =
-              property?.addGetter { returnType = function.returnType }
-                ?: addOverride(function.kotlinFqName, function.name, key.type)
+              property
+                ?.addGetter { returnType = function.returnType }
+                ?.apply { this.overriddenSymbols += function.symbol }
+                ?: addOverride(
+                  function.kotlinFqName,
+                  function.name,
+                  key.type,
+                  overriddenSymbols = listOf(function.symbol),
+                )
             getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
-              this.overriddenSymbols += function.symbol
               val binding = graph.getOrCreateBinding(key, BindingStack.empty())
               bindingStack.push(BindingStackEntry.requestedAt(key, function))
               body =

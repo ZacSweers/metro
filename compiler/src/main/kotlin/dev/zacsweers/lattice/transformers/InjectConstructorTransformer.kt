@@ -171,10 +171,10 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         baseFqName = symbols.providerInvoke.owner.kotlinFqName,
         simpleName = symbols.providerInvoke.owner.name,
         returnType = targetTypeParameterized,
+        overriddenSymbols = listOf(symbols.providerInvoke)
       )
       .apply {
         this.dispatchReceiverParameter = factoryCls.thisReceiver!!
-        this.overriddenSymbols += symbols.providerInvoke
         body =
           pluginContext.createIrBuilder(symbol).irBlockBody {
             val instance =
