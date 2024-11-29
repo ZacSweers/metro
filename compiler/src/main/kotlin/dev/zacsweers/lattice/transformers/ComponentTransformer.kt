@@ -29,12 +29,12 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.letIf
-import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addGetter
@@ -586,7 +586,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun DeclarationIrBuilder.generateBindingArguments(
+  private fun IrBuilderWithScope.generateBindingArguments(
     paramTypeKeys: List<TypeKey>,
     function: IrFunction,
     binding: Binding,
@@ -677,7 +677,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun DeclarationIrBuilder.generateBindingCode(
+  private fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
