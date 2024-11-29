@@ -262,12 +262,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     component.providerFunctions.forEach { (typeKey, function) ->
       graph.addBinding(
         typeKey,
-        Binding.Provided(
-          function,
-          typeKey,
-          function.parameters(this),
-          function.scopeAnnotation(),
-        ),
+        Binding.Provided(function, typeKey, function.parameters(this), function.scopeAnnotation()),
         bindingStack,
       )
     }

@@ -32,7 +32,8 @@ internal sealed interface Binding {
     val typeKey: TypeKey,
     override val parameters: Parameters,
     override val scope: IrAnnotation? = null,
-    override val dependencies: Map<TypeKey, Parameter> = parameters.nonInstanceParameters.associateBy { it.typeKey },
+    override val dependencies: Map<TypeKey, Parameter> =
+      parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = type.name.asString()
   }
@@ -42,7 +43,8 @@ internal sealed interface Binding {
     val typeKey: TypeKey,
     override val parameters: Parameters,
     override val scope: IrAnnotation? = null,
-    override val dependencies: Map<TypeKey, Parameter> = parameters.nonInstanceParameters.associateBy { it.typeKey },
+    override val dependencies: Map<TypeKey, Parameter> =
+      parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = providerFunction.name.asString()
   }

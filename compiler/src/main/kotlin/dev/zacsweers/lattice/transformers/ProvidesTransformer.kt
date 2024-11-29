@@ -246,7 +246,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         baseFqName = symbols.providerInvoke.owner.kotlinFqName,
         simpleName = symbols.providerInvoke.owner.name,
         returnType = returnType,
-        overriddenSymbols = listOf(symbols.providerInvoke)
+        overriddenSymbols = listOf(symbols.providerInvoke),
       )
       .apply {
         this.dispatchReceiverParameter = factoryCls.thisReceiver!!

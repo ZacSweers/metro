@@ -38,7 +38,6 @@ import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -184,7 +183,7 @@ internal fun IrPluginContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBui
 }
 
 internal fun IrPluginContext.buildBlockBody(
-  blockBody: DeclarationIrBuilder.(MutableList<IrStatement>) -> Unit = {},
+  blockBody: DeclarationIrBuilder.(MutableList<IrStatement>) -> Unit = {}
 ): IrBlockBody {
   val startOffset = UNDEFINED_OFFSET
   val endOffset = UNDEFINED_OFFSET
@@ -225,7 +224,13 @@ internal fun IrClass.addOverride(
   modality: Modality = Modality.FINAL,
   overriddenSymbols: List<IrSimpleFunctionSymbol> = listOf(baseFunction.symbol),
 ): IrSimpleFunction =
-  addOverride(baseFunction.kotlinFqName, baseFunction.name, baseFunction.returnType, modality, overriddenSymbols)
+  addOverride(
+      baseFunction.kotlinFqName,
+      baseFunction.name,
+      baseFunction.returnType,
+      modality,
+      overriddenSymbols,
+    )
     .apply {
       dispatchReceiverParameter = this@addOverride.thisReceiver?.copyTo(this)
       copyValueParametersFrom(baseFunction)
