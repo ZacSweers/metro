@@ -40,7 +40,6 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.name.SpecialNames
 
 internal sealed interface Parameter {
   val kind: Kind
@@ -79,7 +78,7 @@ internal sealed interface Parameter {
     INSTANCE,
     EXTENSION_RECEIVER,
     VALUE,
-//    CONTEXT_PARAMETER, // Coming soon
+    //    CONTEXT_PARAMETER, // Coming soon
   }
 }
 
@@ -168,26 +167,34 @@ internal fun IrFunction.parameters(
   parentClass: IrClass? = parentClassOrNull,
   originClass: IrTypeParametersContainer? = null,
 ): Parameters {
-  val mapper = if (this is IrConstructor && originClass != null && parentClass != null) {
-    val typeParameters = parentClass.typeParameters
-    val srcToDstParameterMap: Map<IrTypeParameter, IrTypeParameter> = originClass.typeParameters
-      .zip(typeParameters)
-      .associate { (src, target) ->
-        src to target
+  val mapper =
+    if (this is IrConstructor && originClass != null && parentClass != null) {
+      val typeParameters = parentClass.typeParameters
+      val srcToDstParameterMap: Map<IrTypeParameter, IrTypeParameter> =
+        originClass.typeParameters.zip(typeParameters).associate { (src, target) -> src to target }
+      // Returning this inline breaks kotlinc for some reason
+      val innerMapper: ((IrType) -> IrType) = { type ->
+        type.remapTypeParameters(originClass, parentClass, srcToDstParameterMap)
       }
-    // Returning this inline breaks kotlinc for some reason
-    val innerMapper: ((IrType) -> IrType) = { type ->
-      type.remapTypeParameters(originClass, parentClass, srcToDstParameterMap)
+      innerMapper
+    } else {
+      null
     }
-    innerMapper
-  } else {
-    null
-  }
 
   return Parameters(
-    instance = dispatchReceiverParameter?.toConstructorParameter(context, Kind.INSTANCE, SpecialNames.THIS, mapper),
-    extensionReceiver = extensionReceiverParameter?.toConstructorParameter(context, Kind.EXTENSION_RECEIVER, SpecialNames.RECEIVER, mapper),
-    valueParameters = valueParameters.mapToConstructorParameters(context, mapper)
+    instance =
+      dispatchReceiverParameter?.toConstructorParameter(
+        context,
+        Kind.INSTANCE,
+        typeParameterRemapper = mapper,
+      ),
+    extensionReceiver =
+      extensionReceiverParameter?.toConstructorParameter(
+        context,
+        Kind.EXTENSION_RECEIVER,
+        typeParameterRemapper = mapper,
+      ),
+    valueParameters = valueParameters.mapToConstructorParameters(context, mapper),
   )
 }
 
@@ -196,7 +203,12 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): List<ConstructorParameter> {
   return map { valueParameter ->
-    valueParameter.toConstructorParameter(context, Kind.VALUE, valueParameter.name, typeParameterRemapper)
+    valueParameter.toConstructorParameter(
+      context,
+      Kind.VALUE,
+      valueParameter.name,
+      typeParameterRemapper,
+    )
   }
 }
 
