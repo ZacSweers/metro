@@ -13,18 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
-
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.atomicfu)
   id("dev.zacsweers.lattice")
 }
 
 kotlin {
   jvm()
-  macosArm64()
-  js { browser() }
-  @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
+  // TODO non-jvm targets fail with
+  //  e: Compilation failed: class org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl cannot be
+  //  cast to class org.jetbrains.kotlin.ir.expressions.IrBody
+  //  (org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl and
+  //  org.jetbrains.kotlin.ir.expressions.IrBody are in unnamed module of loader
+  //  java.net.URLClassLoader @4965ed6f)
+  //  Notes:
+  //  - When implementing overrides for accessors, their expression bodies don't appear to get
+  //    serialized correctly.
+  //  - They generate something like `irExpressionBody(irInvoke(<provider>.invoke())`
+  //  - However, for some reason the underling IrCall is what's serialized and the surrounding
+  //    IrBody is missing
+  // macosArm64()
+  // js { browser() }
+  // @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
   sourceSets {
     commonMain { dependencies { implementation(project(":runtime")) } }
     commonTest { dependencies { implementation(libs.kotlin.test) } }

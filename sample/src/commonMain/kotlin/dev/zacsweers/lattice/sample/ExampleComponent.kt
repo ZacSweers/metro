@@ -31,11 +31,6 @@ abstract class ExampleComponent(@get:Provides val text: String) : FileSystemComp
 
   abstract fun example4(): Example4
 
-  // TODO...why does this fail to compile
-  @get:Provides
-  val String.binds: CharSequence
-    get() = this
-
   @Component.Factory
   fun interface Factory {
     fun create(text: String): ExampleComponent
