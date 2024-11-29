@@ -93,8 +93,10 @@ internal class BindingStackEntry(
   fun render(component: FqName): String {
     return buildString {
       append(typeKey)
-      append(' ')
-      action?.let { appendLine(it) }
+      action?.let {
+        append(' ')
+        appendLine(it)
+      }
       context?.let {
         append("    ")
         append("[${component.asString()}]")
