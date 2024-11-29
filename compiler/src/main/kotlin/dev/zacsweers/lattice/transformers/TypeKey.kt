@@ -17,11 +17,10 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.unsafeLazy
-import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.render
 
+// TODO cache these in ComponentTransformer or shared transformer data
 internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
   Comparable<TypeKey> {
   private val cachedToString by unsafeLazy {
@@ -37,18 +36,4 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
   override fun toString(): String = cachedToString
 
   override fun compareTo(other: TypeKey) = toString().compareTo(other.toString())
-
-  companion object {
-    fun from(
-      context: LatticeTransformerContext,
-      function: IrFunction,
-      type: IrType = function.returnType,
-    ): TypeKey = TypeKey(type, with(context) { function.qualifierAnnotation() })
-
-    fun from(
-      context: LatticeTransformerContext,
-      parameter: IrValueParameter,
-      type: IrType = parameter.type,
-    ): TypeKey = TypeKey(type, with(context) { parameter.qualifierAnnotation() })
-  }
 }
