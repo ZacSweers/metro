@@ -18,5 +18,4 @@ package dev.zacsweers.lattice
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOriginImpl
 
-internal val LatticeOrigin: IrDeclarationOrigin =
-  IrDeclarationOriginImpl("GENERATED_LATTICE_CLASS_MEMBER")
+internal val LatticeOrigin: IrDeclarationOrigin by IrDeclarationOriginImpl
