@@ -37,6 +37,8 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
+import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.file
@@ -69,7 +71,10 @@ internal interface LatticeTransformerContext {
 
   fun IrElement.dumpToLatticeLog(name: String) {
     if (debug) {
-      val irSrc = dumpKotlinLike()
+      val irSrc =
+        dumpKotlinLike(
+          KotlinLikeDumpOptions(visibilityPrintingStrategy = VisibilityPrintingStrategy.ALWAYS)
+        )
       messageCollector.report(
         CompilerMessageSeverity.STRONG_WARNING,
         "LATTICE: Dumping current IR src for ${name}\n$irSrc",
