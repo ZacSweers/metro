@@ -183,25 +183,23 @@ internal fun IrPluginContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBui
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
 }
 
-internal fun IrConstructor.irConstructorBody(
-  context: IrGeneratorContext,
+internal fun IrPluginContext.buildBlockBody(
   blockBody: DeclarationIrBuilder.(MutableList<IrStatement>) -> Unit = {},
 ): IrBlockBody {
   val startOffset = UNDEFINED_OFFSET
   val endOffset = UNDEFINED_OFFSET
-  val constructorIrBuilder =
+  val builder =
     DeclarationIrBuilder(
-      generatorContext = context,
+      generatorContext = this,
       symbol = IrSimpleFunctionSymbolImpl(),
       startOffset = startOffset,
       endOffset = endOffset,
     )
-  val ctorBody =
-    context.irFactory.createBlockBody(startOffset = startOffset, endOffset = endOffset).apply {
-      constructorIrBuilder.blockBody(statements)
+  val body =
+    irFactory.createBlockBody(startOffset = startOffset, endOffset = endOffset).apply {
+      builder.blockBody(statements)
     }
-  body = ctorBody
-  return ctorBody
+  return body
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
