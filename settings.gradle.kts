@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "lattice"
 
-include(":compiler", ":runtime", ":sample")
+include(":compiler", "integration-tests", ":runtime", ":sample")
 
 includeBuild("gradle-plugin") {
   dependencySubstitution {

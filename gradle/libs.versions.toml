@@ -20,6 +20,7 @@ jdk = "22"
 jvmTarget = "11"
 ksp = "2.1.0-1.0.29"
 ktfmt = "0.53"
+okio = "3.9.1"
 
 [plugins]
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.25.0" }
@@ -47,6 +48,9 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 
 # Only present to trigger automatic renovate updates
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
+
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 
 junit = { module = "junit:junit", version = "4.13.2" }
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
