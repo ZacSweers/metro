@@ -16,6 +16,7 @@
 autoService = "1.1.1"
 kotlinCompileTesting = "0.7.0-alpha01"
 kotlin = "2.1.0"
+kotlinx-coroutines = "1.9.0"
 jdk = "22"
 jvmTarget = "11"
 ksp = "2.1.0-1.0.29"
@@ -36,6 +37,9 @@ spotless = { id = "com.diffplug.spotless", version = "7.0.0.BETA4" }
 [libraries]
 autoService = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
 autoService-ksp = { module = "dev.zacsweers.autoservice:auto-service-ksp", version = "1.2.0" }
+
+coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
 kotlin-compilerEmbeddable = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin" }

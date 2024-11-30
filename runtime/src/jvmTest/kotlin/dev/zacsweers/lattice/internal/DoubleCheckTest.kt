@@ -15,16 +15,17 @@
  */
 package dev.zacsweers.lattice.internal
 
-import com.google.common.collect.Sets
 import com.google.common.truth.Truth.assertThat
-import com.google.common.util.concurrent.Uninterruptibles
 import dev.zacsweers.lattice.Provider
-import java.util.concurrent.Callable
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 // TODO convert to coroutines test instead?
 class DoubleCheckTest {
@@ -43,39 +44,32 @@ class DoubleCheckTest {
       .isSameInstanceAs(DOUBLE_CHECK_OBJECT_PROVIDER)
   }
 
+  // Use runBlocking and not runTest because we actually want multithreading in this test
   @Test
-  fun get() {
-    val numThreads = 10
-    val executor = Executors.newFixedThreadPool(numThreads)
+  fun get() = runBlocking {
+    val numCoroutines = 10
 
-    val latch = CountDownLatch(numThreads)
-    val provider = LatchedProvider(latch)
+    val mutex = Mutex(locked = true) // Start locked
+    val provider = CoroutineLatchedProvider(mutex)
     val lazy = DoubleCheck.lazy(provider)
 
-    val tasks =
-      List<Callable<Any>>(numThreads) {
-        Callable {
-          latch.countDown()
-          lazy.value
-        }
-      }
+    val results = List(numCoroutines) { async(Dispatchers.Default) { lazy.value } }
 
-    val futures = executor.invokeAll(tasks)
+    // Release all coroutines at once and await the results
+    mutex.unlock()
+    val values = results.awaitAll().toSet()
 
     assertThat(provider.provisions.value).isEqualTo(1)
-    val results: MutableSet<Any> = Sets.newIdentityHashSet()
-    for (future in futures) {
-      results.add(future.get())
-    }
-    assertThat(results).hasSize(1)
+    assertThat(values).hasSize(1)
   }
 
-  private class LatchedProvider(val latch: CountDownLatch?) : Provider<Any> {
+  class CoroutineLatchedProvider(private val mutex: Mutex) : Provider<Any> {
     val provisions = atomic(0)
 
     override fun invoke(): Any {
-      if (latch != null) {
-        Uninterruptibles.awaitUninterruptibly(latch)
+      runBlocking {
+        // Wait until mutex is unlocked
+        mutex.withLock {}
       }
       provisions.incrementAndGet()
       return Any()
