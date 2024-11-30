@@ -16,41 +16,52 @@
 package dev.zacsweers.lattice.internal
 
 import dev.zacsweers.lattice.Provider
-import kotlinx.atomicfu.locks.reentrantLock
-import kotlinx.atomicfu.locks.withLock
+import kotlin.concurrent.Volatile
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 
 internal val UNINITIALIZED = Any()
 
-/** A [Lazy] and [Provider] implementation that memoizes the value returned from a delegate. */
+/**
+ * A [Lazy] and [Provider] implementation that memoizes the value returned from a [provider]. The
+ * [provider] instance is released after it's called.
+ *
+ * Modification notes:
+ * - Some semantics from the kotlin stdlib's synchronized [Lazy] impl are ported to here.
+ * - Uses AtomicFu's [synchronized] + [SynchronizedObject] APIs for KMP support.
+ * - The [_value] will eagerly return if initialized
+ * - [_value] is [@Volatile][Volatile]
+ */
 public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
-  Provider<T>, Lazy<T> {
+  SynchronizedObject(), Provider<T>, Lazy<T> {
 
-  private val lock = reentrantLock()
   private var provider: Provider<T>? = provider
-  private var instance: Any? = UNINITIALIZED
+  @Volatile private var _value: Any? = UNINITIALIZED
 
   override val value: T
     get() {
-      var result = instance
-      if (result == UNINITIALIZED) {
-        result =
-          lock.withLock {
-            var result = instance
-            if (result == UNINITIALIZED) {
-              result = provider!!()
-              instance = reentrantCheck(instance, result)
-              // Null out the reference to the provider. We are never going to need it again, so we
-              // can make it eligible for GC.
-              provider = null
-            }
-            result
-          }
+      var result1 = _value
+      if (result1 !== UNINITIALIZED) {
+        @Suppress("UNCHECKED_CAST")
+        return result1 as T
       }
-      @Suppress("UNCHECKED_CAST")
-      return result as T
+
+      return synchronized(this) {
+        var result2 = _value
+        if (result2 !== UNINITIALIZED) {
+          @Suppress("UNCHECKED_CAST") (result2 as T)
+        } else {
+          val typedValue = provider!!()
+          _value = reentrantCheck(_value, typedValue)
+          // Null out the reference to the provider. We are never going to need it again, so we
+          // can make it eligible for GC.
+          provider = null
+          typedValue
+        }
+      }
     }
 
-  override fun isInitialized(): Boolean = instance === UNINITIALIZED
+  override fun isInitialized(): Boolean = _value === UNINITIALIZED
 
   override fun invoke(): T = value
 

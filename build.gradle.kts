@@ -45,6 +45,7 @@ plugins {
 
 apiValidation {
   ignoredProjects += listOf("compiler", "sample", "integration-tests")
+  ignoredPackages += listOf("dev.zacsweers.lattice.internal")
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
