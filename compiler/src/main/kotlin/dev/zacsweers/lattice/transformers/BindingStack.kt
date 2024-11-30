@@ -80,7 +80,7 @@ internal val BindingStack.lastEntryOrComponent
 internal fun Appendable.appendBindingStack(
   stack: BindingStack,
   indent: String = "    ",
-  ellipse: Boolean = false
+  ellipse: Boolean = false,
 ) {
   val componentName = stack.component.kotlinFqName
   for (entry in stack.entries) {

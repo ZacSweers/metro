@@ -1025,10 +1025,11 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun `simple cycle detection`() {
-    val result = compile(
-      kotlin(
-        "ExampleComponent.kt",
-        """
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
             package test
 
             import dev.zacsweers.lattice.annotations.Component
@@ -1050,10 +1051,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             }
 
           """
-          .trimIndent(),
-      ),
-      expectedExitCode = ExitCode.COMPILATION_ERROR,
-    )
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
 
     assertThat(result.messages)
       .contains(
@@ -1064,16 +1065,18 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               kotlin.Int is injected at
                   [test.ExampleComponent] test.ExampleComponent.provideInt(…, value)
               ...
-        """.trimIndent()
+        """
+          .trimIndent()
       )
   }
 
   @Test
   fun `complex cycle detection`() {
-    val result = compile(
-      kotlin(
-        "ExampleComponent.kt",
-        """
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
             package test
 
             import dev.zacsweers.lattice.annotations.Component
@@ -1088,12 +1091,12 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               fun provideString(int: Int): String {
                   return "Value: " + int
               }
-          
-              @Provides 
+
+              @Provides
               fun provideInt(double: Double): Int {
                   return double.toInt()
               }
-          
+
               @Provides
               fun provideDouble(string: String): Double {
                   return string.length.toDouble()
@@ -1106,10 +1109,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             }
 
           """
-          .trimIndent(),
-      ),
-      expectedExitCode = ExitCode.COMPILATION_ERROR,
-    )
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
 
     assertThat(result.messages)
       .contains(
@@ -1124,7 +1127,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               kotlin.Int is injected at
                   [test.ExampleComponent] test.ExampleComponent.provideString(…, int)
               ...
-        """.trimIndent()
+        """
+          .trimIndent()
       )
   }
 

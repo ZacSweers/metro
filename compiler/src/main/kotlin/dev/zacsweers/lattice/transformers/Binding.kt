@@ -40,7 +40,10 @@ internal sealed interface Binding {
       parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = type.name.asString()
-    fun parameterFor(typeKey: TypeKey) = injectedConstructor.valueParameters[parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
+
+    fun parameterFor(typeKey: TypeKey) =
+      injectedConstructor.valueParameters[
+          parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
   }
 
   data class Provided(
@@ -52,8 +55,10 @@ internal sealed interface Binding {
       parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = providerFunction.name.asString()
+
     fun parameterFor(typeKey: TypeKey): IrValueParameter {
-      return providerFunction.valueParameters[parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
+      return providerFunction.valueParameters[
+          parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
     }
   }
 
