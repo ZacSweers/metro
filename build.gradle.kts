@@ -89,6 +89,7 @@ allprojects {
         "**/InstanceFactory.kt",
         "**/ProviderOfLazy.kt",
         "**/DoubleCheckTest.kt",
+        "**/InstanceFactoryTest.kt",
       )
     }
   }
