@@ -103,8 +103,7 @@ class ComponentProcessingTest {
     abstract val lazyValue: Lazy<Int>
     abstract val providedLazies: Provider<Lazy<Int>>
 
-    @Provides
-    fun provideInt(): Int = counter++
+    @Provides fun provideInt(): Int = counter++
 
     @Component.Factory
     fun interface Factory {

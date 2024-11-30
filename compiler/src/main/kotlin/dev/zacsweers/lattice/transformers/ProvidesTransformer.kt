@@ -204,10 +204,13 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     val allParameters = buildList {
       if (!reference.isInObject) {
-        val typeMetadata = TypeMetadata(
-          typeKey = TypeKey(componentType),
-          isWrappedInProvider = false, isWrappedInLazy = false, isLazyWrappedInProvider = false
-        )
+        val typeMetadata =
+          TypeMetadata(
+            typeKey = TypeKey(componentType),
+            isWrappedInProvider = false,
+            isWrappedInLazy = false,
+            isLazyWrappedInProvider = false,
+          )
         add(
           ConstructorParameter(
             kind = Parameter.Kind.VALUE,
@@ -222,7 +225,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             symbols = symbols,
             isComponentInstance = true,
             // TODO is this right/ever going to happen?
-            bindingStackEntry = BindingStackEntry.simpleTypeRef(typeMetadata.typeKey)
+            bindingStackEntry = BindingStackEntry.simpleTypeRef(typeMetadata.typeKey),
           )
         )
       }

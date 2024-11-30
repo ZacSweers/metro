@@ -175,9 +175,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             !function.isAnnotatedWithAny(symbols.providesAnnotations)
         }
         // TODO validate
-        .associate { function ->
-          function to TypeMetadata.from(this, function)
-        }
+        .associate { function -> function to TypeMetadata.from(this, function) }
 
     val creator =
       componentDeclaration.nestedClasses
@@ -503,21 +501,22 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               bindingStack.push(BindingStackEntry.requestedAt(key, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  val providerReceiver = generateBindingCode(
-                    binding,
-                    graph,
-                    thisReceiverParameter,
-                    instanceFields,
-                    providerFields,
-                    bindingStack,
-                  )
+                  val providerReceiver =
+                    generateBindingCode(
+                      binding,
+                      graph,
+                      thisReceiverParameter,
+                      instanceFields,
+                      providerFields,
+                      bindingStack,
+                    )
                   irExprBody(
                     typeAsProviderArgument(
                       typeMetadata,
                       providerReceiver,
                       isAssisted = false,
                       isComponentInstance = false,
-                      symbols
+                      symbols,
                     )
                   )
                 }
@@ -793,9 +792,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             // The receiver param here will be the instance type
             add(
               TypeMetadata.from(
-                this@ComponentTransformer,
-                binding.providerFunction.dispatchReceiverParameter!!,
-              )
+                  this@ComponentTransformer,
+                  binding.providerFunction.dispatchReceiverParameter!!,
+                )
                 .typeKey
             )
           }

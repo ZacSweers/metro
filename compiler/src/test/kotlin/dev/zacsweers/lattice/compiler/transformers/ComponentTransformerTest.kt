@@ -981,7 +981,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
           .trimIndent(),
-      ),
+      )
     )
   }
 
@@ -1000,7 +1000,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
             @Component
             abstract class ExampleComponent {
-            
+
               var counter = 0
 
               abstract val scalar: Int
@@ -1019,7 +1019,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
           .trimIndent(),
-      ),
+      )
     )
   }
 

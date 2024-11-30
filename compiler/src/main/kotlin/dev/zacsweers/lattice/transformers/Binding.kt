@@ -53,7 +53,7 @@ internal sealed interface Binding {
   data class ComponentDependency(
     val component: IrClass,
     val getter: IrFunction,
-    override val typeKey: TypeKey
+    override val typeKey: TypeKey,
   ) : Binding {
     override val scope: IrAnnotation? = null
     // TODO what if the getter is a property getter, then it's a special name
