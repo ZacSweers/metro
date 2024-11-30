@@ -54,6 +54,9 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     }
   }
 
+  // For bindings we expect to already be cached
+  fun requireBinding(key: TypeKey): Binding = bindings[key] ?: error("No binding found for $key")
+
   fun getOrCreateBinding(key: TypeKey, bindingStack: BindingStack): Binding {
     return bindings.getOrPut(key) {
       // If no explicit binding exists, check if type is injectable
@@ -61,7 +64,6 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       val injectableConstructor = with(context) { irClass.findInjectableConstructor() }
       if (injectableConstructor != null) {
         val parameters = injectableConstructor.parameters(context)
-        bindingStack.pop()
         Binding.ConstructorInjected(
           type = irClass,
           typeKey = key,
@@ -131,10 +133,11 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   ): Set<TypeKey> {
     return function.valueParameters
       .map { param ->
-        val paramKey = TypeKey(param.type, with(context) { param.qualifierAnnotation() })
-        bindingStack.push(BindingStackEntry.injectedAt(paramKey, function, param))
-        // This recursive call will create bindings for injectable types as needed
-        getOrCreateBinding(paramKey, bindingStack)
+        val paramKey = TypeMetadata.from(context, param).typeKey
+        bindingStack.withEntry(BindingStackEntry.injectedAt(paramKey, function, param)) {
+          // This recursive call will create bindings for injectable types as needed
+          getOrCreateBinding(paramKey, bindingStack)
+        }
         paramKey
       }
       .toSet()

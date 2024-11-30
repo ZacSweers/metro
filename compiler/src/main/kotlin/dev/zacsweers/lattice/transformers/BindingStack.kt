@@ -61,6 +61,13 @@ internal interface BindingStack {
   }
 }
 
+internal inline fun <T> BindingStack.withEntry(entry: BindingStackEntry, block: () -> T): T {
+  push(entry)
+  val result = block()
+  pop()
+  return result
+}
+
 internal val BindingStack.lastEntryOrComponent
   get() = entries.firstOrNull()?.declaration ?: component
 
@@ -80,7 +87,7 @@ internal class BindingStackImpl(override val component: IrClass) : BindingStack 
   }
 
   override fun pop() {
-    stack.removeFirstOrNull()
+    stack.removeFirstOrNull() ?: error("Binding stack is empty!")
   }
 }
 

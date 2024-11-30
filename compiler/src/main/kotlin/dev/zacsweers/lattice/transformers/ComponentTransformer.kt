@@ -160,7 +160,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // TODO is this enough for properties like @get:Provides
         .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
         // TODO validate
-        .associateBy { TypeKey.from(this, it) }
+        .associateBy { TypeMetadata.from(this, it).typeKey }
 
     val exposedTypes =
       componentDeclaration
@@ -419,72 +419,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           instanceFields[TypeKey(superType)] = thisComponentField
         }
 
-        // TODO add fields for all unscoped providers used more than once in bindings
-
-        // Add fields for providers. May include both scoped and unscoped providers
-        val providerFields = mutableMapOf<TypeKey, IrField>()
-        // Track used unscroped bindings. We only need to generate a field if they're used more than
-        // once
-        val usedUnscopedBindings = mutableSetOf<TypeKey>()
-        val bindingDependencies = mutableMapOf<TypeKey, Map<TypeKey, Parameter>>()
-
         // Track a stack for bindings
         val bindingStack = BindingStack(node.sourceComponent)
 
         // TODO don't allow constructor params, only factories
         // TODO use InstanceFactory for bindsinstance
-        // TODO need to collect all provided types too and create scoped fields if needed
 
-        // First pass: collect bindings and their dependencies for ordering
-        node.exposedTypes.forEach { (key, accessor) ->
-          bindingStack.push(BindingStackEntry.requestedAt(key, accessor))
-          val binding = graph.getOrCreateBinding(key, bindingStack)
-          val bindingScope = binding.scope
-
-          if (bindingScope != null) {
-            if (node.scope == null || bindingScope != node.scope) {
-              // Error if an unscoped component references scoped bindings
-              val declarationToReport = node.sourceComponent
-              bindingStack.push(BindingStackEntry.simpleTypeRef(key))
-              val message = buildString {
-                append("[Lattice/IncompatiblyScopedBindings] ")
-                append(declarationToReport.kotlinFqName)
-                append(" (unscoped) may not reference scoped bindings:")
-                appendLine()
-                appendBindingStack(bindingStack)
-              }
-              declarationToReport.reportError(message)
-
-              exitProcessing()
-            }
-          }
-
-          // Track dependencies before creating fields
-          if (bindingScope != null) {
-            // Scoped bindings always need fields
-            bindingDependencies[key] = binding.dependencies
-          } else {
-            // Only add unscoped binding provider fields if they're used more than once
-            if (key in usedUnscopedBindings) {
-              bindingDependencies[key] = binding.dependencies
-            } else {
-              usedUnscopedBindings += key
-            }
-            // Check its dependencies too. Note we check parameters rather than the set of
-            // dependencies because this is what matters in terms of allocating fields
-            for (param in binding.parameters.nonInstanceParameters) {
-              val depKey = param.typeKey
-              if (depKey in usedUnscopedBindings) {
-                bindingStack.push(BindingStackEntry.requestedAt(depKey, accessor))
-                bindingDependencies[depKey] =
-                  graph.getOrCreateBinding(key, bindingStack).dependencies
-              } else {
-                usedUnscopedBindings += depKey
-              }
-            }
-          }
-          bindingStack.pop()
-        }
+        // First pass: collect bindings and their dependencies for provider field ordering
+        val bindingDependencies = collectBindings(node, graph, bindingStack)
 
         // Compute safe initialization order
         val initOrder =
@@ -498,6 +440,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               else -> a.compareTo(b)
             }
           }
+
+        // Add fields for providers. May include both scoped and unscoped providers
+        val providerFields = mutableMapOf<TypeKey, IrField>()
 
         // Create fields in dependency-order
         initOrder.forEach { key ->
@@ -580,6 +525,104 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       }
   }
 
+  private fun collectBindings(
+    node: ComponentNode,
+    graph: BindingGraph,
+    bindingStack: BindingStack,
+  ): Map<TypeKey, Map<TypeKey, Parameter>> {
+    val bindingDependencies = mutableMapOf<TypeKey, Map<TypeKey, Parameter>>()
+    // Track used unscoped bindings. We only need to generate a field if they're used more than
+    // once
+    val usedUnscopedBindings = mutableSetOf<TypeKey>()
+    val visitedBindings = mutableSetOf<TypeKey>()
+
+    // Initial pass from each root
+    node.exposedTypes.forEach { (key, accessor) ->
+      processBinding(
+        key = key,
+        stackEntry = BindingStackEntry.requestedAt(key, accessor),
+        node = node,
+        graph = graph,
+        bindingStack = bindingStack,
+        bindingDependencies = bindingDependencies,
+        usedUnscopedBindings = usedUnscopedBindings,
+        visitedBindings = visitedBindings,
+      )
+    }
+    return bindingDependencies
+  }
+
+  private fun processBinding(
+    key: TypeKey,
+    stackEntry: BindingStackEntry,
+    node: ComponentNode,
+    graph: BindingGraph,
+    bindingStack: BindingStack,
+    bindingDependencies: MutableMap<TypeKey, Map<TypeKey, Parameter>>,
+    usedUnscopedBindings: MutableSet<TypeKey>,
+    visitedBindings: MutableSet<TypeKey>,
+  ) {
+    // Skip if already visited
+    if (key in visitedBindings) {
+      if (key in usedUnscopedBindings && key !in bindingDependencies) {
+        // Only add unscoped binding provider fields if they're used more than once
+        bindingDependencies[key] = graph.requireBinding(key).dependencies
+      }
+      return
+    }
+
+    bindingStack.withEntry(stackEntry) {
+      val binding = graph.getOrCreateBinding(key, bindingStack)
+      val bindingScope = binding.scope
+
+      // Check scoping compatibility
+      if (bindingScope != null) {
+        if (node.scope == null || bindingScope != node.scope) {
+          // Error if an unscoped component references scoped bindings
+          val declarationToReport = node.sourceComponent
+          bindingStack.push(BindingStackEntry.simpleTypeRef(key))
+          val message = buildString {
+            append("[Lattice/IncompatiblyScopedBindings] ")
+            append(declarationToReport.kotlinFqName)
+            append(" (unscoped) may not reference scoped bindings:")
+            appendLine()
+            appendBindingStack(bindingStack)
+          }
+          declarationToReport.reportError(message)
+          exitProcessing()
+        }
+      }
+
+      visitedBindings += key
+
+      // Scoped bindings always need fields
+      if (bindingScope != null) {
+        bindingDependencies[key] = binding.dependencies
+      }
+
+      // Track dependencies before creating fields
+      if (bindingScope == null) {
+        usedUnscopedBindings += key
+      }
+
+      // Recursively process dependencies
+      binding.parameters.nonInstanceParameters.forEach { param ->
+        val depKey = param.typeKey
+        // Recursive call to process dependency
+        processBinding(
+          key = depKey,
+          stackEntry = (param as ConstructorParameter).bindingStackEntry,
+          node = node,
+          graph = graph,
+          bindingStack = bindingStack,
+          bindingDependencies = bindingDependencies,
+          usedUnscopedBindings = usedUnscopedBindings,
+          visitedBindings = visitedBindings,
+        )
+      }
+    }
+  }
+
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun IrBuilderWithScope.generateBindingArguments(
     paramTypeKeys: List<TypeKey>,
@@ -601,7 +644,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           Input type keys:
             - ${paramTypeKeys.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.valueParameters.map { TypeKey.from(this@ComponentTransformer, it) }.joinToString()}
+            - ${function.valueParameters.map { TypeMetadata.from(this@ComponentTransformer, it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
@@ -701,7 +744,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Must use the injectable constructor's params for TypeKey as that has qualifier
         // annotations
         val paramTypeKeys =
-          injectableConstructor.valueParameters.map { TypeKey.from(this@ComponentTransformer, it) }
+          injectableConstructor.valueParameters.map {
+            TypeMetadata.from(this@ComponentTransformer, it).typeKey
+          }
         val args =
           generateBindingArguments(
             paramTypeKeys,
@@ -740,15 +785,16 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           if (!binding.providerFunction.parentAsClass.isObject) {
             // The receiver param here will be the instance type
             add(
-              TypeKey.from(
-                this@ComponentTransformer,
-                binding.providerFunction.dispatchReceiverParameter!!,
-              )
+              TypeMetadata.from(
+                  this@ComponentTransformer,
+                  binding.providerFunction.dispatchReceiverParameter!!,
+                )
+                .typeKey
             )
           }
           addAll(
             binding.providerFunction.valueParameters.map {
-              TypeKey.from(this@ComponentTransformer, it)
+              TypeMetadata.from(this@ComponentTransformer, it).typeKey
             }
           )
         }

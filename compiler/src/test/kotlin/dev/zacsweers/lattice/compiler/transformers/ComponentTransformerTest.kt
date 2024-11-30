@@ -937,13 +937,62 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
   }
 
+  @Test
+  fun `advanced dependency chains`() {
+    // This is a compile-only test. The full integration is in integration-tests
+    compile(
+      kotlin(
+        "ExampleComponent.kt",
+        """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.Provider
+            import java.nio.file.FileSystem
+            import java.nio.file.FileSystems
+
+            @Singleton
+            @Component
+            interface ExampleComponent {
+
+              val repository: Repository
+
+              @Provides
+              fun provideFileSystem(): FileSystem = FileSystems.getDefault()
+
+              @Named("cache-dir-name")
+              @Provides
+              fun provideCacheDirName(): String = "cache"
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+            @Inject @Singleton class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
+            @Inject @Singleton class HttpClient(cache: Cache)
+            @Inject @Singleton class ApiClient(httpClient: Lazy<HttpClient>)
+            @Inject class Repository(apiClient: ApiClient)
+
+          """
+          .trimIndent(),
+      ),
+      debug = true,
+    )
+  }
+
   // TODO
   //  - advanced scoping
+  //  - exposing provider/lazy/etc accessors
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps
   //  - @get:Provides?
   //  - Binds examples
   //  - Component deps
-  //  - Private providers?
   //  - Inherited exposed types + deduping overrides?
 }

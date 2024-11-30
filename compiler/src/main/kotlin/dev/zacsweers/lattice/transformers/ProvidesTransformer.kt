@@ -204,23 +204,25 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     val allParameters = buildList {
       if (!reference.isInObject) {
+        val typeMetadata = TypeMetadata(
+          typeKey = TypeKey(componentType),
+          isWrappedInProvider = false, isWrappedInLazy = false, isLazyWrappedInProvider = false
+        )
         add(
           ConstructorParameter(
             kind = Parameter.Kind.VALUE,
             name = Name.identifier("component"),
-            typeKey = TypeKey(componentType),
+            typeMetadata = typeMetadata,
             originalName = Name.identifier("component"),
-            typeName = componentType,
             // This type is always the instance type
             providerTypeName = componentType,
             lazyTypeName = componentType,
-            isWrappedInProvider = false,
-            isWrappedInLazy = false,
-            isLazyWrappedInProvider = false,
             isAssisted = false,
             assistedIdentifier = SpecialNames.NO_NAME_PROVIDED,
             symbols = symbols,
             isComponentInstance = true,
+            // TODO is this right/ever going to happen?
+            bindingStackEntry = BindingStackEntry.simpleTypeRef(typeMetadata.typeKey)
           )
         )
       }
@@ -286,7 +288,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       // TODO FIR error if it is top-level/not in component
 
       val parent = function.parentAsClass
-      val typeKey = TypeKey.from(this, function)
+      val typeKey = TypeMetadata.from(this, function).typeKey
       CallableReference(
         fqName = function.kotlinFqName,
         isInternal = function.visibility == Visibilities.Internal,
@@ -318,7 +320,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             "No getter found for property $fqName. Note that field properties are not supported"
           )
 
-      val typeKey = TypeKey.from(this, getter)
+      val typeKey = TypeMetadata.from(this, getter).typeKey
 
       val parent = property.parentAsClass
       return CallableReference(
