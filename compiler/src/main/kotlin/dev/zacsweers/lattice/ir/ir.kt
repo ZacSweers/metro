@@ -441,45 +441,54 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
   symbols: LatticeSymbols,
 ): List<IrExpression> {
   return parameters.map { parameter ->
-    // When calling value getter on Provider<T>, make sure the dispatch
-    // receiver is the Provider instance itself
-    val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
-    when {
-      parameter.isLazyWrappedInProvider -> {
-        // ProviderOfLazy.create(provider)
-        irInvoke(
-          dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
-          callee = symbols.providerOfLazyCreate,
-          args = listOf(providerInstance),
-          typeHint = parameter.typeName.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
-        )
-      }
-      parameter.isWrappedInProvider -> providerInstance
-      // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
-      // (usually the container is a joined type), therefore we use
-      // `.lazy(..)` to convert the Provider to a Lazy. Assisted
-      // parameters behave differently and the Lazy type is not changed
-      // to a Provider and we can simply use the parameter name in the
-      // argument list.
-      parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
-      parameter.isWrappedInLazy -> {
-        // DoubleCheck.lazy(...)
-        irInvoke(
-          dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-          callee = symbols.doubleCheckLazy,
-          args = listOf(providerInstance),
-          typeHint = parameter.typeName.wrapInLazy(symbols),
-        )
-      }
-      parameter.isAssisted -> providerInstance
-      parameter.isComponentInstance -> providerInstance
-      else -> {
-        irInvoke(
-          dispatchReceiver = providerInstance,
-          callee = symbols.providerInvoke,
-          typeHint = parameter.typeName,
-        )
-      }
+    parameterAsProviderArgument(parameter, receiver, parametersToFields, symbols)
+  }
+}
+
+internal fun IrBuilderWithScope.parameterAsProviderArgument(
+  parameter: Parameter,
+  receiver: IrValueParameter,
+  parametersToFields: Map<Parameter, IrField>,
+  symbols: LatticeSymbols,
+): IrExpression {
+  // When calling value getter on Provider<T>, make sure the dispatch
+  // receiver is the Provider instance itself
+  val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
+  return when {
+    parameter.isLazyWrappedInProvider -> {
+      // ProviderOfLazy.create(provider)
+      irInvoke(
+        dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
+        callee = symbols.providerOfLazyCreate,
+        args = listOf(providerInstance),
+        typeHint = parameter.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
+      )
+    }
+    parameter.isWrappedInProvider -> providerInstance
+    // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
+    // (usually the container is a joined type), therefore we use
+    // `.lazy(..)` to convert the Provider to a Lazy. Assisted
+    // parameters behave differently and the Lazy type is not changed
+    // to a Provider and we can simply use the parameter name in the
+    // argument list.
+    parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
+    parameter.isWrappedInLazy -> {
+      // DoubleCheck.lazy(...)
+      irInvoke(
+        dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+        callee = symbols.doubleCheckLazy,
+        args = listOf(providerInstance),
+        typeHint = parameter.type.wrapInLazy(symbols),
+      )
+    }
+    parameter.isAssisted -> providerInstance
+    parameter.isComponentInstance -> providerInstance
+    else -> {
+      irInvoke(
+        dispatchReceiver = providerInstance,
+        callee = symbols.providerInvoke,
+        typeHint = parameter.type,
+      )
     }
   }
 }
@@ -494,7 +503,7 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   val parametersToFields = mutableMapOf<Parameter, IrField>()
   for (parameter in parameters) {
     val irParameter =
-      constructor.addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
+      constructor.addValueParameter(parameter.name, parameter.providerType, LatticeOrigin)
     val irField =
       clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
         isFinal = true
@@ -532,7 +541,7 @@ internal fun IrClass.buildFactoryCreateFunction(
     this.visibility = DescriptorVisibilities.PUBLIC
     with(context) { markJvmStatic() }
     for (parameter in parameters) {
-      addValueParameter(parameter.name, parameter.providerTypeName, LatticeOrigin)
+      addValueParameter(parameter.name, parameter.providerType, LatticeOrigin)
     }
     dispatchReceiverParameter = this@buildFactoryCreateFunction.thisReceiver?.copyTo(this)
     body =
