@@ -15,16 +15,13 @@
  */
 package dev.zacsweers.lattice.internal
 
-import com.google.common.collect.Lists
 import com.google.common.collect.Sets
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Uninterruptibles
 import dev.zacsweers.lattice.Provider
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.Test
@@ -34,36 +31,35 @@ import kotlin.test.assertFailsWith
 class DoubleCheckTest {
 
   @Test
-  fun doubleWrapping_provider() {
+  fun `double wrapping provider`() {
     assertThat(DoubleCheck.provider(DOUBLE_CHECK_OBJECT_PROVIDER))
       .isSameInstanceAs(DOUBLE_CHECK_OBJECT_PROVIDER)
   }
 
   @Test
-  fun doubleWrapping_lazy() {
+  fun `double wrapping lazy`() {
     assertThat(DoubleCheck.lazy(DOUBLE_CHECK_OBJECT_PROVIDER))
       .isSameInstanceAs(DOUBLE_CHECK_OBJECT_PROVIDER)
   }
 
   @Test
-  @Throws(Exception::class)
   fun get() {
     val numThreads = 10
-    val executor: ExecutorService = Executors.newFixedThreadPool(numThreads)
+    val executor = Executors.newFixedThreadPool(numThreads)
 
     val latch = CountDownLatch(numThreads)
     val provider = LatchedProvider(latch)
-    val lazy: Lazy<Any> = DoubleCheck.lazy(provider)
+    val lazy = DoubleCheck.lazy(provider)
 
-    val tasks: MutableList<Callable<Any>> = Lists.newArrayListWithCapacity(numThreads)
-    repeat(numThreads) {
-      tasks.add({
-        latch.countDown()
-        lazy.value
-      })
-    }
+    val tasks =
+      List<Callable<Any>>(numThreads) {
+        Callable {
+          latch.countDown()
+          lazy.value
+        }
+      }
 
-    val futures: List<Future<Any>> = executor.invokeAll(tasks)
+    val futures = executor.invokeAll(tasks)
 
     assertThat(provider.provisions.get()).isEqualTo(1)
     val results: MutableSet<Any> = Sets.newIdentityHashSet()
@@ -86,7 +82,7 @@ class DoubleCheckTest {
   }
 
   @Test
-  fun reentranceWithoutCondition_throwsStackOverflow() {
+  fun `reentrance without condition throws stack overflow`() {
     val doubleCheckReference: AtomicReference<Provider<Any>> = AtomicReference()
     val doubleCheck: Provider<Any> = DoubleCheck.provider(Provider { doubleCheckReference.get()() })
     doubleCheckReference.set(doubleCheck)
@@ -94,7 +90,7 @@ class DoubleCheckTest {
   }
 
   @Test
-  fun reentranceReturningSameInstance() {
+  fun `reentrance returning same instance`() {
     val doubleCheckReference: AtomicReference<Provider<Any>> = AtomicReference()
     val invocationCount = AtomicInteger()
     val obj = Any()
@@ -112,7 +108,7 @@ class DoubleCheckTest {
   }
 
   @Test
-  fun reentranceReturningDifferentInstances_throwsIllegalStateException() {
+  fun `reentrance returning different instances throws IllegalStateException`() {
     val doubleCheckReference = AtomicReference<Provider<Any>>()
     val invocationCount = AtomicInteger()
     val doubleCheck =
@@ -129,7 +125,7 @@ class DoubleCheckTest {
   }
 
   @Test
-  fun instanceFactoryAsLazyDoesNotWrap() {
+  fun `instance factory as lazy does not wrap`() {
     val factory: Factory<Any> = InstanceFactory.create(Any())
     assertThat(DoubleCheck.lazy(factory)).isSameInstanceAs(factory)
   }
