@@ -82,14 +82,8 @@ kotlin {
     commonTest {
       dependencies {
         implementation(libs.kotlin.test)
-      }
-    }
-    jvmTest {
-      dependencies {
         implementation(libs.coroutines)
         implementation(libs.coroutines.test)
-        implementation(libs.junit)
-        implementation(libs.truth)
       }
     }
   }

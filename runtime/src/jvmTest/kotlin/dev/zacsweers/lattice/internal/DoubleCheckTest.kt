@@ -15,10 +15,11 @@
  */
 package dev.zacsweers.lattice.internal
 
-import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.lattice.Provider
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -34,14 +35,12 @@ class DoubleCheckTest {
 
   @Test
   fun `double wrapping provider`() {
-    assertThat(DoubleCheck.provider(DOUBLE_CHECK_OBJECT_PROVIDER))
-      .isSameInstanceAs(DOUBLE_CHECK_OBJECT_PROVIDER)
+    assertSame(DOUBLE_CHECK_OBJECT_PROVIDER, DoubleCheck.provider(DOUBLE_CHECK_OBJECT_PROVIDER))
   }
 
   @Test
   fun `double wrapping lazy`() {
-    assertThat(DoubleCheck.lazy(DOUBLE_CHECK_OBJECT_PROVIDER))
-      .isSameInstanceAs(DOUBLE_CHECK_OBJECT_PROVIDER)
+    assertSame<Any>(DOUBLE_CHECK_OBJECT_PROVIDER, DoubleCheck.lazy(DOUBLE_CHECK_OBJECT_PROVIDER))
   }
 
   // Use runBlocking and not runTest because we actually want multithreading in this test
@@ -59,8 +58,8 @@ class DoubleCheckTest {
     mutex.unlock()
     val values = results.awaitAll().toSet()
 
-    assertThat(provider.provisions.value).isEqualTo(1)
-    assertThat(values).hasSize(1)
+    assertEquals(1, provider.provisions.value)
+    assertEquals(1, values.size)
   }
 
   class CoroutineLatchedProvider(private val mutex: Mutex) : Provider<Any> {
@@ -96,7 +95,7 @@ class DoubleCheckTest {
         }
       )
     doubleCheckReference.value = doubleCheck
-    assertThat(doubleCheck()).isSameInstanceAs(obj)
+    assertSame(obj, doubleCheck())
   }
 
   @Test
@@ -117,7 +116,7 @@ class DoubleCheckTest {
   @Test
   fun `instance factory as lazy does not wrap`() {
     val factory = InstanceFactory.create(Any())
-    assertThat(DoubleCheck.lazy(factory)).isSameInstanceAs(factory)
+    assertSame<Any>(factory, DoubleCheck.lazy(factory))
   }
 
   companion object {
