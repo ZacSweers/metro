@@ -28,6 +28,7 @@ import dev.zacsweers.lattice.ir.getAllSuperTypes
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
+import dev.zacsweers.lattice.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.letIf
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -175,10 +176,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         }
         // TODO validate
         .associate { function ->
-          val qualifier =
-            function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
-              ?: function.qualifierAnnotation()
-          TypeKey(function.returnType, qualifier) to function
+          function to TypeMetadata.from(this, function)
         }
 
     val creator =
@@ -272,7 +270,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       dep.exposedTypes.forEach { key ->
         graph.addBinding(
           key,
-          Binding.ComponentDependency(component = dep.type, getter = dep.getter),
+          Binding.ComponentDependency(component = dep.type, getter = dep.getter, typeKey = key),
           bindingStack,
         )
       }
@@ -480,10 +478,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         node.exposedTypes.entries
           // Stable sort. First the name then the type
           .sortedWith(
-            compareBy<Map.Entry<TypeKey, IrSimpleFunction>> { it.value.name }
-              .thenComparing { it.key }
+            compareBy<Map.Entry<IrSimpleFunction, TypeMetadata>> { it.key.name }
+              .thenComparing { it.value.typeKey }
           )
-          .forEach { (key, function) ->
+          .forEach { (function, typeMetadata) ->
+            val key = typeMetadata.typeKey
             val property =
               function.correspondingPropertySymbol?.owner?.let { property ->
                 addProperty { name = property.name }
@@ -495,7 +494,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 ?: addOverride(
                   function.kotlinFqName,
                   function.name,
-                  key.type,
+                  function.returnType,
                   overriddenSymbols = listOf(function.symbol),
                 )
             getter.apply {
@@ -504,20 +503,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               bindingStack.push(BindingStackEntry.requestedAt(key, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  val receiver =
-                    if (key in providerFields) {
-                      irGetField(irGet(thisReceiverParameter), providerFields.getValue(key))
-                    } else {
-                      generateBindingCode(
-                        binding,
-                        graph,
-                        thisReceiverParameter,
-                        instanceFields,
-                        providerFields,
-                        bindingStack,
-                      )
-                    }
-                  irExprBody(irInvoke(dispatchReceiver = receiver, callee = symbols.providerInvoke))
+                  val providerReceiver = generateBindingCode(
+                    binding,
+                    graph,
+                    thisReceiverParameter,
+                    instanceFields,
+                    providerFields,
+                    bindingStack,
+                  )
+                  irExprBody(
+                    typeAsProviderArgument(
+                      typeMetadata,
+                      providerReceiver,
+                      isAssisted = false,
+                      isComponentInstance = false,
+                      symbols
+                    )
+                  )
                 }
             }
             bindingStack.pop()
@@ -537,7 +539,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     val visitedBindings = mutableSetOf<TypeKey>()
 
     // Initial pass from each root
-    node.exposedTypes.forEach { (key, accessor) ->
+    node.exposedTypes.forEach { (accessor, typeMetadata) ->
+      val key = typeMetadata.typeKey
       processBinding(
         key = key,
         stackEntry = BindingStackEntry.requestedAt(key, accessor),
@@ -691,7 +694,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         irInvoke(
           dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
           callee = symbols.doubleCheckLazy,
-          typeHint = param.typeName.wrapInLazy(symbols),
+          typeHint = param.type.wrapInLazy(symbols),
           args = listOf(providerInstance),
         )
       } else if (param.isLazyWrappedInProvider) {
@@ -700,7 +703,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
           callee = symbols.providerOfLazyCreate,
           args = listOf(providerInstance),
-          typeHint = param.typeName.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
+          typeHint = param.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
         )
       } else if (param.isWrappedInProvider) {
         providerInstance
@@ -708,7 +711,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         irInvoke(
           dispatchReceiver = providerInstance,
           callee = symbols.providerInvoke,
-          typeHint = param.typeName,
+          typeHint = param.type,
         )
       }
     }
@@ -722,8 +725,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     instanceFields: Map<TypeKey, IrField>,
     providerFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
-  ): IrExpression =
-    when (binding) {
+  ): IrExpression {
+    // If we already have a provider field we can just return it
+    providerFields[binding.typeKey]?.let {
+      return irGetField(irGet(thisReceiver), it)
+    }
+    return when (binding) {
       is Binding.ConstructorInjected -> {
         // Example_Factory.create(...)
         // TODO cache these constructor param lookups
@@ -786,9 +793,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             // The receiver param here will be the instance type
             add(
               TypeMetadata.from(
-                  this@ComponentTransformer,
-                  binding.providerFunction.dispatchReceiverParameter!!,
-                )
+                this@ComponentTransformer,
+                binding.providerFunction.dispatchReceiverParameter!!,
+              )
                 .typeKey
             )
           }
@@ -821,4 +828,5 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         TODO()
       }
     }
+  }
 }

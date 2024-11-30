@@ -982,13 +982,48 @@ class ComponentTransformerTest : LatticeCompilerTest() {
           """
           .trimIndent(),
       ),
-      debug = true,
+    )
+  }
+
+  @Test
+  fun `accessors can be wrapped`() {
+    // This is a compile-only test. The full integration is in integration-tests
+    compile(
+      kotlin(
+        "ExampleComponent.kt",
+        """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.Provider
+
+            @Component
+            abstract class ExampleComponent {
+            
+              var counter = 0
+
+              abstract val scalar: Int
+              abstract val provider: Provider<Int>
+              abstract val lazy: Lazy<Int>
+              abstract val providerOfLazy: Provider<Lazy<Int>>
+
+              @Provides
+              fun provideInt(): Int = counter++
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+          .trimIndent(),
+      ),
     )
   }
 
   // TODO
-  //  - advanced scoping
-  //  - exposing provider/lazy/etc accessors
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps
   //  - @get:Provides?

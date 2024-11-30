@@ -27,10 +27,12 @@ import kotlin.collections.sumOf
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -46,9 +48,9 @@ internal sealed interface Parameter {
   val kind: Kind
   val name: Name
   val originalName: Name
-  val typeName: IrType
-  val providerTypeName: IrType
-  val lazyTypeName: IrType
+  val type: IrType
+  val providerType: IrType
+  val lazyType: IrType
   val isWrappedInProvider: Boolean
   val isWrappedInLazy: Boolean
   val isLazyWrappedInProvider: Boolean
@@ -69,10 +71,10 @@ internal sealed interface Parameter {
   val originalTypeName: IrType
     get() =
       when {
-        isLazyWrappedInProvider -> lazyTypeName.wrapInProvider(symbols.latticeProvider)
-        isWrappedInProvider -> providerTypeName
-        isWrappedInLazy -> lazyTypeName
-        else -> typeName
+        isLazyWrappedInProvider -> lazyType.wrapInProvider(symbols.latticeProvider)
+        isWrappedInProvider -> providerType
+        isWrappedInLazy -> lazyType
+        else -> type
       }
 
   enum class Kind {
@@ -110,8 +112,8 @@ internal data class ConstructorParameter(
   override val name: Name,
   val typeMetadata: TypeMetadata,
   override val originalName: Name,
-  override val providerTypeName: IrType,
-  override val lazyTypeName: IrType,
+  override val providerType: IrType,
+  override val lazyType: IrType,
   override val isAssisted: Boolean,
   override val assistedIdentifier: Name,
   override val assistedParameterKey: Parameter.AssistedParameterKey =
@@ -121,7 +123,7 @@ internal data class ConstructorParameter(
   val bindingStackEntry: BindingStackEntry,
 ) : Parameter {
   override val typeKey: TypeKey = typeMetadata.typeKey
-  override val typeName: IrType = typeMetadata.typeKey.type
+  override val type: IrType = typeMetadata.typeKey.type
   override val isWrappedInProvider: Boolean = typeMetadata.isWrappedInProvider
   override val isWrappedInLazy: Boolean = typeMetadata.isWrappedInLazy
   override val isLazyWrappedInProvider: Boolean = typeMetadata.isLazyWrappedInProvider
@@ -224,11 +226,19 @@ internal data class TypeMetadata(
 ) {
   // TODO cache these in ComponentTransformer or shared transformer data
   companion object {
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
     fun from(
       context: LatticeTransformerContext,
-      function: IrFunction,
+      function: IrSimpleFunction,
       type: IrType = function.returnType,
-    ): TypeMetadata = type.asTypeMetadata(context, with(context) { function.qualifierAnnotation() })
+    ): TypeMetadata =
+      type.asTypeMetadata(
+        context,
+        with(context) {
+          function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
+            ?: function.qualifierAnnotation()
+        },
+      )
 
     fun from(
       context: LatticeTransformerContext,
@@ -303,8 +313,8 @@ internal fun IrValueParameter.toConstructorParameter(
     name = uniqueName,
     originalName = name,
     typeMetadata = typeMetadata,
-    providerTypeName = typeMetadata.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
-    lazyTypeName = typeMetadata.typeKey.type.wrapInLazy(context.symbols),
+    providerType = typeMetadata.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
+    lazyType = typeMetadata.typeKey.type.wrapInLazy(context.symbols),
     isAssisted = assistedAnnotation != null,
     assistedIdentifier = assistedIdentifier,
     symbols = context.symbols,

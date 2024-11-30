@@ -31,7 +31,7 @@ internal data class ComponentNode(
   val providerFunctions: Map<TypeKey, IrSimpleFunction>,
   // Types accessible via this component (includes inherited)
   // TODO this should eventually expand to cover inject(...) calls too once we have member injection
-  val exposedTypes: Map<TypeKey, IrSimpleFunction>,
+  val exposedTypes: Map<IrSimpleFunction, TypeMetadata>,
   val isExternal: Boolean,
   val creator: Creator,
 ) {

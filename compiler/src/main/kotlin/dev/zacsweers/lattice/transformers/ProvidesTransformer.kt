@@ -42,8 +42,8 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -82,7 +82,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     declaration.declarations.forEach { nestedDeclaration ->
       when (nestedDeclaration) {
         is IrProperty -> visitProperty(nestedDeclaration)
-        is IrFunction -> visitFunction(nestedDeclaration)
+        is IrSimpleFunction -> visitFunction(nestedDeclaration)
         is IrClass -> {
           if (nestedDeclaration.isCompanionObject) {
             // Include companion object refs
@@ -104,7 +104,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
   }
 
-  fun visitFunction(declaration: IrFunction) {
+  fun visitFunction(declaration: IrSimpleFunction) {
     if (!declaration.isAnnotatedWithAny(symbols.providesAnnotations)) return
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
   }
@@ -215,8 +215,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             typeMetadata = typeMetadata,
             originalName = Name.identifier("component"),
             // This type is always the instance type
-            providerTypeName = componentType,
-            lazyTypeName = componentType,
+            providerType = componentType,
+            lazyType = componentType,
             isAssisted = false,
             assistedIdentifier = SpecialNames.NO_NAME_PROVIDED,
             symbols = symbols,
@@ -276,7 +276,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     return factoryCls
   }
 
-  fun getOrPutCallableReference(function: IrFunction): CallableReference {
+  fun getOrPutCallableReference(function: IrSimpleFunction): CallableReference {
     // TODO report in FIR
     if (function.typeParameters.isNotEmpty()) {
       function.reportError("@Provides functions may not have type parameters")

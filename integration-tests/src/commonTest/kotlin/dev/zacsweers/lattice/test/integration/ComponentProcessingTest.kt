@@ -93,6 +93,43 @@ class ComponentProcessingTest {
     assertEquals(5, lazyValue2.value)
   }
 
+  @Component
+  abstract class ProviderTypesAsAccessorsComponent {
+
+    var counter = 0
+
+    abstract val scalar: Int
+    abstract val providedValue: Provider<Int>
+    abstract val lazyValue: Lazy<Int>
+    abstract val providedLazies: Provider<Lazy<Int>>
+
+    @Provides
+    fun provideInt(): Int = counter++
+
+    @Component.Factory
+    fun interface Factory {
+      fun create(): ProviderTypesAsAccessorsComponent
+    }
+  }
+
+  @Test
+  fun `different provider types as accessors`() {
+    val component = createComponentFactory<ProviderTypesAsAccessorsComponent.Factory>().create()
+
+    assertEquals(0, component.scalar)
+    assertEquals(1, component.providedValue())
+    assertEquals(2, component.providedValue())
+    val lazyValue = component.lazyValue
+    assertEquals(3, lazyValue.value)
+    assertEquals(3, lazyValue.value)
+    val providedLazyValue = component.providedLazies()
+    assertEquals(4, providedLazyValue.value)
+    assertEquals(4, providedLazyValue.value)
+    val providedLazyValue2 = component.providedLazies()
+    assertEquals(5, providedLazyValue2.value)
+    assertEquals(5, providedLazyValue2.value)
+  }
+
   @Inject
   @Singleton
   class Cache(
