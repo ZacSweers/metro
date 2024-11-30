@@ -77,6 +77,20 @@ kotlin {
   }
 
   configureOrCreateNativePlatforms()
+
+  sourceSets {
+    commonTest {
+      dependencies {
+        implementation(libs.kotlin.test)
+      }
+    }
+    jvmTest {
+      dependencies {
+        implementation(libs.junit)
+        implementation(libs.truth)
+      }
+    }
+  }
 }
 
 // Sourced from https://kotlinlang.org/docs/native-target-support.html
