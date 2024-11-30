@@ -16,11 +16,41 @@
 package dev.zacsweers.lattice.internal
 
 import dev.zacsweers.lattice.Provider
+import kotlinx.atomicfu.locks.reentrantLock
+import kotlinx.atomicfu.locks.withLock
+
+internal val UNINITIALIZED = Any()
 
 /** A [Lazy] and [Provider] implementation that memoizes the value returned from a delegate. */
-// TODO inline the lazy impl?
 public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
-  Provider<T>, Lazy<T> by lazy(LazyThreadSafetyMode.SYNCHRONIZED, { provider() }) {
+  Provider<T>, Lazy<T> {
+
+  private val lock = reentrantLock()
+  private var provider: Provider<T>? = provider
+  private var instance: Any? = UNINITIALIZED
+
+  override val value: T
+    get() {
+      var result = instance
+      if (result == UNINITIALIZED) {
+        result =
+          lock.withLock {
+            var result = instance
+            if (result == UNINITIALIZED) {
+              result = provider!!()
+              instance = reentrantCheck(instance, result)
+              // Null out the reference to the provider. We are never going to need it again, so we
+              // can make it eligible for GC.
+              provider = null
+            }
+            result
+          }
+      }
+      @Suppress("UNCHECKED_CAST")
+      return result as T
+    }
+
+  override fun isInitialized(): Boolean = instance === UNINITIALIZED
 
   override fun invoke(): T = value
 
@@ -49,6 +79,19 @@ public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
         return lazy
       }
       return DoubleCheck<T>(provider)
+    }
+
+    /**
+     * Checks to see if creating the new instance has resulted in a recursive call. If it has, and
+     * the new instance is the same as the current instance, return the instance. However, if the
+     * new instance differs from the current instance, an [IllegalStateException] is thrown.
+     */
+    private fun reentrantCheck(currentInstance: Any?, newInstance: Any?): Any? {
+      val isReentrant = currentInstance != UNINITIALIZED
+      check(!isReentrant || currentInstance == newInstance) {
+        "Scoped provider was invoked recursively returning different results: $currentInstance & $newInstance. This is likely due to a circular dependency."
+      }
+      return newInstance
     }
   }
 }
