@@ -18,8 +18,10 @@ package dev.zacsweers.lattice.ir
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.letIf
+import dev.zacsweers.lattice.transformers.ConstructorParameter
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.Parameter
+import dev.zacsweers.lattice.transformers.TypeMetadata
 import dev.zacsweers.lattice.transformers.wrapInLazy
 import dev.zacsweers.lattice.transformers.wrapInProvider
 import java.util.Objects
@@ -454,40 +456,58 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
   // When calling value getter on Provider<T>, make sure the dispatch
   // receiver is the Provider instance itself
   val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
+  // TODO this cast is unsafe
+  val typeMetadata = (parameter as ConstructorParameter).typeMetadata
+  return typeAsProviderArgument(
+    typeMetadata,
+    providerInstance,
+    isAssisted = parameter.isAssisted,
+    isComponentInstance = parameter.isComponentInstance,
+    symbols = symbols,
+  )
+}
+
+internal fun IrBuilderWithScope.typeAsProviderArgument(
+  type: TypeMetadata,
+  providerInstance: IrExpression,
+  isAssisted: Boolean,
+  isComponentInstance: Boolean,
+  symbols: LatticeSymbols,
+): IrExpression {
   return when {
-    parameter.isLazyWrappedInProvider -> {
+    type.isLazyWrappedInProvider -> {
       // ProviderOfLazy.create(provider)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
         callee = symbols.providerOfLazyCreate,
         args = listOf(providerInstance),
-        typeHint = parameter.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
+        typeHint = type.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
       )
     }
-    parameter.isWrappedInProvider -> providerInstance
+    type.isWrappedInProvider -> providerInstance
     // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
     // (usually the container is a joined type), therefore we use
     // `.lazy(..)` to convert the Provider to a Lazy. Assisted
     // parameters behave differently and the Lazy type is not changed
     // to a Provider and we can simply use the parameter name in the
     // argument list.
-    parameter.isWrappedInLazy && parameter.isAssisted -> providerInstance
-    parameter.isWrappedInLazy -> {
+    type.isWrappedInLazy && isAssisted -> providerInstance
+    type.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
         callee = symbols.doubleCheckLazy,
         args = listOf(providerInstance),
-        typeHint = parameter.type.wrapInLazy(symbols),
+        typeHint = type.typeKey.type.wrapInLazy(symbols),
       )
     }
-    parameter.isAssisted -> providerInstance
-    parameter.isComponentInstance -> providerInstance
+    isAssisted -> providerInstance
+    isComponentInstance -> providerInstance
     else -> {
       irInvoke(
         dispatchReceiver = providerInstance,
         callee = symbols.providerInvoke,
-        typeHint = parameter.type,
+        typeHint = type.typeKey.type,
       )
     }
   }
