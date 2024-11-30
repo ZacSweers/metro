@@ -8,6 +8,7 @@ import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
 import dev.zacsweers.lattice.createComponentFactory
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import okio.FileSystem
@@ -49,6 +50,47 @@ class ComponentProcessingTest {
     // Scoped dependencies use the same instance
     assertSame(repository1.apiClient, apiClient)
     assertSame(repository2.apiClient, apiClient)
+  }
+
+  @Component
+  abstract class ProviderTypesComponent {
+
+    var callCount = 0
+
+    abstract val counter: Counter
+
+    @Provides fun count(): Int = callCount++
+
+    @Component.Factory
+    fun interface Factory {
+      fun create(): ProviderTypesComponent
+    }
+
+    @Inject
+    class Counter(
+      val scalar: Int,
+      val providedValue: Provider<Int>,
+      val lazyValue: Lazy<Int>,
+      val providedLazies: Provider<Lazy<Int>>,
+    )
+  }
+
+  @Test
+  fun `different provider types`() {
+    val component = createComponentFactory<ProviderTypesComponent.Factory>().create()
+    val counter = component.counter
+
+    assertEquals(0, counter.scalar)
+    assertEquals(1, counter.providedValue())
+    assertEquals(2, counter.providedValue())
+    assertEquals(3, counter.lazyValue.value)
+    assertEquals(3, counter.lazyValue.value)
+    val lazyValue = counter.providedLazies()
+    assertEquals(4, lazyValue.value)
+    assertEquals(4, lazyValue.value)
+    val lazyValue2 = counter.providedLazies()
+    assertEquals(5, lazyValue2.value)
+    assertEquals(5, lazyValue2.value)
   }
 
   @Inject
