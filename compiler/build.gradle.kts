@@ -27,6 +27,8 @@ kotlin {
   }
 }
 
+tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }
+
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)

@@ -50,6 +50,10 @@ kotlin {
 
 lattice { debug.set(false) }
 
+tasks.withType<Test>().configureEach {
+  maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
+}
+
 configurations.configureEach {
   resolutionStrategy.dependencySubstitution {
     substitute(module("dev.zacsweers.lattice:runtime")).using(project(":runtime"))
