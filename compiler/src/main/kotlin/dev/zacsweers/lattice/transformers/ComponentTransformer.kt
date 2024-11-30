@@ -239,7 +239,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     val componentNode = getOrComputeComponentNode(componentDeclaration)
 
     val bindingGraph = createBindingGraph(componentNode)
-    bindingGraph.validate()
+    bindingGraph.validate(componentNode) { message ->
+      componentDeclaration.reportError(message)
+      exitProcessing()
+    }
 
     val latticeComponent = generateLatticeComponent(componentNode, bindingGraph)
 

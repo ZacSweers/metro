@@ -1023,6 +1023,111 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     )
   }
 
+  @Test
+  fun `simple cycle detection`() {
+    val result = compile(
+      kotlin(
+        "ExampleComponent.kt",
+        """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.Provider
+
+            @Component
+            interface ExampleComponent {
+
+              val value: Int
+
+              @Provides
+              fun provideInt(value: Int): Int = value
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+          .trimIndent(),
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    )
+
+    assertThat(result.messages)
+      .contains(
+        """
+          ExampleComponent.kt:7:1 [Lattice/DependencyCycle] Found a dependency cycle:
+              kotlin.Int is injected at
+                  [test.ExampleComponent] test.ExampleComponent.provideInt(…, value)
+              kotlin.Int is injected at
+                  [test.ExampleComponent] test.ExampleComponent.provideInt(…, value)
+              ...
+        """.trimIndent()
+      )
+  }
+
+  @Test
+  fun `complex cycle detection`() {
+    val result = compile(
+      kotlin(
+        "ExampleComponent.kt",
+        """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            interface ExampleComponent {
+
+              val value: String
+
+              @Provides
+              fun provideString(int: Int): String {
+                  return "Value: " + int
+              }
+          
+              @Provides 
+              fun provideInt(double: Double): Int {
+                  return double.toInt()
+              }
+          
+              @Provides
+              fun provideDouble(string: String): Double {
+                  return string.length.toDouble()
+              }
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(): ExampleComponent
+              }
+            }
+
+          """
+          .trimIndent(),
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    )
+
+    assertThat(result.messages)
+      .contains(
+        """
+          ExampleComponent.kt:6:1 [Lattice/DependencyCycle] Found a dependency cycle:
+              kotlin.Int is injected at
+                  [test.ExampleComponent] test.ExampleComponent.provideString(…, int)
+              kotlin.String is injected at
+                  [test.ExampleComponent] test.ExampleComponent.provideDouble(…, string)
+              kotlin.Double is injected at
+                  [test.ExampleComponent] test.ExampleComponent.provideInt(…, double)
+              kotlin.Int is injected at
+                  [test.ExampleComponent] test.ExampleComponent.provideString(…, int)
+              ...
+        """.trimIndent()
+      )
+  }
+
   // TODO
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps

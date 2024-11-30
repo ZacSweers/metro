@@ -246,7 +246,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
           this.visibility = DescriptorVisibilities.PUBLIC
           markJvmStatic()
           for (parameter in allParameters) {
-            addValueParameter(parameter.name, parameter.originalTypeName, LatticeOrigin)
+            addValueParameter(parameter.name, parameter.originalType, LatticeOrigin)
           }
           body =
             pluginContext.createIrBuilder(symbol).run {

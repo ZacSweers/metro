@@ -398,7 +398,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           this.visibility = DescriptorVisibilities.PUBLIC
           markJvmStatic()
           for (parameter in allParameters) {
-            addValueParameter(parameter.name, parameter.originalTypeName, LatticeOrigin)
+            addValueParameter(parameter.name, parameter.originalType, LatticeOrigin)
           }
           val argumentsWithoutComponent: IrBuilderWithScope.() -> List<IrExpression> = {
             valueParameters.drop(1).map { irGet(it) }

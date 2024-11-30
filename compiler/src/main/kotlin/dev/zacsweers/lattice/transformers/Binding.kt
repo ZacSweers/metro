@@ -17,8 +17,10 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.ir.IrAnnotation
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 
 internal sealed interface Binding {
   val typeKey: TypeKey
@@ -30,6 +32,7 @@ internal sealed interface Binding {
 
   data class ConstructorInjected(
     val type: IrClass,
+    val injectedConstructor: IrConstructor,
     override val typeKey: TypeKey,
     override val parameters: Parameters,
     override val scope: IrAnnotation? = null,
@@ -37,6 +40,7 @@ internal sealed interface Binding {
       parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = type.name.asString()
+    fun parameterFor(typeKey: TypeKey) = injectedConstructor.valueParameters[parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
   }
 
   data class Provided(
@@ -48,6 +52,9 @@ internal sealed interface Binding {
       parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = providerFunction.name.asString()
+    fun parameterFor(typeKey: TypeKey): IrValueParameter {
+      return providerFunction.valueParameters[parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
+    }
   }
 
   data class ComponentDependency(

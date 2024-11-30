@@ -66,6 +66,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         val parameters = injectableConstructor.parameters(context)
         Binding.ConstructorInjected(
           type = irClass,
+          injectedConstructor = injectableConstructor,
           typeKey = key,
           parameters = parameters,
           scope = with(context) { irClass.scopeAnnotation() },
@@ -88,38 +89,75 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     }
   }
 
-  fun validate() {
-    checkCycles()
-    checkMissingDependencies()
+  fun validate(component: ComponentNode, onError: (String) -> Nothing) {
+    checkCycles(component, onError)
+    checkMissingDependencies(onError)
   }
 
-  private fun checkCycles() {
+  private fun checkCycles(component: ComponentNode, onError: (String) -> Nothing) {
     val visited = mutableSetOf<TypeKey>()
-    val stack = ArrayDeque<TypeKey>()
+    val stack = BindingStack(component.sourceComponent)
 
-    fun dfs(key: TypeKey) {
-      if (key in stack) {
+    fun dfs(binding: Binding) {
+      val key = binding.typeKey
+      val existingEntry = stack.entryFor(key)
+      if (existingEntry != null) {
         // TODO check if there's a lazy in the stack, if so we can break the cycle
         //  A -> B -> Lazy<A> is valid
         //  A -> B -> A is not
-        // TODO IR error instead
-        error("Dependency cycle detected: ${stack.joinToString(" -> ")} -> $key")
+
+        // Pull the root entry from the stack and push it back to the top to highlight the cycle
+        stack.push(existingEntry)
+
+        val message = buildString {
+          appendLine("[Lattice/DependencyCycle] Found a dependency cycle:")
+          appendBindingStack(stack, ellipse = true)
+        }
+        onError(message)
       }
+
       if (key in visited) return
 
-      visited.add(key)
-      stack.add(key)
-      dependencies[key]?.value?.forEach { dep -> dfs(dep) }
-      stack.remove(key)
+      visited += key
+
+      dependencies[key]?.value?.forEach { dep ->
+        val dependencyBinding = requireBinding(dep)
+        val entry =
+          when (binding) {
+            is Binding.ConstructorInjected -> {
+              BindingStackEntry.injectedAt(
+                key,
+                binding.injectedConstructor,
+                binding.parameterFor(dep),
+                displayTypeKey = dep,
+              )
+            }
+            is Binding.Provided -> {
+              BindingStackEntry.injectedAt(
+                key,
+                binding.providerFunction,
+                binding.parameterFor(dep),
+                displayTypeKey = dep,
+              )
+            }
+            is Binding.ComponentDependency -> TODO()
+          }
+        stack.withEntry(entry) { dfs(dependencyBinding) }
+      }
     }
 
-    bindings.keys.forEach { dfs(it) }
+    for ((key, binding) in bindings) {
+      // TODO need type metadata here to allow cycle breaking
+      dfs(binding)
+    }
   }
 
-  private fun checkMissingDependencies() {
+  private fun checkMissingDependencies(onError: (String) -> Nothing) {
     val allDeps = dependencies.values.map { it.value }.flatten().toSet()
     val missing = allDeps - bindings.keys
-    check(missing.isEmpty()) { "Missing bindings for: $missing" }
+    if (missing.isNotEmpty()) {
+      onError("Missing bindings for: $missing")
+    }
   }
 
   private fun getConstructorDependencies(type: IrClass, bindingStack: BindingStack): Set<TypeKey> {

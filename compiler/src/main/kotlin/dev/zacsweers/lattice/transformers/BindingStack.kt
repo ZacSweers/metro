@@ -37,6 +37,8 @@ internal interface BindingStack {
 
   fun pop()
 
+  fun entryFor(key: TypeKey): BindingStackEntry?
+
   companion object {
     private val EMPTY =
       object : BindingStack {
@@ -52,6 +54,10 @@ internal interface BindingStack {
 
         override fun pop() {
           // Do nothing
+        }
+
+        override fun entryFor(key: TypeKey): BindingStackEntry? {
+          return null
         }
       }
 
@@ -71,23 +77,43 @@ internal inline fun <T> BindingStack.withEntry(entry: BindingStackEntry, block: 
 internal val BindingStack.lastEntryOrComponent
   get() = entries.firstOrNull()?.declaration ?: component
 
-internal fun Appendable.appendBindingStack(stack: BindingStack) {
+internal fun Appendable.appendBindingStack(
+  stack: BindingStack,
+  indent: String = "    ",
+  ellipse: Boolean = false
+) {
   val componentName = stack.component.kotlinFqName
   for (entry in stack.entries) {
-    entry.render(componentName).prependIndent("    ").lineSequence().forEach { appendLine(it) }
+    entry.render(componentName).prependIndent(indent).lineSequence().forEach { appendLine(it) }
+  }
+  if (ellipse) {
+    append(indent)
+    appendLine("...")
   }
 }
 
 internal class BindingStackImpl(override val component: IrClass) : BindingStack {
+  // TODO can we use one structure?
+  private val entrySet = mutableSetOf<TypeKey>()
   private val stack = ArrayDeque<BindingStackEntry>()
   override val entries: List<BindingStackEntry> = stack
 
   override fun push(entry: BindingStackEntry) {
     stack.addFirst(entry)
+    entrySet.add(entry.typeKey)
   }
 
   override fun pop() {
-    stack.removeFirstOrNull() ?: error("Binding stack is empty!")
+    val removed = stack.removeFirstOrNull() ?: error("Binding stack is empty!")
+    entrySet.remove(removed.typeKey)
+  }
+
+  override fun entryFor(key: TypeKey): BindingStackEntry? {
+    return if (key in entrySet) {
+      stack.first { entry -> entry.typeKey == key }
+    } else {
+      null
+    }
   }
 }
 
@@ -96,10 +122,11 @@ internal class BindingStackEntry(
   val action: String?,
   val context: String?,
   val declaration: IrDeclaration?,
+  val displayTypeKey: TypeKey = typeKey,
 ) {
   fun render(component: FqName): String {
     return buildString {
-      append(typeKey)
+      append(displayTypeKey)
       action?.let {
         append(' ')
         appendLine(it)
@@ -153,11 +180,13 @@ internal class BindingStackEntry(
       typeKey: TypeKey,
       function: IrFunction,
       param: IrValueParameter,
+      displayTypeKey: TypeKey = typeKey,
     ): BindingStackEntry {
       val targetFqName = function.parent.kotlinFqName
-      val middle = if (function is IrConstructor) "" else "."
+      val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
       return BindingStackEntry(
         typeKey = typeKey,
+        displayTypeKey = displayTypeKey,
         action = "is injected at",
         context = "$targetFqName$middle(…, ${param.name.asString()})",
         declaration = param,

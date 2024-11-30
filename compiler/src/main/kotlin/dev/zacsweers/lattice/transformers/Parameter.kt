@@ -68,7 +68,7 @@ internal sealed interface Parameter {
     private val assistedIdentifier: Name,
   )
 
-  val originalTypeName: IrType
+  val originalType: IrType
     get() =
       when {
         isLazyWrappedInProvider -> lazyType.wrapInProvider(symbols.latticeProvider)
