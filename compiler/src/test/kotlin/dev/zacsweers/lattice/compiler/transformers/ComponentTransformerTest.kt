@@ -24,6 +24,7 @@ import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.callComponentAccessor
 import dev.zacsweers.lattice.compiler.callComponentAccessorProperty
 import dev.zacsweers.lattice.compiler.createComponentViaFactory
+import dev.zacsweers.lattice.compiler.createComponentWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeComponentClass
 import java.util.concurrent.Callable
 import org.junit.Ignore
@@ -110,11 +111,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
 
               val text: String
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -154,11 +150,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Named("hello")
               val text: String
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -198,11 +189,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @get:Named("hello")
               val text: String
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -240,11 +226,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
 
               fun text(): String
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -284,11 +265,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Named("hello")
               fun text(): String
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -326,11 +302,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             abstract class ExampleComponent() {
 
               abstract fun exampleClass(): ExampleClass
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
             @Inject
@@ -345,7 +316,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:19:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        ExampleComponent.kt:14:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.ExampleComponent] test.ExampleClass(…, text)
@@ -374,11 +345,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             abstract class ExampleComponent() {
 
               abstract fun exampleClass(): ExampleClass
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
             @Inject
@@ -393,7 +359,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:20:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleComponent.kt:15:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is injected at
                 [test.ExampleComponent] test.ExampleClass(…, text)
@@ -443,11 +409,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               @Provides
               @Named("unscoped")
               fun provideUnscoped(): String = "text " + unscopedCounter++
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
             @Inject
@@ -459,7 +420,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
 
     // Repeated calls to the scoped instance only every return one value
     assertThat(component.callComponentAccessorProperty<String>("scoped")).isEqualTo("text 0")
@@ -491,11 +452,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent : TextProvider {
 
               val value: String
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
             interface TextProvider {
@@ -509,7 +465,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
@@ -534,11 +490,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent : TextProvider {
 
               val value: String
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
             interface TextProvider {
@@ -554,7 +505,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
@@ -580,11 +531,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               val value: String
 
               override fun provideValue(): String = "Hello, overridden world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
             interface TextProvider {
@@ -598,7 +544,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     assertThat(component.callComponentAccessorProperty<String>("value"))
       .isEqualTo("Hello, overridden world!")
   }
@@ -631,11 +577,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValueLengths(value: String, value2: String): Int = value.length + value2.length
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -644,7 +585,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
 
     // Assert we generated a shared field
     val provideValueField =
@@ -688,11 +629,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValueLengths(value: String): Int = value.length
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -701,7 +637,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
 
     assertThat(
         component.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" }
@@ -733,11 +669,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               @Singleton
               @Provides
               fun provideValue(): String = "Hello, world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -780,11 +711,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValue(): String = "Hello, world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -830,11 +756,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValue(): String = "Hello, world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -843,7 +764,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
 
     assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
 
@@ -875,11 +796,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValue(): String = "Hello, world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -889,7 +805,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
 
     assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
 
@@ -922,11 +838,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideValue(): String = "Hello, world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -965,11 +876,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               @Named("cache-dir-name")
               @Provides
               fun provideCacheDirName(): String = "cache"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
             @Inject @Singleton class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
@@ -1008,11 +914,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideInt(): Int = counter++
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -1041,11 +942,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideInt(value: Int): Int = value
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
 
           """
@@ -1098,11 +994,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               @Provides
               fun provideDouble(string: String): Double {
                   return string.length.toDouble()
-              }
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
               }
             }
 

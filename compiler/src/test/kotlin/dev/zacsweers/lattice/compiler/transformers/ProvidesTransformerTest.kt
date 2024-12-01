@@ -20,7 +20,7 @@ import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleComponent
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
-import dev.zacsweers.lattice.compiler.createComponentViaFactory
+import dev.zacsweers.lattice.compiler.createComponentWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeComponentClass
 import dev.zacsweers.lattice.compiler.invokeCreateAs
 import dev.zacsweers.lattice.compiler.provideValueAs
@@ -47,11 +47,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
               @Provides
               fun provideValue(): String = "Hello, world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),
@@ -59,7 +54,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue", component)
@@ -86,11 +81,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
               @Provides
               val value: String get() = "Hello, world!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),
@@ -99,7 +89,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("getValue", component)
@@ -127,11 +117,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               companion object {
                 @Provides
                 fun provideValue(): String = "Hello, world!"
-              }
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
               }
             }
           """
@@ -170,11 +155,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               companion object {
                 @Provides
                 val value: String get() = "Hello, world!"
-              }
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
               }
             }
           """
@@ -215,11 +195,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideStringValue(intValue: Int): String = "Hello, ${'$'}intValue!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),
@@ -227,7 +202,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -263,11 +238,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
               @Provides
               fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, ${'$'}intValue! ${'$'}booleanValue"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),
@@ -275,7 +245,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -316,11 +286,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
                 intValue: Int,
                 intValue2: Int
               ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),
@@ -328,7 +293,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -373,11 +338,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
                 intValue: Int,
                 @Named("int2") intValue2: Int
               ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),
@@ -385,7 +345,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       )
 
     val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentViaFactory()
+      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -420,11 +380,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
               @Provides
               fun <T> provideValue(): Int = 1
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),
@@ -458,11 +413,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface ExampleComponent {
               @Provides
               fun String.provideValue(): Int = length
-
-              @Component.Factory
-              fun interface Factory {
-                fun create(): ExampleComponent
-              }
             }
           """
             .trimIndent(),

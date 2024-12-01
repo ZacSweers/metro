@@ -65,6 +65,14 @@ internal class LatticeSymbols(
 
   val anyConstructor by lazy { pluginContext.irBuiltIns.anyClass.owner.constructors.single() }
 
+  val latticeCreateComponent: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(
+        CallableId(latticeRuntime.packageFqName, Name.identifier("createComponent"))
+      )
+      .single()
+  }
+
   val latticeCreateComponentFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(

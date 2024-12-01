@@ -15,6 +15,17 @@
  */
 package dev.zacsweers.lattice
 
+import dev.zacsweers.lattice.annotations.Component
+
+/**
+ * Creates a new parameter-less component of type [T]. Note this is _only_ applicable for components
+ * that have no creators (i.e. [Component.Factory]).
+ */
+public inline fun <reified T : Any> createComponent(): T {
+  throw NotImplementedError("Implemented by the compiler")
+}
+
+/** Creates a new instance of a [@Component.Factory][Component.Factory]-annotated class. */
 public inline fun <reified T : Any> createComponentFactory(): T {
   throw NotImplementedError("Implemented by the compiler")
 }

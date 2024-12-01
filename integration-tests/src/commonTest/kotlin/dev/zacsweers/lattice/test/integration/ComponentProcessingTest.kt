@@ -21,6 +21,7 @@ import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
+import dev.zacsweers.lattice.createComponent
 import dev.zacsweers.lattice.createComponentFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -119,16 +120,11 @@ class ComponentProcessingTest {
     abstract val providedLazies: Provider<Lazy<Int>>
 
     @Provides fun provideInt(): Int = counter++
-
-    @Component.Factory
-    fun interface Factory {
-      fun create(): ProviderTypesAsAccessorsComponent
-    }
   }
 
   @Test
   fun `different provider types as accessors`() {
-    val component = createComponentFactory<ProviderTypesAsAccessorsComponent.Factory>().create()
+    val component = createComponent<ProviderTypesAsAccessorsComponent>()
 
     assertEquals(0, component.scalar)
     assertEquals(1, component.providedValue())

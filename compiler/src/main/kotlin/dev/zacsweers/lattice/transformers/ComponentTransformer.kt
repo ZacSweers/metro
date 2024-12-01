@@ -101,25 +101,50 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Covers replacing createComponentFactory() compiler intrinsics with calls to the real
     // component factory
     val callee = expression.symbol.owner
-    if (callee.symbol == symbols.latticeCreateComponentFactory) {
-      // Get the called type
-      val type =
-        expression.getTypeArgument(0) ?: error("Missing type argument for createComponentFactory")
-      val rawType = type.rawType()
-      if (!rawType.isAnnotatedWithAny(symbols.componentFactoryAnnotations)) {
-        // TODO FIR error
-        error(
-          "Cannot create a component factory instance of non-factory type ${rawType.kotlinFqName}"
-        )
+    when (callee.symbol) {
+      symbols.latticeCreateComponentFactory -> {
+        // Get the called type
+        val type =
+          expression.getTypeArgument(0)
+            ?: error(
+              "Missing type argument for ${symbols.latticeCreateComponentFactory.owner.name}"
+            )
+        val rawType = type.rawType()
+        if (!rawType.isAnnotatedWithAny(symbols.componentFactoryAnnotations)) {
+          // TODO FIR error
+          error(
+            "Cannot create a component factory instance of non-factory type ${rawType.kotlinFqName}"
+          )
+        }
+        val componentDeclaration = rawType.parentAsClass
+        val componentClass = getOrBuildComponent(componentDeclaration)
+        val componentCompanion = componentClass.companionObject()!!
+        val factoryFunction = componentCompanion.getSimpleFunction("factory")!!
+        // Replace it with a call directly to the factory function
+        return pluginContext.createIrBuilder(expression.symbol).run {
+          irCall(callee = factoryFunction, type = type).apply {
+            dispatchReceiver = irGetObject(componentCompanion.symbol)
+          }
+        }
       }
-      val componentDeclaration = rawType.parentAsClass
-      val componentClass = getOrBuildComponent(componentDeclaration)
-      val componentCompanion = componentClass.companionObject()!!
-      val factoryFunction = componentCompanion.getSimpleFunction("factory")!!
-      // Replace it with a call directly to the factory function
-      return pluginContext.createIrBuilder(expression.symbol).run {
-        irCall(callee = factoryFunction, type = type).apply {
-          dispatchReceiver = irGetObject(componentCompanion.symbol)
+      symbols.latticeCreateComponent -> {
+        // Get the called type
+        val type =
+          expression.getTypeArgument(0)
+            ?: error("Missing type argument for ${symbols.latticeCreateComponent.owner.name}")
+        val rawType = type.rawType()
+        if (!rawType.isAnnotatedWithAny(symbols.componentAnnotations)) {
+          // TODO FIR error
+          error("Cannot create a component instance of non-component type ${rawType.kotlinFqName}")
+        }
+        val componentClass = getOrBuildComponent(rawType)
+        val componentCompanion = componentClass.companionObject()!!
+        val factoryFunction = componentCompanion.getSimpleFunction("create")!!
+        // Replace it with a call directly to the create function
+        return pluginContext.createIrBuilder(expression.symbol).run {
+          irCall(callee = factoryFunction, type = type).apply {
+            dispatchReceiver = irGetObject(componentCompanion.symbol)
+          }
         }
       }
     }
@@ -320,7 +345,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         componentImpl.parent = this
         addMember(componentImpl)
 
-        node.creator?.let { creator ->
+        val creator = node.creator
+        if (creator != null) {
           val factoryClass =
             pluginContext.irFactory
               .buildClass { name = LatticeSymbols.Names.Factory }
@@ -367,6 +393,22 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBody(
                     irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList())
+                  )
+                }
+            }
+          }
+        } else {
+          // Generate a no-arg create() function
+          pluginContext.irFactory.addCompanionObject(symbols, parent = this) {
+            addFunction("create", node.sourceComponent.typeWith(), isStatic = true).apply {
+              this.dispatchReceiverParameter = thisReceiver?.copyTo(this)
+              this.origin = LatticeOrigin
+              this.visibility = DescriptorVisibilities.PUBLIC
+              markJvmStatic()
+              body =
+                pluginContext.createIrBuilder(symbol).run {
+                  irExprBody(
+                    irCallConstructor(componentImpl.primaryConstructor!!.symbol, emptyList())
                   )
                 }
             }

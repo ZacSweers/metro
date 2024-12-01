@@ -193,6 +193,13 @@ fun Class<*>.invokeComponentFactory(): Any {
     .invoke(null)
 }
 
+/** Creates a component instance via its generated no-arg static create() function. */
+fun Class<*>.createComponentWithNoArgs(): Any {
+  return declaredMethods
+    .single { Modifier.isStatic(it.modifiers) && it.name == "create" }
+    .invoke(null)
+}
+
 /**
  * Invokes a generated Component Factory class's create() function with the supplied [args].
  *
