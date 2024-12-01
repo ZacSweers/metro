@@ -179,8 +179,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     val creator =
       componentDeclaration.nestedClasses
-        .single { klass -> klass.isAnnotatedWithAny(symbols.componentFactoryAnnotations) }
-        .let { factory ->
+        .singleOrNull { klass -> klass.isAnnotatedWithAny(symbols.componentFactoryAnnotations) }
+        ?.let { factory ->
           val primaryConstructor = componentDeclaration.primaryConstructor
           ComponentNode.Creator(
             factory,
@@ -323,52 +323,54 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         componentImpl.parent = this
         addMember(componentImpl)
 
-        val factoryClass =
-          pluginContext.irFactory
-            .buildClass { name = LatticeSymbols.Names.Factory }
-            .apply {
-              this.origin = LatticeOrigin
-              superTypes += node.creator.type.symbol.typeWith()
-              createImplicitParameterDeclarationWithWrappedDescriptor()
-              addSimpleDelegatingConstructor(
-                if (!node.creator.type.isInterface) {
-                  node.creator.type.primaryConstructor!!
-                } else {
-                  symbols.anyConstructor
-                },
-                pluginContext.irBuiltIns,
-                isPrimary = true,
-                origin = LatticeOrigin,
-              )
+        node.creator?.let { creator ->
+          val factoryClass =
+            pluginContext.irFactory
+              .buildClass { name = LatticeSymbols.Names.Factory }
+              .apply {
+                this.origin = LatticeOrigin
+                superTypes += node.creator.type.symbol.typeWith()
+                createImplicitParameterDeclarationWithWrappedDescriptor()
+                addSimpleDelegatingConstructor(
+                  if (!node.creator.type.isInterface) {
+                    node.creator.type.primaryConstructor!!
+                  } else {
+                    symbols.anyConstructor
+                  },
+                  pluginContext.irBuiltIns,
+                  isPrimary = true,
+                  origin = LatticeOrigin,
+                )
 
-              addOverride(node.creator.createFunction).apply {
-                body =
-                  pluginContext.createIrBuilder(symbol).run {
-                    irExprBody(
-                      irCall(componentImpl.primaryConstructor!!.symbol).apply {
-                        for (param in valueParameters) {
-                          putValueArgument(param.index, irGet(param))
+                addOverride(node.creator.createFunction).apply {
+                  body =
+                    pluginContext.createIrBuilder(symbol).run {
+                      irExprBody(
+                        irCall(componentImpl.primaryConstructor!!.symbol).apply {
+                          for (param in valueParameters) {
+                            putValueArgument(param.index, irGet(param))
+                          }
                         }
-                      }
-                    )
-                  }
+                      )
+                    }
+                }
               }
+
+          factoryClass.parent = this
+          addMember(factoryClass)
+
+          pluginContext.irFactory.addCompanionObject(symbols, parent = this) {
+            addFunction("factory", factoryClass.typeWith(), isStatic = true).apply {
+              this.copyTypeParameters(typeParameters)
+              this.dispatchReceiverParameter = thisReceiver?.copyTo(this)
+              this.origin = LatticeOrigin
+              this.visibility = DescriptorVisibilities.PUBLIC
+              markJvmStatic()
+              body =
+                pluginContext.createIrBuilder(symbol).run {
+                  irExprBody(irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()))
+                }
             }
-
-        factoryClass.parent = this
-        addMember(factoryClass)
-
-        pluginContext.irFactory.addCompanionObject(symbols, parent = this) {
-          addFunction("factory", factoryClass.typeWith(), isStatic = true).apply {
-            this.copyTypeParameters(typeParameters)
-            this.dispatchReceiverParameter = thisReceiver?.copyTo(this)
-            this.origin = LatticeOrigin
-            this.visibility = DescriptorVisibilities.PUBLIC
-            markJvmStatic()
-            body =
-              pluginContext.createIrBuilder(symbol).run {
-                irExprBody(irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()))
-              }
           }
         }
       }
