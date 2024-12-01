@@ -62,9 +62,7 @@ internal sealed interface Binding {
     }
   }
 
-  data class BoundInstance(
-    val parameter: Parameter,
-  ) : Binding {
+  data class BoundInstance(val parameter: Parameter) : Binding {
     override val typeKey: TypeKey = parameter.typeKey
     override val parameters: Parameters = Parameters.EMPTY
     override val scope: IrAnnotation? = null

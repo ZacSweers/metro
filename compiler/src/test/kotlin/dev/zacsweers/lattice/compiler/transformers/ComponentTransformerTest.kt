@@ -73,7 +73,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent(),
-        ),
+        )
       )
     val component =
       result.ExampleComponent.generatedLatticeComponentClass()
@@ -1130,7 +1130,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
   }
 
-
   @Test
   fun `components cannot have constructors with parameters`() {
     val result =
@@ -1167,7 +1166,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .contains(
         """
           ExampleComponent.kt:7:32 Components cannot have constructors. Use @Component.Factory instead.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
   }
 

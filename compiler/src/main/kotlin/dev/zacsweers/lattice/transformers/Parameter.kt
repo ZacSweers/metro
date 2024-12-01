@@ -122,7 +122,7 @@ internal data class ConstructorParameter(
   override val symbols: LatticeSymbols,
   override val isComponentInstance: Boolean,
   val bindingStackEntry: BindingStackEntry,
-  override val isBindsInstance: Boolean
+  override val isBindsInstance: Boolean,
 ) : Parameter {
   override val typeKey: TypeKey = typeMetadata.typeKey
   override val type: IrType = typeMetadata.typeKey.type
@@ -305,7 +305,8 @@ internal fun IrValueParameter.toConstructorParameter(
   // TODO FIR better error message
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
-  val isBindsInstance = annotationsIn(context.symbols.bindsInstanceAnnotations).singleOrNull() != null
+  val isBindsInstance =
+    annotationsIn(context.symbols.bindsInstanceAnnotations).singleOrNull() != null
 
   val assistedIdentifier =
     Name.identifier(assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty())

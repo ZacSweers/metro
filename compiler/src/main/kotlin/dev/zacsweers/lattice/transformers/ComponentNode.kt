@@ -40,7 +40,7 @@ internal data class ComponentNode(
   data class Creator(
     val type: IrClass,
     val createFunction: IrSimpleFunction,
-    val parameters: Parameters
+    val parameters: Parameters,
   )
 
   data class ComponentDependency(
