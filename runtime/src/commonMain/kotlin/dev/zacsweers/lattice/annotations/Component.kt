@@ -15,7 +15,7 @@
  */
 package dev.zacsweers.lattice.annotations
 
-@Target(AnnotationTarget.CLASS, AnnotationTarget.VALUE_PARAMETER)
+@Target(AnnotationTarget.CLASS)
 public annotation class Component {
   @Target(AnnotationTarget.CLASS) public annotation class Factory
 }
