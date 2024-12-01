@@ -6,6 +6,10 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.lattice:runtime>
+open annotation class dev.zacsweers.lattice.annotations/BindsInstance : kotlin/Annotation { // dev.zacsweers.lattice.annotations/BindsInstance|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations/BindsInstance.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.lattice.annotations/Component : kotlin/Annotation { // dev.zacsweers.lattice.annotations/Component|null[0]
     constructor <init>() // dev.zacsweers.lattice.annotations/Component.<init>|<init>(){}[0]
 

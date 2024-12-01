@@ -9,6 +9,9 @@ public final class dev/zacsweers/lattice/ProviderKt {
 public abstract class dev/zacsweers/lattice/annotations/AppScope {
 }
 
+public abstract interface annotation class dev/zacsweers/lattice/annotations/BindsInstance : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/lattice/annotations/Component : java/lang/annotation/Annotation {
 }
 
