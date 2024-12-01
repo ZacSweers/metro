@@ -40,25 +40,23 @@ class ComponentTransformerTest : LatticeCompilerTest() {
           """
             package test
 
+            import dev.zacsweers.lattice.annotations.BindsInstance
             import dev.zacsweers.lattice.annotations.Component
-            import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Singleton
             import dev.zacsweers.lattice.createComponentFactory
             import java.util.concurrent.Callable
 
             @Singleton
             @Component
-            abstract class ExampleComponent(
-              @get:Provides
-              val text: String
-            ) {
+            interface ExampleComponent {
 
-              abstract fun exampleClass(): ExampleClass
+              fun exampleClass(): ExampleClass
 
               @Component.Factory
               fun interface Factory {
-                fun create(text: String): ExampleComponent
+                fun create(@BindsInstance text: String): ExampleComponent
               }
             }
 
@@ -75,7 +73,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent(),
-        )
+        ),
       )
     val component =
       result.ExampleComponent.generatedLatticeComponentClass()
@@ -1129,6 +1127,47 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               ...
         """
           .trimIndent()
+      )
+  }
+
+
+  @Test
+  fun `components cannot have constructors with parameters`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            abstract class ExampleComponent(
+              @get:Provides
+              val text: String
+            ) {
+
+              abstract fun string(): String
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(text: String): ExampleComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+          ExampleComponent.kt:7:32 Components cannot have constructors. Use @Component.Factory instead.
+        """.trimIndent()
       )
   }
 

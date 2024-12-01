@@ -60,6 +60,7 @@ internal sealed interface Parameter {
   val symbols: LatticeSymbols
   val typeKey: TypeKey
   val isComponentInstance: Boolean
+  val isBindsInstance: Boolean
 
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
@@ -121,6 +122,7 @@ internal data class ConstructorParameter(
   override val symbols: LatticeSymbols,
   override val isComponentInstance: Boolean,
   val bindingStackEntry: BindingStackEntry,
+  override val isBindsInstance: Boolean
 ) : Parameter {
   override val typeKey: TypeKey = typeMetadata.typeKey
   override val type: IrType = typeMetadata.typeKey.type
@@ -303,6 +305,8 @@ internal fun IrValueParameter.toConstructorParameter(
   // TODO FIR better error message
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
+  val isBindsInstance = annotationsIn(context.symbols.bindsInstanceAnnotations).singleOrNull() != null
+
   val assistedIdentifier =
     Name.identifier(assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty())
 
@@ -320,5 +324,6 @@ internal fun IrValueParameter.toConstructorParameter(
     symbols = context.symbols,
     isComponentInstance = false,
     bindingStackEntry = BindingStackEntry.injectedAt(typeMetadata.typeKey, ownerFunction, this),
+    isBindsInstance = isBindsInstance,
   )
 }

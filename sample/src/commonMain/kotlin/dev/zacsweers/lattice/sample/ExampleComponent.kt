@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.sample
 
 import dev.zacsweers.lattice.Provider
+import dev.zacsweers.lattice.annotations.BindsInstance
 import dev.zacsweers.lattice.annotations.Component
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Provides
@@ -23,17 +24,17 @@ import dev.zacsweers.lattice.annotations.Singleton
 
 @Singleton
 @Component
-abstract class ExampleComponent(@get:Provides val text: String) : FileSystemComponent {
+interface ExampleComponent : FileSystemComponent {
 
-  abstract fun example1(): Example1
+  fun example1(): Example1
 
-  abstract fun example2(): Example2
+  fun example2(): Example2
 
-  abstract fun example4(): Example4
+  fun example4(): Example4
 
   @Component.Factory
   fun interface Factory {
-    fun create(text: String): ExampleComponent
+    fun create(@BindsInstance text: String): ExampleComponent
   }
 }
 

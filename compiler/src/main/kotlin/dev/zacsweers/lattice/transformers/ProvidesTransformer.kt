@@ -226,6 +226,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             isComponentInstance = true,
             // TODO is this right/ever going to happen?
             bindingStackEntry = BindingStackEntry.simpleTypeRef(typeMetadata.typeKey),
+            isBindsInstance = false,
           )
         )
       }

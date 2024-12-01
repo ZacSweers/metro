@@ -102,6 +102,12 @@ internal class LatticeSymbols(
       ClassId(latticeAnnotations.packageFqName, Name.identifier("Component"))
     )!!
   }
+
+  val latticeBindsInstance: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeAnnotations.packageFqName, Name.identifier("BindsInstance"))
+    )!!
+  }
   val latticeComponentFactory by lazy {
     latticeComponent.owner.nestedClasses
       .single { klass -> klass.name.asString() == "Factory" }
@@ -125,6 +131,16 @@ internal class LatticeSymbols(
   val providerOfLazyCompanionObject by lazy { providerOfLazy.owner.companionObject()!!.symbol }
   val providerOfLazyCreate: IrFunctionSymbol by lazy {
     providerOfLazyCompanionObject.getSimpleFunction("create")!!
+  }
+
+  val instanceFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("InstanceFactory"))
+    )!!
+  }
+  val instanceFactoryCompanionObject by lazy { instanceFactory.owner.companionObject()!!.symbol }
+  val instanceFactoryCreate: IrFunctionSymbol by lazy {
+    instanceFactoryCompanionObject.getSimpleFunction("create")!!
   }
 
   val latticeProvider: IrClassSymbol by lazy {
@@ -169,6 +185,7 @@ internal class LatticeSymbols(
   val qualifierAnnotations by lazy { setOf(latticeQualifier.owner.classIdOrFail) }
   val scopeAnnotations by lazy { setOf(latticeScope.owner.classIdOrFail) }
   val providesAnnotations by lazy { setOf(latticeProvides.owner.classIdOrFail) }
+  val bindsInstanceAnnotations by lazy { setOf(latticeBindsInstance.owner.classIdOrFail) }
   // TODO
   val assistedAnnotations by lazy { setOf<ClassId>() }
   val providerTypes by lazy { setOf(latticeProvider.owner.classIdOrFail) }

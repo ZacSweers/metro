@@ -49,6 +49,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         // TODO this validates too soon, need to maybe add shallow bindings first?
         //  or add it but defer validation until validate()
         is Binding.Provided -> getFunctionDependencies(binding.providerFunction, bindingStack)
+        is Binding.BoundInstance -> emptySet()
         is Binding.ComponentDependency -> emptySet()
       }
     }
@@ -140,6 +141,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
                 displayTypeKey = dep,
               )
             }
+            is Binding.BoundInstance -> TODO()
             is Binding.ComponentDependency -> TODO()
           }
         stack.withEntry(entry) { dfs(dependencyBinding) }

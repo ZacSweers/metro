@@ -37,7 +37,11 @@ internal data class ComponentNode(
 ) {
   val isInterface: Boolean = sourceComponent.kind == ClassKind.INTERFACE
 
-  data class Creator(val type: IrClass, val createFunction: IrSimpleFunction)
+  data class Creator(
+    val type: IrClass,
+    val createFunction: IrSimpleFunction,
+    val parameters: Parameters
+  )
 
   data class ComponentDependency(
     val type: IrClass,
