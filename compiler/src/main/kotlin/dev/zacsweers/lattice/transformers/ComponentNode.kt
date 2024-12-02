@@ -21,12 +21,13 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.typeWith
 
 // Represents a component's structure and relationships
 internal data class ComponentNode(
   val sourceComponent: IrClass,
   val isAnnotatedWithComponent: Boolean,
-  val dependencies: List<ComponentDependency>,
+  val dependencies: List<ComponentNode>,
   val scope: IrAnnotation?,
   val providerFunctions: Map<TypeKey, IrSimpleFunction>,
   // Types accessible via this component (includes inherited)
@@ -36,18 +37,12 @@ internal data class ComponentNode(
   val creator: Creator?,
 ) {
   val isInterface: Boolean = sourceComponent.kind == ClassKind.INTERFACE
+  val typeKey = TypeKey(sourceComponent.typeWith())
 
   data class Creator(
     val type: IrClass,
     val createFunction: IrSimpleFunction,
     val parameters: Parameters,
-  )
-
-  data class ComponentDependency(
-    val type: IrClass,
-    val scope: IrAnnotation?,
-    val exposedTypes: Set<TypeKey>,
-    val getter: IrFunction,
   )
 
   // Build a full type map including inherited providers
@@ -69,5 +64,15 @@ internal data class ComponentNode(
     providerFunctions.forEach { (typeKey, function) -> result[typeKey] = function }
 
     return result
+  }
+
+  // Lazy-wrapped to cache these per-node
+  val allDependencies by lazy {
+    sequence {
+      yieldAll(dependencies)
+      dependencies.forEach { node ->
+        yieldAll(node.dependencies)
+      }
+    }.toSet()
   }
 }
