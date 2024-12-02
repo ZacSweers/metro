@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.test.integration
 
 import dev.zacsweers.lattice.Provider
+import dev.zacsweers.lattice.annotations.BindsInstance
 import dev.zacsweers.lattice.annotations.Component
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
@@ -140,6 +141,31 @@ class ComponentProcessingTest {
     assertEquals(5, providedLazyValue2.value)
   }
 
+  @Test
+  fun `simple component dependencies`() {
+    val stringComponent = createComponentFactory<StringComponent.Factory>()
+      .create("Hello, world!")
+
+    val component = createComponentFactory<ComponentWithDependencies.Factory>()
+      .create(stringComponent)
+
+    assertEquals("Hello, world!", component.value())
+  }
+
+  @Component
+  interface ComponentWithDependencies {
+
+    fun value(): CharSequence
+
+    @Provides
+    fun provideValue(string: String): CharSequence = string
+
+    @Component.Factory
+    fun interface Factory {
+      fun create(stringComponent: StringComponent): ComponentWithDependencies
+    }
+  }
+
   @Inject
   @Singleton
   class Cache(
@@ -154,4 +180,15 @@ class ComponentProcessingTest {
   @Inject @Singleton class ApiClient(val httpClient: Lazy<HttpClient>)
 
   @Inject class Repository(val apiClient: ApiClient)
+
+  @Component
+  interface StringComponent {
+
+    val string: String
+
+    @Component.Factory
+    fun interface Factory {
+      fun create(@BindsInstance string: String): StringComponent
+    }
+  }
 }
