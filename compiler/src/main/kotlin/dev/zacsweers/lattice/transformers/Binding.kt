@@ -20,12 +20,9 @@ import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.isWordPrefixRegex
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
 internal sealed interface Binding {
   val typeKey: TypeKey

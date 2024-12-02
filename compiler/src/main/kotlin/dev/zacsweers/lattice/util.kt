@@ -18,7 +18,6 @@ package dev.zacsweers.lattice
 import java.util.Locale
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
-import kotlin.text.matches
 import org.jetbrains.kotlin.name.Name
 
 internal const val LOG_PREFIX = "[LATTICE]"

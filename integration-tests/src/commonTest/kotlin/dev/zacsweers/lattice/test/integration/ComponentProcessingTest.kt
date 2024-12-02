@@ -143,11 +143,10 @@ class ComponentProcessingTest {
 
   @Test
   fun `simple component dependencies`() {
-    val stringComponent = createComponentFactory<StringComponent.Factory>()
-      .create("Hello, world!")
+    val stringComponent = createComponentFactory<StringComponent.Factory>().create("Hello, world!")
 
-    val component = createComponentFactory<ComponentWithDependencies.Factory>()
-      .create(stringComponent)
+    val component =
+      createComponentFactory<ComponentWithDependencies.Factory>().create(stringComponent)
 
     assertEquals("Hello, world!", component.value())
   }
@@ -157,8 +156,7 @@ class ComponentProcessingTest {
 
     fun value(): CharSequence
 
-    @Provides
-    fun provideValue(string: String): CharSequence = string
+    @Provides fun provideValue(string: String): CharSequence = string
 
     @Component.Factory
     fun interface Factory {

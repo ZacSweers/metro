@@ -69,10 +69,9 @@ internal data class ComponentNode(
   // Lazy-wrapped to cache these per-node
   val allDependencies by lazy {
     sequence {
-      yieldAll(dependencies)
-      dependencies.forEach { node ->
-        yieldAll(node.dependencies)
+        yieldAll(dependencies)
+        dependencies.forEach { node -> yieldAll(node.dependencies) }
       }
-    }.toSet()
+      .toSet()
   }
 }
