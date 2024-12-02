@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler
 
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import com.tschuchort.compiletesting.CompilationResult
 import com.tschuchort.compiletesting.JvmCompilationResult
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.capitalizeUS
@@ -222,3 +223,9 @@ fun Class<*>.generatedClassesString(separator: String = "_"): String {
 }
 
 fun Class<*>.packageName(): String = `package`.name.let { if (it.isBlank()) "" else "$it." }
+
+fun CompilationResult.assertContainsAll(vararg messages: String) {
+  for (message in messages) {
+    assertThat(this.messages).contains(message)
+  }
+}
