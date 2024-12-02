@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Zac Sweers
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package dev.zacsweers.lattice.fir.checkers
 
 import dev.zacsweers.lattice.LatticeClassIds
@@ -29,8 +44,8 @@ internal class InjectConstructorChecker(
     val classInjectAnnotation =
       declaration.annotationsIn(session, latticeClassIds.injectAnnotations).toList()
 
-    val constructorInjections = declaration.constructors(session)
-      .filter {
+    val constructorInjections =
+      declaration.constructors(session).filter {
         it.annotations.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)
       }
 
@@ -38,19 +53,39 @@ internal class InjectConstructorChecker(
     if (!isInjected) return
 
     if (constructorInjections.size > 1) {
-      reporter.reportOn(constructorInjections[0].annotations.annotationsIn(session, latticeClassIds.injectAnnotations).single().source, FirLatticeErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS, context)
+      reporter.reportOn(
+        constructorInjections[0]
+          .annotations
+          .annotationsIn(session, latticeClassIds.injectAnnotations)
+          .single()
+          .source,
+        FirLatticeErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
+        context,
+      )
       return
     }
 
     if (classInjectAnnotation.isNotEmpty() && constructorInjections.isNotEmpty()) {
-      reporter.reportOn(classInjectAnnotation[0].source, FirLatticeErrors.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS, context)
+      reporter.reportOn(
+        classInjectAnnotation[0].source,
+        FirLatticeErrors.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
+        context,
+      )
       return
     }
 
     if (constructorInjections.isNotEmpty()) {
       val constructor = constructorInjections.single()
       if (constructor.valueParameterSymbols.isEmpty()) {
-        reporter.reportOn(constructorInjections[0].annotations.annotationsIn(session, latticeClassIds.injectAnnotations).single().source, FirLatticeErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS, context)
+        reporter.reportOn(
+          constructorInjections[0]
+            .annotations
+            .annotationsIn(session, latticeClassIds.injectAnnotations)
+            .single()
+            .source,
+          FirLatticeErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
+          context,
+        )
       }
     }
 
@@ -80,7 +115,8 @@ internal class InjectConstructorChecker(
 
     // TODO what about expect/actual/protected
     when (declaration.visibility) {
-      Visibilities.Public, Visibilities.Internal -> {
+      Visibilities.Public,
+      Visibilities.Internal -> {
         // These are fine
         // TODO what about across modules? Is internal really ok? Or PublishedApi?
       }
@@ -90,9 +126,12 @@ internal class InjectConstructorChecker(
       }
     }
 
-    val constructorToValidate = constructorInjections.singleOrNull() ?: declaration.primaryConstructorIfAny(session)
+    val constructorToValidate =
+      constructorInjections.singleOrNull() ?: declaration.primaryConstructorIfAny(session)
     when (constructorToValidate?.visibility) {
-      null, Visibilities.Public, Visibilities.Internal -> {
+      null,
+      Visibilities.Public,
+      Visibilities.Internal -> {
         // These are fine
         // TODO what about across modules? Is internal really ok? Or PublishedApi?
       }

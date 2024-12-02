@@ -187,16 +187,35 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlibJvm.packageFqName, Name.identifier("JvmStatic")))!!
   }
 
-  val componentAnnotations get() = latticeClassIds.componentAnnotations
-  val componentFactoryAnnotations get() = latticeClassIds.componentFactoryAnnotations
-  val injectAnnotations get() = latticeClassIds.injectAnnotations
-  val qualifierAnnotations get() = latticeClassIds.qualifierAnnotations
-  val scopeAnnotations get() = latticeClassIds.scopeAnnotations
-  val providesAnnotations get() = latticeClassIds.providesAnnotations
-  val bindsInstanceAnnotations get() = latticeClassIds.bindsInstanceAnnotations
-  val assistedAnnotations get() = latticeClassIds.assistedAnnotations
-  val providerTypes get() = latticeClassIds.providerTypes
-  val lazyTypes get() = latticeClassIds.lazyTypes
+  val componentAnnotations
+    get() = latticeClassIds.componentAnnotations
+
+  val componentFactoryAnnotations
+    get() = latticeClassIds.componentFactoryAnnotations
+
+  val injectAnnotations
+    get() = latticeClassIds.injectAnnotations
+
+  val qualifierAnnotations
+    get() = latticeClassIds.qualifierAnnotations
+
+  val scopeAnnotations
+    get() = latticeClassIds.scopeAnnotations
+
+  val providesAnnotations
+    get() = latticeClassIds.providesAnnotations
+
+  val bindsInstanceAnnotations
+    get() = latticeClassIds.bindsInstanceAnnotations
+
+  val assistedAnnotations
+    get() = latticeClassIds.assistedAnnotations
+
+  val providerTypes
+    get() = latticeClassIds.providerTypes
+
+  val lazyTypes
+    get() = latticeClassIds.lazyTypes
 
   protected fun createPackage(packageName: String): IrPackageFragment =
     createEmptyExternalPackageFragment(moduleFragment.descriptor, FqName(packageName))

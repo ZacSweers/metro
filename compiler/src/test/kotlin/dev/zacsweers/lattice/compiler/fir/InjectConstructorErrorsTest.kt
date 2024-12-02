@@ -34,7 +34,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Inject
 
-            @Inject 
+            @Inject
             class ExampleClass @Inject constructor(private val value: String)
 
           """
@@ -221,7 +221,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
 
             @Inject
             private class PrivateClass
-            
+
             open class Example {
               @Inject
               protected class ProtectedClass
