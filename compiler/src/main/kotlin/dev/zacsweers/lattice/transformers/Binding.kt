@@ -15,12 +15,17 @@
  */
 package dev.zacsweers.lattice.transformers
 
+import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.ir.IrAnnotation
+import dev.zacsweers.lattice.isWordPrefixRegex
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
 internal sealed interface Binding {
   val typeKey: TypeKey
@@ -72,12 +77,24 @@ internal sealed interface Binding {
 
   data class ComponentDependency(
     val component: IrClass,
-    val getter: IrFunction,
+    val getter: IrSimpleFunction,
     override val typeKey: TypeKey,
   ) : Binding {
     override val scope: IrAnnotation? = null
-    // TODO what if the getter is a property getter, then it's a special name
-    override val nameHint: String = component.name.asString() + getter.name.asString()
+    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    override val nameHint: String = buildString {
+      append(component.name.asString())
+      val property = getter.correspondingPropertySymbol
+      if (property != null) {
+        val propName = property.owner.name.asString()
+        if (!isWordPrefixRegex.matches(propName)) {
+          append("Get")
+        }
+        append(propName.capitalizeUS())
+      } else {
+        append(getter.name.asString())
+      }
+    }
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.EMPTY
   }

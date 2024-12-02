@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isCompanionObject
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
+import dev.zacsweers.lattice.isWordPrefixRegex
 import dev.zacsweers.lattice.joinSimpleNames
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -68,8 +69,6 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
-
-internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
 
 internal class ProvidesTransformer(context: LatticeTransformerContext) :
   LatticeTransformerContext by context {
