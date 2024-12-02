@@ -26,6 +26,7 @@ import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
 import dev.zacsweers.lattice.ir.irInvoke
+import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.typeAsProviderArgument
@@ -48,6 +49,7 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -232,11 +234,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           )
         }
 
+    val componentDependencies =
+      creator
+        ?.parameters
+        ?.valueParameters
+        .orEmpty()
+        .filter { !it.isBindsInstance }
+        .map {
+          val type = it.typeKey.type.rawType()
+          // TODO check for cycles - add a param to track the lookup chain
+          getOrComputeComponentNode(type)
+        }
+
     val componentNode =
       ComponentNode(
         sourceComponent = componentDeclaration,
         isAnnotatedWithComponent = true,
-        dependencies = emptyList(),
+        dependencies = componentDependencies,
         scope = scope,
         providerFunctions = providerMethods,
         exposedTypes = exposedTypes,
@@ -289,11 +303,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
 
     // Add bindings from component dependencies
-    component.dependencies.forEach { dep ->
-      dep.exposedTypes.forEach { key ->
+    component.dependencies.forEach { depNode ->
+      depNode.exposedTypes.forEach { (getter, typeMetadata) ->
         graph.addBinding(
-          key,
-          Binding.ComponentDependency(component = dep.type, getter = dep.getter, typeKey = key),
+          typeMetadata.typeKey,
+          Binding.ComponentDependency(
+            component = depNode.sourceComponent,
+            getter = getter,
+            typeKey = typeMetadata.typeKey,
+          ),
           bindingStack,
         )
       }
@@ -438,11 +456,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Add fields for providers. May include both scoped and unscoped providers as well as bound
         // instances
         val providerFields = mutableMapOf<TypeKey, IrField>()
+        val componentTypesToCtorParams = mutableMapOf<TypeKey, IrValueParameter>()
 
         node.creator?.let { creator ->
           for (param in creator.parameters.valueParameters) {
             val isBindsInstance = param.isBindsInstance
-            val isComponentDep = !isBindsInstance
+
             val irParam = ctor.addValueParameter(param.name.asString(), param.type)
 
             if (isBindsInstance) {
@@ -468,14 +487,19 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                       }
                   }
             } else {
-              // TODO
+              // It's a component dep. Add all its exposed types as available keys and point them at
+              // this constructor parameter for provider field initialization
+              for (componentDep in node.allDependencies) {
+                for ((_, typeMetadata) in componentDep.exposedTypes) {
+                  componentTypesToCtorParams[typeMetadata.typeKey] = irParam
+                }
+              }
             }
           }
         }
 
-        val componentTypeKey = TypeKey(node.sourceComponent.typeWith())
-
         // Add fields for this component and other instance params
+        // TODO just make this a component field instead?
         val instanceFields = mutableMapOf<TypeKey, IrField>()
         val thisReceiverParameter = thisReceiver!!
         val thisComponentField =
@@ -492,7 +516,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 }
             }
 
-        instanceFields[componentTypeKey] = thisComponentField
+        instanceFields[node.typeKey] = thisComponentField
         // Add convenience mappings for all supertypes to this field so
         // instance providers from inherited types use this instance
         for (superType in node.sourceComponent.getAllSuperTypes(pluginContext)) {
@@ -540,6 +564,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                           graph,
                           thisReceiverParameter,
                           instanceFields,
+                          componentTypesToCtorParams,
                           providerFields,
                           bindingStack,
                         )
@@ -588,6 +613,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                       graph,
                       thisReceiverParameter,
                       instanceFields,
+                      componentTypesToCtorParams,
                       providerFields,
                       bindingStack,
                     )
@@ -659,6 +685,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       val bindingScope = binding.scope
 
       // Check scoping compatibility
+      // TODO FIR error?
       if (bindingScope != null) {
         if (node.scope == null || bindingScope != node.scope) {
           // Error if an unscoped component references scoped bindings
@@ -678,8 +705,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
       visitedBindings += key
 
-      // Scoped bindings always need fields
-      if (bindingScope != null) {
+      // Scoped abd component bindings always need (provider) fields
+      if (bindingScope != null || binding is Binding.ComponentDependency) {
         bindingDependencies[key] = binding.dependencies
       }
 
@@ -714,6 +741,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
     instanceFields: Map<TypeKey, IrField>,
+    componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
     providerFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
   ): List<IrExpression> {
@@ -735,10 +763,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // TODO only value args are supported atm
     return params.valueParameters.mapIndexed { i, param ->
       val typeKey = paramTypeKeys[i]
+
+      // TODO consolidate this logic with generateBindingCode
       instanceFields[typeKey]?.let { instanceField ->
         // If it's in instance field, invoke that field
         return@mapIndexed irGetField(irGet(thisReceiver), instanceField)
       }
+
       val providerInstance =
         if (typeKey in providerFields) {
           // If it's in provider fields, invoke that field
@@ -747,24 +778,24 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           val entry =
             when (binding) {
               is Binding.ConstructorInjected -> {
-                // TODO optimize lookup
-                val constructor = binding.type.findInjectableConstructor()!!
+                val constructor = binding.injectedConstructor
                 BindingStackEntry.injectedAt(typeKey, constructor, constructor.valueParameters[i])
               }
               is Binding.Provided -> {
                 BindingStackEntry.injectedAt(typeKey, function, function.valueParameters[i])
               }
-              is Binding.BoundInstance -> TODO()
-              is Binding.ComponentDependency -> TODO()
+              is Binding.BoundInstance,
+              is Binding.ComponentDependency -> error("Should never happen, logic is handled above")
             }
           bindingStack.push(entry)
           // Generate binding code for each param
-          val binding = graph.getOrCreateBinding(typeKey, bindingStack)
+          val paramBinding = graph.getOrCreateBinding(typeKey, bindingStack)
           generateBindingCode(
-            binding,
+            paramBinding,
             graph,
             thisReceiver,
             instanceFields,
+            componentTypesToCtorParams,
             providerFields,
             bindingStack,
           )
@@ -804,6 +835,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     graph: BindingGraph,
     thisReceiver: IrValueParameter,
     instanceFields: Map<TypeKey, IrField>,
+    componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
     providerFields: Map<TypeKey, IrField>,
     bindingStack: BindingStack,
   ): IrExpression {
@@ -811,11 +843,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     providerFields[binding.typeKey]?.let {
       return irGetField(irGet(thisReceiver), it)
     }
+
     return when (binding) {
       is Binding.ConstructorInjected -> {
         // Example_Factory.create(...)
-        // TODO cache these constructor param lookups
-        val injectableConstructor = binding.type.findInjectableConstructor()!!
+        val injectableConstructor = binding.injectedConstructor
         val factoryClass =
           injectConstructorTransformer.getOrGenerateFactoryClass(
             binding.type,
@@ -843,6 +875,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             graph,
             thisReceiver,
             instanceFields,
+            componentTypesToCtorParams,
             providerFields,
             bindingStack,
           )
@@ -894,6 +927,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             graph,
             thisReceiver,
             instanceFields,
+            componentTypesToCtorParams,
             providerFields,
             bindingStack,
           )
@@ -903,14 +937,53 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           args = args,
         )
       }
-
       is Binding.BoundInstance -> {
-        error("Should never happen, this should get handled in the providerFields above.")
+        // Should never happen, this should get handled in the provider fields logic above.
+        error("Unable to generate code for unexpected BoundInstance binding: $binding")
       }
-
       is Binding.ComponentDependency -> {
-        // "return ${binding.component.className}.${binding.getter.name}()"
-        TODO()
+        /*
+        TODO eventually optimize this like dagger does and generate static provider classes that don't hold outer refs
+        private static final class GetCharSequenceProvider implements Provider<CharSequence> {
+          private final CharSequenceComponent charSequenceComponent;
+
+          GetCharSequenceProvider(CharSequenceComponent charSequenceComponent) {
+            this.charSequenceComponent = charSequenceComponent;
+          }
+
+          @Override
+          public CharSequence get() {
+            return Preconditions.checkNotNullFromComponent(charSequenceComponent.getCharSequence());
+          }
+        }
+        */
+
+        val typeKey = binding.typeKey
+        val componentParameter =
+          componentTypesToCtorParams[typeKey]
+            ?: run { error("No matching component instance found for type $typeKey") }
+        val lambda =
+          irLambda(
+            context = pluginContext,
+            parent = thisReceiver.parent,
+            emptyList(),
+            typeKey.type,
+            suspend = false,
+          ) { lambdaFunction ->
+            +irReturn(
+              irInvoke(
+                dispatchReceiver = irGet(componentParameter),
+                callee = binding.getter.symbol,
+                typeHint = typeKey.type,
+              )
+            )
+          }
+        irInvoke(
+          dispatchReceiver = null,
+          callee = symbols.latticeProviderFunction,
+          typeHint = typeKey.type.wrapInProvider(symbols.latticeProvider),
+          args = listOf(lambda),
+        )
       }
     }
   }
