@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice
 
 import com.google.auto.service.AutoService
+import dev.zacsweers.lattice.fir.LatticeFirExtensionRegistrar
 import dev.zacsweers.lattice.ir.LatticeIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 
 @OptIn(ExperimentalCompilerApi::class)
 @AutoService(CompilerPluginRegistrar::class)
@@ -38,7 +40,10 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
     val messageCollector =
       configuration.get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
 
-    // TODO FIR plugin
-    IrGenerationExtension.registerExtension(LatticeIrGenerationExtension(messageCollector, debug))
+    val classIds = LatticeClassIds()
+    FirExtensionRegistrarAdapter.registerExtension(LatticeFirExtensionRegistrar(classIds))
+    IrGenerationExtension.registerExtension(
+      LatticeIrGenerationExtension(messageCollector, classIds, debug)
+    )
   }
 }

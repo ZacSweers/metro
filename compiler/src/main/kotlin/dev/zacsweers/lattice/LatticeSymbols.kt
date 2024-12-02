@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.explicitParametersCount
@@ -39,6 +38,7 @@ import org.jetbrains.kotlin.name.Name
 internal class LatticeSymbols(
   private val moduleFragment: IrModuleFragment,
   val pluginContext: IrPluginContext,
+  val latticeClassIds: LatticeClassIds,
 ) {
 
   object ClassIds {
@@ -187,17 +187,16 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlibJvm.packageFqName, Name.identifier("JvmStatic")))!!
   }
 
-  val componentAnnotations by lazy { setOf(latticeComponent.owner.classIdOrFail) }
-  val componentFactoryAnnotations by lazy { setOf(latticeComponentFactory.owner.classIdOrFail) }
-  val injectAnnotations by lazy { setOf(latticeInject.owner.classIdOrFail) }
-  val qualifierAnnotations by lazy { setOf(latticeQualifier.owner.classIdOrFail) }
-  val scopeAnnotations by lazy { setOf(latticeScope.owner.classIdOrFail) }
-  val providesAnnotations by lazy { setOf(latticeProvides.owner.classIdOrFail) }
-  val bindsInstanceAnnotations by lazy { setOf(latticeBindsInstance.owner.classIdOrFail) }
-  // TODO
-  val assistedAnnotations by lazy { setOf<ClassId>() }
-  val providerTypes by lazy { setOf(latticeProvider.owner.classIdOrFail) }
-  val lazyTypes by lazy { setOf(stdlibLazy.owner.classIdOrFail) }
+  val componentAnnotations get() = latticeClassIds.componentAnnotations
+  val componentFactoryAnnotations get() = latticeClassIds.componentFactoryAnnotations
+  val injectAnnotations get() = latticeClassIds.injectAnnotations
+  val qualifierAnnotations get() = latticeClassIds.qualifierAnnotations
+  val scopeAnnotations get() = latticeClassIds.scopeAnnotations
+  val providesAnnotations get() = latticeClassIds.providesAnnotations
+  val bindsInstanceAnnotations get() = latticeClassIds.bindsInstanceAnnotations
+  val assistedAnnotations get() = latticeClassIds.assistedAnnotations
+  val providerTypes get() = latticeClassIds.providerTypes
+  val lazyTypes get() = latticeClassIds.lazyTypes
 
   protected fun createPackage(packageName: String): IrPackageFragment =
     createEmptyExternalPackageFragment(moduleFragment.descriptor, FqName(packageName))

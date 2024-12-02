@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.ExitProcessingException
+import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.transformers.ComponentData
 import dev.zacsweers.lattice.transformers.ComponentTransformer
@@ -27,11 +28,12 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
 internal class LatticeIrGenerationExtension(
   private val messageCollector: MessageCollector,
+  private val classIds: LatticeClassIds,
   private val debug: Boolean,
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-    val symbols = LatticeSymbols(moduleFragment, pluginContext)
+    val symbols = LatticeSymbols(moduleFragment, pluginContext, classIds)
     val context = LatticeTransformerContext(pluginContext, messageCollector, symbols, debug)
     val componentTransformer = ComponentTransformer(context)
     // TODO is this really necessary?
