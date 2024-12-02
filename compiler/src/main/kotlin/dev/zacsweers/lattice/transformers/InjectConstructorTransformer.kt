@@ -81,9 +81,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       return it
     }
 
-    // TODO FIR check for multiple inject constructors or annotations
-    // TODO FIR check constructor visibility
-
     val targetTypeParameters: List<IrTypeParameter> = declaration.typeParameters
     val generatedClassName = injectedClassId.joinSimpleNames(suffix = "_Factory")
 
