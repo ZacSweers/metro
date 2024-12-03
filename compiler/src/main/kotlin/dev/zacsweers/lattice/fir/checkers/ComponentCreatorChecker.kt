@@ -17,8 +17,10 @@ package dev.zacsweers.lattice.fir.checkers
 
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
+import dev.zacsweers.lattice.fir.allFunctions
 import dev.zacsweers.lattice.fir.annotationsIn
 import dev.zacsweers.lattice.fir.checkVisibility
+import dev.zacsweers.lattice.fir.isAnnotatedWithAny
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -28,11 +30,12 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
+import org.jetbrains.kotlin.name.ClassId
 
 internal class ComponentCreatorChecker(
   private val session: FirSession,
@@ -98,12 +101,31 @@ internal class ComponentCreatorChecker(
       return
     }
 
-    // TODO check inherited functions too
     // TODO combine inherited functions with matching signatures
     val abstractFunctions =
-      declaration.declarations.filterIsInstance<FirFunction>().filter {
-        it.modality == Modality.ABSTRACT && it.body == null
-      }
+      declaration
+        .allFunctions(session)
+        // Merge inherited functions with matching signatures
+        .groupBy {
+          // Don't include the return type because overrides may have different ones
+          it.computeJvmDescriptor(includeReturnType = false)
+        }
+        .mapValues { (_, functions) ->
+          val (abstract, implemented) =
+            functions.partition { it.modality == Modality.ABSTRACT && it.body == null }
+          if (abstract.isEmpty()) {
+            // All implemented, nothing to do
+            null
+          } else if (implemented.isNotEmpty()) {
+            // If there's one implemented one, it's not abstract anymore in our materialized type
+            null
+          } else {
+            // Only need one for the rest of this
+            abstract[0]
+          }
+        }
+        .values
+        .filterNotNull()
 
     if (abstractFunctions.size != 1) {
       if (abstractFunctions.isEmpty()) {
@@ -136,22 +158,30 @@ internal class ComponentCreatorChecker(
       return
     }
 
-    // Find duplicate params
-    val parameters =
-      createFunction.valueParameters
-        .map { it.returnTypeRef.firClassLike(session)!!.classId }
-        .groupBy { it }
-        .filter { it.value.size > 1 }
-        .keys
-        .toList()
+    val paramClassIds = mutableSetOf<ClassId>()
 
-    if (parameters.isNotEmpty()) {
-      reporter.reportOn(
-        source,
-        FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
-        context,
-      )
-      return
+    for (param in createFunction.valueParameters) {
+      val clazz = param.returnTypeRef.firClassLike(session)!!
+      val isValid =
+        param.isAnnotatedWithAny(session, latticeClassIds.bindsInstanceAnnotations) ||
+          clazz.isAnnotatedWithAny(session, latticeClassIds.componentAnnotations)
+      if (!isValid) {
+        reporter.reportOn(
+          param.source,
+          FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_COMPONENTS,
+          context,
+        )
+        return
+      }
+      // Check duplicate params
+      if (!paramClassIds.add(clazz.classId)) {
+        reporter.reportOn(
+          param.source,
+          FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
+          context,
+        )
+        return
+      }
     }
   }
 }

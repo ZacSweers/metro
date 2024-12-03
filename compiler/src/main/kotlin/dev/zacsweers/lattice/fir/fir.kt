@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
@@ -29,13 +30,14 @@ import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.ClassId
 
-internal fun FirAnnotation.isAnnotatedWithAny(
+internal fun FirAnnotationContainer.isAnnotatedWithAny(
   session: FirSession,
   names: Collection<ClassId>,
 ): Boolean {
@@ -92,6 +94,7 @@ internal inline fun Visibility.checkVisibility(
   }
 }
 
+@OptIn(SymbolInternals::class) // TODO is there a non-internal API?
 internal fun FirClass.allSuperTypeConeRefs(session: FirSession): Sequence<ConeClassLikeType> {
   return sequence {
     yieldAll(superConeTypes)
@@ -99,5 +102,17 @@ internal fun FirClass.allSuperTypeConeRefs(session: FirSession): Sequence<ConeCl
       val clazz = supertype.toClassSymbol(session)
       clazz?.resolvedSuperTypeRefs?.mapNotNull { it.coneTypeSafe() }
     }
+  }
+}
+
+@OptIn(SymbolInternals::class) // TODO is there a non-internal API?
+internal fun FirClass.allFunctions(session: FirSession): Sequence<FirFunction> {
+  return sequence {
+    yieldAll(declarations.filterIsInstance<FirFunction>())
+    yieldAll(
+      allSuperTypeConeRefs(session)
+        .mapNotNull { it.toClassSymbol(session)?.fir }
+        .flatMap { it.allFunctions(session) }
+    )
   }
 }
