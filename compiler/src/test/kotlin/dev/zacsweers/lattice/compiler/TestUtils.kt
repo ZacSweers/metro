@@ -225,6 +225,7 @@ fun Class<*>.generatedClassesString(separator: String = "_"): String {
 fun Class<*>.packageName(): String = `package`.name.let { if (it.isBlank()) "" else "$it." }
 
 fun CompilationResult.assertContainsAll(vararg messages: String) {
+  check(messages.isNotEmpty()) { "No messages supplied" }
   for (message in messages) {
     assertThat(this.messages).contains(message)
   }
