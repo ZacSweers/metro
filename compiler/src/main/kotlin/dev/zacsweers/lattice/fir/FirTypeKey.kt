@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.fir.render
-import org.jetbrains.kotlin.fir.renderWithType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 
 // TODO cache these?

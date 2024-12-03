@@ -190,7 +190,8 @@ internal class ComponentCreatorChecker(
             )
           }
           ?.let { LatticeFirAnnotation(it) }
-      if (!paramTypes.add(FirTypeKey(param.returnTypeRef, qualifier))) {
+      val typeKey = FirTypeKey(param.returnTypeRef, qualifier)
+      if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
           param.source,
           FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,

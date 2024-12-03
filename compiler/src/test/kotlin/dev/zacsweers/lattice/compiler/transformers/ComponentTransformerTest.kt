@@ -1033,6 +1033,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Component
             import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.BindsInstance
 
             @Component
             abstract class ExampleComponent(
@@ -1044,7 +1045,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
               @Component.Factory
               fun interface Factory {
-                fun create(text: String): ExampleComponent
+                fun create(@BindsInstance text: String): ExampleComponent
               }
             }
 
@@ -1057,7 +1058,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:7:32 Components cannot have constructors. Use @Component.Factory instead.
+          ExampleComponent.kt:8:32 Components cannot have constructors. Use @Component.Factory instead.
         """
           .trimIndent()
       )
@@ -1477,7 +1478,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             @Component
             interface ExampleComponent {
               val value: Int
-              
+
               @Component.Factory
               interface Factory {
                 fun create(@BindsInstance value: Int, @BindsInstance value2: Int): ExampleComponent
@@ -1509,7 +1510,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             @Component
             interface ExampleComponent {
               val value: Int
-              
+
               @Component.Factory
               interface Factory {
                 fun create(intComponent: IntComponent, intComponent2: IntComponent): ExampleComponent
@@ -1518,7 +1519,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             @Component
             interface IntComponent {
               val value: Int
-            
+
               @Component.Factory
               interface Factory {
                 fun create(@BindsInstance value: Int): IntComponent

@@ -52,9 +52,9 @@ interface FileSystemComponent {
 
 class Example3<T> @Inject constructor(fs: T)
 
-class Example4 @Inject constructor()
+@Suppress("SUGGEST_CLASS_INJECTION_IF_NO_PARAMS") class Example4 @Inject constructor()
 
-class Example5<T> @Inject constructor()
+@Suppress("SUGGEST_CLASS_INJECTION_IF_NO_PARAMS") class Example5<T> @Inject constructor()
 
 class Example6<T> @Inject constructor(fs: Lazy<FileSystem>)
 

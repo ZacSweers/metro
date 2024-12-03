@@ -15,8 +15,6 @@
  */
 package dev.zacsweers.lattice.fir
 
-import dev.zacsweers.lattice.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.ir.rawType
 import java.util.Objects
 import kotlin.collections.contains
 import org.jetbrains.kotlin.KtSourceElement
@@ -42,11 +40,6 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.fir.types.resolvedType
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.expressions.IrConst
-import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.ClassId
 
