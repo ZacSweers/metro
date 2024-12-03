@@ -106,13 +106,21 @@ internal class ComponentCreatorChecker(
       }
 
     if (abstractFunctions.size != 1) {
-      // Report each function
-      for (abstractFunction in abstractFunctions) {
+      if (abstractFunctions.isEmpty()) {
         reporter.reportOn(
-          abstractFunction.source,
+          source,
           FirLatticeErrors.COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
           context,
         )
+      } else {
+        // Report each function
+        for (abstractFunction in abstractFunctions) {
+          reporter.reportOn(
+            abstractFunction.source,
+            FirLatticeErrors.COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+            context,
+          )
+        }
       }
       return
     }
