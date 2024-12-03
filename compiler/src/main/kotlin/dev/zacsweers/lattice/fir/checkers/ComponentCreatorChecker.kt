@@ -17,6 +17,8 @@ package dev.zacsweers.lattice.fir.checkers
 
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
+import dev.zacsweers.lattice.fir.FirTypeKey
+import dev.zacsweers.lattice.fir.LatticeFirAnnotation
 import dev.zacsweers.lattice.fir.allFunctions
 import dev.zacsweers.lattice.fir.annotationsIn
 import dev.zacsweers.lattice.fir.checkVisibility
@@ -30,12 +32,14 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
-import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.resolvedType
 
 internal class ComponentCreatorChecker(
   private val session: FirSession,
@@ -101,7 +105,6 @@ internal class ComponentCreatorChecker(
       return
     }
 
-    // TODO combine inherited functions with matching signatures
     val abstractFunctions =
       declaration
         .allFunctions(session)
@@ -158,7 +161,7 @@ internal class ComponentCreatorChecker(
       return
     }
 
-    val paramClassIds = mutableSetOf<ClassId>()
+    val paramTypes = mutableSetOf<FirTypeKey>()
 
     for (param in createFunction.valueParameters) {
       val clazz = param.returnTypeRef.firClassLike(session)!!
@@ -174,7 +177,20 @@ internal class ComponentCreatorChecker(
         return
       }
       // Check duplicate params
-      if (!paramClassIds.add(clazz.classId)) {
+      val qualifier =
+        param.annotations
+          .filterIsInstance<FirAnnotationCall>()
+          .singleOrNull { annotationCall ->
+            val annotationType =
+              annotationCall.resolvedType as? ConeClassLikeType ?: return@singleOrNull false
+            val annotationClass = annotationType.toClassSymbol(session) ?: return@singleOrNull false
+            annotationClass.annotations.isAnnotatedWithAny(
+              session,
+              latticeClassIds.qualifierAnnotations,
+            )
+          }
+          ?.let { LatticeFirAnnotation(it) }
+      if (!paramTypes.add(FirTypeKey(param.returnTypeRef, qualifier))) {
         reporter.reportOn(
           param.source,
           FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
