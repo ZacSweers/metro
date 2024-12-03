@@ -17,10 +17,11 @@ package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.renderWithType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 
 // TODO cache these?
-internal data class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotation? = null) :
+internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotation? = null) :
   Comparable<FirTypeKey> {
   private val cachedToString by unsafeLazy {
     buildString {
@@ -31,6 +32,10 @@ internal data class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAn
       append(type.render())
     }
   }
+
+  override fun equals(other: Any?) = cachedToString.hashCode() == other.hashCode()
+
+  override fun hashCode() = cachedToString.hashCode()
 
   override fun toString(): String = cachedToString
 
