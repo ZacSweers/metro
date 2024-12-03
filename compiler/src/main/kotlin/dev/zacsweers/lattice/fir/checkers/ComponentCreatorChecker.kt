@@ -55,7 +55,11 @@ internal class ComponentCreatorChecker(
         // This is fine
         when (declaration.modality) {
           Modality.SEALED -> {
-            reporter.reportOn(source, FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT, context)
+            reporter.reportOn(
+              source,
+              FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT,
+              context,
+            )
             return
           }
           else -> {
@@ -70,13 +74,21 @@ internal class ComponentCreatorChecker(
           }
           else -> {
             // final/open/sealed
-            reporter.reportOn(source, FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT, context)
+            reporter.reportOn(
+              source,
+              FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT,
+              context,
+            )
             return
           }
         }
       }
       else -> {
-        reporter.reportOn(source, FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT, context)
+        reporter.reportOn(
+          source,
+          FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT,
+          context,
+        )
         return
       }
     }
@@ -88,16 +100,19 @@ internal class ComponentCreatorChecker(
 
     // TODO check inherited functions too
     // TODO combine inherited functions with matching signatures
-    val abstractFunctions = declaration.declarations
-      .filterIsInstance<FirFunction>()
-      .filter {
+    val abstractFunctions =
+      declaration.declarations.filterIsInstance<FirFunction>().filter {
         it.modality == Modality.ABSTRACT && it.body == null
       }
 
     if (abstractFunctions.size != 1) {
       // Report each function
       for (abstractFunction in abstractFunctions) {
-        reporter.reportOn(abstractFunction.source, FirLatticeErrors.COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION, context)
+        reporter.reportOn(
+          abstractFunction.source,
+          FirLatticeErrors.COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+          context,
+        )
       }
       return
     }
@@ -105,20 +120,29 @@ internal class ComponentCreatorChecker(
     val createFunction = abstractFunctions.single()
 
     createFunction.checkVisibility { source ->
-      reporter.reportOn(source, FirLatticeErrors.COMPONENT_CREATORS_FACTORY_FUNCTION_MUST_BE_VISIBLE, context)
+      reporter.reportOn(
+        source,
+        FirLatticeErrors.COMPONENT_CREATORS_FACTORY_FUNCTION_MUST_BE_VISIBLE,
+        context,
+      )
       return
     }
 
     // Find duplicate params
-    val parameters = createFunction.valueParameters
-      .map { it.returnTypeRef.firClassLike(session)!!.classId }
-      .groupBy { it }
-      .filter { it.value.size > 1 }
-      .keys
-      .toList()
+    val parameters =
+      createFunction.valueParameters
+        .map { it.returnTypeRef.firClassLike(session)!!.classId }
+        .groupBy { it }
+        .filter { it.value.size > 1 }
+        .keys
+        .toList()
 
     if (parameters.isNotEmpty()) {
-      reporter.reportOn(source, FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE, context)
+      reporter.reportOn(
+        source,
+        FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
+        context,
+      )
       return
     }
   }

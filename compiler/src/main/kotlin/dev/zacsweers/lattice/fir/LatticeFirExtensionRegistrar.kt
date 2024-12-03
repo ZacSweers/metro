@@ -44,9 +44,10 @@ internal class LatticeFirCheckers(
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>
-        get() = setOf(
-          InjectConstructorChecker(session, latticeClassIds),
-          ComponentCreatorChecker(session, latticeClassIds),
-        )
+        get() =
+          setOf(
+            InjectConstructorChecker(session, latticeClassIds),
+            ComponentCreatorChecker(session, latticeClassIds),
+          )
     }
 }

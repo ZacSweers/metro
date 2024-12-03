@@ -166,8 +166,9 @@ class ComponentProcessingTest {
 
   @Test
   fun `component factories can inherit abstract functions from base types`() {
-    val component = createComponentFactory<ComponentWithInheritingAbstractFunction.Factory>()
-      .create("Hello, world!")
+    val component =
+      createComponentFactory<ComponentWithInheritingAbstractFunction.Factory>()
+        .create("Hello, world!")
 
     assertEquals("Hello, world!", component.value)
   }
@@ -180,8 +181,7 @@ class ComponentProcessingTest {
   interface ComponentWithInheritingAbstractFunction {
     val value: String
 
-    @Component.Factory
-    interface Factory : BaseFactory<ComponentWithInheritingAbstractFunction>
+    @Component.Factory interface Factory : BaseFactory<ComponentWithInheritingAbstractFunction>
   }
 
   @Inject

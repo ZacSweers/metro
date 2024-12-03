@@ -19,7 +19,6 @@ import kotlin.collections.contains
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
@@ -29,11 +28,9 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.ClassId
@@ -66,15 +63,22 @@ internal fun List<FirAnnotation>.isAnnotatedWithAny(
   return annotationsIn(session, names).any()
 }
 
-internal inline fun FirMemberDeclaration.checkVisibility(onError: (source: KtSourceElement?) -> Nothing) {
+internal inline fun FirMemberDeclaration.checkVisibility(
+  onError: (source: KtSourceElement?) -> Nothing
+) {
   visibility.checkVisibility(source, onError)
 }
 
-internal inline fun FirCallableSymbol<*>.checkVisibility(onError: (source: KtSourceElement?) -> Nothing) {
+internal inline fun FirCallableSymbol<*>.checkVisibility(
+  onError: (source: KtSourceElement?) -> Nothing
+) {
   visibility.checkVisibility(source, onError)
 }
 
-internal inline fun Visibility.checkVisibility(source: KtSourceElement?, onError: (source: KtSourceElement?) -> Nothing) {
+internal inline fun Visibility.checkVisibility(
+  source: KtSourceElement?,
+  onError: (source: KtSourceElement?) -> Nothing,
+) {
   // TODO what about expect/actual/protected
   when (this) {
     Visibilities.Public,

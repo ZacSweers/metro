@@ -1272,7 +1272,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
             @Component
             interface ComponentWithAbstractClass {
-            
+
               fun example() {
                 @Component.Factory
                 abstract class Factory {
@@ -1291,7 +1291,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     result.assertContains(
       """
         ExampleComponent.kt:10:20 Component creators cannot be local classes.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -1389,7 +1390,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     result.assertContains(
       """
         ExampleComponent.kt:8:13 Component.Factory types must have exactly one abstract function.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -1434,11 +1436,11 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Component
-            
+
             interface BaseFactory1<T> {
               fun create1(): T
             }
-            
+
             interface BaseFactory2<T> : BaseFactory1<T> {
               fun create2(): T
             }
@@ -1454,9 +1456,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContainsAll(
-
-    )
+    result.assertContainsAll()
   }
 
   // TODO component creators with two interfaces with matching functions should unify
