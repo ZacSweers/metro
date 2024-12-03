@@ -101,7 +101,7 @@ internal class InjectConstructorChecker(
           }
           else -> {
             // open/sealed/abstract
-            reporter.reportOn(source, FirLatticeErrors.ONLY_CLASSES_CAN_BE_INJECTED, context)
+            reporter.reportOn(source, FirLatticeErrors.ONLY_FINAL_CLASSES_CAN_BE_INJECTED, context)
             return
           }
         }

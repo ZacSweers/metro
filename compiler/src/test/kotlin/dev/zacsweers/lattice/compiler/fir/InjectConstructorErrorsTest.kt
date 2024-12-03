@@ -174,9 +174,9 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:12 Only classes can be annotated with @Inject or have @Inject-constructors.",
-      "ExampleClass.kt:9:14 Only classes can be annotated with @Inject or have @Inject-constructors.",
-      "ExampleClass.kt:12:16 Only classes can be annotated with @Inject or have @Inject-constructors.",
+      "ExampleClass.kt:6:1 Only final classes be annotated with @Inject or have @Inject-constructors.",
+      "ExampleClass.kt:9:1 Only final classes be annotated with @Inject or have @Inject-constructors.",
+      "ExampleClass.kt:12:1 Only final classes be annotated with @Inject or have @Inject-constructors.",
     )
   }
 
@@ -239,7 +239,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
       )
     result.assertContainsAll(
       "ExampleClass.kt:6:1 Injected classes must be visible, either `public` or `internal`.",
-      "ExampleClass.kt:10:3 Injected classes must be visible, either `public` or `internal`."
+      "ExampleClass.kt:10:3 Injected classes must be visible, either `public` or `internal`.",
     )
   }
 

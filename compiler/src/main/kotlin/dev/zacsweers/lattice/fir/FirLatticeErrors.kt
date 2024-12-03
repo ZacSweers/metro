@@ -34,7 +34,8 @@ internal object FirLatticeErrors {
     error0<PsiElement>(NAME_IDENTIFIER)
   val COMPONENT_CREATORS_FACTORY_FUNCTION_MUST_BE_VISIBLE by error0<PsiElement>(NAME_IDENTIFIER)
   val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0<PsiElement>(NAME_IDENTIFIER)
-  val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_COMPONENTS by error0<PsiElement>(NAME_IDENTIFIER)
+  val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_COMPONENTS by
+    error0<PsiElement>(NAME_IDENTIFIER)
 
   // Component errors
   val COMPONENT_SHOULD_BE_CLASS_OR_INTERFACE by error0<PsiElement>(NAME_IDENTIFIER)
@@ -110,6 +111,10 @@ private object FirLatticeErrorMessages : BaseDiagnosticRendererFactory() {
       put(
         FirLatticeErrors.ONLY_CLASSES_CAN_BE_INJECTED,
         "Only classes can be annotated with @Inject or have @Inject-constructors.",
+      )
+      put(
+        FirLatticeErrors.ONLY_FINAL_CLASSES_CAN_BE_INJECTED,
+        "Only final classes be annotated with @Inject or have @Inject-constructors.",
       )
       put(
         FirLatticeErrors.LOCAL_CLASSES_CANNOT_BE_INJECTED,
