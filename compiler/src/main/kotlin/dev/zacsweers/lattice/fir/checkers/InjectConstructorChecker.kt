@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.fir.checkers
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
 import dev.zacsweers.lattice.fir.annotationsIn
+import dev.zacsweers.lattice.fir.checkVisibility
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -31,6 +32,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -113,29 +115,15 @@ internal class InjectConstructorChecker(
       }
     }
 
-    // TODO what about expect/actual/protected
-    when (declaration.visibility) {
-      Visibilities.Public,
-      Visibilities.Internal -> {
-        // These are fine
-        // TODO what about across modules? Is internal really ok? Or PublishedApi?
-      }
-      else -> {
-        reporter.reportOn(source, FirLatticeErrors.ONLY_CLASSES_CAN_BE_INJECTED, context)
-        return
-      }
+    declaration.checkVisibility { source ->
+      reporter.reportOn(source, FirLatticeErrors.INJECTED_CLASSES_MUST_BE_VISIBLE, context)
+      return
     }
 
     val constructorToValidate =
       constructorInjections.singleOrNull() ?: declaration.primaryConstructorIfAny(session)
-    when (constructorToValidate?.visibility) {
-      null,
-      Visibilities.Public,
-      Visibilities.Internal -> {
-        // These are fine
-        // TODO what about across modules? Is internal really ok? Or PublishedApi?
-      }
-      else -> {
+    constructorToValidate?.let {
+      it.checkVisibility { source ->
         reporter.reportOn(source, FirLatticeErrors.INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE, context)
         return
       }

@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.LatticeClassIds
+import dev.zacsweers.lattice.fir.checkers.ComponentCreatorChecker
 import dev.zacsweers.lattice.fir.checkers.InjectConstructorChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
@@ -43,6 +44,9 @@ internal class LatticeFirCheckers(
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>
-        get() = setOf(InjectConstructorChecker(session, latticeClassIds))
+        get() = setOf(
+          InjectConstructorChecker(session, latticeClassIds),
+          ComponentCreatorChecker(session, latticeClassIds),
+        )
     }
 }

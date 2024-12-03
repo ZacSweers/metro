@@ -26,6 +26,14 @@ import org.jetbrains.kotlin.diagnostics.rendering.RootDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.warning0
 
 internal object FirLatticeErrors {
+  // Component creator errors
+  val COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT by error0<PsiElement>(NAME_IDENTIFIER)
+  val COMPONENT_CREATORS_CANNOT_BE_LOCAL by error0<PsiElement>(NAME_IDENTIFIER)
+  val COMPONENT_CREATORS_MUST_BE_VISIBLE by error0<PsiElement>(NAME_IDENTIFIER)
+  val COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by error0<PsiElement>(NAME_IDENTIFIER)
+  val COMPONENT_CREATORS_FACTORY_FUNCTION_MUST_BE_VISIBLE by error0<PsiElement>(NAME_IDENTIFIER)
+  val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0<PsiElement>(NAME_IDENTIFIER)
+
   // Component errors
   val COMPONENT_SHOULD_BE_CLASS_OR_INTERFACE by error0<PsiElement>(NAME_IDENTIFIER)
 
@@ -47,10 +55,39 @@ internal object FirLatticeErrors {
 private object FirLatticeErrorMessages : BaseDiagnosticRendererFactory() {
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("Lattice").apply {
+      // Component creator errors
+      put(
+        FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT,
+        "Component creators should be non-sealed abstract classes or interfaces.",
+      )
+      put(
+        FirLatticeErrors.COMPONENT_CREATORS_CANNOT_BE_LOCAL,
+        "Component creators cannot be local classes.",
+      )
+      put(
+        FirLatticeErrors.COMPONENT_CREATORS_MUST_BE_VISIBLE,
+        "Component creators must be public or internal.",
+      )
+      put(
+        FirLatticeErrors.COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+        "Component.Factory types must have exactly one abstract function.",
+      )
+      put(
+        FirLatticeErrors.COMPONENT_CREATORS_FACTORY_FUNCTION_MUST_BE_VISIBLE,
+        "Component.Factory abstract functions must be public or internal.",
+      )
+      put(
+        FirLatticeErrors.COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
+        "Component.Factory abstract function parameters must be unique.",
+      )
+
+      // Component errors
       put(
         FirLatticeErrors.COMPONENT_SHOULD_BE_CLASS_OR_INTERFACE,
         "@Component-annotated types should be abstract classes or interfaces.",
       )
+
+      // Inject Constructor errors
       put(
         FirLatticeErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
         "Only one `@Inject` constructor is allowed.",
