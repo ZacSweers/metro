@@ -276,6 +276,31 @@ class ComponentProcessingTest {
     interface Factory : BaseFactory2<ComponentCreatorWithIntermediateOverriddenDefaultFunctions>
   }
 
+  @Test
+  fun `bindsinstance params with same types but different qualifiers are ok`() {
+    val factory =
+      createComponentFactory<ComponentWithDifferentBindsInstanceTypeQualifiers.Factory>()
+    val component = factory.create(1, 2)
+
+    assertEquals(component.value1, 1)
+    assertEquals(component.value2, 2)
+  }
+
+  @Component
+  interface ComponentWithDifferentBindsInstanceTypeQualifiers {
+
+    val value1: Int
+    @Named("value2") val value2: Int
+
+    @Component.Factory
+    fun interface Factory {
+      fun create(
+        @BindsInstance value1: Int,
+        @BindsInstance @Named("value2") value2: Int,
+      ): ComponentWithDifferentBindsInstanceTypeQualifiers
+    }
+  }
+
   @Inject
   @Singleton
   class Cache(
