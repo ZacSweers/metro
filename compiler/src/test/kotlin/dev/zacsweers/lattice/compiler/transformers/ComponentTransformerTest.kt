@@ -1456,13 +1456,87 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContainsAll()
+    result.assertContainsAll(
+      "ExampleComponent.kt:6:7 Component.Factory types must have exactly one abstract function.",
+      "ExampleComponent.kt:10:7 Component.Factory types must have exactly one abstract function.",
+    )
   }
 
-  // TODO component creators with two interfaces with matching functions should unify
-  //  COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION
-  //  COMPONENT_CREATORS_FACTORY_FUNCTION_MUST_BE_VISIBLE
+  @Test
+  fun `component factories params must be unique - check bindsinstance`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.BindsInstance
+
+            @Component
+            interface ExampleComponent {
+              val value: Int
+              
+              @Component.Factory
+              interface Factory {
+                fun create(@BindsInstance value: Int, @BindsInstance value2: Int): ExampleComponent
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContains(
+      "ExampleComponent.kt:12:58 Component.Factory abstract function parameters must be unique."
+    )
+  }
+
+  @Test
+  fun `component factories params must be unique - check component`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.BindsInstance
+
+            @Component
+            interface ExampleComponent {
+              val value: Int
+              
+              @Component.Factory
+              interface Factory {
+                fun create(intComponent: IntComponent, intComponent2: IntComponent): ExampleComponent
+              }
+            }
+            @Component
+            interface IntComponent {
+              val value: Int
+            
+              @Component.Factory
+              interface Factory {
+                fun create(@BindsInstance value: Int): IntComponent
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContains(
+      "ExampleComponent.kt:12:44 Component.Factory abstract function parameters must be unique."
+    )
+  }
+
   //  COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE
+  //  TODO account for qualifiers
 
   // TODO
   //  - advanced graph resolution (i.e. complex dep chains)
