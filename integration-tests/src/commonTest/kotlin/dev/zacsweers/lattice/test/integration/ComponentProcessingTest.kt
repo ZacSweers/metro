@@ -184,6 +184,98 @@ class ComponentProcessingTest {
     @Component.Factory interface Factory : BaseFactory<ComponentWithInheritingAbstractFunction>
   }
 
+  @Test
+  fun `component factories should merge overlapping interfaces`() {
+    val value =
+      createComponentFactory<ComponentCreatorWithMergeableInterfaces.Factory>().create(3).value
+
+    assertEquals(value, 3)
+  }
+
+  @Component
+  interface ComponentCreatorWithMergeableInterfaces {
+    val value: Int
+
+    interface BaseFactory1<T> {
+      fun create(@BindsInstance value: Int): T
+    }
+
+    interface BaseFactory2<T> {
+      fun create(@BindsInstance value: Int): T
+    }
+
+    @Component.Factory
+    interface Factory :
+      BaseFactory1<ComponentCreatorWithMergeableInterfaces>,
+      BaseFactory2<ComponentCreatorWithMergeableInterfaces>
+  }
+
+  @Test
+  fun `component factories should merge overlapping interfaces where only the abstract override has the bindsinstance`() {
+    val value =
+      createComponentFactory<
+          ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance.Factory
+        >()
+        .create(3)
+        .value
+
+    assertEquals(value, 3)
+  }
+
+  // Also covers overrides with different return types
+  @Component
+  interface ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance {
+    val value: Int
+
+    interface BaseFactory1<T> {
+      fun create(value: Int): T
+    }
+
+    interface BaseFactory2<T> {
+      fun create(value: Int): T
+    }
+
+    @Component.Factory
+    interface Factory :
+      BaseFactory1<ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance>,
+      BaseFactory2<ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance> {
+      override fun create(
+        @BindsInstance value: Int
+      ): ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance
+    }
+  }
+
+  @Test
+  fun `component factories should understand partially-implemented supertypes`() {
+    val factory =
+      createComponentFactory<ComponentCreatorWithIntermediateOverriddenDefaultFunctions.Factory>()
+    val value1 = factory.create1().value
+
+    assertEquals(value1, 0)
+
+    val value2 = factory.create2(3).value
+
+    assertEquals(value2, 3)
+  }
+
+  @Component
+  interface ComponentCreatorWithIntermediateOverriddenDefaultFunctions {
+    val value: Int
+
+    interface BaseFactory1<T> {
+      fun create1(): T
+    }
+
+    interface BaseFactory2<T> : BaseFactory1<T> {
+      override fun create1(): T = create2(0)
+
+      fun create2(@BindsInstance value: Int): T
+    }
+
+    @Component.Factory
+    interface Factory : BaseFactory2<ComponentCreatorWithIntermediateOverriddenDefaultFunctions>
+  }
+
   @Inject
   @Singleton
   class Cache(
