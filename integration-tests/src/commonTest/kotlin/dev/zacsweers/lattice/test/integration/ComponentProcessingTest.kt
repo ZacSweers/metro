@@ -280,10 +280,11 @@ class ComponentProcessingTest {
   fun `bindsinstance params with same types but different qualifiers are ok`() {
     val factory =
       createComponentFactory<ComponentWithDifferentBindsInstanceTypeQualifiers.Factory>()
-    val component = factory.create(1, 2)
+    val component = factory.create(1, 2, 3)
 
     assertEquals(component.value1, 1)
     assertEquals(component.value2, 2)
+    assertEquals(component.value3, 3)
   }
 
   @Component
@@ -291,12 +292,14 @@ class ComponentProcessingTest {
 
     val value1: Int
     @Named("value2") val value2: Int
+    @Named("value3") val value3: Int
 
     @Component.Factory
     fun interface Factory {
       fun create(
         @BindsInstance value1: Int,
         @BindsInstance @Named("value2") value2: Int,
+        @BindsInstance @Named("value3") value3: Int,
       ): ComponentWithDifferentBindsInstanceTypeQualifiers
     }
   }
