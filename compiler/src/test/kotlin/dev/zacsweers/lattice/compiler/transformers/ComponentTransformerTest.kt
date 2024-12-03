@@ -1535,9 +1535,6 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     )
   }
 
-  //  COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE
-  //  TODO account for qualifiers
-
   // TODO
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps
