@@ -15,6 +15,9 @@
  */
 package dev.zacsweers.lattice.fir
 
+import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.rawType
+import java.util.Objects
 import kotlin.collections.contains
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -29,11 +32,21 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
+import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.ClassId
 
@@ -115,4 +128,15 @@ internal fun FirClass.allFunctions(session: FirSession): Sequence<FirFunction> {
         .flatMap { it.allFunctions(session) }
     )
   }
+}
+
+/**
+ * Computes a hash key for this annotation instance composed of its underlying type and value
+ * arguments.
+ */
+internal fun FirAnnotationCall.computeAnnotationHash(): Int {
+  return Objects.hash(
+    resolvedType.classId,
+    arguments.map { (it as FirLiteralExpression).value }.toTypedArray().contentDeepHashCode(),
+  )
 }
