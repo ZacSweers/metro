@@ -174,10 +174,31 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun getOrComputeComponentNode(componentDeclaration: IrClass): ComponentNode {
+  private fun getOrComputeComponentNode(
+    componentDeclaration: IrClass,
+    componentDependencyStack: BindingStack,
+  ): ComponentNode {
     val componentClassId = componentDeclaration.classIdOrFail
     componentNodesByClass[componentClassId]?.let {
       return it
+    }
+
+    val componentTypeKey = TypeKey(componentDeclaration.typeWith())
+    if (componentDependencyStack.entryFor(componentTypeKey) != null) {
+      // TODO dagger doesn't appear to error for this case to model off of
+      val message = buildString {
+        if (componentDependencyStack.entries.size == 1) {
+          // If there's just one entry, specify that it's a self-referencing cycle for clarity
+          appendLine(
+            "[Lattice/ComponentDependencyCycle] Component dependency cycle detected! The below component depends on itself."
+          )
+        } else {
+          appendLine("[Lattice/ComponentDependencyCycle] Component dependency cycle detected!")
+        }
+        appendBindingStack(componentDependencyStack)
+      }
+      componentDeclaration.reportError(message)
+      exitProcessing()
     }
 
     componentDeclaration.constructors.forEach { constructor ->
@@ -242,8 +263,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         .filter { !it.isBindsInstance }
         .map {
           val type = it.typeKey.type.rawType()
-          // TODO check for cycles - add a param to track the lookup chain
-          getOrComputeComponentNode(type)
+          componentDependencyStack.withEntry(
+            BindingStackEntry.requestedAt(componentTypeKey, creator!!.createFunction)
+          ) {
+            getOrComputeComponentNode(type, componentDependencyStack)
+          }
         }
 
     val componentNode =
@@ -256,6 +280,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         exposedTypes = exposedTypes,
         isExternal = false,
         creator = creator,
+        typeKey = componentTypeKey,
       )
     componentNodesByClass[componentClassId] = componentNode
     return componentNode
@@ -267,7 +292,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       return it
     }
 
-    val componentNode = getOrComputeComponentNode(componentDeclaration)
+    val componentNode =
+      getOrComputeComponentNode(componentDeclaration, BindingStack(componentDeclaration))
 
     val bindingGraph = createBindingGraph(componentNode)
     bindingGraph.validate(componentNode) { message ->

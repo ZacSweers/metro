@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.types.typeWith
 
 // Represents a component's structure and relationships
 internal data class ComponentNode(
@@ -35,9 +34,9 @@ internal data class ComponentNode(
   val exposedTypes: Map<IrSimpleFunction, TypeMetadata>,
   val isExternal: Boolean,
   val creator: Creator?,
+  val typeKey: TypeKey,
 ) {
   val isInterface: Boolean = sourceComponent.kind == ClassKind.INTERFACE
-  val typeKey = TypeKey(sourceComponent.typeWith())
 
   data class Creator(
     val type: IrClass,

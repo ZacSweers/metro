@@ -1062,11 +1062,110 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
   }
 
+  @Test
+  fun `self referencing component dependency cycle should fail`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            interface CharSequenceComponent {
+
+              fun value(): CharSequence
+
+              @Provides
+              fun provideValue(string: String): CharSequence = string
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(component: CharSequenceComponent): CharSequenceComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContains(
+      """
+        ExampleComponent.kt:6:1 [Lattice/ComponentDependencyCycle] Component dependency cycle detected! The below component depends on itself.
+            test.CharSequenceComponent is requested at
+                [test.CharSequenceComponent] test.CharSequenceComponent.Factory.create()
+      """
+        .trimIndent()
+    )
+  }
+
+  @Test
+  fun `component dependency cycles should fail across multiple components`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+
+            @Component
+            interface CharSequenceComponent {
+
+              fun value(): CharSequence
+
+              @Provides
+              fun provideValue(string: String): CharSequence = string
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(stringComponent: StringComponent): CharSequenceComponent
+              }
+            }
+
+            @Component
+            interface StringComponent {
+
+              val string: String
+
+              @Provides
+              fun provideValue(charSequence: CharSequence): String = charSequence.toString()
+
+              @Component.Factory
+              fun interface Factory {
+                fun create(charSequenceComponent: CharSequenceComponent): StringComponent
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContains(
+      """
+        ExampleComponent.kt:6:1 [Lattice/ComponentDependencyCycle] Component dependency cycle detected!
+            test.StringComponent is requested at
+                [test.CharSequenceComponent] test.StringComponent.Factory.create()
+            test.CharSequenceComponent is requested at
+                [test.CharSequenceComponent] test.CharSequenceComponent.Factory.create()
+      """
+        .trimIndent()
+    )
+  }
+
   // TODO
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps
   //  - @get:Provides?
   //  - Binds examples
-  //  - Component deps
   //  - Inherited exposed types + deduping overrides?
 }
