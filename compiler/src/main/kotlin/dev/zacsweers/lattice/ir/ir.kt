@@ -654,7 +654,7 @@ internal fun IrClass.allFunctions(
     yieldAll(functions)
     yieldAll(
       getAllSuperTypes(pluginContext)
-        .mapNotNull { it.rawTypeOrNull() }
+        .mapNotNull(IrType::rawTypeOrNull)
         .flatMap { it.allFunctions(pluginContext) }
     )
   }
