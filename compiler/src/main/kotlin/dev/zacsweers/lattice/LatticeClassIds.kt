@@ -26,6 +26,9 @@ internal class LatticeClassIds(
   customScopeAnnotations: Set<ClassId> = emptySet(),
   customQualifierAnnotations: Set<ClassId> = emptySet(),
   customBindsInstanceAnnotations: Set<ClassId> = emptySet(),
+  customAssistedAnnotations: Set<ClassId> = emptySet(),
+  customAssistedInjectAnnotations: Set<ClassId> = emptySet(),
+  customAssistedFactoryAnnotations: Set<ClassId> = emptySet(),
 ) {
   companion object {
     val STDLIB_PACKAGE = FqName("kotlin")
@@ -59,8 +62,9 @@ internal class LatticeClassIds(
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Provides")) + customProvidesAnnotations
   val bindsInstanceAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("BindsInstance")) + customBindsInstanceAnnotations
-  // TODO
-  val assistedAnnotations = setOf<ClassId>()
+  val assistedAnnotations = setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Assisted")) + customAssistedAnnotations
+  val assistedInjectAnnotations = setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("AssistedInject")) + customAssistedInjectAnnotations
+  val assistedFactoryAnnotations = setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("AssistedFactory")) + customAssistedFactoryAnnotations
   val providerTypes = setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Provider"))
   val lazyTypes = setOf(STDLIB_PACKAGE.classIdOf("Lazy"))
 }
