@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.fir.allSuperTypeConeRefs
 import dev.zacsweers.lattice.letIf
 import dev.zacsweers.lattice.transformers.ConstructorParameter
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
@@ -35,11 +34,6 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirFunction
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -69,7 +63,6 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
-import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -227,7 +220,6 @@ internal fun IrBuilderWithScope.irInvoke(
   return call
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.addOverride(
   baseFunction: IrSimpleFunction,
   modality: Modality = Modality.FINAL,
@@ -647,15 +639,47 @@ internal fun IrExpression.doubleCheck(
   }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun IrClass.allFunctions(
-  pluginContext: IrPluginContext,
-): Sequence<IrSimpleFunction> {
+internal fun IrClass.allFunctions(pluginContext: IrPluginContext): Sequence<IrSimpleFunction> {
   return sequence {
     yieldAll(functions)
     yieldAll(
-      getAllSuperTypes(pluginContext)
-        .mapNotNull(IrType::rawTypeOrNull)
-        .flatMap { it.allFunctions(pluginContext) }
+      getAllSuperTypes(pluginContext).mapNotNull(IrType::rawTypeOrNull).flatMap {
+        it.allFunctions(pluginContext)
+      }
     )
   }
+}
+
+internal fun IrClass.singleAbstractFunction(context: LatticeTransformerContext): IrSimpleFunction {
+  return abstractFunctions(context).single()
+}
+
+internal fun IrSimpleFunction.isAbstractAndVisible(): Boolean {
+  return modality == Modality.ABSTRACT &&
+    body == null &&
+    (visibility == DescriptorVisibilities.PUBLIC || visibility == DescriptorVisibilities.PROTECTED)
+}
+
+internal fun IrClass.abstractFunctions(context: LatticeTransformerContext): List<IrSimpleFunction> {
+  return allFunctions(context.pluginContext)
+    // Merge inherited functions with matching signatures
+    .groupBy {
+      // Don't include the return type because overrides may have different ones
+      it.computeJvmDescriptorIsh(context, includeReturnType = false)
+    }
+    .mapValues { (_, functions) ->
+      val (abstract, implemented) = functions.partition { it.isAbstractAndVisible() }
+      if (abstract.isEmpty()) {
+        // All implemented, nothing to do
+        null
+      } else if (implemented.isNotEmpty()) {
+        // If there's one implemented one, it's not abstract anymore in our materialized type
+        null
+      } else {
+        // Only need one for the rest of this
+        abstract[0]
+      }
+    }
+    .values
+    .filterNotNull()
 }

@@ -22,7 +22,6 @@ import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
-import dev.zacsweers.lattice.ir.allFunctions
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
@@ -30,6 +29,7 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
+import dev.zacsweers.lattice.ir.singleAbstractFunction
 import dev.zacsweers.lattice.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.letIf
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -90,6 +90,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   IrElementTransformer<ComponentData>, LatticeTransformerContext by context {
 
   private val injectConstructorTransformer = InjectConstructorTransformer(context)
+  private val assistedFactoryTransformer =
+    AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
 
   // Keyed by the source declaration
@@ -158,6 +160,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // TODO need to better divvy these
     injectConstructorTransformer.visitClass(declaration)
+    assistedFactoryTransformer.visitClass(declaration)
 
     val isAnnotatedWithComponent = declaration.isAnnotatedWithAny(symbols.componentAnnotations)
     if (!isAnnotatedWithComponent) return super.visitClass(declaration, data)
@@ -240,15 +243,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         ?.let { factory ->
           // Validated in FIR so we can assume we'll find just one here
           // TODO support properties? Would be odd but technically possible
-          val createFunction =
-            factory.allFunctions(pluginContext).single { function ->
-              function.modality == Modality.ABSTRACT && function.body == null
-            }
-          ComponentNode.Creator(
-            factory,
-            createFunction,
-            createFunction.parameters(this),
-          )
+          val createFunction = factory.singleAbstractFunction(this)
+          ComponentNode.Creator(factory, createFunction, createFunction.parameters(this))
         }
 
     val componentDependencies =

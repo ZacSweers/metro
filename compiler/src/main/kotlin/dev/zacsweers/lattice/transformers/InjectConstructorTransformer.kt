@@ -59,8 +59,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
 
   fun visitClass(declaration: IrClass) {
-    log("Reading <$declaration>")
-
     val injectableConstructor = declaration.findInjectableConstructor()
     if (injectableConstructor != null) {
       getOrGenerateFactoryClass(declaration, injectableConstructor)
