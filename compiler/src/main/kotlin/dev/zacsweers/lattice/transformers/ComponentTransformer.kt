@@ -99,7 +99,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun visitCall(expression: IrCall, data: ComponentData): IrElement {
-    // TODO add createComponent() intrinsic
     // Covers replacing createComponentFactory() compiler intrinsics with calls to the real
     // component factory
     val callee = expression.symbol.owner
@@ -154,7 +153,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return super.visitCall(expression, data)
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun visitClass(declaration: IrClass, data: ComponentData): IrStatement {
     log("Reading <$declaration>")
 
@@ -551,9 +549,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         // Track a stack for bindings
         val bindingStack = BindingStack(node.sourceComponent)
-
-        // TODO don't allow constructor params, only factories
-        // TODO use InstanceFactory for bindsinstance
 
         // First pass: collect bindings and their dependencies for provider field ordering
         val bindingDependencies = collectBindings(node, graph, bindingStack)
