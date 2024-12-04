@@ -657,5 +657,5 @@ internal fun IrClass.allFunctions(
         .mapNotNull { it.rawTypeOrNull() }
         .flatMap { it.allFunctions(pluginContext) }
     )
-  }.filterIsInstance<IrSimpleFunction>()
+  }
 }
