@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.fir
 import java.util.Objects
 import kotlin.collections.contains
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -27,6 +28,7 @@ import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -34,6 +36,7 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -121,6 +124,35 @@ internal fun FirClass.allFunctions(session: FirSession): Sequence<FirFunction> {
         .flatMap { it.allFunctions(session) }
     )
   }
+}
+
+internal fun FirClass.abstractFunctions(session: FirSession): List<FirFunction> {
+  return allFunctions(session)
+    // Merge inherited functions with matching signatures
+    .groupBy {
+      // Don't include the return type because overrides may have different ones
+      it.computeJvmDescriptor(includeReturnType = false)
+    }
+    .mapValues { (_, functions) ->
+      val (abstract, implemented) =
+        functions.partition {
+          it.modality == Modality.ABSTRACT &&
+            it.body == null &&
+            (it.visibility == Visibilities.Public || it.visibility == Visibilities.Protected)
+        }
+      if (abstract.isEmpty()) {
+        // All implemented, nothing to do
+        null
+      } else if (implemented.isNotEmpty()) {
+        // If there's one implemented one, it's not abstract anymore in our materialized type
+        null
+      } else {
+        // Only need one for the rest of this
+        abstract[0]
+      }
+    }
+    .values
+    .filterNotNull()
 }
 
 /**

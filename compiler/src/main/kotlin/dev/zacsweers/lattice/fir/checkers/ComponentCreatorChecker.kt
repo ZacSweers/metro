@@ -19,7 +19,7 @@ import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
 import dev.zacsweers.lattice.fir.FirTypeKey
 import dev.zacsweers.lattice.fir.LatticeFirAnnotation
-import dev.zacsweers.lattice.fir.allFunctions
+import dev.zacsweers.lattice.fir.abstractFunctions
 import dev.zacsweers.lattice.fir.annotationsIn
 import dev.zacsweers.lattice.fir.checkVisibility
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
@@ -37,7 +37,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.resolvedType
 
@@ -105,30 +104,7 @@ internal class ComponentCreatorChecker(
       return
     }
 
-    val abstractFunctions =
-      declaration
-        .allFunctions(session)
-        // Merge inherited functions with matching signatures
-        .groupBy {
-          // Don't include the return type because overrides may have different ones
-          it.computeJvmDescriptor(includeReturnType = false)
-        }
-        .mapValues { (_, functions) ->
-          val (abstract, implemented) =
-            functions.partition { it.modality == Modality.ABSTRACT && it.body == null }
-          if (abstract.isEmpty()) {
-            // All implemented, nothing to do
-            null
-          } else if (implemented.isNotEmpty()) {
-            // If there's one implemented one, it's not abstract anymore in our materialized type
-            null
-          } else {
-            // Only need one for the rest of this
-            abstract[0]
-          }
-        }
-        .values
-        .filterNotNull()
+    val abstractFunctions = declaration.abstractFunctions(session)
 
     if (abstractFunctions.size != 1) {
       if (abstractFunctions.isEmpty()) {
