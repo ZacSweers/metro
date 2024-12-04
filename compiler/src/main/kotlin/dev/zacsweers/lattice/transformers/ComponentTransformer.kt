@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
+import dev.zacsweers.lattice.ir.allFunctions
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
@@ -69,7 +70,6 @@ import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
@@ -232,24 +232,22 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             // TODO is this enough for properties like @get:Provides
             !function.isAnnotatedWithAny(symbols.providesAnnotations)
         }
-        // TODO validate
-        .associate { function -> function to TypeMetadata.from(this, function) }
+        .associateWith { function -> TypeMetadata.from(this, function) }
 
     val creator =
       componentDeclaration.nestedClasses
         .singleOrNull { klass -> klass.isAnnotatedWithAny(symbols.componentFactoryAnnotations) }
         ?.let { factory ->
+          // Validated in FIR so we can assume we'll find just one here
+          // TODO support properties? Would be odd but technically possible
           val createFunction =
-            factory.functions.single { function ->
+            factory.allFunctions(pluginContext).single { function ->
               function.modality == Modality.ABSTRACT && function.body == null
             }
           ComponentNode.Creator(
             factory,
             createFunction,
-            createFunction.parameters(this).also {
-              // TODO FIR error
-              // TODO don't allow extensions
-            },
+            createFunction.parameters(this),
           )
         }
 

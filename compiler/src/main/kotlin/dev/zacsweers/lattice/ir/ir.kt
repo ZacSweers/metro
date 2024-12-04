@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.fir.allSuperTypeConeRefs
 import dev.zacsweers.lattice.letIf
 import dev.zacsweers.lattice.transformers.ConstructorParameter
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
@@ -34,6 +35,11 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -63,6 +69,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -638,3 +645,17 @@ internal fun IrExpression.doubleCheck(
       args = listOf(this@doubleCheck),
     )
   }
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrClass.allFunctions(
+  pluginContext: IrPluginContext,
+): Sequence<IrSimpleFunction> {
+  return sequence {
+    yieldAll(functions)
+    yieldAll(
+      getAllSuperTypes(pluginContext)
+        .mapNotNull { it.rawTypeOrNull() }
+        .flatMap { it.allFunctions(pluginContext) }
+    )
+  }.filterIsInstance<IrSimpleFunction>()
+}
