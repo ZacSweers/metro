@@ -220,7 +220,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             providerType = componentType,
             lazyType = componentType,
             isAssisted = false,
-            assistedIdentifier = SpecialNames.NO_NAME_PROVIDED,
+            assistedIdentifier = "",
             symbols = symbols,
             isComponentInstance = true,
             // TODO is this right/ever going to happen?
@@ -294,7 +294,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       val typeKey = TypeMetadata.from(this, function).typeKey
       CallableReference(
         fqName = function.kotlinFqName,
-        isInternal = function.visibility == Visibilities.Internal,
+        isInternal = function.visibility == DescriptorVisibilities.INTERNAL,
         name = function.name,
         isProperty = false,
         parameters = function.parameters(this),
@@ -328,7 +328,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       val parent = property.parentAsClass
       return CallableReference(
         fqName = fqName,
-        isInternal = property.visibility == Visibilities.Internal,
+        isInternal = property.visibility == DescriptorVisibilities.INTERNAL,
         name = property.name,
         isProperty = true,
         parameters = property.getter?.parameters(this) ?: Parameters.EMPTY,
