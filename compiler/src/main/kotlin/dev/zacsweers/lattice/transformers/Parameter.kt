@@ -65,7 +65,7 @@ internal sealed interface Parameter {
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
   data class AssistedParameterKey(
-    private val typeName: IrType,
+    private val typeKey: TypeKey,
     private val assistedIdentifier: Name,
   )
 
@@ -118,7 +118,7 @@ internal data class ConstructorParameter(
   override val isAssisted: Boolean,
   override val assistedIdentifier: Name,
   override val assistedParameterKey: Parameter.AssistedParameterKey =
-    Parameter.AssistedParameterKey(typeMetadata.typeKey.type, assistedIdentifier),
+    Parameter.AssistedParameterKey(typeMetadata.typeKey, assistedIdentifier),
   override val symbols: LatticeSymbols,
   override val isComponentInstance: Boolean,
   val bindingStackEntry: BindingStackEntry,
@@ -302,7 +302,6 @@ internal fun IrValueParameter.toConstructorParameter(
       ?: this@toConstructorParameter.type
   val typeMetadata = declaredType.asTypeMetadata(context, with(context) { qualifierAnnotation() })
 
-  // TODO FIR better error message
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
   val isBindsInstance =
