@@ -6,6 +6,21 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.lattice:runtime>
+open annotation class dev.zacsweers.lattice.annotations/Assisted : kotlin/Annotation { // dev.zacsweers.lattice.annotations/Assisted|null[0]
+    constructor <init>(kotlin/String = ...) // dev.zacsweers.lattice.annotations/Assisted.<init>|<init>(kotlin.String){}[0]
+
+    final val value // dev.zacsweers.lattice.annotations/Assisted.value|{}value[0]
+        final fun <get-value>(): kotlin/String // dev.zacsweers.lattice.annotations/Assisted.value.<get-value>|<get-value>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations/AssistedFactory : kotlin/Annotation { // dev.zacsweers.lattice.annotations/AssistedFactory|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations/AssistedFactory.<init>|<init>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations/AssistedInject : kotlin/Annotation { // dev.zacsweers.lattice.annotations/AssistedInject|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations/AssistedInject.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.lattice.annotations/BindsInstance : kotlin/Annotation { // dev.zacsweers.lattice.annotations/BindsInstance|null[0]
     constructor <init>() // dev.zacsweers.lattice.annotations/BindsInstance.<init>|<init>(){}[0]
 }

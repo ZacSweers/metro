@@ -86,11 +86,14 @@ allprojects {
       licenseHeaderFile(rootProject.file("spotless/spotless.kt"), "(package|@file:)")
       target("src/**/*.kt")
       targetExclude(
+        "**/Assisted.kt",
+        "**/AssistedFactory.kt",
+        "**/AssistedInject.kt",
         "**/DoubleCheck.kt",
-        "**/InstanceFactory.kt",
-        "**/ProviderOfLazy.kt",
         "**/DoubleCheckTest.kt",
+        "**/InstanceFactory.kt",
         "**/InstanceFactoryTest.kt",
+        "**/ProviderOfLazy.kt",
       )
     }
   }

@@ -9,6 +9,16 @@ public final class dev/zacsweers/lattice/ProviderKt {
 public abstract class dev/zacsweers/lattice/annotations/AppScope {
 }
 
+public abstract interface annotation class dev/zacsweers/lattice/annotations/Assisted : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/String;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/AssistedFactory : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/AssistedInject : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/lattice/annotations/BindsInstance : java/lang/annotation/Annotation {
 }
 
