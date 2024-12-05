@@ -55,7 +55,7 @@ internal sealed interface Parameter {
   val isWrappedInLazy: Boolean
   val isLazyWrappedInProvider: Boolean
   val isAssisted: Boolean
-  val assistedIdentifier: Name
+  val assistedIdentifier: String
   val assistedParameterKey: AssistedParameterKey
   val symbols: LatticeSymbols
   val typeKey: TypeKey
@@ -65,9 +65,25 @@ internal sealed interface Parameter {
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
   data class AssistedParameterKey(
-    private val typeKey: TypeKey,
-    private val assistedIdentifier: Name,
-  )
+    val typeKey: TypeKey,
+    val assistedIdentifier: String,
+  ) {
+
+    companion object {
+      fun IrValueParameter.toAssistedParameterKey(
+        symbols: LatticeSymbols,
+        typeKey: TypeKey,
+      ): AssistedParameterKey {
+        return AssistedParameterKey(
+          typeKey,
+          annotationsIn(symbols.assistedAnnotations)
+            .singleOrNull()
+            ?.constArgumentOfTypeAt<String>(0)
+            .orEmpty()
+        )
+      }
+    }
+  }
 
   val originalType: IrType
     get() =
@@ -116,7 +132,7 @@ internal data class ConstructorParameter(
   override val providerType: IrType,
   override val lazyType: IrType,
   override val isAssisted: Boolean,
-  override val assistedIdentifier: Name,
+  override val assistedIdentifier: String,
   override val assistedParameterKey: Parameter.AssistedParameterKey =
     Parameter.AssistedParameterKey(typeMetadata.typeKey, assistedIdentifier),
   override val symbols: LatticeSymbols,
@@ -308,7 +324,7 @@ internal fun IrValueParameter.toConstructorParameter(
     annotationsIn(context.symbols.bindsInstanceAnnotations).singleOrNull() != null
 
   val assistedIdentifier =
-    Name.identifier(assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty())
+    assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
 
   val ownerFunction = this.parent as IrFunction // TODO is this safe
 

@@ -237,7 +237,6 @@ internal fun IrClass.addOverride(
       copyValueParametersFrom(baseFunction)
     }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.addOverride(
   baseFqName: FqName,
   simpleName: Name,
@@ -521,6 +520,7 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   // This should be the provider type unless it's a special instance component type
   val parametersToFields = mutableMapOf<Parameter, IrField>()
   for (parameter in parameters) {
+    if (parameter.isAssisted) continue
     val irParameter =
       constructor.addValueParameter(parameter.name, parameter.providerType, LatticeOrigin)
     val irField =
@@ -560,6 +560,7 @@ internal fun IrClass.buildFactoryCreateFunction(
     this.visibility = DescriptorVisibilities.PUBLIC
     with(context) { markJvmStatic() }
     for (parameter in parameters) {
+      if (parameter.isAssisted) continue
       addValueParameter(parameter.name, parameter.providerType, LatticeOrigin)
     }
     dispatchReceiverParameter = this@buildFactoryCreateFunction.thisReceiver?.copyTo(this)

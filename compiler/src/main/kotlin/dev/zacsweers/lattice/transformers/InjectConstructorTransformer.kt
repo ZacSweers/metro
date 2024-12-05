@@ -23,6 +23,7 @@ import dev.zacsweers.lattice.ir.buildFactoryCreateFunction
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
+import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.joinSimpleNames
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -34,6 +35,7 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -51,6 +53,7 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
 internal class InjectConstructorTransformer(context: LatticeTransformerContext) :
@@ -87,6 +90,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         //      memberInjectParameters.isEmpty() &&
         targetTypeParameters.isEmpty()
 
+    val isAssistedInject = targetConstructor.isAnnotatedWithAny(symbols.assistedInjectAnnotations)
+
     /*
     Create a simple Factory class that takes all injected values as providers
 
@@ -111,8 +116,13 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     val allParameters = constructorParameters.valueParameters // + memberInjectParameters
 
     factoryCls.createImplicitParameterDeclarationWithWrappedDescriptor()
-    factoryCls.superTypes =
-      listOf(symbols.latticeFactory.typeWith(declaration.symbol.typeWithParameters(typeParameters)))
+
+    if (!isAssistedInject) {
+      factoryCls.superTypes =
+        listOf(
+          symbols.latticeFactory.typeWith(declaration.symbol.typeWithParameters(typeParameters))
+        )
+    }
 
     val factoryClassParameterized = factoryCls.symbol.typeWithParameters(typeParameters)
     val targetTypeParameterized = declaration.symbol.typeWithParameters(typeParameters)
@@ -137,52 +147,88 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         allParameters,
       )
 
-    /*
-    Override and implement the Provider.value property
-
-    // Simple
-    override fun invoke(): Example = newInstance(valueProvider())
-
-    // Generic
-    override fun invoke(): Example<T> = newInstance(valueProvider())
-
-    // Provider
-    override fun invoke(): Example<T> = newInstance(valueProvider)
-
-    // Lazy
-    override fun invoke(): Example<T> = newInstance(DoubleCheck.lazy(valueProvider))
-
-    // Provider<Lazy<T>>
-    override fun invoke(): Example<T> = newInstance(ProviderOfLazy.create(valueProvider))
-    */
-    factoryCls
-      .addOverride(
-        baseFqName = symbols.providerInvoke.owner.kotlinFqName,
-        simpleName = symbols.providerInvoke.owner.name,
-        returnType = targetTypeParameterized,
-        overriddenSymbols = listOf(symbols.providerInvoke),
-      )
-      .apply {
-        this.dispatchReceiverParameter = factoryCls.thisReceiver!!
-        body =
-          pluginContext.createIrBuilder(symbol).irBlockBody {
-            val instance =
-              irTemporary(
-                irInvoke(
-                  callee = newInstanceFunctionSymbol,
-                  args =
-                    parametersAsProviderArguments(
-                      parameters = allParameters,
-                      receiver = factoryCls.thisReceiver!!,
-                      parametersToFields = parametersToFields,
-                      symbols = symbols,
-                    ),
-                )
-              )
-            // TODO members injector goes here
-            +irReturn(irGet(instance))
+    if (isAssistedInject) {
+      // Assisted inject type, implement a get() with all the assisted params
+      val assistedParams = constructorParameters.valueParameters.filter { it.isAssisted }
+      factoryCls
+        .addFunction(name = "get", returnType = targetTypeParameterized, origin = LatticeOrigin)
+        .apply {
+          for (assistedParam in assistedParams) {
+            addValueParameter(assistedParam.name, assistedParam.originalType, LatticeOrigin)
           }
-      }
+
+          this.dispatchReceiverParameter = factoryCls.thisReceiver!!
+
+          body =
+            pluginContext.createIrBuilder(symbol).irBlockBody {
+              val assistedArgs = this@apply.valueParameters.map { irGet(it) }
+              val providerArgs =
+                parametersAsProviderArguments(
+                  parameters = allParameters.filterNot { it.isAssisted },
+                  receiver = factoryCls.thisReceiver!!,
+                  parametersToFields = parametersToFields,
+                  symbols = symbols,
+                )
+
+              val instance =
+                irTemporary(
+                  irInvoke(
+                    callee = newInstanceFunctionSymbol,
+                    args = assistedArgs + providerArgs,
+                  )
+                )
+              // TODO members injector goes here
+              +irReturn(irGet(instance))
+            }
+        }
+    } else {
+      /*
+      Normal provider - override + implement the Provider.value property
+
+      // Simple
+      override fun invoke(): Example = newInstance(valueProvider())
+
+      // Generic
+      override fun invoke(): Example<T> = newInstance(valueProvider())
+
+      // Provider
+      override fun invoke(): Example<T> = newInstance(valueProvider)
+
+      // Lazy
+      override fun invoke(): Example<T> = newInstance(DoubleCheck.lazy(valueProvider))
+
+      // Provider<Lazy<T>>
+      override fun invoke(): Example<T> = newInstance(ProviderOfLazy.create(valueProvider))
+      */
+      factoryCls
+        .addOverride(
+          baseFqName = symbols.providerInvoke.owner.kotlinFqName,
+          simpleName = symbols.providerInvoke.owner.name,
+          returnType = targetTypeParameterized,
+          overriddenSymbols = listOf(symbols.providerInvoke),
+        )
+        .apply {
+          this.dispatchReceiverParameter = factoryCls.thisReceiver!!
+          body =
+            pluginContext.createIrBuilder(symbol).irBlockBody {
+              val instance =
+                irTemporary(
+                  irInvoke(
+                    callee = newInstanceFunctionSymbol,
+                    args =
+                      parametersAsProviderArguments(
+                        parameters = allParameters,
+                        receiver = factoryCls.thisReceiver!!,
+                        parametersToFields = parametersToFields,
+                        symbols = symbols,
+                      ),
+                  )
+                )
+              // TODO members injector goes here
+              +irReturn(irGet(instance))
+            }
+        }
+    }
 
     factoryCls.dumpToLatticeLog()
 

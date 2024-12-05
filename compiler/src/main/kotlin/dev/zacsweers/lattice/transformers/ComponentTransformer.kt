@@ -419,7 +419,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           addMember(factoryClass)
 
           pluginContext.irFactory.addCompanionObject(symbols, parent = this) {
-            addFunction("factory", factoryClass.typeWith(), isStatic = true).apply {
+            addFunction("factory", factoryClass.typeWith()).apply {
               this.copyTypeParameters(typeParameters)
               this.dispatchReceiverParameter = thisReceiver?.copyTo(this)
               this.origin = LatticeOrigin
