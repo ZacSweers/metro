@@ -23,7 +23,7 @@ import dev.zacsweers.lattice.compiler.assertCallableFactory
 import dev.zacsweers.lattice.compiler.assertNoArgCallableFactory
 import dev.zacsweers.lattice.compiler.createNewInstanceAs
 import dev.zacsweers.lattice.compiler.generatedFactoryClass
-import dev.zacsweers.lattice.compiler.invokeCreate
+import dev.zacsweers.lattice.compiler.invokeCreateAsFactory
 import dev.zacsweers.lattice.compiler.invokeNewInstance
 import dev.zacsweers.lattice.provider
 import java.util.concurrent.Callable
@@ -127,8 +127,8 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
     val factoryClass = result.ExampleClass.generatedFactoryClass()
 
     // Assert that the factory class is a singleton since there are no args
-    val factory1 = factoryClass.invokeCreate()
-    val factory2 = factoryClass.invokeCreate()
+    val factory1 = factoryClass.invokeCreateAsFactory()
+    val factory2 = factoryClass.invokeCreateAsFactory()
     assertThat(factory1).isSameInstanceAs(factory2)
 
     // Assert that newInstance still returns new instances

@@ -19,6 +19,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.tschuchort.compiletesting.CompilationResult
 import com.tschuchort.compiletesting.JvmCompilationResult
+import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.internal.Factory
@@ -49,9 +50,20 @@ fun JvmCompilationResult.assertNoArgCallableFactory(expectedValue: String) {
 val JvmCompilationResult.ExampleClass: Class<*>
   get() = classLoader.loadClass("test.ExampleClass")
 
+val JvmCompilationResult.ExampleClassFactory: Class<*>
+  get() = classLoader.loadClass("test.ExampleClassFactory")
+
 fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
   @Suppress("UNCHECKED_CAST")
-  return classLoader.loadClass(name + "_Factory") as Class<Factory<*>>
+  return generatedFactoryClassAssisted() as Class<Factory<*>>
+}
+
+fun Class<*>.generatedFactoryClassAssisted(): Class<*> {
+  return classLoader.loadClass(name + "_Factory")
+}
+
+fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
+  return classLoader.loadClass(name + "_Impl")
 }
 
 fun Class<*>.providesFactoryClass(
@@ -115,8 +127,18 @@ fun <T> Class<Factory<*>>.invokeNewInstanceAs(vararg args: Any): T {
   return invokeNewInstance(*args) as T
 }
 
-fun Class<Factory<*>>.invokeCreate(vararg args: Any): Factory<*> {
-  return declaredMethods.single { it.name == "create" }.invoke(null, *args) as Factory<*>
+fun Class<Factory<*>>.invokeCreateAsFactory(vararg args: Any): Factory<*> {
+  return invokeCreate(*args) as Factory<*>
+}
+
+fun Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<*> {
+  return invokeCreate(*args) as Provider<*>
+}
+
+fun Class<*>.invokeCreate(vararg args: Any): Any {
+  return declaredMethods
+    .single { it.name == "create" && Modifier.isStatic(it.modifiers) }
+    .invoke(null, *args)
 }
 
 fun Class<Factory<*>>.invokeProvider(providerName: String, vararg args: Any): Any {
@@ -125,15 +147,15 @@ fun Class<Factory<*>>.invokeProvider(providerName: String, vararg args: Any): An
 
 fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
-  return invokeCreate(*args) as T
+  return invokeCreateAsFactory(*args) as T
 }
 
 /**
- * Exercises the whole generated factory creation flow by first creating with [invokeCreate] and
+ * Exercises the whole generated factory creation flow by first creating with [invokeCreateAsFactory] and
  * then calling [Factory.invoke] to exercise its `newInstance()`.
  */
 fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
-  val factory = invokeCreate(*args)
+  val factory = invokeCreateAsFactory(*args)
   return factory()
 }
 
@@ -146,7 +168,7 @@ fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any 
 }
 
 /**
- * Exercises the whole generated factory creation flow by first creating with [invokeCreate] and
+ * Exercises the whole generated factory creation flow by first creating with [invokeCreateAsFactory] and
  * then calling [Factory.invoke] to exercise its `newInstance()`.
  */
 fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
@@ -184,11 +206,19 @@ fun <T> Any.callComponentAccessorProperty(name: String): T {
   return javaClass.getMethod("get${name.capitalizeUS()}").invoke(this) as T
 }
 
+fun <T> Any.invokeFactoryGet(vararg args: Any): T {
+  return invokeInstanceMethod("get", *args) as T
+}
+
+fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
+  @Suppress("UNCHECKED_CAST")
+  return javaClass.methods.single { it.name == name && !Modifier.isStatic(it.modifiers) }.invoke(this, *args) as T
+}
+
 /**
  * Returns a new instance of a component's factory class by invoking its static "factory" function.
  */
 fun Class<*>.invokeComponentFactory(): Any {
-  @Suppress("UNCHECKED_CAST")
   return declaredMethods
     .single { Modifier.isStatic(it.modifiers) && it.name == "factory" }
     .invoke(null)
