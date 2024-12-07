@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
+import dev.zacsweers.lattice.ir.rawTypeOrNull
 import dev.zacsweers.lattice.ir.singleAbstractFunction
 import dev.zacsweers.lattice.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.letIf
@@ -474,6 +475,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Add fields for providers. May include both scoped and unscoped providers as well as bound
         // instances
         val providerFields = mutableMapOf<TypeKey, IrField>()
+        val assistedProviderFields = mutableMapOf<TypeKey, IrField>()
         val componentTypesToCtorParams = mutableMapOf<TypeKey, IrValueParameter>()
 
         node.creator?.let { creator ->
@@ -562,7 +564,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         // Create fields in dependency-order
         initOrder.forEach { key ->
-          val binding = graph.getOrCreateBinding(key, BindingStack.empty())
+          val binding = graph.requireBinding(key)
           providerFields[key] =
             addField(
                 fieldName = binding.nameHint.decapitalizeUS() + "Provider",
@@ -720,9 +722,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
       visitedBindings += key
 
-      // Scoped abd component bindings always need (provider) fields
+      // Scoped and component bindings always need (provider) fields
       if (bindingScope != null || binding is Binding.ComponentDependency) {
         bindingDependencies[key] = binding.dependencies
+      }
+
+      // For assisted bindings, we need provider fields for the assisted impl type
+      // The impl type depends on a provider of the assisted type, which we may or
+      // may not create a field for reuse.
+      if (binding is Binding.Assisted) {
+        bindingDependencies[key] = binding.target.dependencies
+        // TODO is this safe to end up as a provider field? Can someone create a
+        //  binding such that you have an assisted type on the DI graph that is
+        //  provided by a provider that depends on the assisted factory? I suspect
+        //  yes, so in that case we should probably track a separate field mapping
+        usedUnscopedBindings += binding.target.typeKey
+        // By definition, these parameters are not available on the graph
+        return
       }
 
       // Track dependencies before creating fields
@@ -748,9 +764,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun IrBuilderWithScope.generateBindingArguments(
-    paramTypeKeys: List<TypeKey>,
+    targetParams: Parameters,
     function: IrFunction,
     binding: Binding,
     graph: BindingGraph,
@@ -761,23 +776,35 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     bindingStack: BindingStack,
   ): List<IrExpression> {
     val params = function.parameters(this@ComponentTransformer)
+    // TODO only value args are supported atm
+    val paramsToMap = buildList {
+      // Can't use isStatic here because companion object functions actually have
+      // dispatch receivers
+      if (
+        binding is Binding.Provided &&
+          targetParams.instance?.type?.rawTypeOrNull()?.isObject != true
+      ) {
+        targetParams.instance?.let(::add)
+      }
+      addAll(targetParams.valueParameters.filterNot { it.isAssisted })
+    }
     if (
       binding is Binding.Provided && binding.providerFunction.correspondingPropertySymbol == null
     ) {
-      check(function.valueParameters.size == paramTypeKeys.size) {
+      check(params.valueParameters.size == paramsToMap.size) {
         """
-          Inconsistent parameter types!
+          Inconsistent parameter types for type ${binding.typeKey}!
           Input type keys:
-            - ${paramTypeKeys.joinToString()}
+            - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
             - ${function.valueParameters.map { TypeMetadata.from(this@ComponentTransformer, it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
     }
-    // TODO only value args are supported atm
+
     return params.valueParameters.mapIndexed { i, param ->
-      val typeKey = paramTypeKeys[i]
+      val typeKey = paramsToMap[i].typeKey
 
       // TODO consolidate this logic with generateBindingCode
       instanceFields[typeKey]?.let { instanceField ->
@@ -798,6 +825,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               }
               is Binding.Provided -> {
                 BindingStackEntry.injectedAt(typeKey, function, function.valueParameters[i])
+              }
+              is Binding.Assisted -> {
+                BindingStackEntry.injectedAt(typeKey, function)
               }
               is Binding.BoundInstance,
               is Binding.ComponentDependency -> error("Should never happen, logic is handled above")
@@ -876,15 +906,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             factoryClass.companionObject()!!
           }
         val createFunction = creatorClass.getSimpleFunction("create")!!
-        // Must use the injectable constructor's params for TypeKey as that has qualifier
-        // annotations
-        val paramTypeKeys =
-          injectableConstructor.valueParameters.map {
-            TypeMetadata.from(this@ComponentTransformer, it).typeKey
-          }
         val args =
           generateBindingArguments(
-            paramTypeKeys,
+            // Must use the injectable constructor's params for TypeKey as that
+            // has qualifier annotations
+            binding.parameters,
             createFunction.owner,
             binding,
             graph,
@@ -915,28 +941,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         val createFunction = creatorClass.getSimpleFunction("create")!!
         // Must use the provider's params for TypeKey as that has qualifier
         // annotations
-        val paramTypeKeys = buildList {
-          // Can't use isStatic here because companion object functions actually have dispatch
-          // receivers
-          if (!binding.providerFunction.parentAsClass.isObject) {
-            // The receiver param here will be the instance type
-            add(
-              TypeMetadata.from(
-                  this@ComponentTransformer,
-                  binding.providerFunction.dispatchReceiverParameter!!,
-                )
-                .typeKey
-            )
-          }
-          addAll(
-            binding.providerFunction.valueParameters.map {
-              TypeMetadata.from(this@ComponentTransformer, it).typeKey
-            }
-          )
-        }
         val args =
           generateBindingArguments(
-            paramTypeKeys,
+            binding.parameters,
             createFunction.owner,
             binding,
             graph,
@@ -950,6 +957,50 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           dispatchReceiver = irGetObject(creatorClass.symbol),
           callee = createFunction,
           args = args,
+        )
+      }
+      is Binding.Assisted -> {
+        // Example9_Factory_Impl.create(example9Provider);
+        val implClass = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
+        val implClassCompanion = implClass.companionObject()!!
+        val createFunction = implClassCompanion.getSimpleFunction("create")!!
+        val delegateFactoryProvider =
+          generateBindingCode(
+            binding.target,
+            graph,
+            thisReceiver,
+            instanceFields,
+            componentTypesToCtorParams,
+            providerFields,
+            bindingStack,
+          )
+
+        //        // Find the provider of the delegate factory
+        //        // Must use the injectable constructor's params for TypeKey as that has qualifier
+        //        // annotations
+        //        val paramTypeKeys =
+        //          binding.target.parameters
+        //            .valueParameters
+        //            .filterNot { it.isAssisted }
+        //            .map {
+        //            it.typeKey
+        //          }
+        //        val args =
+        //          generateBindingArguments(
+        //            paramTypeKeys,
+        //            createFunction.owner,
+        //            binding.target,
+        //            graph,
+        //            thisReceiver,
+        //            instanceFields,
+        //            componentTypesToCtorParams,
+        //            providerFields,
+        //            bindingStack,
+        //          )
+        irInvoke(
+          dispatchReceiver = irGetObject(implClassCompanion.symbol),
+          callee = createFunction,
+          args = listOf(delegateFactoryProvider),
         )
       }
       is Binding.BoundInstance -> {
