@@ -109,7 +109,6 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
   }
 
   // TODO
-  //  factory nested
   //  FIR errors
   //  misc abstract functions
 }

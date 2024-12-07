@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.LatticeClassIds
+import dev.zacsweers.lattice.fir.checkers.AssistedInjectChecker
 import dev.zacsweers.lattice.fir.checkers.ComponentCreatorChecker
 import dev.zacsweers.lattice.fir.checkers.InjectConstructorChecker
 import org.jetbrains.kotlin.fir.FirSession
@@ -47,6 +48,7 @@ internal class LatticeFirCheckers(
         get() =
           setOf(
             InjectConstructorChecker(session, latticeClassIds),
+            AssistedInjectChecker(session, latticeClassIds),
             ComponentCreatorChecker(session, latticeClassIds),
           )
     }

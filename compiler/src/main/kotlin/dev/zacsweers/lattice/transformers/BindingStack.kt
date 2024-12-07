@@ -184,7 +184,7 @@ internal class BindingStackEntry(
     ): BindingStackEntry {
       val targetFqName = function.parent.kotlinFqName
       val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
-      val end = if (param == null) "()" else "(${param.name.asString()})"
+      val end = if (param == null) "()" else "(…, ${param.name.asString()})"
       val context = "$targetFqName$middle$end"
       return BindingStackEntry(
         typeKey = typeKey,

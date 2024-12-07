@@ -44,7 +44,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
       )
     result.assertContains(
       """
-        ExampleClass.kt:5:1 You should annotate either a class XOR constructor with `@Inject` but not both.
+        ExampleClass.kt:6:20 You should annotate either a class XOR constructor with `@Inject` but not both.
       """
         .trimIndent()
     )
@@ -139,10 +139,10 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:12 Only classes can be annotated with @Inject or have @Inject-constructors.",
-      "ExampleClass.kt:12:8 Only classes can be annotated with @Inject or have @Inject-constructors.",
-      "ExampleClass.kt:15:11 Only classes can be annotated with @Inject or have @Inject-constructors.",
-      "ExampleClass.kt:18:18 Only classes can be annotated with @Inject or have @Inject-constructors.",
+      "ExampleClass.kt:6:12 Only classes can be annotated with @Inject or have @(Assisted)Inject-constructors.",
+      "ExampleClass.kt:12:8 Only classes can be annotated with @Inject or have @(Assisted)Inject-constructors.",
+      "ExampleClass.kt:15:11 Only classes can be annotated with @Inject or have @(Assisted)Inject-constructors.",
+      "ExampleClass.kt:18:18 Only classes can be annotated with @Inject or have @(Assisted)Inject-constructors.",
     )
   }
 
@@ -174,9 +174,9 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:1 Only final classes be annotated with @Inject or have @Inject-constructors.",
-      "ExampleClass.kt:9:1 Only final classes be annotated with @Inject or have @Inject-constructors.",
-      "ExampleClass.kt:12:1 Only final classes be annotated with @Inject or have @Inject-constructors.",
+      "ExampleClass.kt:6:1 Only final classes be annotated with @Inject or have @(Assisted)Inject-constructors.",
+      "ExampleClass.kt:9:1 Only final classes be annotated with @Inject or have @(Assisted)Inject-constructors.",
+      "ExampleClass.kt:12:1 Only final classes be annotated with @Inject or have @(Assisted)Inject-constructors.",
     )
   }
 
@@ -202,7 +202,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
       )
     result.assertContains(
       """
-        ExampleClass.kt:7:9 Local classes cannot be annotated with @Inject or have @Inject-constructors.
+        ExampleClass.kt:7:9 Local classes cannot be annotated with @Inject or have @(Assisted)Inject-constructors.
       """
         .trimIndent()
     )

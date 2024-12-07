@@ -18,10 +18,9 @@ package dev.zacsweers.lattice.fir.checkers
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
 import dev.zacsweers.lattice.fir.annotationsIn
-import dev.zacsweers.lattice.fir.checkVisibility
-import dev.zacsweers.lattice.fir.isAnnotatedWithAny
-import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.Modality
+import dev.zacsweers.lattice.fir.findInjectConstructor
+import dev.zacsweers.lattice.fir.validateInjectedClass
+import dev.zacsweers.lattice.fir.validateVisibility
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
@@ -29,101 +28,41 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
-import org.jetbrains.kotlin.fir.declarations.utils.modality
 
 internal class InjectConstructorChecker(
   private val session: FirSession,
   private val latticeClassIds: LatticeClassIds,
 ) : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
-    val source = declaration.source ?: return
+    declaration.source ?: return
     val classInjectAnnotation =
       declaration.annotationsIn(session, latticeClassIds.injectAnnotations).toList()
 
-    val constructorInjections =
-      declaration.constructors(session).filter {
-        it.annotations.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)
+    val injectedConstructor =
+      declaration.findInjectConstructor(session, latticeClassIds, context, reporter) {
+        return
       }
 
-    val isInjected = classInjectAnnotation.isNotEmpty() || constructorInjections.isNotEmpty()
+    val isInjected = classInjectAnnotation.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
 
-    if (constructorInjections.size > 1) {
+    if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
       reporter.reportOn(
-        constructorInjections[0]
-          .annotations
-          .annotationsIn(session, latticeClassIds.injectAnnotations)
-          .single()
-          .source,
-        FirLatticeErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
-        context,
-      )
-      return
-    }
-
-    if (classInjectAnnotation.isNotEmpty() && constructorInjections.isNotEmpty()) {
-      reporter.reportOn(
-        classInjectAnnotation[0].source,
+        injectedConstructor.source,
         FirLatticeErrors.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
         context,
       )
       return
     }
 
-    if (constructorInjections.isNotEmpty()) {
-      val constructor = constructorInjections.single()
-      if (constructor.valueParameterSymbols.isEmpty()) {
-        reporter.reportOn(
-          constructorInjections[0]
-            .annotations
-            .annotationsIn(session, latticeClassIds.injectAnnotations)
-            .single()
-            .source,
-          FirLatticeErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
-          context,
-        )
-      }
-    }
-
-    if (declaration.isLocal) {
-      reporter.reportOn(source, FirLatticeErrors.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
+    declaration.validateInjectedClass(context, reporter) {
       return
     }
 
-    when (declaration.classKind) {
-      ClassKind.CLASS -> {
-        when (declaration.modality) {
-          Modality.FINAL -> {
-            // This is fine
-          }
-          else -> {
-            // open/sealed/abstract
-            reporter.reportOn(source, FirLatticeErrors.ONLY_FINAL_CLASSES_CAN_BE_INJECTED, context)
-            return
-          }
-        }
-      }
-      else -> {
-        reporter.reportOn(source, FirLatticeErrors.ONLY_CLASSES_CAN_BE_INJECTED, context)
-        return
-      }
-    }
-
-    declaration.checkVisibility { source ->
-      reporter.reportOn(source, FirLatticeErrors.INJECTED_CLASSES_MUST_BE_VISIBLE, context)
+    val constructorToValidate = injectedConstructor ?: declaration.primaryConstructorIfAny(session)
+    constructorToValidate?.validateVisibility(context, reporter) {
       return
-    }
-
-    val constructorToValidate =
-      constructorInjections.singleOrNull() ?: declaration.primaryConstructorIfAny(session)
-    constructorToValidate?.let {
-      it.checkVisibility { source ->
-        reporter.reportOn(source, FirLatticeErrors.INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE, context)
-        return
-      }
     }
   }
 }

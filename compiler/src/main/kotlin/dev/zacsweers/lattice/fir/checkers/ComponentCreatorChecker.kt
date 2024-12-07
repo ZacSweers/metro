@@ -19,10 +19,11 @@ import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
 import dev.zacsweers.lattice.fir.FirTypeKey
 import dev.zacsweers.lattice.fir.LatticeFirAnnotation
-import dev.zacsweers.lattice.fir.abstractFunctions
 import dev.zacsweers.lattice.fir.annotationsIn
 import dev.zacsweers.lattice.fir.checkVisibility
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
+import dev.zacsweers.lattice.fir.singleAbstractFunction
+import dev.zacsweers.lattice.fir.validateFactoryClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -51,91 +52,9 @@ internal class ComponentCreatorChecker(
 
     if (componentFactoryAnnotation.isEmpty()) return
 
-    if (declaration.isLocal) {
-      reporter.reportOn(source, FirLatticeErrors.COMPONENT_CREATORS_CANNOT_BE_LOCAL, context)
-      return
-    }
+    declaration.validateFactoryClass(context, reporter, "Component factory") { return }
 
-    when (declaration.classKind) {
-      ClassKind.INTERFACE -> {
-        // This is fine
-        when (declaration.modality) {
-          Modality.SEALED -> {
-            reporter.reportOn(
-              source,
-              FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT,
-              context,
-            )
-            return
-          }
-          else -> {
-            // This is fine
-          }
-        }
-      }
-      ClassKind.CLASS -> {
-        when (declaration.modality) {
-          Modality.ABSTRACT -> {
-            // This is fine
-          }
-          else -> {
-            // final/open/sealed
-            reporter.reportOn(
-              source,
-              FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT,
-              context,
-            )
-            return
-          }
-        }
-      }
-      else -> {
-        reporter.reportOn(
-          source,
-          FirLatticeErrors.COMPONENT_CREATORS_SHOULD_BE_INTERFACE_OR_ABSTRACT,
-          context,
-        )
-        return
-      }
-    }
-
-    declaration.checkVisibility { source ->
-      reporter.reportOn(source, FirLatticeErrors.COMPONENT_CREATORS_MUST_BE_VISIBLE, context)
-      return
-    }
-
-    val abstractFunctions = declaration.abstractFunctions(session)
-
-    if (abstractFunctions.size != 1) {
-      if (abstractFunctions.isEmpty()) {
-        reporter.reportOn(
-          source,
-          FirLatticeErrors.COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
-          context,
-        )
-      } else {
-        // Report each function
-        for (abstractFunction in abstractFunctions) {
-          reporter.reportOn(
-            abstractFunction.source,
-            FirLatticeErrors.COMPONENT_CREATORS_FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
-            context,
-          )
-        }
-      }
-      return
-    }
-
-    val createFunction = abstractFunctions.single()
-
-    createFunction.checkVisibility { source ->
-      reporter.reportOn(
-        source,
-        FirLatticeErrors.COMPONENT_CREATORS_FACTORY_FUNCTION_MUST_BE_VISIBLE,
-        context,
-      )
-      return
-    }
+    val createFunction = declaration.singleAbstractFunction(session, context, reporter, "@Component.Factory") { return }
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 

@@ -15,19 +15,27 @@
  */
 package dev.zacsweers.lattice.fir
 
+import dev.zacsweers.lattice.LatticeClassIds
 import java.util.Objects
 import kotlin.collections.contains
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -37,8 +45,10 @@ import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
@@ -155,6 +165,51 @@ internal fun FirClass.abstractFunctions(session: FirSession): List<FirFunction> 
     .filterNotNull()
 }
 
+internal inline fun FirClass.singleAbstractFunction(
+  session: FirSession,
+  context: CheckerContext,
+  reporter: DiagnosticReporter,
+  type: String,
+  onError: () -> Nothing,
+): FirFunction {
+  val abstractFunctions = abstractFunctions(session)
+  if (abstractFunctions.size != 1) {
+    if (abstractFunctions.isEmpty()) {
+      reporter.reportOn(
+        source,
+        FirLatticeErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+        type,
+        "none",
+        context,
+      )
+    } else {
+      // Report each function
+      for (abstractFunction in abstractFunctions) {
+        reporter.reportOn(
+          abstractFunction.source,
+          FirLatticeErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
+          type,
+          abstractFunctions.size.toString(),
+          context,
+        )
+      }
+    }
+    onError()
+  }
+
+  val function = abstractFunctions.single()
+  function.checkVisibility { source ->
+    reporter.reportOn(
+      source,
+      FirLatticeErrors.FACTORY_FACTORY_FUNCTION_MUST_BE_VISIBLE,
+      type,
+      context,
+    )
+    onError()
+  }
+  return function
+}
+
 /**
  * Computes a hash key for this annotation instance composed of its underlying type and value
  * arguments.
@@ -164,4 +219,156 @@ internal fun FirAnnotationCall.computeAnnotationHash(): Int {
     resolvedType.classId,
     arguments.map { (it as FirLiteralExpression).value }.toTypedArray().contentDeepHashCode(),
   )
+}
+
+internal inline fun FirClass.findInjectConstructor(
+  session: FirSession,
+  latticeClassIds: LatticeClassIds,
+  context: CheckerContext,
+  reporter: DiagnosticReporter,
+  onError: () -> Nothing
+): FirConstructorSymbol? {
+  val constructorInjections = constructors(session).filter {
+    it.annotations.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)
+  }
+  return when (constructorInjections.size) {
+    0 -> null
+    1 -> {
+      constructorInjections[0].also {
+        val isAssisted = it.annotations.isAnnotatedWithAny(session, latticeClassIds.assistedAnnotations)
+        if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
+          reporter.reportOn(
+            it
+              .annotations
+              .annotationsIn(session, latticeClassIds.injectAnnotations)
+              .single()
+              .source,
+            FirLatticeErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
+            context,
+          )
+        }
+      }
+    }
+    else -> {
+      reporter.reportOn(
+        constructorInjections[0]
+          .annotations
+          .annotationsIn(session, latticeClassIds.injectAnnotations)
+          .single()
+          .source,
+        FirLatticeErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
+        context,
+      )
+      onError()
+    }
+  }
+}
+
+internal inline fun FirClass.validateInjectedClass(
+  context: CheckerContext,
+  reporter: DiagnosticReporter,
+  onError: () -> Nothing
+) {
+  if (isLocal) {
+    reporter.reportOn(source, FirLatticeErrors.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
+    onError()
+  }
+
+  when (classKind) {
+    ClassKind.CLASS -> {
+      when (modality) {
+        Modality.FINAL -> {
+          // This is fine
+        }
+        else -> {
+          // open/sealed/abstract
+          reporter.reportOn(source, FirLatticeErrors.ONLY_FINAL_CLASSES_CAN_BE_INJECTED, context)
+          onError()
+        }
+      }
+    }
+    else -> {
+      reporter.reportOn(source, FirLatticeErrors.ONLY_CLASSES_CAN_BE_INJECTED, context)
+      onError()
+    }
+  }
+
+  checkVisibility { source ->
+    reporter.reportOn(source, FirLatticeErrors.INJECTED_CLASSES_MUST_BE_VISIBLE, context)
+    onError()
+  }
+}
+
+internal inline fun FirClass.validateFactoryClass(
+  context: CheckerContext,
+  reporter: DiagnosticReporter,
+  type: String,
+  onError: () -> Nothing
+) {
+  if (isLocal) {
+    reporter.reportOn(source, FirLatticeErrors.FACTORY_CLASS_CANNOT_BE_LOCAL, type, context)
+    onError()
+  }
+
+  when (classKind) {
+    ClassKind.INTERFACE -> {
+      // This is fine
+      when (modality) {
+        Modality.SEALED -> {
+          reporter.reportOn(
+            source,
+            FirLatticeErrors.FACTORY_SHOULD_BE_INTERFACE_OR_ABSTRACT,
+            type,
+            context,
+          )
+          onError()
+        }
+        else -> {
+          // This is fine
+        }
+      }
+    }
+    ClassKind.CLASS -> {
+      when (modality) {
+        Modality.ABSTRACT -> {
+          // This is fine
+        }
+        else -> {
+          // final/open/sealed
+          reporter.reportOn(
+            source,
+            FirLatticeErrors.FACTORY_SHOULD_BE_INTERFACE_OR_ABSTRACT,
+            type,
+            context,
+          )
+          onError()
+        }
+      }
+    }
+    else -> {
+      reporter.reportOn(
+        source,
+        FirLatticeErrors.FACTORY_SHOULD_BE_INTERFACE_OR_ABSTRACT,
+        type,
+        context,
+      )
+      onError()
+    }
+  }
+
+  checkVisibility { source ->
+    reporter.reportOn(source, FirLatticeErrors.FACTORY_MUST_BE_VISIBLE,type,  context)
+    onError()
+  }
+}
+
+internal inline fun FirConstructorSymbol.validateVisibility(
+  context: CheckerContext,
+  reporter: DiagnosticReporter,
+  onError: () -> Nothing
+) {
+  checkVisibility { source ->
+    reporter.reportOn(source, FirLatticeErrors.INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE, context)
+    onError()
+  }
 }
