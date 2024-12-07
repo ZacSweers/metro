@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
-import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode.COMPILATION_ERROR
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleClass
@@ -140,7 +139,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:8:7 `@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor.")
+    result.assertContains(
+      "ExampleClass.kt:8:7 `@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor."
+    )
   }
 
   @Test
@@ -169,7 +170,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:8:7 `@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor.")
+    result.assertContains(
+      "ExampleClass.kt:8:7 `@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor."
+    )
   }
 
   @Test
@@ -295,7 +298,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:9 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+    result.assertContains(
+      "ExampleClass.kt:12:9 Assisted factory classes should be non-sealed abstract classes or interfaces."
+    )
   }
 
   @Test
@@ -326,7 +331,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:16 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+    result.assertContains(
+      "ExampleClass.kt:12:16 Assisted factory classes should be non-sealed abstract classes or interfaces."
+    )
   }
 
   @Test
@@ -357,7 +364,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:20 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+    result.assertContains(
+      "ExampleClass.kt:12:20 Assisted factory classes should be non-sealed abstract classes or interfaces."
+    )
   }
 
   @Test
@@ -393,7 +402,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:14 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+    result.assertContains(
+      "ExampleClass.kt:12:14 Assisted factory classes should be non-sealed abstract classes or interfaces."
+    )
   }
 
   @Test
@@ -426,7 +437,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:20 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+    result.assertContains(
+      "ExampleClass.kt:12:20 Assisted factory classes should be non-sealed abstract classes or interfaces."
+    )
   }
 
   @Test
@@ -459,7 +472,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:10 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+    result.assertContains(
+      "ExampleClass.kt:12:10 Assisted factory classes should be non-sealed abstract classes or interfaces."
+    )
   }
 
   @Test
@@ -488,7 +503,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:13 @AssistedFactory classes must have exactly one abstract function but found none.")
+    result.assertContains(
+      "ExampleClass.kt:12:13 @AssistedFactory classes must have exactly one abstract function but found none."
+    )
   }
 
   @Test
@@ -522,7 +539,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
 
     result.assertContainsAll(
       "ExampleClass.kt:13:9 @AssistedFactory classes must have exactly one abstract function but found 2.",
-      "ExampleClass.kt:14:9 @AssistedFactory classes must have exactly one abstract function but found 2."
+      "ExampleClass.kt:14:9 @AssistedFactory classes must have exactly one abstract function but found 2.",
     )
   }
 
@@ -559,7 +576,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:15:13 @AssistedFactory classes must have exactly one abstract function but found none.")
+    result.assertContains(
+      "ExampleClass.kt:15:13 @AssistedFactory classes must have exactly one abstract function but found none."
+    )
   }
 
   @Test
@@ -596,7 +615,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:20:13 @AssistedFactory classes must have exactly one abstract function but found none.")
+    result.assertContains(
+      "ExampleClass.kt:20:13 @AssistedFactory classes must have exactly one abstract function but found none."
+    )
   }
 
   @Test
@@ -626,7 +647,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:7:7 Assisted parameter mismatch. Expected 0 assisted parameters but found 1.")
+    result.assertContains(
+      "ExampleClass.kt:7:7 Assisted parameter mismatch. Expected 0 assisted parameters but found 1."
+    )
   }
 
   @Test
@@ -657,7 +680,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:7:7 Assisted parameter mismatch. Expected 1 assisted parameters but found 2.")
+    result.assertContains(
+      "ExampleClass.kt:7:7 Assisted parameter mismatch. Expected 1 assisted parameters but found 2."
+    )
   }
 
   @Test
@@ -692,7 +717,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
           Missing from factory: kotlin.Int
           Missing from factory: kotlin.String
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -728,7 +754,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
           Missing from factory: kotlin.Int (notcount)
           Missing from factory: kotlin.String (count)
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -764,7 +791,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
           Missing from factory: kotlin.Int (count)
           Missing from factory: kotlin.String (count)
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 }

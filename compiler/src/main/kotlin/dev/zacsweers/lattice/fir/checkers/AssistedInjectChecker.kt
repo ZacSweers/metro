@@ -100,7 +100,6 @@ internal class AssistedInjectChecker(
         "Assisted parameter mismatch. Expected ${functionParams.size} assisted parameters but found ${constructorAssistedParams.size}.",
         context,
       )
-      // TODO test
       return
     }
 
@@ -120,7 +119,6 @@ internal class AssistedInjectChecker(
         "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
         context,
       )
-      // TODO test
       return
     }
 
@@ -140,7 +138,6 @@ internal class AssistedInjectChecker(
         "Assisted constructor parameters must be unique. Found duplicates: $dupeConstructorKeys",
         context,
       )
-      // TODO test
       return
     }
 

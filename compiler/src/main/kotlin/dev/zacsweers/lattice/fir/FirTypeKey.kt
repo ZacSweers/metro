@@ -22,15 +22,11 @@ import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
-import org.jetbrains.kotlin.fir.render
-import org.jetbrains.kotlin.fir.renderWithType
-import org.jetbrains.kotlin.fir.renderer.FirRenderer
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.resolvedType
 
@@ -63,6 +59,7 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
     ): FirTypeKey {
       return from(session, latticeClassIds, parameter.symbol)
     }
+
     fun from(
       session: FirSession,
       latticeClassIds: LatticeClassIds,

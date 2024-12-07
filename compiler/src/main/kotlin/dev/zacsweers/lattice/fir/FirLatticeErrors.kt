@@ -145,10 +145,6 @@ private object FirLatticeErrorMessages : BaseDiagnosticRendererFactory() {
         FirLatticeErrors.INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE,
         "Injected constructors must be visible, either `public` or `internal`.",
       )
-      put(
-        FirLatticeErrors.ASSISTED_INJECTION,
-        "{0}",
-        STRING
-      )
+      put(FirLatticeErrors.ASSISTED_INJECTION, "{0}", STRING)
     }
 }

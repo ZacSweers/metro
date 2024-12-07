@@ -1552,15 +1552,15 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Assisted
             import dev.zacsweers.lattice.annotations.AssistedInject
             import dev.zacsweers.lattice.annotations.AssistedFactory
-            
+
             @Component
             interface AssistedInjectComponentWithGenerics {
               val factory: ExampleClass.Factory<*>
-          
+
               class ExampleClass<T> @AssistedInject constructor(
                 @Assisted val intValue: T
               ) {
-          
+
                 @AssistedFactory
                 fun interface Factory<T> {
                   fun create(intValue: T): T
@@ -1570,7 +1570,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true
+        debug = true,
       )
 
     result.assertContains(
