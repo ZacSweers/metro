@@ -23,15 +23,12 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.getPackageFragment
@@ -59,7 +56,7 @@ internal class AssistedFactoryTransformer(
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun getOrGenerateImplClass(declaration: IrClass): IrClass {
+  internal fun getOrGenerateImplClass(declaration: IrClass): IrClass {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
     val classId: ClassId = declaration.classIdOrFail
@@ -82,10 +79,11 @@ internal class AssistedFactoryTransformer(
     //  ensure assisted params match
     //  check duplicate keys
     //  check non-matching keys
+    //  check for scopes? Scopes not allowed
+    //  no qualifiers on assisted params
 
     val generatedFactory =
-      injectConstructorTransformer
-        .getOrGenerateFactoryClass(targetType, injectConstructor)
+      injectConstructorTransformer.getOrGenerateFactoryClass(targetType, injectConstructor)
 
     val constructorParams = injectConstructor.parameters(this)
     val assistedParameters =
@@ -132,19 +130,23 @@ internal class AssistedFactoryTransformer(
             this.dispatchReceiverParameter = implClassInstance
             this.returnType = returnType
             val functionParams =
-              valueParameters.associateBy { valueParam -> TypeMetadata.from(this@AssistedFactoryTransformer, valueParam).typeKey }
+              valueParameters.associateBy { valueParam ->
+                val key = TypeMetadata.from(this@AssistedFactoryTransformer, valueParam).typeKey
+                valueParam.toAssistedParameterKey(symbols, key)
+              }
             body =
               pluginContext.createIrBuilder(symbol).run {
                 // We call the @AssistedInject constructor. Therefore, find for each assisted
                 // parameter the function parameter where the keys match.
                 val argumentList =
                   assistedParameterKeys.map { assistedParameterKey ->
-                    irGet(functionParams.getValue(assistedParameterKey.typeKey))
+                    irGet(functionParams.getValue(assistedParameterKey))
                   }
 
                 irExprBody(
                   irInvoke(
-                    dispatchReceiver = irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
+                    dispatchReceiver =
+                      irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
                     callee = generatedFactory.getSimpleFunction("get")!!,
                     args = argumentList,
                   )
@@ -153,12 +155,7 @@ internal class AssistedFactoryTransformer(
           }
 
           val companion = pluginContext.irFactory.addCompanionObject(symbols, parent = this)
-          companion.buildCreateFunction(
-            declaration.typeWith(),
-            this,
-            ctor,
-            generatedFactory,
-          )
+          companion.buildCreateFunction(declaration.typeWith(), this, ctor, generatedFactory)
         }
 
     implClass.parent = declaration.parent
@@ -176,29 +173,28 @@ internal class AssistedFactoryTransformer(
     implConstructor: IrConstructor,
     generatedFactoryType: IrClass,
   ) {
-    addFunction("create", originClassName.wrapInProvider(symbols.latticeProvider))
-      .apply {
-        this.copyTypeParametersFrom(implClass)
-        this.origin = LatticeOrigin
-        this.visibility = DescriptorVisibilities.PUBLIC
-        markJvmStatic()
+    addFunction("create", originClassName.wrapInProvider(symbols.latticeProvider)).apply {
+      this.copyTypeParametersFrom(implClass)
+      this.origin = LatticeOrigin
+      this.visibility = DescriptorVisibilities.PUBLIC
+      markJvmStatic()
 
-        val factoryParam = addValueParameter(DELEGATE_FACTORY_NAME, generatedFactoryType.typeWith())
-        // InstanceFactory.create(Impl(delegateFactory))
-        body =
-          pluginContext.createIrBuilder(symbol).run {
-            irExprBody(
-              irInvoke(
-                dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-                callee = symbols.instanceFactoryCreate,
-                args =
-                  listOf(
-                    irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
-                  ),
-              )
+      val factoryParam = addValueParameter(DELEGATE_FACTORY_NAME, generatedFactoryType.typeWith())
+      // InstanceFactory.create(Impl(delegateFactory))
+      body =
+        pluginContext.createIrBuilder(symbol).run {
+          irExprBody(
+            irInvoke(
+              dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
+              callee = symbols.instanceFactoryCreate,
+              args =
+                listOf(
+                  irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
+                ),
             )
-          }
-      }
+          )
+        }
+    }
   }
 
   /** Represents a parsed function in an `@AssistedInject.Factory`-annotated interface. */
