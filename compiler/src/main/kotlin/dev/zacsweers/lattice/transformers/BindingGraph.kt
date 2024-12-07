@@ -16,7 +16,9 @@
 package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.exitProcessing
+import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
+import dev.zacsweers.lattice.ir.singleAbstractFunction
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 
@@ -46,9 +48,8 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           // Recursively follow deps from its constructor params
           getConstructorDependencies(binding.type, bindingStack)
         }
-        // TODO this validates too soon, need to maybe add shallow bindings first?
-        //  or add it but defer validation until validate()
         is Binding.Provided -> getFunctionDependencies(binding.providerFunction, bindingStack)
+        is Binding.Assisted -> getFunctionDependencies(binding.function, bindingStack)
         is Binding.BoundInstance -> emptySet()
         is Binding.ComponentDependency -> emptySet()
       }
@@ -71,6 +72,21 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           typeKey = key,
           parameters = parameters,
           scope = with(context) { irClass.scopeAnnotation() },
+        )
+      } else if (with(context) { irClass.isAnnotatedWithAny(symbols.assistedFactoryAnnotations) }) {
+        val function = irClass.singleAbstractFunction(context)
+        val targetTypeMetadata = TypeMetadata.from(context, function)
+        val bindingStackEntry = BindingStackEntry.injectedAt(key, function)
+        val targetBinding =
+          bindingStack.withEntry(bindingStackEntry) {
+            getOrCreateBinding(targetTypeMetadata.typeKey, bindingStack)
+          } as Binding.ConstructorInjected
+        Binding.Assisted(
+          type = irClass,
+          function = function,
+          typeKey = key,
+          parameters = function.parameters(context),
+          target = targetBinding,
         )
       } else {
         val declarationToReport = bindingStack.lastEntryOrComponent
@@ -140,6 +156,9 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
                 binding.parameterFor(dep),
                 displayTypeKey = dep,
               )
+            }
+            is Binding.Assisted -> {
+              BindingStackEntry.injectedAt(key, binding.function, displayTypeKey = dep)
             }
             is Binding.BoundInstance -> TODO()
             is Binding.ComponentDependency -> TODO()
