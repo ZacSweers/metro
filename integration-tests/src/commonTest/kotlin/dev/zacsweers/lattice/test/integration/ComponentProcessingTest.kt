@@ -395,8 +395,35 @@ class ComponentProcessingTest {
     }
   }
 
-  // TODO
-  //  - Generic assisted inject tests (including diamond inheritance)
+  @Test
+  fun `assisted injection - diamond inheritance`() {
+    val component = createComponent<AssistedInjectComponentDiamondInheritance>()
+    val factory = component.factory
+    val exampleClass = factory.create(2)
+    assertEquals(2, exampleClass.intValue)
+  }
+
+  @Component
+  interface AssistedInjectComponentDiamondInheritance {
+    val factory: ExampleClass.Factory
+
+    class ExampleClass @AssistedInject constructor(
+      @Assisted val intValue: Int
+    ) {
+      fun interface GrandParentBaseFactory<T> {
+        fun create(intValue: Int): T
+      }
+      fun interface BaseFactory<T> : GrandParentBaseFactory<T> {
+        override fun create(intValue: Int): T
+      }
+      fun interface BaseFactory2<T> : GrandParentBaseFactory<T> {
+        override fun create(intValue: Int): T
+      }
+
+      @AssistedFactory
+      fun interface Factory : BaseFactory<ExampleClass>, BaseFactory2<ExampleClass>
+    }
+  }
 
   @Inject
   @Singleton
