@@ -425,6 +425,45 @@ class ComponentProcessingTest {
     }
   }
 
+  @Test
+  fun `assisted injection - factories can be accessed via component dependencies`() {
+    val dependentComponent =
+      createComponent<ComponentUsingDepFromDependentComponent.DependentComponent>()
+    val component =
+      createComponentFactory<ComponentUsingDepFromDependentComponent.Factory>()
+        .create(dependentComponent)
+    val factory = component.factory
+    val exampleClass = factory.create(2)
+    assertEquals(2, exampleClass.intValue)
+    assertEquals("Hello, world!", exampleClass.message)
+  }
+
+  @Component
+  interface ComponentUsingDepFromDependentComponent {
+    val factory: ExampleClass.Factory
+
+    @Component.Factory
+    interface Factory {
+      fun create(dependentComponent: DependentComponent): ComponentUsingDepFromDependentComponent
+    }
+
+    class ExampleClass
+    @AssistedInject
+    constructor(@Assisted val intValue: Int, val message: String) {
+      @AssistedFactory
+      fun interface Factory {
+        fun create(intValue: Int): ExampleClass
+      }
+    }
+
+    @Component
+    interface DependentComponent {
+      val message: String
+
+      @Provides fun provideMessage(): String = "Hello, world!"
+    }
+  }
+
   @Inject
   @Singleton
   class Cache(
