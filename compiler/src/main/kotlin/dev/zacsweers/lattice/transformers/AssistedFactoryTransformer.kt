@@ -81,6 +81,7 @@ internal class AssistedFactoryTransformer(
     //  check non-matching keys
     //  check for scopes? Scopes not allowed
     //  no qualifiers on assisted params
+    //  if multiple types with same typekey, all need custom keys. OR all but one?
 
     val generatedFactory =
       injectConstructorTransformer.getOrGenerateFactoryClass(targetType, injectConstructor)
