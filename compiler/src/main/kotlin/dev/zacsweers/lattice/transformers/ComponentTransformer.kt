@@ -309,8 +309,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Add explicit bindings from @Provides methods
     val bindingStack = BindingStack(component.sourceComponent)
     component.providerFunctions.forEach { (typeKey, function) ->
+      val typeMetadata = TypeMetadata.from(this, function)
       graph.addBinding(
-        typeKey,
+        typeMetadata,
         Binding.Provided(function, typeKey, function.parameters(this), function.scopeAnnotation()),
         bindingStack,
       )
@@ -318,14 +319,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // Add instance parameters
     component.creator?.parameters?.valueParameters.orEmpty().forEach {
-      graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
+      // TODO this cast is unsafe
+      graph.addBinding((it as ConstructorParameter).typeMetadata, Binding.BoundInstance(it), bindingStack)
     }
 
     // Add bindings from component dependencies
     component.dependencies.forEach { depNode ->
       depNode.exposedTypes.forEach { (getter, typeMetadata) ->
         graph.addBinding(
-          typeMetadata.typeKey,
+          typeMetadata,
           Binding.ComponentDependency(
             component = depNode.sourceComponent,
             getter = getter,
@@ -563,7 +565,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         // Create fields in dependency-order
         initOrder.forEach { key ->
-          val binding = graph.requireBinding(key)
+          val (binding, typeMetadata) = graph.requireBindingEntry(key)
           providerFields[key] =
             addField(
                 fieldName = binding.nameHint.decapitalizeUS() + "Provider",
@@ -602,7 +604,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               .thenComparing { it.value.typeKey }
           )
           .forEach { (function, typeMetadata) ->
-            val key = typeMetadata.typeKey
             val property =
               function.correspondingPropertySymbol?.owner?.let { property ->
                 addProperty { name = property.name }
@@ -619,8 +620,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 )
             getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
-              val binding = graph.getOrCreateBinding(key, BindingStack.empty())
-              bindingStack.push(BindingStackEntry.requestedAt(key, function))
+              val binding = graph.getOrCreateBindingEntry(typeMetadata, BindingStack.empty())
+              bindingStack.push(BindingStackEntry.requestedAt(typeMetadata.typeKey, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   val providerReceiver =
@@ -662,10 +663,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // Initial pass from each root
     node.exposedTypes.forEach { (accessor, typeMetadata) ->
-      val key = typeMetadata.typeKey
       processBinding(
-        key = key,
-        stackEntry = BindingStackEntry.requestedAt(key, accessor),
+        typeMetadata = typeMetadata,
+        stackEntry = BindingStackEntry.requestedAt(typeMetadata.typeKey, accessor),
         node = node,
         graph = graph,
         bindingStack = bindingStack,
@@ -678,7 +678,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   }
 
   private fun processBinding(
-    key: TypeKey,
+    typeMetadata: TypeMetadata,
     stackEntry: BindingStackEntry,
     node: ComponentNode,
     graph: BindingGraph,
@@ -687,17 +687,18 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     usedUnscopedBindings: MutableSet<TypeKey>,
     visitedBindings: MutableSet<TypeKey>,
   ) {
+    val key = typeMetadata.typeKey
     // Skip if already visited
     if (key in visitedBindings) {
       if (key in usedUnscopedBindings && key !in bindingDependencies) {
         // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key).dependencies
+        bindingDependencies[key] = graph.requireBindingEntry(key).binding.dependencies
       }
       return
     }
 
     bindingStack.withEntry(stackEntry) {
-      val binding = graph.getOrCreateBinding(key, bindingStack)
+      val binding = graph.getOrCreateBindingEntry(typeMetadata, bindingStack)
       val bindingScope = binding.scope
 
       // Check scoping compatibility
@@ -747,11 +748,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
       // Recursively process dependencies
       binding.parameters.nonInstanceParameters.forEach { param ->
-        val depKey = param.typeKey
         // Recursive call to process dependency
         processBinding(
-          key = depKey,
-          stackEntry = (param as ConstructorParameter).bindingStackEntry,
+          // TODO unsafe cast
+          typeMetadata = (param as ConstructorParameter).typeMetadata,
+          stackEntry = param.bindingStackEntry,
           node = node,
           graph = graph,
           bindingStack = bindingStack,
@@ -803,7 +804,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
 
     return params.valueParameters.mapIndexed { i, param ->
-      val typeKey = paramsToMap[i].typeKey
+      // TODO unsafe cast
+      val latticeParam = paramsToMap[i] as ConstructorParameter
+      val typeKey = latticeParam.typeKey
 
       // TODO consolidate this logic with generateBindingCode
       instanceFields[typeKey]?.let { instanceField ->
@@ -833,7 +836,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             }
           bindingStack.push(entry)
           // Generate binding code for each param
-          val paramBinding = graph.getOrCreateBinding(typeKey, bindingStack)
+          val paramBinding = graph.getOrCreateBindingEntry(latticeParam.typeMetadata, bindingStack)
           generateBindingCode(
             paramBinding,
             graph,
