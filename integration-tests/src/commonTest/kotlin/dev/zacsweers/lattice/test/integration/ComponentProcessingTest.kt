@@ -371,6 +371,32 @@ class ComponentProcessingTest {
     }
   }
 
+  @Test
+  fun `assisted injection with generic factory supertype`() {
+    val component = createComponent<AssistedInjectComponentWithGenericFactorySupertype>()
+    val factory = component.factory
+    val exampleClass = factory.create(2)
+    assertEquals(2, exampleClass.intValue)
+  }
+
+  @Component
+  interface AssistedInjectComponentWithGenericFactorySupertype {
+    val factory: ExampleClass.Factory
+
+    class ExampleClass @AssistedInject constructor(
+      @Assisted val intValue: Int
+    ) {
+      fun interface BaseFactory<T> {
+        fun create(intValue: Int): T
+      }
+
+      @AssistedFactory
+      fun interface Factory : BaseFactory<ExampleClass> {
+        override fun create(intValue: Int): ExampleClass
+      }
+    }
+  }
+
   // TODO
   //  - Generic assisted inject tests (including diamond inheritance)
 
