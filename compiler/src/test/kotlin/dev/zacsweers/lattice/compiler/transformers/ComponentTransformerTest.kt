@@ -1536,6 +1536,48 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     )
   }
 
+  @Ignore("WIP")
+  @Test
+  fun `assisted inject types are handled`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.BindsInstance
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Assisted
+            import dev.zacsweers.lattice.annotations.AssistedInject
+            import dev.zacsweers.lattice.annotations.AssistedFactory
+            
+            @Component
+            interface AssistedInjectComponentWithGenerics {
+              val factory: ExampleClass.Factory<*>
+          
+              class ExampleClass<T> @AssistedInject constructor(
+                @Assisted val intValue: T
+              ) {
+          
+                @AssistedFactory
+                fun interface Factory<T> {
+                  fun create(intValue: T): T
+                }
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        debug = true
+      )
+
+    result.assertContains(
+      "ExampleComponent.kt:12:44 Component.Factory abstract function parameters must be unique."
+    )
+  }
+
   // TODO
   //  - advanced graph resolution (i.e. complex dep chains)
   //  - break-the-chain deps

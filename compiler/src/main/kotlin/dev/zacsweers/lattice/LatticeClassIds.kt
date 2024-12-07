@@ -52,12 +52,12 @@ internal class LatticeClassIds(
   val componentAnnotations = setOf(componentAnnotation) + customComponentAnnotations
   val componentFactoryAnnotations =
     setOf(componentAnnotation.createNestedClassId(Name.identifier("Factory")))
-  val assistedAnnotations =
-    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Assisted")) + customAssistedAnnotations
+  val assistedInjectAnnotations =
+    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("AssistedInject")) + customAssistedInjectAnnotations
   val injectAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Inject")) +
       customInjectAnnotations +
-      assistedAnnotations
+      assistedInjectAnnotations
   val qualifierAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Qualifier")) + customQualifierAnnotations
   val scopeAnnotations =
@@ -66,8 +66,8 @@ internal class LatticeClassIds(
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Provides")) + customProvidesAnnotations
   val bindsInstanceAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("BindsInstance")) + customBindsInstanceAnnotations
-  val assistedInjectAnnotations =
-    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("AssistedInject")) + customAssistedInjectAnnotations
+  val assistedAnnotations =
+    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Assisted")) + customAssistedAnnotations
   val assistedFactoryAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("AssistedFactory")) +
       customAssistedFactoryAnnotations

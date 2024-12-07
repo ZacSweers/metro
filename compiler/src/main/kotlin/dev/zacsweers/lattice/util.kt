@@ -47,8 +47,20 @@ internal fun String.capitalizeUS() = replaceFirstChar {
 
 internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US) }
 
-internal fun <T, R> Iterable<T>.mapToSet(mapper: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), mapper)
+internal fun <T, R> Iterable<T>.mapToSet(transform: (T) -> R): Set<R> {
+  return mapTo(mutableSetOf(), transform)
+}
+
+internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set<R>, Set<R>> {
+  val dupes = mutableSetOf<R>()
+  val destination = mutableSetOf<R>()
+  for (item in this) {
+    val transformed = transform(item)
+    if (!destination.add(transformed)) {
+      dupes += transformed
+    }
+  }
+  return destination to dupes
 }
 
 internal inline fun <T, Buffer : Appendable> Buffer.appendIterableWith(

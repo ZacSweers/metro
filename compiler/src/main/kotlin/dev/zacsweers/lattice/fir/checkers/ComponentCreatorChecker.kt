@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.fir.checkers
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
 import dev.zacsweers.lattice.fir.FirTypeKey
-import dev.zacsweers.lattice.fir.LatticeFirAnnotation
 import dev.zacsweers.lattice.fir.annotationsIn
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.fir.singleAbstractFunction
@@ -30,18 +29,14 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.firClassLike
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
-import org.jetbrains.kotlin.fir.types.ConeClassLikeType
-import org.jetbrains.kotlin.fir.types.resolvedType
 
 internal class ComponentCreatorChecker(
   private val session: FirSession,
   private val latticeClassIds: LatticeClassIds,
 ) : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
-    val source = declaration.source ?: return
+    declaration.source ?: return
     val componentFactoryAnnotation =
       declaration.annotationsIn(session, latticeClassIds.componentFactoryAnnotations).toList()
 
@@ -71,21 +66,8 @@ internal class ComponentCreatorChecker(
         )
         return
       }
-      // Check duplicate params
-      val qualifier =
-        param.annotations
-          .filterIsInstance<FirAnnotationCall>()
-          .singleOrNull { annotationCall ->
-            val annotationType =
-              annotationCall.resolvedType as? ConeClassLikeType ?: return@singleOrNull false
-            val annotationClass = annotationType.toClassSymbol(session) ?: return@singleOrNull false
-            annotationClass.annotations.isAnnotatedWithAny(
-              session,
-              latticeClassIds.qualifierAnnotations,
-            )
-          }
-          ?.let { LatticeFirAnnotation(it) }
-      val typeKey = FirTypeKey(param.returnTypeRef, qualifier)
+
+      val typeKey = FirTypeKey.from(session, latticeClassIds, param)
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
           param.source,

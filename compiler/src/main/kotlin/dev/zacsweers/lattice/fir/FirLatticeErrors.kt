@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.diagnostics.error0
 import org.jetbrains.kotlin.diagnostics.error1
 import org.jetbrains.kotlin.diagnostics.error2
 import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
+import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
 import org.jetbrains.kotlin.diagnostics.rendering.RootDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.warning0
 
@@ -36,7 +37,7 @@ internal object FirLatticeErrors {
   val FACTORY_MUST_BE_VISIBLE by error1<PsiElement, String>(NAME_IDENTIFIER)
   val FACTORY_FACTORY_FUNCTION_MUST_BE_VISIBLE by error1<PsiElement, String>(NAME_IDENTIFIER)
 
-  // Component creator errors
+  // Component factory errors
   val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0<PsiElement>(NAME_IDENTIFIER)
   val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_COMPONENTS by
     error0<PsiElement>(NAME_IDENTIFIER)
@@ -55,6 +56,10 @@ internal object FirLatticeErrors {
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0<PsiElement>(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error0<PsiElement>(VISIBILITY_MODIFIER)
   val INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE by error0<PsiElement>(VISIBILITY_MODIFIER)
+
+  // Assisted factory/inject errors
+  // Test of just passing in a single message string to all of these
+  val ASSISTED_INJECTION by error1<PsiElement, String>(NAME_IDENTIFIER)
 
   init {
     RootDiagnosticRendererFactory.registerFactory(FirLatticeErrorMessages)
@@ -139,6 +144,11 @@ private object FirLatticeErrorMessages : BaseDiagnosticRendererFactory() {
       put(
         FirLatticeErrors.INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE,
         "Injected constructors must be visible, either `public` or `internal`.",
+      )
+      put(
+        FirLatticeErrors.ASSISTED_INJECTION,
+        "{0}",
+        STRING
       )
     }
 }

@@ -16,11 +16,17 @@
 package dev.zacsweers.lattice.fir.checkers
 
 import dev.zacsweers.lattice.LatticeClassIds
-import dev.zacsweers.lattice.fir.FirLatticeErrors
+import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.fir.FirLatticeErrors.ASSISTED_INJECTION
+import dev.zacsweers.lattice.fir.FirTypeKey
+import dev.zacsweers.lattice.fir.annotationsIn
+import dev.zacsweers.lattice.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.lattice.fir.findInjectConstructor
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.fir.singleAbstractFunction
 import dev.zacsweers.lattice.fir.validateFactoryClass
+import dev.zacsweers.lattice.mapToSetWithDupes
+import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
@@ -28,8 +34,9 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
+import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 
 internal class AssistedInjectChecker(
   private val session: FirSession,
@@ -44,17 +51,11 @@ internal class AssistedInjectChecker(
 
     if (!isAssistedFactory) return
 
-    // TODO test
-    if (declaration.isLocal) {
-      reporter.reportOn(source, FirLatticeErrors.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
-      return
-    }
     declaration.validateFactoryClass(context, reporter, "Assisted factory") {
       return
     }
 
     // Get single abstract function
-    // TODO test
     val function =
       declaration.singleAbstractFunction(session, context, reporter, "@AssistedFactory") {
         return
@@ -66,45 +67,143 @@ internal class AssistedInjectChecker(
       targetType.findInjectConstructor(session, latticeClassIds, context, reporter) {
         return
       }
-    if (injectConstructor == null) {
-      // TODO error + test
-      return
-    }
     if (
-      !injectConstructor.annotations.isAnnotatedWithAny(
-        session,
-        latticeClassIds.assistedAnnotations,
-      )
+      injectConstructor == null ||
+        !injectConstructor.annotations.isAnnotatedWithAny(
+          session,
+          latticeClassIds.assistedInjectAnnotations,
+        )
     ) {
-      // TODO error + test
+      reporter.reportOn(
+        targetType.source,
+        ASSISTED_INJECTION,
+        "`@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor.",
+        context,
+      )
       return
     }
 
-    // check for scopes? Scopes not allowed
+    // check for scopes? Scopes not allowed, dagger ignores them
     // TODO error + test
 
     val functionParams = function.valueParameters
-    val assistedParams =
+    val constructorAssistedParams =
       injectConstructor.valueParameterSymbols.filter {
         it.annotations.isAnnotatedWithAny(session, latticeClassIds.assistedAnnotations)
       }
 
     // ensure assisted params match
-    if (functionParams.size != assistedParams.size) {
-      // TODO error + test
+    if (functionParams.size != constructorAssistedParams.size) {
+      reporter.reportOn(
+        targetType.source,
+        ASSISTED_INJECTION,
+        "Assisted parameter mismatch. Expected ${functionParams.size} assisted parameters but found ${constructorAssistedParams.size}.",
+        context,
+      )
+      // TODO test
       return
     }
 
-    // check duplicate keys
-    // TODO error + test
+    val (factoryKeys, dupeFactoryKeys) =
+      functionParams.mapToSetWithDupes {
+        it.symbol.toAssistedParameterKey(
+          session,
+          latticeClassIds,
+          FirTypeKey.from(session, latticeClassIds, it),
+        )
+      }
+
+    if (dupeFactoryKeys.isNotEmpty()) {
+      reporter.reportOn(
+        targetType.source,
+        ASSISTED_INJECTION,
+        "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
+        context,
+      )
+      // TODO test
+      return
+    }
+
+    val (constructorKeys, dupeConstructorKeys) =
+      constructorAssistedParams.mapToSetWithDupes {
+        it.toAssistedParameterKey(
+          session,
+          latticeClassIds,
+          FirTypeKey.from(session, latticeClassIds, it),
+        )
+      }
+
+    if (dupeConstructorKeys.isNotEmpty()) {
+      reporter.reportOn(
+        targetType.source,
+        ASSISTED_INJECTION,
+        "Assisted constructor parameters must be unique. Found duplicates: $dupeConstructorKeys",
+        context,
+      )
+      // TODO test
+      return
+    }
+
+    //    for (parameters in listOf(factoryKeys, constructorKeys)) {
+    //      // no qualifiers on assisted params
+    //      // TODO error + test. Or just just ignore them?
+    //    }
 
     // check non-matching keys
-    // TODO error + test
+    if (factoryKeys != constructorKeys) {
+      val missingFromFactory = factoryKeys.subtract(constructorKeys).joinToString()
+      val missingFromConstructor = constructorKeys.subtract(factoryKeys).joinToString()
+      reporter.reportOn(
+        targetType.source,
+        ASSISTED_INJECTION,
+        buildString {
+          appendLine(
+            "Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:"
+          )
+          if (missingFromFactory.isNotEmpty()) {
+            appendLine("  Missing from factory: $missingFromFactory")
+          }
+          if (missingFromConstructor.isNotEmpty()) {
+            appendLine("  Missing from factory: $missingFromConstructor")
+          }
+        },
+        context,
+      )
+      return
+    }
+  }
 
-    // no qualifiers on assisted params
-    // TODO error + test
+  // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
+  // diffing the parameters easier.
+  data class FirAssistedParameterKey(val typeKey: FirTypeKey, val assistedIdentifier: String) {
+    private val cachedToString by unsafeLazy {
+      buildString {
+        append(typeKey)
+        if (assistedIdentifier.isNotEmpty()) {
+          append(" (")
+          append(assistedIdentifier)
+          append(")")
+        }
+      }
+    }
 
-    // if multiple types with same typekey, all need custom keys. OR all but one?
-    // TODO error + test
+    override fun toString() = cachedToString
+
+    companion object {
+      fun FirValueParameterSymbol.toAssistedParameterKey(
+        session: FirSession,
+        latticeClassIds: LatticeClassIds,
+        typeKey: FirTypeKey,
+      ): FirAssistedParameterKey {
+        return FirAssistedParameterKey(
+          typeKey,
+          annotations
+            .annotationsIn(session, latticeClassIds.assistedAnnotations)
+            .singleOrNull()
+            ?.getStringArgument(LatticeSymbols.Names.Value, session)
+            .orEmpty(),
+        )
+      }
+    }
   }
 }

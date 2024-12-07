@@ -15,9 +15,24 @@
  */
 package dev.zacsweers.lattice.fir
 
+import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.unsafeLazy
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.renderWithType
+import org.jetbrains.kotlin.fir.renderer.FirRenderer
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.renderReadable
+import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
+import org.jetbrains.kotlin.fir.types.resolvedType
 
 // TODO cache these?
 internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotation? = null) :
@@ -28,7 +43,7 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
         append(it)
         append(" ")
       }
-      append(type.render())
+      append(type.coneType.renderReadableWithFqNames())
     }
   }
 
@@ -39,4 +54,52 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
   override fun toString(): String = cachedToString
 
   override fun compareTo(other: FirTypeKey) = toString().compareTo(other.toString())
+
+  companion object {
+    fun from(
+      session: FirSession,
+      latticeClassIds: LatticeClassIds,
+      parameter: FirValueParameter,
+    ): FirTypeKey {
+      return from(session, latticeClassIds, parameter.symbol)
+    }
+    fun from(
+      session: FirSession,
+      latticeClassIds: LatticeClassIds,
+      parameter: FirValueParameterSymbol,
+    ): FirTypeKey {
+      return from(session, latticeClassIds, parameter.resolvedReturnTypeRef, parameter.annotations)
+    }
+
+    fun from(
+      session: FirSession,
+      latticeClassIds: LatticeClassIds,
+      function: FirSimpleFunction,
+    ): FirTypeKey {
+      return from(session, latticeClassIds, function.returnTypeRef, function.annotations)
+    }
+
+    fun from(
+      session: FirSession,
+      latticeClassIds: LatticeClassIds,
+      typeRef: FirTypeRef,
+      annotations: List<FirAnnotation>,
+    ): FirTypeKey {
+      // Check duplicate params
+      val qualifier =
+        annotations
+          .filterIsInstance<FirAnnotationCall>()
+          .singleOrNull { annotationCall ->
+            val annotationType =
+              annotationCall.resolvedType as? ConeClassLikeType ?: return@singleOrNull false
+            val annotationClass = annotationType.toClassSymbol(session) ?: return@singleOrNull false
+            annotationClass.annotations.isAnnotatedWithAny(
+              session,
+              latticeClassIds.qualifierAnnotations,
+            )
+          }
+          ?.let { LatticeFirAnnotation(it) }
+      return FirTypeKey(typeRef, qualifier)
+    }
+  }
 }
