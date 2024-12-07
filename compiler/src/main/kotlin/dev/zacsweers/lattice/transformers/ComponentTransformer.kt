@@ -475,7 +475,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Add fields for providers. May include both scoped and unscoped providers as well as bound
         // instances
         val providerFields = mutableMapOf<TypeKey, IrField>()
-        val assistedProviderFields = mutableMapOf<TypeKey, IrField>()
         val componentTypesToCtorParams = mutableMapOf<TypeKey, IrValueParameter>()
 
         node.creator?.let { creator ->
@@ -974,29 +973,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             providerFields,
             bindingStack,
           )
-
-        //        // Find the provider of the delegate factory
-        //        // Must use the injectable constructor's params for TypeKey as that has qualifier
-        //        // annotations
-        //        val paramTypeKeys =
-        //          binding.target.parameters
-        //            .valueParameters
-        //            .filterNot { it.isAssisted }
-        //            .map {
-        //            it.typeKey
-        //          }
-        //        val args =
-        //          generateBindingArguments(
-        //            paramTypeKeys,
-        //            createFunction.owner,
-        //            binding.target,
-        //            graph,
-        //            thisReceiver,
-        //            instanceFields,
-        //            componentTypesToCtorParams,
-        //            providerFields,
-        //            bindingStack,
-        //          )
         irInvoke(
           dispatchReceiver = irGetObject(implClassCompanion.symbol),
           callee = createFunction,

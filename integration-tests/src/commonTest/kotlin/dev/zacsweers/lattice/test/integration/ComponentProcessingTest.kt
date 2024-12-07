@@ -407,15 +407,15 @@ class ComponentProcessingTest {
   interface AssistedInjectComponentDiamondInheritance {
     val factory: ExampleClass.Factory
 
-    class ExampleClass @AssistedInject constructor(
-      @Assisted val intValue: Int
-    ) {
+    class ExampleClass @AssistedInject constructor(@Assisted val intValue: Int) {
       fun interface GrandParentBaseFactory<T> {
         fun create(intValue: Int): T
       }
+
       fun interface BaseFactory<T> : GrandParentBaseFactory<T> {
         override fun create(intValue: Int): T
       }
+
       fun interface BaseFactory2<T> : GrandParentBaseFactory<T> {
         override fun create(intValue: Int): T
       }
