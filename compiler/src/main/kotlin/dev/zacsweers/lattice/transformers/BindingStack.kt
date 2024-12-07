@@ -167,7 +167,6 @@ internal class BindingStackEntry(
     /*
     com.slack.circuit.star.Example1
      */
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     fun simpleTypeRef(typeKey: TypeKey): BindingStackEntry {
       return BindingStackEntry(typeKey = typeKey, action = null, context = null, declaration = null)
     }
@@ -179,17 +178,20 @@ internal class BindingStackEntry(
     fun injectedAt(
       typeKey: TypeKey,
       function: IrFunction,
-      param: IrValueParameter,
+      param: IrValueParameter? = null,
+      declaration: IrDeclaration? = param,
       displayTypeKey: TypeKey = typeKey,
     ): BindingStackEntry {
       val targetFqName = function.parent.kotlinFqName
       val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
+      val end = if (param == null) "()" else "(${param.name.asString()})"
+      val context = "$targetFqName$middle$end"
       return BindingStackEntry(
         typeKey = typeKey,
         displayTypeKey = displayTypeKey,
         action = "is injected at",
-        context = "$targetFqName$middle(…, ${param.name.asString()})",
-        declaration = param,
+        context = context,
+        declaration = declaration,
       )
     }
   }
