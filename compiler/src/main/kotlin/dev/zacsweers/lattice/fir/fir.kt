@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.constructors
@@ -45,7 +44,6 @@ import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
@@ -226,20 +224,21 @@ internal inline fun FirClass.findInjectConstructor(
   latticeClassIds: LatticeClassIds,
   context: CheckerContext,
   reporter: DiagnosticReporter,
-  onError: () -> Nothing
+  onError: () -> Nothing,
 ): FirConstructorSymbol? {
-  val constructorInjections = constructors(session).filter {
-    it.annotations.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)
-  }
+  val constructorInjections =
+    constructors(session).filter {
+      it.annotations.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)
+    }
   return when (constructorInjections.size) {
     0 -> null
     1 -> {
       constructorInjections[0].also {
-        val isAssisted = it.annotations.isAnnotatedWithAny(session, latticeClassIds.assistedAnnotations)
+        val isAssisted =
+          it.annotations.isAnnotatedWithAny(session, latticeClassIds.assistedAnnotations)
         if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
           reporter.reportOn(
-            it
-              .annotations
+            it.annotations
               .annotationsIn(session, latticeClassIds.injectAnnotations)
               .single()
               .source,
@@ -267,7 +266,7 @@ internal inline fun FirClass.findInjectConstructor(
 internal inline fun FirClass.validateInjectedClass(
   context: CheckerContext,
   reporter: DiagnosticReporter,
-  onError: () -> Nothing
+  onError: () -> Nothing,
 ) {
   if (isLocal) {
     reporter.reportOn(source, FirLatticeErrors.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
@@ -303,7 +302,7 @@ internal inline fun FirClass.validateFactoryClass(
   context: CheckerContext,
   reporter: DiagnosticReporter,
   type: String,
-  onError: () -> Nothing
+  onError: () -> Nothing,
 ) {
   if (isLocal) {
     reporter.reportOn(source, FirLatticeErrors.FACTORY_CLASS_CANNOT_BE_LOCAL, type, context)
@@ -357,7 +356,7 @@ internal inline fun FirClass.validateFactoryClass(
   }
 
   checkVisibility { source ->
-    reporter.reportOn(source, FirLatticeErrors.FACTORY_MUST_BE_VISIBLE,type,  context)
+    reporter.reportOn(source, FirLatticeErrors.FACTORY_MUST_BE_VISIBLE, type, context)
     onError()
   }
 }
@@ -365,7 +364,7 @@ internal inline fun FirClass.validateFactoryClass(
 internal inline fun FirConstructorSymbol.validateVisibility(
   context: CheckerContext,
   reporter: DiagnosticReporter,
-  onError: () -> Nothing
+  onError: () -> Nothing,
 ) {
   checkVisibility { source ->
     reporter.reportOn(source, FirLatticeErrors.INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE, context)

@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.ir.IrAnnotation
-import dev.zacsweers.lattice.ir.singleAbstractFunction
 import dev.zacsweers.lattice.isWordPrefixRegex
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor

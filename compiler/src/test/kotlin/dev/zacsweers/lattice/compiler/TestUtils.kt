@@ -151,8 +151,8 @@ fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
 }
 
 /**
- * Exercises the whole generated factory creation flow by first creating with [invokeCreateAsFactory] and
- * then calling [Factory.invoke] to exercise its `newInstance()`.
+ * Exercises the whole generated factory creation flow by first creating with
+ * [invokeCreateAsFactory] and then calling [Factory.invoke] to exercise its `newInstance()`.
  */
 fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
   val factory = invokeCreateAsFactory(*args)
@@ -168,8 +168,8 @@ fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any 
 }
 
 /**
- * Exercises the whole generated factory creation flow by first creating with [invokeCreateAsFactory] and
- * then calling [Factory.invoke] to exercise its `newInstance()`.
+ * Exercises the whole generated factory creation flow by first creating with
+ * [invokeCreateAsFactory] and then calling [Factory.invoke] to exercise its `newInstance()`.
  */
 fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
@@ -212,7 +212,9 @@ fun <T> Any.invokeFactoryGet(vararg args: Any): T {
 
 fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
-  return javaClass.methods.single { it.name == name && !Modifier.isStatic(it.modifiers) }.invoke(this, *args) as T
+  return javaClass.methods
+    .single { it.name == name && !Modifier.isStatic(it.modifiers) }
+    .invoke(this, *args) as T
 }
 
 /**

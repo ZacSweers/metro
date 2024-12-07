@@ -29,7 +29,6 @@ package dev.zacsweers.lattice.annotations
  *
  * To start, we annotate the `DataService` constructor with [AssistedInject] and we annotate the
  * `Config` parameter with [Assisted], as shown below:
- *
  * ```
  * class DataService(
  *   private val dataFetcher: DataFetcher;

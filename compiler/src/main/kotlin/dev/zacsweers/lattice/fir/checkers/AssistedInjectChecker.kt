@@ -21,7 +21,6 @@ import dev.zacsweers.lattice.fir.findInjectConstructor
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.fir.singleAbstractFunction
 import dev.zacsweers.lattice.fir.validateFactoryClass
-import dev.zacsweers.lattice.fir.validateInjectedClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession

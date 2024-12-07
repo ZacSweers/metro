@@ -383,9 +383,7 @@ class ComponentProcessingTest {
   interface AssistedInjectComponentWithGenericFactorySupertype {
     val factory: ExampleClass.Factory
 
-    class ExampleClass @AssistedInject constructor(
-      @Assisted val intValue: Int
-    ) {
+    class ExampleClass @AssistedInject constructor(@Assisted val intValue: Int) {
       fun interface BaseFactory<T> {
         fun create(intValue: Int): T
       }

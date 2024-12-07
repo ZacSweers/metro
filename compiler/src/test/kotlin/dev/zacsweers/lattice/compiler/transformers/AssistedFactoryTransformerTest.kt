@@ -59,7 +59,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent(),
-        ),
+        )
       )
 
     val exampleClassFactory =
@@ -95,7 +95,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent(),
-        ),
+        )
       )
 
     val exampleClassFactory =

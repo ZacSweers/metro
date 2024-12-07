@@ -64,10 +64,7 @@ internal sealed interface Parameter {
 
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
-  data class AssistedParameterKey(
-    val typeKey: TypeKey,
-    val assistedIdentifier: String,
-  ) {
+  data class AssistedParameterKey(val typeKey: TypeKey, val assistedIdentifier: String) {
 
     companion object {
       fun IrValueParameter.toAssistedParameterKey(
@@ -79,7 +76,7 @@ internal sealed interface Parameter {
           annotationsIn(symbols.assistedAnnotations)
             .singleOrNull()
             ?.constArgumentOfTypeAt<String>(0)
-            .orEmpty()
+            .orEmpty(),
         )
       }
     }
@@ -323,8 +320,7 @@ internal fun IrValueParameter.toConstructorParameter(
   val isBindsInstance =
     annotationsIn(context.symbols.bindsInstanceAnnotations).singleOrNull() != null
 
-  val assistedIdentifier =
-    assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
+  val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
 
   val ownerFunction = this.parent as IrFunction // TODO is this safe
 

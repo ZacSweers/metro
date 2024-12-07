@@ -20,12 +20,9 @@ import dev.zacsweers.lattice.fir.FirLatticeErrors
 import dev.zacsweers.lattice.fir.FirTypeKey
 import dev.zacsweers.lattice.fir.LatticeFirAnnotation
 import dev.zacsweers.lattice.fir.annotationsIn
-import dev.zacsweers.lattice.fir.checkVisibility
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.fir.singleAbstractFunction
 import dev.zacsweers.lattice.fir.validateFactoryClass
-import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
@@ -33,8 +30,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
-import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
@@ -52,9 +47,14 @@ internal class ComponentCreatorChecker(
 
     if (componentFactoryAnnotation.isEmpty()) return
 
-    declaration.validateFactoryClass(context, reporter, "Component factory") { return }
+    declaration.validateFactoryClass(context, reporter, "Component factory") {
+      return
+    }
 
-    val createFunction = declaration.singleAbstractFunction(session, context, reporter, "@Component.Factory") { return }
+    val createFunction =
+      declaration.singleAbstractFunction(session, context, reporter, "@Component.Factory") {
+        return
+      }
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 

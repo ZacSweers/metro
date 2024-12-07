@@ -15,10 +15,9 @@
  */
 package dev.zacsweers.lattice.fir
 
-import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
-import org.jetbrains.kotlin.fir.analysis.diagnostics.FirDiagnosticRenderers.SYMBOL
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VISIBILITY_MODIFIER
@@ -31,8 +30,7 @@ import org.jetbrains.kotlin.diagnostics.warning0
 
 internal object FirLatticeErrors {
   // Common
-  val FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by
-    error2<PsiElement, String, String>(NAME_IDENTIFIER)
+  val FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by error2<PsiElement, String, String>(NAME_IDENTIFIER)
   val FACTORY_CLASS_CANNOT_BE_LOCAL by error1<PsiElement, String>(NAME_IDENTIFIER)
   val FACTORY_SHOULD_BE_INTERFACE_OR_ABSTRACT by error1<PsiElement, String>(NAME_IDENTIFIER)
   val FACTORY_MUST_BE_VISIBLE by error1<PsiElement, String>(NAME_IDENTIFIER)
@@ -80,18 +78,14 @@ private object FirLatticeErrorMessages : BaseDiagnosticRendererFactory() {
       put(
         FirLatticeErrors.FACTORY_CLASS_CANNOT_BE_LOCAL,
         "{0} classes cannot be local classes.",
-        TO_STRING
+        TO_STRING,
       )
       put(
         FirLatticeErrors.FACTORY_SHOULD_BE_INTERFACE_OR_ABSTRACT,
         "{0} classes should be non-sealed abstract classes or interfaces.",
         TO_STRING,
       )
-      put(
-        FirLatticeErrors.FACTORY_MUST_BE_VISIBLE,
-        "{0} must be public or internal.",
-        TO_STRING,
-      )
+      put(FirLatticeErrors.FACTORY_MUST_BE_VISIBLE, "{0} must be public or internal.", TO_STRING)
       put(
         FirLatticeErrors.FACTORY_FACTORY_FUNCTION_MUST_BE_VISIBLE,
         "{0} classes' single abstract functions must be public or internal.",

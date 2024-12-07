@@ -35,7 +35,6 @@ import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -53,7 +52,6 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
 internal class InjectConstructorTransformer(context: LatticeTransformerContext) :
@@ -172,10 +170,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
               val instance =
                 irTemporary(
-                  irInvoke(
-                    callee = newInstanceFunctionSymbol,
-                    args = assistedArgs + providerArgs,
-                  )
+                  irInvoke(callee = newInstanceFunctionSymbol, args = assistedArgs + providerArgs)
                 )
               // TODO members injector goes here
               +irReturn(irGet(instance))

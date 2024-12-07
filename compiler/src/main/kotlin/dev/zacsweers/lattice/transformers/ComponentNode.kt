@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.ir.rawType
-import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
