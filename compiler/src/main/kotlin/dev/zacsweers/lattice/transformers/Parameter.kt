@@ -240,7 +240,8 @@ internal data class TypeMetadata(
   val isLazyWrappedInProvider: Boolean = false,
 ) {
 
-  val isDeferrableType get() = isWrappedInLazy || isWrappedInProvider || isLazyWrappedInProvider
+  val isDeferrableType
+    get() = isWrappedInLazy || isWrappedInProvider || isLazyWrappedInProvider
 
   // TODO cache these in ComponentTransformer or shared transformer data
   companion object {

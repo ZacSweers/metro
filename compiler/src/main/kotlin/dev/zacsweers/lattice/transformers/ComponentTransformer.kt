@@ -320,7 +320,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Add instance parameters
     component.creator?.parameters?.valueParameters.orEmpty().forEach {
       // TODO this cast is unsafe
-      graph.addBinding((it as ConstructorParameter).typeMetadata, Binding.BoundInstance(it), bindingStack)
+      graph.addBinding(
+        (it as ConstructorParameter).typeMetadata,
+        Binding.BoundInstance(it),
+        bindingStack,
+      )
     }
 
     // Add bindings from component dependencies

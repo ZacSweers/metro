@@ -26,10 +26,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   private val bindings = mutableMapOf<TypeKey, BindingEntry>()
   private val dependencies = mutableMapOf<TypeKey, Lazy<Set<TypeKey>>>()
 
-  data class BindingEntry(
-    val binding: Binding,
-    val metadata: TypeMetadata,
-  )
+  data class BindingEntry(val binding: Binding, val metadata: TypeMetadata)
 
   fun addBinding(type: TypeMetadata, binding: Binding, bindingStack: BindingStack) {
     val key = type.typeKey
@@ -63,55 +60,61 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   }
 
   // For bindings we expect to already be cached
-  fun requireBindingEntry(key: TypeKey): BindingEntry = bindings[key] ?: error("No binding found for $key")
+  fun requireBindingEntry(key: TypeKey): BindingEntry =
+    bindings[key] ?: error("No binding found for $key")
 
   fun getOrCreateBindingEntry(type: TypeMetadata, bindingStack: BindingStack): Binding {
     val key = type.typeKey
-    return bindings.getOrPut(key) {
-      // If no explicit binding exists, check if type is injectable
-      val irClass = key.type.rawType()
-      val injectableConstructor = with(context) { irClass.findInjectableConstructor() }
-      val binding = if (injectableConstructor != null) {
-        val parameters = injectableConstructor.parameters(context)
-        Binding.ConstructorInjected(
-          type = irClass,
-          injectedConstructor = injectableConstructor,
-          typeKey = key,
-          parameters = parameters,
-          scope = with(context) { irClass.scopeAnnotation() },
-        )
-      } else if (with(context) { irClass.isAnnotatedWithAny(symbols.assistedFactoryAnnotations) }) {
-        val function = irClass.singleAbstractFunction(context)
-        val targetTypeMetadata = TypeMetadata.from(context, function)
-        val bindingStackEntry = BindingStackEntry.injectedAt(type, function)
-        val targetBinding =
-          bindingStack.withEntry(bindingStackEntry) {
-            getOrCreateBindingEntry(targetTypeMetadata, bindingStack)
-          } as Binding.ConstructorInjected
-        Binding.Assisted(
-          type = irClass,
-          function = function,
-          typeKey = key,
-          parameters = function.parameters(context),
-          target = targetBinding,
-        )
-      } else {
-        val declarationToReport = bindingStack.lastEntryOrComponent
-        val message = buildString {
-          append(
-            "[Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
-          )
-          appendLine(key)
-          appendLine()
-          appendBindingStack(bindingStack)
-        }
+    return bindings
+      .getOrPut(key) {
+        // If no explicit binding exists, check if type is injectable
+        val irClass = key.type.rawType()
+        val injectableConstructor = with(context) { irClass.findInjectableConstructor() }
+        val binding =
+          if (injectableConstructor != null) {
+            val parameters = injectableConstructor.parameters(context)
+            Binding.ConstructorInjected(
+              type = irClass,
+              injectedConstructor = injectableConstructor,
+              typeKey = key,
+              parameters = parameters,
+              scope = with(context) { irClass.scopeAnnotation() },
+            )
+          } else if (
+            with(context) { irClass.isAnnotatedWithAny(symbols.assistedFactoryAnnotations) }
+          ) {
+            val function = irClass.singleAbstractFunction(context)
+            val targetTypeMetadata = TypeMetadata.from(context, function)
+            val bindingStackEntry = BindingStackEntry.injectedAt(type, function)
+            val targetBinding =
+              bindingStack.withEntry(bindingStackEntry) {
+                getOrCreateBindingEntry(targetTypeMetadata, bindingStack)
+              } as Binding.ConstructorInjected
+            Binding.Assisted(
+              type = irClass,
+              function = function,
+              typeKey = key,
+              parameters = function.parameters(context),
+              target = targetBinding,
+            )
+          } else {
+            val declarationToReport = bindingStack.lastEntryOrComponent
+            val message = buildString {
+              append(
+                "[Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
+              )
+              appendLine(key)
+              appendLine()
+              appendBindingStack(bindingStack)
+            }
 
-        with(context) { declarationToReport.reportError(message) }
+            with(context) { declarationToReport.reportError(message) }
 
-        exitProcessing()
+            exitProcessing()
+          }
+        BindingEntry(binding, type)
       }
-      BindingEntry(binding, type)
-    }.binding
+      .binding
   }
 
   fun validate(component: ComponentNode, onError: (String) -> Nothing) {
@@ -174,9 +177,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
             is Binding.BoundInstance,
             is Binding.ComponentDependency -> error("Not possible")
           }
-        stack.withEntry(entry) {
-          dfs(dependencyBinding)
-        }
+        stack.withEntry(entry) { dfs(dependencyBinding) }
       }
     }
 

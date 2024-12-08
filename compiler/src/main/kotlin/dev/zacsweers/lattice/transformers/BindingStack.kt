@@ -125,6 +125,7 @@ internal class BindingStackEntry(
   val displayTypeKey: TypeKey = metadata.typeKey,
 ) {
   val typeKey: TypeKey = metadata.typeKey
+
   fun render(component: FqName): String {
     return buildString {
       append(displayTypeKey)
@@ -173,7 +174,12 @@ internal class BindingStackEntry(
     com.slack.circuit.star.Example1
      */
     fun simpleTypeRef(typeMetadata: TypeMetadata): BindingStackEntry {
-      return BindingStackEntry(metadata = typeMetadata, action = null, context = null, declaration = null)
+      return BindingStackEntry(
+        metadata = typeMetadata,
+        action = null,
+        context = null,
+        declaration = null,
+      )
     }
 
     /*
