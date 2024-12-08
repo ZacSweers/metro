@@ -6,6 +6,64 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.lattice:runtime>
+open annotation class dev.zacsweers.lattice.annotations.multibindings/ClassKey : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/ClassKey|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.lattice.annotations.multibindings/ClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+
+    final val value // dev.zacsweers.lattice.annotations.multibindings/ClassKey.value|{}value[0]
+        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice.annotations.multibindings/ClassKey.value.<get-value>|<get-value>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/ElementsIntoSet : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/ElementsIntoSet|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations.multibindings/ElementsIntoSet.<init>|<init>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/IntKey : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/IntKey|null[0]
+    constructor <init>(kotlin/Int) // dev.zacsweers.lattice.annotations.multibindings/IntKey.<init>|<init>(kotlin.Int){}[0]
+
+    final val value // dev.zacsweers.lattice.annotations.multibindings/IntKey.value|{}value[0]
+        final fun <get-value>(): kotlin/Int // dev.zacsweers.lattice.annotations.multibindings/IntKey.value.<get-value>|<get-value>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/IntoMap : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/IntoMap|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations.multibindings/IntoMap.<init>|<init>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/IntoSet : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/IntoSet|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations.multibindings/IntoSet.<init>|<init>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/LazyClassKey : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/LazyClassKey|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.lattice.annotations.multibindings/LazyClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+
+    final val value // dev.zacsweers.lattice.annotations.multibindings/LazyClassKey.value|{}value[0]
+        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice.annotations.multibindings/LazyClassKey.value.<get-value>|<get-value>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/LongKey : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/LongKey|null[0]
+    constructor <init>(kotlin/Long) // dev.zacsweers.lattice.annotations.multibindings/LongKey.<init>|<init>(kotlin.Long){}[0]
+
+    final val value // dev.zacsweers.lattice.annotations.multibindings/LongKey.value|{}value[0]
+        final fun <get-value>(): kotlin/Long // dev.zacsweers.lattice.annotations.multibindings/LongKey.value.<get-value>|<get-value>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/MapKey : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/MapKey|null[0]
+    constructor <init>(kotlin/Boolean = ...) // dev.zacsweers.lattice.annotations.multibindings/MapKey.<init>|<init>(kotlin.Boolean){}[0]
+
+    final val unwrapValue // dev.zacsweers.lattice.annotations.multibindings/MapKey.unwrapValue|{}unwrapValue[0]
+        final fun <get-unwrapValue>(): kotlin/Boolean // dev.zacsweers.lattice.annotations.multibindings/MapKey.unwrapValue.<get-unwrapValue>|<get-unwrapValue>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/Multibinds : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/Multibinds|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations.multibindings/Multibinds.<init>|<init>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations.multibindings/StringKey : kotlin/Annotation { // dev.zacsweers.lattice.annotations.multibindings/StringKey|null[0]
+    constructor <init>(kotlin/String) // dev.zacsweers.lattice.annotations.multibindings/StringKey.<init>|<init>(kotlin.String){}[0]
+
+    final val value // dev.zacsweers.lattice.annotations.multibindings/StringKey.value|{}value[0]
+        final fun <get-value>(): kotlin/String // dev.zacsweers.lattice.annotations.multibindings/StringKey.value.<get-value>|<get-value>(){}[0]
+}
+
 open annotation class dev.zacsweers.lattice.annotations/Assisted : kotlin/Annotation { // dev.zacsweers.lattice.annotations/Assisted|null[0]
     constructor <init>(kotlin/String = ...) // dev.zacsweers.lattice.annotations/Assisted.<init>|<init>(kotlin.String){}[0]
 

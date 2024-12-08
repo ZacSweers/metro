@@ -55,3 +55,39 @@ public abstract interface annotation class dev/zacsweers/lattice/annotations/Sin
 public abstract interface annotation class dev/zacsweers/lattice/annotations/Singleton : java/lang/annotation/Annotation {
 }
 
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/ClassKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/ElementsIntoSet : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/IntKey : java/lang/annotation/Annotation {
+	public abstract fun value ()I
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/IntoMap : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/IntoSet : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/LazyClassKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/LongKey : java/lang/annotation/Annotation {
+	public abstract fun value ()J
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/MapKey : java/lang/annotation/Annotation {
+	public abstract fun unwrapValue ()Z
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/Multibinds : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/multibindings/StringKey : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/String;
+}
+
