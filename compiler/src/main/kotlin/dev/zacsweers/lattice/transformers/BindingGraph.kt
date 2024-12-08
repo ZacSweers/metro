@@ -83,7 +83,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       } else if (with(context) { irClass.isAnnotatedWithAny(symbols.assistedFactoryAnnotations) }) {
         val function = irClass.singleAbstractFunction(context)
         val targetTypeMetadata = TypeMetadata.from(context, function)
-        val bindingStackEntry = BindingStackEntry.injectedAt(key, function)
+        val bindingStackEntry = BindingStackEntry.injectedAt(type, function)
         val targetBinding =
           bindingStack.withEntry(bindingStackEntry) {
             getOrCreateBindingEntry(targetTypeMetadata, bindingStack)
@@ -131,15 +131,17 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         // TODO check if there's a lazy in the stack, if so we can break the cycle
         //  A -> B -> Lazy<A> is valid
         //  A -> B -> A is not
+        // TODO for some reason entries are not carrying correct TypeMetadata from dependencies
+        if (stack.entries.none { it.metadata.isDeferrableType }) {
+          // Pull the root entry from the stack and push it back to the top to highlight the cycle
+          stack.push(existingEntry)
 
-        // Pull the root entry from the stack and push it back to the top to highlight the cycle
-        stack.push(existingEntry)
-
-        val message = buildString {
-          appendLine("[Lattice/DependencyCycle] Found a dependency cycle:")
-          appendBindingStack(stack, ellipse = true)
+          val message = buildString {
+            appendLine("[Lattice/DependencyCycle] Found a dependency cycle:")
+            appendBindingStack(stack, ellipse = true)
+          }
+          onError(message)
         }
-        onError(message)
       }
 
       if (key in visited) return
@@ -152,7 +154,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           when (binding) {
             is Binding.ConstructorInjected -> {
               BindingStackEntry.injectedAt(
-                key,
+                entry.metadata,
                 binding.injectedConstructor,
                 binding.parameterFor(dep),
                 displayTypeKey = dep,
@@ -160,14 +162,14 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
             }
             is Binding.Provided -> {
               BindingStackEntry.injectedAt(
-                key,
+                entry.metadata,
                 binding.providerFunction,
                 binding.parameterFor(dep),
                 displayTypeKey = dep,
               )
             }
             is Binding.Assisted -> {
-              BindingStackEntry.injectedAt(key, binding.function, displayTypeKey = dep)
+              BindingStackEntry.injectedAt(entry.metadata, binding.function, displayTypeKey = dep)
             }
             is Binding.BoundInstance,
             is Binding.ComponentDependency -> error("Not possible")
@@ -178,8 +180,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       }
     }
 
-    for ((key, binding) in bindings) {
-      // TODO need type metadata here to allow cycle breaking
+    for ((_, binding) in bindings) {
       dfs(binding)
     }
   }
@@ -204,7 +205,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     return function.valueParameters
       .map { param ->
         val paramType = TypeMetadata.from(context, param)
-        bindingStack.withEntry(BindingStackEntry.injectedAt(paramType.typeKey, function, param)) {
+        bindingStack.withEntry(BindingStackEntry.injectedAt(paramType, function, param)) {
           // This recursive call will create bindings for injectable types as needed
           getOrCreateBindingEntry(paramType, bindingStack)
         }

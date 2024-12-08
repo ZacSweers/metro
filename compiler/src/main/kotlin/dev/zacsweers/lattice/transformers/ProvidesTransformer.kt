@@ -222,7 +222,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             symbols = symbols,
             isComponentInstance = true,
             // TODO is this right/ever going to happen?
-            bindingStackEntry = BindingStackEntry.simpleTypeRef(typeMetadata.typeKey),
+            bindingStackEntry = BindingStackEntry.simpleTypeRef(typeMetadata),
             isBindsInstance = false,
           )
         )

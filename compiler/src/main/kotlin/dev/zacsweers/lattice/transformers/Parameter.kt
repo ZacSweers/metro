@@ -235,10 +235,13 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
 
 internal data class TypeMetadata(
   val typeKey: TypeKey,
-  val isWrappedInProvider: Boolean,
-  val isWrappedInLazy: Boolean,
-  val isLazyWrappedInProvider: Boolean,
+  val isWrappedInProvider: Boolean = false,
+  val isWrappedInLazy: Boolean = false,
+  val isLazyWrappedInProvider: Boolean = false,
 ) {
+
+  val isDeferrableType get() = isWrappedInLazy || isWrappedInProvider || isLazyWrappedInProvider
+
   // TODO cache these in ComponentTransformer or shared transformer data
   companion object {
     @OptIn(UnsafeDuringIrConstructionAPI::class)
@@ -335,7 +338,7 @@ internal fun IrValueParameter.toConstructorParameter(
     assistedIdentifier = assistedIdentifier,
     symbols = context.symbols,
     isComponentInstance = false,
-    bindingStackEntry = BindingStackEntry.injectedAt(typeMetadata.typeKey, ownerFunction, this),
+    bindingStackEntry = BindingStackEntry.injectedAt(typeMetadata, ownerFunction, this),
     isBindsInstance = isBindsInstance,
   )
 }

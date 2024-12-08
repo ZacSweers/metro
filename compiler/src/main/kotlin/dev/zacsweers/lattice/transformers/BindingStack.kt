@@ -118,12 +118,13 @@ internal class BindingStackImpl(override val component: IrClass) : BindingStack 
 }
 
 internal class BindingStackEntry(
-  val typeKey: TypeKey,
+  val metadata: TypeMetadata,
   val action: String?,
   val context: String?,
   val declaration: IrDeclaration?,
-  val displayTypeKey: TypeKey = typeKey,
+  val displayTypeKey: TypeKey = metadata.typeKey,
 ) {
+  val typeKey: TypeKey = metadata.typeKey
   fun render(component: FqName): String {
     return buildString {
       append(displayTypeKey)
@@ -140,13 +141,17 @@ internal class BindingStackEntry(
     }
   }
 
+  override fun toString(): String {
+    return render(FqName.ROOT)
+  }
+
   companion object {
     /*
     com.slack.circuit.star.Example1 is requested at
            [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.ExampleComponent.example1()
      */
     @OptIn(UnsafeDuringIrConstructionAPI::class)
-    fun requestedAt(typeKey: TypeKey, accessor: IrSimpleFunction): BindingStackEntry {
+    fun requestedAt(typeMetadata: TypeMetadata, accessor: IrSimpleFunction): BindingStackEntry {
       val targetFqName = accessor.parentAsClass.kotlinFqName
       val declaration: IrDeclarationWithName =
         accessor.correspondingPropertySymbol?.owner ?: accessor
@@ -157,7 +162,7 @@ internal class BindingStackEntry(
           declaration.name.asString() + "()"
         }
       return BindingStackEntry(
-        typeKey = typeKey,
+        metadata = typeMetadata,
         action = "is requested at",
         context = "$targetFqName.$accessor",
         declaration = declaration,
@@ -167,8 +172,8 @@ internal class BindingStackEntry(
     /*
     com.slack.circuit.star.Example1
      */
-    fun simpleTypeRef(typeKey: TypeKey): BindingStackEntry {
-      return BindingStackEntry(typeKey = typeKey, action = null, context = null, declaration = null)
+    fun simpleTypeRef(typeMetadata: TypeMetadata): BindingStackEntry {
+      return BindingStackEntry(metadata = typeMetadata, action = null, context = null, declaration = null)
     }
 
     /*
@@ -176,18 +181,18 @@ internal class BindingStackEntry(
           [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.Example1(…, text2)
     */
     fun injectedAt(
-      typeKey: TypeKey,
+      typeMetadata: TypeMetadata,
       function: IrFunction,
       param: IrValueParameter? = null,
       declaration: IrDeclaration? = param,
-      displayTypeKey: TypeKey = typeKey,
+      displayTypeKey: TypeKey = typeMetadata.typeKey,
     ): BindingStackEntry {
       val targetFqName = function.parent.kotlinFqName
       val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
       val end = if (param == null) "()" else "(…, ${param.name.asString()})"
       val context = "$targetFqName$middle$end"
       return BindingStackEntry(
-        typeKey = typeKey,
+        metadata = typeMetadata,
         displayTypeKey = displayTypeKey,
         action = "is injected at",
         context = context,

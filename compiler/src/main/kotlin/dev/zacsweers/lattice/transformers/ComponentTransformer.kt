@@ -257,7 +257,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         .map {
           val type = it.typeKey.type.rawType()
           componentDependencyStack.withEntry(
-            BindingStackEntry.requestedAt(componentTypeKey, creator!!.createFunction)
+            BindingStackEntry.requestedAt(TypeMetadata(componentTypeKey), creator!!.createFunction)
           ) {
             getOrComputeComponentNode(type, componentDependencyStack)
           }
@@ -621,7 +621,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
               val binding = graph.getOrCreateBindingEntry(typeMetadata, BindingStack.empty())
-              bindingStack.push(BindingStackEntry.requestedAt(typeMetadata.typeKey, function))
+              bindingStack.push(BindingStackEntry.requestedAt(typeMetadata, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   val providerReceiver =
@@ -665,7 +665,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     node.exposedTypes.forEach { (accessor, typeMetadata) ->
       processBinding(
         typeMetadata = typeMetadata,
-        stackEntry = BindingStackEntry.requestedAt(typeMetadata.typeKey, accessor),
+        stackEntry = BindingStackEntry.requestedAt(typeMetadata, accessor),
         node = node,
         graph = graph,
         bindingStack = bindingStack,
@@ -707,7 +707,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         if (node.scope == null || bindingScope != node.scope) {
           // Error if an unscoped component references scoped bindings
           val declarationToReport = node.sourceComponent
-          bindingStack.push(BindingStackEntry.simpleTypeRef(key))
+          bindingStack.push(BindingStackEntry.simpleTypeRef(typeMetadata))
           val message = buildString {
             append("[Lattice/IncompatiblyScopedBindings] ")
             append(declarationToReport.kotlinFqName)
@@ -806,6 +806,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return params.valueParameters.mapIndexed { i, param ->
       // TODO unsafe cast
       val latticeParam = paramsToMap[i] as ConstructorParameter
+      val typeMeta = latticeParam.typeMetadata
       val typeKey = latticeParam.typeKey
 
       // TODO consolidate this logic with generateBindingCode
@@ -823,13 +824,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             when (binding) {
               is Binding.ConstructorInjected -> {
                 val constructor = binding.injectedConstructor
-                BindingStackEntry.injectedAt(typeKey, constructor, constructor.valueParameters[i])
+                BindingStackEntry.injectedAt(typeMeta, constructor, constructor.valueParameters[i])
               }
               is Binding.Provided -> {
-                BindingStackEntry.injectedAt(typeKey, function, function.valueParameters[i])
+                BindingStackEntry.injectedAt(typeMeta, function, function.valueParameters[i])
               }
               is Binding.Assisted -> {
-                BindingStackEntry.injectedAt(typeKey, function)
+                BindingStackEntry.injectedAt(typeMeta, function)
               }
               is Binding.BoundInstance,
               is Binding.ComponentDependency -> error("Should never happen, logic is handled above")
