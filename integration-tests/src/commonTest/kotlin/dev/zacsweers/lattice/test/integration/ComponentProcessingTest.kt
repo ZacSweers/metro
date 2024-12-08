@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
+import dev.zacsweers.lattice.annotations.multibindings.IntoSet
 import dev.zacsweers.lattice.createComponent
 import dev.zacsweers.lattice.createComponentFactory
 import kotlin.test.Test
@@ -462,6 +463,24 @@ class ComponentProcessingTest {
 
       @Provides fun provideMessage(): String = "Hello, world!"
     }
+  }
+
+  @Test
+  fun `multibindings - simple int set`() {
+    val component =
+      createComponent<MultibindingComponentWithIntSet>()
+    assertEquals(setOf(1, 2), component.ints)
+
+    // Each call yields a new set instance
+    assertNotSame(component.ints, component.ints)
+  }
+
+  @Component
+  interface MultibindingComponentWithIntSet {
+    val ints: Set<Int>
+
+    @Provides @IntoSet fun provideInt1(): Int = 1
+    @Provides @IntoSet fun provideInt2(): Int = 2
   }
 
   @Inject
