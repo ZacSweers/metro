@@ -94,6 +94,7 @@ allprojects {
         "**/InstanceFactory.kt",
         "**/InstanceFactoryTest.kt",
         "**/ProviderOfLazy.kt",
+        "**/annotations/multibindings/*.kt",
       )
     }
   }
