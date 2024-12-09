@@ -26,12 +26,15 @@ import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
 import dev.zacsweers.lattice.annotations.multibindings.IntoSet
+import dev.zacsweers.lattice.annotations.multibindings.Multibinds
 import dev.zacsweers.lattice.createComponent
 import dev.zacsweers.lattice.createComponentFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
@@ -466,20 +469,59 @@ class ComponentProcessingTest {
   }
 
   @Test
-  fun `multibindings - simple int set`() {
-    val component =
-      createComponent<MultibindingComponentWithIntSet>()
+  fun `multibindings - simple int set with one value`() {
+    val component = createComponent<MultibindingComponentWithSingleIntSet>()
+    assertEquals(setOf(1), component.ints)
+
+    // Each call yields a new set instance
+    assertNotSame(component.ints, component.ints)
+
+    // Ensure we return immutable types
+    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+  }
+
+  @Component
+  interface MultibindingComponentWithSingleIntSet {
+    val ints: Set<Int>
+
+    @Provides @IntoSet fun provideInt1(): Int = 1
+  }
+
+  @Test
+  fun `multibindings - simple empty int set`() {
+    val component = createComponent<MultibindingComponentWithEmptySet>()
+    assertTrue(component.ints.isEmpty())
+
+    // Each call in this case is actually the same instance
+    assertSame(emptySet(), component.ints)
+  }
+
+  @Component
+  interface MultibindingComponentWithEmptySet {
+    @Multibinds val ints: Set<Int>
+  }
+
+  @Test
+  fun `multibindings - int set with multiple values`() {
+    val component = createComponent<MultibindingComponentWithIntSet>()
     assertEquals(setOf(1, 2), component.ints)
 
     // Each call yields a new set instance
     assertNotSame(component.ints, component.ints)
+
+    // Ensure we return immutable types
+    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
   }
 
   @Component
   interface MultibindingComponentWithIntSet {
     val ints: Set<Int>
 
+    // TODO this should be possible
+    //  val intProvides: Set<Provider<Int>>
+
     @Provides @IntoSet fun provideInt1(): Int = 1
+
     @Provides @IntoSet fun provideInt2(): Int = 2
   }
 
