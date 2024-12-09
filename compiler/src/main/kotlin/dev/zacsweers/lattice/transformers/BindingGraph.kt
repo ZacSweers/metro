@@ -19,6 +19,7 @@ import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.singleAbstractFunction
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 
@@ -48,8 +49,17 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           // Recursively follow deps from its constructor params
           getConstructorDependencies(binding.type, bindingStack)
         }
-        is Binding.Provided -> getFunctionDependencies(binding.providerFunction, bindingStack)
+        is Binding.Provided -> {
+          getFunctionDependencies(binding.providerFunction, bindingStack)
+        }
         is Binding.Assisted -> getFunctionDependencies(binding.function, bindingStack)
+        is Binding.Multibinding -> {
+          // This is a manual @Multibinds or triggered by the above
+          // This type's dependencies are just its providers' dependencies
+          binding.providers.flatMapTo(mutableSetOf()) {
+            getFunctionDependencies(it.providerFunction, bindingStack)
+          }
+        }
         is Binding.BoundInstance -> emptySet()
         is Binding.ComponentDependency -> emptySet()
       }
@@ -58,6 +68,17 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
 
   // For bindings we expect to already be cached
   fun requireBinding(key: TypeKey): Binding = bindings[key] ?: error("No binding found for $key")
+
+  fun getOrCreateMultibinding(
+    pluginContext: IrPluginContext,
+    typeKey: TypeKey,
+  ): Binding.Multibinding {
+    return bindings.getOrPut(typeKey) {
+      Binding.Multibinding.create(pluginContext, typeKey).also {
+        addBinding(typeKey, it, BindingStack.empty())
+      }
+    } as Binding.Multibinding
+  }
 
   fun getOrCreateBinding(key: TypeKey, bindingStack: BindingStack): Binding {
     return bindings.getOrPut(key) {
@@ -159,6 +180,9 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
             }
             is Binding.Assisted -> {
               BindingStackEntry.injectedAt(key, binding.function, displayTypeKey = dep)
+            }
+            is Binding.Multibinding -> {
+              TODO()
             }
             is Binding.BoundInstance -> TODO()
             is Binding.ComponentDependency -> TODO()

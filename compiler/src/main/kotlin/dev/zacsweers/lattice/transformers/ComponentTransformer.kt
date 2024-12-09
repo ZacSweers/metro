@@ -19,6 +19,7 @@ import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.decapitalizeUS
 import dev.zacsweers.lattice.exitProcessing
+import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
@@ -51,7 +52,10 @@ import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.parent
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -60,8 +64,11 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
@@ -73,6 +80,7 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -223,8 +231,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // TODO is this enough for properties like @get:Provides
         .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
         // TODO validate
-        .associateBy { TypeMetadata.from(this, it).typeKey }
+        .map { function -> TypeMetadata.from(this, function).typeKey to function }
+        .toList()
 
+    // TODO infer @Multibinds declarations from there
     val exposedTypes =
       componentDeclaration
         .allCallableMembers()
@@ -303,22 +313,75 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return latticeComponent
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun createBindingGraph(component: ComponentNode): BindingGraph {
     val graph = BindingGraph(this)
 
     // Add explicit bindings from @Provides methods
     val bindingStack = BindingStack(component.sourceComponent)
     component.providerFunctions.forEach { (typeKey, function) ->
-      graph.addBinding(
-        typeKey,
-        Binding.Provided(function, typeKey, function.parameters(this), function.scopeAnnotation()),
-        bindingStack,
-      )
+      // TODO these annotation searches are greedy. Need a single-pass lookup
+      val provider =
+        Binding.Provided(
+          providerFunction = function,
+          typeKey = typeKey,
+          parameters = function.parameters(this),
+          scope = function.scopeAnnotation(),
+          // TODO FIR only one annotation is allowed
+          // TODO FIR no scopes on multibindings
+          // TODO FIR can't mix @Multibinds and @Provides
+          intoSet = function.isAnnotatedWithAny(symbols.latticeClassIds.intoSetAnnotations),
+          elementsIntoSet =
+            function.isAnnotatedWithAny(symbols.latticeClassIds.elementsIntoSetAnnotations),
+          mapKey =
+            function.annotations
+              .firstOrNull { annotation ->
+                val annotationClass = annotation.symbol.owner.parentAsClass
+                for (id in symbols.latticeClassIds.mapKeyAnnotations) {
+                  if (annotationClass.hasAnnotation(id)) return@firstOrNull true
+                }
+                false
+              }
+              ?.let(::IrAnnotation),
+        )
+      if (provider.isMultibinding) {
+        val multibindingType =
+          when {
+            provider.intoSet -> {
+              pluginContext.irBuiltIns.setClass.typeWith(provider.typeKey.type)
+            }
+            // TODO presumably this supports any collection, so we can't always assume this
+            // TODO use TypeMetadata to unpack Set<Provider<*>>
+            provider.elementsIntoSet -> provider.typeKey.type
+            provider.mapKey != null -> TODO()
+            else -> error("Not possible")
+          }
+        val multibindingTypeKey = provider.typeKey.copy(type = multibindingType)
+        graph.getOrCreateMultibinding(pluginContext, multibindingTypeKey).providers.add(provider)
+      } else {
+        graph.addBinding(typeKey, provider, bindingStack)
+      }
     }
 
     // Add instance parameters
     component.creator?.parameters?.valueParameters.orEmpty().forEach {
       graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
+    }
+
+    // Add @Multibinding exposed types
+    component.exposedTypes.forEach { getter, typeMetadata ->
+      val annotationContainer: IrAnnotationContainer =
+        getter.correspondingPropertySymbol?.owner ?: getter
+      val isMultibindingDeclaration =
+        annotationContainer.isAnnotatedWithAny(symbols.latticeClassIds.multibindsAnnotations)
+
+      if (isMultibindingDeclaration) {
+        graph.addBinding(
+          typeMetadata.typeKey,
+          Binding.Multibinding.create(pluginContext, typeMetadata.typeKey),
+          bindingStack,
+        )
+      }
     }
 
     // Add bindings from component dependencies
@@ -623,7 +686,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               bindingStack.push(BindingStackEntry.requestedAt(key, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  val providerReceiver =
+                  // TODO not always a provider! Multibindings are different
+                  val bindingCode =
                     generateBindingCode(
                       binding,
                       graph,
@@ -633,15 +697,22 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                       providerFields,
                       bindingStack,
                     )
-                  irExprBody(
-                    typeAsProviderArgument(
-                      typeMetadata,
-                      providerReceiver,
-                      isAssisted = false,
-                      isComponentInstance = false,
-                      symbols,
+                  if (binding is Binding.Multibinding) {
+                    // It's not a provider in this case! Return the created collection directly
+                    // TODO what about Set<Provider<...>>, etc
+                    irExprBody(bindingCode)
+                  } else {
+                    // It's a provider arg, determine if we need to unpack it
+                    irExprBody(
+                      typeAsProviderArgument(
+                        typeMetadata,
+                        bindingCode,
+                        isAssisted = false,
+                        isComponentInstance = false,
+                        symbols,
+                      )
                     )
-                  )
+                  }
                 }
             }
             bindingStack.pop()
@@ -828,6 +899,10 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               is Binding.Assisted -> {
                 BindingStackEntry.injectedAt(typeKey, function)
               }
+              is Binding.Multibinding -> {
+                // TODO can't be right?
+                BindingStackEntry.injectedAt(typeKey, function)
+              }
               is Binding.BoundInstance,
               is Binding.ComponentDependency -> error("Should never happen, logic is handled above")
             }
@@ -979,6 +1054,93 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           args = listOf(delegateFactoryProvider),
         )
       }
+      is Binding.Multibinding -> {
+        if (binding.isSet) {
+          val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
+          if (binding.providers.any { it.elementsIntoSet }) {
+            // TODO
+            error("@ElementsIntoSet is not yet supported")
+          }
+          val callee: IrSimpleFunctionSymbol
+          val args: List<IrExpression>
+          when (val size = binding.providers.size) {
+            0 -> {
+              // emptySet()
+              callee = symbols.emptySet
+              args = emptyList()
+            }
+            1 -> {
+              // setOf(<one>)
+              callee = symbols.setOfSingleton
+              val provider = binding.providers.first()
+              args =
+                listOf(
+                  generateMultibindingArgument(
+                    provider,
+                    graph,
+                    thisReceiver,
+                    instanceFields,
+                    componentTypesToCtorParams,
+                    providerFields,
+                    bindingStack,
+                  )
+                )
+            }
+            else -> {
+              // buildSet(<size>) { ... }
+              callee = symbols.buildSetWithCapacity
+              args = buildList {
+                add(irInt(size))
+                add(
+                  irLambda(
+                    context = pluginContext,
+                    parent = parent,
+                    receiverParameter =
+                      pluginContext.irBuiltIns.mutableSetClass.typeWith(elementType),
+                    valueParameters = emptyList(),
+                    returnType = pluginContext.irBuiltIns.unitType,
+                    suspend = false,
+                  ) { function ->
+                    // This is the mutable set receiver
+                    val functionReceiver = function.extensionReceiverParameter!!
+                    binding.providers.forEach { provider ->
+                      // TODO if the requested set wraps elements in Provider, don't use
+                      // typeAsProviderArgument
+                      //  needs more work elsewhere to recognize typekey from accessor isn't
+                      // Set<Provider<Int>>
+                      +irInvoke(
+                        dispatchReceiver = irGet(functionReceiver),
+                        callee = symbols.mutableSetAdd.symbol,
+                        args =
+                          listOf(
+                            generateMultibindingArgument(
+                              provider,
+                              graph,
+                              thisReceiver,
+                              instanceFields,
+                              componentTypesToCtorParams,
+                              providerFields,
+                              bindingStack,
+                            )
+                          ),
+                      )
+                    }
+                  }
+                )
+              }
+            }
+          }
+          irCall(callee = callee, type = binding.typeKey.type, typeArguments = listOf(elementType))
+            .apply {
+              for ((i, arg) in args.withIndex()) {
+                putValueArgument(i, arg)
+              }
+            }
+        } else {
+          // It's a map
+          TODO("Map multibindings code gen is not yet implemented")
+        }
+      }
       is Binding.BoundInstance -> {
         // Should never happen, this should get handled in the provider fields logic above.
         error("Unable to generate code for unexpected BoundInstance binding: $binding")
@@ -1008,6 +1170,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           irLambda(
             context = pluginContext,
             parent = thisReceiver.parent,
+            receiverParameter = null,
             emptyList(),
             typeKey.type,
             suspend = false,
@@ -1028,5 +1191,35 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         )
       }
     }
+  }
+
+  private fun IrBuilderWithScope.generateMultibindingArgument(
+    provider: Binding.Provided,
+    graph: BindingGraph,
+    thisReceiver: IrValueParameter,
+    instanceFields: Map<TypeKey, IrField>,
+    componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
+    providerFields: Map<TypeKey, IrField>,
+    bindingStack: BindingStack,
+  ): IrExpression {
+    val providerInstance =
+      generateBindingCode(
+        provider,
+        graph,
+        thisReceiver,
+        instanceFields,
+        componentTypesToCtorParams,
+        providerFields,
+        bindingStack,
+      )
+    // TODO if the requested set wraps elements in Provider, don't use typeAsProviderArgument
+    //  needs more work elsewhere to recognize typekey from accessor isn't Set<Provider<Int>>
+    return typeAsProviderArgument(
+      TypeMetadata(provider.typeKey, false, false, false),
+      providerInstance,
+      false,
+      false,
+      symbols,
+    )
   }
 }

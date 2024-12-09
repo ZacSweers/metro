@@ -17,12 +17,16 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.ir.IrAnnotation
+import dev.zacsweers.lattice.ir.implements
+import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.isWordPrefixRegex
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.util.classId
 
 internal sealed interface Binding {
   val typeKey: TypeKey
@@ -55,7 +59,13 @@ internal sealed interface Binding {
     override val scope: IrAnnotation? = null,
     override val dependencies: Map<TypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey },
+    val intoSet: Boolean,
+    val elementsIntoSet: Boolean,
+    val mapKey: IrAnnotation?,
   ) : Binding {
+    val isMultibinding
+      get() = intoSet || elementsIntoSet || mapKey != null
+
     override val nameHint: String = providerFunction.name.asString()
 
     fun parameterFor(typeKey: TypeKey): IrValueParameter {
@@ -107,5 +117,51 @@ internal sealed interface Binding {
     }
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.EMPTY
+  }
+
+  // TODO sets
+  //  unscoped always initializes inline
+  //  - if empty - use emptySet()
+  //  - @multibinds methods can never be scoped
+  //  - their providers can't go into providerFields - would cause duplicates. Need to look up by
+  //   nameHint
+  data class Multibinding(
+    override val typeKey: TypeKey,
+    val isSet: Boolean,
+    val isMap: Boolean,
+    // Reconcile this with dependencies?
+    // TODO SortedSet
+    val providers: MutableSet<Provided> = mutableSetOf(),
+  ) : Binding {
+    override val scope: IrAnnotation? = null
+    override val dependencies: Map<TypeKey, Parameter>
+      get() = emptyMap()
+
+    override val parameters: Parameters
+      get() = Parameters.EMPTY
+
+    override val nameHint: String
+      get() = error("Should never be called")
+
+    companion object {
+      @OptIn(UnsafeDuringIrConstructionAPI::class)
+      fun create(pluginContext: IrPluginContext, typeKey: TypeKey): Multibinding {
+        val isSet =
+          typeKey.type
+            .rawType()
+            .implements(pluginContext, pluginContext.irBuiltIns.setClass.owner.classId!!)
+        val isMap =
+          !isSet &&
+            typeKey.type
+              .rawType()
+              .implements(pluginContext, pluginContext.irBuiltIns.mapClass.owner.classId!!)
+
+        check(isSet xor isMap) {
+          "Multibinding was somehow not a set or map"
+        }
+
+        return Multibinding(typeKey, isSet = isSet, isMap = isMap)
+      }
+    }
   }
 }

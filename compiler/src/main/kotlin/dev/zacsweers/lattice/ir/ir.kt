@@ -26,6 +26,7 @@ import dev.zacsweers.lattice.transformers.wrapInLazy
 import dev.zacsweers.lattice.transformers.wrapInProvider
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.jvm.ir.erasedUpperBound
 import org.jetbrains.kotlin.backend.jvm.ir.parentClassId
@@ -344,6 +345,7 @@ internal fun IrClass.allCallableMembers(
 internal fun irLambda(
   context: IrPluginContext,
   parent: IrDeclarationParent,
+  receiverParameter: IrType?,
   valueParameters: List<IrType>,
   returnType: IrType,
   suspend: Boolean = false,
@@ -362,6 +364,7 @@ internal fun irLambda(
       }
       .apply {
         this.parent = parent
+        receiverParameter?.let { addExtensionReceiver(it) }
         valueParameters.forEachIndexed { index, type -> addValueParameter("arg$index", type) }
         body =
           DeclarationIrBuilder(context, this.symbol, SYNTHETIC_OFFSET, SYNTHETIC_OFFSET)
@@ -499,9 +502,12 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
         typeHint = type.typeKey.type.wrapInLazy(symbols),
       )
     }
-    isAssisted -> providerInstance
-    isComponentInstance -> providerInstance
+    isAssisted || isComponentInstance -> {
+      // provider
+      providerInstance
+    }
     else -> {
+      // provider.invoke()
       irInvoke(
         dispatchReceiver = providerInstance,
         callee = symbols.providerInvoke,
@@ -591,6 +597,7 @@ internal fun IrBuilderWithScope.checkNotNullCall(
         irLambda(
           context.pluginContext,
           parent = parent, // TODO this is obvi wrong
+          receiverParameter = null,
           valueParameters = emptyList(),
           returnType = context.pluginContext.irBuiltIns.stringType,
           suspend = false,
@@ -683,4 +690,10 @@ internal fun IrClass.abstractFunctions(context: LatticeTransformerContext): List
     }
     .values
     .filterNotNull()
+}
+
+internal fun IrClass.implements(pluginContext: IrPluginContext, superType: ClassId): Boolean {
+  return getAllSuperTypes(pluginContext, excludeSelf = false).any {
+    it.rawTypeOrNull()?.classId == superType
+  }
 }
