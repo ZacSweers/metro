@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 @file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
+
 package dev.zacsweers.lattice.annotations.multibindings
 
 import kotlin.reflect.KClass
@@ -28,6 +29,4 @@ import kotlin.reflect.KClass
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 @MapKey
-public annotation class ClassKey(
-  val value: KClass<*>
-)
+public annotation class ClassKey(val value: KClass<*>)

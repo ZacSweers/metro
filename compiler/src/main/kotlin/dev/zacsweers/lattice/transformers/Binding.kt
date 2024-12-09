@@ -156,9 +156,7 @@ internal sealed interface Binding {
               .rawType()
               .implements(pluginContext, pluginContext.irBuiltIns.mapClass.owner.classId!!)
 
-        check(isSet xor isMap) {
-          "Multibinding was somehow not a set or map"
-        }
+        check(isSet xor isMap) { "Multibinding was somehow not a set or map" }
 
         return Multibinding(typeKey, isSet = isSet, isMap = isMap)
       }

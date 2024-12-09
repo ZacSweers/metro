@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 @file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
+
 package dev.zacsweers.lattice.annotations.multibindings
 
 import kotlin.reflect.KClass
