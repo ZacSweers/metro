@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.ir.util.classId
 internal sealed interface Binding {
   val typeKey: TypeKey
   val scope: IrAnnotation?
+  // TODO reconcile dependencies vs parameters in collectBindings
   val dependencies: Map<TypeKey, Parameter>
   // Track the list of parameters, which may not have unique type keys
   val parameters: Parameters
@@ -39,6 +40,7 @@ internal sealed interface Binding {
   data class ConstructorInjected(
     val type: IrClass,
     val injectedConstructor: IrConstructor,
+    val isAssisted: Boolean,
     override val typeKey: TypeKey,
     override val parameters: Parameters,
     override val scope: IrAnnotation? = null,
@@ -63,7 +65,7 @@ internal sealed interface Binding {
     val elementsIntoSet: Boolean,
     val mapKey: IrAnnotation?,
   ) : Binding {
-    val isMultibinding
+    val isMultibindingProvider
       get() = intoSet || elementsIntoSet || mapKey != null
 
     override val nameHint: String = providerFunction.name.asString()
