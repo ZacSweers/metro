@@ -228,6 +228,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       componentDeclaration
         .getAllSuperTypes(pluginContext, excludeSelf = false)
         .flatMap { it.classOrFail.owner.allCallableMembers() }
+        .filterNot { function ->
+          // Skip fake overrides. These are types that are inherited from a supertype but
+          // not actually user-implemented in the subtype
+          function.isFakeOverride ||
+            function.correspondingPropertySymbol?.owner?.isFakeOverride == true
+        }
         // TODO is this enough for properties like @get:Provides
         .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
         // TODO validate
@@ -344,7 +350,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               }
               ?.let(::IrAnnotation),
         )
-      if (provider.isMultibinding) {
+
+      if (provider.isMultibindingProvider) {
         val multibindingType =
           when {
             provider.intoSet -> {
@@ -538,6 +545,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Add fields for providers. May include both scoped and unscoped providers as well as bound
         // instances
         val providerFields = mutableMapOf<TypeKey, IrField>()
+        val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
         val componentTypesToCtorParams = mutableMapOf<TypeKey, IrValueParameter>()
 
         node.creator?.let { creator ->
@@ -613,24 +621,38 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         // Compute safe initialization order
         val initOrder =
-          bindingDependencies.keys.sortedWith { a, b ->
-            when {
-              // If b depends on a, a should be initialized first
-              a in (bindingDependencies[b] ?: emptyMap()) -> -1
-              // If a depends on b, b should be initialized first
-              b in (bindingDependencies[a] ?: emptyMap()) -> 1
-              // Otherwise order doesn't matter, fall back to just type order for idempotence
-              else -> a.compareTo(b)
+          bindingDependencies.entries
+            .sortedWith { (a, _), (b, _) ->
+              when {
+                // If b depends on a, a should be initialized first
+                a in (bindingDependencies[b]?.dependencies.orEmpty()) -> -1
+                // If a depends on b, b should be initialized first
+                b in (bindingDependencies[a]?.dependencies.orEmpty()) -> 1
+                // Otherwise order doesn't matter, fall back to just type order for idempotence
+                else -> a.compareTo(b)
+              }
             }
-          }
+            .map { it.value }
+            .distinct()
 
         // Create fields in dependency-order
-        initOrder.forEach { key ->
-          val binding = graph.requireBinding(key)
-          providerFields[key] =
+        initOrder.forEach { binding ->
+          val key = binding.typeKey
+          // Since assisted injections don't implement Factory, we can't just type these as
+          // Provider<*> fields
+          val fieldType =
+            if (binding is Binding.ConstructorInjected && binding.isAssisted) {
+              injectConstructorTransformer
+                .getOrGenerateFactoryClass(binding.type, binding.injectedConstructor)
+                .typeWith() // TODO generic factories?
+            } else {
+              symbols.latticeProvider.typeWith(key.type)
+            }
+
+          val field =
             addField(
                 fieldName = binding.nameHint.decapitalizeUS() + "Provider",
-                fieldType = symbols.latticeProvider.typeWith(key.type),
+                fieldType = fieldType,
                 fieldVisibility = DescriptorVisibilities.PRIVATE,
               )
               .apply {
@@ -645,6 +667,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                           instanceFields,
                           componentTypesToCtorParams,
                           providerFields,
+                          multibindingProviderFields,
                           bindingStack,
                         )
                         .letIf(binding.scope != null) {
@@ -655,6 +678,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                     irExprBody(provider)
                   }
               }
+          if (binding is Binding.Provided && binding.isMultibindingProvider) {
+            multibindingProviderFields[binding] = field
+          } else {
+            providerFields[key] = field
+          }
         }
 
         // Implement abstract getters for exposed types
@@ -695,11 +723,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                       instanceFields,
                       componentTypesToCtorParams,
                       providerFields,
+                      multibindingProviderFields,
                       bindingStack,
                     )
                   if (binding is Binding.Multibinding) {
                     // It's not a provider in this case! Return the created collection directly
                     // TODO what about Set<Provider<...>>, etc
+                    // TODO if we have multiple exposed types pointing at the same type, implement
+                    // one and make the
+                    //  rest call that one. Not multibinding specific. Maybe groupBy { typekey }?
                     irExprBody(bindingCode)
                   } else {
                     // It's a provider arg, determine if we need to unpack it
@@ -724,8 +756,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     node: ComponentNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
-  ): Map<TypeKey, Map<TypeKey, Parameter>> {
-    val bindingDependencies = mutableMapOf<TypeKey, Map<TypeKey, Parameter>>()
+  ): Map<TypeKey, Binding> {
+    val bindingDependencies = mutableMapOf<TypeKey, Binding>()
     // Track used unscoped bindings. We only need to generate a field if they're used more than
     // once
     val usedUnscopedBindings = mutableSetOf<TypeKey>()
@@ -734,7 +766,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Initial pass from each root
     node.exposedTypes.forEach { (accessor, typeMetadata) ->
       val key = typeMetadata.typeKey
-      processBinding(
+      findAndProcessBinding(
         key = key,
         stackEntry = BindingStackEntry.requestedAt(key, accessor),
         node = node,
@@ -748,13 +780,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return bindingDependencies
   }
 
-  private fun processBinding(
+  private fun findAndProcessBinding(
     key: TypeKey,
     stackEntry: BindingStackEntry,
     node: ComponentNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
-    bindingDependencies: MutableMap<TypeKey, Map<TypeKey, Parameter>>,
+    bindingDependencies: MutableMap<TypeKey, Binding>,
     usedUnscopedBindings: MutableSet<TypeKey>,
     visitedBindings: MutableSet<TypeKey>,
   ) {
@@ -762,75 +794,139 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     if (key in visitedBindings) {
       if (key in usedUnscopedBindings && key !in bindingDependencies) {
         // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key).dependencies
+        bindingDependencies[key] = graph.requireBinding(key)
       }
       return
     }
 
     bindingStack.withEntry(stackEntry) {
       val binding = graph.getOrCreateBinding(key, bindingStack)
-      val bindingScope = binding.scope
+      processBinding(
+        binding,
+        node,
+        graph,
+        bindingStack,
+        bindingDependencies,
+        usedUnscopedBindings,
+        visitedBindings,
+      )
+    }
+  }
 
-      // Check scoping compatibility
-      // TODO FIR error?
+  private fun processBinding(
+    binding: Binding,
+    node: ComponentNode,
+    graph: BindingGraph,
+    bindingStack: BindingStack,
+    bindingDependencies: MutableMap<TypeKey, Binding>,
+    usedUnscopedBindings: MutableSet<TypeKey>,
+    visitedBindings: MutableSet<TypeKey>,
+  ) {
+    val isMultibindingProvider = binding is Binding.Provided && binding.isMultibindingProvider
+    val key = binding.typeKey
+
+    // Skip if already visited
+    // TODO de-dupe with findAndProcessBinding
+    if (!isMultibindingProvider && key in visitedBindings) {
+      if (key in usedUnscopedBindings && key !in bindingDependencies) {
+        // Only add unscoped binding provider fields if they're used more than once
+        bindingDependencies[key] = graph.requireBinding(key)
+      }
+      return
+    }
+
+    val bindingScope = binding.scope
+
+    // Check scoping compatibility
+    // TODO FIR error?
+    if (bindingScope != null) {
+      if (node.scope == null || bindingScope != node.scope) {
+        // Error if an unscoped component references scoped bindings
+        val declarationToReport = node.sourceComponent
+        bindingStack.push(BindingStackEntry.simpleTypeRef(key))
+        val message = buildString {
+          append("[Lattice/IncompatiblyScopedBindings] ")
+          append(declarationToReport.kotlinFqName)
+          append(" (unscoped) may not reference scoped bindings:")
+          appendLine()
+          appendBindingStack(bindingStack)
+        }
+        declarationToReport.reportError(message)
+        exitProcessing()
+      }
+    }
+
+    visitedBindings += key
+
+    // Scoped and component bindings always need (provider) fields
+    if (bindingScope != null || binding is Binding.ComponentDependency) {
+      bindingDependencies[key] = binding
+    }
+
+    // For assisted bindings, we need provider fields for the assisted factory impl type
+    // The factory impl type depends on a provider of the assisted type
+    if (binding is Binding.Assisted) {
+      bindingDependencies[key] = binding.target
+      // TODO is this safe to end up as a provider field? Can someone create a
+      //  binding such that you have an assisted type on the DI graph that is
+      //  provided by a provider that depends on the assisted factory? I suspect
+      //  yes, so in that case we should probably track a separate field mapping
+      usedUnscopedBindings += binding.target.typeKey
+      // By definition, these parameters are not available on the graph
+      return
+    }
+
+    // For multibindings, we depend on anything the delegate providers depend on
+    /*
+     TODO
+      - multibinding deps should only look at multibinding provider fields
+      - wrap all these params up into a ComponentGenerationContext
+    */
+    if (binding is Binding.Multibinding) {
       if (bindingScope != null) {
-        if (node.scope == null || bindingScope != node.scope) {
-          // Error if an unscoped component references scoped bindings
-          val declarationToReport = node.sourceComponent
-          bindingStack.push(BindingStackEntry.simpleTypeRef(key))
-          val message = buildString {
-            append("[Lattice/IncompatiblyScopedBindings] ")
-            append(declarationToReport.kotlinFqName)
-            append(" (unscoped) may not reference scoped bindings:")
-            appendLine()
-            appendBindingStack(bindingStack)
-          }
-          declarationToReport.reportError(message)
-          exitProcessing()
+        // This is scoped so we want to keep an instance
+        // TODO are these allowed?
+        //  bindingDependencies[key] = buildMap {
+        //    for (provider in binding.providers) {
+        //      putAll(provider.dependencies)
+        //    }
+        //  }
+      } else {
+        // Process all providers deps, but don't need a specific dep for this one
+        for (provider in binding.providers) {
+          processBinding(
+            binding = provider,
+            node = node,
+            graph = graph,
+            bindingStack = bindingStack,
+            bindingDependencies = bindingDependencies,
+            usedUnscopedBindings = usedUnscopedBindings,
+            visitedBindings = visitedBindings,
+          )
         }
       }
+      return
+    }
 
-      visitedBindings += key
+    // Track dependencies before creating fields
+    if (bindingScope == null) {
+      usedUnscopedBindings += key
+    }
 
-      // Scoped and component bindings always need (provider) fields
-      if (bindingScope != null || binding is Binding.ComponentDependency) {
-        bindingDependencies[key] = binding.dependencies
-      }
-
-      // For assisted bindings, we need provider fields for the assisted impl type
-      // The impl type depends on a provider of the assisted type, which we may or
-      // may not create a field for reuse.
-      if (binding is Binding.Assisted) {
-        bindingDependencies[key] = binding.target.dependencies
-        // TODO is this safe to end up as a provider field? Can someone create a
-        //  binding such that you have an assisted type on the DI graph that is
-        //  provided by a provider that depends on the assisted factory? I suspect
-        //  yes, so in that case we should probably track a separate field mapping
-        usedUnscopedBindings += binding.target.typeKey
-        // By definition, these parameters are not available on the graph
-        return
-      }
-
-      // Track dependencies before creating fields
-      if (bindingScope == null) {
-        usedUnscopedBindings += key
-      }
-
-      // Recursively process dependencies
-      binding.parameters.nonInstanceParameters.forEach { param ->
-        val depKey = param.typeKey
-        // Recursive call to process dependency
-        processBinding(
-          key = depKey,
-          stackEntry = (param as ConstructorParameter).bindingStackEntry,
-          node = node,
-          graph = graph,
-          bindingStack = bindingStack,
-          bindingDependencies = bindingDependencies,
-          usedUnscopedBindings = usedUnscopedBindings,
-          visitedBindings = visitedBindings,
-        )
-      }
+    // Recursively process dependencies
+    binding.parameters.nonInstanceParameters.forEach { param ->
+      val depKey = param.typeKey
+      // Process binding dependencies
+      findAndProcessBinding(
+        key = depKey,
+        stackEntry = (param as ConstructorParameter).bindingStackEntry,
+        node = node,
+        graph = graph,
+        bindingStack = bindingStack,
+        bindingDependencies = bindingDependencies,
+        usedUnscopedBindings = usedUnscopedBindings,
+        visitedBindings = visitedBindings,
+      )
     }
   }
 
@@ -843,6 +939,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     instanceFields: Map<TypeKey, IrField>,
     componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
     providerFields: Map<TypeKey, IrField>,
+    multibindingProviderFields: Map<Binding.Provided, IrField>,
     bindingStack: BindingStack,
   ): List<IrExpression> {
     val params = function.parameters(this@ComponentTransformer)
@@ -886,6 +983,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         if (typeKey in providerFields) {
           // If it's in provider fields, invoke that field
           irGetField(irGet(thisReceiver), providerFields.getValue(typeKey))
+        } else if (
+          binding is Binding.Provided &&
+            binding.isMultibindingProvider &&
+            binding in multibindingProviderFields
+        ) {
+          irGetField(irGet(thisReceiver), multibindingProviderFields.getValue(binding))
         } else {
           val entry =
             when (binding) {
@@ -916,6 +1019,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             instanceFields,
             componentTypesToCtorParams,
             providerFields,
+            multibindingProviderFields,
             bindingStack,
           )
         }
@@ -956,9 +1060,19 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     instanceFields: Map<TypeKey, IrField>,
     componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
     providerFields: Map<TypeKey, IrField>,
+    multibindingProviderFields: Map<Binding.Provided, IrField>,
     bindingStack: BindingStack,
   ): IrExpression {
     // If we already have a provider field we can just return it
+    if (
+      binding is Binding.Provided &&
+        binding.isMultibindingProvider &&
+        binding in multibindingProviderFields
+    ) {
+      multibindingProviderFields[binding]?.let {
+        return irGetField(irGet(thisReceiver), it)
+      }
+    }
     providerFields[binding.typeKey]?.let {
       return irGetField(irGet(thisReceiver), it)
     }
@@ -992,6 +1106,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             instanceFields,
             componentTypesToCtorParams,
             providerFields,
+            multibindingProviderFields,
             bindingStack,
           )
         irInvoke(
@@ -1025,6 +1140,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             instanceFields,
             componentTypesToCtorParams,
             providerFields,
+            multibindingProviderFields,
             bindingStack,
           )
         irInvoke(
@@ -1046,6 +1162,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             instanceFields,
             componentTypesToCtorParams,
             providerFields,
+            multibindingProviderFields,
             bindingStack,
           )
         irInvoke(
@@ -1082,6 +1199,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                     instanceFields,
                     componentTypesToCtorParams,
                     providerFields,
+                    multibindingProviderFields,
                     bindingStack,
                   )
                 )
@@ -1120,6 +1238,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                               instanceFields,
                               componentTypesToCtorParams,
                               providerFields,
+                              multibindingProviderFields,
                               bindingStack,
                             )
                           ),
@@ -1200,6 +1319,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     instanceFields: Map<TypeKey, IrField>,
     componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
     providerFields: Map<TypeKey, IrField>,
+    multibindingProviderFields: Map<Binding.Provided, IrField>,
     bindingStack: BindingStack,
   ): IrExpression {
     val providerInstance =
@@ -1210,6 +1330,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         instanceFields,
         componentTypesToCtorParams,
         providerFields,
+        multibindingProviderFields,
         bindingStack,
       )
     // TODO if the requested set wraps elements in Provider, don't use typeAsProviderArgument
