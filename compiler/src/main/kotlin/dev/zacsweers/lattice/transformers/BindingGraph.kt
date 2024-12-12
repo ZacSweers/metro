@@ -90,7 +90,8 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         Binding.ConstructorInjected(
           type = irClass,
           injectedConstructor = injectableConstructor,
-          isAssisted = injectableConstructor.isAnnotatedWithAny(context.symbols.assistedInjectAnnotations),
+          isAssisted =
+            injectableConstructor.isAnnotatedWithAny(context.symbols.assistedInjectAnnotations),
           typeKey = key,
           parameters = parameters,
           scope = with(context) { irClass.scopeAnnotation() },
