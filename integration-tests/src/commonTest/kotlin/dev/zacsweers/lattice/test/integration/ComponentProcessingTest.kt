@@ -525,6 +525,27 @@ class ComponentProcessingTest {
     @Provides @IntoSet fun provideInt2(): Int = 2
   }
 
+  @Test
+  fun `multibindings - set with scoped dependencies`() {
+    val component = createComponent<MultibindingComponentWithWithScopedDeps>()
+    assertEquals(setOf(0), component.ints)
+    assertEquals(setOf(0, 1), component.ints)
+    assertEquals(setOf(0, 2), component.ints)
+  }
+
+  @Singleton
+  @Component
+  abstract class MultibindingComponentWithWithScopedDeps {
+    private var scopedCount = 0
+    private var unscopedCount = 0
+
+    abstract val ints: Set<Int>
+
+    @Provides @Singleton @IntoSet fun provideScopedInt(): Int = scopedCount++
+
+    @Provides @IntoSet fun provideUnscopedInt(): Int = unscopedCount++
+  }
+
   @Inject
   @Singleton
   class Cache(
