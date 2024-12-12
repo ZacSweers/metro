@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
+import dev.zacsweers.lattice.annotations.multibindings.ElementsIntoSet
 import dev.zacsweers.lattice.annotations.multibindings.IntoSet
 import dev.zacsweers.lattice.annotations.multibindings.Multibinds
 import dev.zacsweers.lattice.createComponent
@@ -523,6 +524,73 @@ class ComponentProcessingTest {
     @Provides @IntoSet fun provideInt1(): Int = 1
 
     @Provides @IntoSet fun provideInt2(): Int = 2
+  }
+
+  @Test
+  fun `multibindings - int set with elements into set`() {
+    val component = createComponent<MultibindingComponentWithElementsIntoSet>()
+    assertEquals(setOf(1, 2, 3), component.ints)
+
+    // Each call yields a new set instance
+    assertNotSame(component.ints, component.ints)
+
+    // Ensure we return immutable types
+    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+  }
+
+  @Component
+  interface MultibindingComponentWithElementsIntoSet {
+    val ints: Set<Int>
+
+    @Provides @ElementsIntoSet fun provideInts(): Set<Int> = setOf(1, 2, 3)
+  }
+
+  @Test
+  fun `multibindings - int set with scoped elements into set`() {
+    val component = createComponent<MultibindingComponentWithScopedElementsIntoSet>()
+    assertEquals(setOf(0), component.ints)
+
+    // Subsequent calls have the same output
+    assertEquals(setOf(0), component.ints)
+
+    // Ensure we return immutable types
+    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+  }
+
+  @Singleton
+  @Component
+  abstract class MultibindingComponentWithScopedElementsIntoSet {
+    private var count = 0
+
+    abstract val ints: Set<Int>
+
+    @Provides @ElementsIntoSet @Singleton fun provideInts(): Set<Int> = buildSet { add(count++) }
+  }
+
+  @Test
+  fun `multibindings - int set with mix of scoped elements into set and individual providers`() {
+    val component =
+      createComponent<MultibindingComponentWithMixOfScopedElementsIntoSetAndIndividualProviders>()
+    assertEquals(setOf(2, 7, 10), component.ints)
+    assertEquals(setOf(4, 9, 10), component.ints)
+
+    // Ensure we return immutable types
+    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+  }
+
+  @Singleton
+  @Component
+  abstract class MultibindingComponentWithMixOfScopedElementsIntoSetAndIndividualProviders {
+    private var count = 10
+    private var unscopedCount = 1
+
+    abstract val ints: Set<Int>
+
+    @Provides @IntoSet fun provideInt1(): Int = 1 + unscopedCount++
+
+    @Provides @IntoSet fun provideInt5(): Int = 5 + unscopedCount++
+
+    @Provides @ElementsIntoSet @Singleton fun provideInts(): Set<Int> = buildSet { add(count++) }
   }
 
   @Test
