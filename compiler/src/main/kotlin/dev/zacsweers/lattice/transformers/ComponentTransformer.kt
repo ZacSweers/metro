@@ -635,6 +635,17 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             .map { it.value }
             .distinct()
 
+        val generationContext =
+          ComponentGenerationContext(
+            graph,
+            thisReceiverParameter,
+            instanceFields,
+            componentTypesToCtorParams,
+            providerFields,
+            multibindingProviderFields,
+            bindingStack,
+          )
+
         // Create fields in dependency-order
         initOrder.forEach { binding ->
           val key = binding.typeKey
@@ -660,21 +671,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 initializer =
                   pluginContext.createIrBuilder(symbol).run {
                     val provider =
-                      generateBindingCode(
-                          binding,
-                          graph,
-                          thisReceiverParameter,
-                          instanceFields,
-                          componentTypesToCtorParams,
-                          providerFields,
-                          multibindingProviderFields,
-                          bindingStack,
-                        )
-                        .letIf(binding.scope != null) {
-                          // If it's scoped, wrap it in double-check
-                          // DoubleCheck.provider(<provider>)
-                          it.doubleCheck(this@run, symbols)
-                        }
+                      generateBindingCode(binding, generationContext).letIf(binding.scope != null) {
+                        // If it's scoped, wrap it in double-check
+                        // DoubleCheck.provider(<provider>)
+                        it.doubleCheck(this@run, symbols)
+                      }
                     irExprBody(provider)
                   }
               }
@@ -715,17 +716,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   // TODO not always a provider! Multibindings are different
-                  val bindingCode =
-                    generateBindingCode(
-                      binding,
-                      graph,
-                      thisReceiverParameter,
-                      instanceFields,
-                      componentTypesToCtorParams,
-                      providerFields,
-                      multibindingProviderFields,
-                      bindingStack,
-                    )
+                  val bindingCode = generateBindingCode(binding, generationContext)
                   if (binding is Binding.Multibinding) {
                     // It's not a provider in this case! Return the created collection directly
                     // TODO what about Set<Provider<...>>, etc
@@ -877,11 +868,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
 
     // For multibindings, we depend on anything the delegate providers depend on
-    /*
-     TODO
-      - multibinding deps should only look at multibinding provider fields
-      - wrap all these params up into a ComponentGenerationContext
-    */
     if (binding is Binding.Multibinding) {
       if (bindingScope != null) {
         // This is scoped so we want to keep an instance
@@ -934,13 +920,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     targetParams: Parameters,
     function: IrFunction,
     binding: Binding,
-    graph: BindingGraph,
-    thisReceiver: IrValueParameter,
-    instanceFields: Map<TypeKey, IrField>,
-    componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
-    providerFields: Map<TypeKey, IrField>,
-    multibindingProviderFields: Map<Binding.Provided, IrField>,
-    bindingStack: BindingStack,
+    generationContext: ComponentGenerationContext,
   ): List<IrExpression> {
     val params = function.parameters(this@ComponentTransformer)
     // TODO only value args are supported atm
@@ -974,21 +954,27 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       val typeKey = paramsToMap[i].typeKey
 
       // TODO consolidate this logic with generateBindingCode
-      instanceFields[typeKey]?.let { instanceField ->
+      generationContext.instanceFields[typeKey]?.let { instanceField ->
         // If it's in instance field, invoke that field
-        return@mapIndexed irGetField(irGet(thisReceiver), instanceField)
+        return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField)
       }
 
       val providerInstance =
-        if (typeKey in providerFields) {
+        if (typeKey in generationContext.providerFields) {
           // If it's in provider fields, invoke that field
-          irGetField(irGet(thisReceiver), providerFields.getValue(typeKey))
+          irGetField(
+            irGet(generationContext.thisReceiver),
+            generationContext.providerFields.getValue(typeKey),
+          )
         } else if (
           binding is Binding.Provided &&
             binding.isMultibindingProvider &&
-            binding in multibindingProviderFields
+            binding in generationContext.multibindingProviderFields
         ) {
-          irGetField(irGet(thisReceiver), multibindingProviderFields.getValue(binding))
+          irGetField(
+            irGet(generationContext.thisReceiver),
+            generationContext.multibindingProviderFields.getValue(binding),
+          )
         } else {
           val entry =
             when (binding) {
@@ -1009,19 +995,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               is Binding.BoundInstance,
               is Binding.ComponentDependency -> error("Should never happen, logic is handled above")
             }
-          bindingStack.push(entry)
+          generationContext.bindingStack.push(entry)
           // Generate binding code for each param
-          val paramBinding = graph.getOrCreateBinding(typeKey, bindingStack)
-          generateBindingCode(
-            paramBinding,
-            graph,
-            thisReceiver,
-            instanceFields,
-            componentTypesToCtorParams,
-            providerFields,
-            multibindingProviderFields,
-            bindingStack,
-          )
+          val paramBinding =
+            generationContext.graph.getOrCreateBinding(typeKey, generationContext.bindingStack)
+          generateBindingCode(paramBinding, generationContext)
         }
       // TODO share logic from InjectConstructorTransformer
       if (param.isWrappedInLazy) {
@@ -1052,29 +1030,33 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
   }
 
+  class ComponentGenerationContext(
+    val graph: BindingGraph,
+    val thisReceiver: IrValueParameter,
+    val instanceFields: Map<TypeKey, IrField>,
+    val componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
+    val providerFields: Map<TypeKey, IrField>,
+    val multibindingProviderFields: Map<Binding.Provided, IrField>,
+    val bindingStack: BindingStack,
+  )
+
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
-    graph: BindingGraph,
-    thisReceiver: IrValueParameter,
-    instanceFields: Map<TypeKey, IrField>,
-    componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
-    providerFields: Map<TypeKey, IrField>,
-    multibindingProviderFields: Map<Binding.Provided, IrField>,
-    bindingStack: BindingStack,
+    generationContext: ComponentGenerationContext,
   ): IrExpression {
     // If we already have a provider field we can just return it
     if (
       binding is Binding.Provided &&
         binding.isMultibindingProvider &&
-        binding in multibindingProviderFields
+        binding in generationContext.multibindingProviderFields
     ) {
-      multibindingProviderFields[binding]?.let {
-        return irGetField(irGet(thisReceiver), it)
+      generationContext.multibindingProviderFields[binding]?.let {
+        return irGetField(irGet(generationContext.thisReceiver), it)
       }
     }
-    providerFields[binding.typeKey]?.let {
-      return irGetField(irGet(thisReceiver), it)
+    generationContext.providerFields[binding.typeKey]?.let {
+      return irGetField(irGet(generationContext.thisReceiver), it)
     }
 
     return when (binding) {
@@ -1101,13 +1083,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             binding.parameters,
             createFunction.owner,
             binding,
-            graph,
-            thisReceiver,
-            instanceFields,
-            componentTypesToCtorParams,
-            providerFields,
-            multibindingProviderFields,
-            bindingStack,
+            generationContext,
           )
         irInvoke(
           dispatchReceiver = irGetObject(creatorClass.symbol),
@@ -1135,13 +1111,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             binding.parameters,
             createFunction.owner,
             binding,
-            graph,
-            thisReceiver,
-            instanceFields,
-            componentTypesToCtorParams,
-            providerFields,
-            multibindingProviderFields,
-            bindingStack,
+            generationContext,
           )
         irInvoke(
           dispatchReceiver = irGetObject(creatorClass.symbol),
@@ -1154,17 +1124,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         val implClass = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
         val implClassCompanion = implClass.companionObject()!!
         val createFunction = implClassCompanion.getSimpleFunction("create")!!
-        val delegateFactoryProvider =
-          generateBindingCode(
-            binding.target,
-            graph,
-            thisReceiver,
-            instanceFields,
-            componentTypesToCtorParams,
-            providerFields,
-            multibindingProviderFields,
-            bindingStack,
-          )
+        val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)
         irInvoke(
           dispatchReceiver = irGetObject(implClassCompanion.symbol),
           callee = createFunction,
@@ -1190,19 +1150,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               // setOf(<one>)
               callee = symbols.setOfSingleton
               val provider = binding.providers.first()
-              args =
-                listOf(
-                  generateMultibindingArgument(
-                    provider,
-                    graph,
-                    thisReceiver,
-                    instanceFields,
-                    componentTypesToCtorParams,
-                    providerFields,
-                    multibindingProviderFields,
-                    bindingStack,
-                  )
-                )
+              args = listOf(generateMultibindingArgument(provider, generationContext))
             }
             else -> {
               // buildSet(<size>) { ... }
@@ -1229,19 +1177,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                       +irInvoke(
                         dispatchReceiver = irGet(functionReceiver),
                         callee = symbols.mutableSetAdd.symbol,
-                        args =
-                          listOf(
-                            generateMultibindingArgument(
-                              provider,
-                              graph,
-                              thisReceiver,
-                              instanceFields,
-                              componentTypesToCtorParams,
-                              providerFields,
-                              multibindingProviderFields,
-                              bindingStack,
-                            )
-                          ),
+                        args = listOf(generateMultibindingArgument(provider, generationContext)),
                       )
                     }
                   }
@@ -1283,12 +1219,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
         val typeKey = binding.typeKey
         val componentParameter =
-          componentTypesToCtorParams[typeKey]
+          generationContext.componentTypesToCtorParams[typeKey]
             ?: run { error("No matching component instance found for type $typeKey") }
         val lambda =
           irLambda(
             context = pluginContext,
-            parent = thisReceiver.parent,
+            parent = generationContext.thisReceiver.parent,
             receiverParameter = null,
             emptyList(),
             typeKey.type,
@@ -1314,25 +1250,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
   private fun IrBuilderWithScope.generateMultibindingArgument(
     provider: Binding.Provided,
-    graph: BindingGraph,
-    thisReceiver: IrValueParameter,
-    instanceFields: Map<TypeKey, IrField>,
-    componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
-    providerFields: Map<TypeKey, IrField>,
-    multibindingProviderFields: Map<Binding.Provided, IrField>,
-    bindingStack: BindingStack,
+    generationContext: ComponentGenerationContext,
   ): IrExpression {
-    val providerInstance =
-      generateBindingCode(
-        provider,
-        graph,
-        thisReceiver,
-        instanceFields,
-        componentTypesToCtorParams,
-        providerFields,
-        multibindingProviderFields,
-        bindingStack,
-      )
+    val providerInstance = generateBindingCode(provider, generationContext)
     // TODO if the requested set wraps elements in Provider, don't use typeAsProviderArgument
     //  needs more work elsewhere to recognize typekey from accessor isn't Set<Provider<Int>>
     return typeAsProviderArgument(
