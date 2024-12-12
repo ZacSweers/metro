@@ -357,8 +357,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             provider.intoSet -> {
               pluginContext.irBuiltIns.setClass.typeWith(provider.typeKey.type)
             }
-            // TODO presumably this supports any collection, so we can't always assume this
-            // TODO use TypeMetadata to unpack Set<Provider<*>>
+            // TODO Dagger only supports the target collection, but maybe we can loosen that?
+            // TODO use TypeMetadata to unpack Set<Provider<*>> if we support it
             provider.elementsIntoSet -> provider.typeKey.type
             provider.mapKey != null -> TODO()
             else -> error("Not possible")
@@ -1124,63 +1124,126 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       is Binding.Multibinding -> {
         if (binding.isSet) {
           val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
-          if (binding.providers.any { it.elementsIntoSet }) {
-            // TODO
-            error("@ElementsIntoSet is not yet supported")
-          }
-          val callee: IrSimpleFunctionSymbol
-          val args: List<IrExpression>
-          when (val size = binding.providers.size) {
-            0 -> {
-              // emptySet()
-              callee = symbols.emptySet
-              args = emptyList()
-            }
-            1 -> {
-              // setOf(<one>)
-              callee = symbols.setOfSingleton
-              val provider = binding.providers.first()
-              args = listOf(generateMultibindingArgument(provider, generationContext))
-            }
-            else -> {
-              // buildSet(<size>) { ... }
-              callee = symbols.buildSetWithCapacity
-              args = buildList {
-                add(irInt(size))
-                add(
-                  irLambda(
-                    context = pluginContext,
-                    parent = parent,
-                    receiverParameter =
-                      pluginContext.irBuiltIns.mutableSetClass.typeWith(elementType),
-                    valueParameters = emptyList(),
-                    returnType = pluginContext.irBuiltIns.unitType,
-                    suspend = false,
-                  ) { function ->
-                    // This is the mutable set receiver
-                    val functionReceiver = function.extensionReceiverParameter!!
-                    binding.providers.forEach { provider ->
-                      // TODO if the requested set wraps elements in Provider, don't use
-                      // typeAsProviderArgument
-                      //  needs more work elsewhere to recognize typekey from accessor isn't
-                      // Set<Provider<Int>>
-                      +irInvoke(
-                        dispatchReceiver = irGet(functionReceiver),
-                        callee = symbols.mutableSetAdd.symbol,
-                        args = listOf(generateMultibindingArgument(provider, generationContext)),
-                      )
-                    }
-                  }
+          val (collectionProviders, individualProviders) =
+            binding.providers.partition { it.elementsIntoSet }
+          check(individualProviders.all { it.intoSet })
+          // If we have any @ElementsIntoSet, we need to use SetFactory
+          if (collectionProviders.isNotEmpty()) {
+            // SetFactory.<String>builder(1, 1)
+            //   .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
+            //   .addCollectionProvider(provideString2Provider)
+            //   .build()
+
+            // SetFactory.<String>builder(1, 1)
+            val builderVar: IrExpression =
+              irInvoke(
+                  dispatchReceiver = irGetObject(symbols.setFactoryCompanionObject),
+                  callee = symbols.setFactoryBuilderFunction,
+                  typeHint = symbols.setFactoryBuilder.typeWith(elementType),
                 )
+                .apply {
+                  putTypeArgument(0, elementType)
+                  putValueArgument(0, irInt(individualProviders.size))
+                  putValueArgument(1, irInt(collectionProviders.size))
+                }
+
+            val withProviders =
+              individualProviders.fold(builderVar) { receiver, provider ->
+                irInvoke(
+                    dispatchReceiver = receiver,
+                    callee = symbols.setFactoryBuilderAddProviderFunction,
+                    typeHint = builderVar.type,
+                  )
+                  .apply { putValueArgument(0, generateBindingCode(provider, generationContext)) }
+              }
+
+            // .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
+            val withCollectionProviders =
+              collectionProviders.fold(withProviders) { receiver, provider ->
+                irInvoke(
+                    dispatchReceiver = receiver,
+                    callee = symbols.setFactoryBuilderAddCollectionProviderFunction,
+                    typeHint = builderVar.type,
+                  )
+                  .apply { putValueArgument(0, generateBindingCode(provider, generationContext)) }
+              }
+
+            // .build()
+            val built =
+              irInvoke(
+                dispatchReceiver = withCollectionProviders,
+                callee = symbols.setFactoryBuilderBuildFunction,
+                typeHint =
+                  pluginContext.irBuiltIns.setClass
+                    .typeWith(elementType)
+                    .wrapInProvider(symbols.latticeProvider),
+              )
+
+            // invoke()
+            irInvoke(
+              dispatchReceiver = built,
+              callee = symbols.providerInvoke,
+              typeHint = pluginContext.irBuiltIns.setClass.typeWith(elementType),
+            )
+          } else {
+            val callee: IrSimpleFunctionSymbol
+            val args: List<IrExpression>
+            when (val size = binding.providers.size) {
+              0 -> {
+                // emptySet()
+                callee = symbols.emptySet
+                args = emptyList()
+              }
+              1 -> {
+                // setOf(<one>)
+                callee = symbols.setOfSingleton
+                val provider = binding.providers.first()
+                args = listOf(generateMultibindingArgument(provider, generationContext))
+              }
+              else -> {
+                // buildSet(<size>) { ... }
+                callee = symbols.buildSetWithCapacity
+                args = buildList {
+                  add(irInt(size))
+                  add(
+                    irLambda(
+                      context = pluginContext,
+                      parent = parent,
+                      receiverParameter =
+                        pluginContext.irBuiltIns.mutableSetClass.typeWith(elementType),
+                      valueParameters = emptyList(),
+                      returnType = pluginContext.irBuiltIns.unitType,
+                      suspend = false,
+                    ) { function ->
+                      // This is the mutable set receiver
+                      val functionReceiver = function.extensionReceiverParameter!!
+                      binding.providers.forEach { provider ->
+                        // TODO if the requested set wraps elements in Provider, don't use
+                        // typeAsProviderArgument
+                        //  needs more work elsewhere to recognize typekey from accessor isn't
+                        // Set<Provider<Int>>
+                        +irInvoke(
+                          dispatchReceiver = irGet(functionReceiver),
+                          callee = symbols.mutableSetAdd.symbol,
+                          args = listOf(generateMultibindingArgument(provider, generationContext)),
+                        )
+                      }
+                    }
+                  )
+                }
               }
             }
+            irCall(
+                callee = callee,
+                type = binding.typeKey.type,
+                typeArguments = listOf(elementType),
+              )
+              .apply {
+                for ((i, arg) in args.withIndex()) {
+                  putValueArgument(i, arg)
+                }
+              }
           }
-          irCall(callee = callee, type = binding.typeKey.type, typeArguments = listOf(elementType))
-            .apply {
-              for ((i, arg) in args.withIndex()) {
-                putValueArgument(i, arg)
-              }
-            }
         } else {
           // It's a map
           TODO("Map multibindings code gen is not yet implemented")
