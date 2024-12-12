@@ -95,6 +95,10 @@ allprojects {
         "**/InstanceFactoryTest.kt",
         "**/ProviderOfLazy.kt",
         "**/SetFactory.kt",
+        "**/AbstractMapFactory.kt",
+        "**/DelegateFactory.kt",
+        "**/MapFactory.kt",
+        "**/MapProviderFactory.kt",
         "**/annotations/multibindings/*.kt",
       )
     }
