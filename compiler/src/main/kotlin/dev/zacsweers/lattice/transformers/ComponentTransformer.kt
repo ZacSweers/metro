@@ -1030,16 +1030,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  class ComponentGenerationContext(
-    val graph: BindingGraph,
-    val thisReceiver: IrValueParameter,
-    val instanceFields: Map<TypeKey, IrField>,
-    val componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
-    val providerFields: Map<TypeKey, IrField>,
-    val multibindingProviderFields: Map<Binding.Provided, IrField>,
-    val bindingStack: BindingStack,
-  )
-
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
@@ -1264,3 +1254,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     )
   }
 }
+
+private class ComponentGenerationContext(
+  val graph: BindingGraph,
+  val thisReceiver: IrValueParameter,
+  val instanceFields: Map<TypeKey, IrField>,
+  val componentTypesToCtorParams: Map<TypeKey, IrValueParameter>,
+  val providerFields: Map<TypeKey, IrField>,
+  val multibindingProviderFields: Map<Binding.Provided, IrField>,
+  val bindingStack: BindingStack,
+)
