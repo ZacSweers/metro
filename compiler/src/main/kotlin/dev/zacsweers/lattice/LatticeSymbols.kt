@@ -180,6 +180,36 @@ internal class LatticeSymbols(
     )!!
   }
 
+  val setFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("SetFactory"))
+    )!!
+  }
+
+  val setFactoryBuilder: IrClassSymbol by lazy {
+    setFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  val setFactoryCompanionObject: IrClassSymbol by lazy {
+    setFactory.owner.companionObject()!!.symbol
+  }
+
+  val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    setFactoryCompanionObject.getSimpleFunction("builder")!!
+  }
+
+  val setFactoryBuilderAddProviderFunction: IrSimpleFunctionSymbol by lazy {
+    setFactoryBuilder.getSimpleFunction("addProvider")!!
+  }
+
+  val setFactoryBuilderAddCollectionProviderFunction: IrSimpleFunctionSymbol by lazy {
+    setFactoryBuilder.getSimpleFunction("addCollectionProvider")!!
+  }
+
+  val setFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    setFactoryBuilder.getSimpleFunction("build")!!
+  }
+
   val stdlibLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
   }
