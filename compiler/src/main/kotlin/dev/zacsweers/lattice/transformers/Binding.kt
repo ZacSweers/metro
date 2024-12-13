@@ -56,17 +56,20 @@ internal sealed interface Binding {
 
   data class Provided(
     val providerFunction: IrSimpleFunction,
-    override val typeKey: TypeKey,
+    val typeMetadata: TypeMetadata,
     override val parameters: Parameters,
     override val scope: IrAnnotation? = null,
     override val dependencies: Map<TypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey },
     val intoSet: Boolean,
     val elementsIntoSet: Boolean,
+    // TODO are both necessary? Is there any case where only one is specified?
+    val intoMap: Boolean,
     val mapKey: IrAnnotation?,
   ) : Binding {
+    override val typeKey: TypeKey = typeMetadata.typeKey
     val isMultibindingProvider
-      get() = intoSet || elementsIntoSet || mapKey != null
+      get() = intoSet || elementsIntoSet || mapKey != null || intoMap
 
     override val nameHint: String = providerFunction.name.asString()
 
@@ -122,8 +125,7 @@ internal sealed interface Binding {
   }
 
   // TODO sets
-  //  unscoped always initializes inline
-  //  - if empty - use emptySet()
+  //  unscoped always initializes inline? Dagger sometimes generates private getters
   //  - @multibinds methods can never be scoped
   //  - their providers can't go into providerFields - would cause duplicates. Need to look up by
   //   nameHint
@@ -132,7 +134,7 @@ internal sealed interface Binding {
     val isSet: Boolean,
     val isMap: Boolean,
     // Reconcile this with dependencies?
-    // TODO SortedSet
+    // TODO SortedSet?
     val providers: MutableSet<Provided> = mutableSetOf(),
   ) : Binding {
     override val scope: IrAnnotation? = null
