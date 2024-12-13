@@ -345,6 +345,9 @@ internal class LatticeSymbols(
   val scopeAnnotations
     get() = latticeClassIds.scopeAnnotations
 
+  val mapKeyAnnotations
+    get() = latticeClassIds.mapKeyAnnotations
+
   val providesAnnotations
     get() = latticeClassIds.providesAnnotations
 
