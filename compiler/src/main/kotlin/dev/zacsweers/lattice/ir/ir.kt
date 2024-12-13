@@ -114,6 +114,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
+import org.jetbrains.kotlin.ir.util.toIrConst
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -697,3 +698,15 @@ internal fun IrClass.implements(pluginContext: IrPluginContext, superType: Class
     it.rawTypeOrNull()?.classId == superType
   }
 }
+
+internal fun IrConstructorCall.getSingleConstStringArgument() =
+  (getValueArgument(0) as IrConst).value as String
+
+internal fun IrConstructorCall.getSingleConstBooleanArgument() =
+  (getValueArgument(0) as IrConst).value as Boolean
+
+internal fun IrBuilderWithScope.irFloat(value: Float) =
+  value.toIrConst(this.context.irBuiltIns.floatType)
+
+internal fun IrBuilderWithScope.irDouble(value: Double) =
+  value.toIrConst(this.context.irBuiltIns.doubleType)
