@@ -318,15 +318,18 @@ internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =
 internal fun IrConstructorCall.computeAnnotationHash(): Int {
   return Objects.hash(
     type.rawType().classIdOrFail,
-    valueArguments.map {
-      when (it) {
-        is IrConst -> it.value
-        is IrClassReference -> it.classType.classOrNull?.owner?.classId
-        else -> {
-          error("Unknown annotation argument type: ${it?.let { it::class.java }}")
+    valueArguments
+      .map {
+        when (it) {
+          is IrConst -> it.value
+          is IrClassReference -> it.classType.classOrNull?.owner?.classId
+          else -> {
+            error("Unknown annotation argument type: ${it?.let { it::class.java }}")
+          }
         }
       }
-    }.toTypedArray().contentDeepHashCode(),
+      .toTypedArray()
+      .contentDeepHashCode(),
   )
 }
 
