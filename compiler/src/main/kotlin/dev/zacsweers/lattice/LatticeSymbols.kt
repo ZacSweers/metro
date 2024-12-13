@@ -210,6 +210,66 @@ internal class LatticeSymbols(
     setFactoryBuilder.getSimpleFunction("build")!!
   }
 
+  val mapFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("MapFactory"))
+    )!!
+  }
+
+  val mapFactoryBuilder: IrClassSymbol by lazy {
+    mapFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  val mapFactoryCompanionObject: IrClassSymbol by lazy {
+    mapFactory.owner.companionObject()!!.symbol
+  }
+
+  val mapFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapFactoryCompanionObject.getSimpleFunction("builder")!!
+  }
+
+  val mapFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapFactoryBuilder.getSimpleFunction("put")!!
+  }
+
+  val mapFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+    mapFactoryBuilder.getSimpleFunction("putAll")!!
+  }
+
+  val mapFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapFactoryBuilder.getSimpleFunction("build")!!
+  }
+
+  val mapProviderFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("MapProviderFactory"))
+    )!!
+  }
+
+  val mapProviderFactoryBuilder: IrClassSymbol by lazy {
+    mapProviderFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  val mapProviderFactoryCompanionObject: IrClassSymbol by lazy {
+    mapProviderFactory.owner.companionObject()!!.symbol
+  }
+
+  val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderFactoryCompanionObject.getSimpleFunction("builder")!!
+  }
+
+  val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderFactoryBuilder.getSimpleFunction("put")!!
+  }
+
+  val mapProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderFactoryBuilder.getSimpleFunction("putAll")!!
+  }
+
+  val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderFactoryBuilder.getSimpleFunction("build")!!
+  }
+
   val stdlibLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
   }
