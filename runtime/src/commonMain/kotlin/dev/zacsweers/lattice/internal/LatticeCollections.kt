@@ -24,8 +24,14 @@ public fun List<*>.hasDuplicates(): Boolean =
     size != toSet().size
   }
 
-internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> =
-  buildMap(size) { putAll(this@toUnmodifiableMap) }
+internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> {
+  return if (isEmpty()) {
+    // This actually uses a singleton instance
+    emptyMap<K, V>()
+  } else {
+    buildMap(size) { putAll(this@toUnmodifiableMap) }
+  }
+}
 
 /**
  * Creates a {@link HashSet} instance, with a high enough "intial capcity" that it <em>should</em>
