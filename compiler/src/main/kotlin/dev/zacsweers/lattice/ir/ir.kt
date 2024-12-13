@@ -70,6 +70,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -77,6 +78,7 @@ import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
+import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
@@ -94,6 +96,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
@@ -311,10 +314,19 @@ internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =
  * Computes a hash key for this annotation instance composed of its underlying type and value
  * arguments.
  */
+@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrConstructorCall.computeAnnotationHash(): Int {
   return Objects.hash(
     type.rawType().classIdOrFail,
-    valueArguments.map { (it as IrConst).value }.toTypedArray().contentDeepHashCode(),
+    valueArguments.map {
+      when (it) {
+        is IrConst -> it.value
+        is IrClassReference -> it.classType.classOrNull?.owner?.classId
+        else -> {
+          error("Unknown annotation argument type: ${it?.let { it::class.java }}")
+        }
+      }
+    }.toTypedArray().contentDeepHashCode(),
   )
 }
 
@@ -699,14 +711,23 @@ internal fun IrClass.implements(pluginContext: IrPluginContext, superType: Class
   }
 }
 
-internal fun IrConstructorCall.getSingleConstStringArgument() =
-  (getValueArgument(0) as IrConst).value as String
+internal fun IrConstructorCall.getSingleConstStringArgumentOrNull(): String? =
+  (getValueArgument(0) as IrConst?)?.value as String?
 
-internal fun IrConstructorCall.getSingleConstBooleanArgument() =
-  (getValueArgument(0) as IrConst).value as Boolean
+internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? =
+  (getValueArgument(0) as IrConst?)?.value as Boolean?
 
 internal fun IrBuilderWithScope.irFloat(value: Float) =
   value.toIrConst(this.context.irBuiltIns.floatType)
 
 internal fun IrBuilderWithScope.irDouble(value: Double) =
   value.toIrConst(this.context.irBuiltIns.doubleType)
+
+internal fun IrBuilderWithScope.kClassReference(classType: IrType) =
+  IrClassReferenceImpl(
+    startOffset,
+    endOffset,
+    context.irBuiltIns.kClassClass.starProjectedType,
+    context.irBuiltIns.kClassClass,
+    classType,
+  )
