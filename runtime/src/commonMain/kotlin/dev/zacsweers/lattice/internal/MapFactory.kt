@@ -44,6 +44,10 @@ public class MapFactory<K : Any, V : Any> private constructor(map: Map<K, Provid
       super.put(key, providerOfValue)
     }
 
+    override fun putAll(mapOfProviders: Provider<Map<K, V>>): Builder<K, V> = apply {
+      super.putAll(mapOfProviders)
+    }
+
     /** Returns a new [MapFactory]. */
     public fun build(): MapFactory<K, V> {
       return MapFactory(map)
