@@ -799,27 +799,37 @@ class ComponentProcessingTest {
   //  - array types?
   //  - mapkey creators>
 
-  // TODO implement MapProvider
-  //  @Test
-  //  fun `multibindings - map with scoped provider values`() {
-  //    val component = createComponent<MultibindingComponentWithWithScopedMapProviderDeps>()
-  //    assertEquals(mapOf(1 to 0, 2 to 0), component.ints.mapValues { it.value() })
-  //    assertEquals(mapOf(1 to 0, 2 to 1), component.ints.mapValues { it.value() })
-  //    assertEquals(mapOf(1 to 0, 2 to 2), component.ints.mapValues { it.value() })
-  //  }
-  //
-  //  @Singleton
-  //  @Component
-  //  abstract class MultibindingComponentWithWithScopedMapProviderDeps {
-  //    private var scopedCount = 0
-  //    private var unscopedCount = 0
-  //
-  //    abstract val ints: Map<Int, Provider<Int>>
-  //
-  //    @Provides @Singleton @IntoMap @IntKey(1) fun provideScopedInt(): Int = scopedCount++
-  //
-  //    @Provides @IntoMap @IntKey(2) fun provideUnscopedInt(): Int = unscopedCount++
-  //  }
+  @Test
+  fun `multibindings - map with different scoped provider values`() {
+    val component = createComponent<MultibindingComponentWithWithScopedMapProviderDeps>()
+
+    var unscopedCount = 0
+    fun validate(body: () -> Map<Int, Provider<Int>>) {
+      // Scoped int (key = 1) never increments no matter how many times we call the provider
+      assertEquals(mapOf(1 to 0, 2 to unscopedCount++), body().mapValues { it.value() })
+      assertEquals(mapOf(1 to 0, 2 to unscopedCount++), body().mapValues { it.value() })
+      assertEquals(mapOf(1 to 0, 2 to unscopedCount++), body().mapValues { it.value() })
+    }
+
+    validate(component::ints)
+//    validate { component.providerInts.invoke() }
+//    validate { component.lazyInts.value }
+  }
+
+  @Singleton
+  @Component
+  abstract class MultibindingComponentWithWithScopedMapProviderDeps {
+    private var scopedCount = 0
+    private var unscopedCount = 0
+
+    abstract val ints: Map<Int, Provider<Int>>
+//    abstract val providerInts: Provider<Map<Int, Provider<Int>>>
+//    abstract val lazyInts: Lazy<Map<Int, Provider<Int>>>
+
+    @Provides @Singleton @IntoMap @IntKey(1) fun provideScopedInt(): Int = scopedCount++
+
+    @Provides @IntoMap @IntKey(2) fun provideUnscopedInt(): Int = unscopedCount++
+  }
 
   enum class Seasoning {
     SPICY,

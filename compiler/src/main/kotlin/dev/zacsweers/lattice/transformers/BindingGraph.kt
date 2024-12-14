@@ -22,6 +22,9 @@ import dev.zacsweers.lattice.ir.singleAbstractFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.typeOrNull
+import org.jetbrains.kotlin.ir.types.typeWith
 
 internal class BindingGraph(private val context: LatticeTransformerContext) {
   private val bindings = mutableMapOf<TypeKey, Binding>()
@@ -76,6 +79,15 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     return bindings.getOrPut(typeKey) {
       Binding.Multibinding.create(pluginContext, typeKey).also {
         addBinding(typeKey, it, BindingStack.empty())
+        // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
+        if (it.isMap) {
+          val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
+          val valueType =
+            typeKey.type.arguments[1].typeOrNull!!.wrapInProvider(context.symbols.latticeProvider)
+          val providerTypeKey =
+            TypeKey(pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+          addBinding(providerTypeKey, it, BindingStack.empty())
+        }
       }
     } as Binding.Multibinding
   }

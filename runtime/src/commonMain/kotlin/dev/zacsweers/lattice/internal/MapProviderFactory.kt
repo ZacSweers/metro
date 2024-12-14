@@ -18,8 +18,8 @@ package dev.zacsweers.lattice.internal
 import dev.zacsweers.lattice.Provider
 
 /**
- * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
- * Provider<V>>` when calling [get] (as specified by [Factory]).
+ * A [Factory] implementation used to implement [Map] bindings. This factory returns a
+ * `Map<K, Provider<V>>` when calling [get] (as specified by [Factory]).
  */
 public class MapProviderFactory<K : Any, V : Any>
 private constructor(contributingMap: Map<K, Provider<V>>) :
