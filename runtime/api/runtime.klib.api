@@ -138,6 +138,6 @@ abstract fun interface <#A: kotlin/Any> dev.zacsweers.lattice/Provider { // dev.
 
 abstract class dev.zacsweers.lattice.annotations/AppScope // dev.zacsweers.lattice.annotations/AppScope|null[0]
 
-final fun <#A: kotlin/Any> dev.zacsweers.lattice/provider(kotlin/Function0<#A>): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]
+final inline fun <#A: kotlin/Any> dev.zacsweers.lattice/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createComponent(): #A // dev.zacsweers.lattice/createComponent|createComponent(){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createComponentFactory(): #A // dev.zacsweers.lattice/createComponentFactory|createComponentFactory(){0§<kotlin.Any>}[0]
