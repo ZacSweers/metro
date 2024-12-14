@@ -794,11 +794,6 @@ class ComponentProcessingTest {
     @MapKey(unwrapValue = false) annotation class WrappedSeasoningKey(val value: Seasoning)
   }
 
-  // TODO test other keys
-  //  - all the other primitives (char float double short long boolean byte)
-  //  - array types?
-  //  - mapkey creators>
-
   @Test
   fun `multibindings - map with different scoped provider values`() {
     val component = createComponent<MultibindingComponentWithWithScopedMapProviderDeps>()
