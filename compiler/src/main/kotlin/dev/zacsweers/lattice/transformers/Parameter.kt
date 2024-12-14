@@ -231,44 +231,6 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
   }
 }
 
-internal fun IrType.asTypeMetadata(
-  context: LatticeTransformerContext,
-  qualifierAnnotation: IrAnnotation?,
-): ContextualTypeKey {
-  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
-
-  val declaredType = this
-  val rawTypeClass = declaredType.rawTypeOrNull()
-  val rawType = rawTypeClass?.classId
-
-  val isWrappedInProvider = rawType in context.symbols.providerTypes
-  val isWrappedInLazy = rawType in context.symbols.lazyTypes
-  val isLazyWrappedInProvider =
-    isWrappedInProvider &&
-      declaredType.arguments[0].typeOrFail.rawTypeOrNull()?.classId in context.symbols.lazyTypes
-
-  val type =
-    when {
-      isLazyWrappedInProvider ->
-        declaredType.arguments
-          .single()
-          .typeOrFail
-          .expectAs<IrSimpleType>()
-          .arguments
-          .single()
-          .typeOrFail
-      isWrappedInProvider || isWrappedInLazy -> declaredType.arguments.single().typeOrFail
-      else -> declaredType
-    }
-  val typeKey = TypeKey(type, qualifierAnnotation)
-  return ContextualTypeKey(
-    typeKey = typeKey,
-    isWrappedInProvider = isWrappedInProvider,
-    isWrappedInLazy = isWrappedInLazy,
-    isLazyWrappedInProvider = isLazyWrappedInProvider,
-  )
-}
-
 internal fun IrValueParameter.toConstructorParameter(
   context: LatticeTransformerContext,
   kind: Kind = Kind.VALUE,
@@ -280,7 +242,7 @@ internal fun IrValueParameter.toConstructorParameter(
   val declaredType =
     typeParameterRemapper?.invoke(this@toConstructorParameter.type)
       ?: this@toConstructorParameter.type
-  val typeMetadata = declaredType.asTypeMetadata(context, with(context) { qualifierAnnotation() })
+  val typeMetadata = declaredType.asContextualTypeKey(context, with(context) { qualifierAnnotation() })
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 

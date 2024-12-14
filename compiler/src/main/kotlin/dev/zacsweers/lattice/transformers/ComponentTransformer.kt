@@ -1319,7 +1319,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           val keyType: IrType = mapTypeArgs[0].typeOrFail
           val rawValueType = mapTypeArgs[1].typeOrFail
           val rawValueTypeMetadata =
-            rawValueType.typeOrFail.asTypeMetadata(this@ComponentTransformer, null)
+            rawValueType.typeOrFail.asContextualTypeKey(this@ComponentTransformer, null)
           val isProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
           val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
