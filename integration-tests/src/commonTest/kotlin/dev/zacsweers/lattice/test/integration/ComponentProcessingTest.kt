@@ -30,6 +30,8 @@ import dev.zacsweers.lattice.annotations.multibindings.ElementsIntoSet
 import dev.zacsweers.lattice.annotations.multibindings.IntKey
 import dev.zacsweers.lattice.annotations.multibindings.IntoMap
 import dev.zacsweers.lattice.annotations.multibindings.IntoSet
+import dev.zacsweers.lattice.annotations.multibindings.LongKey
+import dev.zacsweers.lattice.annotations.multibindings.MapKey
 import dev.zacsweers.lattice.annotations.multibindings.Multibinds
 import dev.zacsweers.lattice.annotations.multibindings.StringKey
 import dev.zacsweers.lattice.createComponent
@@ -742,6 +744,60 @@ class ComponentProcessingTest {
     @Provides @IntoMap @Singleton @ClassKey(Float::class) fun provideMapInt2() = 2
   }
 
+  @Test
+  fun `multibindings - misc other map key types`() {
+    val component = createComponent<MultibindingComponentWithMultipleOtherMapKeyTypes>()
+    assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), component.seasoningAmounts)
+    assertEquals(mapOf(1L to 1, 2L to 2), component.longs)
+    assertEquals(mapOf("1" to 1, "2" to 2), component.strings)
+    //    assertEquals(
+    //      mapOf(
+    //        MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY)
+    // to 1,
+    //
+    // MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to
+    //          2,
+    //      ),
+    //      component.wrappedSeasoningAmounts,
+    //    )
+  }
+
+  @Component
+  interface MultibindingComponentWithMultipleOtherMapKeyTypes {
+    val seasoningAmounts: Map<Seasoning, Int>
+
+    @Provides @IntoMap @SeasoningKey(Seasoning.SPICY) fun provideSpicySeasoning() = 1
+
+    @Provides @IntoMap @SeasoningKey(Seasoning.REGULAR) fun provideRegularSeasoning() = 2
+
+    @MapKey annotation class SeasoningKey(val value: Seasoning)
+
+    val longs: Map<Long, Int>
+
+    @Provides @IntoMap @LongKey(1) fun provideLongKey1() = 1
+
+    @Provides @IntoMap @LongKey(2) fun provideLongKey2() = 2
+
+    val strings: Map<String, Int>
+
+    @Provides @IntoMap @StringKey("1") fun provideStringKey1() = 1
+
+    @Provides @IntoMap @StringKey("2") fun provideStringKey2() = 2
+
+    // TODO unwrapValues test
+    //    val wrappedSeasoningAmounts: Map<WrappedSeasoningKey, Int>
+    //
+    //    @Provides @IntoMap @WrappedSeasoningKey(Seasoning.SPICY) fun
+    // provideWrappedSpicySeasoning() = 1
+    //
+    //    @Provides
+    //    @IntoMap
+    //    @WrappedSeasoningKey(Seasoning.REGULAR)
+    //    fun provideWrappedRegularSeasoning() = 2
+    //
+    //    @MapKey(unwrapValue = false) annotation class WrappedSeasoningKey(val value: Seasoning)
+  }
+
   // TODO test other keys
   //  - all the other primitives (char float double short long boolean byte)
   //  - array types?
@@ -768,6 +824,11 @@ class ComponentProcessingTest {
   //
   //    @Provides @IntoMap @IntKey(2) fun provideUnscopedInt(): Int = unscopedCount++
   //  }
+
+  enum class Seasoning {
+    SPICY,
+    REGULAR,
+  }
 
   @Inject
   @Singleton
