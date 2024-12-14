@@ -807,8 +807,8 @@ class ComponentProcessingTest {
     }
 
     validate(component::ints)
-//    validate { component.providerInts.invoke() }
-//    validate { component.lazyInts.value }
+    validate { component.providerInts() }
+    validate { component.lazyInts.value }
   }
 
   @Singleton
@@ -818,8 +818,8 @@ class ComponentProcessingTest {
     private var unscopedCount = 0
 
     abstract val ints: Map<Int, Provider<Int>>
-//    abstract val providerInts: Provider<Map<Int, Provider<Int>>>
-//    abstract val lazyInts: Lazy<Map<Int, Provider<Int>>>
+    abstract val providerInts: Provider<Map<Int, Provider<Int>>>
+    abstract val lazyInts: Lazy<Map<Int, Provider<Int>>>
 
     @Provides @Singleton @IntoMap @IntKey(1) fun provideScopedInt(): Int = scopedCount++
 
