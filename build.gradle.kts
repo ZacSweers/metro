@@ -99,6 +99,8 @@ allprojects {
         "**/DelegateFactory.kt",
         "**/MapFactory.kt",
         "**/MapProviderFactory.kt",
+        "**/MapProviderFactoryTest.kt",
+        "**/SetFactoryTest.kt",
         "**/annotations/multibindings/*.kt",
       )
     }

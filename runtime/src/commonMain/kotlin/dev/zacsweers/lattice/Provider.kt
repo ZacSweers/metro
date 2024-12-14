@@ -19,6 +19,6 @@ public fun interface Provider<T : Any> {
   public operator fun invoke(): T
 }
 
-public fun <T : Any> provider(provider: () -> T): Provider<T> {
+public inline fun <T : Any> provider(crossinline provider: () -> T): Provider<T> {
   return Provider { provider() }
 }

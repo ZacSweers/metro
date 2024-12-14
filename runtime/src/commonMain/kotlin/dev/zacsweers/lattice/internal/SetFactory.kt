@@ -25,7 +25,7 @@ import dev.zacsweers.lattice.Provider
 public class SetFactory<T : Any>
 private constructor(
   private val individualProviders: List<Provider<T>>,
-  private val collectionProviders: List<Provider<Collection<T>>>,
+  private val collectionProviders: List<Provider<out Collection<T>>>,
 ) : Factory<Set<T>> {
   /**
    * A builder to accumulate `Provider<T>` and `Provider<Collection<T>>` instances. These are only
@@ -35,7 +35,7 @@ private constructor(
   public class Builder<T : Any>
   internal constructor(individualProviderSize: Int, collectionProviderSize: Int) {
     private val individualProviders: MutableList<Provider<T>> = presizedList(individualProviderSize)
-    private val collectionProviders: MutableList<Provider<Collection<T>>> =
+    private val collectionProviders: MutableList<Provider<out Collection<T>>> =
       presizedList(collectionProviderSize)
 
     public fun addProvider(individualProvider: Provider<T>): Builder<T> {
@@ -44,7 +44,7 @@ private constructor(
       return this
     }
 
-    public fun addCollectionProvider(collectionProvider: Provider<Collection<T>>): Builder<T> {
+    public fun addCollectionProvider(collectionProvider: Provider<out Collection<T>>): Builder<T> {
       collectionProviders.add(collectionProvider)
       return this
     }
