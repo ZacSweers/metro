@@ -1230,13 +1230,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
             // .build()
             irInvoke(
-                dispatchReceiver = withCollectionProviders,
-                callee = symbols.setFactoryBuilderBuildFunction,
-                typeHint =
-                  pluginContext.irBuiltIns.setClass
-                    .typeWith(elementType)
-                    .wrapInProvider(symbols.latticeProvider),
-              )
+              dispatchReceiver = withCollectionProviders,
+              callee = symbols.setFactoryBuilderBuildFunction,
+              typeHint =
+                pluginContext.irBuiltIns.setClass
+                  .typeWith(elementType)
+                  .wrapInProvider(symbols.latticeProvider),
+            )
           } else {
             val callee: IrSimpleFunctionSymbol
             val args: List<IrExpression>
@@ -1281,7 +1281,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 }
               }
             }
-            irCall(callee = callee, type = binding.typeKey.type, typeArguments = listOf(elementType))
+            irCall(
+                callee = callee,
+                type = binding.typeKey.type,
+                typeArguments = listOf(elementType),
+              )
               .apply {
                 for ((i, arg) in args.withIndex()) {
                   putValueArgument(i, arg)
@@ -1386,13 +1390,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               symbols.mapFactoryBuilderBuildFunction
             }
           irInvoke(
-              dispatchReceiver = withProviders,
-              callee = buildFunction,
-              typeHint =
-                pluginContext.irBuiltIns.mapClass
-                  .typeWith(keyType, rawValueType)
-                  .wrapInProvider(symbols.latticeProvider),
-            )
+            dispatchReceiver = withProviders,
+            callee = buildFunction,
+            typeHint =
+              pluginContext.irBuiltIns.mapClass
+                .typeWith(keyType, rawValueType)
+                .wrapInProvider(symbols.latticeProvider),
+          )
         }
       }
       is Binding.BoundInstance -> {

@@ -16,11 +16,8 @@
 package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.expectAs
-import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.ir.annotationsIn
 import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
-import dev.zacsweers.lattice.ir.rawTypeOrNull
 import dev.zacsweers.lattice.transformers.Parameter.Kind
 import kotlin.collections.count
 import kotlin.collections.sumOf
@@ -31,15 +28,11 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
-import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
-import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
-import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.name.Name
 
 internal sealed interface Parameter {
@@ -242,7 +235,8 @@ internal fun IrValueParameter.toConstructorParameter(
   val declaredType =
     typeParameterRemapper?.invoke(this@toConstructorParameter.type)
       ?: this@toConstructorParameter.type
-  val typeMetadata = declaredType.asContextualTypeKey(context, with(context) { qualifierAnnotation() })
+  val typeMetadata =
+    declaredType.asContextualTypeKey(context, with(context) { qualifierAnnotation() })
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 

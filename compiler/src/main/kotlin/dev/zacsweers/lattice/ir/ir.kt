@@ -18,11 +18,10 @@ package dev.zacsweers.lattice.ir
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.letIf
-import dev.zacsweers.lattice.transformers.ComponentTransformer
 import dev.zacsweers.lattice.transformers.ConstructorParameter
+import dev.zacsweers.lattice.transformers.ContextualTypeKey
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.Parameter
-import dev.zacsweers.lattice.transformers.ContextualTypeKey
 import dev.zacsweers.lattice.transformers.isLatticeProviderType
 import dev.zacsweers.lattice.transformers.wrapInLazy
 import dev.zacsweers.lattice.transformers.wrapInProvider
@@ -725,7 +724,10 @@ internal fun IrClass.implements(pluginContext: IrPluginContext, superType: Class
   return implementsAny(pluginContext, setOf(superType))
 }
 
-internal fun IrClass.implementsAny(pluginContext: IrPluginContext, superTypes: Set<ClassId>): Boolean {
+internal fun IrClass.implementsAny(
+  pluginContext: IrPluginContext,
+  superTypes: Set<ClassId>,
+): Boolean {
   return getAllSuperTypes(pluginContext, excludeSelf = false).any {
     it.rawTypeOrNull()?.classId in superTypes
   }

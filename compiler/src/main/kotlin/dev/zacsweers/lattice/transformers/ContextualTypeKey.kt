@@ -1,10 +1,22 @@
+/*
+ * Copyright (C) 2024 Zac Sweers
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package dev.zacsweers.lattice.transformers
 
-import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.expectAs
 import dev.zacsweers.lattice.ir.IrAnnotation
-import dev.zacsweers.lattice.ir.getAllSuperTypes
-import dev.zacsweers.lattice.ir.implements
 import dev.zacsweers.lattice.ir.implementsAny
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
@@ -16,7 +28,6 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
 
 internal data class ContextualTypeKey(
@@ -26,7 +37,8 @@ internal data class ContextualTypeKey(
   val isLazyWrappedInProvider: Boolean,
 ) {
 
-  val requiresProviderInstance: Boolean = isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
+  val requiresProviderInstance: Boolean =
+    isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
 
   // TODO cache these in ComponentTransformer or shared transformer data
   companion object {
@@ -54,9 +66,7 @@ internal data class ContextualTypeKey(
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun IrType.isLatticeProviderType(
-  context: LatticeTransformerContext,
-): Boolean {
+internal fun IrType.isLatticeProviderType(context: LatticeTransformerContext): Boolean {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
   val declaredType = this
