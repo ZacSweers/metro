@@ -399,7 +399,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
 
     // Add @Multibinding exposed types
-    component.exposedTypes.forEach { getter, typeMetadata ->
+    component.exposedTypes.forEach { getter, contextualTypeKey ->
       val annotationContainer: IrAnnotationContainer =
         getter.correspondingPropertySymbol?.owner ?: getter
       val isMultibindingDeclaration =
@@ -407,8 +407,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
       if (isMultibindingDeclaration) {
         graph.addBinding(
-          typeMetadata.typeKey,
-          Binding.Multibinding.create(pluginContext, typeMetadata.typeKey),
+          contextualTypeKey.typeKey,
+          Binding.Multibinding.create(pluginContext, contextualTypeKey.typeKey),
           bindingStack,
         )
       }
@@ -416,13 +416,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // Add bindings from component dependencies
     component.dependencies.forEach { depNode ->
-      depNode.exposedTypes.forEach { (getter, typeMetadata) ->
+      depNode.exposedTypes.forEach { (getter, contextualTypeKey) ->
         graph.addBinding(
-          typeMetadata.typeKey,
+          contextualTypeKey.typeKey,
           Binding.ComponentDependency(
             component = depNode.sourceComponent,
             getter = getter,
-            typeKey = typeMetadata.typeKey,
+            typeKey = contextualTypeKey.typeKey,
           ),
           bindingStack,
         )
@@ -603,8 +603,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               // It's a component dep. Add all its exposed types as available keys and point them at
               // this constructor parameter for provider field initialization
               for (componentDep in node.allDependencies) {
-                for ((_, typeMetadata) in componentDep.exposedTypes) {
-                  componentTypesToCtorParams[typeMetadata.typeKey] = irParam
+                for ((_, contextualTypeKey) in componentDep.exposedTypes) {
+                  componentTypesToCtorParams[contextualTypeKey.typeKey] = irParam
                 }
               }
             }
@@ -716,8 +716,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             compareBy<Map.Entry<IrSimpleFunction, ContextualTypeKey>> { it.key.name }
               .thenComparing { it.value.typeKey }
           )
-          .forEach { (function, typeMetadata) ->
-            val key = typeMetadata.typeKey
+          .forEach { (function, contextualTypeKey) ->
+            val key = contextualTypeKey.typeKey
             val property =
               function.correspondingPropertySymbol?.owner?.let { property ->
                 addProperty { name = property.name }
@@ -750,7 +750,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                     // It's a provider arg, determine if we need to unpack it
                     irExprBody(
                       typeAsProviderArgument(
-                        typeMetadata,
+                        contextualTypeKey,
                         bindingCode,
                         isAssisted = false,
                         isComponentInstance = false,
@@ -777,8 +777,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     val visitedBindings = mutableSetOf<TypeKey>()
 
     // Initial pass from each root
-    node.exposedTypes.forEach { (accessor, typeMetadata) ->
-      val key = typeMetadata.typeKey
+    node.exposedTypes.forEach { (accessor, contextualTypeKey) ->
+      val key = contextualTypeKey.typeKey
       findAndProcessBinding(
         key = key,
         stackEntry = BindingStackEntry.requestedAt(key, accessor),
