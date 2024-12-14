@@ -122,24 +122,24 @@ internal fun Name.uniqueParameterName(vararg superParameters: List<Parameter>): 
 internal data class ConstructorParameter(
   override val kind: Kind,
   override val name: Name,
-  val typeMetadata: TypeMetadata,
+  val contextualTypeKey: ContextualTypeKey,
   override val originalName: Name,
   override val providerType: IrType,
   override val lazyType: IrType,
   override val isAssisted: Boolean,
   override val assistedIdentifier: String,
   override val assistedParameterKey: Parameter.AssistedParameterKey =
-    Parameter.AssistedParameterKey(typeMetadata.typeKey, assistedIdentifier),
+    Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
   override val symbols: LatticeSymbols,
   override val isComponentInstance: Boolean,
   val bindingStackEntry: BindingStackEntry,
   override val isBindsInstance: Boolean,
 ) : Parameter {
-  override val typeKey: TypeKey = typeMetadata.typeKey
-  override val type: IrType = typeMetadata.typeKey.type
-  override val isWrappedInProvider: Boolean = typeMetadata.isWrappedInProvider
-  override val isWrappedInLazy: Boolean = typeMetadata.isWrappedInLazy
-  override val isLazyWrappedInProvider: Boolean = typeMetadata.isLazyWrappedInProvider
+  override val typeKey: TypeKey = contextualTypeKey.typeKey
+  override val type: IrType = contextualTypeKey.typeKey.type
+  override val isWrappedInProvider: Boolean = contextualTypeKey.isWrappedInProvider
+  override val isWrappedInLazy: Boolean = contextualTypeKey.isWrappedInLazy
+  override val isLazyWrappedInProvider: Boolean = contextualTypeKey.isLazyWrappedInProvider
 }
 
 internal fun IrType.wrapInProvider(providerType: IrType): IrType {
@@ -234,7 +234,7 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
 internal fun IrType.asTypeMetadata(
   context: LatticeTransformerContext,
   qualifierAnnotation: IrAnnotation?,
-): TypeMetadata {
+): ContextualTypeKey {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
   val declaredType = this
@@ -261,7 +261,7 @@ internal fun IrType.asTypeMetadata(
       else -> declaredType
     }
   val typeKey = TypeKey(type, qualifierAnnotation)
-  return TypeMetadata(
+  return ContextualTypeKey(
     typeKey = typeKey,
     isWrappedInProvider = isWrappedInProvider,
     isWrappedInLazy = isWrappedInLazy,
@@ -295,7 +295,7 @@ internal fun IrValueParameter.toConstructorParameter(
     kind = kind,
     name = uniqueName,
     originalName = name,
-    typeMetadata = typeMetadata,
+    contextualTypeKey = typeMetadata,
     providerType = typeMetadata.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
     lazyType = typeMetadata.typeKey.type.wrapInLazy(context.symbols),
     isAssisted = assistedAnnotation != null,

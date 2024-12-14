@@ -110,11 +110,11 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         )
       } else if (with(context) { irClass.isAnnotatedWithAny(symbols.assistedFactoryAnnotations) }) {
         val function = irClass.singleAbstractFunction(context)
-        val targetTypeMetadata = TypeMetadata.from(context, function)
+        val targetContextualTypeKey = ContextualTypeKey.from(context, function)
         val bindingStackEntry = BindingStackEntry.injectedAt(key, function)
         val targetBinding =
           bindingStack.withEntry(bindingStackEntry) {
-            getOrCreateBinding(targetTypeMetadata.typeKey, bindingStack)
+            getOrCreateBinding(targetContextualTypeKey.typeKey, bindingStack)
           } as Binding.ConstructorInjected
         Binding.Assisted(
           type = irClass,
@@ -230,7 +230,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   ): Set<TypeKey> {
     return function.valueParameters
       .map { param ->
-        val paramKey = TypeMetadata.from(context, param).typeKey
+        val paramKey = ContextualTypeKey.from(context, param).typeKey
         bindingStack.withEntry(BindingStackEntry.injectedAt(paramKey, function, param)) {
           // This recursive call will create bindings for injectable types as needed
           getOrCreateBinding(paramKey, bindingStack)

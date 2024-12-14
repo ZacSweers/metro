@@ -21,7 +21,7 @@ import dev.zacsweers.lattice.letIf
 import dev.zacsweers.lattice.transformers.ConstructorParameter
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.Parameter
-import dev.zacsweers.lattice.transformers.TypeMetadata
+import dev.zacsweers.lattice.transformers.ContextualTypeKey
 import dev.zacsweers.lattice.transformers.wrapInLazy
 import dev.zacsweers.lattice.transformers.wrapInProvider
 import java.util.Objects
@@ -476,7 +476,7 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
   // receiver is the Provider instance itself
   val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
   // TODO this cast is unsafe
-  val typeMetadata = (parameter as ConstructorParameter).typeMetadata
+  val typeMetadata = (parameter as ConstructorParameter).contextualTypeKey
   return typeAsProviderArgument(
     typeMetadata,
     providerInstance,
@@ -487,7 +487,7 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
 }
 
 internal fun IrBuilderWithScope.typeAsProviderArgument(
-  type: TypeMetadata,
+  type: ContextualTypeKey,
   providerInstance: IrExpression,
   isAssisted: Boolean,
   isComponentInstance: Boolean,

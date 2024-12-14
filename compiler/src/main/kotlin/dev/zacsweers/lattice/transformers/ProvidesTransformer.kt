@@ -201,8 +201,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     val allParameters = buildList {
       if (!reference.isInObject) {
-        val typeMetadata =
-          TypeMetadata(
+        val contextualTypeKey =
+          ContextualTypeKey(
             typeKey = TypeKey(componentType),
             isWrappedInProvider = false,
             isWrappedInLazy = false,
@@ -212,7 +212,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           ConstructorParameter(
             kind = Parameter.Kind.VALUE,
             name = Name.identifier("component"),
-            typeMetadata = typeMetadata,
+            contextualTypeKey = contextualTypeKey,
             originalName = Name.identifier("component"),
             // This type is always the instance type
             providerType = componentType,
@@ -222,7 +222,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             symbols = symbols,
             isComponentInstance = true,
             // TODO is this right/ever going to happen?
-            bindingStackEntry = BindingStackEntry.simpleTypeRef(typeMetadata.typeKey),
+            bindingStackEntry = BindingStackEntry.simpleTypeRef(contextualTypeKey.typeKey),
             isBindsInstance = false,
           )
         )
@@ -289,7 +289,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       // TODO FIR error if it is top-level/not in component
 
       val parent = function.parentAsClass
-      val typeKey = TypeMetadata.from(this, function).typeKey
+      val typeKey = ContextualTypeKey.from(this, function).typeKey
       CallableReference(
         fqName = function.kotlinFqName,
         isInternal = function.visibility == DescriptorVisibilities.INTERNAL,
@@ -321,7 +321,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             "No getter found for property $fqName. Note that field properties are not supported"
           )
 
-      val typeKey = TypeMetadata.from(this, getter).typeKey
+      val typeKey = ContextualTypeKey.from(this, getter).typeKey
 
       val parent = property.parentAsClass
       return CallableReference(

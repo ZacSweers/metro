@@ -138,7 +138,7 @@ internal class AssistedFactoryTransformer(
             this.returnType = returnType
             val functionParams =
               valueParameters.associateBy { valueParam ->
-                val key = TypeMetadata.from(this@AssistedFactoryTransformer, valueParam).typeKey
+                val key = ContextualTypeKey.from(this@AssistedFactoryTransformer, valueParam).typeKey
                 valueParam.toAssistedParameterKey(symbols, key)
               }
             body =

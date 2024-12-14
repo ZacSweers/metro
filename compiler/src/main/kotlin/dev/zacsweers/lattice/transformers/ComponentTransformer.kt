@@ -244,7 +244,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // TODO is this enough for properties like @get:Provides
         .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
         // TODO validate
-        .map { function -> TypeMetadata.from(this, function).typeKey to function }
+        .map { function -> ContextualTypeKey.from(this, function).typeKey to function }
         .toList()
 
     // TODO infer @Multibinds declarations from there
@@ -259,7 +259,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             // TODO is this enough for properties like @get:Provides
             !function.isAnnotatedWithAny(symbols.providesAnnotations)
         }
-        .associateWith { function -> TypeMetadata.from(this, function) }
+        .associateWith { function -> ContextualTypeKey.from(this, function) }
 
     val creator =
       componentDeclaration.nestedClasses
@@ -337,7 +337,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       val provider =
         Binding.Provided(
           providerFunction = function,
-          typeMetadata = TypeMetadata.from(this, function),
+          contextualTypeKey = ContextualTypeKey.from(this, function),
           parameters = function.parameters(this),
           scope = function.scopeAnnotation(),
           // TODO FIR only one annotation is allowed
@@ -713,7 +713,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         node.exposedTypes.entries
           // Stable sort. First the name then the type
           .sortedWith(
-            compareBy<Map.Entry<IrSimpleFunction, TypeMetadata>> { it.key.name }
+            compareBy<Map.Entry<IrSimpleFunction, ContextualTypeKey>> { it.key.name }
               .thenComparing { it.value.typeKey }
           )
           .forEach { (function, typeMetadata) ->
@@ -966,7 +966,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.valueParameters.map { TypeMetadata.from(this@ComponentTransformer, it).typeKey }.joinToString()}
+            - ${function.valueParameters.map { ContextualTypeKey.from(this@ComponentTransformer, it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
@@ -1371,7 +1371,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
           val withProviders =
             binding.providers.fold(builder) { receiver, provider ->
-              val providerTypeMetadata = provider.typeMetadata
+              val providerTypeMetadata = provider.contextualTypeKey
 
               // TODO FIR this should be an error actually
               val isMap =
@@ -1476,7 +1476,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   ): IrExpression {
     val providerInstance = generateBindingCode(provider, generationContext)
     return typeAsProviderArgument(
-      TypeMetadata(provider.typeKey, false, false, false),
+      ContextualTypeKey(provider.typeKey, false, false, false),
       providerInstance,
       false,
       false,

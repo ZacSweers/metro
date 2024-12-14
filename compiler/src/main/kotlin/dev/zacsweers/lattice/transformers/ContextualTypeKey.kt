@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 
-internal data class TypeMetadata(
+internal data class ContextualTypeKey(
   val typeKey: TypeKey,
   val isWrappedInProvider: Boolean,
   val isWrappedInLazy: Boolean,
@@ -18,7 +18,7 @@ internal data class TypeMetadata(
       context: LatticeTransformerContext,
       function: IrSimpleFunction,
       type: IrType = function.returnType,
-    ): TypeMetadata =
+    ): ContextualTypeKey =
       type.asTypeMetadata(
         context,
         with(context) {
@@ -31,7 +31,7 @@ internal data class TypeMetadata(
       context: LatticeTransformerContext,
       parameter: IrValueParameter,
       type: IrType = parameter.type,
-    ): TypeMetadata =
+    ): ContextualTypeKey =
       type.asTypeMetadata(context, with(context) { parameter.qualifierAnnotation() })
   }
 }

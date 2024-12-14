@@ -56,7 +56,7 @@ internal sealed interface Binding {
 
   data class Provided(
     val providerFunction: IrSimpleFunction,
-    val typeMetadata: TypeMetadata,
+    val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters,
     override val scope: IrAnnotation? = null,
     override val dependencies: Map<TypeKey, Parameter> =
@@ -67,7 +67,7 @@ internal sealed interface Binding {
     val intoMap: Boolean,
     val mapKey: IrAnnotation?,
   ) : Binding {
-    override val typeKey: TypeKey = typeMetadata.typeKey
+    override val typeKey: TypeKey = contextualTypeKey.typeKey
     val isMultibindingProvider
       get() = intoSet || elementsIntoSet || mapKey != null || intoMap
 
