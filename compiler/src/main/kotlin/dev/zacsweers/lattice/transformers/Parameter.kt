@@ -27,12 +27,10 @@ import kotlin.collections.sumOf
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
-import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -230,37 +228,6 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
       valueParameter.name,
       typeParameterRemapper,
     )
-  }
-}
-
-internal data class TypeMetadata(
-  val typeKey: TypeKey,
-  val isWrappedInProvider: Boolean,
-  val isWrappedInLazy: Boolean,
-  val isLazyWrappedInProvider: Boolean,
-) {
-  // TODO cache these in ComponentTransformer or shared transformer data
-  companion object {
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
-    fun from(
-      context: LatticeTransformerContext,
-      function: IrSimpleFunction,
-      type: IrType = function.returnType,
-    ): TypeMetadata =
-      type.asTypeMetadata(
-        context,
-        with(context) {
-          function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
-            ?: function.qualifierAnnotation()
-        },
-      )
-
-    fun from(
-      context: LatticeTransformerContext,
-      parameter: IrValueParameter,
-      type: IrType = parameter.type,
-    ): TypeMetadata =
-      type.asTypeMetadata(context, with(context) { parameter.qualifierAnnotation() })
   }
 }
 
