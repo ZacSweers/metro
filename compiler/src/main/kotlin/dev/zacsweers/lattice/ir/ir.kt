@@ -76,6 +76,7 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
+import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
@@ -323,6 +324,7 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
         when (it) {
           is IrConst -> it.value
           is IrClassReference -> it.classType.classOrNull?.owner?.classId
+          is IrGetEnumValue -> it.symbol.owner.fqNameWhenAvailable
           else -> {
             error("Unknown annotation argument type: ${it?.let { it::class.java }}")
           }
