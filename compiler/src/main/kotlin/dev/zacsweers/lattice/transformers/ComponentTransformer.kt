@@ -66,6 +66,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -368,9 +369,14 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             provider.elementsIntoSet -> provider.typeKey.type
             provider.intoMap && provider.mapKey != null -> {
               // TODO this is probably not robust enough
-              // TODO 12/13 need to check unwrapTypes here
+              val rawKeyType = provider.mapKey.ir
+              val unwrapValues = rawKeyType.shouldUnwrapMapKeyValues()
               val keyType =
-                provider.mapKey.ir.annotationClass.primaryConstructor!!.valueParameters[0].type
+                if (unwrapValues) {
+                  rawKeyType.annotationClass.primaryConstructor!!.valueParameters[0].type
+                } else {
+                  rawKeyType.type
+                }
               pluginContext.irBuiltIns.mapClass.typeWith(
                 // MapKey is the key type
                 keyType,
@@ -1046,25 +1052,31 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  // TODO custom mapkey creators
+  private fun IrConstructorCall.shouldUnwrapMapKeyValues(): Boolean {
+    val mapKeyMapKeyAnnotation = annotationClass.mapKeyAnnotation()!!.ir
+    // TODO FIR check valid mapkey
+    //  - single arg
+    //  - no generics
+    val unwrapValue = mapKeyMapKeyAnnotation.getSingleConstBooleanArgumentOrNull() != false
+    return unwrapValue
+  }
+
   private fun IrBuilderWithScope.generateMapKeyLiteral(
     binding: Binding.Provided,
     keyType: IrType,
   ): IrExpression {
     val mapKey = binding.mapKey!!.ir
 
-    val mapKeyMapKeyAnnotation = mapKey.annotationClass.mapKeyAnnotation()!!.ir
-    // TODO FIR check valid mapkey
-    val unwrapValue = mapKeyMapKeyAnnotation.getSingleConstBooleanArgumentOrNull() != false
-    if (!unwrapValue) {
-      // TODO could this actually be really easy in IR? Just copy the IrAnnotationCall?
-      error("MapKey.unwrapValue is not yet supported")
-    }
+    val unwrapValue = mapKey.shouldUnwrapMapKeyValues()
+    val expression =
+      if (!unwrapValue) {
+        mapKey
+      } else {
+        // We can just copy the expression!
+        // TODO do we need to call shallowCopy()?
+        mapKey.getValueArgument(0)!!
+      }
 
-    // TODO FIR check only one value
-    // We can just copy the expression!
-    // TODO do we need to call shallowCopy()?
-    val expression = mapKey.getValueArgument(0)!!
     val typeToCompare =
       if (expression is IrClassReference) {
         // We want KClass<*>, not the specific type in the annotation we got (i.e. KClass<Int>).

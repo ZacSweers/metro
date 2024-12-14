@@ -750,16 +750,14 @@ class ComponentProcessingTest {
     assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), component.seasoningAmounts)
     assertEquals(mapOf(1L to 1, 2L to 2), component.longs)
     assertEquals(mapOf("1" to 1, "2" to 2), component.strings)
-    //    assertEquals(
-    //      mapOf(
-    //        MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY)
-    // to 1,
-    //
-    // MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to
-    //          2,
-    //      ),
-    //      component.wrappedSeasoningAmounts,
-    //    )
+    assertEquals(
+      mapOf(
+        MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
+        MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to
+          2,
+      ),
+      component.wrappedSeasoningAmounts,
+    )
   }
 
   @Component
@@ -784,18 +782,16 @@ class ComponentProcessingTest {
 
     @Provides @IntoMap @StringKey("2") fun provideStringKey2() = 2
 
-    // TODO unwrapValues test
-    //    val wrappedSeasoningAmounts: Map<WrappedSeasoningKey, Int>
-    //
-    //    @Provides @IntoMap @WrappedSeasoningKey(Seasoning.SPICY) fun
-    // provideWrappedSpicySeasoning() = 1
-    //
-    //    @Provides
-    //    @IntoMap
-    //    @WrappedSeasoningKey(Seasoning.REGULAR)
-    //    fun provideWrappedRegularSeasoning() = 2
-    //
-    //    @MapKey(unwrapValue = false) annotation class WrappedSeasoningKey(val value: Seasoning)
+    val wrappedSeasoningAmounts: Map<WrappedSeasoningKey, Int>
+
+    @Provides @IntoMap @WrappedSeasoningKey(Seasoning.SPICY) fun provideWrappedSpicySeasoning() = 1
+
+    @Provides
+    @IntoMap
+    @WrappedSeasoningKey(Seasoning.REGULAR)
+    fun provideWrappedRegularSeasoning() = 2
+
+    @MapKey(unwrapValue = false) annotation class WrappedSeasoningKey(val value: Seasoning)
   }
 
   // TODO test other keys
