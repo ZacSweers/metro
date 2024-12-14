@@ -27,12 +27,9 @@ import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
 import dev.zacsweers.lattice.ir.getSingleConstBooleanArgumentOrNull
-import dev.zacsweers.lattice.ir.irDouble
-import dev.zacsweers.lattice.ir.irFloat
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.ir.kClassReference
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
 import dev.zacsweers.lattice.ir.singleAbstractFunction
@@ -51,20 +48,14 @@ import org.jetbrains.kotlin.ir.builders.declarations.addGetter
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.irBoolean
-import org.jetbrains.kotlin.ir.builders.irByte
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.builders.irChar
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
-import org.jetbrains.kotlin.ir.builders.irLong
 import org.jetbrains.kotlin.ir.builders.irReturn
-import org.jetbrains.kotlin.ir.builders.irShort
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -75,14 +66,13 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
-import org.jetbrains.kotlin.ir.expressions.IrConst
-import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
@@ -1067,37 +1057,26 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // TODO FIR check valid mapkey
     val unwrapValue = mapKeyMapKeyAnnotation.getSingleConstBooleanArgumentOrNull() != false
     if (!unwrapValue) {
+      // TODO could this actually be really easy in IR? Just copy the IrAnnotationCall?
       error("MapKey.unwrapValue is not yet supported")
     }
 
     // TODO FIR check only one value
-    val value = mapKey.getValueArgument(0)!!
-    val expression =
-      when (value) {
-        is IrConst -> {
-          when (value.kind) {
-            IrConstKind.Boolean -> irBoolean(value.value as Boolean)
-            IrConstKind.Byte -> irByte(value.value as Byte)
-            IrConstKind.Char -> irChar(value.value as Char)
-            IrConstKind.Double -> irDouble(value.value as Double)
-            IrConstKind.Float -> irFloat(value.value as Float)
-            IrConstKind.Int -> irInt(value.value as Int)
-            IrConstKind.Long -> irLong(value.value as Long)
-            IrConstKind.Null -> error("not possible")
-            IrConstKind.Short -> irShort(value.value as Short)
-            IrConstKind.String -> irString(value.value as String)
-          }
-        }
-        is IrClassReference -> {
-          kClassReference(value.classType)
-        }
-        else -> {
-          error("Unsupported map key type: ${value.javaClass}: ${value.dumpKotlinLike()}")
-        }
+    // We can just copy the expression!
+    // TODO do we need to call shallowCopy()?
+    val expression = mapKey.getValueArgument(0)!!
+    val typeToCompare =
+      if (expression is IrClassReference) {
+        // We want KClass<*>, not the specific type in the annotation we got (i.e. KClass<Int>).
+        pluginContext.irBuiltIns.kClassClass.starProjectedType
+      } else {
+        expression.type
       }
-    if (expression.type != keyType) {
-      // TODO check in FIR instead/
-      error("Map key type mismatch: ${expression.type} != $keyType")
+    if (typeToCompare != keyType) {
+      // TODO check in FIR instead
+      error(
+        "Map key type mismatch: ${typeToCompare.dumpKotlinLike()} != ${keyType.dumpKotlinLike()}"
+      )
     }
     return expression
   }
