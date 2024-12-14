@@ -738,26 +738,22 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               bindingStack.push(BindingStackEntry.requestedAt(key, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  // TODO not always a provider! Multibindings are different
-                  val bindingCode = generateBindingCode(binding, generationContext, key)
                   if (binding is Binding.Multibinding) {
                     // It's not a provider in this case! Return the created collection directly
                     // TODO if we have multiple exposed types pointing at the same type, implement
-                    // one and make the
-                    //  rest call that one. Not multibinding specific. Maybe groupBy { typekey }?
-                    irExprBody(bindingCode)
-                  } else {
-                    // It's a provider arg, determine if we need to unpack it
-                    irExprBody(
-                      typeAsProviderArgument(
-                        contextualTypeKey,
-                        bindingCode,
-                        isAssisted = false,
-                        isComponentInstance = false,
-                        symbols,
-                      )
-                    )
+                    //  one and make the rest call that one. Not multibinding specific. Maybe
+                    //  groupBy { typekey }?
                   }
+                  irExprBody(
+                    typeAsProviderArgument(
+                      this@ComponentTransformer,
+                      contextualTypeKey,
+                      generateBindingCode(binding, generationContext, contextualTypeKey),
+                      isAssisted = false,
+                      isComponentInstance = false,
+                      symbols,
+                    )
+                  )
                 }
             }
             bindingStack.pop()
@@ -1097,11 +1093,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   private fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
     generationContext: ComponentGenerationContext,
-    // Important to pass the key in context sometimes because it may depend on the binding but not
-    // implement
-    // its type example. For example - a Map<Int, Provider<Int>> may depend on a binding for
-    // Map<Int, Int>.
-    keyInContext: TypeKey = binding.typeKey,
+    contextualTypeKey: ContextualTypeKey = binding.contextualTypeKey,
   ): IrExpression {
     // If we already have a provider field we can just return it
     if (
@@ -1113,7 +1105,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         return irGetField(irGet(generationContext.thisReceiver), it)
       }
     }
-    generationContext.providerFields[keyInContext]?.let {
+    generationContext.providerFields[binding.typeKey]?.let {
       return irGetField(irGet(generationContext.thisReceiver), it)
     }
 
@@ -1191,12 +1183,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       }
       is Binding.Multibinding -> {
         if (binding.isSet) {
-          val elementType = (keyInContext.type as IrSimpleType).arguments.single().typeOrFail
+          val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
           val (collectionProviders, individualProviders) =
             binding.providers.partition { it.elementsIntoSet }
           check(individualProviders.all { it.intoSet })
           // If we have any @ElementsIntoSet, we need to use SetFactory
-          if (collectionProviders.isNotEmpty()) {
+          if (collectionProviders.isNotEmpty() || contextualTypeKey.requiresProviderInstance) {
             // SetFactory.<String>builder(1, 1)
             //   .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
             //   .addCollectionProvider(provideString2Provider)
@@ -1237,8 +1229,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               }
 
             // .build()
-            val built =
-              irInvoke(
+            irInvoke(
                 dispatchReceiver = withCollectionProviders,
                 callee = symbols.setFactoryBuilderBuildFunction,
                 typeHint =
@@ -1246,13 +1237,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                     .typeWith(elementType)
                     .wrapInProvider(symbols.latticeProvider),
               )
-
-            // invoke()
-            irInvoke(
-              dispatchReceiver = built,
-              callee = symbols.providerInvoke,
-              typeHint = pluginContext.irBuiltIns.setClass.typeWith(elementType),
-            )
           } else {
             val callee: IrSimpleFunctionSymbol
             val args: List<IrExpression>
@@ -1297,7 +1281,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 }
               }
             }
-            irCall(callee = callee, type = keyInContext.type, typeArguments = listOf(elementType))
+            irCall(callee = callee, type = binding.typeKey.type, typeArguments = listOf(elementType))
               .apply {
                 for ((i, arg) in args.withIndex()) {
                   putValueArgument(i, arg)
@@ -1314,29 +1298,29 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           //   .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
           //   .put(2, provideMapInt2Provider)
           //   .build()
-          val mapTypeArgs = (keyInContext.type as IrSimpleType).arguments
+          val mapTypeArgs = (contextualTypeKey.typeKey.type as IrSimpleType).arguments
           check(mapTypeArgs.size == 2) { "Unexpected map type args: ${mapTypeArgs.joinToString()}" }
           val keyType: IrType = mapTypeArgs[0].typeOrFail
           val rawValueType = mapTypeArgs[1].typeOrFail
           val rawValueTypeMetadata =
             rawValueType.typeOrFail.asContextualTypeKey(this@ComponentTransformer, null)
-          val isProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
+          val useProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
           val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
           val targetCompanionObject =
-            if (isProviderFactory) {
+            if (useProviderFactory) {
               symbols.mapProviderFactoryCompanionObject
             } else {
               symbols.mapFactoryCompanionObject
             }
           val builderFunction =
-            if (isProviderFactory) {
+            if (useProviderFactory) {
               symbols.mapProviderFactoryBuilderFunction
             } else {
               symbols.mapFactoryBuilderFunction
             }
           val builderType =
-            if (isProviderFactory) {
+            if (useProviderFactory) {
               symbols.mapProviderFactoryBuilder
             } else {
               symbols.mapFactoryBuilder
@@ -1357,13 +1341,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               }
 
           val putFunction =
-            if (isProviderFactory) {
+            if (useProviderFactory) {
               symbols.mapProviderFactoryBuilderPutFunction
             } else {
               symbols.mapFactoryBuilderPutFunction
             }
           val putAllFunction =
-            if (isProviderFactory) {
+            if (useProviderFactory) {
               symbols.mapProviderFactoryBuilderPutAllFunction
             } else {
               symbols.mapFactoryBuilderPutAllFunction
@@ -1396,13 +1380,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
           // .build()
           val buildFunction =
-            if (isProviderFactory) {
+            if (useProviderFactory) {
               symbols.mapProviderFactoryBuilderBuildFunction
             } else {
               symbols.mapFactoryBuilderBuildFunction
             }
-          val built =
-            irInvoke(
+          irInvoke(
               dispatchReceiver = withProviders,
               callee = buildFunction,
               typeHint =
@@ -1410,13 +1393,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                   .typeWith(keyType, rawValueType)
                   .wrapInProvider(symbols.latticeProvider),
             )
-
-          // invoke()
-          irInvoke(
-            dispatchReceiver = built,
-            callee = symbols.providerInvoke,
-            typeHint = pluginContext.irBuiltIns.mapClass.typeWith(keyType, rawValueType),
-          )
         }
       }
       is Binding.BoundInstance -> {
@@ -1441,29 +1417,29 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         */
 
         val componentParameter =
-          generationContext.componentTypesToCtorParams[keyInContext]
-            ?: run { error("No matching component instance found for type $keyInContext") }
+          generationContext.componentTypesToCtorParams[binding.typeKey]
+            ?: run { error("No matching component instance found for type $binding.typeKey") }
         val lambda =
           irLambda(
             context = pluginContext,
             parent = generationContext.thisReceiver.parent,
             receiverParameter = null,
             emptyList(),
-            keyInContext.type,
+            binding.typeKey.type,
             suspend = false,
           ) { lambdaFunction ->
             +irReturn(
               irInvoke(
                 dispatchReceiver = irGet(componentParameter),
                 callee = binding.getter.symbol,
-                typeHint = keyInContext.type,
+                typeHint = binding.typeKey.type,
               )
             )
           }
         irInvoke(
           dispatchReceiver = null,
           callee = symbols.latticeProviderFunction,
-          typeHint = keyInContext.type.wrapInProvider(symbols.latticeProvider),
+          typeHint = binding.typeKey.type.wrapInProvider(symbols.latticeProvider),
           args = listOf(lambda),
         )
       }
@@ -1474,10 +1450,11 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     provider: Binding.Provided,
     generationContext: ComponentGenerationContext,
   ): IrExpression {
-    val providerInstance = generateBindingCode(provider, generationContext)
+    val bindingCode = generateBindingCode(provider, generationContext)
     return typeAsProviderArgument(
+      this@ComponentTransformer,
       ContextualTypeKey(provider.typeKey, false, false, false),
-      providerInstance,
+      bindingCode,
       false,
       false,
       symbols,

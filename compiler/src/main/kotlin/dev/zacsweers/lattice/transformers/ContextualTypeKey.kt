@@ -1,7 +1,12 @@
 package dev.zacsweers.lattice.transformers
 
+import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.expectAs
 import dev.zacsweers.lattice.ir.IrAnnotation
+import dev.zacsweers.lattice.ir.getAllSuperTypes
+import dev.zacsweers.lattice.ir.implements
+import dev.zacsweers.lattice.ir.implementsAny
+import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
 import kotlin.collections.contains
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -11,6 +16,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
 
 internal data class ContextualTypeKey(
@@ -19,6 +25,9 @@ internal data class ContextualTypeKey(
   val isWrappedInLazy: Boolean,
   val isLazyWrappedInProvider: Boolean,
 ) {
+
+  val requiresProviderInstance: Boolean = isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
+
   // TODO cache these in ComponentTransformer or shared transformer data
   companion object {
     @OptIn(UnsafeDuringIrConstructionAPI::class)
@@ -42,6 +51,18 @@ internal data class ContextualTypeKey(
     ): ContextualTypeKey =
       type.asContextualTypeKey(context, with(context) { parameter.qualifierAnnotation() })
   }
+}
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrType.isLatticeProviderType(
+  context: LatticeTransformerContext,
+): Boolean {
+  check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
+
+  val declaredType = this
+  val rawTypeClass = declaredType.rawTypeOrNull()
+
+  return rawTypeClass!!.implementsAny(context.pluginContext, context.symbols.providerTypes)
 }
 
 internal fun IrType.asContextualTypeKey(

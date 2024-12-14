@@ -18,10 +18,12 @@ package dev.zacsweers.lattice.ir
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.letIf
+import dev.zacsweers.lattice.transformers.ComponentTransformer
 import dev.zacsweers.lattice.transformers.ConstructorParameter
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.Parameter
 import dev.zacsweers.lattice.transformers.ContextualTypeKey
+import dev.zacsweers.lattice.transformers.isLatticeProviderType
 import dev.zacsweers.lattice.transformers.wrapInLazy
 import dev.zacsweers.lattice.transformers.wrapInProvider
 import java.util.Objects
@@ -456,17 +458,19 @@ internal fun IrBuilderWithScope.irCallWithSameParameters(
 }
 
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
+  context: LatticeTransformerContext,
   parameters: List<Parameter>,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
   symbols: LatticeSymbols,
 ): List<IrExpression> {
   return parameters.map { parameter ->
-    parameterAsProviderArgument(parameter, receiver, parametersToFields, symbols)
+    parameterAsProviderArgument(context, parameter, receiver, parametersToFields, symbols)
   }
 }
 
 internal fun IrBuilderWithScope.parameterAsProviderArgument(
+  context: LatticeTransformerContext,
   parameter: Parameter,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
@@ -478,6 +482,7 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
   // TODO this cast is unsafe
   val typeMetadata = (parameter as ConstructorParameter).contextualTypeKey
   return typeAsProviderArgument(
+    context,
     typeMetadata,
     providerInstance,
     isAssisted = parameter.isAssisted,
@@ -487,12 +492,18 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
 }
 
 internal fun IrBuilderWithScope.typeAsProviderArgument(
+  context: LatticeTransformerContext,
   type: ContextualTypeKey,
-  providerInstance: IrExpression,
+  bindingCode: IrExpression,
   isAssisted: Boolean,
   isComponentInstance: Boolean,
   symbols: LatticeSymbols,
 ): IrExpression {
+  if (!bindingCode.type.isLatticeProviderType(context)) {
+    // Not a provider, nothing else to do here!
+    return bindingCode
+  }
+  val providerInstance = bindingCode
   return when {
     type.isLazyWrappedInProvider -> {
       // ProviderOfLazy.create(provider)
@@ -711,8 +722,12 @@ internal fun IrClass.abstractFunctions(context: LatticeTransformerContext): List
 }
 
 internal fun IrClass.implements(pluginContext: IrPluginContext, superType: ClassId): Boolean {
+  return implementsAny(pluginContext, setOf(superType))
+}
+
+internal fun IrClass.implementsAny(pluginContext: IrPluginContext, superTypes: Set<ClassId>): Boolean {
   return getAllSuperTypes(pluginContext, excludeSelf = false).any {
-    it.rawTypeOrNull()?.classId == superType
+    it.rawTypeOrNull()?.classId in superTypes
   }
 }
 

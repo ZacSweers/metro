@@ -260,6 +260,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                 callee = bytecodeFunctionSymbol,
                 args =
                   parametersAsProviderArguments(
+                    this@ProvidesTransformer,
                     parameters = allParameters,
                     receiver = factoryCls.thisReceiver!!,
                     parametersToFields = parametersToFields,

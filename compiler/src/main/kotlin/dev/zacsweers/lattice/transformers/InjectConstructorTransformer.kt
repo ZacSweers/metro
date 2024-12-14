@@ -162,6 +162,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
               val assistedArgs = this@apply.valueParameters.map { irGet(it) }
               val providerArgs =
                 parametersAsProviderArguments(
+                  context = this@InjectConstructorTransformer,
                   parameters = allParameters.filterNot { it.isAssisted },
                   receiver = factoryCls.thisReceiver!!,
                   parametersToFields = parametersToFields,
@@ -212,6 +213,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                     callee = newInstanceFunctionSymbol,
                     args =
                       parametersAsProviderArguments(
+                        context = this@InjectConstructorTransformer,
                         parameters = allParameters,
                         receiver = factoryCls.thisReceiver!!,
                         parametersToFields = parametersToFields,

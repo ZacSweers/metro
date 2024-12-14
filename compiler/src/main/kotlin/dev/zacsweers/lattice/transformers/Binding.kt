@@ -36,6 +36,7 @@ internal sealed interface Binding {
   // Track the list of parameters, which may not have unique type keys
   val parameters: Parameters
   val nameHint: String
+  val contextualTypeKey: ContextualTypeKey
 
   data class ConstructorInjected(
     val type: IrClass,
@@ -48,6 +49,7 @@ internal sealed interface Binding {
       parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
     override val nameHint: String = type.name.asString()
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey, false, false, false)
 
     fun parameterFor(typeKey: TypeKey) =
       injectedConstructor.valueParameters[
@@ -56,7 +58,7 @@ internal sealed interface Binding {
 
   data class Provided(
     val providerFunction: IrSimpleFunction,
-    val contextualTypeKey: ContextualTypeKey,
+    override val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters,
     override val scope: IrAnnotation? = null,
     override val dependencies: Map<TypeKey, Parameter> =
@@ -90,6 +92,7 @@ internal sealed interface Binding {
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey, false, false, false)
   }
 
   data class BoundInstance(val parameter: Parameter) : Binding {
@@ -98,6 +101,7 @@ internal sealed interface Binding {
     override val nameHint: String = "${parameter.name.asString()}Instance"
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.EMPTY
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey, false, false, false)
   }
 
   data class ComponentDependency(
@@ -122,6 +126,7 @@ internal sealed interface Binding {
     }
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.EMPTY
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey, false, false, false)
   }
 
   // TODO sets
@@ -146,6 +151,8 @@ internal sealed interface Binding {
 
     override val nameHint: String
       get() = error("Should never be called")
+
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey, false, false, false)
 
     companion object {
       @OptIn(UnsafeDuringIrConstructionAPI::class)
