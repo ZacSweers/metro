@@ -101,6 +101,7 @@ allprojects {
         "**/MapProviderFactory.kt",
         "**/MapProviderFactoryTest.kt",
         "**/SetFactoryTest.kt",
+        "**/NameAllocator.kt",
         "**/annotations/multibindings/*.kt",
       )
     }

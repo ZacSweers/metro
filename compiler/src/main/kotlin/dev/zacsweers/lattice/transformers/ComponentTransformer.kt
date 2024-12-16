@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.NameAllocator
 import dev.zacsweers.lattice.decapitalizeUS
 import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.IrAnnotation
@@ -669,6 +670,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             bindingStack,
           )
 
+        val fieldNameAllocator = NameAllocator()
+
         // Create fields in dependency-order
         initOrder.forEach { binding ->
           val key = binding.typeKey
@@ -685,7 +688,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
           val field =
             addField(
-                fieldName = binding.nameHint.decapitalizeUS() + "Provider",
+                fieldName =
+                  fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
                 fieldType = fieldType,
                 fieldVisibility = DescriptorVisibilities.PRIVATE,
               )
