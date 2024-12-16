@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
-internal class IrAnnotation(val ir: IrConstructorCall) {
+internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation> {
   private val cachedHashKey by unsafeLazy { ir.computeAnnotationHash() }
   private val cachedToString by unsafeLazy {
     buildString {
@@ -51,6 +51,8 @@ internal class IrAnnotation(val ir: IrConstructorCall) {
   override fun hashCode(): Int = cachedHashKey
 
   override fun toString() = cachedToString
+
+  override fun compareTo(other: IrAnnotation): Int = cachedToString.compareTo(other.cachedToString)
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)

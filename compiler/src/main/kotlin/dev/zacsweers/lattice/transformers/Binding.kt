@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.ir.implements
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.isWordPrefixRegex
+import java.util.TreeSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -143,8 +144,13 @@ internal sealed interface Binding {
     val isSet: Boolean,
     val isMap: Boolean,
     // Reconcile this with dependencies?
-    // TODO SortedSet?
-    val providers: MutableSet<Provided> = mutableSetOf(),
+    // Sorted for consistency
+    val providers: MutableSet<Provided> = TreeSet(
+      compareBy<Provided> { it.typeKey }
+        .thenBy { it.nameHint }
+        .thenBy { it.scope }
+        .thenBy { it.parameters }
+    ),
   ) : Binding {
     override val scope: IrAnnotation? = null
     override val dependencies: Map<TypeKey, Parameter>

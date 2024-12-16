@@ -35,7 +35,7 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.Name
 
-internal sealed interface Parameter {
+internal sealed interface Parameter : Comparable<Parameter> {
   val kind: Kind
   val name: Name
   val originalName: Name
@@ -52,6 +52,8 @@ internal sealed interface Parameter {
   val typeKey: TypeKey
   val isComponentInstance: Boolean
   val isBindsInstance: Boolean
+
+  override fun compareTo(other: Parameter): Int = COMPARATOR.compare(this, other)
 
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
@@ -87,6 +89,15 @@ internal sealed interface Parameter {
     EXTENSION_RECEIVER,
     VALUE,
     //    CONTEXT_PARAMETER, // Coming soon
+  }
+
+  companion object {
+    private val COMPARATOR =
+      compareBy<Parameter> { it.kind }
+        .thenBy { it.name }
+        .thenBy { it.originalName }
+        .thenBy { it.typeKey }
+        .thenBy { it.assistedIdentifier }
   }
 }
 
@@ -159,7 +170,7 @@ internal data class Parameters(
   val instance: Parameter?,
   val extensionReceiver: Parameter?,
   val valueParameters: List<Parameter>,
-) {
+) : Comparable<Parameters> {
   val nonInstanceParameters: List<Parameter> = buildList {
     extensionReceiver?.let(::add)
     addAll(valueParameters)
@@ -169,8 +180,14 @@ internal data class Parameters(
     addAll(nonInstanceParameters)
   }
 
+  override fun compareTo(other: Parameters): Int = COMPARATOR.compare(this, other)
+
   companion object {
     val EMPTY = Parameters(null, null, emptyList())
+    val COMPARATOR =
+      compareBy<Parameters> { it.instance }
+        .thenBy { it.extensionReceiver }
+        .thenComparator { a, b -> compareValues(a, b) }
   }
 }
 
