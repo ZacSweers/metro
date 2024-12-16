@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.Name
@@ -41,6 +42,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val originalName: Name
   val type: IrType
   val providerType: IrType
+  val contextualTypeKey: ContextualTypeKey
   val lazyType: IrType
   val isWrappedInProvider: Boolean
   val isWrappedInLazy: Boolean
@@ -52,6 +54,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val typeKey: TypeKey
   val isComponentInstance: Boolean
   val isBindsInstance: Boolean
+  val hasDefault: Boolean
 
   override fun compareTo(other: Parameter): Int = COMPARATOR.compare(this, other)
 
@@ -126,7 +129,7 @@ internal fun Name.uniqueParameterName(vararg superParameters: List<Parameter>): 
 internal data class ConstructorParameter(
   override val kind: Kind,
   override val name: Name,
-  val contextualTypeKey: ContextualTypeKey,
+  override val contextualTypeKey: ContextualTypeKey,
   override val originalName: Name,
   override val providerType: IrType,
   override val lazyType: IrType,
@@ -138,6 +141,7 @@ internal data class ConstructorParameter(
   override val isComponentInstance: Boolean,
   val bindingStackEntry: BindingStackEntry,
   override val isBindsInstance: Boolean,
+  override val hasDefault: Boolean,
 ) : Parameter {
   override val typeKey: TypeKey = contextualTypeKey.typeKey
   override val type: IrType = contextualTypeKey.typeKey.type
@@ -253,7 +257,7 @@ internal fun IrValueParameter.toConstructorParameter(
     typeParameterRemapper?.invoke(this@toConstructorParameter.type)
       ?: this@toConstructorParameter.type
   val typeMetadata =
-    declaredType.asContextualTypeKey(context, with(context) { qualifierAnnotation() })
+    declaredType.asContextualTypeKey(context, with(context) { qualifierAnnotation() }, defaultValue != null)
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
@@ -277,5 +281,6 @@ internal fun IrValueParameter.toConstructorParameter(
     isComponentInstance = false,
     bindingStackEntry = BindingStackEntry.injectedAt(typeMetadata.typeKey, ownerFunction, this),
     isBindsInstance = isBindsInstance,
+    hasDefault = defaultValue != null,
   )
 }

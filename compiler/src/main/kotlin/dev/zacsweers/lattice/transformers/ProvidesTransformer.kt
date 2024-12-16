@@ -207,6 +207,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             isWrappedInProvider = false,
             isWrappedInLazy = false,
             isLazyWrappedInProvider = false,
+            hasDefault = false,
           )
         add(
           ConstructorParameter(
@@ -224,6 +225,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             // TODO is this right/ever going to happen?
             bindingStackEntry = BindingStackEntry.simpleTypeRef(contextualTypeKey.typeKey),
             isBindsInstance = false,
+            hasDefault = false,
           )
         )
       }
