@@ -170,6 +170,12 @@ internal class LatticeSymbols(
       .single()
   }
 
+  val absentProviderFunction: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(latticeRuntimeInternal.packageFqName, Name.identifier("absentProvider")))
+      .single()
+  }
+
   val providerInvoke: IrSimpleFunctionSymbol by lazy {
     latticeProvider.getSimpleFunction("invoke")!!
   }
