@@ -110,6 +110,7 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.copyValueParametersFrom
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
@@ -753,3 +754,7 @@ internal fun IrBuilderWithScope.kClassReference(classType: IrType) =
     context.irBuiltIns.kClassClass,
     classType,
   )
+
+internal fun Collection<IrExpression>.joinToKotlinLike(separator: String = "\n"): String {
+  return joinToString(separator = separator) { it.dumpKotlinLike() }
+}

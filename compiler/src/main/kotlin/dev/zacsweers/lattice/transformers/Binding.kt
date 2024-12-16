@@ -108,6 +108,15 @@ internal sealed interface Binding {
       ContextualTypeKey(typeKey, false, false, false, false)
   }
 
+  data class Absent(override val typeKey: TypeKey) : Binding {
+    override val scope: IrAnnotation? = null
+    override val nameHint: String get() = error("Should never be called")
+    override val dependencies: Map<TypeKey, Parameter> = emptyMap()
+    override val parameters: Parameters = Parameters.EMPTY
+    override val contextualTypeKey: ContextualTypeKey =
+      ContextualTypeKey(typeKey, false, false, false, false)
+  }
+
   data class ComponentDependency(
     val component: IrClass,
     val getter: IrSimpleFunction,
