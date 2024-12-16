@@ -145,12 +145,13 @@ internal sealed interface Binding {
     val isMap: Boolean,
     // Reconcile this with dependencies?
     // Sorted for consistency
-    val providers: MutableSet<Provided> = TreeSet(
-      compareBy<Provided> { it.typeKey }
-        .thenBy { it.nameHint }
-        .thenBy { it.scope }
-        .thenBy { it.parameters }
-    ),
+    val providers: MutableSet<Provided> =
+      TreeSet(
+        compareBy<Provided> { it.typeKey }
+          .thenBy { it.nameHint }
+          .thenBy { it.scope }
+          .thenBy { it.parameters }
+      ),
   ) : Binding {
     override val scope: IrAnnotation? = null
     override val dependencies: Map<TypeKey, Parameter>
