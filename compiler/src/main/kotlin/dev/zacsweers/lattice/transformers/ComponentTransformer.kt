@@ -743,7 +743,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   if (binding is Binding.Multibinding) {
-                    // It's not a provider in this case! Return the created collection directly
                     // TODO if we have multiple exposed types pointing at the same type, implement
                     //  one and make the rest call that one. Not multibinding specific. Maybe
                     //  groupBy { typekey }?
@@ -943,7 +942,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     function: IrFunction,
     binding: Binding,
     generationContext: ComponentGenerationContext,
-  ): List<IrExpression> {
+  ): List<IrExpression?> {
     val params = function.parameters(this@ComponentTransformer)
     // TODO only value args are supported atm
     val paramsToMap = buildList {
@@ -1022,7 +1021,15 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           generationContext.bindingStack.push(entry)
           // Generate binding code for each param
           val paramBinding =
-            generationContext.graph.getOrCreateBinding(contextualTypeKey, generationContext.bindingStack)
+            generationContext.graph.getOrCreateBinding(
+              contextualTypeKey,
+              generationContext.bindingStack,
+            )
+
+          if (paramBinding is Binding.Absent) {
+            // Null argument expressions get treated as absent in the final call
+            return@mapIndexed null
+          }
 
           generateBindingCode(paramBinding, generationContext)
         }
@@ -1103,9 +1110,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     contextualTypeKey: ContextualTypeKey = binding.contextualTypeKey,
   ): IrExpression {
     if (binding is Binding.Absent) {
-      return irInvoke(callee = symbols.absentProviderFunction).apply {
-        putTypeArgument(0, binding.typeKey.type)
-      }
+      error("Absent bindings need to be checked prior to generateBindingCode()")
     }
 
     // If we already have a provider field we can just return it
