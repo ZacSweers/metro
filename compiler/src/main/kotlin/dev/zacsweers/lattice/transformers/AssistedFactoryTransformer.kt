@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
+import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.createIrBuilder
@@ -100,15 +101,15 @@ internal class AssistedFactoryTransformer(
         injectConstructor.valueParameters[index].toAssistedParameterKey(symbols, parameter.typeKey)
       }
 
-    val implClassName = declaration.classIdOrFail.joinSimpleNames(suffix = "_Impl")
-
     val implClass =
       pluginContext.irFactory
         .buildClass {
-          name = implClassName.shortClassName
+          name = LatticeSymbols.Names.LatticeImpl
           origin = LatticeOrigin
         }
         .apply {
+          declaration.addChild(this)
+
           copyTypeParametersFrom(declaration)
           superTypes += declaration.symbol.typeWith()
 
@@ -165,9 +166,6 @@ internal class AssistedFactoryTransformer(
           val companion = pluginContext.irFactory.addCompanionObject(symbols, parent = this)
           companion.buildCreateFunction(declaration.typeWith(), this, ctor, generatedFactory)
         }
-
-    implClass.parent = declaration.parent
-    declaration.getPackageFragment().addChild(implClass)
 
     implClass.dumpToLatticeLog()
 

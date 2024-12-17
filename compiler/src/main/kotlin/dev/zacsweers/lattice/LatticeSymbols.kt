@@ -53,6 +53,8 @@ internal class LatticeSymbols(
   object Names {
     val CompanionObject = Name.identifier("Companion")
     val Factory = Name.identifier("Factory")
+    val LatticeFactory = Name.identifier("\$\$LatticeFactory")
+    val LatticeImpl = Name.identifier("\$\$Impl")
     // Used in @Assisted.value
     val Value = Name.identifier("value")
   }
@@ -167,12 +169,6 @@ internal class LatticeSymbols(
   val latticeProviderFunction: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(latticeRuntime.packageFqName, Name.identifier("provider")))
-      .single()
-  }
-
-  val absentProviderFunction: IrSimpleFunctionSymbol by lazy {
-    pluginContext
-      .referenceFunctions(CallableId(latticeRuntimeInternal.packageFqName, Name.identifier("absentProvider")))
       .single()
   }
 

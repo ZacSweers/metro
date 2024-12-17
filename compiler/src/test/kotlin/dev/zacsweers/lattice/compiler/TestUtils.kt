@@ -19,6 +19,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.tschuchort.compiletesting.CompilationResult
 import com.tschuchort.compiletesting.JvmCompilationResult
+import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.capitalizeUS
@@ -59,18 +60,20 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
 }
 
 fun Class<*>.generatedFactoryClassAssisted(): Class<*> {
-  return classLoader.loadClass(name + "_Factory")
+  val expectedName = LatticeSymbols.Names.LatticeFactory.asString()
+  return classes.single { it.simpleName == expectedName }
 }
 
 fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
-  return classLoader.loadClass(name + "_Impl")
+  val expectedName = LatticeSymbols.Names.LatticeImpl.asString()
+  return classes.single { it.simpleName == expectedName }
 }
 
 fun Class<*>.providesFactoryClass(
   providerCallableName: String? = null,
   companion: Boolean = false,
 ): Class<Factory<*>> {
-  val companionString = if (companion) "_Companion" else ""
+  val companionString = if (companion) "Companion_" else ""
 
   val callables: List<KCallable<*>> =
     if (companion) {
@@ -112,10 +115,9 @@ fun Class<*>.providesFactoryClass(
 
   val methodName = providerCallableName ?: providesCallables.single()
 
+  val expectedName = "${companionString}${methodName.capitalizeUS()}${LatticeSymbols.Names.LatticeFactory.asString()}"
   @Suppress("UNCHECKED_CAST")
-  return classLoader.loadClass(
-    "${generatedClassesString()}${companionString}_${methodName.capitalizeUS()}Factory"
-  ) as Class<Factory<*>>
+  return this.classes.singleOrNull { it.simpleName == expectedName } as Class<Factory<*>>? ?: error("Could not find nested class $this.$expectedName")
 }
 
 fun Class<Factory<*>>.invokeNewInstance(vararg args: Any): Any {

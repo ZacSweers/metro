@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
+import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
@@ -81,7 +82,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     }
 
     val targetTypeParameters: List<IrTypeParameter> = declaration.typeParameters
-    val generatedClassName = injectedClassId.joinSimpleNames(suffix = "_Factory")
+    val generatedClassName = "LatticeFactory"
 
     val canGenerateAnObject =
       targetConstructor.valueParameters.isEmpty() &&
@@ -102,11 +103,16 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     val factoryCls =
       pluginContext.irFactory
         .buildClass {
-          name = generatedClassName.relativeClassName.shortName()
+          name = LatticeSymbols.Names.LatticeFactory
           kind = if (canGenerateAnObject) ClassKind.OBJECT else ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
+          origin = LatticeOrigin
         }
-        .apply { origin = LatticeOrigin }
+        .apply {
+          // Add as a nested class of the origin class. This is important so that default value
+          // expressions can access private members.
+          declaration.addChild(this)
+        }
 
     val typeParameters = factoryCls.copyTypeParameters(targetTypeParameters)
 
@@ -231,7 +237,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
     factoryCls.dumpToLatticeLog()
 
-    declaration.getPackageFragment().addChild(factoryCls)
     generatedFactories[injectedClassId] = factoryCls
     return factoryCls
   }
