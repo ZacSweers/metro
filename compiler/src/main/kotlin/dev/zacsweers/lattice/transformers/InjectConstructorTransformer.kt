@@ -111,7 +111,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     val typeParameters = factoryCls.copyTypeParameters(targetTypeParameters)
 
     val constructorParameters = targetConstructor.parameters(this, factoryCls, declaration)
-    val allParameters = constructorParameters.valueParameters // + memberInjectParameters
+    // TODO + memberInjectParameters
 
     factoryCls.createImplicitParameterDeclarationWithWrappedDescriptor()
 
@@ -133,7 +133,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         origin = LatticeOrigin,
       )
 
-    val parametersToFields = assignConstructorParamsToFields(ctor, factoryCls, allParameters)
+    val parametersToFields =
+      assignConstructorParamsToFields(ctor, factoryCls, constructorParameters)
 
     val newInstanceFunctionSymbol =
       generateCreators(
@@ -142,7 +143,8 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
         targetConstructor.symbol,
         targetTypeParameterized,
         factoryClassParameterized,
-        allParameters,
+        constructorParameters,
+        emptyList(), // TODO member injection
       )
 
     if (isAssistedInject) {
@@ -163,7 +165,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
               val providerArgs =
                 parametersAsProviderArguments(
                   context = this@InjectConstructorTransformer,
-                  parameters = allParameters.filterNot { it.isAssisted },
+                  parameters = constructorParameters,
                   receiver = factoryCls.thisReceiver!!,
                   parametersToFields = parametersToFields,
                   symbols = symbols,
@@ -214,7 +216,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                     args =
                       parametersAsProviderArguments(
                         context = this@InjectConstructorTransformer,
-                        parameters = allParameters,
+                        parameters = constructorParameters,
                         receiver = factoryCls.thisReceiver!!,
                         parametersToFields = parametersToFields,
                         symbols = symbols,
@@ -234,13 +236,15 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     return factoryCls
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun generateCreators(
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
     targetConstructor: IrConstructorSymbol,
     targetTypeParameterized: IrType,
     factoryClassParameterized: IrType,
-    allParameters: List<Parameter>,
+    constructorParameters: Parameters,
+    memberInjectParameters: List<Parameter>,
   ): IrSimpleFunctionSymbol {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
@@ -257,7 +261,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       factoryCls,
       factoryClassParameterized,
       factoryConstructor,
-      allParameters,
+      constructorParameters,
     )
 
     /*
@@ -275,17 +279,24 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
      @JvmStatic // JVM only
      fun newInstance(value: Provider<String>): Example = Example(value)
     */
+    // TODO dedupe with provider factory code gen
     val newInstanceFunction =
       classToGenerateCreatorsIn
-        .addFunction("newInstance", targetTypeParameterized, isStatic = true)
+        .addFunction(
+          "newInstance",
+          targetTypeParameterized,
+          isStatic = true,
+          origin = LatticeOrigin,
+          visibility = DescriptorVisibilities.PUBLIC,
+        )
         .apply {
-          @Suppress("OPT_IN_USAGE") this.copyTypeParameters(targetConstructor.owner.typeParameters)
-          this.origin = LatticeOrigin
-          this.visibility = DescriptorVisibilities.PUBLIC
+          this.copyTypeParameters(targetConstructor.owner.typeParameters)
           markJvmStatic()
-          for (parameter in allParameters) {
+
+          for (parameter in constructorParameters.valueParameters) {
             addValueParameter(parameter.name, parameter.originalType, LatticeOrigin)
           }
+
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBody(
