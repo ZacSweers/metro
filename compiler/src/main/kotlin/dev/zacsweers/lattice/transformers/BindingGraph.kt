@@ -44,7 +44,6 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       }
       val location = binding.reportableLocation ?: bindingStack.component.location()
       context.reportError(message, location)
-      with(context) { (binding.declaration ?: bindingStack.component).reportError(message) }
       exitProcessing()
     }
     require(!bindings.containsKey(key)) { "Duplicate binding for $key" }
