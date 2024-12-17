@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.singleAbstractFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.backend.jvm.ir.psiElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -31,8 +32,17 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   private val dependencies = mutableMapOf<TypeKey, Lazy<Set<TypeKey>>>()
 
   fun addBinding(key: TypeKey, binding: Binding, bindingStack: BindingStack) {
-    require(binding !is Binding.Absent) {
-      "Cannot store 'Absent' binding for typekey $key"
+    require(binding !is Binding.Absent) { "Cannot store 'Absent' binding for typekey $key" }
+    if (key in bindings) {
+      val message = buildString {
+        appendLine("Duplicate binding for $key")
+        if (binding is Binding.Provided) {
+          appendLine("Double check the provider's inferred return type or making its return type explicit.")
+        }
+        appendBindingStack(bindingStack)
+      }
+      with(context) { (binding.declaration ?: bindingStack.component).reportError(message) }
+      exitProcessing()
     }
     require(!bindings.containsKey(key)) { "Duplicate binding for $key" }
     bindings[key] = binding
@@ -251,10 +261,11 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     return function.valueParameters
       .mapNotNull { param ->
         val paramKey = ContextualTypeKey.from(context, param)
-        val binding = bindingStack.withEntry(BindingStackEntry.injectedAt(paramKey.typeKey, function, param)) {
-          // This recursive call will create bindings for injectable types as needed
-          getOrCreateBinding(paramKey, bindingStack)
-        }
+        val binding =
+          bindingStack.withEntry(BindingStackEntry.injectedAt(paramKey.typeKey, function, param)) {
+            // This recursive call will create bindings for injectable types as needed
+            getOrCreateBinding(paramKey, bindingStack)
+          }
         if (binding is Binding.Absent) {
           // Skip this key as it's absent
           return@mapNotNull null

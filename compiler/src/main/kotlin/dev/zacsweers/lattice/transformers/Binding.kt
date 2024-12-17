@@ -24,6 +24,7 @@ import java.util.TreeSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -38,6 +39,7 @@ internal sealed interface Binding {
   val parameters: Parameters
   val nameHint: String
   val contextualTypeKey: ContextualTypeKey
+  val declaration: IrDeclaration?
 
   data class ConstructorInjected(
     val type: IrClass,
@@ -49,6 +51,7 @@ internal sealed interface Binding {
     override val dependencies: Map<TypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding {
+    override val declaration: IrDeclaration = type
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
@@ -71,6 +74,7 @@ internal sealed interface Binding {
     val intoMap: Boolean,
     val mapKey: IrAnnotation?,
   ) : Binding {
+    override val declaration: IrDeclaration = providerFunction
     override val typeKey: TypeKey = contextualTypeKey.typeKey
     val isMultibindingProvider
       get() = intoSet || elementsIntoSet || mapKey != null || intoMap
@@ -90,6 +94,7 @@ internal sealed interface Binding {
     override val parameters: Parameters,
     override val typeKey: TypeKey,
   ) : Binding {
+    override val declaration: IrDeclaration = type
     // Dependencies are handled by the target class
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val nameHint: String = type.name.asString()
@@ -99,6 +104,7 @@ internal sealed interface Binding {
   }
 
   data class BoundInstance(val parameter: Parameter) : Binding {
+    override val declaration: IrDeclaration? = null
     override val typeKey: TypeKey = parameter.typeKey
     override val scope: IrAnnotation? = null
     override val nameHint: String = "${parameter.name.asString()}Instance"
@@ -109,6 +115,7 @@ internal sealed interface Binding {
   }
 
   data class Absent(override val typeKey: TypeKey) : Binding {
+    override val declaration: IrDeclaration? = null
     override val scope: IrAnnotation? = null
     override val nameHint: String get() = error("Should never be called")
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
@@ -122,6 +129,7 @@ internal sealed interface Binding {
     val getter: IrSimpleFunction,
     override val typeKey: TypeKey,
   ) : Binding {
+    override val declaration: IrDeclaration = getter
     override val scope: IrAnnotation? = null
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     override val nameHint: String = buildString {
@@ -162,6 +170,7 @@ internal sealed interface Binding {
           .thenBy { it.parameters }
       ),
   ) : Binding {
+    override val declaration: IrDeclaration? = null
     override val scope: IrAnnotation? = null
     override val dependencies: Map<TypeKey, Parameter>
       get() = emptyMap()
