@@ -18,9 +18,12 @@ package dev.zacsweers.lattice.transformers
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.annotationsIn
 import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
+import dev.zacsweers.lattice.ir.location
 import dev.zacsweers.lattice.transformers.Parameter.Kind
+import dev.zacsweers.lattice.unsafeLazy
 import kotlin.collections.count
 import kotlin.collections.sumOf
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -142,6 +145,7 @@ internal data class ConstructorParameter(
   val bindingStackEntry: BindingStackEntry,
   override val isBindsInstance: Boolean,
   override val hasDefault: Boolean,
+  override val location: CompilerMessageSourceLocation?,
 ) : Parameter {
   override val typeKey: TypeKey = contextualTypeKey.typeKey
   override val type: IrType = contextualTypeKey.typeKey.type
@@ -175,14 +179,20 @@ internal data class Parameters(
   val extensionReceiver: Parameter?,
   val valueParameters: List<Parameter>,
 ) : Comparable<Parameters> {
-  val nonInstanceParameters: List<Parameter> = buildList {
-    extensionReceiver?.let(::add)
-    addAll(valueParameters)
+  val nonInstanceParameters: List<Parameter> by unsafeLazy {
+    buildList {
+      extensionReceiver?.let(::add)
+      addAll(valueParameters)
+    }
   }
-  val allParameters: List<Parameter> = buildList {
-    instance?.let(::add)
-    addAll(nonInstanceParameters)
+  val allParameters: List<Parameter> by unsafeLazy {
+    buildList {
+      instance?.let(::add)
+      addAll(nonInstanceParameters)
+    }
   }
+
+  val hasParametersWithDefaults by unsafeLazy { valueParameters.any { it.hasDefault } }
 
   override fun compareTo(other: Parameters): Int = COMPARATOR.compare(this, other)
 
@@ -282,5 +292,6 @@ internal fun IrValueParameter.toConstructorParameter(
     bindingStackEntry = BindingStackEntry.injectedAt(typeMetadata.typeKey, ownerFunction, this),
     isBindsInstance = isBindsInstance,
     hasDefault = defaultValue != null,
+    location = location(),
   )
 }
