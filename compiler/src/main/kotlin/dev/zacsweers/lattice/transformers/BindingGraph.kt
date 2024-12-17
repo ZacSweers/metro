@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.transformers
 
 import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.location
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.singleAbstractFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -41,6 +42,8 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         }
         appendBindingStack(bindingStack)
       }
+      val location = binding.reportableLocation ?: bindingStack.component.location()
+      context.reportError(message, location)
       with(context) { (binding.declaration ?: bindingStack.component).reportError(message) }
       exitProcessing()
     }
