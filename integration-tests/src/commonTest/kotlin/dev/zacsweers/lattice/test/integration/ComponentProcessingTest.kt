@@ -896,7 +896,7 @@ class ComponentProcessingTest {
     private fun provideMessage(
       int: Int = 2,
       long: Long = 4,
-      input: CharSequence = run { (int + long).toString() },
+      input: CharSequence = (int + long).toString(),
     ): String {
       return input.toString()
     }
