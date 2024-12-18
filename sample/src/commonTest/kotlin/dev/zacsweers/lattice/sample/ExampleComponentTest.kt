@@ -15,15 +15,15 @@
  */
 package dev.zacsweers.lattice.sample
 
-import kotlin.test.Ignore
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ExampleComponentTest {
-  @Ignore("TODO temporarily disabled until we add metadata to ")
   @Test
   fun simplePipeline() {
-    //    val component = createComponentFactory<ExampleComponent.Factory>().create("Hello, world!")
-    //    val example1 = component.example1()
-    //    assertEquals("Hello, world!", example1.text)
+    // TODO eventually call createComponentFactory() here again
+    val component = ExampleComponent.factory().create("Hello, world!")
+    val example1 = component.example1()
+    assertEquals("Hello, world!", example1.text)
   }
 }
