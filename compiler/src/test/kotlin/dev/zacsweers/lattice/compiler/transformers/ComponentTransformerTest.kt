@@ -454,7 +454,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             @SingleIn(AppScope::class)
             @Component
             interface ExampleComponent {
-            
+
               val intValue: Int
 
               @SingleIn(UserScope::class)
@@ -469,9 +469,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleComponent.kt:11:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (@Singleton, @SingleIn(AppScope::class)) may not reference bindings from different scopes:
+        ExampleComponent.kt:11:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (scopes '@Singleton', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
-            
             kotlin.Int is requested at
                 [test.ExampleComponent] test.ExampleComponent.intValue
       """
@@ -728,7 +727,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       .contains(
         """
           ExampleComponent.kt:7:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (unscoped) may not reference scoped bindings:
-              kotlin.String
+              kotlin.String (scoped to '@Singleton')
               kotlin.String is requested at
                   [test.ExampleComponent] test.ExampleComponent.value
         """

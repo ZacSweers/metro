@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.render
 
 internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation> {
   private val cachedHashKey by unsafeLazy { ir.computeAnnotationHash() }

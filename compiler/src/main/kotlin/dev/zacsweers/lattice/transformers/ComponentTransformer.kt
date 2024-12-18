@@ -875,7 +875,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         // Error if there are mismatched scopes
         val declarationToReport = node.sourceComponent
         bindingStack.push(
-          BindingStackEntry.simpleTypeRef(key, action = "(scoped to '$bindingScope')")
+          BindingStackEntry.simpleTypeRef(key, usage = "(scoped to '$bindingScope')")
         )
         val message = buildString {
           append("[Lattice/IncompatiblyScopedBindings] ")
@@ -886,7 +886,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           } else {
             // Scope mismatch
             append(
-              " (${node.scopes.joinToString()}) may not reference bindings from different scopes:"
+              " (scopes ${node.scopes.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
             )
           }
           appendLine()
