@@ -869,7 +869,7 @@ class ComponentProcessingTest {
   }
 
   @Test
-  fun `optional dependencies - default values with many back references`() {
+  fun `optional dependencies - provider - default values with many back references`() {
     val component = createComponent<OptionalDependenciesProviderWithManyDefaultBackReferences>()
     assertEquals("7", component.message)
   }
@@ -888,6 +888,68 @@ class ComponentProcessingTest {
     ): String {
       return input.toString()
     }
+  }
+
+  @Test
+  fun `optional dependencies - class - found dependency uses it`() {
+    val component = createComponent<MessageClassWithCharSequenceProvider>()
+    assertEquals("Found", component.message)
+  }
+
+  @Component
+  interface MessageClassWithCharSequenceProvider : BaseMessageClassWithDefault {
+    @Provides fun provideMessage(): String = "Found"
+  }
+
+  @Test
+  fun `optional dependencies - class - absent dependency uses default`() {
+    val component = createComponent<MessageClassWithoutCharSequenceProvider>()
+    assertEquals("Not found", component.message)
+  }
+
+  @Component interface MessageClassWithoutCharSequenceProvider : BaseMessageClassWithDefault
+
+  interface BaseMessageClassWithDefault {
+    val messageClass: MessageClass
+    val message
+      get() = messageClass.message
+
+    @Inject class MessageClass(val message: String = "Not found")
+  }
+
+  @Test
+  fun `optional dependencies - class - default values with back references work`() {
+    val component = createComponent<OptionalDependenciesClassWithBackReferencingDefault>()
+    assertEquals("Not found: 3", component.message)
+  }
+
+  @Component
+  interface OptionalDependenciesClassWithBackReferencingDefault {
+    val messageClass: MessageClass
+    val message: String
+      get() = messageClass.message
+
+    @Provides fun provideInt(): Int = 3
+
+    @Inject class MessageClass(intValue: Int, val message: String = "Not found: $intValue")
+  }
+
+  @Test
+  fun `optional dependencies - class - default values with many back references`() {
+    val component = createComponent<OptionalDependenciesClassWithManyDefaultBackReferences>()
+    assertEquals("7", component.message)
+  }
+
+  @Component
+  interface OptionalDependenciesClassWithManyDefaultBackReferences {
+    val messageClass: MessageClass
+    val message: String
+      get() = messageClass.message
+
+    @Provides fun provideInt(): Int = 3
+
+    @Inject
+    class MessageClass(int: Int = 2, long: Long = 4, val message: String = (int + long).toString())
   }
 
   enum class Seasoning {
