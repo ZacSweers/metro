@@ -827,7 +827,7 @@ class ComponentProcessingTest {
   }
 
   @Test
-  fun `optional dependencies - provider found uses it`() {
+  fun `optional dependencies - provider - found dependency uses it`() {
     val component = createComponent<MessageProviderWithCharSequenceProvider>()
     assertEquals("Found", component.message)
   }
@@ -838,7 +838,7 @@ class ComponentProcessingTest {
   }
 
   @Test
-  fun `optional dependencies - provider missing uses default`() {
+  fun `optional dependencies - provider - absent dependency uses default`() {
     val component = createComponent<MessageProviderWithoutCharSequenceProvider>()
     assertEquals("Not found", component.message)
   }
@@ -852,13 +852,13 @@ class ComponentProcessingTest {
   }
 
   @Test
-  fun `optional dependencies - default values with back references work`() {
-    val component = createComponent<OptionalDependenciesWithBackReferencingDefault>()
+  fun `optional dependencies - provider - default values with back references work`() {
+    val component = createComponent<OptionalDependenciesProviderWithBackReferencingDefault>()
     assertEquals("Not found: 3", component.message)
   }
 
   @Component
-  interface OptionalDependenciesWithBackReferencingDefault {
+  interface OptionalDependenciesProviderWithBackReferencingDefault {
     val message: String
 
     @Provides fun provideInt(): Int = 3
@@ -866,6 +866,28 @@ class ComponentProcessingTest {
     @Provides
     fun provideMessage(intValue: Int, input: CharSequence = "Not found: $intValue"): String =
       input.toString()
+  }
+
+  @Test
+  fun `optional dependencies - default values with many back references`() {
+    val component = createComponent<OptionalDependenciesProviderWithManyDefaultBackReferences>()
+    assertEquals("7", component.message)
+  }
+
+  @Component
+  interface OptionalDependenciesProviderWithManyDefaultBackReferences {
+    val message: String
+
+    @Provides fun provideInt(): Int = 3
+
+    @Provides
+    fun provideMessage(
+      int: Int = 2,
+      long: Long = 4,
+      input: CharSequence = (int + long).toString(),
+    ): String {
+      return input.toString()
+    }
   }
 
   enum class Seasoning {
