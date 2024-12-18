@@ -19,6 +19,7 @@ import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.annotationsIn
 import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
 import dev.zacsweers.lattice.ir.location
+import dev.zacsweers.lattice.ir.locationOrNull
 import dev.zacsweers.lattice.transformers.Parameter.Kind
 import dev.zacsweers.lattice.unsafeLazy
 import kotlin.collections.count
@@ -329,7 +330,7 @@ internal fun IrValueParameter.toConstructorParameter(
       bindingStackEntry = BindingStackEntry.injectedAt(typeMetadata.typeKey, ownerFunction, this),
       isBindsInstance = isBindsInstance,
       hasDefault = defaultValue != null,
-      location = location(),
+      location = locationOrNull(),
     )
     .apply { this.ir = this@toConstructorParameter }
 }

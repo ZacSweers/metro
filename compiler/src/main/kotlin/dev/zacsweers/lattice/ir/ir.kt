@@ -114,7 +114,7 @@ import org.jetbrains.kotlin.ir.util.copyValueParametersFrom
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -130,7 +130,12 @@ import org.jetbrains.kotlin.name.Name
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
-  return locationIn(file)
+  return locationOrNull() ?: error("No location found for ${dumpKotlinLike()}!")
+}
+
+/** Finds the line and column of [this] within its file or returns null if this has no location. */
+internal fun IrDeclaration.locationOrNull(): CompilerMessageSourceLocation? {
+  return fileOrNull?.let(::locationIn)
 }
 
 /** Finds the line and column of [this] within this [file]. */
