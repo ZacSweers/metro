@@ -155,13 +155,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     // TODO unimplemented for now
     if (reference.parameters.extensionReceiver != null) {
-      reference.callee.owner.reportError(
-        """
-          Extension receivers are not currently supported.
-        """
-          .trimIndent()
-      )
-      exitProcessing()
+      // Checked in FIR
+      error("Unexpected extension receiver")
     }
 
     // TODO FIR check parent class (if any) is a component. What about (companion) objects?

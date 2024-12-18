@@ -31,6 +31,7 @@ import dev.zacsweers.lattice.ir.getSingleConstBooleanArgumentOrNull
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.isExternalParent
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
 import dev.zacsweers.lattice.ir.singleAbstractFunction
@@ -86,7 +87,6 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
@@ -195,6 +195,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
   private fun getOrComputeComponentNode(
     componentDeclaration: IrClass,
     componentDependencyStack: BindingStack,
+    generatedComponentId: ClassId =
+      componentDeclaration.classIdOrFail.createNestedClassId(LatticeSymbols.Names.LatticeComponent),
   ): ComponentNode {
     val componentClassId = componentDeclaration.classIdOrFail
     componentNodesByClass[componentClassId]?.let {
@@ -290,6 +292,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     val componentNode =
       ComponentNode(
         sourceComponent = componentDeclaration,
+        generatedComponentId = generatedComponentId,
         isAnnotatedWithComponent = true,
         dependencies = componentDependencies,
         scope = scope,
@@ -303,10 +306,26 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return componentNode
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun getOrBuildComponent(componentDeclaration: IrClass): IrClass {
     val componentClassId = componentDeclaration.classIdOrFail
     latticeComponentsByClass[componentClassId]?.let {
       return it
+    }
+
+    if (componentDeclaration.isExternalParent) {
+      // Externally compiled, look up its generated class
+      // TODO won't be visible until we add metadata to generated classes
+      val generatedComponent =
+        componentDeclaration.nestedClasses.singleOrNull {
+          it.name == LatticeSymbols.Names.LatticeComponent
+        }
+      if (generatedComponent == null) {
+        error("Expected generated component for $componentClassId")
+      } else {
+        latticeComponentsByClass[componentClassId] = generatedComponent
+        return generatedComponent
+      }
     }
 
     val componentNode =
@@ -322,7 +341,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
 
     // TODO consolidate logic
     latticeComponent.dumpToLatticeLog()
-    componentDeclaration.getPackageFragment().addChild(latticeComponent)
+    componentDeclaration.addChild(latticeComponent)
     latticeComponentsByClass[componentClassId] = latticeComponent
     return latticeComponent
   }
@@ -334,6 +353,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Add explicit bindings from @Provides methods
     val bindingStack = BindingStack(component.sourceComponent)
     component.providerFunctions.forEach { (typeKey, function) ->
+      logVerbose("Processing provider function ${function.dumpKotlinLike()}")
       // TODO these annotation searches are greedy. Need a single-pass lookup
       val provider =
         Binding.Provided(
@@ -459,7 +479,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     */
     return pluginContext.irFactory
       .buildClass {
-        name = Name.identifier("Lattice${node.sourceComponent.name.asString()}")
+        name = node.generatedComponentId.shortClassName
         kind = ClassKind.OBJECT
         origin = LatticeOrigin
       }
@@ -510,8 +530,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 }
               }
 
-          factoryClass.parent = this
-          addMember(factoryClass)
+          addChild(factoryClass)
 
           pluginContext.irFactory.addCompanionObject(symbols, parent = this) {
             addFunction("factory", factoryClass.typeWith()).apply {

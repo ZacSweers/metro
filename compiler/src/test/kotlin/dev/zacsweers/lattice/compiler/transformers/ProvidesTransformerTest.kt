@@ -407,12 +407,11 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Component
-            import dev.zacsweers.lattice.annotations.Named
 
             @Component
             interface ExampleComponent {
               @Provides
-              fun String.provideValue(): Int = length
+              private fun String.provideValue(): Int = length
             }
           """
             .trimIndent(),
@@ -423,7 +422,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:9:3 Extension receivers are not currently supported.
+          ExampleComponent.kt:9:22 `@Provides` declarations may not have receiver parameters.
         """
           .trimIndent()
       )

@@ -20,10 +20,13 @@ import dev.zacsweers.lattice.ir.rawType
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
 // Represents a component's structure and relationships
 internal data class ComponentNode(
   val sourceComponent: IrClass,
+  val generatedComponentId: ClassId,
   val isAnnotatedWithComponent: Boolean,
   val dependencies: List<ComponentNode>,
   val scope: IrAnnotation?,

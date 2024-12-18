@@ -36,7 +36,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             interface ExampleComponent {
               @Provides val provideCharSequence: String get() = "Hello"
-              @Provides private fun provideString(): String = "Hello"
+              @Provides fun provideString(): String = "Hello"
             }
           """
             .trimIndent(),
@@ -63,7 +63,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             abstract class ExampleComponent {
               @Provides val provideInt: Int = 0
               @Provides val provideCharSequence: String get() = "Hello"
-              @Provides private fun provideString(): String = "Hello"
+              @Provides fun provideString(): String = "Hello"
             }
           """
             .trimIndent(),
@@ -140,9 +140,10 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
+            @Suppress("PROVIDES_SHOULD_BE_PRIVATE")
             interface ExampleComponent {
               @Provides val provideInt: Int
-              @Provides private fun provideString(): String
+              @Provides fun provideString(): String
             }
           """
             .trimIndent(),
@@ -150,8 +151,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:17 `@Provides` declarations must have bodies.",
       "ExampleClass.kt:7:17 `@Provides` declarations must have bodies.",
+      "ExampleClass.kt:8:17 `@Provides` declarations must have bodies.",
     )
   }
 

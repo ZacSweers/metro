@@ -193,7 +193,8 @@ val JvmCompilationResult.ExampleComponent: Class<*>
   get() = classLoader.loadClass("test.ExampleComponent")
 
 fun Class<*>.generatedLatticeComponentClass(): Class<*> {
-  return classLoader.loadClass("$packageName.Lattice$simpleName")
+  return classes.singleOrNull { it.simpleName == LatticeSymbols.Names.LatticeComponent.asString() }
+    ?: error("Could not find nested class $this.${LatticeSymbols.Names.LatticeComponent.asString()}. Available: ${classes.joinToString { it.simpleName }}")
 }
 
 fun Class<*>.componentImpl(): Class<*> {
