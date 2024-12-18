@@ -851,6 +851,23 @@ class ComponentProcessingTest {
     @Provides fun provideMessage(input: CharSequence = "Not found"): String = input.toString()
   }
 
+  @Test
+  fun `optional dependencies - default values with back references work`() {
+    val component = createComponent<OptionalDependenciesWithBackReferencingDefault>()
+    assertEquals("Not found: 3", component.message)
+  }
+
+  @Component
+  interface OptionalDependenciesWithBackReferencingDefault {
+    val message: String
+
+    @Provides fun provideInt(): Int = 3
+
+    @Provides
+    fun provideMessage(intValue: Int, input: CharSequence = "Not found: $intValue"): String =
+      input.toString()
+  }
+
   enum class Seasoning {
     SPICY,
     REGULAR,
