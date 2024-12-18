@@ -24,7 +24,7 @@ ktfmt = "0.53"
 okio = "3.9.1"
 
 [plugins]
-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.25.0" }
+atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.26.1" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.16.3" }
