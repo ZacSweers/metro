@@ -58,8 +58,12 @@ internal object FirLatticeErrors {
   val INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE by error0<PsiElement>(VISIBILITY_MODIFIER)
 
   // Assisted factory/inject errors
-  // Test of just passing in a single message string to all of these
+  // All errors are just passed through this one
   val ASSISTED_INJECTION by error1<PsiElement, String>(NAME_IDENTIFIER)
+
+  // Provides errors
+  val PROVIDES_SHOULD_BE_PRIVATE by warning0<PsiElement>(VISIBILITY_MODIFIER)
+  val PROVIDES_ERROR by error1<PsiElement, String>(NAME_IDENTIFIER)
 
   init {
     RootDiagnosticRendererFactory.registerFactory(FirLatticeErrorMessages)
@@ -146,5 +150,10 @@ private object FirLatticeErrorMessages : BaseDiagnosticRendererFactory() {
         "Injected constructors must be visible, either `public` or `internal`.",
       )
       put(FirLatticeErrors.ASSISTED_INJECTION, "{0}", STRING)
+      put(FirLatticeErrors.PROVIDES_ERROR, "{0}", STRING)
+      put(
+        FirLatticeErrors.PROVIDES_SHOULD_BE_PRIVATE,
+        "`@Provides` declarations should be private.",
+      )
     }
 }

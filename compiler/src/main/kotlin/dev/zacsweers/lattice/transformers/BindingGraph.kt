@@ -56,8 +56,8 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     // Otherwise, this scenario wouldn't work in this order:
     //
     // val charSequenceValue: CharSequence
-    // @Provides fun bind(stringValue: String): CharSequence = this
-    // @Provides fun provideString(): String = "Hi"
+    // @Provides private fun bind(stringValue: String): CharSequence = this
+    // @Provides private fun provideString(): String = "Hi"
     //
     // Because it would try to eagerly look up bindings for String but String
     // hadn't been encountered yet.

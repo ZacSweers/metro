@@ -39,11 +39,11 @@ interface ExampleComponent : FileSystemComponent {
 }
 
 interface FileSystemComponent {
-  @Singleton @Provides fun provideFileSystem(): FileSystem = FileSystem()
+  @Singleton @Provides private fun provideFileSystem(): FileSystem = FileSystem()
 
   @Singleton
   @Provides
-  fun provideFileSystemProvider(fs: FileSystem): FileSystemProvider = fs.provider()
+  private fun provideFileSystemProvider(fs: FileSystem): FileSystemProvider = fs.provider()
 }
 
 @Singleton @Inject class Example1(val text: String)

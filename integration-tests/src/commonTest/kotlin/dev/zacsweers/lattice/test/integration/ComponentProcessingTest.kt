@@ -56,9 +56,9 @@ class ComponentProcessingTest {
     val repository: Repository
     val apiClient: ApiClient
 
-    @Provides fun provideFileSystem(): FileSystem = FakeFileSystem()
+    @Provides private fun provideFileSystem(): FileSystem = FakeFileSystem()
 
-    @Named("cache-dir-name") @Provides fun provideCacheDirName(): String = "cache"
+    @Named("cache-dir-name") @Provides private fun provideCacheDirName(): String = "cache"
 
     @Component.Factory
     fun interface Factory {
@@ -91,7 +91,7 @@ class ComponentProcessingTest {
 
     abstract val counter: Counter
 
-    @Provides fun count(): Int = callCount++
+    @Provides private fun count(): Int = callCount++
 
     @Component.Factory
     fun interface Factory {
@@ -135,7 +135,7 @@ class ComponentProcessingTest {
     abstract val lazyValue: Lazy<Int>
     abstract val providedLazies: Provider<Lazy<Int>>
 
-    @Provides fun provideInt(): Int = counter++
+    @Provides private fun provideInt(): Int = counter++
   }
 
   @Test
@@ -171,7 +171,7 @@ class ComponentProcessingTest {
 
     fun value(): CharSequence
 
-    @Provides fun provideValue(string: String): CharSequence = string
+    @Provides private fun provideValue(string: String): CharSequence = string
 
     @Component.Factory
     fun interface Factory {
@@ -472,7 +472,7 @@ class ComponentProcessingTest {
     interface DependentComponent {
       val message: String
 
-      @Provides fun provideMessage(): String = "Hello, world!"
+      @Provides private fun provideMessage(): String = "Hello, world!"
     }
   }
 
@@ -492,7 +492,7 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithSingleIntSet {
     val ints: Set<Int>
 
-    @Provides @IntoSet fun provideInt1(): Int = 1
+    @Provides @IntoSet private fun provideInt1(): Int = 1
   }
 
   @Test
@@ -525,9 +525,9 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithIntSet {
     val ints: Set<Int>
 
-    @Provides @IntoSet fun provideInt1(): Int = 1
+    @Provides @IntoSet private fun provideInt1(): Int = 1
 
-    @Provides @IntoSet fun provideInt2(): Int = 2
+    @Provides @IntoSet private fun provideInt2(): Int = 2
   }
 
   @Test
@@ -546,7 +546,7 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithElementsIntoSet {
     val ints: Set<Int>
 
-    @Provides @ElementsIntoSet fun provideInts(): Set<Int> = setOf(1, 2, 3)
+    @Provides @ElementsIntoSet private fun provideInts(): Set<Int> = setOf(1, 2, 3)
   }
 
   @Test
@@ -568,7 +568,7 @@ class ComponentProcessingTest {
 
     abstract val ints: Set<Int>
 
-    @Provides @ElementsIntoSet @Singleton fun provideInts(): Set<Int> = buildSet { add(count++) }
+    @Provides @ElementsIntoSet @Singleton private fun provideInts(): Set<Int> = buildSet { add(count++) }
   }
 
   @Test
@@ -590,11 +590,11 @@ class ComponentProcessingTest {
 
     abstract val ints: Set<Int>
 
-    @Provides @IntoSet fun provideInt1(): Int = 1 + unscopedCount++
+    @Provides @IntoSet private fun provideInt1(): Int = 1 + unscopedCount++
 
-    @Provides @IntoSet fun provideInt5(): Int = 5 + unscopedCount++
+    @Provides @IntoSet private fun provideInt5(): Int = 5 + unscopedCount++
 
-    @Provides @ElementsIntoSet @Singleton fun provideInts(): Set<Int> = buildSet { add(count++) }
+    @Provides @ElementsIntoSet @Singleton private fun provideInts(): Set<Int> = buildSet { add(count++) }
   }
 
   @Test
@@ -613,9 +613,9 @@ class ComponentProcessingTest {
 
     abstract val ints: Set<Int>
 
-    @Provides @Singleton @IntoSet fun provideScopedInt(): Int = scopedCount++
+    @Provides @Singleton @IntoSet private fun provideScopedInt(): Int = scopedCount++
 
-    @Provides @IntoSet fun provideUnscopedInt(): Int = unscopedCount++
+    @Provides @IntoSet private fun provideUnscopedInt(): Int = unscopedCount++
   }
 
   @Test
@@ -636,7 +636,7 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithSingleIntMap {
     val ints: Map<Int, Int>
 
-    @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+    @Provides @IntoMap @IntKey(1) private fun provideInt1(): Int = 1
   }
 
   @Test
@@ -671,9 +671,9 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithIntMap {
     val ints: Map<Int, Int>
 
-    @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+    @Provides @IntoMap @IntKey(1) private fun provideInt1(): Int = 1
 
-    @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+    @Provides @IntoMap @IntKey(2) private fun provideInt2(): Int = 2
   }
 
   @Test
@@ -692,9 +692,9 @@ class ComponentProcessingTest {
 
     abstract val ints: Map<Int, Int>
 
-    @Provides @Singleton @IntoMap @IntKey(1) fun provideScopedInt(): Int = scopedCount++
+    @Provides @Singleton @IntoMap @IntKey(1) private fun provideScopedInt(): Int = scopedCount++
 
-    @Provides @IntoMap @IntKey(2) fun provideUnscopedInt(): Int = unscopedCount++
+    @Provides @IntoMap @IntKey(2) private fun provideUnscopedInt(): Int = unscopedCount++
   }
 
   @Test
@@ -715,9 +715,9 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithStringMap {
     val ints: Map<String, Int>
 
-    @Provides @IntoMap @StringKey("1") fun provideInt1(): Int = 1
+    @Provides @IntoMap @StringKey("1") private fun provideInt1(): Int = 1
 
-    @Provides @IntoMap @StringKey("2") fun provideInt2(): Int = 2
+    @Provides @IntoMap @StringKey("2") private fun provideInt2(): Int = 2
   }
 
   @Test
@@ -739,9 +739,9 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithKClassMap {
     val ints: Map<KClass<*>, Int>
 
-    @Provides @IntoMap @ClassKey(Int::class) fun provideMapInt1() = 1
+    @Provides @IntoMap @ClassKey(Int::class) private fun provideMapInt1() = 1
 
-    @Provides @IntoMap @Singleton @ClassKey(Float::class) fun provideMapInt2() = 2
+    @Provides @IntoMap @Singleton @ClassKey(Float::class) private fun provideMapInt2() = 2
   }
 
   @Test
@@ -764,32 +764,32 @@ class ComponentProcessingTest {
   interface MultibindingComponentWithMultipleOtherMapKeyTypes {
     val seasoningAmounts: Map<Seasoning, Int>
 
-    @Provides @IntoMap @SeasoningKey(Seasoning.SPICY) fun provideSpicySeasoning() = 1
+    @Provides @IntoMap @SeasoningKey(Seasoning.SPICY) private fun provideSpicySeasoning() = 1
 
-    @Provides @IntoMap @SeasoningKey(Seasoning.REGULAR) fun provideRegularSeasoning() = 2
+    @Provides @IntoMap @SeasoningKey(Seasoning.REGULAR) private fun provideRegularSeasoning() = 2
 
     @MapKey annotation class SeasoningKey(val value: Seasoning)
 
     val longs: Map<Long, Int>
 
-    @Provides @IntoMap @LongKey(1) fun provideLongKey1() = 1
+    @Provides @IntoMap @LongKey(1) private fun provideLongKey1() = 1
 
-    @Provides @IntoMap @LongKey(2) fun provideLongKey2() = 2
+    @Provides @IntoMap @LongKey(2) private fun provideLongKey2() = 2
 
     val strings: Map<String, Int>
 
-    @Provides @IntoMap @StringKey("1") fun provideStringKey1() = 1
+    @Provides @IntoMap @StringKey("1") private fun provideStringKey1() = 1
 
-    @Provides @IntoMap @StringKey("2") fun provideStringKey2() = 2
+    @Provides @IntoMap @StringKey("2") private fun provideStringKey2() = 2
 
     val wrappedSeasoningAmounts: Map<WrappedSeasoningKey, Int>
 
-    @Provides @IntoMap @WrappedSeasoningKey(Seasoning.SPICY) fun provideWrappedSpicySeasoning() = 1
+    @Provides @IntoMap @WrappedSeasoningKey(Seasoning.SPICY) private fun provideWrappedSpicySeasoning() = 1
 
     @Provides
     @IntoMap
     @WrappedSeasoningKey(Seasoning.REGULAR)
-    fun provideWrappedRegularSeasoning() = 2
+    private fun provideWrappedRegularSeasoning() = 2
 
     @MapKey(unwrapValue = false) annotation class WrappedSeasoningKey(val value: Seasoning)
   }
@@ -821,9 +821,9 @@ class ComponentProcessingTest {
     abstract val providerInts: Provider<Map<Int, Provider<Int>>>
     abstract val lazyInts: Lazy<Map<Int, Provider<Int>>>
 
-    @Provides @Singleton @IntoMap @IntKey(1) fun provideScopedInt(): Int = scopedCount++
+    @Provides @Singleton @IntoMap @IntKey(1) private fun provideScopedInt(): Int = scopedCount++
 
-    @Provides @IntoMap @IntKey(2) fun provideUnscopedInt(): Int = unscopedCount++
+    @Provides @IntoMap @IntKey(2) private fun provideUnscopedInt(): Int = unscopedCount++
   }
 
   @Test
@@ -834,7 +834,7 @@ class ComponentProcessingTest {
 
   @Component
   interface MessageProviderWithCharSequenceProvider : BaseMessageProviderWithDefault {
-    @Provides fun provideCharSequence(): CharSequence = "Found"
+    @Provides private fun provideCharSequence(): CharSequence = "Found"
   }
 
   @Test
@@ -848,7 +848,7 @@ class ComponentProcessingTest {
   interface BaseMessageProviderWithDefault {
     val message: String
 
-    @Provides fun provideMessage(input: CharSequence = "Not found"): String = input.toString()
+    @Provides private fun provideMessage(input: CharSequence = "Not found"): String = input.toString()
   }
 
   @Test
@@ -861,10 +861,10 @@ class ComponentProcessingTest {
   interface OptionalDependenciesProviderWithBackReferencingDefault {
     val message: String
 
-    @Provides fun provideInt(): Int = 3
+    @Provides private fun provideInt(): Int = 3
 
     @Provides
-    fun provideMessage(intValue: Int, input: CharSequence = "Not found: $intValue"): String =
+    private fun provideMessage(intValue: Int, input: CharSequence = "Not found: $intValue"): String =
       input.toString()
   }
 
@@ -878,10 +878,10 @@ class ComponentProcessingTest {
   interface OptionalDependenciesProviderWithManyDefaultBackReferences {
     val message: String
 
-    @Provides fun provideInt(): Int = 3
+    @Provides private fun provideInt(): Int = 3
 
     @Provides
-    fun provideMessage(
+    private fun provideMessage(
       int: Int = 2,
       long: Long = 4,
       input: CharSequence = (int + long).toString(),
@@ -901,7 +901,7 @@ class ComponentProcessingTest {
     val message: String
 
     @Provides
-    fun provideMessage(message: CharSequence = DEFAULT_MESSAGE): String = message.toString()
+    private fun provideMessage(message: CharSequence = DEFAULT_MESSAGE): String = message.toString()
 
     private companion object {
       private const val DEFAULT_MESSAGE = "Default message!"
@@ -922,7 +922,7 @@ class ComponentProcessingTest {
       get() = DEFAULT_MESSAGE
 
     @Provides
-    fun provideMessage(message: CharSequence = defaultMessage): String = message.toString()
+    private fun provideMessage(message: CharSequence = defaultMessage): String = message.toString()
 
     private companion object {
       private const val DEFAULT_MESSAGE = "Default message!"
@@ -937,7 +937,7 @@ class ComponentProcessingTest {
 
   @Component
   interface MessageClassWithCharSequenceProvider : BaseMessageClassWithDefault {
-    @Provides fun provideMessage(): String = "Found"
+    @Provides private fun provideMessage(): String = "Found"
   }
 
   @Test
@@ -968,7 +968,7 @@ class ComponentProcessingTest {
     val message: String
       get() = messageClass.message
 
-    @Provides fun provideInt(): Int = 3
+    @Provides private fun provideInt(): Int = 3
 
     @Inject class MessageClass(intValue: Int, val message: String = "Not found: $intValue")
   }
@@ -985,7 +985,7 @@ class ComponentProcessingTest {
     val message: String
       get() = messageClass.message
 
-    @Provides fun provideInt(): Int = 3
+    @Provides private fun provideInt(): Int = 3
 
     @Inject
     class MessageClass(int: Int = 2, long: Long = 4, val message: String = (int + long).toString())
