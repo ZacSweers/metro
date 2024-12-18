@@ -63,6 +63,7 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.addMember
@@ -172,6 +173,18 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     return super.visitCall(expression, data)
   }
 
+  override fun visitProperty(declaration: IrProperty, data: ComponentData): IrStatement {
+    providesTransformer.visitProperty(declaration)
+    return super.visitProperty(declaration, data)
+  }
+
+  override fun visitFunction(declaration: IrFunction, data: ComponentData): IrStatement {
+    if (declaration is IrSimpleFunction) {
+      providesTransformer.visitFunction(declaration)
+    }
+    return super.visitFunction(declaration, data)
+  }
+
   override fun visitClass(declaration: IrClass, data: ComponentData): IrStatement {
     log("Reading <$declaration>")
 
@@ -182,7 +195,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     val isAnnotatedWithComponent = declaration.isAnnotatedWithAny(symbols.componentAnnotations)
     if (!isAnnotatedWithComponent) return super.visitClass(declaration, data)
 
-    providesTransformer.visitComponentClass(declaration)
+    providesTransformer.visitClass(declaration)
 
     getOrBuildComponent(declaration)
 

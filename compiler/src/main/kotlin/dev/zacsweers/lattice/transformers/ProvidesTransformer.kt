@@ -74,7 +74,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   private val generatedFactories = mutableMapOf<FqName, IrClass>()
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  fun visitComponentClass(declaration: IrClass) {
+  fun visitClass(declaration: IrClass) {
     // Defensive copy because we add to this class in some factories!
     val sourceDeclarations =
       declaration.declarations
@@ -90,7 +90,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         is IrClass -> {
           if (nestedDeclaration.isCompanionObject) {
             // Include companion object refs
-            visitComponentClass(nestedDeclaration)
+            visitClass(nestedDeclaration)
           }
         }
       }
@@ -111,11 +111,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   fun visitFunction(declaration: IrSimpleFunction) {
     if (!declaration.isAnnotatedWithAny(symbols.providesAnnotations)) return
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
-  }
-
-  fun visitClass(declaration: IrClass) {
-    if (!declaration.isAnnotatedWithAny(symbols.componentAnnotations)) return
-    visitComponentClass(declaration)
   }
 
   // TODO what about inherited/overridden providers?
@@ -163,6 +158,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO FIR check function is not abstract
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho
+
+    // TODO Private functions need to be visible downstream. To do this we use a new API to add
+    // custom metadata
+    //    if (!reference.callee.owner.visibility.isVisibleOutside()) {
+    //      pluginContext.metadataDeclarationRegistrar
+    //    }
 
     val valueParameters = reference.parameters.valueParameters
 
