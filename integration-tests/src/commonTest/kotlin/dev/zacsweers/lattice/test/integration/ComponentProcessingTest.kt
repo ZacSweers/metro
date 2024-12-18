@@ -896,11 +896,37 @@ class ComponentProcessingTest {
     private fun provideMessage(
       int: Int = 2,
       long: Long = 4,
-      input: CharSequence = (int + long).toString(),
+      input: CharSequence = run { (int + long).toString() },
     ): String {
       return input.toString()
     }
   }
+
+  // TODO this needs more work to support
+  //  @Test
+  //  fun `optional dependencies - provider - default values with complex functions with back
+  // refs`() {
+  //    val component = createComponent<OptionalDependenciesProviderWithFunctionBackReferences>()
+  //    assertEquals("7", component.message)
+  //  }
+  //
+  //  @Component
+  //  interface OptionalDependenciesProviderWithFunctionBackReferences {
+  //    val message: String
+  //
+  //    @Provides private fun provideInt(): Int = 3
+  //
+  //    @Provides
+  //    private fun provideMessage(
+  //      int: Int = 2,
+  //      long: Long = 4,
+  //      input: CharSequence = run {
+  //        (int + long).toString()
+  //      }
+  //    ): String {
+  //      return input.toString()
+  //    }
+  //  }
 
   @Test
   fun `optional dependencies - provider - default values from private references`() {
