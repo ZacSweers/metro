@@ -68,6 +68,7 @@ import org.jetbrains.kotlin.ir.declarations.IrExternalPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -608,6 +609,7 @@ internal fun IrClass.buildFactoryCreateFunction(
   factoryClassParameterized: IrType,
   factoryConstructor: IrConstructorSymbol,
   parameters: Parameters,
+  providerFunction: IrFunction?,
 ) {
   addFunction("create", factoryClassParameterized, isStatic = true).apply {
     val thisFunction = this
@@ -626,6 +628,7 @@ internal fun IrClass.buildFactoryCreateFunction(
         .map { addValueParameter(it.name, it.providerType, LatticeOrigin) }
 
     context.patchFactoryCreationParameters(
+      providerFunction = providerFunction,
       sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
       factoryParameters = valueParamsToPatch,
       factoryComponentParameter = instanceParam,

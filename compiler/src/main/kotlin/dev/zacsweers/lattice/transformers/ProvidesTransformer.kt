@@ -380,11 +380,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     // Generate create()
     classToGenerateCreatorsIn.buildFactoryCreateFunction(
-      this,
-      factoryCls,
-      factoryClassParameterized,
-      factoryConstructor,
-      factoryParameters,
+      context = this,
+      factoryClass = factoryCls,
+      factoryClassParameterized = factoryClassParameterized,
+      factoryConstructor = factoryConstructor,
+      parameters = factoryParameters,
+      providerFunction = reference.callee.owner,
     )
 
     // Generate the named function
@@ -434,6 +435,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             }
 
           patchFactoryCreationParameters(
+            providerFunction = reference.callee.owner,
             sourceParameters = reference.parameters.valueParameters.map { it.ir },
             factoryParameters = valueParametersToMap,
             factoryComponentParameter = instanceParam,

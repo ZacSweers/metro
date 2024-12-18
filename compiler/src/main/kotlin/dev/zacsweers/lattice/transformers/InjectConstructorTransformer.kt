@@ -260,11 +260,12 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
     // Generate create()
     classToGenerateCreatorsIn.buildFactoryCreateFunction(
-      this,
-      factoryCls,
-      factoryClassParameterized,
-      factoryConstructor,
-      constructorParameters,
+      context = this,
+      factoryClass = factoryCls,
+      factoryClassParameterized = factoryClassParameterized,
+      factoryConstructor = factoryConstructor,
+      parameters = constructorParameters,
+      providerFunction = null,
     )
 
     /*
@@ -301,6 +302,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
           }
 
           patchFactoryCreationParameters(
+            providerFunction = null,
             sourceParameters = constructorParameters.valueParameters.map { it.ir },
             factoryParameters = valueParameters,
             factoryComponentParameter = null,

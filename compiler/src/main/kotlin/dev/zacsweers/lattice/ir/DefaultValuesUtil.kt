@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.ir
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.wrapInProvider
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetValue
@@ -30,7 +31,6 @@ import org.jetbrains.kotlin.ir.util.deepCopyWithoutPatchingParents
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
-import org.jetbrains.kotlin.name.SpecialNames
 
 /**
  * Remaps default value expressions from [sourceParameters] to [factoryParameters].
@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.name.SpecialNames
  */
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun LatticeTransformerContext.patchFactoryCreationParameters(
+  providerFunction: IrFunction?,
   sourceParameters: List<IrValueParameter>,
   factoryParameters: List<IrValueParameter>,
   factoryComponentParameter: IrValueParameter?,
@@ -69,9 +70,7 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
     object : IrElementTransformerVoid() {
       override fun visitGetValue(expression: IrGetValue): IrExpression {
         // Check if the expression is the instance receiver
-        // TODO this is not a great check. The problem is this irGet() points at a copied parameter
-        //  that's attached to the function
-        if (expression.symbol.owner.name == SpecialNames.THIS) {
+        if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
           return IrGetValueImpl(
             SYNTHETIC_OFFSET,
             SYNTHETIC_OFFSET,
