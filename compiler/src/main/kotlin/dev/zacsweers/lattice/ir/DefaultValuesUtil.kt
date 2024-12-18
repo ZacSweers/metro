@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.lattice.ir
 
-import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.wrapInProvider
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -25,11 +24,13 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.deepCopyWithoutPatchingParents
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
+import org.jetbrains.kotlin.name.SpecialNames
 
 /**
  * Remaps default value expressions from [sourceParameters] to [factoryParameters].
@@ -38,6 +39,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
  * back-references to other parameters. Part of supporting that is a local
  * [IrElementTransformerVoid] that remaps those references to the new parameters.
  */
+@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun LatticeTransformerContext.patchFactoryCreationParameters(
   sourceParameters: List<IrValueParameter>,
   factoryParameters: List<IrValueParameter>,
@@ -67,7 +69,7 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
         // Check if the expression is the instance receiver
         // TODO this is not a great check. The problem is this irGet() points at a copied parameter
         //  that's attached to the function
-        if (expression.symbol.owner.name == LatticeSymbols.Names.This) {
+        if (expression.symbol.owner.name == SpecialNames.THIS) {
           return IrGetValueImpl(
             SYNTHETIC_OFFSET,
             SYNTHETIC_OFFSET,
