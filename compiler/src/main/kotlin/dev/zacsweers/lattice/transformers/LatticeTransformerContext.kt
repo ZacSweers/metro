@@ -23,6 +23,7 @@ import dev.zacsweers.lattice.ir.annotationsIn
 import dev.zacsweers.lattice.ir.irType
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.locationOrNull
+import dev.zacsweers.lattice.mapToSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -108,8 +109,10 @@ internal interface LatticeTransformerContext {
   fun IrAnnotationContainer?.qualifierAnnotation() =
     annotationsAnnotatedWith(symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
 
-  fun IrAnnotationContainer?.scopeAnnotation() =
-    annotationsAnnotatedWith(symbols.scopeAnnotations).singleOrNull()?.let(::IrAnnotation)
+  fun IrAnnotationContainer?.scopeAnnotation() = scopeAnnotations().singleOrNull()
+
+  fun IrAnnotationContainer?.scopeAnnotations() =
+    annotationsAnnotatedWith(symbols.scopeAnnotations).mapToSet(::IrAnnotation)
 
   fun IrAnnotationContainer.mapKeyAnnotation() =
     annotationsIn(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)

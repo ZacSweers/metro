@@ -28,7 +28,7 @@ internal data class ComponentNode(
   val generatedComponentId: ClassId,
   val isAnnotatedWithComponent: Boolean,
   val dependencies: List<ComponentNode>,
-  val scope: IrAnnotation?,
+  val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, IrSimpleFunction>>,
   // Types accessible via this component (includes inherited)
   // TODO this should eventually expand to cover inject(...) calls too once we have member injection

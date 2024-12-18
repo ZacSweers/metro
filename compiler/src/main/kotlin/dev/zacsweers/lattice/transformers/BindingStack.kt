@@ -167,9 +167,12 @@ internal class BindingStackEntry(
     /*
     com.slack.circuit.star.Example1
      */
-    fun simpleTypeRef(typeKey: TypeKey): BindingStackEntry {
-      return BindingStackEntry(typeKey = typeKey, action = null, context = null, declaration = null)
-    }
+    fun simpleTypeRef(typeKey: TypeKey, action: String? = null): BindingStackEntry = BindingStackEntry(
+      typeKey = typeKey,
+      action = action,
+      context = null,
+      declaration = null,
+    )
 
     /*
     java.lang.CharSequence is injected at

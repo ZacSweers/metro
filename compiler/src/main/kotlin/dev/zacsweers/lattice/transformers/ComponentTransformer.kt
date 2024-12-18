@@ -231,8 +231,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       }
     }
 
-    // TODO not currently reading supertypes yet
-    val scope = componentDeclaration.scopeAnnotation()
+    // TODO not currently reading supertypes yet.
+    val scopes = componentDeclaration.scopeAnnotations()
 
     val providerMethods =
       componentDeclaration
@@ -295,7 +295,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         generatedComponentId = generatedComponentId,
         isAnnotatedWithComponent = true,
         dependencies = componentDependencies,
-        scope = scope,
+        scopes = scopes,
         providerFunctions = providerMethods,
         exposedTypes = exposedTypes,
         isExternal = false,
@@ -871,14 +871,25 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Check scoping compatibility
     // TODO FIR error?
     if (bindingScope != null) {
-      if (node.scope == null || bindingScope != node.scope) {
-        // Error if an unscoped component references scoped bindings
+      if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
+        val componentIsUnscoped = node.scopes.isEmpty()
+        // Error if there are mismatched scopes
         val declarationToReport = node.sourceComponent
-        bindingStack.push(BindingStackEntry.simpleTypeRef(key))
+        bindingStack.push(
+          BindingStackEntry.simpleTypeRef(key, action = "(scoped to '$bindingScope')")
+        )
         val message = buildString {
           append("[Lattice/IncompatiblyScopedBindings] ")
           append(declarationToReport.kotlinFqName)
-          append(" (unscoped) may not reference scoped bindings:")
+          if (componentIsUnscoped) {
+            // Unscoped component but scoped binding
+            append(" (unscoped) may not reference scoped bindings:")
+          } else {
+            // Scope mismatch
+            append(
+              " (${node.scopes.joinToString()}) may not reference bindings from different scopes:"
+            )
+          }
           appendLine()
           appendBindingStack(bindingStack)
         }
