@@ -22,7 +22,6 @@ import dev.zacsweers.lattice.ir.addAnnotation
 import dev.zacsweers.lattice.ir.annotationsIn
 import dev.zacsweers.lattice.ir.irType
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.ir.locationIn
 import dev.zacsweers.lattice.ir.locationOrNull
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -43,7 +42,6 @@ import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
@@ -65,7 +63,11 @@ internal interface LatticeTransformerContext {
   }
 
   fun IrDeclaration.reportError(message: String) {
-    val location = this.locationOrNull() ?: error("No location for ${dumpKotlinLike()} in class\n${parentClassOrNull?.dumpKotlinLike()}.\n\nMessage:\n$message")
+    val location =
+      this.locationOrNull()
+        ?: error(
+          "No location for ${dumpKotlinLike()} in class\n${parentClassOrNull?.dumpKotlinLike()}.\n\nMessage:\n$message"
+        )
     messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
   }
 

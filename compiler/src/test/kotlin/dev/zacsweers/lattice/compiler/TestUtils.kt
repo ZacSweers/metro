@@ -194,7 +194,9 @@ val JvmCompilationResult.ExampleComponent: Class<*>
 
 fun Class<*>.generatedLatticeComponentClass(): Class<*> {
   return classes.singleOrNull { it.simpleName == LatticeSymbols.Names.LatticeComponent.asString() }
-    ?: error("Could not find nested class $this.${LatticeSymbols.Names.LatticeComponent.asString()}. Available: ${classes.joinToString { it.simpleName }}")
+    ?: error(
+      "Could not find nested class $this.${LatticeSymbols.Names.LatticeComponent.asString()}. Available: ${classes.joinToString { it.simpleName }}"
+    )
 }
 
 fun Class<*>.componentImpl(): Class<*> {
