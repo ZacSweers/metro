@@ -433,6 +433,53 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
+  fun `scoped components cannot depend on scoped bindings with mismatched scopes`() {
+    // Ensure scoped bindings match the component that is trying to use them
+    val result =
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.annotations.SingleIn
+            import dev.zacsweers.lattice.annotations.AppScope
+
+            abstract class UserScope private constructor()
+
+            @Singleton
+            @SingleIn(AppScope::class)
+            @Component
+            interface ExampleComponent {
+            
+              val intValue: Int
+
+              @SingleIn(UserScope::class)
+              @Provides
+              fun invalidScope(): Int = 0
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContains(
+      """
+        ExampleComponent.kt:11:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (@Singleton, @SingleIn(AppScope::class)) may not reference bindings from different scopes:
+            kotlin.Int (scoped to '@SingleIn(UserScope::class)')
+            
+            kotlin.Int is requested at
+                [test.ExampleComponent] test.ExampleComponent.intValue
+      """
+        .trimIndent()
+    )
+  }
+
+  @Test
   fun `providers from supertypes are wired correctly`() {
     // Ensure providers from supertypes are correctly wired. This means both incorporating them in
     // binding resolution and being able to invoke them correctly in the resulting component.
