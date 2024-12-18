@@ -50,19 +50,21 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
   check(sourceParameters.size == factoryParameters.size) {
     "Source parameters (${sourceParameters.size}) and factory parameters (${factoryParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"
   }
-  println(
-    buildString {
-      appendLine("Patching factory creation parameters")
-      appendLine("  Source params:")
-      for ((index, param) in sourceParameters.withIndex()) {
-        appendLine("    $index. ${param.dumpKotlinLike()}")
+  if (debug) {
+    logVerbose(
+      buildString {
+        appendLine("Patching factory creation parameters")
+        appendLine("  Source params:")
+        for ((index, param) in sourceParameters.withIndex()) {
+          appendLine("    $index. ${param.dumpKotlinLike()}")
+        }
+        appendLine("  Factory params:")
+        for ((index, param) in factoryParameters.withIndex()) {
+          appendLine("    $index. ${param.dumpKotlinLike()}")
+        }
       }
-      appendLine("  Factory params:")
-      for ((index, param) in factoryParameters.withIndex()) {
-        appendLine("    $index. ${param.dumpKotlinLike()}")
-      }
-    }
-  )
+    )
+  }
   val transformer =
     object : IrElementTransformerVoid() {
       override fun visitGetValue(expression: IrGetValue): IrExpression {
