@@ -568,7 +568,10 @@ class ComponentProcessingTest {
 
     abstract val ints: Set<Int>
 
-    @Provides @ElementsIntoSet @Singleton private fun provideInts(): Set<Int> = buildSet { add(count++) }
+    @Provides
+    @ElementsIntoSet
+    @Singleton
+    private fun provideInts(): Set<Int> = buildSet { add(count++) }
   }
 
   @Test
@@ -594,7 +597,10 @@ class ComponentProcessingTest {
 
     @Provides @IntoSet private fun provideInt5(): Int = 5 + unscopedCount++
 
-    @Provides @ElementsIntoSet @Singleton private fun provideInts(): Set<Int> = buildSet { add(count++) }
+    @Provides
+    @ElementsIntoSet
+    @Singleton
+    private fun provideInts(): Set<Int> = buildSet { add(count++) }
   }
 
   @Test
@@ -784,7 +790,10 @@ class ComponentProcessingTest {
 
     val wrappedSeasoningAmounts: Map<WrappedSeasoningKey, Int>
 
-    @Provides @IntoMap @WrappedSeasoningKey(Seasoning.SPICY) private fun provideWrappedSpicySeasoning() = 1
+    @Provides
+    @IntoMap
+    @WrappedSeasoningKey(Seasoning.SPICY)
+    private fun provideWrappedSpicySeasoning() = 1
 
     @Provides
     @IntoMap
@@ -848,7 +857,8 @@ class ComponentProcessingTest {
   interface BaseMessageProviderWithDefault {
     val message: String
 
-    @Provides private fun provideMessage(input: CharSequence = "Not found"): String = input.toString()
+    @Provides
+    private fun provideMessage(input: CharSequence = "Not found"): String = input.toString()
   }
 
   @Test
@@ -864,8 +874,10 @@ class ComponentProcessingTest {
     @Provides private fun provideInt(): Int = 3
 
     @Provides
-    private fun provideMessage(intValue: Int, input: CharSequence = "Not found: $intValue"): String =
-      input.toString()
+    private fun provideMessage(
+      intValue: Int,
+      input: CharSequence = "Not found: $intValue",
+    ): String = input.toString()
   }
 
   @Test
