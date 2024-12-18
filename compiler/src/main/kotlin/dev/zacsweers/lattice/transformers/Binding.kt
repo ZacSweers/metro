@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -57,7 +56,8 @@ internal sealed interface Binding {
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
 
-    override val reportableLocation: CompilerMessageSourceLocation get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation
+      get() = type.location()
 
     fun parameterFor(typeKey: TypeKey) =
       injectedConstructor.valueParameters[
@@ -83,7 +83,8 @@ internal sealed interface Binding {
 
     override val nameHint: String = providerFunction.name.asString()
 
-    override val reportableLocation: CompilerMessageSourceLocation get() = providerFunction.location()
+    override val reportableLocation: CompilerMessageSourceLocation
+      get() = providerFunction.location()
 
     fun parameterFor(typeKey: TypeKey): IrValueParameter {
       return providerFunction.valueParameters[
@@ -104,11 +105,11 @@ internal sealed interface Binding {
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
-    override val reportableLocation: CompilerMessageSourceLocation get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation
+      get() = type.location()
   }
 
-  data class BoundInstance(val parameter: Parameter
-  ) : Binding {
+  data class BoundInstance(val parameter: Parameter) : Binding {
     override val typeKey: TypeKey = parameter.typeKey
     override val scope: IrAnnotation? = null
     override val nameHint: String = "${parameter.name.asString()}Instance"
@@ -117,12 +118,15 @@ internal sealed interface Binding {
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
 
-    override val reportableLocation: CompilerMessageSourceLocation? get() = parameter.location
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = parameter.location
   }
 
   data class Absent(override val typeKey: TypeKey) : Binding {
     override val scope: IrAnnotation? = null
-    override val nameHint: String get() = error("Should never be called")
+    override val nameHint: String
+      get() = error("Should never be called")
+
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val parameters: Parameters = Parameters.EMPTY
     override val contextualTypeKey: ContextualTypeKey =
@@ -156,7 +160,8 @@ internal sealed interface Binding {
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
 
-    override val reportableLocation: CompilerMessageSourceLocation get() = getter.location()
+    override val reportableLocation: CompilerMessageSourceLocation
+      get() = getter.location()
   }
 
   // TODO sets

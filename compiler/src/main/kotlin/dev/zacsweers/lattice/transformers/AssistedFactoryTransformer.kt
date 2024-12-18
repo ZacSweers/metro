@@ -24,7 +24,6 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.singleAbstractFunction
-import dev.zacsweers.lattice.joinSimpleNames
 import dev.zacsweers.lattice.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import dev.zacsweers.lattice.transformers.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -47,7 +46,6 @@ import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName

@@ -26,10 +26,8 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.isNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.render
 
 internal data class ContextualTypeKey(
@@ -57,7 +55,7 @@ internal data class ContextualTypeKey(
           function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
             ?: function.qualifierAnnotation()
         },
-        false
+        false,
       )
 
     fun from(
@@ -65,7 +63,11 @@ internal data class ContextualTypeKey(
       parameter: IrValueParameter,
       type: IrType = parameter.type,
     ): ContextualTypeKey =
-      type.asContextualTypeKey(context, with(context) { parameter.qualifierAnnotation() }, parameter.defaultValue != null)
+      type.asContextualTypeKey(
+        context,
+        with(context) { parameter.qualifierAnnotation() },
+        parameter.defaultValue != null,
+      )
   }
 }
 

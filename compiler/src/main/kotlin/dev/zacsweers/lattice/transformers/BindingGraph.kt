@@ -21,7 +21,6 @@ import dev.zacsweers.lattice.ir.location
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.singleAbstractFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.backend.jvm.ir.psiElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -38,7 +37,9 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       val message = buildString {
         appendLine("Duplicate binding for $key")
         if (binding is Binding.Provided) {
-          appendLine("Double check the provider's inferred return type or making its return type explicit.")
+          appendLine(
+            "Double check the provider's inferred return type or making its return type explicit."
+          )
         }
         appendBindingStack(bindingStack)
       }

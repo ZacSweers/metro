@@ -115,9 +115,11 @@ fun Class<*>.providesFactoryClass(
 
   val methodName = providerCallableName ?: providesCallables.single()
 
-  val expectedName = "${companionString}${methodName.capitalizeUS()}${LatticeSymbols.Names.LatticeFactory.asString()}"
+  val expectedName =
+    "${companionString}${methodName.capitalizeUS()}${LatticeSymbols.Names.LatticeFactory.asString()}"
   @Suppress("UNCHECKED_CAST")
-  return this.classes.singleOrNull { it.simpleName == expectedName } as Class<Factory<*>>? ?: error("Could not find nested class $this.$expectedName")
+  return this.classes.singleOrNull { it.simpleName == expectedName } as Class<Factory<*>>?
+    ?: error("Could not find nested class $this.$expectedName")
 }
 
 fun Class<Factory<*>>.invokeNewInstance(vararg args: Any): Any {
