@@ -303,6 +303,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
           patchFactoryCreationParameters(
             sourceParameters = constructorParameters.valueParameters.map { it.ir },
             factoryParameters = valueParameters,
+            factoryComponentParameter = null,
           )
 
           body =

@@ -610,20 +610,18 @@ internal fun IrClass.buildFactoryCreateFunction(
     this.visibility = DescriptorVisibilities.PUBLIC
     with(context) { markJvmStatic() }
 
-    parameters.instance?.let {
-      addValueParameter(it.name, it.providerType, LatticeOrigin)
-    }
-    parameters.extensionReceiver?.let {
-      addValueParameter(it.name, it.providerType, LatticeOrigin)
-    }
-    val valueParamsToPatch = parameters.valueParameters.filterNot { it.isAssisted }
-      .map {
-        addValueParameter(it.name, it.providerType, LatticeOrigin)
-      }
+    val instanceParam =
+      parameters.instance?.let { addValueParameter(it.name, it.providerType, LatticeOrigin) }
+    parameters.extensionReceiver?.let { addValueParameter(it.name, it.providerType, LatticeOrigin) }
+    val valueParamsToPatch =
+      parameters.valueParameters
+        .filterNot { it.isAssisted }
+        .map { addValueParameter(it.name, it.providerType, LatticeOrigin) }
 
     context.patchFactoryCreationParameters(
       sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
       factoryParameters = valueParamsToPatch,
+      factoryComponentParameter = instanceParam,
       wrapInProvider = true,
     )
 
@@ -647,24 +645,23 @@ internal fun IrBuilderWithScope.checkNotNullCall(
   message: String,
 ): IrExpression =
   irInvoke(
-    callee = context.symbols.stdlibCheckNotNull,
-    args =
-      listOf(
-        firstArg,
-        irLambda(
-          context.pluginContext,
-          parent = parent, // TODO this is obvi wrong
-          receiverParameter = null,
-          valueParameters = emptyList(),
-          returnType = context.pluginContext.irBuiltIns.stringType,
-          suspend = false,
-        ) {
-          +irReturn(irString(message))
-        },
-      ),
-  ).apply {
-    putTypeArgument(0, firstArg.type)
-  }
+      callee = context.symbols.stdlibCheckNotNull,
+      args =
+        listOf(
+          firstArg,
+          irLambda(
+            context.pluginContext,
+            parent = parent, // TODO this is obvi wrong
+            receiverParameter = null,
+            valueParameters = emptyList(),
+            returnType = context.pluginContext.irBuiltIns.stringType,
+            suspend = false,
+          ) {
+            +irReturn(irString(message))
+          },
+        ),
+    )
+    .apply { putTypeArgument(0, firstArg.type) }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.getAllSuperTypes(

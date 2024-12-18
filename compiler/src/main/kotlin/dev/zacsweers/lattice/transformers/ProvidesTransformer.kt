@@ -425,9 +425,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
           val newInstanceParameters = factoryParameters.with(this)
 
-          newInstanceParameters.instance?.let {
-            addValueParameter(it.name, it.originalType, LatticeOrigin)
-          }
+          val instanceParam =
+            newInstanceParameters.instance?.let {
+              addValueParameter(it.name, it.originalType, LatticeOrigin)
+            }
           newInstanceParameters.extensionReceiver?.let {
             addValueParameter(it.name, it.originalType, LatticeOrigin)
           }
@@ -440,6 +441,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           patchFactoryCreationParameters(
             sourceParameters = reference.parameters.valueParameters.map { it.ir },
             factoryParameters = valueParametersToMap,
+            factoryComponentParameter = instanceParam,
           )
 
           val argumentsWithoutComponent: IrBuilderWithScope.() -> List<IrExpression> = {

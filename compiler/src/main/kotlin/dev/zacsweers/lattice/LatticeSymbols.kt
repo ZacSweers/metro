@@ -57,6 +57,7 @@ internal class LatticeSymbols(
     val LatticeImpl = Name.identifier("\$\$Impl")
     // Used in @Assisted.value
     val Value = Name.identifier("value")
+    val This = Name.special("<this>")
   }
 
   // TODO use more constants from StandardNames.FqNames

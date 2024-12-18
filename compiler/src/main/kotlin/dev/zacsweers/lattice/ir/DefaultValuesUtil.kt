@@ -1,5 +1,6 @@
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.transformers.wrapInProvider
 import org.jetbrains.kotlin.ir.builders.irReturn
@@ -25,6 +26,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 internal fun LatticeTransformerContext.patchFactoryCreationParameters(
   sourceParameters: List<IrValueParameter>,
   factoryParameters: List<IrValueParameter>,
+  factoryComponentParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
 ) {
   if (sourceParameters.isEmpty()) return
@@ -47,6 +49,16 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
   val transformer =
     object : IrElementTransformerVoid() {
       override fun visitGetValue(expression: IrGetValue): IrExpression {
+        // Check if the expression is the instance receiver
+        // TODO this is not a great check. The problem is this irGet() points at a copied parameter
+        //  that's attached to the function
+        if (expression.symbol.owner.name == LatticeSymbols.Names.This) {
+          return IrGetValueImpl(
+            SYNTHETIC_OFFSET,
+            SYNTHETIC_OFFSET,
+            factoryComponentParameter!!.symbol,
+          )
+        }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }
         if (index != -1) {
           val newGet =

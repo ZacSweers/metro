@@ -909,6 +909,27 @@ class ComponentProcessingTest {
   }
 
   @Test
+  fun `optional dependencies - provider - default values from instance references`() {
+    val component = createComponent<OptionalDependenciesProviderWithInstanceReferences>()
+    assertEquals("Default message!", component.defaultMessage)
+  }
+
+  @Component
+  interface OptionalDependenciesProviderWithInstanceReferences {
+    val message: String
+
+    val defaultMessage: String
+      get() = DEFAULT_MESSAGE
+
+    @Provides
+    fun provideMessage(message: CharSequence = defaultMessage): String = message.toString()
+
+    private companion object {
+      private const val DEFAULT_MESSAGE = "Default message!"
+    }
+  }
+
+  @Test
   fun `optional dependencies - class - found dependency uses it`() {
     val component = createComponent<MessageClassWithCharSequenceProvider>()
     assertEquals("Found", component.message)
