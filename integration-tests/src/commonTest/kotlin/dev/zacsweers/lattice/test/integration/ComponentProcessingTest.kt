@@ -826,6 +826,31 @@ class ComponentProcessingTest {
     @Provides @IntoMap @IntKey(2) fun provideUnscopedInt(): Int = unscopedCount++
   }
 
+  @Test
+  fun `optional dependencies - provider found uses it`() {
+    val component = createComponent<MessageProviderWithCharSequenceProvider>()
+    assertEquals("Found", component.message)
+  }
+
+  @Component
+  interface MessageProviderWithCharSequenceProvider : BaseMessageProviderWithDefault {
+    @Provides fun provideCharSequence(): CharSequence = "Found"
+  }
+
+  @Test
+  fun `optional dependencies - provider missing uses default`() {
+    val component = createComponent<MessageProviderWithoutCharSequenceProvider>()
+    assertEquals("Not found", component.message)
+  }
+
+  @Component interface MessageProviderWithoutCharSequenceProvider : BaseMessageProviderWithDefault
+
+  interface BaseMessageProviderWithDefault {
+    val message: String
+
+    @Provides fun provideMessage(input: CharSequence = "Not found"): String = input.toString()
+  }
+
   enum class Seasoning {
     SPICY,
     REGULAR,
