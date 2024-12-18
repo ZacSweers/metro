@@ -26,7 +26,7 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
-import dev.zacsweers.lattice.joinSimpleNames
+import dev.zacsweers.lattice.ir.patchFactoryCreationParameters
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -51,7 +51,6 @@ import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.ClassId
 
@@ -82,7 +81,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     }
 
     val targetTypeParameters: List<IrTypeParameter> = declaration.typeParameters
-    val generatedClassName = "LatticeFactory"
 
     val canGenerateAnObject =
       targetConstructor.valueParameters.isEmpty() &&
@@ -301,6 +299,11 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
           for (parameter in constructorParameters.valueParameters) {
             addValueParameter(parameter.name, parameter.originalType, LatticeOrigin)
           }
+
+          patchFactoryCreationParameters(
+            sourceParameters = constructorParameters.valueParameters.map { it.ir },
+            factoryParameters = valueParameters,
+          )
 
           body =
             pluginContext.createIrBuilder(symbol).run {

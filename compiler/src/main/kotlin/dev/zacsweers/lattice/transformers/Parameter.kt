@@ -188,6 +188,8 @@ internal sealed interface Parameters : Comparable<Parameters> {
   val nonInstanceParameters: List<Parameter>
   val allParameters: List<Parameter>
 
+  fun with(ir: IrFunction): Parameters
+
   override fun compareTo(other: Parameters): Int = COMPARATOR.compare(this, other)
 
   companion object {
@@ -215,6 +217,10 @@ private data class ParametersImpl(
   override val valueParameters: List<Parameter>,
 ) : Parameters {
   override lateinit var ir: IrFunction
+
+  override fun with(ir: IrFunction): Parameters {
+    return copy().apply { this.ir = ir }
+  }
 
   override val nonInstanceParameters: List<Parameter> by unsafeLazy {
     buildList {

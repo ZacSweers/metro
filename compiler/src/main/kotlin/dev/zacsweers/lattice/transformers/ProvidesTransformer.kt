@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isCompanionObject
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
+import dev.zacsweers.lattice.ir.patchFactoryCreationParameters
 import dev.zacsweers.lattice.isWordPrefixRegex
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -58,13 +59,11 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.setDeclarationsParent
-import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
@@ -77,7 +76,13 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun visitComponentClass(declaration: IrClass) {
     // Defensive copy because we add to this class in some factories!
-    val sourceDeclarations = declaration.declarations.toList()
+    val sourceDeclarations =
+      declaration.declarations
+        .asSequence()
+        // Skip fake overrides, we care only about the original declaration because those have
+        // default values
+        .filterNot { it.isFakeOverride }
+        .toList()
     sourceDeclarations.forEach { nestedDeclaration ->
       when (nestedDeclaration) {
         is IrProperty -> visitProperty(nestedDeclaration)
@@ -363,7 +368,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     factoryConstructor: IrConstructorSymbol,
     reference: CallableReference,
     factoryClassParameterized: IrType,
-    parameters: Parameters,
+    factoryParameters: Parameters,
     byteCodeFunctionName: String,
   ): IrSimpleFunctionSymbol {
     val targetTypeParameterized = reference.typeKey.type
@@ -384,7 +389,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       factoryCls,
       factoryClassParameterized,
       factoryConstructor,
-      parameters,
+      factoryParameters,
     )
 
     // Generate the named function
@@ -418,18 +423,24 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           // No type params for this
           markJvmStatic()
 
-          parameters.instance?.let { addValueParameter(it.name, it.originalType, LatticeOrigin) }
-          parameters.extensionReceiver?.let {
+          val newInstanceParameters = factoryParameters.with(this)
+
+          newInstanceParameters.instance?.let {
+            addValueParameter(it.name, it.originalType, LatticeOrigin)
+          }
+          newInstanceParameters.extensionReceiver?.let {
             addValueParameter(it.name, it.originalType, LatticeOrigin)
           }
 
-          for (parameter in parameters.valueParameters) {
-            addValueParameter(parameter.name, parameter.originalType, LatticeOrigin).apply {
-              if (parameter.hasDefault) {
-                // TODO defaults go here!
-              }
+          val valueParametersToMap =
+            newInstanceParameters.valueParameters.map {
+              addValueParameter(it.name, it.originalType, LatticeOrigin)
             }
-          }
+
+          patchFactoryCreationParameters(
+            sourceParameters = reference.parameters.valueParameters.map { it.ir },
+            factoryParameters = valueParametersToMap,
+          )
 
           val argumentsWithoutComponent: IrBuilderWithScope.() -> List<IrExpression> = {
             valueParameters.drop(1).map { irGet(it) }
@@ -552,7 +563,9 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       }
     }
 
-    val generatedClassId by lazy { componentParent.classIdOrFail.createNestedClassId(Name.identifier(simpleName)) }
+    val generatedClassId by lazy {
+      componentParent.classIdOrFail.createNestedClassId(Name.identifier(simpleName))
+    }
 
     private val cachedToString by lazy {
       buildString {

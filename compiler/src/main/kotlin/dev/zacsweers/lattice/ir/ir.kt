@@ -610,14 +610,22 @@ internal fun IrClass.buildFactoryCreateFunction(
     this.visibility = DescriptorVisibilities.PUBLIC
     with(context) { markJvmStatic() }
 
-    for (parameter in parameters.allParameters) {
-      if (parameter.isAssisted) continue
-      addValueParameter(parameter.name, parameter.providerType, LatticeOrigin).apply {
-        if (parameter.hasDefault) {
-          // TODO defaults go here!
-        }
-      }
+    parameters.instance?.let {
+      addValueParameter(it.name, it.providerType, LatticeOrigin)
     }
+    parameters.extensionReceiver?.let {
+      addValueParameter(it.name, it.providerType, LatticeOrigin)
+    }
+    val valueParamsToPatch = parameters.valueParameters.filterNot { it.isAssisted }
+      .map {
+        addValueParameter(it.name, it.providerType, LatticeOrigin)
+      }
+
+    context.patchFactoryCreationParameters(
+      sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
+      factoryParameters = valueParamsToPatch,
+      wrapInProvider = true,
+    )
 
     body =
       context.pluginContext.createIrBuilder(symbol).run {
@@ -654,7 +662,9 @@ internal fun IrBuilderWithScope.checkNotNullCall(
           +irReturn(irString(message))
         },
       ),
-  )
+  ).apply {
+    putTypeArgument(0, firstArg.type)
+  }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.getAllSuperTypes(
@@ -775,8 +785,8 @@ internal fun IrBuilderWithScope.kClassReference(classType: IrType) =
     classType,
   )
 
-internal fun Collection<IrExpression>.joinToKotlinLike(separator: String = "\n"): String {
-  return joinToString(separator = separator) { it.dumpKotlinLike() }
+internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
+  return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
