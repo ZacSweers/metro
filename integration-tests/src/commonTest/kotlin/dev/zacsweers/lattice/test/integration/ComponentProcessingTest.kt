@@ -891,6 +891,24 @@ class ComponentProcessingTest {
   }
 
   @Test
+  fun `optional dependencies - provider - default values from private references`() {
+    val component = createComponent<OptionalDependenciesProviderWithPrivateReferences>()
+    assertEquals("Default message!", component.message)
+  }
+
+  @Component
+  interface OptionalDependenciesProviderWithPrivateReferences {
+    val message: String
+
+    @Provides
+    fun provideMessage(message: CharSequence = DEFAULT_MESSAGE): String = message.toString()
+
+    private companion object {
+      private const val DEFAULT_MESSAGE = "Default message!"
+    }
+  }
+
+  @Test
   fun `optional dependencies - class - found dependency uses it`() {
     val component = createComponent<MessageClassWithCharSequenceProvider>()
     assertEquals("Found", component.message)
@@ -950,6 +968,26 @@ class ComponentProcessingTest {
 
     @Inject
     class MessageClass(int: Int = 2, long: Long = 4, val message: String = (int + long).toString())
+  }
+
+  @Test
+  fun `optional dependencies - class - default values from private references`() {
+    val component = createComponent<OptionalDependenciesClassWithPrivateReferences>()
+    assertEquals("Default message!", component.message)
+  }
+
+  @Component
+  interface OptionalDependenciesClassWithPrivateReferences {
+    val messageClass: MessageClass
+    val message
+      get() = messageClass.message
+
+    @Inject
+    class MessageClass(val message: String = DEFAULT_MESSAGE) {
+      private companion object {
+        private const val DEFAULT_MESSAGE = "Default message!"
+      }
+    }
   }
 
   enum class Seasoning {
