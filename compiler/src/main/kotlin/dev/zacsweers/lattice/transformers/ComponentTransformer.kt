@@ -353,7 +353,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // Add explicit bindings from @Provides methods
     val bindingStack = BindingStack(component.sourceComponent)
     component.providerFunctions.forEach { (typeKey, function) ->
-      logVerbose("Processing provider function ${function.dumpKotlinLike()}")
       // TODO these annotation searches are greedy. Need a single-pass lookup
       val provider =
         Binding.Provided(
