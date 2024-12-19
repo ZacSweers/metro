@@ -31,6 +31,7 @@ import dev.zacsweers.lattice.ir.getSingleConstBooleanArgumentOrNull
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isExternalParent
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
@@ -58,6 +59,7 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -247,7 +249,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     // TODO not currently reading supertypes yet
     val scope = componentDeclaration.scopeAnnotation()
 
-    val providerMethods =
+    val providerFunctions =
       componentDeclaration
         .getAllSuperTypes(pluginContext, excludeSelf = false)
         .flatMap { it.classOrFail.owner.allCallableMembers() }
@@ -258,12 +260,16 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
             function.correspondingPropertySymbol?.owner?.isFakeOverride == true
         }
         // TODO is this enough for properties like @get:Provides
-        .filter { function -> function.isAnnotatedWithAny(symbols.providesAnnotations) }
+        .filter { function ->
+          function.isAnnotatedWithAny(symbols.providesAnnotations) ||
+            function.correspondingPropertySymbol
+              ?.owner
+              ?.isAnnotatedWithAny(symbols.providesAnnotations) == true
+        }
         // TODO validate
         .map { function -> ContextualTypeKey.from(this, function).typeKey to function }
         .toList()
 
-    // TODO infer @Multibinds declarations from there
     val exposedTypes =
       componentDeclaration
         .allCallableMembers()
@@ -272,8 +278,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
           function.modality == Modality.ABSTRACT &&
             function.valueParameters.isEmpty() &&
             function.body == null &&
+            !function.isBindsProviderCandidate(symbols) &&
             // TODO is this enough for properties like @get:Provides
-            !function.isAnnotatedWithAny(symbols.providesAnnotations)
+            !function.isAnnotatedWithAny(symbols.providesAnnotations) &&
+            function.correspondingPropertySymbol
+              ?.owner
+              ?.isAnnotatedWithAny(symbols.providesAnnotations) != true
         }
         .associateWith { function -> ContextualTypeKey.from(this, function) }
 
@@ -309,7 +319,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
         isAnnotatedWithComponent = true,
         dependencies = componentDependencies,
         scope = scope,
-        providerFunctions = providerMethods,
+        providerFunctions = providerFunctions,
         exposedTypes = exposedTypes,
         isExternal = false,
         creator = creator,
@@ -368,11 +378,23 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
     component.providerFunctions.forEach { (typeKey, function) ->
       logVerbose("Processing provider function ${function.dumpKotlinLike()}")
       // TODO these annotation searches are greedy. Need a single-pass lookup
+
+      var isBinds = function.isBindsProviderCandidate(symbols)
+
+      val parameters = function.parameters(this)
+
+      val bindsImplType =
+        if (isBinds) {
+          parameters.extensionReceiver!!.contextualTypeKey
+        } else {
+          null
+        }
+
       val provider =
         Binding.Provided(
           providerFunction = function,
           contextualTypeKey = ContextualTypeKey.from(this, function),
-          parameters = function.parameters(this),
+          parameters = parameters,
           scope = function.scopeAnnotation(),
           // TODO FIR only one annotation is allowed
           // TODO FIR no scopes on multibindings
@@ -391,6 +413,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 false
               }
               ?.let(::IrAnnotation),
+          bindsImplType = bindsImplType,
         )
 
       if (provider.isMultibindingProvider) {
@@ -432,7 +455,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
     }
 
-    // Add @Multibinding exposed types
     component.exposedTypes.forEach { getter, contextualTypeKey ->
       val annotationContainer: IrAnnotationContainer =
         getter.correspondingPropertySymbol?.owner ?: getter
@@ -792,6 +814,49 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 }
             }
             bindingStack.pop()
+          }
+
+        // Implement no-op bodies for Binds providers
+        node.providerFunctions
+          // TODO this isn't a great check. Let's refactor once there's a ProviderHolder class
+          .filter { it.second.body == null }
+          .filter { (key, _) ->
+            val binding = graph.requireBinding(key) as Binding.Provided
+            binding.bindsImplType != null
+          }
+          // Stable sort. First the name then the type
+          .sortedWith(
+            compareBy<Pair<TypeKey, IrSimpleFunction>> { it.second.name }.thenComparing { it.first }
+          )
+          .forEach { (_, function) ->
+            // TODO dedupe with accessors gen
+            val property =
+              function.correspondingPropertySymbol?.owner?.let { property ->
+                addProperty { name = property.name }
+              }
+            val getter =
+              property
+                ?.addGetter { returnType = function.returnType }
+                ?.apply { this.overriddenSymbols += function.symbol }
+                ?: addOverride(
+                  function.kotlinFqName,
+                  function.name,
+                  function.returnType,
+                  overriddenSymbols = listOf(function.symbol),
+                )
+            getter.apply {
+              this.dispatchReceiverParameter = thisReceiverParameter
+              this.extensionReceiverParameter = function.extensionReceiverParameter?.copyTo(this)
+              body =
+                pluginContext.createIrBuilder(symbol).run {
+                  irExprBody(
+                    irInvoke(
+                      callee = symbols.stdlibErrorFunction,
+                      args = listOf(irString("Never called")),
+                    )
+                  )
+                }
+            }
           }
       }
   }
@@ -1196,6 +1261,16 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       is Binding.Provided -> {
         // TODO if there are default params, compute a mask
         // TODO what about inherited/overridden providers?
+
+        // For binds functions, just use the backing type
+        binding.bindsImplType?.let {
+          return generateBindingCode(
+            generationContext.graph.getOrCreateBinding(it, generationContext.bindingStack),
+            generationContext,
+            it,
+          )
+        }
+
         //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
         val factoryClass = providesTransformer.getOrGenerateFactoryClass(binding)
         // Invoke its factory's create() function

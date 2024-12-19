@@ -27,6 +27,7 @@ import dev.zacsweers.lattice.ir.checkNotNullCall
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isCompanionObject
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.ir.patchFactoryCreationParameters
@@ -105,11 +106,18 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       return
     }
 
+    if (
+      declaration.getter?.isBindsProviderCandidate(symbols) == true
+    ) {
+      return
+    }
+
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
   }
 
   fun visitFunction(declaration: IrSimpleFunction) {
     if (!declaration.isAnnotatedWithAny(symbols.providesAnnotations)) return
+    if (declaration.isBindsProviderCandidate(symbols)) return
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
   }
 
