@@ -87,7 +87,16 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   }
 
   // For bindings we expect to already be cached
-  fun requireBinding(key: TypeKey): Binding = bindings[key] ?: error("No binding found for $key")
+  fun requireBinding(key: TypeKey): Binding =
+    bindings[key]
+      ?: error(
+        buildString {
+          appendLine("No binding found for $key")
+          if (context.debug) {
+            appendLine(dumpGraph())
+          }
+        }
+      )
 
   fun getOrCreateMultibinding(
     pluginContext: IrPluginContext,
@@ -157,6 +166,9 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           appendLine(key)
           appendLine()
           appendBindingStack(bindingStack)
+          if (context.debug) {
+            appendLine(dumpGraph())
+          }
         }
 
         with(context) { declarationToReport.reportError(message) }
@@ -276,5 +288,42 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         paramKey.typeKey
       }
       .toSet()
+  }
+
+  // TODO iterate on this more!
+  internal fun dumpGraph(): String {
+    if (bindings.isEmpty()) return "Empty binding graph"
+
+    return buildString {
+      appendLine("Binding Graph:")
+      // Sort by type key for consistent output
+      bindings.entries
+        .sortedBy { it.key.toString() }
+        .forEach { (typeKey, binding) ->
+          appendLine("─".repeat(50))
+          appendLine("Type: ${typeKey}")
+          appendLine("├─ Binding: ${binding::class.simpleName}")
+          appendLine("├─ Contextual Type: ${binding.contextualTypeKey}")
+
+          binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
+
+          if (binding.dependencies.isNotEmpty()) {
+            appendLine("├─ Dependencies:")
+            binding.dependencies.forEach { (depKey, param) ->
+              appendLine("│  ├─ $depKey")
+              appendLine("│  │  └─ Parameter: ${param.name} (${param.type})")
+            }
+          }
+
+          if (binding.parameters.allParameters.isNotEmpty()) {
+            appendLine("├─ Parameters:")
+            binding.parameters.allParameters.forEach { param ->
+              appendLine("│  └─ ${param.name}: ${param.type}")
+            }
+          }
+
+          binding.reportableLocation?.let { location -> appendLine("└─ Location: $location") }
+        }
+    }
   }
 }
