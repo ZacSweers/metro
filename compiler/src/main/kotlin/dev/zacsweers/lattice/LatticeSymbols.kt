@@ -277,6 +277,12 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
   }
 
+  val stdlibErrorFunction: IrFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(stdlib.packageFqName, Name.identifier("error")))
+      .first()
+  }
+
   val stdlibCheckNotNull: IrFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(stdlib.packageFqName, Name.identifier("checkNotNull")))
