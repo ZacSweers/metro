@@ -119,7 +119,7 @@ internal class BindingStackImpl(override val component: IrClass) : BindingStack 
 
 internal class BindingStackEntry(
   val typeKey: TypeKey,
-  val action: String?,
+  val usage: String?,
   val context: String?,
   val declaration: IrDeclaration?,
   val displayTypeKey: TypeKey = typeKey,
@@ -127,11 +127,12 @@ internal class BindingStackEntry(
   fun render(component: FqName): String {
     return buildString {
       append(displayTypeKey)
-      action?.let {
+      usage?.let {
         append(' ')
-        appendLine(it)
+        append(it)
       }
       context?.let {
+        appendLine()
         append("    ")
         append("[${component.asString()}]")
         append(' ')
@@ -158,7 +159,7 @@ internal class BindingStackEntry(
         }
       return BindingStackEntry(
         typeKey = typeKey,
-        action = "is requested at",
+        usage = "is requested at",
         context = "$targetFqName.$accessor",
         declaration = declaration,
       )
@@ -167,9 +168,8 @@ internal class BindingStackEntry(
     /*
     com.slack.circuit.star.Example1
      */
-    fun simpleTypeRef(typeKey: TypeKey): BindingStackEntry {
-      return BindingStackEntry(typeKey = typeKey, action = null, context = null, declaration = null)
-    }
+    fun simpleTypeRef(typeKey: TypeKey, usage: String? = null): BindingStackEntry =
+      BindingStackEntry(typeKey = typeKey, usage = usage, context = null, declaration = null)
 
     /*
     java.lang.CharSequence is injected at
@@ -189,7 +189,7 @@ internal class BindingStackEntry(
       return BindingStackEntry(
         typeKey = typeKey,
         displayTypeKey = displayTypeKey,
-        action = "is injected at",
+        usage = "is injected at",
         context = context,
         declaration = declaration,
       )

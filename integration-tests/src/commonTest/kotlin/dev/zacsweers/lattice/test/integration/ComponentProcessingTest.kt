@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.test.integration
 
 import dev.zacsweers.lattice.Provider
+import dev.zacsweers.lattice.annotations.AppScope
 import dev.zacsweers.lattice.annotations.Assisted
 import dev.zacsweers.lattice.annotations.AssistedFactory
 import dev.zacsweers.lattice.annotations.AssistedInject
@@ -24,6 +25,7 @@ import dev.zacsweers.lattice.annotations.Component
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.annotations.Provides
+import dev.zacsweers.lattice.annotations.SingleIn
 import dev.zacsweers.lattice.annotations.Singleton
 import dev.zacsweers.lattice.annotations.multibindings.ClassKey
 import dev.zacsweers.lattice.annotations.multibindings.ElementsIntoSet
@@ -1047,6 +1049,31 @@ class ComponentProcessingTest {
         private const val DEFAULT_MESSAGE = "Default message!"
       }
     }
+  }
+
+  @Test
+  fun `components can use multiple scopes`() {
+    // This component supports multiple scopes and still respects their scoping requirementts
+    val component = createComponent<ComponentWithMultipleScopes>()
+    assertEquals(0, component.intValue)
+    assertEquals(0, component.intValue)
+    assertEquals(0L, component.longValue)
+    assertEquals(0L, component.longValue)
+  }
+
+  @Singleton
+  @SingleIn(AppScope::class)
+  @Component
+  abstract class ComponentWithMultipleScopes {
+    private var intCounter = 0
+    private var longCounter = 0L
+
+    abstract val intValue: Int
+    abstract val longValue: Long
+
+    @Provides @Singleton private fun provideInt(): Int = intCounter++
+
+    @Provides @SingleIn(AppScope::class) private fun provideLong(): Long = longCounter++
   }
 
   @Test

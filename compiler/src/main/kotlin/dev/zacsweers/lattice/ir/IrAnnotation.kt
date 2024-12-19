@@ -19,11 +19,13 @@ import dev.zacsweers.lattice.appendIterableWith
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation> {
@@ -86,6 +88,10 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?) {
       appendIterableWith(irElement.elements, prefix = "[", postfix = "]", separator = ", ") {
         renderAsAnnotationArgument(it)
       }
+    }
+    is IrClassReference -> {
+      append(irElement.classType.rawType().classId?.shortClassName?.asString() ?: "<error>")
+      append("::class")
     }
     else -> append("...")
   }
