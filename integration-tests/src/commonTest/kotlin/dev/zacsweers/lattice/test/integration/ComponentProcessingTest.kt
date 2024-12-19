@@ -1076,8 +1076,7 @@ class ComponentProcessingTest {
   interface ComponentWithBindsFunctions {
     val number: Number
 
-    @Provides
-    private fun provideInt(): Int = 3
+    @Provides private fun provideInt(): Int = 3
 
     @Provides fun Int.provideNumber(): Number
   }
@@ -1093,11 +1092,9 @@ class ComponentProcessingTest {
     val string: String
     val charSequence: CharSequence
 
-    @get:Provides
-    val String.binds: CharSequence
+    @get:Provides val String.binds: CharSequence
 
-    @Provides
-    private fun provideValue(): String = "Hello, world!"
+    @Provides private fun provideValue(): String = "Hello, world!"
   }
 
   enum class Seasoning {

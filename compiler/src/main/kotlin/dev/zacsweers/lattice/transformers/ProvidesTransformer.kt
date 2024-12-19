@@ -106,9 +106,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       return
     }
 
-    if (
-      declaration.getter?.isBindsProviderCandidate(symbols) == true
-    ) {
+    if (declaration.getter?.isBindsProviderCandidate(symbols) == true) {
       return
     }
 

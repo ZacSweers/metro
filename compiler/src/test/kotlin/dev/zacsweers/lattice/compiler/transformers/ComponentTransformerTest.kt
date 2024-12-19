@@ -28,7 +28,6 @@ import dev.zacsweers.lattice.compiler.createComponentViaFactory
 import dev.zacsweers.lattice.compiler.createComponentWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeComponentClass
 import java.util.concurrent.Callable
-import org.junit.Ignore
 import org.junit.Test
 
 class ComponentTransformerTest : LatticeCompilerTest() {

@@ -88,7 +88,9 @@ internal class LatticeClassIds(
 
   val bindsAnnotations = customBindsAnnotations
   val providesAnnotations =
-    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Provides")) + customProvidesAnnotations + bindsAnnotations
+    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Provides")) +
+      customProvidesAnnotations +
+      bindsAnnotations
 
   val bindsInstanceAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("BindsInstance")) + customBindsInstanceAnnotations
