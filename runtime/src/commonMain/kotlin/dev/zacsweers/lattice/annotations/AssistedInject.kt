@@ -38,7 +38,7 @@ package dev.zacsweers.lattice.annotations
  *
  * Next, we define a factory for the assisted type, `DataService`, and annotate it with
  * [AssistedFactory]. The factory must contain a single abstract, non-default method which takes in
- * all of the assisted parameters (in order) and returns the assisted type.
+ * all the assisted parameters (in order) and returns the assisted type.
  *
  * ```
  * @AssistedFactory
@@ -50,9 +50,8 @@ package dev.zacsweers.lattice.annotations
  * Dagger will generate an implementation of the factory and bind it to the factory type. The
  * factory can then be used to create an instance of the assisted type:
  * ```
- * class MyApplication(
- *   @Inject dataServiceFactory: DataServiceFactory
- * ) {
+ * @Inject
+ * class MyApplication(dataServiceFactory: DataServiceFactory) {
  *   val dataService = dataServiceFactory.create(Config(...));
  * }
  * ```
