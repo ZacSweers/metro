@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.annotations
 
+/** TODO standard injection docs */
 @Target(
   AnnotationTarget.CLASS,
   AnnotationTarget.CONSTRUCTOR,
