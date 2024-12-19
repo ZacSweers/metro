@@ -98,8 +98,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:30 `@Provides` declarations may not have receiver parameters.",
-      "ExampleClass.kt:7:38 `@Provides` declarations may not have receiver parameters.",
+      "ExampleClass.kt:6:30 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
+      "ExampleClass.kt:7:38 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
     )
   }
 
@@ -124,8 +124,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:30 `@Provides` declarations may not have receiver parameters.",
-      "ExampleClass.kt:7:38 `@Provides` declarations may not have receiver parameters.",
+      "ExampleClass.kt:6:30 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
+      "ExampleClass.kt:7:38 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
     )
   }
 
@@ -179,6 +179,125 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
     result.assertContainsAll(
       "ExampleClass.kt:6:26 `@Provides` declarations must have bodies.",
       "ExampleClass.kt:7:26 `@Provides` declarations must have bodies.",
+    )
+  }
+
+  @Test
+  fun `binds providers - interface - ok case`() {
+    compile(
+      kotlin(
+        "ExampleClass.kt",
+        """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+
+            interface ExampleComponent {
+              @Provides val Int.bind: Number
+              @Provides fun String.bind(): CharSequence
+            }
+          """
+          .trimIndent(),
+      ),
+      expectedExitCode = ExitCode.OK,
+    )
+  }
+
+  @Test
+  fun `binds providers - interface - must not have bodies`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+
+            interface ExampleComponent {
+              @Provides val Int.bind: Number get() = 9
+              @Provides fun String.bind(): CharSequence = "Hello"
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContainsAll(
+      "ExampleClass.kt:6:21 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
+      "ExampleClass.kt:7:24 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
+    )
+  }
+
+  @Test
+  fun `binds providers - interface - same types cannot have same qualifiers`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Named
+
+            interface ExampleComponent {
+              // Valid cases
+              @Provides @Named("named") val Int.bindNamed: Int
+              @Provides val @receiver:Named("named") Int.bindNamedReceiver: Int
+              @Provides @Named("named") fun String.bindNamed(): String
+              @Provides fun @receiver:Named("named") String.bindNamedReceiver(): String
+
+              // Bad cases
+              @Provides val Int.bindSelf: Int
+              @Provides @Named("named") val @receiver:Named("named") Int.bindSameNamed: Int
+              @Provides fun String.bindSelf(): String
+              @Provides @Named("named") fun @receiver:Named("named") String.bindSameNamed(): String
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContainsAll(
+      "ExampleClass.kt:14:21 Binds receiver type `kotlin.Int` is the same type and qualifier as the bound type `kotlin.Int`.",
+      "ExampleClass.kt:15:62 Binds receiver type `@Named(\"named\") kotlin.Int` is the same type and qualifier as the bound type `@Named(\"named\") kotlin.Int`.",
+      "ExampleClass.kt:16:24 Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `kotlin.String`.",
+      "ExampleClass.kt:17:65 Binds receiver type `@Named(\"named\") kotlin.String` is the same type and qualifier as the bound type `@Named(\"named\") kotlin.String`.",
+    )
+  }
+
+  @Test
+  fun `binds providers - interface - bound types must be subtypes`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Named
+
+            interface ExampleComponent {
+              // Valid cases
+              @Provides fun String.bind(): CharSequence
+
+              // Bad cases
+              @Provides val Number.bind: Int
+              @Provides fun CharSequence.bind(): String
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertContainsAll(
+      "ExampleClass.kt:11:24 Binds receiver type `kotlin.Number` is not a subtype of bound type `kotlin.Int`.",
+      "ExampleClass.kt:12:30 Binds receiver type `kotlin.CharSequence` is not a subtype of bound type `kotlin.String`.",
     )
   }
 }
