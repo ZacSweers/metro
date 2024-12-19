@@ -1066,6 +1066,22 @@ class ComponentProcessingTest {
     @Provides val Int.provideNumber: Number
   }
 
+  @Test
+  fun `binds - functions`() {
+    val component = createComponent<ComponentWithBindsFunctions>()
+    assertEquals(3, component.number)
+  }
+
+  @Component
+  interface ComponentWithBindsFunctions {
+    val number: Number
+
+    @Provides
+    private fun provideInt(): Int = 3
+
+    @Provides fun Int.provideNumber(): Number
+  }
+
   enum class Seasoning {
     SPICY,
     REGULAR,
