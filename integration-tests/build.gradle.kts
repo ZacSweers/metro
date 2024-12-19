@@ -27,6 +27,7 @@ kotlin {
       class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
       class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
   */
+  // macosArm64()
   // js { browser() }
   // @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
   sourceSets {

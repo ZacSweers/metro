@@ -21,18 +21,12 @@ plugins {
 
 kotlin {
   jvm()
-  // TODO non-jvm targets fail with
-  //  e: Compilation failed: class org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl cannot be
-  //  cast to class org.jetbrains.kotlin.ir.expressions.IrBody
-  //  (org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl and
-  //  org.jetbrains.kotlin.ir.expressions.IrBody are in unnamed module of loader
-  //  java.net.URLClassLoader @4965ed6f)
-  //  Notes:
-  //  - When implementing overrides for accessors, their expression bodies don't appear to get
-  //    serialized correctly.
-  //  - They generate something like `irExpressionBody(irInvoke(<provider>.invoke())`
-  //  - However, for some reason the underling IrCall is what's serialized and the surrounding
-  //    IrBody is missing
+  /*
+   TODO non-jvm targets fail with duplicate signature exceptions, not really sure why
+    e: file:///Users/zacsweers/dev/kotlin/personal/lattice/integration-tests/src/commonTest/kotlin/dev/zacsweers/lattice/test/integration/ComponentProcessingTest.kt:352:7 Platform declaration clash: The following declarations have the same IR signature (dev.zacsweers.lattice.test.integration/ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory.$$Impl|null[0]):
+      class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
+      class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
+  */
   // macosArm64()
   // js { browser() }
   // @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
