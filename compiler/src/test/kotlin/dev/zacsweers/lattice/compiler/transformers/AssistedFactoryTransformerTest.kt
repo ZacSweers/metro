@@ -20,6 +20,7 @@ import com.tschuchort.compiletesting.KotlinCompilation.ExitCode.COMPILATION_ERRO
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleClass
 import dev.zacsweers.lattice.compiler.ExampleClassFactory
+import dev.zacsweers.lattice.compiler.Factory
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
 import dev.zacsweers.lattice.compiler.generatedAssistedFactoryImpl
@@ -28,6 +29,7 @@ import dev.zacsweers.lattice.compiler.invokeCreate
 import dev.zacsweers.lattice.compiler.invokeCreateAsProvider
 import dev.zacsweers.lattice.compiler.invokeFactoryGet
 import dev.zacsweers.lattice.compiler.invokeInstanceMethod
+import dev.zacsweers.lattice.compiler.invokeMain
 import dev.zacsweers.lattice.provider
 import java.util.concurrent.Callable
 import org.junit.Test
@@ -108,6 +110,50 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     val factoryImpl = factoryImplProvider()
     val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
     assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
+  }
+
+  @Test
+  fun `default assisted factory is generated in FIR`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Assisted
+            import dev.zacsweers.lattice.annotations.AssistedInject
+            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import java.util.concurrent.Callable
+
+            class ExampleClass @AssistedInject constructor(
+              @Assisted val count: Int,
+              val message: String,
+            ) : Callable<String> {
+              override fun call(): String = message + count
+            }
+
+            fun main(factory: ExampleClass.Factory, count: Int): ExampleClass {
+              // Smoke test to ensure that the FIR-generated
+              return factory.create(count = count)
+            }
+          """
+            .trimIndent(),
+        )
+      )
+
+    val exampleClassFactory =
+      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+
+    val factoryImplClass = result.ExampleClass.Factory.generatedAssistedFactoryImpl()
+    val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+    val factoryImpl = factoryImplProvider()
+    val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
+    assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
+
+    // Run through FIR's generated one too
+    val exampleClass3 = result.invokeMain<Callable<String>>(factoryImpl, 3)
+    assertThat(exampleClass3.call()).isEqualTo("Hello, 3")
   }
 
   @Test
