@@ -15,27 +15,21 @@
  */
 package dev.zacsweers.lattice.fir.checkers
 
-import dev.zacsweers.lattice.LatticeClassIds
-import dev.zacsweers.lattice.fir.FirLatticeErrors
-import dev.zacsweers.lattice.fir.annotationsIn
-import dev.zacsweers.lattice.fir.findInjectConstructor
-import dev.zacsweers.lattice.fir.validateInjectedClass
-import dev.zacsweers.lattice.fir.validateVisibility
+import dev.zacsweers.lattice.fir.*
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
-import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 
-internal class InjectConstructorChecker(
-  private val session: FirSession,
-  private val latticeClassIds: LatticeClassIds,
-) : FirClassChecker(MppCheckerKind.Common) {
+internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
+    val session = context.session
+    val latticeClassIds = session.latticeClassIds
+
     val classInjectAnnotation =
       declaration.annotationsIn(session, latticeClassIds.injectAnnotations).toList()
 

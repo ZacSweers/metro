@@ -30,31 +30,18 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 internal class LatticeFirExtensionRegistrar(private val latticeClassIds: LatticeClassIds) :
   FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
-    +LatticeFirCheckers.getFactory(latticeClassIds)
+    +LatticeFirBuiltIns.getFactory(latticeClassIds)
+    +::LatticeFirCheckers
   }
 }
 
-internal class LatticeFirCheckers(
-  session: FirSession,
-  private val latticeClassIds: LatticeClassIds,
-) : FirAdditionalCheckersExtension(session) {
-  companion object {
-    fun getFactory(latticeClassIds: LatticeClassIds) = Factory { session ->
-      LatticeFirCheckers(session, latticeClassIds)
-    }
-  }
-
+internal class LatticeFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>
-        get() =
-          setOf(
-            InjectConstructorChecker(session, latticeClassIds),
-            AssistedInjectChecker(session, latticeClassIds),
-            ComponentCreatorChecker(session, latticeClassIds),
-          )
+        get() = setOf(InjectConstructorChecker, AssistedInjectChecker, ComponentCreatorChecker)
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
-        get() = setOf(ProvidesChecker(session, latticeClassIds))
+        get() = setOf(ProvidesChecker)
     }
 }
