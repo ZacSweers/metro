@@ -185,6 +185,17 @@ internal class LatticeFirAssistedFactoryGenerator(
       }
 
     if (constructor != null) {
+      // Check if there is already a nested factory. If there is, do nothing.
+      val existingFactory =
+        classSymbol.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().singleOrNull {
+          // TODO also check for factory annotation? Not sure what else we'd do anyway though
+          it.name == LatticeSymbols.Names.Factory
+        }
+      if (existingFactory != null) {
+        // TODO test this case
+        return emptySet()
+      }
+
       assistedInjectClasses[classSymbol] = constructor
       // We want to generate an assisted factory
       return setOf(LatticeSymbols.Names.Factory)
