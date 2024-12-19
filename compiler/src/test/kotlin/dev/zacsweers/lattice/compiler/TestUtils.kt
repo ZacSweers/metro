@@ -48,11 +48,28 @@ fun JvmCompilationResult.assertNoArgCallableFactory(expectedValue: String) {
   assertThat(callable.call()).isEqualTo(expectedValue)
 }
 
+fun <T> JvmCompilationResult.invokeTopLevel(name: String, vararg args: Any?): T {
+  @Suppress("UNCHECKED_CAST")
+  return classLoader
+    .loadClass("test.ExampleClassKt")!!
+    .declaredMethods
+    .single { it.name == name && Modifier.isStatic(it.modifiers) }
+    .invoke(null, *args) as T
+}
+
+fun <T> JvmCompilationResult.invokeMain(vararg args: Any?): T {
+  @Suppress("UNCHECKED_CAST")
+  return invokeTopLevel("main", *args) as T
+}
+
 val JvmCompilationResult.ExampleClass: Class<*>
   get() = classLoader.loadClass("test.ExampleClass")
 
 val JvmCompilationResult.ExampleClassFactory: Class<*>
   get() = classLoader.loadClass("test.ExampleClassFactory")
+
+val Class<*>.Factory: Class<*>
+  get() = classes.single { it.simpleName == "Factory" }
 
 fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
   @Suppress("UNCHECKED_CAST")
