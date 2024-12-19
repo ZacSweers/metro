@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.buildFactoryCreateFunction
 import dev.zacsweers.lattice.ir.checkNotNullCall
 import dev.zacsweers.lattice.ir.createIrBuilder
+import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isBindsProviderCandidate
@@ -39,7 +40,6 @@ import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -279,7 +279,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         this.dispatchReceiverParameter = factoryCls.thisReceiver!!
         body =
           pluginContext.createIrBuilder(symbol).run {
-            irExprBody(
+            irBlockBody(
+              symbol,
               irInvoke(
                 callee = bytecodeFunctionSymbol,
                 args =
@@ -290,7 +291,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     parametersToFields = parametersToFields,
                     symbols = symbols,
                   ),
-              )
+              ),
             )
           }
       }
@@ -513,7 +514,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     )
                   }
                 }
-              irExprBody(expression)
+              irBlockBody(symbol, expression)
             }
         }
 

@@ -28,6 +28,7 @@ import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
 import dev.zacsweers.lattice.ir.getSingleConstBooleanArgumentOrNull
+import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
@@ -553,12 +554,13 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                 addOverride(node.creator.createFunction).apply {
                   body =
                     pluginContext.createIrBuilder(symbol).run {
-                      irExprBody(
+                      irBlockBody(
+                        symbol,
                         irCall(componentImpl.primaryConstructor!!.symbol).apply {
                           for (param in valueParameters) {
                             putValueArgument(param.index, irGet(param))
                           }
-                        }
+                        },
                       )
                     }
                 }
@@ -575,8 +577,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               markJvmStatic()
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  irExprBody(
-                    irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList())
+                  irBlockBody(
+                    symbol,
+                    irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()),
                   )
                 }
             }
@@ -591,8 +594,9 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               markJvmStatic()
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  irExprBody(
-                    irCallConstructor(componentImpl.primaryConstructor!!.symbol, emptyList())
+                  irBlockBody(
+                    symbol,
+                    irCallConstructor(componentImpl.primaryConstructor!!.symbol, emptyList()),
                   )
                 }
             }
@@ -800,7 +804,8 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                     //  one and make the rest call that one. Not multibinding specific. Maybe
                     //  groupBy { typekey }?
                   }
-                  irExprBody(
+                  irBlockBody(
+                    symbol,
                     typeAsProviderArgument(
                       this@ComponentTransformer,
                       contextualTypeKey,
@@ -808,7 +813,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
                       isAssisted = false,
                       isComponentInstance = false,
                       symbols,
-                    )
+                    ),
                   )
                 }
             }
@@ -848,11 +853,12 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               this.extensionReceiverParameter = function.extensionReceiverParameter?.copyTo(this)
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  irExprBody(
+                  irBlockBody(
+                    symbol,
                     irInvoke(
                       callee = symbols.stdlibErrorFunction,
                       args = listOf(irString("Never called")),
-                    )
+                    ),
                   )
                 }
             }

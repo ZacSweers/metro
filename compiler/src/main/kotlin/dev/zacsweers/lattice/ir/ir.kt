@@ -44,6 +44,7 @@ import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -199,7 +200,7 @@ internal fun IrPluginContext.irType(
 ): IrType = referenceClass(classId)!!.createType(hasQuestionMark = nullable, arguments = arguments)
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun IrPluginContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBuilder {
+internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBuilder {
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
 }
 
@@ -397,9 +398,7 @@ internal fun irLambda(
         this.parent = parent
         receiverParameter?.let { addExtensionReceiver(it) }
         valueParameters.forEachIndexed { index, type -> addValueParameter("arg$index", type) }
-        body =
-          DeclarationIrBuilder(context, this.symbol, SYNTHETIC_OFFSET, SYNTHETIC_OFFSET)
-            .irBlockBody { content(this@apply) }
+        body = context.createIrBuilder(this.symbol).irBlockBody { content(this@apply) }
       }
   return IrFunctionExpressionImpl(
     startOffset = SYNTHETIC_OFFSET,
@@ -637,12 +636,13 @@ internal fun IrClass.buildFactoryCreateFunction(
 
     body =
       context.pluginContext.createIrBuilder(symbol).run {
-        irExprBody(
+        irBlockBody(
+          symbol,
           if (factoryClass.isObject) {
             irGetObject(factoryClass.symbol)
           } else {
             irCallConstructorWithSameParameters(thisFunction, factoryConstructor)
-          }
+          },
         )
       }
   }
@@ -817,3 +817,11 @@ internal fun IrFunction.isBindsProviderCandidate(symbols: LatticeSymbols): Boole
   }
   return isBinds
 }
+
+/**
+ * An [irBlockBody] with a single [expression]. This is useful because [irExprBody] is not
+ * serializable in IR and cannot be used in some places like function bodies. This replicates that
+ * ease of use.
+ */
+internal fun IrBuilderWithScope.irBlockBody(symbol: IrSymbol, expression: IrExpression) =
+  context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }

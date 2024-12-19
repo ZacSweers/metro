@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.createIrBuilder
+import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.rawType
@@ -150,13 +151,14 @@ internal class AssistedFactoryTransformer(
                     irGet(functionParams.getValue(assistedParameterKey))
                   }
 
-                irExprBody(
+                irBlockBody(
+                  symbol,
                   irInvoke(
                     dispatchReceiver =
                       irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
                     callee = generatedFactory.getSimpleFunction("get")!!,
                     args = argumentList,
-                  )
+                  ),
                 )
               }
           }
@@ -187,7 +189,8 @@ internal class AssistedFactoryTransformer(
       // InstanceFactory.create(Impl(delegateFactory))
       body =
         pluginContext.createIrBuilder(symbol).run {
-          irExprBody(
+          irBlockBody(
+            symbol,
             irInvoke(
               dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
               callee = symbols.instanceFactoryCreate,
@@ -195,7 +198,7 @@ internal class AssistedFactoryTransformer(
                 listOf(
                   irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
                 ),
-            )
+            ),
           )
         }
     }

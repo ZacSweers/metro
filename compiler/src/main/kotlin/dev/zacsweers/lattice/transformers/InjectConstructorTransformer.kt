@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.buildFactoryCreateFunction
 import dev.zacsweers.lattice.ir.createIrBuilder
+import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
@@ -34,7 +35,6 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -310,13 +310,14 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
 
           body =
             pluginContext.createIrBuilder(symbol).run {
-              irExprBody(
+              irBlockBody(
+                symbol,
                 // TODO members injector goes here
                 irCallConstructor(targetConstructor, emptyList()).apply {
                   for (parameter in valueParameters) {
                     putValueArgument(parameter.index, irGet(parameter))
                   }
-                }
+                },
               )
             }
         }
