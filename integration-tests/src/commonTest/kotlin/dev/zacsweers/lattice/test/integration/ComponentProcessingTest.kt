@@ -1082,6 +1082,24 @@ class ComponentProcessingTest {
     @Provides fun Int.provideNumber(): Number
   }
 
+  @Test
+  fun `binds - mix of functions and property`() {
+    val component = createComponent<BindsWithMixOfFunctionsAndProperties>()
+    assertEquals(component.string, component.charSequence)
+  }
+
+  @Component
+  interface BindsWithMixOfFunctionsAndProperties {
+    val string: String
+    val charSequence: CharSequence
+
+    @get:Provides
+    val String.binds: CharSequence
+
+    @Provides
+    private fun provideValue(): String = "Hello, world!"
+  }
+
   enum class Seasoning {
     SPICY,
     REGULAR,
