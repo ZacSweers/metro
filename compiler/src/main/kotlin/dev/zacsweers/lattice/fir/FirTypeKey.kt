@@ -17,7 +17,11 @@ package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.unsafeLazy
+import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -51,7 +55,24 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
 
   override fun compareTo(other: FirTypeKey) = toString().compareTo(other.toString())
 
+  fun simpleString(): String = buildString {
+    qualifier?.let {
+      append("@")
+      append(it.simpleString())
+      append(" ")
+    }
+    append(type.coneType.renderReadableWithFqNames())
+  }
+
   companion object {
+    fun from(
+      session: FirSession,
+      latticeClassIds: LatticeClassIds,
+      property: FirProperty,
+    ): FirTypeKey {
+      return from(session, latticeClassIds, property.returnTypeRef, property.annotations)
+    }
+
     fun from(
       session: FirSession,
       latticeClassIds: LatticeClassIds,
@@ -65,7 +86,27 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
       latticeClassIds: LatticeClassIds,
       parameter: FirValueParameterSymbol,
     ): FirTypeKey {
-      return from(session, latticeClassIds, parameter.resolvedReturnTypeRef, parameter.annotations)
+      val annotations =
+        if (parameter.containingFunctionSymbol.receiverParameter == parameter) {
+          parameter.containingFunctionSymbol.annotations.filter {
+            it.useSiteTarget == AnnotationUseSiteTarget.RECEIVER
+          }
+        } else {
+          parameter.annotations
+        }
+      return from(session, latticeClassIds, parameter.resolvedReturnTypeRef, annotations)
+    }
+
+    fun from(
+      session: FirSession,
+      latticeClassIds: LatticeClassIds,
+      parameter: FirReceiverParameter,
+      target: FirCallableDeclaration,
+    ): FirTypeKey {
+      val receiverAnnotations =
+        parameter.annotations +
+          target.annotations.filter { it.useSiteTarget == AnnotationUseSiteTarget.RECEIVER }
+      return from(session, latticeClassIds, parameter.typeRef, receiverAnnotations)
     }
 
     fun from(
