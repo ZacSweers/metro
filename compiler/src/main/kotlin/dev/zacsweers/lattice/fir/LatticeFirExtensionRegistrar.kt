@@ -22,5 +22,6 @@ internal class LatticeFirExtensionRegistrar(private val latticeClassIds: Lattice
   FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
     +LatticeFirCheckers.getFactory(latticeClassIds)
+    +LatticeFirAssistedFactoryGenerator.getFactory(latticeClassIds)
   }
 }
