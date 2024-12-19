@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.name.Name
 internal class LatticeClassIds(
   customInjectAnnotations: Set<ClassId> = emptySet(),
   customProvidesAnnotations: Set<ClassId> = emptySet(),
+  customBindsAnnotations: Set<ClassId> = emptySet(),
   customComponentAnnotations: Set<ClassId> = emptySet(),
   customScopeAnnotations: Set<ClassId> = emptySet(),
   customQualifierAnnotations: Set<ClassId> = emptySet(),
@@ -85,8 +86,9 @@ internal class LatticeClassIds(
   val scopeAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Scope")) + customScopeAnnotations
 
+  val bindsAnnotations = customBindsAnnotations
   val providesAnnotations =
-    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Provides")) + customProvidesAnnotations
+    setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Provides")) + customProvidesAnnotations + bindsAnnotations
 
   val bindsInstanceAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("BindsInstance")) + customBindsInstanceAnnotations
