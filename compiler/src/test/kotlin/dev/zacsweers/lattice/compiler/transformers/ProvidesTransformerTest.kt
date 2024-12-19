@@ -422,7 +422,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:9:22 `@Provides` declarations may not have receiver parameters.
+          ExampleComponent.kt:9:22 `@Provides` declarations may not have receiver parameters unless they are binds providers.
         """
           .trimIndent()
       )
