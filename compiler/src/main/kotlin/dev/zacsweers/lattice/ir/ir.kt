@@ -807,3 +807,13 @@ internal fun IrClass.getSuperClassNotAny(): IrClass? {
 
 internal val IrDeclarationParent.isExternalParent: Boolean
   get() = this is Fir2IrLazyClass || this is IrExternalPackageFragment
+
+internal fun IrFunction.isBindsProviderCandidate(symbols: LatticeSymbols): Boolean {
+  var isBinds = isAnnotatedWithAny(symbols.latticeClassIds.bindsAnnotations)
+  if (!isBinds) {
+    // Second pass to check if this is a functional binds candidate
+    // FIR validates these are correct
+    isBinds = body == null && extensionReceiverParameter != null
+  }
+  return isBinds
+}
