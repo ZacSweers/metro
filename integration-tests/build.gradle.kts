@@ -21,10 +21,12 @@ plugins {
 
 kotlin {
   jvm()
-  // TODO non-jvm targets fail with duplicate signature exceptions, not really sure why
-  //  e: file:///Users/zacsweers/dev/kotlin/personal/lattice/integration-tests/src/commonTest/kotlin/dev/zacsweers/lattice/test/integration/ComponentProcessingTest.kt:352:7 Platform declaration clash: The following declarations have the same IR signature (dev.zacsweers.lattice.test.integration/ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory.$$Impl|null[0]):
-  //    class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
-  //    class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
+  /*
+   TODO non-jvm targets fail with duplicate signature exceptions, not really sure why
+    e: file:///Users/zacsweers/dev/kotlin/personal/lattice/integration-tests/src/commonTest/kotlin/dev/zacsweers/lattice/test/integration/ComponentProcessingTest.kt:352:7 Platform declaration clash: The following declarations have the same IR signature (dev.zacsweers.lattice.test.integration/ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory.$$Impl|null[0]):
+      class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
+      class `$$Impl` : dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory defined in dev.zacsweers.lattice.test.integration.ComponentProcessingTest.AssistedInjectComponent.ExampleClass.Factory
+  */
   // js { browser() }
   // @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
   sourceSets {
