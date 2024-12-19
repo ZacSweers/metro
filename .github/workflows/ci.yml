@@ -22,8 +22,9 @@ jobs:
 
     strategy:
       fail-fast: false
+      # windows-latest is excluded from these tests because frankly they are expensive $$ to run on CI
       matrix:
-        os: [ macos-latest, ubuntu-latest, windows-latest ]
+        os: [ macos-latest, ubuntu-latest ]
 
     steps:
       - name: Checkout
