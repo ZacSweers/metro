@@ -15,28 +15,21 @@
  */
 package dev.zacsweers.lattice.fir.checkers
 
-import dev.zacsweers.lattice.LatticeClassIds
-import dev.zacsweers.lattice.fir.FirLatticeErrors
-import dev.zacsweers.lattice.fir.FirTypeKey
-import dev.zacsweers.lattice.fir.annotationsIn
-import dev.zacsweers.lattice.fir.isAnnotatedWithAny
-import dev.zacsweers.lattice.fir.singleAbstractFunction
-import dev.zacsweers.lattice.fir.validateFactoryClass
+import dev.zacsweers.lattice.fir.*
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
-import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 
-internal class ComponentCreatorChecker(
-  private val session: FirSession,
-  private val latticeClassIds: LatticeClassIds,
-) : FirClassChecker(MppCheckerKind.Common) {
+internal object ComponentCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
+    val session = context.session
+    val latticeClassIds = session.latticeClassIds
+
     val componentFactoryAnnotation =
       declaration.annotationsIn(session, latticeClassIds.componentFactoryAnnotations).toList()
 

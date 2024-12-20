@@ -15,14 +15,13 @@
  */
 package dev.zacsweers.lattice.fir.checkers
 
-import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.fir.FirLatticeErrors
 import dev.zacsweers.lattice.fir.FirTypeKey
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
+import dev.zacsweers.lattice.fir.latticeClassIds
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
-import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
@@ -38,16 +37,15 @@ import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 //  some of this changes if we reuse this for `@Binds`
 //  What about future Kotlin versions where you can have different get signatures
 //  Make visibility error configurable? ERROR/WARN/NONE
-internal class ProvidesChecker(
-  private val session: FirSession,
-  private val latticeClassIds: LatticeClassIds,
-) : FirCallableDeclarationChecker(MppCheckerKind.Common) {
+internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
   override fun check(
     declaration: FirCallableDeclaration,
     context: CheckerContext,
     reporter: DiagnosticReporter,
   ) {
     val source = declaration.source ?: return
+    val session = context.session
+    val latticeClassIds = session.latticeClassIds
 
     if (!declaration.isAnnotatedWithAny(session, latticeClassIds.providesAnnotations)) {
       return

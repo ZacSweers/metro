@@ -23,6 +23,7 @@ import dev.zacsweers.lattice.fir.annotationsIn
 import dev.zacsweers.lattice.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.lattice.fir.findInjectConstructor
 import dev.zacsweers.lattice.fir.isAnnotatedWithAny
+import dev.zacsweers.lattice.fir.latticeClassIds
 import dev.zacsweers.lattice.fir.singleAbstractFunction
 import dev.zacsweers.lattice.fir.validateFactoryClass
 import dev.zacsweers.lattice.mapToSetWithDupes
@@ -38,12 +39,11 @@ import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 
-internal class AssistedInjectChecker(
-  private val session: FirSession,
-  private val latticeClassIds: LatticeClassIds,
-) : FirClassChecker(MppCheckerKind.Common) {
+internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     val source = declaration.source ?: return
+    val session = context.session
+    val latticeClassIds = session.latticeClassIds
 
     // Check if this is an assisted factory
     val isAssistedFactory =
