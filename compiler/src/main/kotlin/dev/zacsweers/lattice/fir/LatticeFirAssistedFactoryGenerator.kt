@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.fqName
+import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -60,7 +61,8 @@ import org.jetbrains.kotlin.name.Name
  */
 internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
-  private val assistedInjectAnnotationPredicate by lazy {
+
+  private val assistedInjectAnnotationPredicate by unsafeLazy {
     annotated(session.latticeClassIds.assistedInjectAnnotations.map { it.fqName })
   }
 
