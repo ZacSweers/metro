@@ -30,8 +30,8 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 internal class LatticeFirExtensionRegistrar(private val latticeClassIds: LatticeClassIds) :
   FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
-    +::LatticeFirCheckers
     +LatticeFirBuiltIns.getFactory(latticeClassIds)
+    +::LatticeFirCheckers
     +::LatticeFirAssistedFactoryGenerator
   }
 }

@@ -1,6 +1,5 @@
 package dev.zacsweers.lattice.fir
 
-import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.fqName
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -44,18 +43,10 @@ import org.jetbrains.kotlin.name.Name
  * For assisted injection, we can generate the assisted factory _for_ the assisted type as a nested
  * interface of the annotated class. This saves the user some boilerplate.
  */
-internal class LatticeFirAssistedFactoryGenerator(
-  session: FirSession,
-  private val latticeClassIds: LatticeClassIds,
-) : FirDeclarationGenerationExtension(session) {
-  companion object {
-    fun getFactory(latticeClassIds: LatticeClassIds) = Factory { session ->
-      LatticeFirAssistedFactoryGenerator(session, latticeClassIds)
-    }
-  }
-
+internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
+  FirDeclarationGenerationExtension(session) {
   private val assistedInjectAnnotationPredicate by lazy {
-    annotated(latticeClassIds.assistedInjectAnnotations.map { it.fqName })
+    annotated(session.latticeClassIds.assistedInjectAnnotations.map { it.fqName })
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
@@ -99,8 +90,9 @@ internal class LatticeFirAssistedFactoryGenerator(
             constructor.valueParameterSymbols
               // TODO need a predicate?
               .mapNotNull { param ->
-                param.annotationsIn(session, latticeClassIds.assistedAnnotations).singleOrNull()
-                  ?: return@mapNotNull null
+                param
+                  .annotationsIn(session, session.latticeClassIds.assistedAnnotations)
+                  .singleOrNull() ?: return@mapNotNull null
                 param
               }
           val createFunction =
@@ -178,13 +170,15 @@ internal class LatticeFirAssistedFactoryGenerator(
     context: NestedClassGenerationContext,
   ): Set<Name> {
     val constructor =
-      if (classSymbol.isAnnotatedWithAny(session, latticeClassIds.assistedInjectAnnotations)) {
+      if (
+        classSymbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedInjectAnnotations)
+      ) {
         classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().singleOrNull {
           it.isPrimary
         }
       } else {
         classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().firstOrNull {
-          it.isAnnotatedWithAny(session, latticeClassIds.assistedInjectAnnotations)
+          it.isAnnotatedWithAny(session, session.latticeClassIds.assistedInjectAnnotations)
         }
       }
 
@@ -225,7 +219,7 @@ internal class LatticeFirAssistedFactoryGenerator(
             buildAnnotation {
               val assistedFactoryClass =
                 session.symbolProvider.getClassLikeSymbolByClassId(
-                  latticeClassIds.latticeAssistedFactory
+                  session.latticeClassIds.latticeAssistedFactory
                 ) as FirRegularClassSymbol
               annotationTypeRef = assistedFactoryClass.defaultType().toFirResolvedTypeRef()
               argumentMapping = buildAnnotationArgumentMapping()
