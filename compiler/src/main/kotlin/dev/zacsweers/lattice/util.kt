@@ -90,8 +90,9 @@ internal inline fun <T> T.letIf(condition: Boolean, block: (T) -> T): T {
 // but not for names which just start with those letters, like `issues`.
 internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
 
-internal val ClassId.fqName: FqName get() {
-  return relativeClassName.pathSegments().fold(packageFqName) { current, next ->
-    current.child(next)
+internal val ClassId.fqName: FqName
+  get() {
+    return relativeClassName.pathSegments().fold(packageFqName) { current, next ->
+      current.child(next)
+    }
   }
-}

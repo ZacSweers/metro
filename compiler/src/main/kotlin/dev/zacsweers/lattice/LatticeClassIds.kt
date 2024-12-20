@@ -71,8 +71,7 @@ internal class LatticeClassIds(
   val assistedInjectAnnotations =
     setOf(LATTICE_ANNOTATIONS_PACKAGE.classIdOf("AssistedInject")) + customAssistedInjectAnnotations
   val latticeAssisted = LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Assisted")
-  val assistedAnnotations =
-    setOf(latticeAssisted) + customAssistedAnnotations
+  val assistedAnnotations = setOf(latticeAssisted) + customAssistedAnnotations
   val latticeAssistedFactory = LATTICE_ANNOTATIONS_PACKAGE.classIdOf("AssistedFactory")
   val assistedFactoryAnnotations = setOf(latticeAssistedFactory) + customAssistedFactoryAnnotations
 

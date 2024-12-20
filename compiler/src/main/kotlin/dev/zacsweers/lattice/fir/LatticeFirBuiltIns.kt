@@ -30,5 +30,6 @@ internal class LatticeFirBuiltIns(session: FirSession, val latticeClassIds: Latt
 
 internal val FirSession.latticeFirBuiltIns: LatticeFirBuiltIns by
   FirSession.sessionComponentAccessor()
+
 internal val FirSession.latticeClassIds: LatticeClassIds
   get() = latticeFirBuiltIns.latticeClassIds
