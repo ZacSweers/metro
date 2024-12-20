@@ -4,7 +4,6 @@ import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.fqName
 import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.EffectiveVisibility
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
@@ -35,6 +34,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
@@ -148,7 +148,7 @@ internal class LatticeFirAssistedFactoryGenerator(
         FirResolvedDeclarationStatusImpl(
           Visibilities.Public,
           Modality.ABSTRACT,
-          EffectiveVisibility.Public,
+          Visibilities.Public.toEffectiveVisibility(targetClass, forClass = true),
         )
 
       this.name = callableId.callableName
