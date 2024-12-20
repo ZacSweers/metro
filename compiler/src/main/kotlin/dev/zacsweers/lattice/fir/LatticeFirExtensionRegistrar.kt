@@ -16,15 +16,6 @@
 package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.LatticeClassIds
-import dev.zacsweers.lattice.fir.checkers.AssistedInjectChecker
-import dev.zacsweers.lattice.fir.checkers.ComponentCreatorChecker
-import dev.zacsweers.lattice.fir.checkers.InjectConstructorChecker
-import dev.zacsweers.lattice.fir.checkers.ProvidesChecker
-import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
-import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 
 internal class LatticeFirExtensionRegistrar(private val latticeClassIds: LatticeClassIds) :
@@ -34,15 +25,4 @@ internal class LatticeFirExtensionRegistrar(private val latticeClassIds: Lattice
     +::LatticeFirCheckers
     +::LatticeFirAssistedFactoryGenerator
   }
-}
-
-internal class LatticeFirCheckers(session: FirSession) : FirAdditionalCheckersExtension(session) {
-  override val declarationCheckers: DeclarationCheckers =
-    object : DeclarationCheckers() {
-      override val classCheckers: Set<FirClassChecker>
-        get() = setOf(InjectConstructorChecker, AssistedInjectChecker, ComponentCreatorChecker)
-
-      override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
-        get() = setOf(ProvidesChecker)
-    }
 }
