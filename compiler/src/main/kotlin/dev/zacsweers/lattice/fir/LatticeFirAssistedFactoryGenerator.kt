@@ -3,20 +3,30 @@ package dev.zacsweers.lattice.fir
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.fqName
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.EffectiveVisibility
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
+import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
+import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
@@ -31,6 +41,7 @@ import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.ConstantValueKind
 
 /**
  * For assisted injection, we can generate the assisted factory _for_ the assisted type as a nested
@@ -97,7 +108,7 @@ internal class LatticeFirAssistedFactoryGenerator(
                 param to assistedAnnotation
               }
           val createFunction =
-            generateCreateFunction(assistedParams, targetClass, factoryClass, callableId)
+            generateCreateFunction2(assistedParams, targetClass, factoryClass, callableId)
           return listOf(createFunction.symbol)
         }
       }
@@ -120,49 +131,73 @@ internal class LatticeFirAssistedFactoryGenerator(
     ) {
       this.modality = Modality.ABSTRACT
 
-      // TODO is this good enough?
-      val functionSymbol = FirNamedFunctionSymbol(callableId)
+      for ((param, assistedAnnotation) in assistedParams) {
+        val identifier = assistedAnnotation.getStringArgument(LatticeSymbols.Names.Value, session)
+        // Simple value parameters don't support arguments
+        valueParameter(param.name, param.resolvedReturnTypeRef.coneType, key = LatticeKey)
+      }
+    }
+  }
 
+  private fun FirExtension.generateCreateFunction2(
+    assistedParams: List<Pair<FirValueParameterSymbol, FirAnnotation>>,
+    targetClass: FirClassLikeSymbol<*>,
+    factoryClass: FirClassSymbol<*>,
+    callableId: CallableId,
+  ): FirSimpleFunction {
+    return buildSimpleFunction {
+      // TODO is there a non-impl API for this?
+      status =
+        FirResolvedDeclarationStatusImpl(
+          Visibilities.Public,
+          Modality.ABSTRACT,
+          EffectiveVisibility.Public,
+        )
+
+      this.name = callableId.callableName
+      this.origin = LatticeKey.origin
+      this.moduleData = session.moduleData
+
+      val functionSymbol = FirNamedFunctionSymbol(callableId)
+      this.symbol = functionSymbol
+      this.returnTypeRef = targetClass.constructType().toFirResolvedTypeRef()
       for ((param, assistedAnnotation) in assistedParams) {
         val identifier = assistedAnnotation.getStringArgument(LatticeSymbols.Names.Value, session)
         // TODO can this work?
-        //                buildValueParameterCopy(param.fir)
-        valueParameter(param.name, param.resolvedReturnTypeRef.coneType, key = LatticeKey)
-        // TODO need to add this
-        //                buildValueParameter {
-        //                  this.name = param.name
-        //                  this.returnTypeRef = param.resolvedReturnTypeRef
-        //
-        //                  moduleData = session.moduleData
-        //                   containingFunctionSymbol = functionSymbol
-        //                   origin = LatticeKey.origin
-        //
-        //                  this.symbol = FirValueParameterSymbol(LatticeSymbols.Names.Value)
-        //                  isCrossinline = false
-        //                  isNoinline = false
-        //                  isVararg = false
-        ////                  resolvePhase = FirResolvePhase.BODY_RESOLVE
-        //
-        //                  if (identifier != null) {
-        //                    buildAnnotation {
-        //                      val assistedAnnotationClass =
-        //                        session.symbolProvider.getClassLikeSymbolByClassId(
-        //                          latticeClassIds.latticeAssisted
-        //                        ) as FirRegularClassSymbol
-        //                      annotationTypeRef =
-        //                        assistedAnnotationClass.defaultType().toFirResolvedTypeRef()
-        //                      argumentMapping = buildAnnotationArgumentMapping {
-        //                        mapping[LatticeSymbols.Names.Value] =
-        //                          buildLiteralExpression(
-        //                            source = null,
-        //                            kind = ConstantValueKind.String,
-        //                            value = identifier,
-        //                            setType = false,
-        //                          )
-        //                      }
-        //                    }
-        //                  }
-        //                }
+        //  buildValueParameterCopy(param.fir)
+        valueParameters += buildValueParameter {
+          this.name = param.name
+          this.returnTypeRef = param.resolvedReturnTypeRef
+          this.source = factoryClass.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+
+          moduleData = session.moduleData
+          containingFunctionSymbol = functionSymbol
+          origin = LatticeKey.origin
+
+          this.symbol = FirValueParameterSymbol(LatticeSymbols.Names.Value)
+          isCrossinline = false
+          isNoinline = false
+          isVararg = false
+          // resolvePhase = FirResolvePhase.BODY_RESOLVE
+
+          if (identifier != null) {
+            buildAnnotation {
+              val assistedAnnotationClass =
+                session.symbolProvider.getClassLikeSymbolByClassId(latticeClassIds.latticeAssisted)
+                  as FirRegularClassSymbol
+              annotationTypeRef = assistedAnnotationClass.defaultType().toFirResolvedTypeRef()
+              argumentMapping = buildAnnotationArgumentMapping {
+                mapping[LatticeSymbols.Names.Value] =
+                  buildLiteralExpression(
+                    source = null,
+                    kind = ConstantValueKind.String,
+                    value = identifier,
+                    setType = false,
+                  )
+              }
+            }
+          }
+        }
       }
     }
   }
