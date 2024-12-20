@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.LatticeClassIds
 import java.util.Objects
-import kotlin.collections.contains
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -35,7 +34,7 @@ import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
@@ -54,7 +53,6 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.fir.types.resolvedType
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.ClassId
 
 internal object LatticeKey : GeneratedDeclarationKey() {
@@ -88,7 +86,9 @@ internal fun List<FirAnnotation>.annotationsIn(
   session: FirSession,
   names: Set<ClassId>,
 ): Sequence<FirAnnotation> {
-  return asSequence().filter { it.toAnnotationClassId(session) in names }
+  return asSequence().filter {
+    it.toAnnotationClassIdSafe(session) in names
+  }
 }
 
 internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
