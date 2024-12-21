@@ -23,7 +23,7 @@ import dev.zacsweers.lattice.annotations.AssistedInject
 import dev.zacsweers.lattice.annotations.BindsInstance
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
-import dev.zacsweers.lattice.annotations.ObjectGraph
+import dev.zacsweers.lattice.annotations.DependencyGraph
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.SingleIn
 import dev.zacsweers.lattice.annotations.Singleton
@@ -49,10 +49,10 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 
-class ObjectGraphProcessingTest {
+class DependencyGraphProcessingTest {
 
   @Singleton
-  @ObjectGraph
+  @DependencyGraph
   interface ComplexDependenciesGraph {
 
     val repository: Repository
@@ -62,7 +62,7 @@ class ObjectGraphProcessingTest {
 
     @Named("cache-dir-name") @Provides private fun provideCacheDirName(): String = "cache"
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     fun interface Factory {
       fun create(): ComplexDependenciesGraph
     }
@@ -86,7 +86,7 @@ class ObjectGraphProcessingTest {
     assertSame(repository2.apiClient, apiClient)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   abstract class ProviderTypesGraph {
 
     var callCount = 0
@@ -95,7 +95,7 @@ class ObjectGraphProcessingTest {
 
     @Provides private fun count(): Int = callCount++
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     fun interface Factory {
       fun create(): ProviderTypesGraph
     }
@@ -127,7 +127,7 @@ class ObjectGraphProcessingTest {
     assertEquals(5, lazyValue2.value)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   abstract class ProviderTypesAsAccessorsGraph {
 
     var counter = 0
@@ -167,14 +167,14 @@ class ObjectGraphProcessingTest {
     assertEquals("Hello, world!", graph.value())
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphWithDependencies {
 
     fun value(): CharSequence
 
     @Provides private fun provideValue(string: String): CharSequence = string
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     fun interface Factory {
       fun create(stringGraph: StringGraph): GraphWithDependencies
     }
@@ -192,11 +192,11 @@ class ObjectGraphProcessingTest {
     fun create(@BindsInstance value: String): T
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphWithInheritingAbstractFunction {
     val value: String
 
-    @ObjectGraph.Factory interface Factory : BaseFactory<GraphWithInheritingAbstractFunction>
+    @DependencyGraph.Factory interface Factory : BaseFactory<GraphWithInheritingAbstractFunction>
   }
 
   @Test
@@ -206,7 +206,7 @@ class ObjectGraphProcessingTest {
     assertEquals(value, 3)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphCreatorWithMergeableInterfaces {
     val value: Int
 
@@ -218,7 +218,7 @@ class ObjectGraphProcessingTest {
       fun create(@BindsInstance value: Int): T
     }
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     interface Factory :
       BaseFactory1<GraphCreatorWithMergeableInterfaces>,
       BaseFactory2<GraphCreatorWithMergeableInterfaces>
@@ -237,7 +237,7 @@ class ObjectGraphProcessingTest {
   }
 
   // Also covers overrides with different return types
-  @ObjectGraph
+  @DependencyGraph
   interface GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance {
     val value: Int
 
@@ -249,7 +249,7 @@ class ObjectGraphProcessingTest {
       fun create(value: Int): T
     }
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     interface Factory :
       BaseFactory1<GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance>,
       BaseFactory2<GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance> {
@@ -272,7 +272,7 @@ class ObjectGraphProcessingTest {
     assertEquals(value2, 3)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphCreatorWithIntermediateOverriddenDefaultFunctions {
     val value: Int
 
@@ -286,7 +286,7 @@ class ObjectGraphProcessingTest {
       fun create2(@BindsInstance value: Int): T
     }
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     interface Factory : BaseFactory2<GraphCreatorWithIntermediateOverriddenDefaultFunctions>
   }
 
@@ -300,14 +300,14 @@ class ObjectGraphProcessingTest {
     assertEquals(graph.value3, 3)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphWithDifferentBindsInstanceTypeQualifiers {
 
     val value1: Int
     @Named("value2") val value2: Int
     @Named("value3") val value3: Int
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     fun interface Factory {
       fun create(
         @BindsInstance value1: Int,
@@ -331,12 +331,12 @@ class ObjectGraphProcessingTest {
     assertEquals(4, exampleClass2.intValue)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface AssistedInjectGraph {
     val factory: ExampleClass.Factory
     val factory2: ExampleClass.Factory2
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     interface Factory {
       fun create(@BindsInstance message: String): AssistedInjectGraph
     }
@@ -366,7 +366,7 @@ class ObjectGraphProcessingTest {
     assertEquals(2, exampleClass.intValue2)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface AssistedInjectGraphWithCustomAssistedKeys {
     val factory: ExampleClass.Factory
 
@@ -388,7 +388,7 @@ class ObjectGraphProcessingTest {
     assertEquals(2, exampleClass.intValue)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface AssistedInjectGraphWithGenericFactorySupertype {
     val factory: ExampleClass.Factory
 
@@ -412,7 +412,7 @@ class ObjectGraphProcessingTest {
     assertEquals(2, exampleClass.intValue)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface AssistedInjectGraphDiamondInheritance {
     val factory: ExampleClass.Factory
 
@@ -444,11 +444,11 @@ class ObjectGraphProcessingTest {
     assertEquals("Hello, world!", exampleClass.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphUsingDepFromDependentGraph {
     val factory: ExampleClass.Factory
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     interface Factory {
       fun create(dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
     }
@@ -462,7 +462,7 @@ class ObjectGraphProcessingTest {
       }
     }
 
-    @ObjectGraph
+    @DependencyGraph
     interface DependentGraph {
       val message: String
 
@@ -482,7 +482,7 @@ class ObjectGraphProcessingTest {
     assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithSingleIntSet {
     val ints: Set<Int>
 
@@ -498,7 +498,7 @@ class ObjectGraphProcessingTest {
     assertSame(emptySet(), graph.ints)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithEmptySet {
     @Multibinds val ints: Set<Int>
   }
@@ -515,7 +515,7 @@ class ObjectGraphProcessingTest {
     assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithIntSet {
     val ints: Set<Int>
 
@@ -536,7 +536,7 @@ class ObjectGraphProcessingTest {
     assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithElementsIntoSet {
     val ints: Set<Int>
 
@@ -556,7 +556,7 @@ class ObjectGraphProcessingTest {
   }
 
   @Singleton
-  @ObjectGraph
+  @DependencyGraph
   abstract class MultibindingGraphWithScopedElementsIntoSet {
     private var count = 0
 
@@ -579,7 +579,7 @@ class ObjectGraphProcessingTest {
   }
 
   @Singleton
-  @ObjectGraph
+  @DependencyGraph
   abstract class MultibindingGraphWithMixOfScopedElementsIntoSetAndIndividualProviders {
     private var count = 10
     private var unscopedCount = 1
@@ -605,7 +605,7 @@ class ObjectGraphProcessingTest {
   }
 
   @Singleton
-  @ObjectGraph
+  @DependencyGraph
   abstract class MultibindingGraphWithWithScopedSetDeps {
     private var scopedCount = 0
     private var unscopedCount = 0
@@ -629,7 +629,7 @@ class ObjectGraphProcessingTest {
     assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableMap<Int, Int>).clear() }
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithSingleIntMap {
     val ints: Map<Int, Int>
 
@@ -645,7 +645,7 @@ class ObjectGraphProcessingTest {
     assertSame(emptyMap(), graph.ints)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithEmptyMap {
     @Multibinds val ints: Map<Int, Int>
   }
@@ -662,7 +662,7 @@ class ObjectGraphProcessingTest {
     assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableMap<Int, Int>).clear() }
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithIntMap {
     val ints: Map<Int, Int>
 
@@ -680,7 +680,7 @@ class ObjectGraphProcessingTest {
   }
 
   @Singleton
-  @ObjectGraph
+  @DependencyGraph
   abstract class MultibindingGraphWithWithScopedMapDeps {
     private var scopedCount = 0
     private var unscopedCount = 0
@@ -706,7 +706,7 @@ class ObjectGraphProcessingTest {
     }
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithStringMap {
     val ints: Map<String, Int>
 
@@ -730,7 +730,7 @@ class ObjectGraphProcessingTest {
   }
 
   @Singleton
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithKClassMap {
     val ints: Map<KClass<*>, Int>
 
@@ -754,7 +754,7 @@ class ObjectGraphProcessingTest {
     )
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MultibindingGraphWithMultipleOtherMapKeyTypes {
     val seasoningAmounts: Map<Seasoning, Int>
 
@@ -809,7 +809,7 @@ class ObjectGraphProcessingTest {
   }
 
   @Singleton
-  @ObjectGraph
+  @DependencyGraph
   abstract class MultibindingGraphWithWithScopedMapProviderDeps {
     private var scopedCount = 0
     private var unscopedCount = 0
@@ -829,7 +829,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Found", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MessageProviderWithCharSequenceProvider : BaseMessageProviderWithDefault {
     @Provides private fun provideCharSequence(): CharSequence = "Found"
   }
@@ -840,7 +840,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Not found", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MessageProviderWithoutCharSequenceProvider : BaseMessageProviderWithDefault
 
   interface BaseMessageProviderWithDefault {
@@ -856,7 +856,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Not found: 3", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface OptionalDependenciesProviderWithBackReferencingDefault {
     val message: String
 
@@ -875,7 +875,7 @@ class ObjectGraphProcessingTest {
     assertEquals("7", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface OptionalDependenciesProviderWithManyDefaultBackReferences {
     val message: String
 
@@ -923,7 +923,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Default message!", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface OptionalDependenciesProviderWithPrivateReferences {
     val message: String
 
@@ -941,7 +941,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Default message!", graph.defaultMessage)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface OptionalDependenciesProviderWithInstanceReferences {
     val message: String
 
@@ -962,7 +962,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Found", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface MessageClassWithCharSequenceProvider : BaseMessageClassWithDefault {
     @Provides private fun provideMessage(): String = "Found"
   }
@@ -973,7 +973,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Not found", graph.message)
   }
 
-  @ObjectGraph interface MessageClassWithoutCharSequenceProvider : BaseMessageClassWithDefault
+  @DependencyGraph interface MessageClassWithoutCharSequenceProvider : BaseMessageClassWithDefault
 
   interface BaseMessageClassWithDefault {
     val messageClass: MessageClass
@@ -989,7 +989,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Not found: 3", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface OptionalDependenciesClassWithBackReferencingDefault {
     val messageClass: MessageClass
     val message: String
@@ -1006,7 +1006,7 @@ class ObjectGraphProcessingTest {
     assertEquals("7", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface OptionalDependenciesClassWithManyDefaultBackReferences {
     val messageClass: MessageClass
     val message: String
@@ -1024,7 +1024,7 @@ class ObjectGraphProcessingTest {
     assertEquals("Default message!", graph.message)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface OptionalDependenciesClassWithPrivateReferences {
     val messageClass: MessageClass
     val message
@@ -1050,7 +1050,7 @@ class ObjectGraphProcessingTest {
 
   @Singleton
   @SingleIn(AppScope::class)
-  @ObjectGraph
+  @DependencyGraph
   abstract class GraphWithMultipleScopes {
     private var intCounter = 0
     private var longCounter = 0L
@@ -1069,7 +1069,7 @@ class ObjectGraphProcessingTest {
     assertEquals(3, graph.number)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphWithBindsProperties {
     val number: Number
 
@@ -1086,7 +1086,7 @@ class ObjectGraphProcessingTest {
     assertEquals(3, graph.number)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface GraphWithBindsFunctions {
     val number: Number
 
@@ -1101,7 +1101,7 @@ class ObjectGraphProcessingTest {
     assertEquals(graph.string, graph.charSequence)
   }
 
-  @ObjectGraph
+  @DependencyGraph
   interface BindsWithMixOfFunctionsAndProperties {
     val string: String
     val charSequence: CharSequence
@@ -1131,12 +1131,12 @@ class ObjectGraphProcessingTest {
 
   @Inject class Repository(val apiClient: ApiClient)
 
-  @ObjectGraph
+  @DependencyGraph
   interface StringGraph {
 
     val string: String
 
-    @ObjectGraph.Factory
+    @DependencyGraph.Factory
     fun interface Factory {
       fun create(@BindsInstance string: String): StringGraph
     }

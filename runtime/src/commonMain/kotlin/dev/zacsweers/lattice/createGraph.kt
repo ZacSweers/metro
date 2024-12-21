@@ -15,17 +15,17 @@
  */
 package dev.zacsweers.lattice
 
-import dev.zacsweers.lattice.annotations.ObjectGraph
+import dev.zacsweers.lattice.annotations.DependencyGraph
 
 /**
  * Creates a new parameter-less graph of type [T]. Note this is _only_ applicable for graphs that
- * have no creators (i.e. [ObjectGraph.Factory]).
+ * have no creators (i.e. [DependencyGraph.Factory]).
  */
 public inline fun <reified T : Any> createGraph(): T {
   throw NotImplementedError("Implemented by the compiler")
 }
 
-/** Creates a new instance of a [@ObjectGraph.Factory][ObjectGraph.Factory]-annotated class. */
+/** Creates a new instance of a [@DependencyGraph.Factory][DependencyGraph.Factory]-annotated class. */
 public inline fun <reified T : Any> createGraphFactory(): T {
   throw NotImplementedError("Implemented by the compiler")
 }

@@ -338,11 +338,11 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlibJvm.packageFqName, Name.identifier("JvmStatic")))!!
   }
 
-  val objectGraphAnnotations
-    get() = latticeClassIds.objectGraphAnnotations
+  val dependencyGraphAnnotations
+    get() = latticeClassIds.dependencyGraphAnnotations
 
-  val objectGraphFactoryAnnotations
-    get() = latticeClassIds.objectGraphFactoryAnnotations
+  val dependencyGraphFactoryAnnotations
+    get() = latticeClassIds.dependencyGraphFactoryAnnotations
 
   val injectAnnotations
     get() = latticeClassIds.injectAnnotations + latticeClassIds.assistedInjectAnnotations

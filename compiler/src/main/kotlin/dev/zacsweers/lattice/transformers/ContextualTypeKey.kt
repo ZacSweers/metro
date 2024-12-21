@@ -41,7 +41,7 @@ internal data class ContextualTypeKey(
   val requiresProviderInstance: Boolean =
     isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
 
-  // TODO cache these in ObjectGraphTransformer or shared transformer data
+  // TODO cache these in DependencyGraphTransformer or shared transformer data
   companion object {
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     fun from(

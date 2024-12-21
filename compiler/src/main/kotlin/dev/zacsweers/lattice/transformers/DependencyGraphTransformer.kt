@@ -102,12 +102,12 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
-internal class ObjectGraphData {
-  val graphs = mutableMapOf<ClassId, ObjectGraphNode>()
+internal class DependencyGraphData {
+  val graphs = mutableMapOf<ClassId, DependencyGraphNode>()
 }
 
-internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
-  IrElementTransformer<ObjectGraphData>, LatticeTransformerContext by context {
+internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
+  IrElementTransformer<DependencyGraphData>, LatticeTransformerContext by context {
 
   private val injectConstructorTransformer = InjectConstructorTransformer(context)
   private val assistedFactoryTransformer =
@@ -115,12 +115,12 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   private val providesTransformer = ProvidesTransformer(context)
 
   // Keyed by the source declaration
-  private val objectGraphNodesByClass = mutableMapOf<ClassId, ObjectGraphNode>()
+  private val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
   // Keyed by the source declaration
-  private val latticeObjectGraphsByClass = mutableMapOf<ClassId, IrClass>()
+  private val latticeDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  override fun visitCall(expression: IrCall, data: ObjectGraphData): IrElement {
+  override fun visitCall(expression: IrCall, data: DependencyGraphData): IrElement {
     // Covers replacing createGraphFactory() compiler intrinsics with calls to the real
     // graph factory
     val callee = expression.symbol.owner
@@ -131,14 +131,14 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
           expression.getTypeArgument(0)
             ?: error("Missing type argument for ${symbols.latticeCreateGraphFactory.owner.name}")
         val rawType = type.rawType()
-        if (!rawType.isAnnotatedWithAny(symbols.objectGraphFactoryAnnotations)) {
+        if (!rawType.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations)) {
           // TODO FIR error
           error(
             "Cannot create a graph factory instance of non-factory type ${rawType.kotlinFqName}"
           )
         }
         val parentDeclaration = rawType.parentAsClass
-        val graphClass = getOrBuildObjectGraph(parentDeclaration)
+        val graphClass = getOrBuildDependencyGraph(parentDeclaration)
         val graphCompanion = graphClass.companionObject()!!
         val factoryFunction = graphCompanion.getSimpleFunction("factory")!!
         // Replace it with a call directly to the factory function
@@ -154,11 +154,11 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
           expression.getTypeArgument(0)
             ?: error("Missing type argument for ${symbols.latticeCreateGraph.owner.name}")
         val rawType = type.rawType()
-        if (!rawType.isAnnotatedWithAny(symbols.objectGraphAnnotations)) {
+        if (!rawType.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)) {
           // TODO FIR error
           error("Cannot create an object graph instance of non-graph type ${rawType.kotlinFqName}")
         }
-        val graphClass = getOrBuildObjectGraph(rawType)
+        val graphClass = getOrBuildDependencyGraph(rawType)
         val graphCompanion = graphClass.companionObject()!!
         val factoryFunction = graphCompanion.getSimpleFunction("create")!!
         // Replace it with a call directly to the create function
@@ -173,31 +173,31 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
     return super.visitCall(expression, data)
   }
 
-  override fun visitProperty(declaration: IrProperty, data: ObjectGraphData): IrStatement {
+  override fun visitProperty(declaration: IrProperty, data: DependencyGraphData): IrStatement {
     providesTransformer.visitProperty(declaration)
     return super.visitProperty(declaration, data)
   }
 
-  override fun visitFunction(declaration: IrFunction, data: ObjectGraphData): IrStatement {
+  override fun visitFunction(declaration: IrFunction, data: DependencyGraphData): IrStatement {
     if (declaration is IrSimpleFunction) {
       providesTransformer.visitFunction(declaration)
     }
     return super.visitFunction(declaration, data)
   }
 
-  override fun visitClass(declaration: IrClass, data: ObjectGraphData): IrStatement {
+  override fun visitClass(declaration: IrClass, data: DependencyGraphData): IrStatement {
     log("Reading <$declaration>")
 
     // TODO need to better divvy these
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
 
-    val isObjectGraph = declaration.isAnnotatedWithAny(symbols.objectGraphAnnotations)
-    if (!isObjectGraph) return super.visitClass(declaration, data)
+    val isDependencyGraph = declaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
+    if (!isDependencyGraph) return super.visitClass(declaration, data)
 
     providesTransformer.visitClass(declaration)
 
-    getOrBuildObjectGraph(declaration)
+    getOrBuildDependencyGraph(declaration)
 
     // TODO dump option to detect unused
 
@@ -205,19 +205,19 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun getOrComputeObjectGraphNode(
-    objectGraphDeclaration: IrClass,
+  private fun getOrComputeDependencyGraphNode(
+    graphDeclaration: IrClass,
     bindingStack: BindingStack,
     generatedGraphId: ClassId =
-      objectGraphDeclaration.classIdOrFail.createNestedClassId(LatticeSymbols.Names.LatticeGraph),
-  ): ObjectGraphNode {
-    val graphClassId = objectGraphDeclaration.classIdOrFail
-    objectGraphNodesByClass[graphClassId]?.let {
+      graphDeclaration.classIdOrFail.createNestedClassId(LatticeSymbols.Names.LatticeGraph),
+  ): DependencyGraphNode {
+    val graphClassId = graphDeclaration.classIdOrFail
+    dependencyGraphNodesByClass[graphClassId]?.let {
       return it
     }
 
-    val objectGraphTypeKey = TypeKey(objectGraphDeclaration.typeWith())
-    if (bindingStack.entryFor(objectGraphTypeKey) != null) {
+    val graphTypeKey = TypeKey(graphDeclaration.typeWith())
+    if (bindingStack.entryFor(graphTypeKey) != null) {
       // TODO dagger doesn't appear to error for this case to model off of
       val message = buildString {
         if (bindingStack.entries.size == 1) {
@@ -230,25 +230,25 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
         }
         appendBindingStack(bindingStack)
       }
-      objectGraphDeclaration.reportError(message)
+      graphDeclaration.reportError(message)
       exitProcessing()
     }
 
-    objectGraphDeclaration.constructors.forEach { constructor ->
+    graphDeclaration.constructors.forEach { constructor ->
       if (constructor.valueParameters.isNotEmpty()) {
         // TODO dagger doesn't appear to error for this case to model off of
         constructor.reportError(
-          "Object graphs cannot have constructors. Use @ObjectGraph.Factory instead."
+          "Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead."
         )
         exitProcessing()
       }
     }
 
     // TODO not currently reading supertypes yet.
-    val scopes = objectGraphDeclaration.scopeAnnotations()
+    val scopes = graphDeclaration.scopeAnnotations()
 
     val providerFunctions =
-      objectGraphDeclaration
+      graphDeclaration
         .getAllSuperTypes(pluginContext, excludeSelf = false)
         .flatMap { it.classOrFail.owner.allCallableMembers() }
         .filterNot { function ->
@@ -268,7 +268,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
         .toList()
 
     val exposedTypes =
-      objectGraphDeclaration
+      graphDeclaration
         .allCallableMembers()
         .filter { function ->
           // Abstract check is important. We leave alone any non-providers
@@ -285,13 +285,13 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
         .associateWith { function -> ContextualTypeKey.from(this, function) }
 
     val creator =
-      objectGraphDeclaration.nestedClasses
-        .singleOrNull { klass -> klass.isAnnotatedWithAny(symbols.objectGraphFactoryAnnotations) }
+      graphDeclaration.nestedClasses
+        .singleOrNull { klass -> klass.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations) }
         ?.let { factory ->
           // Validated in FIR so we can assume we'll find just one here
           // TODO support properties? Would be odd but technically possible
           val createFunction = factory.singleAbstractFunction(this)
-          ObjectGraphNode.Creator(factory, createFunction, createFunction.parameters(this))
+          DependencyGraphNode.Creator(factory, createFunction, createFunction.parameters(this))
         }
 
     val graphDependencies =
@@ -303,57 +303,57 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
         .map {
           val type = it.typeKey.type.rawType()
           bindingStack.withEntry(
-            BindingStackEntry.requestedAt(objectGraphTypeKey, creator!!.createFunction)
+            BindingStackEntry.requestedAt(graphTypeKey, creator!!.createFunction)
           ) {
-            getOrComputeObjectGraphNode(type, bindingStack)
+            getOrComputeDependencyGraphNode(type, bindingStack)
           }
         }
 
-    val objectGraphNode =
-      ObjectGraphNode(
-        sourceGraph = objectGraphDeclaration,
+    val dependencyGraphNode =
+      DependencyGraphNode(
+        sourceGraph = graphDeclaration,
         generatedGraphId = generatedGraphId,
-        isAnnotatedWithObjectGraph = true,
+        isAnnotatedWithDependencyGraph = true,
         dependencies = graphDependencies,
         scopes = scopes,
         providerFunctions = providerFunctions,
         exposedTypes = exposedTypes,
         isExternal = false,
         creator = creator,
-        typeKey = objectGraphTypeKey,
+        typeKey = graphTypeKey,
       )
-    objectGraphNodesByClass[graphClassId] = objectGraphNode
-    return objectGraphNode
+    dependencyGraphNodesByClass[graphClassId] = dependencyGraphNode
+    return dependencyGraphNode
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun getOrBuildObjectGraph(objectGraphDeclaration: IrClass): IrClass {
-    val graphClassId = objectGraphDeclaration.classIdOrFail
-    latticeObjectGraphsByClass[graphClassId]?.let {
+  private fun getOrBuildDependencyGraph(dependencyGraphDeclaration: IrClass): IrClass {
+    val graphClassId = dependencyGraphDeclaration.classIdOrFail
+    latticeDependencyGraphsByClass[graphClassId]?.let {
       return it
     }
 
-    if (objectGraphDeclaration.isExternalParent) {
+    if (dependencyGraphDeclaration.isExternalParent) {
       // Externally compiled, look up its generated class
       // TODO won't be visible until we add metadata to generated classes
       val generatedGraph =
-        objectGraphDeclaration.nestedClasses.singleOrNull {
+        dependencyGraphDeclaration.nestedClasses.singleOrNull {
           it.name == LatticeSymbols.Names.LatticeGraph
         }
       if (generatedGraph == null) {
         error("Expected generated object graph for $graphClassId")
       } else {
-        latticeObjectGraphsByClass[graphClassId] = generatedGraph
+        latticeDependencyGraphsByClass[graphClassId] = generatedGraph
         return generatedGraph
       }
     }
 
     val node =
-      getOrComputeObjectGraphNode(objectGraphDeclaration, BindingStack(objectGraphDeclaration))
+      getOrComputeDependencyGraphNode(dependencyGraphDeclaration, BindingStack(dependencyGraphDeclaration))
 
     val bindingGraph = createBindingGraph(node)
     bindingGraph.validate(node) { message ->
-      objectGraphDeclaration.reportError(message)
+      dependencyGraphDeclaration.reportError(message)
       exitProcessing()
     }
 
@@ -361,13 +361,13 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
 
     // TODO consolidate logic
     latticeGraph.dumpToLatticeLog()
-    objectGraphDeclaration.addChild(latticeGraph)
-    latticeObjectGraphsByClass[graphClassId] = latticeGraph
+    dependencyGraphDeclaration.addChild(latticeGraph)
+    latticeDependencyGraphsByClass[graphClassId] = latticeGraph
     return latticeGraph
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun createBindingGraph(node: ObjectGraphNode): BindingGraph {
+  private fun createBindingGraph(node: DependencyGraphNode): BindingGraph {
     val graph = BindingGraph(this)
 
     // Add explicit bindings from @Provides methods
@@ -489,7 +489,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun generateLatticeGraph(node: ObjectGraphNode, graph: BindingGraph): IrClass {
+  private fun generateLatticeGraph(node: DependencyGraphNode, graph: BindingGraph): IrClass {
     /*
     Simple object that exposes a factory function
 
@@ -523,7 +523,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
           origin = LatticeOrigin,
         )
 
-        val graphImpl = generateObjectGraphImpl(node, graph)
+        val graphImpl = generateGraphImpl(node, graph)
         addChild(graphImpl)
 
         val creator = node.creator
@@ -601,7 +601,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun generateObjectGraphImpl(node: ObjectGraphNode, bindingGraph: BindingGraph): IrClass {
+  private fun generateGraphImpl(node: DependencyGraphNode, bindingGraph: BindingGraph): IrClass {
     val graphImplName = "${node.sourceGraph.name.asString()}Impl"
     return pluginContext.irFactory
       .buildClass { name = Name.identifier(graphImplName) }
@@ -712,7 +712,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
             .distinct()
 
         val generationContext =
-          ObjectGraphGenerationContext(
+          GraphGenerationContext(
             bindingGraph,
             thisReceiverParameter,
             instanceFields,
@@ -802,7 +802,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
                   irBlockBody(
                     symbol,
                     typeAsProviderArgument(
-                      this@ObjectGraphTransformer,
+                      this@DependencyGraphTransformer,
                       contextualTypeKey,
                       generateBindingCode(binding, generationContext, contextualTypeKey),
                       isAssisted = false,
@@ -862,7 +862,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   }
 
   private fun collectBindings(
-    node: ObjectGraphNode,
+    node: DependencyGraphNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
   ): Map<TypeKey, Binding> {
@@ -891,7 +891,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   private fun findAndProcessBinding(
     contextKey: ContextualTypeKey,
     stackEntry: BindingStackEntry,
-    node: ObjectGraphNode,
+    node: DependencyGraphNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
     bindingDependencies: MutableMap<TypeKey, Binding>,
@@ -924,7 +924,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
 
   private fun processBinding(
     binding: Binding,
-    node: ObjectGraphNode,
+    node: DependencyGraphNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
     bindingDependencies: MutableMap<TypeKey, Binding>,
@@ -1049,9 +1049,9 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
     targetParams: Parameters,
     function: IrFunction,
     binding: Binding,
-    generationContext: ObjectGraphGenerationContext,
+    generationContext: GraphGenerationContext,
   ): List<IrExpression?> {
-    val params = function.parameters(this@ObjectGraphTransformer)
+    val params = function.parameters(this@DependencyGraphTransformer)
     // TODO only value args are supported atm
     val paramsToMap = buildList {
       // Can't use isStatic here because companion object functions actually have
@@ -1073,7 +1073,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.valueParameters.map { ContextualTypeKey.from(this@ObjectGraphTransformer, it).typeKey }.joinToString()}
+            - ${function.valueParameters.map { ContextualTypeKey.from(this@DependencyGraphTransformer, it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
@@ -1214,7 +1214,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
-    generationContext: ObjectGraphGenerationContext,
+    generationContext: GraphGenerationContext,
     contextualTypeKey: ContextualTypeKey = binding.contextualTypeKey,
   ): IrExpression {
     if (binding is Binding.Absent) {
@@ -1445,7 +1445,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
           val keyType: IrType = mapTypeArgs[0].typeOrFail
           val rawValueType = mapTypeArgs[1].typeOrFail
           val rawValueTypeMetadata =
-            rawValueType.typeOrFail.asContextualTypeKey(this@ObjectGraphTransformer, null, false)
+            rawValueType.typeOrFail.asContextualTypeKey(this@DependencyGraphTransformer, null, false)
           val useProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
           val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
@@ -1594,11 +1594,11 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
 
   private fun IrBuilderWithScope.generateMultibindingArgument(
     provider: Binding.Provided,
-    generationContext: ObjectGraphGenerationContext,
+    generationContext: GraphGenerationContext,
   ): IrExpression {
     val bindingCode = generateBindingCode(provider, generationContext)
     return typeAsProviderArgument(
-      this@ObjectGraphTransformer,
+      this@DependencyGraphTransformer,
       ContextualTypeKey(provider.typeKey, false, false, false, false),
       bindingCode,
       false,
@@ -1608,7 +1608,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
   }
 }
 
-private class ObjectGraphGenerationContext(
+private class GraphGenerationContext(
   val graph: BindingGraph,
   val thisReceiver: IrValueParameter,
   val instanceFields: Map<TypeKey, IrField>,

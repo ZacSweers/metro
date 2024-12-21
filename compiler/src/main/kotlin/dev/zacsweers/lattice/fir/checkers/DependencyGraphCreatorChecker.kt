@@ -24,23 +24,23 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 
-internal object ObjectGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
+internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
     val session = context.session
     val latticeClassIds = session.latticeClassIds
 
-    val objectGraphFactoryAnnotation =
-      declaration.annotationsIn(session, latticeClassIds.objectGraphFactoryAnnotations).toList()
+    val graphFactoryAnnotation =
+      declaration.annotationsIn(session, latticeClassIds.dependencyGraphFactoryAnnotations).toList()
 
-    if (objectGraphFactoryAnnotation.isEmpty()) return
+    if (graphFactoryAnnotation.isEmpty()) return
 
-    declaration.validateFactoryClass(context, reporter, "ObjectGraph factory") {
+    declaration.validateFactoryClass(context, reporter, "DependencyGraph factory") {
       return
     }
 
     val createFunction =
-      declaration.singleAbstractFunction(session, context, reporter, "@ObjectGraph.Factory") {
+      declaration.singleAbstractFunction(session, context, reporter, "@DependencyGraph.Factory") {
         return
       }
 
@@ -50,11 +50,11 @@ internal object ObjectGraphCreatorChecker : FirClassChecker(MppCheckerKind.Commo
       val clazz = param.returnTypeRef.firClassLike(session)!!
       val isValid =
         param.isAnnotatedWithAny(session, latticeClassIds.bindsInstanceAnnotations) ||
-          clazz.isAnnotatedWithAny(session, latticeClassIds.objectGraphAnnotations)
+          clazz.isAnnotatedWithAny(session, latticeClassIds.dependencyGraphAnnotations)
       if (!isValid) {
         reporter.reportOn(
           param.source,
-          FirLatticeErrors.OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS,
+          FirLatticeErrors.GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS,
           context,
         )
         return
@@ -64,7 +64,7 @@ internal object ObjectGraphCreatorChecker : FirClassChecker(MppCheckerKind.Commo
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
           param.source,
-          FirLatticeErrors.OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
+          FirLatticeErrors.GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
           context,
         )
         return

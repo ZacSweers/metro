@@ -25,7 +25,7 @@ package dev.zacsweers.lattice.annotations.multibindings
  * you do have to declare them if they may be empty.
  *
  * ```
- * @ObjectGraph interface MyGraph {
+ * @DependencyGraph interface MyGraph {
  *   @Multibinds aSet(): Set<Foo>
  *   @Multibinds @MyQualifier aQualifiedSet(): Set<Foo>
  *   @Multibinds aMap(): Map<String, Foo>

@@ -23,11 +23,11 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
-internal data class ObjectGraphNode(
+internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val generatedGraphId: ClassId,
-  val isAnnotatedWithObjectGraph: Boolean,
-  val dependencies: List<ObjectGraphNode>,
+  val isAnnotatedWithDependencyGraph: Boolean,
+  val dependencies: List<DependencyGraphNode>,
   val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, IrSimpleFunction>>,
   // Types accessible via this graph (includes inherited)

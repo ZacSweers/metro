@@ -32,7 +32,7 @@ import dev.zacsweers.lattice.annotations.Provides
  * @MapKey
  * annotation class SomeEnumKey(val value: SomeEnum)
  *
- * @ObjectGraph
+ * @DependencyGraph
  * interface SomeGraph {
  *   @Provides
  *   @IntoMap
@@ -64,7 +64,7 @@ import dev.zacsweers.lattice.annotations.Provides
  * MyEnum someEnum();
  * }
  *
- * @ObjectGraph
+ * @DependencyGraph
  * interface SomeGraph {
  *   @Provides
  *   @IntoMap

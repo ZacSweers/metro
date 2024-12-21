@@ -16,6 +16,6 @@
 package dev.zacsweers.lattice.annotations
 
 @Target(AnnotationTarget.CLASS)
-public annotation class ObjectGraph {
+public annotation class DependencyGraph {
   @Target(AnnotationTarget.CLASS) public annotation class Factory
 }

@@ -19,8 +19,8 @@ import dev.zacsweers.lattice.ExitProcessingException
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.transformers.LatticeTransformerContext
-import dev.zacsweers.lattice.transformers.ObjectGraphData
-import dev.zacsweers.lattice.transformers.ObjectGraphTransformer
+import dev.zacsweers.lattice.transformers.DependencyGraphData
+import dev.zacsweers.lattice.transformers.DependencyGraphTransformer
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -35,11 +35,11 @@ internal class LatticeIrGenerationExtension(
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = LatticeSymbols(moduleFragment, pluginContext, classIds)
     val context = LatticeTransformerContext(pluginContext, messageCollector, symbols, debug)
-    val objectGraphTransformer = ObjectGraphTransformer(context)
+    val dependencyGraphTransformer = DependencyGraphTransformer(context)
     // TODO is this really necessary?
-    val objectGraphData = ObjectGraphData()
+    val dependencyGraphData = DependencyGraphData()
     try {
-      moduleFragment.transform(objectGraphTransformer, objectGraphData)
+      moduleFragment.transform(dependencyGraphTransformer, dependencyGraphData)
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
     }

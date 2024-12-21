@@ -20,7 +20,7 @@ import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.render
 
-// TODO cache these in ObjectGraphTransformer or shared transformer data
+// TODO cache these in DependencyGraphTransformer or shared transformer data
 internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
   Comparable<TypeKey> {
   private val cachedToString by unsafeLazy {

@@ -30,7 +30,7 @@ import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import java.util.concurrent.Callable
 import org.junit.Test
 
-class ObjectGraphTransformerTest : LatticeCompilerTest() {
+class DependencyGraphTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun simple() {
@@ -42,7 +42,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.BindsInstance
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Singleton
@@ -50,12 +50,12 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
             import java.util.concurrent.Callable
 
             @Singleton
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               fun exampleClass(): ExampleClass
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@BindsInstance text: String): ExampleGraph
               }
@@ -102,11 +102,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Inject
             import java.util.concurrent.Callable
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val text: String
@@ -139,12 +139,12 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import java.util.concurrent.Callable
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               @Named("hello")
@@ -178,12 +178,12 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import java.util.concurrent.Callable
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               @get:Named("hello")
@@ -217,11 +217,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Inject
             import java.util.concurrent.Callable
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               fun text(): String
@@ -254,12 +254,12 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import java.util.concurrent.Callable
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               @Named("hello")
@@ -293,11 +293,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
 
-            @ObjectGraph
+            @DependencyGraph
             abstract class ExampleGraph() {
 
               abstract fun exampleClass(): ExampleClass
@@ -335,12 +335,12 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
 
-            @ObjectGraph
+            @DependencyGraph
             abstract class ExampleGraph() {
 
               abstract fun exampleClass(): ExampleClass
@@ -381,14 +381,14 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
             @Singleton
-            @ObjectGraph
+            @DependencyGraph
             abstract class ExampleGraph {
 
               private var scopedCounter = 0
@@ -439,7 +439,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Singleton
             import dev.zacsweers.lattice.annotations.SingleIn
@@ -449,7 +449,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
 
             @Singleton
             @SingleIn(AppScope::class)
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val intValue: Int
@@ -486,13 +486,13 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph : TextProvider {
               val value: String
             }
@@ -522,13 +522,13 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph : TextProvider {
 
               val value: String
@@ -559,13 +559,13 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph : TextProvider {
 
               val value: String
@@ -585,7 +585,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContains(
-      "ExampleGraph.kt:14:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@ObjectGraph.excludes` instead."
+      "ExampleGraph.kt:14:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead."
     )
   }
 
@@ -597,13 +597,13 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph : TextProvider {
 
               val value: String
@@ -637,10 +637,10 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val valueLengths: Int
@@ -688,10 +688,10 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val valueLengths: Int
@@ -726,11 +726,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val value: String
@@ -769,10 +769,10 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val value: String
@@ -811,10 +811,10 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val value: String
@@ -848,7 +848,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Singleton
@@ -858,7 +858,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
             import java.nio.file.FileSystems
 
             @Singleton
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val repository: Repository
@@ -891,11 +891,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.Provider
 
-            @ObjectGraph
+            @DependencyGraph
             abstract class ExampleGraph {
 
               var counter = 0
@@ -924,11 +924,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.Provider
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val value: Int
@@ -966,10 +966,10 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
 
               val value: String
@@ -1023,11 +1023,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.BindsInstance
 
-            @ObjectGraph
+            @DependencyGraph
             abstract class ExampleGraph(
               @get:Provides
               val text: String
@@ -1035,7 +1035,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
 
               abstract fun string(): String
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@BindsInstance text: String): ExampleGraph
               }
@@ -1050,7 +1050,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleGraph.kt:8:28 Object graphs cannot have constructors. Use @ObjectGraph.Factory instead.
+          ExampleGraph.kt:8:28 Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead.
         """
           .trimIndent()
       )
@@ -1065,10 +1065,10 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @ObjectGraph
+            @DependencyGraph
             interface CharSequenceGraph {
 
               fun value(): CharSequence
@@ -1076,7 +1076,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
               @Provides
               fun provideValue(string: String): CharSequence = string
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               fun interface Factory {
                 fun create(graph: CharSequenceGraph): CharSequenceGraph
               }
@@ -1107,10 +1107,10 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @ObjectGraph
+            @DependencyGraph
             interface CharSequenceGraph {
 
               fun value(): CharSequence
@@ -1118,13 +1118,13 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
               @Provides
               fun provideValue(string: String): CharSequence = string
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               fun interface Factory {
                 fun create(stringGraph: StringGraph): CharSequenceGraph
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             interface StringGraph {
 
               val string: String
@@ -1132,7 +1132,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
               @Provides
               fun provideValue(charSequence: CharSequence): String = charSequence.toString()
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               fun interface Factory {
                 fun create(charSequenceGraph: CharSequenceGraph): StringGraph
               }
@@ -1165,46 +1165,46 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
             // Ok
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithAbstractClass {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               abstract class Factory {
                 abstract fun create(): GraphWithAbstractClass
               }
             }
 
             // Ok
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithInterface {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory {
                 fun create(): GraphWithInterface
               }
             }
 
             // Ok
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithFunInterface {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               fun interface Factory {
                 fun create(): GraphWithFunInterface
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithEnumFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               enum class Factory {
                 THIS_IS_JUST_WRONG
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithOpenFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               open class Factory {
                 fun create(): GraphWithOpenFactory {
                   TODO()
@@ -1212,9 +1212,9 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithFinalFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               class Factory {
                 fun create(): GraphWithFinalFactory {
                   TODO()
@@ -1222,17 +1222,17 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithSealedFactoryInterface {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               sealed interface Factory {
                 fun create(): GraphWithSealedFactoryInterface
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithSealedFactoryClass {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               sealed class Factory {
                 abstract fun create(): GraphWithSealedFactoryClass
               }
@@ -1244,11 +1244,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleGraph.kt:35:14 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:43:14 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:53:9 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:63:20 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:71:16 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:35:14 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:43:14 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:53:9 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:63:20 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:71:16 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
     )
   }
 
@@ -1261,13 +1261,13 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface GraphWithAbstractClass {
 
               fun example() {
-                @ObjectGraph.Factory
+                @DependencyGraph.Factory
                 abstract class Factory {
                   fun create(): GraphWithAbstractClass {
                     TODO()
@@ -1283,7 +1283,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleGraph.kt:10:20 ObjectGraph factory classes cannot be local classes.
+        ExampleGraph.kt:10:20 DependencyGraph factory classes cannot be local classes.
       """
         .trimIndent()
     )
@@ -1298,46 +1298,46 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
             // Ok
-            @ObjectGraph
+            @DependencyGraph
             abstract class GraphWithImplicitPublicFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory {
                 fun create(): GraphWithImplicitPublicFactory
               }
             }
 
             // Ok
-            @ObjectGraph
+            @DependencyGraph
             abstract class GraphWithPublicFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               public interface Factory {
                 fun create(): GraphWithPublicFactory
               }
             }
 
             // Ok
-            @ObjectGraph
+            @DependencyGraph
             abstract class GraphWithInternalFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               internal interface Factory {
                 fun create(): GraphWithInternalFactory
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             abstract class GraphWithProtectedFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               protected interface Factory {
                 fun create(): GraphWithProtectedFactory
               }
             }
 
-            @ObjectGraph
+            @DependencyGraph
             abstract class GraphWithPrivateFactory {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               private interface Factory {
                 fun create(): GraphWithPrivateFactory
               }
@@ -1349,8 +1349,8 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleGraph.kt:35:23 ObjectGraph factory must be public or internal.",
-      "ExampleGraph.kt:43:21 ObjectGraph factory must be public or internal.",
+      "ExampleGraph.kt:35:23 DependencyGraph factory must be public or internal.",
+      "ExampleGraph.kt:43:21 DependencyGraph factory must be public or internal.",
     )
   }
 
@@ -1363,11 +1363,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory {
                 fun create(): ExampleGraph {
                   TODO()
@@ -1382,7 +1382,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleGraph.kt:8:13 @ObjectGraph.Factory classes must have exactly one abstract function but found none.
+        ExampleGraph.kt:8:13 @DependencyGraph.Factory classes must have exactly one abstract function but found none.
       """
         .trimIndent()
     )
@@ -1397,11 +1397,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory {
                 fun create(): ExampleGraph
                 fun create2(): ExampleGraph
@@ -1414,8 +1414,8 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleGraph.kt:9:9 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
-      "ExampleGraph.kt:10:9 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:9:9 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:10:9 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
     )
   }
 
@@ -1428,7 +1428,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
             interface BaseFactory1<T> {
               fun create1(): T
@@ -1438,9 +1438,9 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
               fun create2(): T
             }
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory : BaseFactory2<ExampleGraph>
             }
           """
@@ -1450,8 +1450,8 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleGraph.kt:6:7 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
-      "ExampleGraph.kt:10:7 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:6:7 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:10:7 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
     )
   }
 
@@ -1464,14 +1464,14 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.BindsInstance
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               val value: Int
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory {
                 fun create(@BindsInstance value: Int, @BindsInstance value2: Int): ExampleGraph
               }
@@ -1483,7 +1483,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContains(
-      "ExampleGraph.kt:12:58 ObjectGraph.Factory abstract function parameters must be unique."
+      "ExampleGraph.kt:12:58 DependencyGraph.Factory abstract function parameters must be unique."
     )
   }
 
@@ -1496,23 +1496,23 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.BindsInstance
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               val value: Int
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory {
                 fun create(intGraph: IntGraph, intGraph2: IntGraph): ExampleGraph
               }
             }
-            @ObjectGraph
+            @DependencyGraph
             interface IntGraph {
               val value: Int
 
-              @ObjectGraph.Factory
+              @DependencyGraph.Factory
               interface Factory {
                 fun create(@BindsInstance value: Int): IntGraph
               }
@@ -1524,7 +1524,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContains(
-      "ExampleGraph.kt:12:36 ObjectGraph.Factory abstract function parameters must be unique."
+      "ExampleGraph.kt:12:36 DependencyGraph.Factory abstract function parameters must be unique."
     )
   }
 

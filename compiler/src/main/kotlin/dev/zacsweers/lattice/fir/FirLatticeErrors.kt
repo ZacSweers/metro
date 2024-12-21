@@ -95,12 +95,12 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val FACTORY_MUST_BE_VISIBLE by error1<String>(NAME_IDENTIFIER)
   val FACTORY_FACTORY_FUNCTION_MUST_BE_VISIBLE by error1<String>(NAME_IDENTIFIER)
 
-  // ObjectGraph factory errors
-  val OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0(NAME_IDENTIFIER)
-  val OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS by
+  // DependencyGraph factory errors
+  val GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0(NAME_IDENTIFIER)
+  val GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS by
     error0(NAME_IDENTIFIER)
 
-  // ObjectGraph errors
+  // DependencyGraph errors
   val OBJECT_GRAPH_SHOULD_BE_CLASS_OR_INTERFACE by error0(NAME_IDENTIFIER)
 
   // Inject constructor errors
@@ -150,20 +150,20 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
         TO_STRING,
       )
 
-      // ObjectGraph creator errors
+      // DependencyGraph creator errors
       put(
-        OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
-        "ObjectGraph.Factory abstract function parameters must be unique.",
+        GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
+        "DependencyGraph.Factory abstract function parameters must be unique.",
       )
       put(
-        OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS,
-        "ObjectGraph.Factory abstract function parameters must be either annotated with `@BindsInstance` or be types annotated with `@ObjectGraph`.",
+        GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS,
+        "DependencyGraph.Factory abstract function parameters must be either annotated with `@BindsInstance` or be types annotated with `@DependencyGraph`.",
       )
 
-      // ObjectGraph errors
+      // DependencyGraph errors
       put(
         OBJECT_GRAPH_SHOULD_BE_CLASS_OR_INTERFACE,
-        "@ObjectGraph-annotated types should be abstract classes or interfaces.",
+        "@DependencyGraph-annotated types should be abstract classes or interfaces.",
       )
 
       // Inject Constructor errors
@@ -200,7 +200,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(PROVIDES_SHOULD_BE_PRIVATE, "`@Provides` declarations should be private.")
       put(
         PROVIDER_OVERRIDES,
-        "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@ObjectGraph.excludes` instead.",
+        "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",
       )
     }
 

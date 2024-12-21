@@ -18,13 +18,13 @@ package dev.zacsweers.lattice.sample
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.BindsInstance
 import dev.zacsweers.lattice.annotations.Inject
-import dev.zacsweers.lattice.annotations.ObjectGraph
+import dev.zacsweers.lattice.annotations.DependencyGraph
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
 import dev.zacsweers.lattice.createGraphFactory
 
 @Singleton
-@ObjectGraph
+@DependencyGraph
 interface ExampleGraph : FileSystemProviders {
 
   fun example1(): Example1
@@ -33,7 +33,7 @@ interface ExampleGraph : FileSystemProviders {
 
   fun example4(): Example4
 
-  @ObjectGraph.Factory
+  @DependencyGraph.Factory
   fun interface Factory {
     fun create(@BindsInstance text: String): ExampleGraph
   }

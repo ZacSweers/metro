@@ -185,12 +185,12 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     return binding
   }
 
-  fun validate(node: ObjectGraphNode, onError: (String) -> Nothing) {
+  fun validate(node: DependencyGraphNode, onError: (String) -> Nothing) {
     checkCycles(node, onError)
     checkMissingDependencies(onError)
   }
 
-  private fun checkCycles(node: ObjectGraphNode, onError: (String) -> Nothing) {
+  private fun checkCycles(node: DependencyGraphNode, onError: (String) -> Nothing) {
     val visited = mutableSetOf<TypeKey>()
     val stack = BindingStack(node.sourceGraph)
 

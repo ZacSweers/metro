@@ -16,12 +16,12 @@
 package dev.zacsweers.lattice.annotations
 
 /**
- * Marks a method on a parameter on an [object graph factory][ObjectGraph.Factory] as binding an
+ * Marks a method on a parameter on an [dependency graph factory][DependencyGraph.Factory] as binding an
  * instance to some key within the graph.
  *
  * For example:
  * ```kotlin
- * @ObjectGraph.Factory
+ * @DependencyGraph.Factory
  * interface Factory {
  *   fun newMyGraph(
  *     @BindsInstance foo: Foo,

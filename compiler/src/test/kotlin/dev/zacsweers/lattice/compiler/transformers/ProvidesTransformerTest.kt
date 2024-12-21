@@ -41,9 +41,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               fun provideValue(): String = "Hello, world!"
@@ -74,9 +74,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               val value: String get() = "Hello, world!"
@@ -107,9 +107,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               companion object {
                 @Provides
@@ -144,9 +144,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               companion object {
                 @Provides
@@ -181,9 +181,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               fun provideIntValue(): Int = 1
@@ -219,9 +219,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               fun provideBooleanValue(): Boolean = false
@@ -261,10 +261,10 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Named
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               fun provideIntValue(): Int = 1
@@ -304,10 +304,10 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Named
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               fun provideIntValue(): Int = 1
@@ -351,10 +351,10 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
             import dev.zacsweers.lattice.annotations.Named
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               fun <T> provideValue(): Int = 1
@@ -384,9 +384,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.ObjectGraph
+            import dev.zacsweers.lattice.annotations.DependencyGraph
 
-            @ObjectGraph
+            @DependencyGraph
             interface ExampleGraph {
               @Provides
               private fun String.provideValue(): Int = length
