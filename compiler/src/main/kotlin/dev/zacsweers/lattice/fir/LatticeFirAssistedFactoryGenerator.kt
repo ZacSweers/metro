@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.fqName
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -63,7 +62,7 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   private val assistedInjectAnnotationPredicate by unsafeLazy {
-    annotated(session.latticeClassIds.assistedInjectAnnotations.map { it.fqName })
+    annotated(session.latticeClassIds.assistedInjectAnnotations.map { it.asSingleFqName() })
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
@@ -160,7 +159,8 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
             symbol = FirValueParameterSymbol(original.name)
             containingFunctionSymbol = functionSymbol
             // TODO default values are copied over in this case, is that enough or do they need
-            //  references transformed?
+            //  references transformed? We should also check they're not referencing non-assisted
+            //  params
           }
       }
     }
