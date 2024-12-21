@@ -90,7 +90,7 @@ internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): Boolean {
-  return resolvedAnnotationsWithClassIds.isAnnotatedWithAny(session, names)
+  return annotations.any { it.toAnnotationClassIdSafe(session) in names }
 }
 
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
