@@ -13,13 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.transformers
+package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.expectAs
-import dev.zacsweers.lattice.ir.IrAnnotation
-import dev.zacsweers.lattice.ir.implementsAny
-import dev.zacsweers.lattice.ir.rawType
-import dev.zacsweers.lattice.ir.rawTypeOrNull
 import kotlin.collections.contains
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter

@@ -13,16 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.transformers
+package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LOG_PREFIX
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.ir.IrAnnotation
-import dev.zacsweers.lattice.ir.addAnnotation
-import dev.zacsweers.lattice.ir.annotationsIn
-import dev.zacsweers.lattice.ir.irType
-import dev.zacsweers.lattice.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.ir.locationOrNull
 import dev.zacsweers.lattice.mapToSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -153,12 +147,12 @@ internal interface LatticeTransformerContext {
       debug: Boolean,
     ): LatticeTransformerContext =
       SimpleLatticeTransformerContext(pluginContext, messageCollector, symbols, debug)
+
+    private class SimpleLatticeTransformerContext(
+      override val pluginContext: IrPluginContext,
+      override val messageCollector: MessageCollector,
+      override val symbols: LatticeSymbols,
+      override val debug: Boolean,
+    ) : LatticeTransformerContext
   }
 }
-
-private class SimpleLatticeTransformerContext(
-  override val pluginContext: IrPluginContext,
-  override val messageCollector: MessageCollector,
-  override val symbols: LatticeSymbols,
-  override val debug: Boolean,
-) : LatticeTransformerContext

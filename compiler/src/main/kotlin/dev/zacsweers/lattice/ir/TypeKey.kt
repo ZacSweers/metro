@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.transformers
+package dev.zacsweers.lattice.ir
 
-import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.render

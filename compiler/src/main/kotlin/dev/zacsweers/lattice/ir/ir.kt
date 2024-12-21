@@ -18,14 +18,6 @@ package dev.zacsweers.lattice.ir
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.letIf
-import dev.zacsweers.lattice.transformers.ConstructorParameter
-import dev.zacsweers.lattice.transformers.ContextualTypeKey
-import dev.zacsweers.lattice.transformers.LatticeTransformerContext
-import dev.zacsweers.lattice.transformers.Parameter
-import dev.zacsweers.lattice.transformers.Parameters
-import dev.zacsweers.lattice.transformers.isLatticeProviderType
-import dev.zacsweers.lattice.transformers.wrapInLazy
-import dev.zacsweers.lattice.transformers.wrapInProvider
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver

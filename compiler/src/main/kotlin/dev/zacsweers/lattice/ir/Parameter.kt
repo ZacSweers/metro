@@ -13,13 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.transformers
+package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.ir.annotationsIn
-import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
-import dev.zacsweers.lattice.ir.locationOrNull
-import dev.zacsweers.lattice.transformers.Parameter.Kind
+import dev.zacsweers.lattice.ir.Parameter.Kind
 import dev.zacsweers.lattice.unsafeLazy
 import kotlin.collections.count
 import kotlin.collections.sumOf

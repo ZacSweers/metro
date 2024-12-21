@@ -13,17 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.transformers
+package dev.zacsweers.lattice.ir.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.NameAllocator
 import dev.zacsweers.lattice.decapitalizeUS
 import dev.zacsweers.lattice.exitProcessing
+import dev.zacsweers.lattice.ir.Binding
+import dev.zacsweers.lattice.ir.BindingGraph
+import dev.zacsweers.lattice.ir.BindingStack
+import dev.zacsweers.lattice.ir.ContextualTypeKey
+import dev.zacsweers.lattice.ir.DependencyGraphNode
 import dev.zacsweers.lattice.ir.IrAnnotation
+import dev.zacsweers.lattice.ir.LatticeTransformerContext
+import dev.zacsweers.lattice.ir.TypeKey
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
+import dev.zacsweers.lattice.ir.appendBindingStack
+import dev.zacsweers.lattice.ir.asContextualTypeKey
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
@@ -38,7 +47,13 @@ import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
 import dev.zacsweers.lattice.ir.singleAbstractFunction
 import dev.zacsweers.lattice.ir.typeAsProviderArgument
+import dev.zacsweers.lattice.ir.withEntry
 import dev.zacsweers.lattice.letIf
+import dev.zacsweers.lattice.ir.ConstructorParameter
+import dev.zacsweers.lattice.ir.Parameters
+import dev.zacsweers.lattice.ir.parameters
+import dev.zacsweers.lattice.ir.wrapInLazy
+import dev.zacsweers.lattice.ir.wrapInProvider
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -264,7 +279,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               ?.owner
               ?.isAnnotatedWithAny(symbols.providesAnnotations) == true
         }
-        .map { function -> ContextualTypeKey.from(this, function).typeKey to function }
+        .map { function -> ContextualTypeKey.Companion.from(this, function).typeKey to function }
         .toList()
 
     val exposedTypes =
@@ -282,7 +297,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               ?.owner
               ?.isAnnotatedWithAny(symbols.providesAnnotations) != true
         }
-        .associateWith { function -> ContextualTypeKey.from(this, function) }
+        .associateWith { function -> ContextualTypeKey.Companion.from(this, function) }
 
     val creator =
       graphDeclaration.nestedClasses

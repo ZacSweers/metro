@@ -15,8 +15,6 @@
  */
 package dev.zacsweers.lattice.ir
 
-import dev.zacsweers.lattice.transformers.LatticeTransformerContext
-import dev.zacsweers.lattice.transformers.parameters
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.kotlinFqName

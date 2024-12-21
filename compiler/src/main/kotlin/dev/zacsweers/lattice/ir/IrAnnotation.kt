@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.appendIterableWith
-import dev.zacsweers.lattice.transformers.LatticeTransformerContext
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.expressions.IrClassReference

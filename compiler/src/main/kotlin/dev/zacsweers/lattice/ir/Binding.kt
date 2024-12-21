@@ -13,13 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.transformers
+package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.capitalizeUS
-import dev.zacsweers.lattice.ir.IrAnnotation
-import dev.zacsweers.lattice.ir.implements
-import dev.zacsweers.lattice.ir.location
-import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.isWordPrefixRegex
 import java.util.TreeSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext

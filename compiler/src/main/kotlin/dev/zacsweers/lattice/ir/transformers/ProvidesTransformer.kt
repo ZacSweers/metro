@@ -13,12 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.transformers
+package dev.zacsweers.lattice.ir.transformers
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.exitProcessing
+import dev.zacsweers.lattice.ir.Binding
+import dev.zacsweers.lattice.ir.BindingStack
+import dev.zacsweers.lattice.ir.ConstructorParameter
+import dev.zacsweers.lattice.ir.ContextualTypeKey
+import dev.zacsweers.lattice.ir.LatticeTransformerContext
+import dev.zacsweers.lattice.ir.Parameter
+import dev.zacsweers.lattice.ir.Parameters
+import dev.zacsweers.lattice.ir.TypeKey
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
@@ -30,6 +38,7 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isCompanionObject
+import dev.zacsweers.lattice.ir.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.ir.patchFactoryCreationParameters
 import dev.zacsweers.lattice.isWordPrefixRegex

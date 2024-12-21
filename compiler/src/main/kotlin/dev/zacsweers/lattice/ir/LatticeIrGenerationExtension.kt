@@ -18,9 +18,8 @@ package dev.zacsweers.lattice.ir
 import dev.zacsweers.lattice.ExitProcessingException
 import dev.zacsweers.lattice.LatticeClassIds
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.transformers.DependencyGraphData
-import dev.zacsweers.lattice.transformers.DependencyGraphTransformer
-import dev.zacsweers.lattice.transformers.LatticeTransformerContext
+import dev.zacsweers.lattice.ir.transformers.DependencyGraphData
+import dev.zacsweers.lattice.ir.transformers.DependencyGraphTransformer
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
