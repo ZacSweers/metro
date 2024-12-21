@@ -16,7 +16,7 @@
 autoService = "1.1.1"
 kotlinCompileTesting = "0.7.0"
 kotlin = "2.1.20-Beta1"
-kotlinx-coroutines = "1.9.0"
+kotlinx-coroutines = "1.10.1"
 jdk = "23"
 jvmTarget = "11"
 ksp = "2.1.20-Beta1-1.0.29"
@@ -28,10 +28,10 @@ atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.26.1" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.16.3" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.5.0" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.5.1" }
 dokka = { id = "org.jetbrains.dokka", version = "1.9.20" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.29.0" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.30.0" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.0.BETA4" }
 
 [libraries]
