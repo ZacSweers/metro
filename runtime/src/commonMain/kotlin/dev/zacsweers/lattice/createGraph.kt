@@ -25,7 +25,9 @@ public inline fun <reified T : Any> createGraph(): T {
   throw NotImplementedError("Implemented by the compiler")
 }
 
-/** Creates a new instance of a [@DependencyGraph.Factory][DependencyGraph.Factory]-annotated class. */
+/**
+ * Creates a new instance of a [@DependencyGraph.Factory][DependencyGraph.Factory]-annotated class.
+ */
 public inline fun <reified T : Any> createGraphFactory(): T {
   throw NotImplementedError("Implemented by the compiler")
 }

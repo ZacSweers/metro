@@ -63,7 +63,8 @@ internal class LatticeClassIds(
 
   // Graphs
   private val dependencyGraphAnnotation = LATTICE_ANNOTATIONS_PACKAGE.classIdOf("DependencyGraph")
-  val dependencyGraphAnnotations = setOf(dependencyGraphAnnotation) + customDependencyGraphAnnotations
+  val dependencyGraphAnnotations =
+    setOf(dependencyGraphAnnotation) + customDependencyGraphAnnotations
   val dependencyGraphFactoryAnnotations =
     setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory")))
 

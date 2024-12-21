@@ -16,8 +16,8 @@
 package dev.zacsweers.lattice.annotations
 
 /**
- * Marks a method on a parameter on an [dependency graph factory][DependencyGraph.Factory] as binding an
- * instance to some key within the graph.
+ * Marks a method on a parameter on an [dependency graph factory][DependencyGraph.Factory] as
+ * binding an instance to some key within the graph.
  *
  * For example:
  * ```kotlin

@@ -17,8 +17,8 @@ package dev.zacsweers.lattice.sample
 
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.BindsInstance
-import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.DependencyGraph
+import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
 import dev.zacsweers.lattice.createGraphFactory

@@ -286,7 +286,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
     val creator =
       graphDeclaration.nestedClasses
-        .singleOrNull { klass -> klass.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations) }
+        .singleOrNull { klass ->
+          klass.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations)
+        }
         ?.let { factory ->
           // Validated in FIR so we can assume we'll find just one here
           // TODO support properties? Would be odd but technically possible
@@ -349,7 +351,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
 
     val node =
-      getOrComputeDependencyGraphNode(dependencyGraphDeclaration, BindingStack(dependencyGraphDeclaration))
+      getOrComputeDependencyGraphNode(
+        dependencyGraphDeclaration,
+        BindingStack(dependencyGraphDeclaration),
+      )
 
     val bindingGraph = createBindingGraph(node)
     bindingGraph.validate(node) { message ->
@@ -1445,7 +1450,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           val keyType: IrType = mapTypeArgs[0].typeOrFail
           val rawValueType = mapTypeArgs[1].typeOrFail
           val rawValueTypeMetadata =
-            rawValueType.typeOrFail.asContextualTypeKey(this@DependencyGraphTransformer, null, false)
+            rawValueType.typeOrFail.asContextualTypeKey(
+              this@DependencyGraphTransformer,
+              null,
+              false,
+            )
           val useProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
           val valueType: IrType = rawValueTypeMetadata.typeKey.type
 

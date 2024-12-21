@@ -21,9 +21,9 @@ import dev.zacsweers.lattice.annotations.Assisted
 import dev.zacsweers.lattice.annotations.AssistedFactory
 import dev.zacsweers.lattice.annotations.AssistedInject
 import dev.zacsweers.lattice.annotations.BindsInstance
+import dev.zacsweers.lattice.annotations.DependencyGraph
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
-import dev.zacsweers.lattice.annotations.DependencyGraph
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.SingleIn
 import dev.zacsweers.lattice.annotations.Singleton
