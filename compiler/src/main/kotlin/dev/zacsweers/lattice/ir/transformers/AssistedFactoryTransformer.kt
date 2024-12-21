@@ -20,17 +20,17 @@ import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.ContextualTypeKey
 import dev.zacsweers.lattice.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.ir.Parameter
+import dev.zacsweers.lattice.ir.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.parameters
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.singleAbstractFunction
 import dev.zacsweers.lattice.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
-import dev.zacsweers.lattice.ir.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
-import dev.zacsweers.lattice.ir.parameters
 import dev.zacsweers.lattice.ir.wrapInProvider
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addField
@@ -58,7 +58,6 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-
 
 internal class AssistedFactoryTransformer(
   context: LatticeTransformerContext,
