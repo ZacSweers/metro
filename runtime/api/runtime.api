@@ -22,12 +22,6 @@ public abstract interface annotation class dev/zacsweers/lattice/annotations/Ass
 public abstract interface annotation class dev/zacsweers/lattice/annotations/BindsInstance : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/annotations/Component : java/lang/annotation/Annotation {
-}
-
-public abstract interface annotation class dev/zacsweers/lattice/annotations/Component$Factory : java/lang/annotation/Annotation {
-}
-
 public abstract interface annotation class dev/zacsweers/lattice/annotations/ForScope : java/lang/annotation/Annotation {
 	public abstract fun scope ()Ljava/lang/Class;
 }
