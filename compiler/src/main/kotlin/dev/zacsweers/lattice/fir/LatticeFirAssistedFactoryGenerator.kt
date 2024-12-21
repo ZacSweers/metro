@@ -18,10 +18,13 @@ package dev.zacsweers.lattice.fir
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.fqName
 import dev.zacsweers.lattice.unsafeLazy
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
@@ -152,6 +155,16 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
     callableId: CallableId,
   ): FirSimpleFunction {
     return buildSimpleFunction {
+      resolvePhase = FirResolvePhase.BODY_RESOLVE
+      moduleData = session.moduleData
+      origin = LatticeKey.origin
+
+      source = targetClass.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+
+      val functionSymbol = FirNamedFunctionSymbol(callableId)
+      symbol = functionSymbol
+      name = callableId.callableName
+
       // TODO is there a non-impl API for this?
       status =
         FirResolvedDeclarationStatusImpl(
@@ -160,19 +173,18 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
           Visibilities.Public.toEffectiveVisibility(targetClass, forClass = true),
         )
 
-      this.name = callableId.callableName
-      this.origin = LatticeKey.origin
-      this.moduleData = session.moduleData
+      dispatchReceiverType = targetClass.constructType()
 
-      this.symbol = FirNamedFunctionSymbol(callableId)
-      this.returnTypeRef = targetClass.constructType().toFirResolvedTypeRef()
+      // TODO type params?
+
+      returnTypeRef = targetClass.constructType().toFirResolvedTypeRef()
 
       for (original in assistedParams) {
         valueParameters +=
           buildValueParameterCopy(original.fir) {
             origin = LatticeKey.origin
             symbol = FirValueParameterSymbol(original.name)
-            containingFunctionSymbol = this@buildSimpleFunction.symbol
+            containingFunctionSymbol = functionSymbol
             // TODO default values are copied over in this case, is that enough or do they need
             //  references transformed?
           }
