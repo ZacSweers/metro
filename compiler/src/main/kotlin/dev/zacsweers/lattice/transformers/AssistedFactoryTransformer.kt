@@ -192,13 +192,14 @@ internal class AssistedFactoryTransformer(
           irBlockBody(
             symbol,
             irInvoke(
-              dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-              callee = symbols.instanceFactoryCreate,
-              args =
-                listOf(
-                  irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
-                ),
-            ),
+                dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
+                callee = symbols.instanceFactoryCreate,
+                args =
+                  listOf(
+                    irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
+                  ),
+              )
+              .apply { putTypeArgument(0, originClassName) },
           )
         }
     }
