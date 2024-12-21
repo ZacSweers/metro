@@ -84,7 +84,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent(),
-        ),
+        )
       )
 
     val component =
@@ -120,7 +120,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent(),
-        ),
+        )
       )
 
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)
@@ -157,7 +157,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent(),
-        ),
+        )
       )
 
     val providesFactoryClass = result.ExampleComponent.providesFactoryClass(companion = true)

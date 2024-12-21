@@ -66,7 +66,8 @@ public class LatticeCommandLineProcessor : CommandLineProcessor {
 
   override val pluginId: String = "dev.zacsweers.lattice.compiler"
 
-  override val pluginOptions: Collection<AbstractCliOption> = listOf(OPTION_ENABLED, OPTION_DEBUG, OPTION_GENERATE_ASSISTED_FACTORIES)
+  override val pluginOptions: Collection<AbstractCliOption> =
+    listOf(OPTION_ENABLED, OPTION_DEBUG, OPTION_GENERATE_ASSISTED_FACTORIES)
 
   override fun processOption(
     option: AbstractCliOption,
@@ -76,7 +77,8 @@ public class LatticeCommandLineProcessor : CommandLineProcessor {
     when (option.optionName) {
       KEY_ENABLED_NAME -> configuration.put(KEY_ENABLED, value.toBoolean())
       KEY_DEBUG_NAME -> configuration.put(KEY_DEBUG, value.toBoolean())
-      KEY_GENERATE_ASSISTED_FACTORIES_NAME -> configuration.put(KEY_GENERATE_ASSISTED_FACTORIES, value.toBoolean())
+      KEY_GENERATE_ASSISTED_FACTORIES_NAME ->
+        configuration.put(KEY_GENERATE_ASSISTED_FACTORIES, value.toBoolean())
       else -> error("Unknown plugin option: ${option.optionName}")
     }
 }

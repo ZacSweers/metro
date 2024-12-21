@@ -70,13 +70,19 @@ abstract class LatticeCompilerTest {
     generateAssistedFactories: Boolean = false,
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
   ): JvmCompilationResult {
-    return prepareCompilation(sourceFiles = sourceFiles, debug = debug, generateAssistedFactories = generateAssistedFactories).compile().apply {
-      if (exitCode != expectedExitCode) {
-        throw AssertionError(
-          "Compilation exited with $exitCode but expected ${expectedExitCode}:\n${messages}"
-        )
+    return prepareCompilation(
+        sourceFiles = sourceFiles,
+        debug = debug,
+        generateAssistedFactories = generateAssistedFactories,
+      )
+      .compile()
+      .apply {
+        if (exitCode != expectedExitCode) {
+          throw AssertionError(
+            "Compilation exited with $exitCode but expected ${expectedExitCode}:\n${messages}"
+          )
+        }
       }
-    }
   }
 
   protected fun CompilationResult.assertContains(message: String) {

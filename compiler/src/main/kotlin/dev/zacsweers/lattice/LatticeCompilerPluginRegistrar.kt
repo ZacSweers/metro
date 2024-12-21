@@ -42,7 +42,9 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
       configuration.get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
 
     val classIds = LatticeClassIds()
-    FirExtensionRegistrarAdapter.registerExtension(LatticeFirExtensionRegistrar(classIds, generateAssistedFactories))
+    FirExtensionRegistrarAdapter.registerExtension(
+      LatticeFirExtensionRegistrar(classIds, generateAssistedFactories)
+    )
     IrGenerationExtension.registerExtension(
       LatticeIrGenerationExtension(messageCollector, classIds, debug)
     )
