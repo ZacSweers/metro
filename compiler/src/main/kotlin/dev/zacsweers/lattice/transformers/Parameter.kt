@@ -69,7 +69,6 @@ internal sealed interface Parameter : Comparable<Parameter> {
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
   data class AssistedParameterKey(val typeKey: TypeKey, val assistedIdentifier: String) {
-
     companion object {
       fun IrValueParameter.toAssistedParameterKey(
         symbols: LatticeSymbols,
