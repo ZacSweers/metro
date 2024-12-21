@@ -21,9 +21,9 @@ import dev.zacsweers.lattice.annotations.Assisted
 import dev.zacsweers.lattice.annotations.AssistedFactory
 import dev.zacsweers.lattice.annotations.AssistedInject
 import dev.zacsweers.lattice.annotations.BindsInstance
-import dev.zacsweers.lattice.annotations.ObjectGraph
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
+import dev.zacsweers.lattice.annotations.ObjectGraph
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.SingleIn
 import dev.zacsweers.lattice.annotations.Singleton
@@ -162,8 +162,7 @@ class ObjectGraphProcessingTest {
   fun `simple graph dependencies`() {
     val stringGraph = createGraphFactory<StringGraph.Factory>().create("Hello, world!")
 
-    val graph =
-      createGraphFactory<GraphWithDependencies.Factory>().create(stringGraph)
+    val graph = createGraphFactory<GraphWithDependencies.Factory>().create(stringGraph)
 
     assertEquals("Hello, world!", graph.value())
   }
@@ -184,8 +183,7 @@ class ObjectGraphProcessingTest {
   @Test
   fun `graph factories can inherit abstract functions from base types`() {
     val graph =
-      createGraphFactory<GraphWithInheritingAbstractFunction.Factory>()
-        .create("Hello, world!")
+      createGraphFactory<GraphWithInheritingAbstractFunction.Factory>().create("Hello, world!")
 
     assertEquals("Hello, world!", graph.value)
   }
@@ -203,8 +201,7 @@ class ObjectGraphProcessingTest {
 
   @Test
   fun `graph factories should merge overlapping interfaces`() {
-    val value =
-      createGraphFactory<GraphCreatorWithMergeableInterfaces.Factory>().create(3).value
+    val value = createGraphFactory<GraphCreatorWithMergeableInterfaces.Factory>().create(3).value
 
     assertEquals(value, 3)
   }
@@ -295,8 +292,7 @@ class ObjectGraphProcessingTest {
 
   @Test
   fun `bindsinstance params with same types but different qualifiers are ok`() {
-    val factory =
-      createGraphFactory<GraphWithDifferentBindsInstanceTypeQualifiers.Factory>()
+    val factory = createGraphFactory<GraphWithDifferentBindsInstanceTypeQualifiers.Factory>()
     val graph = factory.create(1, 2, 3)
 
     assertEquals(graph.value1, 1)
@@ -323,8 +319,7 @@ class ObjectGraphProcessingTest {
 
   @Test
   fun `basic assisted injection`() {
-    val graph =
-      createGraphFactory<AssistedInjectGraph.Factory>().create("Hello, world!")
+    val graph = createGraphFactory<AssistedInjectGraph.Factory>().create("Hello, world!")
     val factory1 = graph.factory
     val exampleClass1 = factory1.create(3)
     assertEquals("Hello, world!", exampleClass1.message)
@@ -441,11 +436,8 @@ class ObjectGraphProcessingTest {
 
   @Test
   fun `assisted injection - factories can be accessed via graph dependencies`() {
-    val dependentGraph =
-      createGraph<GraphUsingDepFromDependentGraph.DependentGraph>()
-    val graph =
-      createGraphFactory<GraphUsingDepFromDependentGraph.Factory>()
-        .create(dependentGraph)
+    val dependentGraph = createGraph<GraphUsingDepFromDependentGraph.DependentGraph>()
+    val graph = createGraphFactory<GraphUsingDepFromDependentGraph.Factory>().create(dependentGraph)
     val factory = graph.factory
     val exampleClass = factory.create(2)
     assertEquals(2, exampleClass.intValue)
@@ -578,8 +570,7 @@ class ObjectGraphProcessingTest {
 
   @Test
   fun `multibindings - int set with mix of scoped elements into set and individual providers`() {
-    val graph =
-      createGraph<MultibindingGraphWithMixOfScopedElementsIntoSetAndIndividualProviders>()
+    val graph = createGraph<MultibindingGraphWithMixOfScopedElementsIntoSetAndIndividualProviders>()
     assertEquals(setOf(2, 7, 10), graph.ints)
     assertEquals(setOf(4, 9, 10), graph.ints)
 
@@ -635,9 +626,7 @@ class ObjectGraphProcessingTest {
     assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> {
-      (graph.ints as MutableMap<Int, Int>).clear()
-    }
+    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableMap<Int, Int>).clear() }
   }
 
   @ObjectGraph
@@ -670,9 +659,7 @@ class ObjectGraphProcessingTest {
     assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> {
-      (graph.ints as MutableMap<Int, Int>).clear()
-    }
+    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableMap<Int, Int>).clear() }
   }
 
   @ObjectGraph
@@ -761,8 +748,7 @@ class ObjectGraphProcessingTest {
     assertEquals(
       mapOf(
         MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
-        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to
-          2,
+        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to 2,
       ),
       graph.wrappedSeasoningAmounts,
     )
@@ -854,7 +840,8 @@ class ObjectGraphProcessingTest {
     assertEquals("Not found", graph.message)
   }
 
-  @ObjectGraph interface MessageProviderWithoutCharSequenceProvider : BaseMessageProviderWithDefault
+  @ObjectGraph
+  interface MessageProviderWithoutCharSequenceProvider : BaseMessageProviderWithDefault
 
   interface BaseMessageProviderWithDefault {
     val message: String

@@ -16,8 +16,8 @@
 package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.fir.checkers.AssistedInjectChecker
-import dev.zacsweers.lattice.fir.checkers.ObjectGraphCreatorChecker
 import dev.zacsweers.lattice.fir.checkers.InjectConstructorChecker
+import dev.zacsweers.lattice.fir.checkers.ObjectGraphCreatorChecker
 import dev.zacsweers.lattice.fir.checkers.ProvidesChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers

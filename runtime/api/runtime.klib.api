@@ -83,14 +83,6 @@ open annotation class dev.zacsweers.lattice.annotations/BindsInstance : kotlin/A
     constructor <init>() // dev.zacsweers.lattice.annotations/BindsInstance.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice.annotations/Component : kotlin/Annotation { // dev.zacsweers.lattice.annotations/Component|null[0]
-    constructor <init>() // dev.zacsweers.lattice.annotations/Component.<init>|<init>(){}[0]
-
-    open annotation class Factory : kotlin/Annotation { // dev.zacsweers.lattice.annotations/Component.Factory|null[0]
-        constructor <init>() // dev.zacsweers.lattice.annotations/Component.Factory.<init>|<init>(){}[0]
-    }
-}
-
 open annotation class dev.zacsweers.lattice.annotations/ForScope : kotlin/Annotation { // dev.zacsweers.lattice.annotations/ForScope|null[0]
     constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.lattice.annotations/ForScope.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
@@ -107,6 +99,14 @@ open annotation class dev.zacsweers.lattice.annotations/Named : kotlin/Annotatio
 
     final val name // dev.zacsweers.lattice.annotations/Named.name|{}name[0]
         final fun <get-name>(): kotlin/String // dev.zacsweers.lattice.annotations/Named.name.<get-name>|<get-name>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice.annotations/ObjectGraph : kotlin/Annotation { // dev.zacsweers.lattice.annotations/ObjectGraph|null[0]
+    constructor <init>() // dev.zacsweers.lattice.annotations/ObjectGraph.<init>|<init>(){}[0]
+
+    open annotation class Factory : kotlin/Annotation { // dev.zacsweers.lattice.annotations/ObjectGraph.Factory|null[0]
+        constructor <init>() // dev.zacsweers.lattice.annotations/ObjectGraph.Factory.<init>|<init>(){}[0]
+    }
 }
 
 open annotation class dev.zacsweers.lattice.annotations/Provides : kotlin/Annotation { // dev.zacsweers.lattice.annotations/Provides|null[0]
@@ -139,5 +139,5 @@ abstract fun interface <#A: kotlin/Any> dev.zacsweers.lattice/Provider { // dev.
 abstract class dev.zacsweers.lattice.annotations/AppScope // dev.zacsweers.lattice.annotations/AppScope|null[0]
 
 final inline fun <#A: kotlin/Any> dev.zacsweers.lattice/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]
-final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createComponent(): #A // dev.zacsweers.lattice/createComponent|createComponent(){0§<kotlin.Any>}[0]
-final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createComponentFactory(): #A // dev.zacsweers.lattice/createComponentFactory|createComponentFactory(){0§<kotlin.Any>}[0]
+final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createGraph(): #A // dev.zacsweers.lattice/createGraph|createGraph(){0§<kotlin.Any>}[0]
+final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createGraphFactory(): #A // dev.zacsweers.lattice/createGraphFactory|createGraphFactory(){0§<kotlin.Any>}[0]

@@ -78,9 +78,7 @@ internal class LatticeSymbols(
 
   val latticeCreateGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(
-        CallableId(latticeRuntime.packageFqName, Name.identifier("createGraph"))
-      )
+      .referenceFunctions(CallableId(latticeRuntime.packageFqName, Name.identifier("createGraph")))
       .single()
   }
 

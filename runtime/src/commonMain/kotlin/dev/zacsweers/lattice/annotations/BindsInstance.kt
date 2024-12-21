@@ -16,8 +16,8 @@
 package dev.zacsweers.lattice.annotations
 
 /**
- * Marks a method on a parameter on an [object graph factory][ObjectGraph.Factory] as binding an instance
- * to some key within the graph.
+ * Marks a method on a parameter on an [object graph factory][ObjectGraph.Factory] as binding an
+ * instance to some key within the graph.
  *
  * For example:
  * ```kotlin
@@ -36,8 +36,8 @@ package dev.zacsweers.lattice.annotations
  * `@BindsInstance` arguments may not be `null` unless the parameter is annotated with `@Nullable`.
  *
  * For builders, `@BindsInstance` methods must be called before building the graph, unless their
- * parameter is marked `@Nullable`, in which case the graph will act as though it was called
- * with a `null` argument. Primitives, of course, may not be marked `@Nullable`.
+ * parameter is marked `@Nullable`, in which case the graph will act as though it was called with a
+ * `null` argument. Primitives, of course, may not be marked `@Nullable`.
  *
  * Binding an instance is equivalent to passing an instance to a module constructor and providing
  * that instance, but is often more efficient. When possible, binding object instances should be

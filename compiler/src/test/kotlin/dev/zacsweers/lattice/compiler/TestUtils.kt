@@ -241,9 +241,7 @@ fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
     .invoke(this, *args) as T
 }
 
-/**
- * Returns a new instance of a graph's factory class by invoking its static "factory" function.
- */
+/** Returns a new instance of a graph's factory class by invoking its static "factory" function. */
 fun Class<*>.invokeGraphFactory(): Any {
   return declaredMethods
     .single { Modifier.isStatic(it.modifiers) && it.name == "factory" }

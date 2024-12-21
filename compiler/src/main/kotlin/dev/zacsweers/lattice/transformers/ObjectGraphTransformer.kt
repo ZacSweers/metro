@@ -129,9 +129,7 @@ internal class ObjectGraphTransformer(context: LatticeTransformerContext) :
         // Get the called type
         val type =
           expression.getTypeArgument(0)
-            ?: error(
-              "Missing type argument for ${symbols.latticeCreateGraphFactory.owner.name}"
-            )
+            ?: error("Missing type argument for ${symbols.latticeCreateGraphFactory.owner.name}")
         val rawType = type.rawType()
         if (!rawType.isAnnotatedWithAny(symbols.objectGraphFactoryAnnotations)) {
           // TODO FIR error

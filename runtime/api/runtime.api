@@ -39,6 +39,12 @@ public abstract interface annotation class dev/zacsweers/lattice/annotations/Nam
 	public abstract fun name ()Ljava/lang/String;
 }
 
+public abstract interface annotation class dev/zacsweers/lattice/annotations/ObjectGraph : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/annotations/ObjectGraph$Factory : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/lattice/annotations/Provides : java/lang/annotation/Annotation {
 }
 

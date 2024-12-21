@@ -77,8 +77,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         )
       )
     val graph =
-      result.ExampleGraph.generatedLatticeGraphClass()
-        .createGraphViaFactory("Hello, world!")
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")
 
     val exampleClass = graph.callGraphAccessor<Callable<String>>("exampleClass")
     assertThat(exampleClass.call()).isEqualTo("Hello, world!")
@@ -419,8 +418,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     // Repeated calls to the scoped instance only every return one value
     assertThat(graph.callGraphAccessorProperty<String>("scoped")).isEqualTo("text 0")
@@ -509,8 +507,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
@@ -549,8 +546,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
@@ -661,8 +657,7 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     // Assert we generated a shared field
     val provideValueField =
@@ -713,12 +708,9 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
-    assertThat(
-        graph.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" }
-      )
+    assertThat(graph.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" })
       .isNull()
 
     assertThat(graph.callGraphAccessorProperty<Int>("valueLengths"))
@@ -840,13 +832,11 @@ class ObjectGraphTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
 
-    assertThat(graph.callGraphAccessorProperty<CharSequence>("value2"))
-      .isEqualTo("Hello, world!")
+    assertThat(graph.callGraphAccessorProperty<CharSequence>("value2")).isEqualTo("Hello, world!")
   }
 
   @Test

@@ -53,8 +53,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("provideValue", graph)
@@ -87,8 +86,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass()
     // Exercise calling the static provideValue function directly
     val providedValue = providesFactoryClass.provideValueAs<String>("getValue", graph)
@@ -198,13 +196,11 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
-    val providedValue =
-      providesFactoryClass.provideValueAs<String>("provideStringValue", graph, 2)
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", graph, 2)
     assertThat(providedValue).isEqualTo("Hello, 2!")
 
     // Exercise calling the create + invoke() functions
@@ -241,8 +237,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -252,11 +247,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
     // Exercise calling the create + invoke() functions
     val providesFactory =
-      providesFactoryClass.invokeCreateAs<Factory<String>>(
-        graph,
-        provider { 2 },
-        provider { true },
-      )
+      providesFactoryClass.invokeCreateAs<Factory<String>>(graph, provider { 2 }, provider { true })
     assertThat(providesFactory()).isEqualTo("Hello, 2! true")
   }
 
@@ -289,8 +280,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -300,11 +290,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
     // Exercise calling the create + invoke() functions
     val providesFactory =
-      providesFactoryClass.invokeCreateAs<Factory<String>>(
-        graph,
-        provider { 2 },
-        provider { 3 },
-      )
+      providesFactoryClass.invokeCreateAs<Factory<String>>(graph, provider { 2 }, provider { 3 })
     assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
   }
 
@@ -341,8 +327,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val graph =
-      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
     val providesFactoryClass = result.ExampleGraph.providesFactoryClass("provideStringValue")
 
     // Exercise calling the static provideValue function directly
@@ -352,11 +337,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
 
     // Exercise calling the create + invoke() functions
     val providesFactory =
-      providesFactoryClass.invokeCreateAs<Factory<String>>(
-        graph,
-        provider { 2 },
-        provider { 3 },
-      )
+      providesFactoryClass.invokeCreateAs<Factory<String>>(graph, provider { 2 }, provider { 3 })
     assertThat(providesFactory()).isEqualTo("Hello, 2 - 3!")
   }
 

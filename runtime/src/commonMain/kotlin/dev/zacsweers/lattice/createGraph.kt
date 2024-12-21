@@ -18,8 +18,8 @@ package dev.zacsweers.lattice
 import dev.zacsweers.lattice.annotations.ObjectGraph
 
 /**
- * Creates a new parameter-less graph of type [T]. Note this is _only_ applicable for graphs
- * that have no creators (i.e. [ObjectGraph.Factory]).
+ * Creates a new parameter-less graph of type [T]. Note this is _only_ applicable for graphs that
+ * have no creators (i.e. [ObjectGraph.Factory]).
  */
 public inline fun <reified T : Any> createGraph(): T {
   throw NotImplementedError("Implemented by the compiler")
