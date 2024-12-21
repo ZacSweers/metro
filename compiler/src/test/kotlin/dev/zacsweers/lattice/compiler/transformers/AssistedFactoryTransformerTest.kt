@@ -139,7 +139,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent(),
-        )
+        ),
+        generateAssistedFactories = true,
       )
 
     val exampleClassFactory =
@@ -154,6 +155,97 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     // Run through FIR's generated one too
     val exampleClass3 = result.invokeMain<Callable<String>>(factoryImpl, 3)
     assertThat(exampleClass3.call()).isEqualTo("Hello, 3")
+  }
+
+  @Test
+  fun `default assisted factory with default values`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Assisted
+            import dev.zacsweers.lattice.annotations.AssistedInject
+            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import java.util.concurrent.Callable
+
+            class ExampleClass @AssistedInject constructor(
+              @Assisted val count: Int = 2,
+              val message: String,
+            ) : Callable<String> {
+              override fun call(): String = message + count
+            }
+
+            fun main(factory: ExampleClass.Factory): ExampleClass {
+              // Smoke test to ensure that the FIR-generated create() supports default args
+              return factory.create()
+            }
+          """
+            .trimIndent(),
+        ),
+        generateAssistedFactories = true,
+      )
+
+    val exampleClassFactory =
+      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+
+    val factoryImplClass = result.ExampleClass.Factory.generatedAssistedFactoryImpl()
+    val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+    val factoryImpl = factoryImplProvider()
+    val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
+    assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
+
+    // Run through FIR's generated one too
+    val exampleClass3 = result.invokeMain<Callable<String>>(factoryImpl)
+    assertThat(exampleClass3.call()).isEqualTo("Hello, 2")
+  }
+
+  @Test
+  fun `default assisted factory with custom identifiers`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleClass.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Assisted
+            import dev.zacsweers.lattice.annotations.AssistedInject
+            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import java.util.concurrent.Callable
+
+            class ExampleClass @AssistedInject constructor(
+              @Assisted("1") val count1: Int,
+              @Assisted("2") val count2: Int,
+              val message: String,
+            ) : Callable<String> {
+              override fun call(): String = message + count1 + " " + count2
+            }
+
+            fun main(factory: ExampleClass.Factory, count1: Int, count2: Int): ExampleClass {
+              // Smoke test to ensure that the FIR-generated create() respects identifiers. Note the order switch
+              return factory.create(count2 = count2, count1 = count1)
+            }
+          """
+            .trimIndent(),
+        ),
+        generateAssistedFactories = true,
+      )
+
+    val exampleClassFactory =
+      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+
+    val factoryImplClass = result.ExampleClass.Factory.generatedAssistedFactoryImpl()
+    val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+    val factoryImpl = factoryImplProvider()
+    val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2, 3)
+    assertThat(exampleClass2.call()).isEqualTo("Hello, 2 3")
+
+    // Run through FIR's generated one too
+    val exampleClass3 = result.invokeMain<Callable<String>>(factoryImpl, 2, 3)
+    assertThat(exampleClass3.call()).isEqualTo("Hello, 2 3")
   }
 
   @Test
