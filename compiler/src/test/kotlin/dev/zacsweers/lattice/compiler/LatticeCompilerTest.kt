@@ -24,6 +24,7 @@ import com.tschuchort.compiletesting.SourceFile
 import dev.zacsweers.lattice.LatticeCommandLineProcessor
 import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_DEBUG
 import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_ENABLED
+import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_GENERATE_ASSISTED_FACTORIES
 import dev.zacsweers.lattice.LatticeCompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
@@ -37,6 +38,7 @@ abstract class LatticeCompilerTest {
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
     debug: Boolean = false,
+    generateAssistedFactories: Boolean = false,
   ): KotlinCompilation {
     return KotlinCompilation().apply {
       workingDir = temporaryFolder.root
@@ -44,7 +46,11 @@ abstract class LatticeCompilerTest {
       val processor = LatticeCommandLineProcessor()
       commandLineProcessors = listOf(processor)
       pluginOptions =
-        listOf(processor.option(OPTION_ENABLED, "true"), processor.option(OPTION_DEBUG, debug))
+        listOf(
+          processor.option(OPTION_ENABLED, "true"),
+          processor.option(OPTION_DEBUG, debug),
+          processor.option(OPTION_GENERATE_ASSISTED_FACTORIES, generateAssistedFactories),
+        )
       inheritClassPath = true
       sources = sourceFiles.asList()
       verbose = false
@@ -61,9 +67,10 @@ abstract class LatticeCompilerTest {
   protected fun compile(
     vararg sourceFiles: SourceFile,
     debug: Boolean = false,
+    generateAssistedFactories: Boolean = false,
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
   ): JvmCompilationResult {
-    return prepareCompilation(sourceFiles = sourceFiles, debug = debug).compile().apply {
+    return prepareCompilation(sourceFiles = sourceFiles, debug = debug, generateAssistedFactories = generateAssistedFactories).compile().apply {
       if (exitCode != expectedExitCode) {
         throw AssertionError(
           "Compilation exited with $exitCode but expected ${expectedExitCode}:\n${messages}"

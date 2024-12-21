@@ -29,6 +29,9 @@ internal val KEY_ENABLED =
 internal const val KEY_DEBUG_NAME = "debug"
 internal val KEY_DEBUG =
   CompilerConfigurationKey<Boolean>("Enable/disable debug logging on the given compilation")
+internal const val KEY_GENERATE_ASSISTED_FACTORIES_NAME = "generate-assisted-factories"
+internal val KEY_GENERATE_ASSISTED_FACTORIES =
+  CompilerConfigurationKey<Boolean>("Enable/disable automatic generation of assisted factories")
 
 @OptIn(ExperimentalCompilerApi::class)
 @AutoService(CommandLineProcessor::class)
@@ -51,11 +54,19 @@ public class LatticeCommandLineProcessor : CommandLineProcessor {
         required = false,
         allowMultipleOccurrences = false,
       )
+    val OPTION_GENERATE_ASSISTED_FACTORIES =
+      CliOption(
+        optionName = KEY_GENERATE_ASSISTED_FACTORIES_NAME,
+        valueDescription = "<true | false>",
+        description = KEY_GENERATE_ASSISTED_FACTORIES.toString(),
+        required = false,
+        allowMultipleOccurrences = false,
+      )
   }
 
   override val pluginId: String = "dev.zacsweers.lattice.compiler"
 
-  override val pluginOptions: Collection<AbstractCliOption> = listOf(OPTION_ENABLED, OPTION_DEBUG)
+  override val pluginOptions: Collection<AbstractCliOption> = listOf(OPTION_ENABLED, OPTION_DEBUG, OPTION_GENERATE_ASSISTED_FACTORIES)
 
   override fun processOption(
     option: AbstractCliOption,
@@ -65,6 +76,7 @@ public class LatticeCommandLineProcessor : CommandLineProcessor {
     when (option.optionName) {
       KEY_ENABLED_NAME -> configuration.put(KEY_ENABLED, value.toBoolean())
       KEY_DEBUG_NAME -> configuration.put(KEY_DEBUG, value.toBoolean())
+      KEY_GENERATE_ASSISTED_FACTORIES_NAME -> configuration.put(KEY_GENERATE_ASSISTED_FACTORIES, value.toBoolean())
       else -> error("Unknown plugin option: ${option.optionName}")
     }
 }

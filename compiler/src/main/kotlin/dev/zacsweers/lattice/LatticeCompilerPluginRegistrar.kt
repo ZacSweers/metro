@@ -36,12 +36,13 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
   override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
     if (configuration[KEY_ENABLED] == false) return
     val debug = configuration[KEY_DEBUG] == true
+    val generateAssistedFactories = configuration[KEY_GENERATE_ASSISTED_FACTORIES] == true
 
     val messageCollector =
       configuration.get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
 
     val classIds = LatticeClassIds()
-    FirExtensionRegistrarAdapter.registerExtension(LatticeFirExtensionRegistrar(classIds))
+    FirExtensionRegistrarAdapter.registerExtension(LatticeFirExtensionRegistrar(classIds, generateAssistedFactories))
     IrGenerationExtension.registerExtension(
       LatticeIrGenerationExtension(messageCollector, classIds, debug)
     )
