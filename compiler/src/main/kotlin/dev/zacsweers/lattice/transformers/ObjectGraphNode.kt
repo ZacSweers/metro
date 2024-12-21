@@ -22,15 +22,15 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.name.ClassId
 
-// Represents a component's structure and relationships
-internal data class ComponentNode(
-  val sourceComponent: IrClass,
-  val generatedComponentId: ClassId,
-  val isAnnotatedWithComponent: Boolean,
-  val dependencies: List<ComponentNode>,
+// Represents an object graph's structure and relationships
+internal data class ObjectGraphNode(
+  val sourceGraph: IrClass,
+  val generatedGraphId: ClassId,
+  val isAnnotatedWithObjectGraph: Boolean,
+  val dependencies: List<ObjectGraphNode>,
   val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, IrSimpleFunction>>,
-  // Types accessible via this component (includes inherited)
+  // Types accessible via this graph (includes inherited)
   // TODO this should eventually expand to cover inject(...) calls too once we have member injection
   val exposedTypes: Map<IrSimpleFunction, ContextualTypeKey>,
   val isExternal: Boolean,
@@ -45,7 +45,7 @@ internal data class ComponentNode(
 
   // Build a full type map including inherited providers
   fun getAllProviders(context: LatticeTransformerContext): Map<TypeKey, IrFunction> {
-    return sourceComponent.getAllProviders(context)
+    return sourceGraph.getAllProviders(context)
   }
 
   private fun IrClass.getAllProviders(

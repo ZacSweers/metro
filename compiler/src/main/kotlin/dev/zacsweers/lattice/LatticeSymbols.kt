@@ -54,7 +54,7 @@ internal class LatticeSymbols(
     val CompanionObject = Name.identifier("Companion")
     val CreateFunction = Name.identifier("create")
     val Factory = Name.identifier("Factory")
-    val LatticeComponent = Name.identifier("\$\$LatticeComponent")
+    val LatticeGraph = Name.identifier("\$\$LatticeGraph")
     val LatticeFactory = Name.identifier("\$\$LatticeFactory")
     val LatticeImpl = Name.identifier("\$\$Impl")
     // Used in @Assisted.value
@@ -76,18 +76,18 @@ internal class LatticeSymbols(
 
   val anyConstructor by lazy { pluginContext.irBuiltIns.anyClass.owner.constructors.single() }
 
-  val latticeCreateComponent: IrSimpleFunctionSymbol by lazy {
+  val latticeCreateGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(
-        CallableId(latticeRuntime.packageFqName, Name.identifier("createComponent"))
+        CallableId(latticeRuntime.packageFqName, Name.identifier("createGraph"))
       )
       .single()
   }
 
-  val latticeCreateComponentFactory: IrSimpleFunctionSymbol by lazy {
+  val latticeCreateGraphFactory: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(
-        CallableId(latticeRuntime.packageFqName, Name.identifier("createComponentFactory"))
+        CallableId(latticeRuntime.packageFqName, Name.identifier("createGraphFactory"))
       )
       .single()
   }
@@ -340,11 +340,11 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlibJvm.packageFqName, Name.identifier("JvmStatic")))!!
   }
 
-  val componentAnnotations
-    get() = latticeClassIds.componentAnnotations
+  val objectGraphAnnotations
+    get() = latticeClassIds.objectGraphAnnotations
 
-  val componentFactoryAnnotations
-    get() = latticeClassIds.componentFactoryAnnotations
+  val objectGraphFactoryAnnotations
+    get() = latticeClassIds.objectGraphFactoryAnnotations
 
   val injectAnnotations
     get() = latticeClassIds.injectAnnotations + latticeClassIds.assistedInjectAnnotations

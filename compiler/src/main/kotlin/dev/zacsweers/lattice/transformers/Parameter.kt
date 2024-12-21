@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.transformers
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.annotationsIn
 import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
-import dev.zacsweers.lattice.ir.location
 import dev.zacsweers.lattice.ir.locationOrNull
 import dev.zacsweers.lattice.transformers.Parameter.Kind
 import dev.zacsweers.lattice.unsafeLazy
@@ -55,7 +54,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val assistedParameterKey: AssistedParameterKey
   val symbols: LatticeSymbols
   val typeKey: TypeKey
-  val isComponentInstance: Boolean
+  val isGraphInstance: Boolean
   val isBindsInstance: Boolean
   val hasDefault: Boolean
   val location: CompilerMessageSourceLocation?
@@ -145,7 +144,7 @@ internal data class ConstructorParameter(
   override val assistedParameterKey: Parameter.AssistedParameterKey =
     Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
   override val symbols: LatticeSymbols,
-  override val isComponentInstance: Boolean,
+  override val isGraphInstance: Boolean,
   val bindingStackEntry: BindingStackEntry,
   override val isBindsInstance: Boolean,
   override val hasDefault: Boolean,
@@ -325,7 +324,7 @@ internal fun IrValueParameter.toConstructorParameter(
       isAssisted = assistedAnnotation != null,
       assistedIdentifier = assistedIdentifier,
       symbols = context.symbols,
-      isComponentInstance = false,
+      isGraphInstance = false,
       bindingStackEntry = BindingStackEntry.injectedAt(typeMetadata.typeKey, ownerFunction, this),
       isBindsInstance = isBindsInstance,
       hasDefault = defaultValue != null,

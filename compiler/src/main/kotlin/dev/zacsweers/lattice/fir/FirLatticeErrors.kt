@@ -95,13 +95,13 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val FACTORY_MUST_BE_VISIBLE by error1<String>(NAME_IDENTIFIER)
   val FACTORY_FACTORY_FUNCTION_MUST_BE_VISIBLE by error1<String>(NAME_IDENTIFIER)
 
-  // Component factory errors
-  val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0(NAME_IDENTIFIER)
-  val COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_COMPONENTS by
+  // ObjectGraph factory errors
+  val OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0(NAME_IDENTIFIER)
+  val OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS by
     error0(NAME_IDENTIFIER)
 
-  // Component errors
-  val COMPONENT_SHOULD_BE_CLASS_OR_INTERFACE by error0(NAME_IDENTIFIER)
+  // ObjectGraph errors
+  val OBJECT_GRAPH_SHOULD_BE_CLASS_OR_INTERFACE by error0(NAME_IDENTIFIER)
 
   // Inject constructor errors
   val SUGGEST_CLASS_INJECTION_IF_NO_PARAMS by warning0(NAME_IDENTIFIER)
@@ -150,20 +150,20 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
         TO_STRING,
       )
 
-      // Component creator errors
+      // ObjectGraph creator errors
       put(
-        COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
-        "Component.Factory abstract function parameters must be unique.",
+        OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
+        "ObjectGraph.Factory abstract function parameters must be unique.",
       )
       put(
-        COMPONENT_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_COMPONENTS,
-        "Component.Factory abstract function parameters must be either annotated with `@BindsInstance` or be types annotated with `@Component`.",
+        OBJECT_GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS,
+        "ObjectGraph.Factory abstract function parameters must be either annotated with `@BindsInstance` or be types annotated with `@ObjectGraph`.",
       )
 
-      // Component errors
+      // ObjectGraph errors
       put(
-        COMPONENT_SHOULD_BE_CLASS_OR_INTERFACE,
-        "@Component-annotated types should be abstract classes or interfaces.",
+        OBJECT_GRAPH_SHOULD_BE_CLASS_OR_INTERFACE,
+        "@ObjectGraph-annotated types should be abstract classes or interfaces.",
       )
 
       // Inject Constructor errors
@@ -200,7 +200,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(PROVIDES_SHOULD_BE_PRIVATE, "`@Provides` declarations should be private.")
       put(
         PROVIDER_OVERRIDES,
-        "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@Component.excludes` instead.",
+        "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@ObjectGraph.excludes` instead.",
       )
     }
 

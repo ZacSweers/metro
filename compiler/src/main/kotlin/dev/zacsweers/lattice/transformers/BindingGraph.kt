@@ -43,7 +43,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         }
         appendBindingStack(bindingStack)
       }
-      val location = binding.reportableLocation ?: bindingStack.component.location()
+      val location = binding.reportableLocation ?: bindingStack.graph.location()
       context.reportError(message, location)
       exitProcessing()
     }
@@ -80,7 +80,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           }
         }
         is Binding.BoundInstance -> emptySet()
-        is Binding.ComponentDependency -> emptySet()
+        is Binding.GraphDependency -> emptySet()
         is Binding.Absent -> error("Should never happen")
       }
     }
@@ -158,7 +158,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       } else if (contextKey.hasDefault) {
         Binding.Absent(key)
       } else {
-        val declarationToReport = bindingStack.lastEntryOrComponent
+        val declarationToReport = bindingStack.lastEntryOrGraph
         val message = buildString {
           append(
             "[Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
@@ -185,14 +185,14 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     return binding
   }
 
-  fun validate(component: ComponentNode, onError: (String) -> Nothing) {
-    checkCycles(component, onError)
+  fun validate(node: ObjectGraphNode, onError: (String) -> Nothing) {
+    checkCycles(node, onError)
     checkMissingDependencies(onError)
   }
 
-  private fun checkCycles(component: ComponentNode, onError: (String) -> Nothing) {
+  private fun checkCycles(node: ObjectGraphNode, onError: (String) -> Nothing) {
     val visited = mutableSetOf<TypeKey>()
-    val stack = BindingStack(component.sourceComponent)
+    val stack = BindingStack(node.sourceGraph)
 
     fun dfs(binding: Binding) {
       val key = binding.typeKey
@@ -243,7 +243,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
               TODO()
             }
             is Binding.BoundInstance -> TODO()
-            is Binding.ComponentDependency -> TODO()
+            is Binding.GraphDependency -> TODO()
             is Binding.Absent -> error("Should never happen")
           }
         stack.withEntry(entry) { dfs(dependencyBinding) }

@@ -223,7 +223,7 @@ internal class AssistedFactoryTransformer(
         return AssistedFactoryFunction(
           simpleName = originalDeclaration.name.asString(),
           qualifiedName = originalDeclaration.kotlinFqName.asString(),
-          // TODO FIR validate return type is a component
+          // TODO FIR validate return type is a graph
           returnType = returnType,
           originalFunction = originalDeclaration,
           parameterKeys =

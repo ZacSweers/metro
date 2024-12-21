@@ -182,7 +182,7 @@ fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
 
 /**
  * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
- * then calling the component's provider
+ * then calling the graph's provider
  */
 fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any {
   return invokeProvider(providerName, *args)
@@ -199,33 +199,33 @@ fun <T> Class<Factory<*>>.createNewInstanceAs(vararg args: Any): T {
 
 /**
  * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
- * then calling the component's provider
+ * then calling the graph's provider
  */
 fun <T> Class<Factory<*>>.provideValueAs(providerName: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
   return provideValue(providerName, *args) as T
 }
 
-val JvmCompilationResult.ExampleComponent: Class<*>
-  get() = classLoader.loadClass("test.ExampleComponent")
+val JvmCompilationResult.ExampleGraph: Class<*>
+  get() = classLoader.loadClass("test.ExampleGraph")
 
-fun Class<*>.generatedLatticeComponentClass(): Class<*> {
-  return classes.singleOrNull { it.simpleName == LatticeSymbols.Names.LatticeComponent.asString() }
+fun Class<*>.generatedLatticeGraphClass(): Class<*> {
+  return classes.singleOrNull { it.simpleName == LatticeSymbols.Names.LatticeGraph.asString() }
     ?: error(
-      "Could not find nested class $this.${LatticeSymbols.Names.LatticeComponent.asString()}. Available: ${classes.joinToString { it.simpleName }}"
+      "Could not find nested class $this.${LatticeSymbols.Names.LatticeGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
     )
 }
 
-fun Class<*>.componentImpl(): Class<*> {
+fun Class<*>.graphImpl(): Class<*> {
   return declaredClasses.single { it.simpleName.endsWith("Impl") }
 }
 
-fun <T> Any.callComponentAccessor(name: String): T {
+fun <T> Any.callGraphAccessor(name: String): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass.getMethod(name).invoke(this) as T
 }
 
-fun <T> Any.callComponentAccessorProperty(name: String): T {
+fun <T> Any.callGraphAccessorProperty(name: String): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass.getMethod("get${name.capitalizeUS()}").invoke(this) as T
 }
@@ -242,28 +242,28 @@ fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
 }
 
 /**
- * Returns a new instance of a component's factory class by invoking its static "factory" function.
+ * Returns a new instance of a graph's factory class by invoking its static "factory" function.
  */
-fun Class<*>.invokeComponentFactory(): Any {
+fun Class<*>.invokeGraphFactory(): Any {
   return declaredMethods
     .single { Modifier.isStatic(it.modifiers) && it.name == "factory" }
     .invoke(null)
 }
 
-/** Creates a component instance via its generated no-arg static create() function. */
-fun Class<*>.createComponentWithNoArgs(): Any {
+/** Creates a graph instance via its generated no-arg static create() function. */
+fun Class<*>.createGraphWithNoArgs(): Any {
   return declaredMethods
     .single { Modifier.isStatic(it.modifiers) && it.name == "create" }
     .invoke(null)
 }
 
 /**
- * Invokes a generated Component Factory class's create() function with the supplied [args].
+ * Invokes a generated Graph Factory class's create() function with the supplied [args].
  *
  * Note the function must be called "create".
  */
-fun Class<*>.createComponentViaFactory(vararg args: Any): Any {
-  val factoryInstance = invokeComponentFactory()
+fun Class<*>.createGraphViaFactory(vararg args: Any): Any {
+  val factoryInstance = invokeGraphFactory()
   return factoryInstance.javaClass.declaredMethods
     .single { it.name == "create" }
     .invoke(factoryInstance, *args)

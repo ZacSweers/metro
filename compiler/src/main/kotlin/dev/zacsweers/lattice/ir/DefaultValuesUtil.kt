@@ -43,7 +43,7 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
   providerFunction: IrFunction?,
   sourceParameters: List<IrValueParameter>,
   factoryParameters: List<IrValueParameter>,
-  factoryComponentParameter: IrValueParameter?,
+  factoryGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
 ) {
   if (sourceParameters.isEmpty()) return
@@ -58,7 +58,7 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
           return IrGetValueImpl(
             SYNTHETIC_OFFSET,
             SYNTHETIC_OFFSET,
-            factoryComponentParameter!!.symbol,
+            factoryGraphParameter!!.symbol,
           )
         }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }

@@ -23,7 +23,7 @@ internal class LatticeClassIds(
   customInjectAnnotations: Set<ClassId> = emptySet(),
   customProvidesAnnotations: Set<ClassId> = emptySet(),
   customBindsAnnotations: Set<ClassId> = emptySet(),
-  customComponentAnnotations: Set<ClassId> = emptySet(),
+  customObjectGraphAnnotations: Set<ClassId> = emptySet(),
   customScopeAnnotations: Set<ClassId> = emptySet(),
   customQualifierAnnotations: Set<ClassId> = emptySet(),
   customBindsInstanceAnnotations: Set<ClassId> = emptySet(),
@@ -61,11 +61,11 @@ internal class LatticeClassIds(
     return ClassId(this, relativeClassName, isLocal = false)
   }
 
-  // Components
-  private val componentAnnotation = LATTICE_ANNOTATIONS_PACKAGE.classIdOf("Component")
-  val componentAnnotations = setOf(componentAnnotation) + customComponentAnnotations
-  val componentFactoryAnnotations =
-    setOf(componentAnnotation.createNestedClassId(Name.identifier("Factory")))
+  // Graphs
+  private val objectGraphAnnotation = LATTICE_ANNOTATIONS_PACKAGE.classIdOf("ObjectGraph")
+  val objectGraphAnnotations = setOf(objectGraphAnnotation) + customObjectGraphAnnotations
+  val objectGraphFactoryAnnotations =
+    setOf(objectGraphAnnotation.createNestedClassId(Name.identifier("Factory")))
 
   // Assisted inject
   val assistedInjectAnnotations =

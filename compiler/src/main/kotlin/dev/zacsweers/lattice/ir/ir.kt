@@ -507,7 +507,7 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
     typeMetadata,
     providerInstance,
     isAssisted = parameter.isAssisted,
-    isComponentInstance = parameter.isComponentInstance,
+    isGraphInstance = parameter.isGraphInstance,
     symbols = symbols,
   )
 }
@@ -517,7 +517,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   type: ContextualTypeKey,
   bindingCode: IrExpression,
   isAssisted: Boolean,
-  isComponentInstance: Boolean,
+  isGraphInstance: Boolean,
   symbols: LatticeSymbols,
 ): IrExpression {
   if (!bindingCode.type.isLatticeProviderType(context)) {
@@ -552,7 +552,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
         typeHint = type.typeKey.type.wrapInLazy(symbols),
       )
     }
-    isAssisted || isComponentInstance -> {
+    isAssisted || isGraphInstance -> {
       // provider
       providerInstance
     }
@@ -630,7 +630,7 @@ internal fun IrClass.buildFactoryCreateFunction(
       providerFunction = providerFunction,
       sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
       factoryParameters = valueParamsToPatch,
-      factoryComponentParameter = instanceParam,
+      factoryGraphParameter = instanceParam,
       wrapInProvider = true,
     )
 

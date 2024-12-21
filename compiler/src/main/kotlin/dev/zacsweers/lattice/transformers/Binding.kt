@@ -136,15 +136,15 @@ internal sealed interface Binding {
     override val reportableLocation: CompilerMessageSourceLocation? = null
   }
 
-  data class ComponentDependency(
-    val component: IrClass,
+  data class GraphDependency(
+    val graph: IrClass,
     val getter: IrSimpleFunction,
     override val typeKey: TypeKey,
   ) : Binding {
     override val scope: IrAnnotation? = null
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     override val nameHint: String = buildString {
-      append(component.name.asString())
+      append(graph.name.asString())
       val property = getter.correspondingPropertySymbol
       if (property != null) {
         val propName = property.owner.name.asString()

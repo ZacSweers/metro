@@ -19,45 +19,45 @@ import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.Provider
-import dev.zacsweers.lattice.compiler.ExampleComponent
+import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
-import dev.zacsweers.lattice.compiler.callComponentAccessor
-import dev.zacsweers.lattice.compiler.callComponentAccessorProperty
-import dev.zacsweers.lattice.compiler.createComponentViaFactory
-import dev.zacsweers.lattice.compiler.createComponentWithNoArgs
-import dev.zacsweers.lattice.compiler.generatedLatticeComponentClass
+import dev.zacsweers.lattice.compiler.callGraphAccessor
+import dev.zacsweers.lattice.compiler.callGraphAccessorProperty
+import dev.zacsweers.lattice.compiler.createGraphViaFactory
+import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
+import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import java.util.concurrent.Callable
 import org.junit.Test
 
-class ComponentTransformerTest : LatticeCompilerTest() {
+class ObjectGraphTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun simple() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
             import dev.zacsweers.lattice.annotations.BindsInstance
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Singleton
-            import dev.zacsweers.lattice.createComponentFactory
+            import dev.zacsweers.lattice.createGraphFactory
             import java.util.concurrent.Callable
 
             @Singleton
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               fun exampleClass(): ExampleClass
 
-              @Component.Factory
+              @ObjectGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance text: String): ExampleComponent
+                fun create(@BindsInstance text: String): ExampleGraph
               }
             }
 
@@ -68,7 +68,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             }
 
             fun createExampleClass(): (String) -> Callable<String> {
-              val factory = createComponentFactory<ExampleComponent.Factory>()
+              val factory = createGraphFactory<ExampleGraph.Factory>()
               return { factory.create(it).exampleClass() }
             }
 
@@ -76,18 +76,18 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         )
       )
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass()
-        .createComponentViaFactory("Hello, world!")
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass()
+        .createGraphViaFactory("Hello, world!")
 
-    val exampleClass = component.callComponentAccessor<Callable<String>>("exampleClass")
+    val exampleClass = graph.callGraphAccessor<Callable<String>>("exampleClass")
     assertThat(exampleClass.call()).isEqualTo("Hello, world!")
 
-    // 2nd pass exercising creating a component via createComponentFactory()
+    // 2nd pass exercising creating a graph via createGraphFactory()
     @Suppress("UNCHECKED_CAST")
     val callableCreator =
       result.classLoader
-        .loadClass("test.ExampleComponentKt")
+        .loadClass("test.ExampleGraphKt")
         .getDeclaredMethod("createExampleClass")
         .invoke(null) as (String) -> Callable<String>
     val callable = callableCreator("Hello, world!")
@@ -99,16 +99,16 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Inject
             import java.util.concurrent.Callable
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val text: String
             }
@@ -122,10 +122,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        ExampleGraph.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is requested at
-                [test.ExampleComponent] test.ExampleComponent.text
+                [test.ExampleGraph] test.ExampleGraph.text
         """
           .trimIndent()
       )
@@ -136,17 +136,17 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import java.util.concurrent.Callable
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               @Named("hello")
               val text: String
@@ -161,10 +161,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleGraph.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
-                [test.ExampleComponent] test.ExampleComponent.text
+                [test.ExampleGraph] test.ExampleGraph.text
         """
           .trimIndent()
       )
@@ -175,17 +175,17 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import java.util.concurrent.Callable
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               @get:Named("hello")
               val text: String
@@ -200,10 +200,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleGraph.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
-                [test.ExampleComponent] test.ExampleComponent.text
+                [test.ExampleGraph] test.ExampleGraph.text
         """
           .trimIndent()
       )
@@ -214,16 +214,16 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Inject
             import java.util.concurrent.Callable
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               fun text(): String
             }
@@ -237,10 +237,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        ExampleGraph.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is requested at
-                [test.ExampleComponent] test.ExampleComponent.text()
+                [test.ExampleGraph] test.ExampleGraph.text()
         """
           .trimIndent()
       )
@@ -251,17 +251,17 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import java.util.concurrent.Callable
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               @Named("hello")
               fun text(): String
@@ -276,10 +276,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleGraph.kt:11:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
-                [test.ExampleComponent] test.ExampleComponent.text()
+                [test.ExampleGraph] test.ExampleGraph.text()
         """
           .trimIndent()
       )
@@ -290,16 +290,16 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
 
-            @Component
-            abstract class ExampleComponent() {
+            @ObjectGraph
+            abstract class ExampleGraph() {
 
               abstract fun exampleClass(): ExampleClass
             }
@@ -316,12 +316,12 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:14:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        ExampleGraph.kt:14:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
-                [test.ExampleComponent] test.ExampleClass(…, text)
+                [test.ExampleGraph] test.ExampleClass(…, text)
             test.ExampleClass is requested at
-                [test.ExampleComponent] test.ExampleComponent.exampleClass()
+                [test.ExampleGraph] test.ExampleGraph.exampleClass()
         """
           .trimIndent()
       )
@@ -332,17 +332,17 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
 
-            @Component
-            abstract class ExampleComponent() {
+            @ObjectGraph
+            abstract class ExampleGraph() {
 
               abstract fun exampleClass(): ExampleClass
             }
@@ -359,12 +359,12 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-        ExampleComponent.kt:15:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+        ExampleGraph.kt:15:20 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is injected at
-                [test.ExampleComponent] test.ExampleClass(…, text)
+                [test.ExampleGraph] test.ExampleClass(…, text)
             test.ExampleClass is requested at
-                [test.ExampleComponent] test.ExampleComponent.exampleClass()
+                [test.ExampleGraph] test.ExampleGraph.exampleClass()
         """
           .trimIndent()
       )
@@ -378,19 +378,19 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
             @Singleton
-            @Component
-            abstract class ExampleComponent {
+            @ObjectGraph
+            abstract class ExampleGraph {
 
               private var scopedCounter = 0
               private var unscopedCounter = 0
@@ -419,29 +419,29 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     // Repeated calls to the scoped instance only every return one value
-    assertThat(component.callComponentAccessorProperty<String>("scoped")).isEqualTo("text 0")
-    assertThat(component.callComponentAccessorProperty<String>("scoped")).isEqualTo("text 0")
+    assertThat(graph.callGraphAccessorProperty<String>("scoped")).isEqualTo("text 0")
+    assertThat(graph.callGraphAccessorProperty<String>("scoped")).isEqualTo("text 0")
 
     // Repeated calls to the unscoped instance recompute each time
-    assertThat(component.callComponentAccessorProperty<String>("unscoped")).isEqualTo("text 0")
-    assertThat(component.callComponentAccessorProperty<String>("unscoped")).isEqualTo("text 1")
+    assertThat(graph.callGraphAccessorProperty<String>("unscoped")).isEqualTo("text 0")
+    assertThat(graph.callGraphAccessorProperty<String>("unscoped")).isEqualTo("text 1")
   }
 
   @Test
-  fun `scoped components cannot depend on scoped bindings with mismatched scopes`() {
-    // Ensure scoped bindings match the component that is trying to use them
+  fun `scoped graphs cannot depend on scoped bindings with mismatched scopes`() {
+    // Ensure scoped bindings match the graph that is trying to use them
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Singleton
             import dev.zacsweers.lattice.annotations.SingleIn
@@ -451,8 +451,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
             @Singleton
             @SingleIn(AppScope::class)
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val intValue: Int
 
@@ -468,10 +468,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleComponent.kt:11:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (scopes '@Singleton', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
+        ExampleGraph.kt:11:1 [Lattice/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@Singleton', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
-                [test.ExampleComponent] test.ExampleComponent.intValue
+                [test.ExampleGraph] test.ExampleGraph.intValue
       """
         .trimIndent()
     )
@@ -480,22 +480,22 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   @Test
   fun `providers from supertypes are wired correctly`() {
     // Ensure providers from supertypes are correctly wired. This means both incorporating them in
-    // binding resolution and being able to invoke them correctly in the resulting component.
+    // binding resolution and being able to invoke them correctly in the resulting graph.
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @Component
-            interface ExampleComponent : TextProvider {
+            @ObjectGraph
+            interface ExampleGraph : TextProvider {
               val value: String
             }
 
@@ -509,30 +509,30 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
-    assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
   @Test
   fun `providers from supertype companion objects are visible`() {
     // Ensure providers from supertypes are correctly wired. This means both incorporating them in
-    // binding resolution and being able to invoke them correctly in the resulting component.
+    // binding resolution and being able to invoke them correctly in the resulting graph.
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @Component
-            interface ExampleComponent : TextProvider {
+            @ObjectGraph
+            interface ExampleGraph : TextProvider {
 
               val value: String
             }
@@ -549,9 +549,9 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
-    assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
   @Test
@@ -559,18 +559,18 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @Component
-            interface ExampleComponent : TextProvider {
+            @ObjectGraph
+            interface ExampleGraph : TextProvider {
 
               val value: String
 
@@ -589,7 +589,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContains(
-      "ExampleComponent.kt:14:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@Component.excludes` instead."
+      "ExampleGraph.kt:14:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@ObjectGraph.excludes` instead."
     )
   }
 
@@ -597,18 +597,18 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   fun `overrides annotated with provides from non-provides supertypes are ok`() {
     compile(
       kotlin(
-        "ExampleComponent.kt",
+        "ExampleGraph.kt",
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @Component
-            interface ExampleComponent : TextProvider {
+            @ObjectGraph
+            interface ExampleGraph : TextProvider {
 
               val value: String
 
@@ -637,15 +637,15 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val valueLengths: Int
 
@@ -661,21 +661,21 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     // Assert we generated a shared field
     val provideValueField =
-      component.javaClass.getDeclaredField("provideValueProvider").apply { isAccessible = true }
+      graph.javaClass.getDeclaredField("provideValueProvider").apply { isAccessible = true }
 
     // Get its instance
     @Suppress("UNCHECKED_CAST")
-    val provideValueProvider = provideValueField.get(component) as Provider<String>
+    val provideValueProvider = provideValueField.get(graph) as Provider<String>
 
     // Get its computed value to plug in below
     val providerValue = provideValueProvider()
-    assertThat(component.javaClass.getDeclaredField("provideValueProvider"))
-    assertThat(component.callComponentAccessorProperty<Int>("valueLengths"))
+    assertThat(graph.javaClass.getDeclaredField("provideValueProvider"))
+    assertThat(graph.callGraphAccessorProperty<Int>("valueLengths"))
       .isEqualTo(providerValue.length * 2)
   }
 
@@ -689,15 +689,15 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val valueLengths: Int
 
@@ -713,33 +713,33 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     assertThat(
-        component.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" }
+        graph.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" }
       )
       .isNull()
 
-    assertThat(component.callComponentAccessorProperty<Int>("valueLengths"))
+    assertThat(graph.callGraphAccessorProperty<Int>("valueLengths"))
       .isEqualTo("Hello, world!".length)
   }
 
   @Test
-  fun `unscoped components may not reference scoped types`() {
+  fun `unscoped graphs may not reference scoped types`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Singleton
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val value: String
 
@@ -757,10 +757,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:7:1 [Lattice/IncompatiblyScopedBindings] test.ExampleComponent (unscoped) may not reference scoped bindings:
+          ExampleGraph.kt:7:1 [Lattice/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
               kotlin.String (scoped to '@Singleton')
               kotlin.String is requested at
-                  [test.ExampleComponent] test.ExampleComponent.value
+                  [test.ExampleGraph] test.ExampleGraph.value
         """
           .trimIndent()
       )
@@ -773,15 +773,15 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val value: String
               val value2: CharSequence
@@ -799,10 +799,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
+          ExampleGraph.kt:10:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
 
               kotlin.CharSequence is requested at
-                  [test.ExampleComponent] test.ExampleComponent.value2
+                  [test.ExampleGraph] test.ExampleGraph.value2
         """
           .trimIndent()
       )
@@ -815,15 +815,15 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val value: String
               val value2: CharSequence
@@ -840,12 +840,12 @@ class ComponentTransformerTest : LatticeCompilerTest() {
         )
       )
 
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
-    assertThat(component.callComponentAccessorProperty<String>("value")).isEqualTo("Hello, world!")
+    assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
 
-    assertThat(component.callComponentAccessorProperty<CharSequence>("value2"))
+    assertThat(graph.callGraphAccessorProperty<CharSequence>("value2"))
       .isEqualTo("Hello, world!")
   }
 
@@ -854,11 +854,11 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     // This is a compile-only test. The full integration is in integration-tests
     compile(
       kotlin(
-        "ExampleComponent.kt",
+        "ExampleGraph.kt",
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Singleton
@@ -868,8 +868,8 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             import java.nio.file.FileSystems
 
             @Singleton
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val repository: Repository
 
@@ -897,16 +897,16 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     // This is a compile-only test. The full integration is in integration-tests
     compile(
       kotlin(
-        "ExampleComponent.kt",
+        "ExampleGraph.kt",
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.Provider
 
-            @Component
-            abstract class ExampleComponent {
+            @ObjectGraph
+            abstract class ExampleGraph {
 
               var counter = 0
 
@@ -930,16 +930,16 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.Provider
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val value: Int
 
@@ -956,11 +956,11 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:7:1 [Lattice/DependencyCycle] Found a dependency cycle:
+          ExampleGraph.kt:7:1 [Lattice/DependencyCycle] Found a dependency cycle:
               kotlin.Int is injected at
-                  [test.ExampleComponent] test.ExampleComponent.provideInt(…, value)
+                  [test.ExampleGraph] test.ExampleGraph.provideInt(…, value)
               kotlin.Int is injected at
-                  [test.ExampleComponent] test.ExampleComponent.provideInt(…, value)
+                  [test.ExampleGraph] test.ExampleGraph.provideInt(…, value)
               ...
         """
           .trimIndent()
@@ -972,15 +972,15 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
 
               val value: String
 
@@ -1009,15 +1009,15 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:6:1 [Lattice/DependencyCycle] Found a dependency cycle:
+          ExampleGraph.kt:6:1 [Lattice/DependencyCycle] Found a dependency cycle:
               kotlin.Int is injected at
-                  [test.ExampleComponent] test.ExampleComponent.provideString(…, int)
+                  [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
               kotlin.String is injected at
-                  [test.ExampleComponent] test.ExampleComponent.provideDouble(…, string)
+                  [test.ExampleGraph] test.ExampleGraph.provideDouble(…, string)
               kotlin.Double is injected at
-                  [test.ExampleComponent] test.ExampleComponent.provideInt(…, double)
+                  [test.ExampleGraph] test.ExampleGraph.provideInt(…, double)
               kotlin.Int is injected at
-                  [test.ExampleComponent] test.ExampleComponent.provideString(…, int)
+                  [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
               ...
         """
           .trimIndent()
@@ -1025,29 +1025,29 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `components cannot have constructors with parameters`() {
+  fun `graphs cannot have constructors with parameters`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.BindsInstance
 
-            @Component
-            abstract class ExampleComponent(
+            @ObjectGraph
+            abstract class ExampleGraph(
               @get:Provides
               val text: String
             ) {
 
               abstract fun string(): String
 
-              @Component.Factory
+              @ObjectGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance text: String): ExampleComponent
+                fun create(@BindsInstance text: String): ExampleGraph
               }
             }
 
@@ -1060,35 +1060,35 @@ class ComponentTransformerTest : LatticeCompilerTest() {
     assertThat(result.messages)
       .contains(
         """
-          ExampleComponent.kt:8:32 Components cannot have constructors. Use @Component.Factory instead.
+          ExampleGraph.kt:8:28 Object graphs cannot have constructors. Use @ObjectGraph.Factory instead.
         """
           .trimIndent()
       )
   }
 
   @Test
-  fun `self referencing component dependency cycle should fail`() {
+  fun `self referencing graph dependency cycle should fail`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @Component
-            interface CharSequenceComponent {
+            @ObjectGraph
+            interface CharSequenceGraph {
 
               fun value(): CharSequence
 
               @Provides
               fun provideValue(string: String): CharSequence = string
 
-              @Component.Factory
+              @ObjectGraph.Factory
               fun interface Factory {
-                fun create(component: CharSequenceComponent): CharSequenceComponent
+                fun create(graph: CharSequenceGraph): CharSequenceGraph
               }
             }
 
@@ -1100,51 +1100,51 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleComponent.kt:6:1 [Lattice/ComponentDependencyCycle] Component dependency cycle detected! The below component depends on itself.
-            test.CharSequenceComponent is requested at
-                [test.CharSequenceComponent] test.CharSequenceComponent.Factory.create()
+        ExampleGraph.kt:6:1 [Lattice/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself.
+            test.CharSequenceGraph is requested at
+                [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
       """
         .trimIndent()
     )
   }
 
   @Test
-  fun `component dependency cycles should fail across multiple components`() {
+  fun `graph dependency cycles should fail across multiple graphs`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.Provides
 
-            @Component
-            interface CharSequenceComponent {
+            @ObjectGraph
+            interface CharSequenceGraph {
 
               fun value(): CharSequence
 
               @Provides
               fun provideValue(string: String): CharSequence = string
 
-              @Component.Factory
+              @ObjectGraph.Factory
               fun interface Factory {
-                fun create(stringComponent: StringComponent): CharSequenceComponent
+                fun create(stringGraph: StringGraph): CharSequenceGraph
               }
             }
 
-            @Component
-            interface StringComponent {
+            @ObjectGraph
+            interface StringGraph {
 
               val string: String
 
               @Provides
               fun provideValue(charSequence: CharSequence): String = charSequence.toString()
 
-              @Component.Factory
+              @ObjectGraph.Factory
               fun interface Factory {
-                fun create(charSequenceComponent: CharSequenceComponent): StringComponent
+                fun create(charSequenceGraph: CharSequenceGraph): StringGraph
               }
             }
 
@@ -1156,95 +1156,95 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleComponent.kt:6:1 [Lattice/ComponentDependencyCycle] Component dependency cycle detected!
-            test.StringComponent is requested at
-                [test.CharSequenceComponent] test.StringComponent.Factory.create()
-            test.CharSequenceComponent is requested at
-                [test.CharSequenceComponent] test.CharSequenceComponent.Factory.create()
+        ExampleGraph.kt:6:1 [Lattice/GraphDependencyCycle] Graph dependency cycle detected!
+            test.StringGraph is requested at
+                [test.CharSequenceGraph] test.StringGraph.Factory.create()
+            test.CharSequenceGraph is requested at
+                [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
       """
         .trimIndent()
     )
   }
 
   @Test
-  fun `component creators must be abstract classes or interfaces`() {
+  fun `graph creators must be abstract classes or interfaces`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
 
             // Ok
-            @Component
-            interface ComponentWithAbstractClass {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithAbstractClass {
+              @ObjectGraph.Factory
               abstract class Factory {
-                abstract fun create(): ComponentWithAbstractClass
+                abstract fun create(): GraphWithAbstractClass
               }
             }
 
             // Ok
-            @Component
-            interface ComponentWithInterface {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithInterface {
+              @ObjectGraph.Factory
               interface Factory {
-                fun create(): ComponentWithInterface
+                fun create(): GraphWithInterface
               }
             }
 
             // Ok
-            @Component
-            interface ComponentWithFunInterface {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithFunInterface {
+              @ObjectGraph.Factory
               fun interface Factory {
-                fun create(): ComponentWithFunInterface
+                fun create(): GraphWithFunInterface
               }
             }
 
-            @Component
-            interface ComponentWithEnumFactory {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithEnumFactory {
+              @ObjectGraph.Factory
               enum class Factory {
                 THIS_IS_JUST_WRONG
               }
             }
 
-            @Component
-            interface ComponentWithOpenFactory {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithOpenFactory {
+              @ObjectGraph.Factory
               open class Factory {
-                fun create(): ComponentWithOpenFactory {
+                fun create(): GraphWithOpenFactory {
                   TODO()
                 }
               }
             }
 
-            @Component
-            interface ComponentWithFinalFactory {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithFinalFactory {
+              @ObjectGraph.Factory
               class Factory {
-                fun create(): ComponentWithFinalFactory {
+                fun create(): GraphWithFinalFactory {
                   TODO()
                 }
               }
             }
 
-            @Component
-            interface ComponentWithSealedFactoryInterface {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithSealedFactoryInterface {
+              @ObjectGraph.Factory
               sealed interface Factory {
-                fun create(): ComponentWithSealedFactoryInterface
+                fun create(): GraphWithSealedFactoryInterface
               }
             }
 
-            @Component
-            interface ComponentWithSealedFactoryClass {
-              @Component.Factory
+            @ObjectGraph
+            interface GraphWithSealedFactoryClass {
+              @ObjectGraph.Factory
               sealed class Factory {
-                abstract fun create(): ComponentWithSealedFactoryClass
+                abstract fun create(): GraphWithSealedFactoryClass
               }
             }
           """
@@ -1254,32 +1254,32 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleComponent.kt:35:14 Component factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleComponent.kt:43:14 Component factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleComponent.kt:53:9 Component factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleComponent.kt:63:20 Component factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleComponent.kt:71:16 Component factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:35:14 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:43:14 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:53:9 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:63:20 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
+      "ExampleGraph.kt:71:16 ObjectGraph factory classes should be non-sealed abstract classes or interfaces.",
     )
   }
 
   @Test
-  fun `component creators cannot be local classes`() {
+  fun `graph creators cannot be local classes`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
 
-            @Component
-            interface ComponentWithAbstractClass {
+            @ObjectGraph
+            interface GraphWithAbstractClass {
 
               fun example() {
-                @Component.Factory
+                @ObjectGraph.Factory
                 abstract class Factory {
-                  fun create(): ComponentWithAbstractClass {
+                  fun create(): GraphWithAbstractClass {
                     TODO()
                   }
                 }
@@ -1293,63 +1293,63 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleComponent.kt:10:20 Component factory classes cannot be local classes.
+        ExampleGraph.kt:10:20 ObjectGraph factory classes cannot be local classes.
       """
         .trimIndent()
     )
   }
 
   @Test
-  fun `component creators must be visible`() {
+  fun `graph creators must be visible`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
 
             // Ok
-            @Component
-            abstract class ComponentWithImplicitPublicFactory {
-              @Component.Factory
+            @ObjectGraph
+            abstract class GraphWithImplicitPublicFactory {
+              @ObjectGraph.Factory
               interface Factory {
-                fun create(): ComponentWithImplicitPublicFactory
+                fun create(): GraphWithImplicitPublicFactory
               }
             }
 
             // Ok
-            @Component
-            abstract class ComponentWithPublicFactory {
-              @Component.Factory
+            @ObjectGraph
+            abstract class GraphWithPublicFactory {
+              @ObjectGraph.Factory
               public interface Factory {
-                fun create(): ComponentWithPublicFactory
+                fun create(): GraphWithPublicFactory
               }
             }
 
             // Ok
-            @Component
-            abstract class ComponentWithInternalFactory {
-              @Component.Factory
+            @ObjectGraph
+            abstract class GraphWithInternalFactory {
+              @ObjectGraph.Factory
               internal interface Factory {
-                fun create(): ComponentWithInternalFactory
+                fun create(): GraphWithInternalFactory
               }
             }
 
-            @Component
-            abstract class ComponentWithProtectedFactory {
-              @Component.Factory
+            @ObjectGraph
+            abstract class GraphWithProtectedFactory {
+              @ObjectGraph.Factory
               protected interface Factory {
-                fun create(): ComponentWithProtectedFactory
+                fun create(): GraphWithProtectedFactory
               }
             }
 
-            @Component
-            abstract class ComponentWithPrivateFactory {
-              @Component.Factory
+            @ObjectGraph
+            abstract class GraphWithPrivateFactory {
+              @ObjectGraph.Factory
               private interface Factory {
-                fun create(): ComponentWithPrivateFactory
+                fun create(): GraphWithPrivateFactory
               }
             }
           """
@@ -1359,27 +1359,27 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleComponent.kt:35:23 Component factory must be public or internal.",
-      "ExampleComponent.kt:43:21 Component factory must be public or internal.",
+      "ExampleGraph.kt:35:23 ObjectGraph factory must be public or internal.",
+      "ExampleGraph.kt:43:21 ObjectGraph factory must be public or internal.",
     )
   }
 
   @Test
-  fun `component factories fails with no abstract functions`() {
+  fun `graph factories fails with no abstract functions`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
 
-            @Component
-            interface ExampleComponent {
-              @Component.Factory
+            @ObjectGraph
+            interface ExampleGraph {
+              @ObjectGraph.Factory
               interface Factory {
-                fun create(): ExampleComponent {
+                fun create(): ExampleGraph {
                   TODO()
                 }
               }
@@ -1392,29 +1392,29 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
     result.assertContains(
       """
-        ExampleComponent.kt:8:13 @Component.Factory classes must have exactly one abstract function but found none.
+        ExampleGraph.kt:8:13 @ObjectGraph.Factory classes must have exactly one abstract function but found none.
       """
         .trimIndent()
     )
   }
 
   @Test
-  fun `component factories fails with more than one abstract function`() {
+  fun `graph factories fails with more than one abstract function`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
 
-            @Component
-            interface ExampleComponent {
-              @Component.Factory
+            @ObjectGraph
+            interface ExampleGraph {
+              @ObjectGraph.Factory
               interface Factory {
-                fun create(): ExampleComponent
-                fun create2(): ExampleComponent
+                fun create(): ExampleGraph
+                fun create2(): ExampleGraph
               }
             }
           """
@@ -1424,21 +1424,21 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleComponent.kt:9:9 @Component.Factory classes must have exactly one abstract function but found 2.",
-      "ExampleComponent.kt:10:9 @Component.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:9:9 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:10:9 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
     )
   }
 
   @Test
-  fun `component factories cannot inherit multiple abstract functions`() {
+  fun `graph factories cannot inherit multiple abstract functions`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
 
             interface BaseFactory1<T> {
               fun create1(): T
@@ -1448,10 +1448,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
               fun create2(): T
             }
 
-            @Component
-            interface ExampleComponent {
-              @Component.Factory
-              interface Factory : BaseFactory2<ExampleComponent>
+            @ObjectGraph
+            interface ExampleGraph {
+              @ObjectGraph.Factory
+              interface Factory : BaseFactory2<ExampleGraph>
             }
           """
             .trimIndent(),
@@ -1460,30 +1460,30 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleComponent.kt:6:7 @Component.Factory classes must have exactly one abstract function but found 2.",
-      "ExampleComponent.kt:10:7 @Component.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:6:7 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:10:7 @ObjectGraph.Factory classes must have exactly one abstract function but found 2.",
     )
   }
 
   @Test
-  fun `component factories params must be unique - check bindsinstance`() {
+  fun `graph factories params must be unique - check bindsinstance`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.BindsInstance
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
               val value: Int
 
-              @Component.Factory
+              @ObjectGraph.Factory
               interface Factory {
-                fun create(@BindsInstance value: Int, @BindsInstance value2: Int): ExampleComponent
+                fun create(@BindsInstance value: Int, @BindsInstance value2: Int): ExampleGraph
               }
             }
           """
@@ -1493,38 +1493,38 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContains(
-      "ExampleComponent.kt:12:58 Component.Factory abstract function parameters must be unique."
+      "ExampleGraph.kt:12:58 ObjectGraph.Factory abstract function parameters must be unique."
     )
   }
 
   @Test
-  fun `component factories params must be unique - check component`() {
+  fun `graph factories params must be unique - check graph`() {
     val result =
       compile(
         kotlin(
-          "ExampleComponent.kt",
+          "ExampleGraph.kt",
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.ObjectGraph
             import dev.zacsweers.lattice.annotations.BindsInstance
 
-            @Component
-            interface ExampleComponent {
+            @ObjectGraph
+            interface ExampleGraph {
               val value: Int
 
-              @Component.Factory
+              @ObjectGraph.Factory
               interface Factory {
-                fun create(intComponent: IntComponent, intComponent2: IntComponent): ExampleComponent
+                fun create(intGraph: IntGraph, intGraph2: IntGraph): ExampleGraph
               }
             }
-            @Component
-            interface IntComponent {
+            @ObjectGraph
+            interface IntGraph {
               val value: Int
 
-              @Component.Factory
+              @ObjectGraph.Factory
               interface Factory {
-                fun create(@BindsInstance value: Int): IntComponent
+                fun create(@BindsInstance value: Int): IntGraph
               }
             }
           """
@@ -1534,7 +1534,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContains(
-      "ExampleComponent.kt:12:44 Component.Factory abstract function parameters must be unique."
+      "ExampleGraph.kt:12:36 ObjectGraph.Factory abstract function parameters must be unique."
     )
   }
 

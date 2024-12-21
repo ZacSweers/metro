@@ -17,15 +17,15 @@ package dev.zacsweers.lattice.sample
 
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.BindsInstance
-import dev.zacsweers.lattice.annotations.Component
+import dev.zacsweers.lattice.annotations.ObjectGraph
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.annotations.Singleton
-import dev.zacsweers.lattice.createComponentFactory
+import dev.zacsweers.lattice.createGraphFactory
 
 @Singleton
-@Component
-interface ExampleComponent : FileSystemComponent {
+@ObjectGraph
+interface ExampleGraph : FileSystemProviders {
 
   fun example1(): Example1
 
@@ -33,18 +33,18 @@ interface ExampleComponent : FileSystemComponent {
 
   fun example4(): Example4
 
-  @Component.Factory
+  @ObjectGraph.Factory
   fun interface Factory {
-    fun create(@BindsInstance text: String): ExampleComponent
+    fun create(@BindsInstance text: String): ExampleGraph
   }
 
   companion object {
     // TODO temporary until we can move this back to the test calling this
-    fun factory() = createComponentFactory<Factory>()
+    fun factory() = createGraphFactory<Factory>()
   }
 }
 
-interface FileSystemComponent {
+interface FileSystemProviders {
   @Singleton @Provides private fun provideFileSystem(): FileSystem = FileSystem()
 
   @Singleton

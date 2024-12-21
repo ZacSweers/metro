@@ -160,7 +160,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       error("Unexpected extension receiver")
     }
 
-    // TODO FIR check parent class (if any) is a component. What about (companion) objects?
+    // TODO FIR check parent class (if any) is a graph. What about (companion) objects?
     // TODO FIR check function is not abstract
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho
@@ -193,9 +193,9 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           origin = LatticeOrigin
         }
         .apply {
-          // Add as a nested class of the origin component. This is important so that default value
+          // Add as a nested class of the origin graph. This is important so that default value
           // expressions can access private members.
-          reference.componentParent.addChild(this)
+          reference.graphParent.addChild(this)
 
           createImplicitParameterDeclarationWithWrappedDescriptor()
           superTypes += symbols.latticeFactory.typeWith(returnType)
@@ -212,13 +212,13 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         origin = LatticeOrigin,
       )
 
-    val componentType = reference.componentParent.typeWith()
+    val graphType = reference.graphParent.typeWith()
 
     val instanceParam =
       if (!reference.isInObject) {
         val contextualTypeKey =
           ContextualTypeKey(
-            typeKey = TypeKey(componentType),
+            typeKey = TypeKey(graphType),
             isWrappedInProvider = false,
             isWrappedInLazy = false,
             isLazyWrappedInProvider = false,
@@ -226,16 +226,16 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           )
         ConstructorParameter(
           kind = Parameter.Kind.VALUE,
-          name = Name.identifier("component"),
+          name = Name.identifier("graph"),
           contextualTypeKey = contextualTypeKey,
-          originalName = Name.identifier("component"),
+          originalName = Name.identifier("graph"),
           // This type is always the instance type
-          providerType = componentType,
-          lazyType = componentType,
+          providerType = graphType,
+          lazyType = graphType,
           isAssisted = false,
           assistedIdentifier = "",
           symbols = symbols,
-          isComponentInstance = true,
+          isGraphInstance = true,
           // TODO is this right/ever going to happen?
           bindingStackEntry = BindingStackEntry.simpleTypeRef(contextualTypeKey.typeKey),
           isBindsInstance = false,
@@ -311,7 +311,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     return references.getOrPut(function.kotlinFqName) {
       // TODO FIR error if it has a receiver param
-      // TODO FIR error if it is top-level/not in component
+      // TODO FIR error if it is top-level/not in graph
 
       val parent = function.parentAsClass
       val typeKey = ContextualTypeKey.from(this, function).typeKey
@@ -338,7 +338,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       // TODO FIR check property is not var
       // TODO FIR check property is visible
       // TODO enforce get:? enforce no site target?
-      // TODO FIR error if it is top-level/not in component
+      // TODO FIR error if it is top-level/not in graph
 
       val getter =
         property.getter
@@ -446,10 +446,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             providerFunction = reference.callee.owner,
             sourceParameters = reference.parameters.valueParameters.map { it.ir },
             factoryParameters = valueParametersToMap,
-            factoryComponentParameter = instanceParam,
+            factoryGraphParameter = instanceParam,
           )
 
-          val argumentsWithoutComponent: IrBuilderWithScope.() -> List<IrExpression> = {
+          val argumentsWithoutGraph: IrBuilderWithScope.() -> List<IrExpression> = {
             valueParameters.drop(1).map { irGet(it) }
           }
           val arguments: IrBuilderWithScope.() -> List<IrExpression> = {
@@ -461,8 +461,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
               val expression: IrExpression =
                 when {
                   isObject && returnTypeIsNullable -> {
-                    // Static component call, allows nullable returns
-                    // ExampleComponent.$callableName$arguments
+                    // Static graph call, allows nullable returns
+                    // ExampleGraph.$callableName$arguments
                     irInvoke(
                       dispatchReceiver = irGetObject(reference.parent),
                       extensionReceiver = null, // TODO unimplemented
@@ -471,8 +471,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     )
                   }
                   isObject && !returnTypeIsNullable -> {
-                    // Static component call that doesn't allow nullable
-                    // checkNotNull(ExampleComponent.$callableName$arguments) {
+                    // Static graph call that doesn't allow nullable
+                    // checkNotNull(ExampleGraph.$callableName$arguments) {
                     //   "Cannot return null from a non-@Nullable @Provides method"
                     // }
                     checkNotNullCall(
@@ -488,19 +488,19 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     )
                   }
                   !isObject && returnTypeIsNullable -> {
-                    // Instance component call, allows nullable returns
-                    // exampleComponent.$callableName$arguments
+                    // Instance graph call, allows nullable returns
+                    // exampleGraph.$callableName$arguments
                     irInvoke(
                       dispatchReceiver = irGet(valueParameters[0]),
                       extensionReceiver = null, // TODO unimplemented
                       reference.callee,
-                      args = argumentsWithoutComponent(),
+                      args = argumentsWithoutGraph(),
                     )
                   }
                   // !isObject && !returnTypeIsNullable
                   else -> {
-                    // Instance component call, does not allow nullable returns
-                    // exampleComponent.$callableName$arguments
+                    // Instance graph call, does not allow nullable returns
+                    // exampleGraph.$callableName$arguments
                     checkNotNullCall(
                       this@ProvidesTransformer,
                       this@apply.parent, // TODO this is obvi wrong
@@ -508,7 +508,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                         dispatchReceiver = irGet(valueParameters[0]),
                         extensionReceiver = null, // TODO unimplemented
                         callee = reference.callee,
-                        args = argumentsWithoutComponent(),
+                        args = argumentsWithoutGraph(),
                       ),
                       "Cannot return null from a non-@Nullable @Provides method",
                     )
@@ -543,7 +543,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       get() = parent.owner.isObject
 
     @OptIn(UnsafeDuringIrConstructionAPI::class)
-    val componentParent =
+    val graphParent =
       if (parent.owner.isCompanionObject) {
         parent.owner.parentAsClass
       } else {
@@ -555,7 +555,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO still necessary in IR?
     val useGetPrefix by unsafeLazy { isProperty && !isWordPrefixRegex.matches(name.asString()) }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class) val packageName = componentParent.packageFqName!!
+    @OptIn(UnsafeDuringIrConstructionAPI::class) val packageName = graphParent.packageFqName!!
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     val simpleName by lazy {
       buildString {
@@ -571,7 +571,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     }
 
     val generatedClassId by lazy {
-      componentParent.classIdOrFail.createNestedClassId(Name.identifier(simpleName))
+      graphParent.classIdOrFail.createNestedClassId(Name.identifier(simpleName))
     }
 
     private val cachedToString by lazy {

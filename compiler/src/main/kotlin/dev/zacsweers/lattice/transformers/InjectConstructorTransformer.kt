@@ -305,7 +305,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
             providerFunction = null,
             sourceParameters = constructorParameters.valueParameters.map { it.ir },
             factoryParameters = valueParameters,
-            factoryComponentParameter = null,
+            factoryGraphParameter = null,
           )
 
           body =

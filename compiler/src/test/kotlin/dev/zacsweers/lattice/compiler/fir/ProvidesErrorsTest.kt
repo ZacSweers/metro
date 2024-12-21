@@ -34,7 +34,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
-            interface ExampleComponent {
+            interface ExampleGraph {
               @Provides val provideCharSequence: String get() = "Hello"
               @Provides fun provideString(): String = "Hello"
             }
@@ -60,7 +60,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
-            abstract class ExampleComponent {
+            abstract class ExampleGraph {
               @Provides val provideInt: Int = 0
               @Provides val provideCharSequence: String get() = "Hello"
               @Provides fun provideString(): String = "Hello"
@@ -88,7 +88,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
-            interface ExampleComponent {
+            interface ExampleGraph {
               @Provides private val Long.provideInt: Int get() = this.toInt()
               @Provides private fun CharSequence.provideString(): String = this.toString()
             }
@@ -114,7 +114,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
-            abstract class ExampleComponent {
+            abstract class ExampleGraph {
               @Provides private val Long.provideInt: Int get() = this.toInt()
               @Provides private fun CharSequence.provideString(): String = "Hello"
             }
@@ -141,7 +141,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Provides
 
             @Suppress("PROVIDES_SHOULD_BE_PRIVATE")
-            interface ExampleComponent {
+            interface ExampleGraph {
               @Provides val provideInt: Int
               @Provides fun provideString(): String
             }
@@ -167,7 +167,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
-            abstract class ExampleComponent {
+            abstract class ExampleGraph {
               @Provides abstract val provideInt: Int
               @Provides abstract fun provideString(): String
             }
@@ -192,7 +192,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
-            interface ExampleComponent {
+            interface ExampleGraph {
               @Provides val Int.bind: Number
               @Provides fun String.bind(): CharSequence
             }
@@ -214,7 +214,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Provides
 
-            interface ExampleComponent {
+            interface ExampleGraph {
               @Provides val Int.bind: Number get() = 9
               @Provides fun String.bind(): CharSequence = "Hello"
             }
@@ -242,7 +242,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Named
 
-            interface ExampleComponent {
+            interface ExampleGraph {
               // Valid cases
               @Provides @Named("named") val Int.bindNamed: Int
               @Provides val @receiver:Named("named") Int.bindNamedReceiver: Int
@@ -281,7 +281,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.annotations.Named
 
-            interface ExampleComponent {
+            interface ExampleGraph {
               // Valid cases
               @Provides fun String.bind(): CharSequence
 

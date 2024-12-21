@@ -30,7 +30,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.FqName
 
 internal interface BindingStack {
-  val component: IrClass
+  val graph: IrClass
   val entries: List<BindingStackEntry>
 
   fun push(entry: BindingStackEntry)
@@ -42,7 +42,7 @@ internal interface BindingStack {
   companion object {
     private val EMPTY =
       object : BindingStack {
-        override val component
+        override val graph
           get() = throw UnsupportedOperationException()
 
         override val entries: List<BindingStackEntry>
@@ -61,7 +61,7 @@ internal interface BindingStack {
         }
       }
 
-    operator fun invoke(component: IrClass): BindingStack = BindingStackImpl(component)
+    operator fun invoke(graph: IrClass): BindingStack = BindingStackImpl(graph)
 
     fun empty() = EMPTY
   }
@@ -74,17 +74,17 @@ internal inline fun <T> BindingStack.withEntry(entry: BindingStackEntry, block: 
   return result
 }
 
-internal val BindingStack.lastEntryOrComponent
-  get() = entries.firstOrNull()?.declaration ?: component
+internal val BindingStack.lastEntryOrGraph
+  get() = entries.firstOrNull()?.declaration ?: graph
 
 internal fun Appendable.appendBindingStack(
   stack: BindingStack,
   indent: String = "    ",
   ellipse: Boolean = false,
 ) {
-  val componentName = stack.component.kotlinFqName
+  val graphName = stack.graph.kotlinFqName
   for (entry in stack.entries) {
-    entry.render(componentName).prependIndent(indent).lineSequence().forEach { appendLine(it) }
+    entry.render(graphName).prependIndent(indent).lineSequence().forEach { appendLine(it) }
   }
   if (ellipse) {
     append(indent)
@@ -92,7 +92,7 @@ internal fun Appendable.appendBindingStack(
   }
 }
 
-internal class BindingStackImpl(override val component: IrClass) : BindingStack {
+internal class BindingStackImpl(override val graph: IrClass) : BindingStack {
   // TODO can we use one structure?
   private val entrySet = mutableSetOf<TypeKey>()
   private val stack = ArrayDeque<BindingStackEntry>()
@@ -124,7 +124,7 @@ internal class BindingStackEntry(
   val declaration: IrDeclaration?,
   val displayTypeKey: TypeKey = typeKey,
 ) {
-  fun render(component: FqName): String {
+  fun render(graph: FqName): String {
     return buildString {
       append(displayTypeKey)
       usage?.let {
@@ -134,7 +134,7 @@ internal class BindingStackEntry(
       context?.let {
         appendLine()
         append("    ")
-        append("[${component.asString()}]")
+        append("[${graph.asString()}]")
         append(' ')
         append(it)
       }
@@ -144,7 +144,7 @@ internal class BindingStackEntry(
   companion object {
     /*
     com.slack.circuit.star.Example1 is requested at
-           [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.ExampleComponent.example1()
+           [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.ExampleGraph.example1()
      */
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     fun requestedAt(typeKey: TypeKey, accessor: IrSimpleFunction): BindingStackEntry {
@@ -173,7 +173,7 @@ internal class BindingStackEntry(
 
     /*
     java.lang.CharSequence is injected at
-          [com.slack.circuit.star.ExampleComponent] com.slack.circuit.star.Example1(…, text2)
+          [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.Example1(…, text2)
     */
     fun injectedAt(
       typeKey: TypeKey,

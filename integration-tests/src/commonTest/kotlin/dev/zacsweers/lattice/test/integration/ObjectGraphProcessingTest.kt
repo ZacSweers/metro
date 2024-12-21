@@ -21,7 +21,7 @@ import dev.zacsweers.lattice.annotations.Assisted
 import dev.zacsweers.lattice.annotations.AssistedFactory
 import dev.zacsweers.lattice.annotations.AssistedInject
 import dev.zacsweers.lattice.annotations.BindsInstance
-import dev.zacsweers.lattice.annotations.Component
+import dev.zacsweers.lattice.annotations.ObjectGraph
 import dev.zacsweers.lattice.annotations.Inject
 import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.annotations.Provides
@@ -36,8 +36,8 @@ import dev.zacsweers.lattice.annotations.multibindings.LongKey
 import dev.zacsweers.lattice.annotations.multibindings.MapKey
 import dev.zacsweers.lattice.annotations.multibindings.Multibinds
 import dev.zacsweers.lattice.annotations.multibindings.StringKey
-import dev.zacsweers.lattice.createComponent
-import dev.zacsweers.lattice.createComponentFactory
+import dev.zacsweers.lattice.createGraph
+import dev.zacsweers.lattice.createGraphFactory
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,11 +49,11 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 
-class ComponentProcessingTest {
+class ObjectGraphProcessingTest {
 
   @Singleton
-  @Component
-  interface ComplexDependenciesComponent {
+  @ObjectGraph
+  interface ComplexDependenciesGraph {
 
     val repository: Repository
     val apiClient: ApiClient
@@ -62,23 +62,23 @@ class ComponentProcessingTest {
 
     @Named("cache-dir-name") @Provides private fun provideCacheDirName(): String = "cache"
 
-    @Component.Factory
+    @ObjectGraph.Factory
     fun interface Factory {
-      fun create(): ComplexDependenciesComponent
+      fun create(): ComplexDependenciesGraph
     }
   }
 
   @Test
   fun `complex dependencies setup`() {
-    val component = createComponentFactory<ComplexDependenciesComponent.Factory>().create()
+    val graph = createGraphFactory<ComplexDependenciesGraph.Factory>().create()
 
     // Scoped bindings always use the same instance
-    val apiClient = component.apiClient
-    assertSame(component.apiClient, apiClient)
+    val apiClient = graph.apiClient
+    assertSame(graph.apiClient, apiClient)
 
     // Calling repository creates a new repository each time
-    val repository1 = component.repository
-    val repository2 = component.repository
+    val repository1 = graph.repository
+    val repository2 = graph.repository
     assertNotSame(repository1, repository2)
 
     // Scoped dependencies use the same instance
@@ -86,8 +86,8 @@ class ComponentProcessingTest {
     assertSame(repository2.apiClient, apiClient)
   }
 
-  @Component
-  abstract class ProviderTypesComponent {
+  @ObjectGraph
+  abstract class ProviderTypesGraph {
 
     var callCount = 0
 
@@ -95,9 +95,9 @@ class ComponentProcessingTest {
 
     @Provides private fun count(): Int = callCount++
 
-    @Component.Factory
+    @ObjectGraph.Factory
     fun interface Factory {
-      fun create(): ProviderTypesComponent
+      fun create(): ProviderTypesGraph
     }
 
     @Inject
@@ -111,8 +111,8 @@ class ComponentProcessingTest {
 
   @Test
   fun `different provider types`() {
-    val component = createComponentFactory<ProviderTypesComponent.Factory>().create()
-    val counter = component.counter
+    val graph = createGraphFactory<ProviderTypesGraph.Factory>().create()
+    val counter = graph.counter
 
     assertEquals(0, counter.scalar)
     assertEquals(1, counter.providedValue())
@@ -127,8 +127,8 @@ class ComponentProcessingTest {
     assertEquals(5, lazyValue2.value)
   }
 
-  @Component
-  abstract class ProviderTypesAsAccessorsComponent {
+  @ObjectGraph
+  abstract class ProviderTypesAsAccessorsGraph {
 
     var counter = 0
 
@@ -142,75 +142,75 @@ class ComponentProcessingTest {
 
   @Test
   fun `different provider types as accessors`() {
-    val component = createComponent<ProviderTypesAsAccessorsComponent>()
+    val graph = createGraph<ProviderTypesAsAccessorsGraph>()
 
-    assertEquals(0, component.scalar)
-    assertEquals(1, component.providedValue())
-    assertEquals(2, component.providedValue())
-    val lazyValue = component.lazyValue
+    assertEquals(0, graph.scalar)
+    assertEquals(1, graph.providedValue())
+    assertEquals(2, graph.providedValue())
+    val lazyValue = graph.lazyValue
     assertEquals(3, lazyValue.value)
     assertEquals(3, lazyValue.value)
-    val providedLazyValue = component.providedLazies()
+    val providedLazyValue = graph.providedLazies()
     assertEquals(4, providedLazyValue.value)
     assertEquals(4, providedLazyValue.value)
-    val providedLazyValue2 = component.providedLazies()
+    val providedLazyValue2 = graph.providedLazies()
     assertEquals(5, providedLazyValue2.value)
     assertEquals(5, providedLazyValue2.value)
   }
 
   @Test
-  fun `simple component dependencies`() {
-    val stringComponent = createComponentFactory<StringComponent.Factory>().create("Hello, world!")
+  fun `simple graph dependencies`() {
+    val stringGraph = createGraphFactory<StringGraph.Factory>().create("Hello, world!")
 
-    val component =
-      createComponentFactory<ComponentWithDependencies.Factory>().create(stringComponent)
+    val graph =
+      createGraphFactory<GraphWithDependencies.Factory>().create(stringGraph)
 
-    assertEquals("Hello, world!", component.value())
+    assertEquals("Hello, world!", graph.value())
   }
 
-  @Component
-  interface ComponentWithDependencies {
+  @ObjectGraph
+  interface GraphWithDependencies {
 
     fun value(): CharSequence
 
     @Provides private fun provideValue(string: String): CharSequence = string
 
-    @Component.Factory
+    @ObjectGraph.Factory
     fun interface Factory {
-      fun create(stringComponent: StringComponent): ComponentWithDependencies
+      fun create(stringGraph: StringGraph): GraphWithDependencies
     }
   }
 
   @Test
-  fun `component factories can inherit abstract functions from base types`() {
-    val component =
-      createComponentFactory<ComponentWithInheritingAbstractFunction.Factory>()
+  fun `graph factories can inherit abstract functions from base types`() {
+    val graph =
+      createGraphFactory<GraphWithInheritingAbstractFunction.Factory>()
         .create("Hello, world!")
 
-    assertEquals("Hello, world!", component.value)
+    assertEquals("Hello, world!", graph.value)
   }
 
   interface BaseFactory<T> {
     fun create(@BindsInstance value: String): T
   }
 
-  @Component
-  interface ComponentWithInheritingAbstractFunction {
+  @ObjectGraph
+  interface GraphWithInheritingAbstractFunction {
     val value: String
 
-    @Component.Factory interface Factory : BaseFactory<ComponentWithInheritingAbstractFunction>
+    @ObjectGraph.Factory interface Factory : BaseFactory<GraphWithInheritingAbstractFunction>
   }
 
   @Test
-  fun `component factories should merge overlapping interfaces`() {
+  fun `graph factories should merge overlapping interfaces`() {
     val value =
-      createComponentFactory<ComponentCreatorWithMergeableInterfaces.Factory>().create(3).value
+      createGraphFactory<GraphCreatorWithMergeableInterfaces.Factory>().create(3).value
 
     assertEquals(value, 3)
   }
 
-  @Component
-  interface ComponentCreatorWithMergeableInterfaces {
+  @ObjectGraph
+  interface GraphCreatorWithMergeableInterfaces {
     val value: Int
 
     interface BaseFactory1<T> {
@@ -221,17 +221,17 @@ class ComponentProcessingTest {
       fun create(@BindsInstance value: Int): T
     }
 
-    @Component.Factory
+    @ObjectGraph.Factory
     interface Factory :
-      BaseFactory1<ComponentCreatorWithMergeableInterfaces>,
-      BaseFactory2<ComponentCreatorWithMergeableInterfaces>
+      BaseFactory1<GraphCreatorWithMergeableInterfaces>,
+      BaseFactory2<GraphCreatorWithMergeableInterfaces>
   }
 
   @Test
-  fun `component factories should merge overlapping interfaces where only the abstract override has the bindsinstance`() {
+  fun `graph factories should merge overlapping interfaces where only the abstract override has the bindsinstance`() {
     val value =
-      createComponentFactory<
-          ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance.Factory
+      createGraphFactory<
+          GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance.Factory
         >()
         .create(3)
         .value
@@ -240,8 +240,8 @@ class ComponentProcessingTest {
   }
 
   // Also covers overrides with different return types
-  @Component
-  interface ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance {
+  @ObjectGraph
+  interface GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance {
     val value: Int
 
     interface BaseFactory1<T> {
@@ -252,20 +252,20 @@ class ComponentProcessingTest {
       fun create(value: Int): T
     }
 
-    @Component.Factory
+    @ObjectGraph.Factory
     interface Factory :
-      BaseFactory1<ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance>,
-      BaseFactory2<ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance> {
+      BaseFactory1<GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance>,
+      BaseFactory2<GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance> {
       override fun create(
         @BindsInstance value: Int
-      ): ComponentCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance
+      ): GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance
     }
   }
 
   @Test
-  fun `component factories should understand partially-implemented supertypes`() {
+  fun `graph factories should understand partially-implemented supertypes`() {
     val factory =
-      createComponentFactory<ComponentCreatorWithIntermediateOverriddenDefaultFunctions.Factory>()
+      createGraphFactory<GraphCreatorWithIntermediateOverriddenDefaultFunctions.Factory>()
     val value1 = factory.create1().value
 
     assertEquals(value1, 0)
@@ -275,8 +275,8 @@ class ComponentProcessingTest {
     assertEquals(value2, 3)
   }
 
-  @Component
-  interface ComponentCreatorWithIntermediateOverriddenDefaultFunctions {
+  @ObjectGraph
+  interface GraphCreatorWithIntermediateOverriddenDefaultFunctions {
     val value: Int
 
     interface BaseFactory1<T> {
@@ -289,61 +289,61 @@ class ComponentProcessingTest {
       fun create2(@BindsInstance value: Int): T
     }
 
-    @Component.Factory
-    interface Factory : BaseFactory2<ComponentCreatorWithIntermediateOverriddenDefaultFunctions>
+    @ObjectGraph.Factory
+    interface Factory : BaseFactory2<GraphCreatorWithIntermediateOverriddenDefaultFunctions>
   }
 
   @Test
   fun `bindsinstance params with same types but different qualifiers are ok`() {
     val factory =
-      createComponentFactory<ComponentWithDifferentBindsInstanceTypeQualifiers.Factory>()
-    val component = factory.create(1, 2, 3)
+      createGraphFactory<GraphWithDifferentBindsInstanceTypeQualifiers.Factory>()
+    val graph = factory.create(1, 2, 3)
 
-    assertEquals(component.value1, 1)
-    assertEquals(component.value2, 2)
-    assertEquals(component.value3, 3)
+    assertEquals(graph.value1, 1)
+    assertEquals(graph.value2, 2)
+    assertEquals(graph.value3, 3)
   }
 
-  @Component
-  interface ComponentWithDifferentBindsInstanceTypeQualifiers {
+  @ObjectGraph
+  interface GraphWithDifferentBindsInstanceTypeQualifiers {
 
     val value1: Int
     @Named("value2") val value2: Int
     @Named("value3") val value3: Int
 
-    @Component.Factory
+    @ObjectGraph.Factory
     fun interface Factory {
       fun create(
         @BindsInstance value1: Int,
         @BindsInstance @Named("value2") value2: Int,
         @BindsInstance @Named("value3") value3: Int,
-      ): ComponentWithDifferentBindsInstanceTypeQualifiers
+      ): GraphWithDifferentBindsInstanceTypeQualifiers
     }
   }
 
   @Test
   fun `basic assisted injection`() {
-    val component =
-      createComponentFactory<AssistedInjectComponent.Factory>().create("Hello, world!")
-    val factory1 = component.factory
+    val graph =
+      createGraphFactory<AssistedInjectGraph.Factory>().create("Hello, world!")
+    val factory1 = graph.factory
     val exampleClass1 = factory1.create(3)
     assertEquals("Hello, world!", exampleClass1.message)
     assertEquals(3, exampleClass1.intValue)
 
-    val factory2 = component.factory2
+    val factory2 = graph.factory2
     val exampleClass2 = factory2.create(4)
     assertEquals("Hello, world!", exampleClass2.message)
     assertEquals(4, exampleClass2.intValue)
   }
 
-  @Component
-  interface AssistedInjectComponent {
+  @ObjectGraph
+  interface AssistedInjectGraph {
     val factory: ExampleClass.Factory
     val factory2: ExampleClass.Factory2
 
-    @Component.Factory
+    @ObjectGraph.Factory
     interface Factory {
-      fun create(@BindsInstance message: String): AssistedInjectComponent
+      fun create(@BindsInstance message: String): AssistedInjectGraph
     }
 
     class ExampleClass
@@ -364,15 +364,15 @@ class ComponentProcessingTest {
 
   @Test
   fun `assisted injection with custom assisted keys`() {
-    val component = createComponent<AssistedInjectComponentWithCustomAssistedKeys>()
-    val factory = component.factory
+    val graph = createGraph<AssistedInjectGraphWithCustomAssistedKeys>()
+    val factory = graph.factory
     val exampleClass = factory.create(2, 1)
     assertEquals(1, exampleClass.intValue1)
     assertEquals(2, exampleClass.intValue2)
   }
 
-  @Component
-  interface AssistedInjectComponentWithCustomAssistedKeys {
+  @ObjectGraph
+  interface AssistedInjectGraphWithCustomAssistedKeys {
     val factory: ExampleClass.Factory
 
     class ExampleClass
@@ -387,14 +387,14 @@ class ComponentProcessingTest {
 
   @Test
   fun `assisted injection with generic factory supertype`() {
-    val component = createComponent<AssistedInjectComponentWithGenericFactorySupertype>()
-    val factory = component.factory
+    val graph = createGraph<AssistedInjectGraphWithGenericFactorySupertype>()
+    val factory = graph.factory
     val exampleClass = factory.create(2)
     assertEquals(2, exampleClass.intValue)
   }
 
-  @Component
-  interface AssistedInjectComponentWithGenericFactorySupertype {
+  @ObjectGraph
+  interface AssistedInjectGraphWithGenericFactorySupertype {
     val factory: ExampleClass.Factory
 
     class ExampleClass @AssistedInject constructor(@Assisted val intValue: Int) {
@@ -411,14 +411,14 @@ class ComponentProcessingTest {
 
   @Test
   fun `assisted injection - diamond inheritance`() {
-    val component = createComponent<AssistedInjectComponentDiamondInheritance>()
-    val factory = component.factory
+    val graph = createGraph<AssistedInjectGraphDiamondInheritance>()
+    val factory = graph.factory
     val exampleClass = factory.create(2)
     assertEquals(2, exampleClass.intValue)
   }
 
-  @Component
-  interface AssistedInjectComponentDiamondInheritance {
+  @ObjectGraph
+  interface AssistedInjectGraphDiamondInheritance {
     val factory: ExampleClass.Factory
 
     class ExampleClass @AssistedInject constructor(@Assisted val intValue: Int) {
@@ -440,25 +440,25 @@ class ComponentProcessingTest {
   }
 
   @Test
-  fun `assisted injection - factories can be accessed via component dependencies`() {
-    val dependentComponent =
-      createComponent<ComponentUsingDepFromDependentComponent.DependentComponent>()
-    val component =
-      createComponentFactory<ComponentUsingDepFromDependentComponent.Factory>()
-        .create(dependentComponent)
-    val factory = component.factory
+  fun `assisted injection - factories can be accessed via graph dependencies`() {
+    val dependentGraph =
+      createGraph<GraphUsingDepFromDependentGraph.DependentGraph>()
+    val graph =
+      createGraphFactory<GraphUsingDepFromDependentGraph.Factory>()
+        .create(dependentGraph)
+    val factory = graph.factory
     val exampleClass = factory.create(2)
     assertEquals(2, exampleClass.intValue)
     assertEquals("Hello, world!", exampleClass.message)
   }
 
-  @Component
-  interface ComponentUsingDepFromDependentComponent {
+  @ObjectGraph
+  interface GraphUsingDepFromDependentGraph {
     val factory: ExampleClass.Factory
 
-    @Component.Factory
+    @ObjectGraph.Factory
     interface Factory {
-      fun create(dependentComponent: DependentComponent): ComponentUsingDepFromDependentComponent
+      fun create(dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
     }
 
     class ExampleClass
@@ -470,8 +470,8 @@ class ComponentProcessingTest {
       }
     }
 
-    @Component
-    interface DependentComponent {
+    @ObjectGraph
+    interface DependentGraph {
       val message: String
 
       @Provides private fun provideMessage(): String = "Hello, world!"
@@ -480,18 +480,18 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - simple int set with one value`() {
-    val component = createComponent<MultibindingComponentWithSingleIntSet>()
-    assertEquals(setOf(1), component.ints)
+    val graph = createGraph<MultibindingGraphWithSingleIntSet>()
+    assertEquals(setOf(1), graph.ints)
 
     // Each call yields a new set instance
-    assertNotSame(component.ints, component.ints)
+    assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
-  @Component
-  interface MultibindingComponentWithSingleIntSet {
+  @ObjectGraph
+  interface MultibindingGraphWithSingleIntSet {
     val ints: Set<Int>
 
     @Provides @IntoSet private fun provideInt1(): Int = 1
@@ -499,32 +499,32 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - simple empty int set`() {
-    val component = createComponent<MultibindingComponentWithEmptySet>()
-    assertTrue(component.ints.isEmpty())
+    val graph = createGraph<MultibindingGraphWithEmptySet>()
+    assertTrue(graph.ints.isEmpty())
 
     // Each call in this case is actually the same instance
-    assertSame(emptySet(), component.ints)
+    assertSame(emptySet(), graph.ints)
   }
 
-  @Component
-  interface MultibindingComponentWithEmptySet {
+  @ObjectGraph
+  interface MultibindingGraphWithEmptySet {
     @Multibinds val ints: Set<Int>
   }
 
   @Test
   fun `multibindings - int set with multiple values`() {
-    val component = createComponent<MultibindingComponentWithIntSet>()
-    assertEquals(setOf(1, 2), component.ints)
+    val graph = createGraph<MultibindingGraphWithIntSet>()
+    assertEquals(setOf(1, 2), graph.ints)
 
     // Each call yields a new set instance
-    assertNotSame(component.ints, component.ints)
+    assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
-  @Component
-  interface MultibindingComponentWithIntSet {
+  @ObjectGraph
+  interface MultibindingGraphWithIntSet {
     val ints: Set<Int>
 
     @Provides @IntoSet private fun provideInt1(): Int = 1
@@ -534,18 +534,18 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - int set with elements into set`() {
-    val component = createComponent<MultibindingComponentWithElementsIntoSet>()
-    assertEquals(setOf(1, 2, 3), component.ints)
+    val graph = createGraph<MultibindingGraphWithElementsIntoSet>()
+    assertEquals(setOf(1, 2, 3), graph.ints)
 
     // Each call yields a new set instance
-    assertNotSame(component.ints, component.ints)
+    assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
-  @Component
-  interface MultibindingComponentWithElementsIntoSet {
+  @ObjectGraph
+  interface MultibindingGraphWithElementsIntoSet {
     val ints: Set<Int>
 
     @Provides @ElementsIntoSet private fun provideInts(): Set<Int> = setOf(1, 2, 3)
@@ -553,19 +553,19 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - int set with scoped elements into set`() {
-    val component = createComponent<MultibindingComponentWithScopedElementsIntoSet>()
-    assertEquals(setOf(0), component.ints)
+    val graph = createGraph<MultibindingGraphWithScopedElementsIntoSet>()
+    assertEquals(setOf(0), graph.ints)
 
     // Subsequent calls have the same output
-    assertEquals(setOf(0), component.ints)
+    assertEquals(setOf(0), graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
   @Singleton
-  @Component
-  abstract class MultibindingComponentWithScopedElementsIntoSet {
+  @ObjectGraph
+  abstract class MultibindingGraphWithScopedElementsIntoSet {
     private var count = 0
 
     abstract val ints: Set<Int>
@@ -578,18 +578,18 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - int set with mix of scoped elements into set and individual providers`() {
-    val component =
-      createComponent<MultibindingComponentWithMixOfScopedElementsIntoSetAndIndividualProviders>()
-    assertEquals(setOf(2, 7, 10), component.ints)
-    assertEquals(setOf(4, 9, 10), component.ints)
+    val graph =
+      createGraph<MultibindingGraphWithMixOfScopedElementsIntoSetAndIndividualProviders>()
+    assertEquals(setOf(2, 7, 10), graph.ints)
+    assertEquals(setOf(4, 9, 10), graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> { (component.ints as MutableSet<Int>).clear() }
+    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
   }
 
   @Singleton
-  @Component
-  abstract class MultibindingComponentWithMixOfScopedElementsIntoSetAndIndividualProviders {
+  @ObjectGraph
+  abstract class MultibindingGraphWithMixOfScopedElementsIntoSetAndIndividualProviders {
     private var count = 10
     private var unscopedCount = 1
 
@@ -607,15 +607,15 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - set with scoped dependencies`() {
-    val component = createComponent<MultibindingComponentWithWithScopedSetDeps>()
-    assertEquals(setOf(0), component.ints)
-    assertEquals(setOf(0, 1), component.ints)
-    assertEquals(setOf(0, 2), component.ints)
+    val graph = createGraph<MultibindingGraphWithWithScopedSetDeps>()
+    assertEquals(setOf(0), graph.ints)
+    assertEquals(setOf(0, 1), graph.ints)
+    assertEquals(setOf(0, 2), graph.ints)
   }
 
   @Singleton
-  @Component
-  abstract class MultibindingComponentWithWithScopedSetDeps {
+  @ObjectGraph
+  abstract class MultibindingGraphWithWithScopedSetDeps {
     private var scopedCount = 0
     private var unscopedCount = 0
 
@@ -628,20 +628,20 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - simple int map with one value`() {
-    val component = createComponent<MultibindingComponentWithSingleIntMap>()
-    assertEquals(mapOf(1 to 1), component.ints)
+    val graph = createGraph<MultibindingGraphWithSingleIntMap>()
+    assertEquals(mapOf(1 to 1), graph.ints)
 
     // Each call yields a new map instance
-    assertNotSame(component.ints, component.ints)
+    assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
     assertFailsWith<UnsupportedOperationException> {
-      (component.ints as MutableMap<Int, Int>).clear()
+      (graph.ints as MutableMap<Int, Int>).clear()
     }
   }
 
-  @Component
-  interface MultibindingComponentWithSingleIntMap {
+  @ObjectGraph
+  interface MultibindingGraphWithSingleIntMap {
     val ints: Map<Int, Int>
 
     @Provides @IntoMap @IntKey(1) private fun provideInt1(): Int = 1
@@ -649,34 +649,34 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - simple empty int map`() {
-    val component = createComponent<MultibindingComponentWithEmptyMap>()
-    assertTrue(component.ints.isEmpty())
+    val graph = createGraph<MultibindingGraphWithEmptyMap>()
+    assertTrue(graph.ints.isEmpty())
 
     // Each call in this case is actually the same instance
-    assertSame(emptyMap(), component.ints)
+    assertSame(emptyMap(), graph.ints)
   }
 
-  @Component
-  interface MultibindingComponentWithEmptyMap {
+  @ObjectGraph
+  interface MultibindingGraphWithEmptyMap {
     @Multibinds val ints: Map<Int, Int>
   }
 
   @Test
   fun `multibindings - int map with multiple values`() {
-    val component = createComponent<MultibindingComponentWithIntMap>()
-    assertEquals(mapOf(1 to 1, 2 to 2), component.ints)
+    val graph = createGraph<MultibindingGraphWithIntMap>()
+    assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
 
     // Each call yields a new map instance
-    assertNotSame(component.ints, component.ints)
+    assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
     assertFailsWith<UnsupportedOperationException> {
-      (component.ints as MutableMap<Int, Int>).clear()
+      (graph.ints as MutableMap<Int, Int>).clear()
     }
   }
 
-  @Component
-  interface MultibindingComponentWithIntMap {
+  @ObjectGraph
+  interface MultibindingGraphWithIntMap {
     val ints: Map<Int, Int>
 
     @Provides @IntoMap @IntKey(1) private fun provideInt1(): Int = 1
@@ -686,15 +686,15 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - map with scoped dependencies`() {
-    val component = createComponent<MultibindingComponentWithWithScopedMapDeps>()
-    assertEquals(mapOf(1 to 0, 2 to 0), component.ints)
-    assertEquals(mapOf(1 to 0, 2 to 1), component.ints)
-    assertEquals(mapOf(1 to 0, 2 to 2), component.ints)
+    val graph = createGraph<MultibindingGraphWithWithScopedMapDeps>()
+    assertEquals(mapOf(1 to 0, 2 to 0), graph.ints)
+    assertEquals(mapOf(1 to 0, 2 to 1), graph.ints)
+    assertEquals(mapOf(1 to 0, 2 to 2), graph.ints)
   }
 
   @Singleton
-  @Component
-  abstract class MultibindingComponentWithWithScopedMapDeps {
+  @ObjectGraph
+  abstract class MultibindingGraphWithWithScopedMapDeps {
     private var scopedCount = 0
     private var unscopedCount = 0
 
@@ -707,20 +707,20 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - string map with multiple values`() {
-    val component = createComponent<MultibindingComponentWithStringMap>()
-    assertEquals(mapOf("1" to 1, "2" to 2), component.ints)
+    val graph = createGraph<MultibindingGraphWithStringMap>()
+    assertEquals(mapOf("1" to 1, "2" to 2), graph.ints)
 
     // Each call yields a new map instance
-    assertNotSame(component.ints, component.ints)
+    assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
     assertFailsWith<UnsupportedOperationException> {
-      (component.ints as MutableMap<String, Int>).clear()
+      (graph.ints as MutableMap<String, Int>).clear()
     }
   }
 
-  @Component
-  interface MultibindingComponentWithStringMap {
+  @ObjectGraph
+  interface MultibindingGraphWithStringMap {
     val ints: Map<String, Int>
 
     @Provides @IntoMap @StringKey("1") private fun provideInt1(): Int = 1
@@ -730,21 +730,21 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - kclass map with multiple values`() {
-    val component = createComponent<MultibindingComponentWithKClassMap>()
-    assertEquals<Map<KClass<*>, Int>>(mapOf(Int::class to 1, Float::class to 2), component.ints)
+    val graph = createGraph<MultibindingGraphWithKClassMap>()
+    assertEquals<Map<KClass<*>, Int>>(mapOf(Int::class to 1, Float::class to 2), graph.ints)
 
     // Each call yields a new map instance
-    assertNotSame(component.ints, component.ints)
+    assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
     assertFailsWith<UnsupportedOperationException> {
-      (component.ints as MutableMap<KClass<*>, Int>).clear()
+      (graph.ints as MutableMap<KClass<*>, Int>).clear()
     }
   }
 
   @Singleton
-  @Component
-  interface MultibindingComponentWithKClassMap {
+  @ObjectGraph
+  interface MultibindingGraphWithKClassMap {
     val ints: Map<KClass<*>, Int>
 
     @Provides @IntoMap @ClassKey(Int::class) private fun provideMapInt1() = 1
@@ -754,22 +754,22 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - misc other map key types`() {
-    val component = createComponent<MultibindingComponentWithMultipleOtherMapKeyTypes>()
-    assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), component.seasoningAmounts)
-    assertEquals(mapOf(1L to 1, 2L to 2), component.longs)
-    assertEquals(mapOf("1" to 1, "2" to 2), component.strings)
+    val graph = createGraph<MultibindingGraphWithMultipleOtherMapKeyTypes>()
+    assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), graph.seasoningAmounts)
+    assertEquals(mapOf(1L to 1, 2L to 2), graph.longs)
+    assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
     assertEquals(
       mapOf(
-        MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
-        MultibindingComponentWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to
+        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
+        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to
           2,
       ),
-      component.wrappedSeasoningAmounts,
+      graph.wrappedSeasoningAmounts,
     )
   }
 
-  @Component
-  interface MultibindingComponentWithMultipleOtherMapKeyTypes {
+  @ObjectGraph
+  interface MultibindingGraphWithMultipleOtherMapKeyTypes {
     val seasoningAmounts: Map<Seasoning, Int>
 
     @Provides @IntoMap @SeasoningKey(Seasoning.SPICY) private fun provideSpicySeasoning() = 1
@@ -807,7 +807,7 @@ class ComponentProcessingTest {
 
   @Test
   fun `multibindings - map with different scoped provider values`() {
-    val component = createComponent<MultibindingComponentWithWithScopedMapProviderDeps>()
+    val graph = createGraph<MultibindingGraphWithWithScopedMapProviderDeps>()
 
     var unscopedCount = 0
     fun validate(body: () -> Map<Int, Provider<Int>>) {
@@ -817,14 +817,14 @@ class ComponentProcessingTest {
       assertEquals(mapOf(1 to 0, 2 to unscopedCount++), body().mapValues { it.value() })
     }
 
-    validate(component::ints)
-    validate { component.providerInts() }
-    validate { component.lazyInts.value }
+    validate(graph::ints)
+    validate { graph.providerInts() }
+    validate { graph.lazyInts.value }
   }
 
   @Singleton
-  @Component
-  abstract class MultibindingComponentWithWithScopedMapProviderDeps {
+  @ObjectGraph
+  abstract class MultibindingGraphWithWithScopedMapProviderDeps {
     private var scopedCount = 0
     private var unscopedCount = 0
 
@@ -839,22 +839,22 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - provider - found dependency uses it`() {
-    val component = createComponent<MessageProviderWithCharSequenceProvider>()
-    assertEquals("Found", component.message)
+    val graph = createGraph<MessageProviderWithCharSequenceProvider>()
+    assertEquals("Found", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface MessageProviderWithCharSequenceProvider : BaseMessageProviderWithDefault {
     @Provides private fun provideCharSequence(): CharSequence = "Found"
   }
 
   @Test
   fun `optional dependencies - provider - absent dependency uses default`() {
-    val component = createComponent<MessageProviderWithoutCharSequenceProvider>()
-    assertEquals("Not found", component.message)
+    val graph = createGraph<MessageProviderWithoutCharSequenceProvider>()
+    assertEquals("Not found", graph.message)
   }
 
-  @Component interface MessageProviderWithoutCharSequenceProvider : BaseMessageProviderWithDefault
+  @ObjectGraph interface MessageProviderWithoutCharSequenceProvider : BaseMessageProviderWithDefault
 
   interface BaseMessageProviderWithDefault {
     val message: String
@@ -865,11 +865,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - provider - default values with back references work`() {
-    val component = createComponent<OptionalDependenciesProviderWithBackReferencingDefault>()
-    assertEquals("Not found: 3", component.message)
+    val graph = createGraph<OptionalDependenciesProviderWithBackReferencingDefault>()
+    assertEquals("Not found: 3", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface OptionalDependenciesProviderWithBackReferencingDefault {
     val message: String
 
@@ -884,11 +884,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - provider - default values with many back references`() {
-    val component = createComponent<OptionalDependenciesProviderWithManyDefaultBackReferences>()
-    assertEquals("7", component.message)
+    val graph = createGraph<OptionalDependenciesProviderWithManyDefaultBackReferences>()
+    assertEquals("7", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface OptionalDependenciesProviderWithManyDefaultBackReferences {
     val message: String
 
@@ -908,11 +908,11 @@ class ComponentProcessingTest {
   //  @Test
   //  fun `optional dependencies - provider - default values with complex functions with back
   // refs`() {
-  //    val component = createComponent<OptionalDependenciesProviderWithFunctionBackReferences>()
-  //    assertEquals("7", component.message)
+  //    val graph = createGraph<OptionalDependenciesProviderWithFunctionBackReferences>()
+  //    assertEquals("7", graph.message)
   //  }
   //
-  //  @Component
+  //  @Graph
   //  interface OptionalDependenciesProviderWithFunctionBackReferences {
   //    val message: String
   //
@@ -932,11 +932,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - provider - default values from private references`() {
-    val component = createComponent<OptionalDependenciesProviderWithPrivateReferences>()
-    assertEquals("Default message!", component.message)
+    val graph = createGraph<OptionalDependenciesProviderWithPrivateReferences>()
+    assertEquals("Default message!", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface OptionalDependenciesProviderWithPrivateReferences {
     val message: String
 
@@ -950,11 +950,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - provider - default values from instance references`() {
-    val component = createComponent<OptionalDependenciesProviderWithInstanceReferences>()
-    assertEquals("Default message!", component.defaultMessage)
+    val graph = createGraph<OptionalDependenciesProviderWithInstanceReferences>()
+    assertEquals("Default message!", graph.defaultMessage)
   }
 
-  @Component
+  @ObjectGraph
   interface OptionalDependenciesProviderWithInstanceReferences {
     val message: String
 
@@ -971,22 +971,22 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - class - found dependency uses it`() {
-    val component = createComponent<MessageClassWithCharSequenceProvider>()
-    assertEquals("Found", component.message)
+    val graph = createGraph<MessageClassWithCharSequenceProvider>()
+    assertEquals("Found", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface MessageClassWithCharSequenceProvider : BaseMessageClassWithDefault {
     @Provides private fun provideMessage(): String = "Found"
   }
 
   @Test
   fun `optional dependencies - class - absent dependency uses default`() {
-    val component = createComponent<MessageClassWithoutCharSequenceProvider>()
-    assertEquals("Not found", component.message)
+    val graph = createGraph<MessageClassWithoutCharSequenceProvider>()
+    assertEquals("Not found", graph.message)
   }
 
-  @Component interface MessageClassWithoutCharSequenceProvider : BaseMessageClassWithDefault
+  @ObjectGraph interface MessageClassWithoutCharSequenceProvider : BaseMessageClassWithDefault
 
   interface BaseMessageClassWithDefault {
     val messageClass: MessageClass
@@ -998,11 +998,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - class - default values with back references work`() {
-    val component = createComponent<OptionalDependenciesClassWithBackReferencingDefault>()
-    assertEquals("Not found: 3", component.message)
+    val graph = createGraph<OptionalDependenciesClassWithBackReferencingDefault>()
+    assertEquals("Not found: 3", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface OptionalDependenciesClassWithBackReferencingDefault {
     val messageClass: MessageClass
     val message: String
@@ -1015,11 +1015,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - class - default values with many back references`() {
-    val component = createComponent<OptionalDependenciesClassWithManyDefaultBackReferences>()
-    assertEquals("7", component.message)
+    val graph = createGraph<OptionalDependenciesClassWithManyDefaultBackReferences>()
+    assertEquals("7", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface OptionalDependenciesClassWithManyDefaultBackReferences {
     val messageClass: MessageClass
     val message: String
@@ -1033,11 +1033,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `optional dependencies - class - default values from private references`() {
-    val component = createComponent<OptionalDependenciesClassWithPrivateReferences>()
-    assertEquals("Default message!", component.message)
+    val graph = createGraph<OptionalDependenciesClassWithPrivateReferences>()
+    assertEquals("Default message!", graph.message)
   }
 
-  @Component
+  @ObjectGraph
   interface OptionalDependenciesClassWithPrivateReferences {
     val messageClass: MessageClass
     val message
@@ -1052,19 +1052,19 @@ class ComponentProcessingTest {
   }
 
   @Test
-  fun `components can use multiple scopes`() {
-    // This component supports multiple scopes and still respects their scoping requirementts
-    val component = createComponent<ComponentWithMultipleScopes>()
-    assertEquals(0, component.intValue)
-    assertEquals(0, component.intValue)
-    assertEquals(0L, component.longValue)
-    assertEquals(0L, component.longValue)
+  fun `graphs can use multiple scopes`() {
+    // This graph supports multiple scopes and still respects their scoping requirementts
+    val graph = createGraph<GraphWithMultipleScopes>()
+    assertEquals(0, graph.intValue)
+    assertEquals(0, graph.intValue)
+    assertEquals(0L, graph.longValue)
+    assertEquals(0L, graph.longValue)
   }
 
   @Singleton
   @SingleIn(AppScope::class)
-  @Component
-  abstract class ComponentWithMultipleScopes {
+  @ObjectGraph
+  abstract class GraphWithMultipleScopes {
     private var intCounter = 0
     private var longCounter = 0L
 
@@ -1078,12 +1078,12 @@ class ComponentProcessingTest {
 
   @Test
   fun `binds - properties`() {
-    val component = createComponent<ComponentWithBindsProperties>()
-    assertEquals(3, component.number)
+    val graph = createGraph<GraphWithBindsProperties>()
+    assertEquals(3, graph.number)
   }
 
-  @Component
-  interface ComponentWithBindsProperties {
+  @ObjectGraph
+  interface GraphWithBindsProperties {
     val number: Number
 
     @Provides
@@ -1095,12 +1095,12 @@ class ComponentProcessingTest {
 
   @Test
   fun `binds - functions`() {
-    val component = createComponent<ComponentWithBindsFunctions>()
-    assertEquals(3, component.number)
+    val graph = createGraph<GraphWithBindsFunctions>()
+    assertEquals(3, graph.number)
   }
 
-  @Component
-  interface ComponentWithBindsFunctions {
+  @ObjectGraph
+  interface GraphWithBindsFunctions {
     val number: Number
 
     @Provides private fun provideInt(): Int = 3
@@ -1110,11 +1110,11 @@ class ComponentProcessingTest {
 
   @Test
   fun `binds - mix of functions and property`() {
-    val component = createComponent<BindsWithMixOfFunctionsAndProperties>()
-    assertEquals(component.string, component.charSequence)
+    val graph = createGraph<BindsWithMixOfFunctionsAndProperties>()
+    assertEquals(graph.string, graph.charSequence)
   }
 
-  @Component
+  @ObjectGraph
   interface BindsWithMixOfFunctionsAndProperties {
     val string: String
     val charSequence: CharSequence
@@ -1144,14 +1144,14 @@ class ComponentProcessingTest {
 
   @Inject class Repository(val apiClient: ApiClient)
 
-  @Component
-  interface StringComponent {
+  @ObjectGraph
+  interface StringGraph {
 
     val string: String
 
-    @Component.Factory
+    @ObjectGraph.Factory
     fun interface Factory {
-      fun create(@BindsInstance string: String): StringComponent
+      fun create(@BindsInstance string: String): StringGraph
     }
   }
 }
