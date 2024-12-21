@@ -31,7 +31,7 @@ binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibilit
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.5.0" }
 dokka = { id = "org.jetbrains.dokka", version = "1.9.20" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.29.0" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.30.0" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.0.BETA4" }
 
 [libraries]
