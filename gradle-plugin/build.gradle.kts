@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
-import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -36,7 +36,10 @@ tasks.withType<JavaCompile>().configureEach {
 
 buildConfig {
   packageName("dev.zacsweers.lattice.gradle")
-  useKotlinOutput { internalVisibility = true }
+  useKotlinOutput {
+    topLevelConstants = true
+    internalVisibility = true
+  }
   buildConfigField("String", "VERSION", "\"${project.property("VERSION_NAME")}\"")
 }
 
@@ -59,9 +62,32 @@ gradlePlugin {
   }
 }
 
-tasks.named<DokkaTask>("dokkaHtml") {
-  outputDirectory.set(rootProject.file("../docs/0.x"))
-  dokkaSourceSets.configureEach { skipDeprecated.set(true) }
+dokka {
+  dokkaPublications.html {
+    outputDirectory.set(rootDir.resolve("docs/api/0.x"))
+    includes.from(project.layout.projectDirectory.file("README.md"))
+  }
+  basePublicationsDirectory.set(layout.buildDirectory.dir("dokkaDir"))
+  dokkaSourceSets.configureEach {
+    skipDeprecated.set(true)
+    documentedVisibilities.add(VisibilityModifier.Public)
+    externalDocumentationLinks.register("Gradle") {
+      packageListUrl("https://docs.gradle.org/${gradle.gradleVersion}/javadoc/element-list")
+      url("https://docs.gradle.org/${gradle.gradleVersion}/javadoc")
+    }
+    // KGP docs
+    externalDocumentationLinks.register("KGP") {
+      url("https://kotlinlang.org/api/kotlin-gradle-plugin/")
+    }
+    sourceLink {
+      localDirectory.set(layout.projectDirectory.dir("src"))
+      val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())
+      remoteUrl(
+        providers.gradleProperty("POM_SCM_URL").map { scmUrl -> "$scmUrl/tree/main/$relPath/src" }
+      )
+      remoteLineSuffix.set("#L")
+    }
+  }
 }
 
 kotlin { explicitApi() }

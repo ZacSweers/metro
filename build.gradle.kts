@@ -17,7 +17,8 @@ import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import kotlinx.validation.ExperimentalBCVApi
-import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.dokka.gradle.DokkaExtension
+import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
@@ -35,7 +36,7 @@ buildscript {
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
-  alias(libs.plugins.dokka) apply false
+  alias(libs.plugins.dokka)
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.mavenPublish) apply false
   alias(libs.plugins.atomicfu) apply false
@@ -51,6 +52,13 @@ apiValidation {
     // This is only really possible to run on macOS
     //    strictValidation = true
     enabled = true
+  }
+}
+
+dokka {
+  dokkaPublications.html {
+    outputDirectory.set(rootDir.resolve("docs/api/0.x"))
+    includes.from(project.layout.projectDirectory.file("README.md"))
   }
 }
 
@@ -146,9 +154,22 @@ subprojects {
   }
 
   pluginManager.withPlugin("org.jetbrains.dokka") {
-    tasks.named<DokkaTask>("dokkaHtml") {
-      outputDirectory.set(rootProject.file("docs/0.x"))
-      dokkaSourceSets.configureEach { skipDeprecated.set(true) }
+    configure<DokkaExtension> {
+      basePublicationsDirectory.set(layout.buildDirectory.dir("dokkaDir"))
+      dokkaSourceSets.configureEach {
+        skipDeprecated.set(true)
+        documentedVisibilities.add(VisibilityModifier.Public)
+        sourceLink {
+          localDirectory.set(layout.projectDirectory.dir("src"))
+          val relPath = rootProject.projectDir.toPath().relativize(projectDir.toPath())
+          remoteUrl(
+            providers.gradleProperty("POM_SCM_URL").map { scmUrl ->
+              "$scmUrl/tree/main/$relPath/src"
+            }
+          )
+          remoteLineSuffix.set("#L")
+        }
+      }
     }
   }
 
@@ -161,3 +182,5 @@ subprojects {
     }
   }
 }
+
+dependencies { dokka(project(":runtime")) }
