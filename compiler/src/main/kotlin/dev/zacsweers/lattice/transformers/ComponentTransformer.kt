@@ -267,7 +267,6 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
               ?.owner
               ?.isAnnotatedWithAny(symbols.providesAnnotations) == true
         }
-        // TODO validate
         .map { function -> ContextualTypeKey.from(this, function).typeKey to function }
         .toList()
 
@@ -275,7 +274,7 @@ internal class ComponentTransformer(context: LatticeTransformerContext) :
       componentDeclaration
         .allCallableMembers()
         .filter { function ->
-          // Abstract check is important. We leave alone any non-providers or overridden providers
+          // Abstract check is important. We leave alone any non-providers
           function.modality == Modality.ABSTRACT &&
             function.valueParameters.isEmpty() &&
             function.body == null &&

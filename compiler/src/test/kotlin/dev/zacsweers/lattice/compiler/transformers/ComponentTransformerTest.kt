@@ -555,8 +555,7 @@ class ComponentTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `providers overridden from supertypes take precedence`() {
-    // Ensure that providers overridden from supertypes take precedence
+  fun `providers overridden from supertypes are errors`() {
     val result =
       compile(
         kotlin(
@@ -585,13 +584,46 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent(),
-        )
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    val component =
-      result.ExampleComponent.generatedLatticeComponentClass().createComponentWithNoArgs()
-    assertThat(component.callComponentAccessorProperty<String>("value"))
-      .isEqualTo("Hello, overridden world!")
+    result.assertContains(
+      "ExampleComponent.kt:14:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@Component.excludes` instead."
+    )
+  }
+
+  @Test
+  fun `overrides annotated with provides from non-provides supertypes are ok`() {
+      compile(
+        kotlin(
+          "ExampleComponent.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.Component
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.annotations.Singleton
+
+            @Component
+            interface ExampleComponent : TextProvider {
+
+              val value: String
+
+              @Provides
+              override fun provideValue(): String = "Hello, overridden world!"
+            }
+
+            interface TextProvider {
+              fun provideValue(): String = "Hello, world!"
+            }
+
+          """
+            .trimIndent(),
+        ),
+      )
   }
 
   @Test

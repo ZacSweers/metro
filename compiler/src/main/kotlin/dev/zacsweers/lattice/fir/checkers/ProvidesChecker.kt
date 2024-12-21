@@ -25,9 +25,11 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.getDirectOverriddenSymbols
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
@@ -38,6 +40,7 @@ import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 //  What about future Kotlin versions where you can have different get signatures
 //  Make visibility error configurable? ERROR/WARN/NONE
 internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
+
   override fun check(
     declaration: FirCallableDeclaration,
     context: CheckerContext,
@@ -46,6 +49,19 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
     val source = declaration.source ?: return
     val session = context.session
     val latticeClassIds = session.latticeClassIds
+
+    // Check if this is overridding a provider parent here and error if so. Otherwise people could
+    // sneak these by!
+    // If we ever wanted to allow providers in the future, this is the check to remove
+    if (declaration.isOverride) {
+      val overridesAProvider =
+        declaration.getDirectOverriddenSymbols(context).any {
+          it.isAnnotatedWithAny(session, latticeClassIds.providesAnnotations)
+        }
+      if (overridesAProvider) {
+        reporter.reportOn(source, FirLatticeErrors.PROVIDER_OVERRIDES, context)
+      }
+    }
 
     if (!declaration.isAnnotatedWithAny(session, latticeClassIds.providesAnnotations)) {
       return

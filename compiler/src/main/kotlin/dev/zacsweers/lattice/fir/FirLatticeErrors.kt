@@ -121,6 +121,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
 
   // Provides errors
   val PROVIDES_SHOULD_BE_PRIVATE by warning0(VISIBILITY_MODIFIER)
+  val PROVIDER_OVERRIDES by error0(MODALITY_MODIFIER)
   val PROVIDES_ERROR by error1<String>(NAME_IDENTIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
@@ -197,6 +198,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(ASSISTED_INJECTION, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
       put(PROVIDES_SHOULD_BE_PRIVATE, "`@Provides` declarations should be private.")
+      put(PROVIDER_OVERRIDES, "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@Component.excludes` instead.")
     }
 
   init {
