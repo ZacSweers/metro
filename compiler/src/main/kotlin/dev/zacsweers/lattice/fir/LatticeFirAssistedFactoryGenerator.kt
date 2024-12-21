@@ -28,10 +28,8 @@ import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
-import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.declarations.origin
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -41,7 +39,6 @@ import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.moduleData
-import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -116,7 +113,7 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
                 param
               }
           val createFunction =
-            generateCreateFunction2(assistedParams, targetClass, factoryClass, callableId)
+            generateCreateFunction(assistedParams, targetClass, factoryClass, callableId)
           return listOf(createFunction.symbol)
         }
       }
@@ -124,31 +121,8 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
     return super.generateFunctions(callableId, context)
   }
 
-  // TODO try a new approach with buildSimpleFunction in order
-  private fun FirExtension.generateCreateFunction(
-    assistedParams: List<Pair<FirValueParameterSymbol, FirAnnotation>>,
-    targetClass: FirClassLikeSymbol<*>,
-    factoryClass: FirClassSymbol<*>,
-    callableId: CallableId,
-  ): FirSimpleFunction {
-    return createMemberFunction(
-      factoryClass,
-      LatticeKey,
-      callableId.callableName,
-      returnType = targetClass.constructType(),
-    ) {
-      this.modality = Modality.ABSTRACT
-
-      for ((param, assistedAnnotation) in assistedParams) {
-        val identifier = assistedAnnotation.getStringArgument(LatticeSymbols.Names.Value, session)
-        // Simple value parameters don't support arguments
-        valueParameter(param.name, param.resolvedReturnTypeRef.coneType, key = LatticeKey)
-      }
-    }
-  }
-
   @OptIn(SymbolInternals::class)
-  private fun FirExtension.generateCreateFunction2(
+  private fun FirExtension.generateCreateFunction(
     assistedParams: List<FirValueParameterSymbol>,
     targetClass: FirClassLikeSymbol<*>,
     factoryClass: FirClassSymbol<*>,
