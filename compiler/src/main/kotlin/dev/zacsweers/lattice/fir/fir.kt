@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
-import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
@@ -56,9 +55,7 @@ import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.name.ClassId
 
 internal object LatticeKey : GeneratedDeclarationKey() {
-  override fun toString(): String {
-    return "LatticeKey"
-  }
+  override fun toString() = "LatticeKey"
 }
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
@@ -72,7 +69,7 @@ internal fun FirBasedSymbol<*>.annotationsIn(
   session: FirSession,
   names: Set<ClassId>,
 ): Sequence<FirAnnotation> {
-  return annotations.annotationsIn(session, names)
+  return resolvedAnnotationsWithClassIds.annotationsIn(session, names)
 }
 
 internal fun FirAnnotationContainer.annotationsIn(
@@ -86,16 +83,14 @@ internal fun List<FirAnnotation>.annotationsIn(
   session: FirSession,
   names: Set<ClassId>,
 ): Sequence<FirAnnotation> {
-  return asSequence().filter {
-    it.toAnnotationClassIdSafe(session) in names
-  }
+  return asSequence().filter { it.toAnnotationClassIdSafe(session) in names }
 }
 
 internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): Boolean {
-  return annotations.isAnnotatedWithAny(session, names)
+  return resolvedAnnotationsWithClassIds.isAnnotatedWithAny(session, names)
 }
 
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
@@ -240,23 +235,6 @@ internal fun FirAnnotationCall.computeAnnotationHash(): Int {
     resolvedType.classId,
     arguments.map { (it as FirLiteralExpression).value }.toTypedArray().contentDeepHashCode(),
   )
-}
-
-internal fun FirClass.findInjectConstructorWithNoValidation(
-  session: FirSession,
-  latticeClassIds: LatticeClassIds,
-): FirConstructorSymbol? {
-  return buildSet {
-      if (isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)) {
-        primaryConstructorIfAny(session)?.let(::add)
-      }
-      addAll(
-        constructors(session).filter {
-          it.annotations.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)
-        }
-      )
-    }
-    .singleOrNull()
 }
 
 internal inline fun FirClass.findInjectConstructor(
