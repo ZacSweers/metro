@@ -246,7 +246,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       }
     }
 
-    for ((key, binding) in bindings) {
+    for ((_, binding) in bindings) {
       // TODO need type metadata here to allow cycle breaking
       dfs(binding)
     }
