@@ -595,10 +595,10 @@ class ComponentTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun `overrides annotated with provides from non-provides supertypes are ok`() {
-      compile(
-        kotlin(
-          "ExampleComponent.kt",
-          """
+    compile(
+      kotlin(
+        "ExampleComponent.kt",
+        """
             package test
 
             import dev.zacsweers.lattice.annotations.Component
@@ -621,9 +621,9 @@ class ComponentTransformerTest : LatticeCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
+          .trimIndent(),
       )
+    )
   }
 
   @Test

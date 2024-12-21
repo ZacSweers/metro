@@ -198,7 +198,10 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(ASSISTED_INJECTION, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
       put(PROVIDES_SHOULD_BE_PRIVATE, "`@Provides` declarations should be private.")
-      put(PROVIDER_OVERRIDES, "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@Component.excludes` instead.")
+      put(
+        PROVIDER_OVERRIDES,
+        "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@Component.excludes` instead.",
+      )
     }
 
   init {
