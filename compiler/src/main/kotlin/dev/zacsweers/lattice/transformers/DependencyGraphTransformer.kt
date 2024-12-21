@@ -305,7 +305,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         .map {
           val type = it.typeKey.type.rawType()
           bindingStack.withEntry(
-            BindingStackEntry.requestedAt(graphTypeKey, creator!!.createFunction)
+            BindingStack.Entry.requestedAt(graphTypeKey, creator!!.createFunction)
           ) {
             getOrComputeDependencyGraphNode(type, bindingStack)
           }
@@ -796,7 +796,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
               val binding = bindingGraph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
-              bindingStack.push(BindingStackEntry.requestedAt(key, function))
+              bindingStack.push(BindingStack.Entry.requestedAt(key, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   if (binding is Binding.Multibinding) {
@@ -881,7 +881,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     node.exposedTypes.forEach { (accessor, contextualTypeKey) ->
       findAndProcessBinding(
         contextKey = contextualTypeKey,
-        stackEntry = BindingStackEntry.requestedAt(contextualTypeKey.typeKey, accessor),
+        stackEntry = BindingStack.Entry.requestedAt(contextualTypeKey.typeKey, accessor),
         node = node,
         graph = graph,
         bindingStack = bindingStack,
@@ -895,7 +895,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
   private fun findAndProcessBinding(
     contextKey: ContextualTypeKey,
-    stackEntry: BindingStackEntry,
+    stackEntry: BindingStack.Entry,
     node: DependencyGraphNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
@@ -959,7 +959,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         // Error if there are mismatched scopes
         val declarationToReport = node.sourceGraph
         bindingStack.push(
-          BindingStackEntry.simpleTypeRef(key, usage = "(scoped to '$bindingScope')")
+          BindingStack.Entry.simpleTypeRef(key, usage = "(scoped to '$bindingScope')")
         )
         val message = buildString {
           append("[Lattice/IncompatiblyScopedBindings] ")
@@ -1115,17 +1115,17 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             when (binding) {
               is Binding.ConstructorInjected -> {
                 val constructor = binding.injectedConstructor
-                BindingStackEntry.injectedAt(typeKey, constructor, constructor.valueParameters[i])
+                BindingStack.Entry.injectedAt(typeKey, constructor, constructor.valueParameters[i])
               }
               is Binding.Provided -> {
-                BindingStackEntry.injectedAt(typeKey, function, function.valueParameters[i])
+                BindingStack.Entry.injectedAt(typeKey, function, function.valueParameters[i])
               }
               is Binding.Assisted -> {
-                BindingStackEntry.injectedAt(typeKey, function)
+                BindingStack.Entry.injectedAt(typeKey, function)
               }
               is Binding.Multibinding -> {
                 // TODO can't be right?
-                BindingStackEntry.injectedAt(typeKey, function)
+                BindingStack.Entry.injectedAt(typeKey, function)
               }
               is Binding.Absent,
               is Binding.BoundInstance,

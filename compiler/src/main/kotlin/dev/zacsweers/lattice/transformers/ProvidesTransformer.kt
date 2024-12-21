@@ -237,7 +237,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           symbols = symbols,
           isGraphInstance = true,
           // TODO is this right/ever going to happen?
-          bindingStackEntry = BindingStackEntry.simpleTypeRef(contextualTypeKey.typeKey),
+          bindingStackEntry = BindingStack.Entry.simpleTypeRef(contextualTypeKey.typeKey),
           isBindsInstance = false,
           hasDefault = false,
           location = null,
