@@ -39,6 +39,8 @@ internal interface BindingStack {
 
   fun entryFor(key: TypeKey): Entry?
 
+  fun entriesSince(key: TypeKey): List<Entry>
+
   class Entry(
     val contextKey: ContextualTypeKey,
     val usage: String?,
@@ -141,6 +143,10 @@ internal interface BindingStack {
         override fun entryFor(key: TypeKey): Entry? {
           return null
         }
+
+        override fun entriesSince(key: TypeKey): List<Entry> {
+          return emptyList()
+        }
       }
 
     operator fun invoke(graph: IrClass): BindingStack = BindingStackImpl(graph)
@@ -196,5 +202,11 @@ internal class BindingStackImpl(override val graph: IrClass) : BindingStack {
     } else {
       null
     }
+  }
+
+  override fun entriesSince(key: TypeKey): List<BindingStack.Entry> {
+    val index = stack.indexOfFirst { it.typeKey == key }
+    if (index == -1) return emptyList()
+    return stack.slice(index until stack.size)
   }
 }

@@ -192,20 +192,21 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
 
     fun dfs(binding: Binding) {
       val key = binding.typeKey
-      val existingEntry = stack.entryFor(key)
-      if (existingEntry != null) {
-        // TODO check if there's a lazy in the stack, if so we can break the cycle
-        //  A -> B -> Lazy<A> is valid
-        //  A -> B -> A is not
+      val entriesInCycle = stack.entriesSince(key)
+      if (entriesInCycle.isNotEmpty()) {
+        // Check if there's a deferrable type in the stack, if so we can break the cycle
+        // A -> B -> Lazy<A> is valid
+        // A -> B -> A is not
+        if (entriesInCycle.none { it.contextKey.isDeferrable }) {
+          // Pull the root entry from the stack and push it back to the top to highlight the cycle
+          stack.push(entriesInCycle[0])
 
-        // Pull the root entry from the stack and push it back to the top to highlight the cycle
-        stack.push(existingEntry)
-
-        val message = buildString {
-          appendLine("[Lattice/DependencyCycle] Found a dependency cycle:")
-          appendBindingStack(stack, ellipse = true)
+          val message = buildString {
+            appendLine("[Lattice/DependencyCycle] Found a dependency cycle:")
+            appendBindingStack(stack, ellipse = true)
+          }
+          onError(message)
         }
-        onError(message)
       }
 
       if (key in visited) return
