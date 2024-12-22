@@ -232,6 +232,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
 
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
+    val graphContextKey = ContextualTypeKey(graphTypeKey, false, false, false, false)
     if (bindingStack.entryFor(graphTypeKey) != null) {
       // TODO dagger doesn't appear to error for this case to model off of
       val message = buildString {
@@ -320,7 +321,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         .map {
           val type = it.typeKey.type.rawType()
           bindingStack.withEntry(
-            BindingStack.Entry.requestedAt(graphTypeKey, creator!!.createFunction)
+            BindingStack.Entry.requestedAt(graphContextKey, creator!!.createFunction)
           ) {
             getOrComputeDependencyGraphNode(type, bindingStack)
           }
@@ -793,7 +794,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               .thenComparing { it.value.typeKey }
           )
           .forEach { (function, contextualTypeKey) ->
-            val key = contextualTypeKey.typeKey
             val property =
               function.correspondingPropertySymbol?.owner?.let { property ->
                 addProperty { name = property.name }
@@ -811,7 +811,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
               val binding = bindingGraph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
-              bindingStack.push(BindingStack.Entry.requestedAt(key, function))
+              bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function))
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   if (binding is Binding.Multibinding) {
@@ -896,7 +896,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     node.exposedTypes.forEach { (accessor, contextualTypeKey) ->
       findAndProcessBinding(
         contextKey = contextualTypeKey,
-        stackEntry = BindingStack.Entry.requestedAt(contextualTypeKey.typeKey, accessor),
+        stackEntry = BindingStack.Entry.requestedAt(contextualTypeKey, accessor),
         node = node,
         graph = graph,
         bindingStack = bindingStack,
@@ -974,7 +974,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         // Error if there are mismatched scopes
         val declarationToReport = node.sourceGraph
         bindingStack.push(
-          BindingStack.Entry.simpleTypeRef(key, usage = "(scoped to '$bindingScope')")
+          BindingStack.Entry.simpleTypeRef(binding.contextualTypeKey, usage = "(scoped to '$bindingScope')")
         )
         val message = buildString {
           append("[Lattice/IncompatiblyScopedBindings] ")
@@ -1130,17 +1130,17 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             when (binding) {
               is Binding.ConstructorInjected -> {
                 val constructor = binding.injectedConstructor
-                BindingStack.Entry.injectedAt(typeKey, constructor, constructor.valueParameters[i])
+                BindingStack.Entry.injectedAt(contextualTypeKey, constructor, constructor.valueParameters[i])
               }
               is Binding.Provided -> {
-                BindingStack.Entry.injectedAt(typeKey, function, function.valueParameters[i])
+                BindingStack.Entry.injectedAt(contextualTypeKey, function, function.valueParameters[i])
               }
               is Binding.Assisted -> {
-                BindingStack.Entry.injectedAt(typeKey, function)
+                BindingStack.Entry.injectedAt(contextualTypeKey, function)
               }
               is Binding.Multibinding -> {
                 // TODO can't be right?
-                BindingStack.Entry.injectedAt(typeKey, function)
+                BindingStack.Entry.injectedAt(contextualTypeKey, function)
               }
               is Binding.Absent,
               is Binding.BoundInstance,

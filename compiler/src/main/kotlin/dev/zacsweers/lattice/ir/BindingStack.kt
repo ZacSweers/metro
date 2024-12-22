@@ -40,12 +40,14 @@ internal interface BindingStack {
   fun entryFor(key: TypeKey): Entry?
 
   class Entry(
-    val typeKey: TypeKey,
+    val contextKey: ContextualTypeKey,
     val usage: String?,
     val graphContext: String?,
     val declaration: IrDeclaration?,
-    val displayTypeKey: TypeKey = typeKey,
+    val displayTypeKey: TypeKey = contextKey.typeKey,
   ) {
+    val typeKey: TypeKey get() = contextKey.typeKey
+
     fun render(graph: FqName): String {
       return buildString {
         append(displayTypeKey)
@@ -69,7 +71,7 @@ internal interface BindingStack {
              [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.ExampleGraph.example1()
        */
       @OptIn(UnsafeDuringIrConstructionAPI::class)
-      fun requestedAt(typeKey: TypeKey, accessor: IrSimpleFunction): Entry {
+      fun requestedAt(contextKey: ContextualTypeKey, accessor: IrSimpleFunction): Entry {
         val targetFqName = accessor.parentAsClass.kotlinFqName
         val declaration: IrDeclarationWithName =
           accessor.correspondingPropertySymbol?.owner ?: accessor
@@ -80,7 +82,7 @@ internal interface BindingStack {
             declaration.name.asString() + "()"
           }
         return Entry(
-          typeKey = typeKey,
+          contextKey = contextKey,
           usage = "is requested at",
           graphContext = "$targetFqName.$accessorString",
           declaration = declaration,
@@ -90,26 +92,26 @@ internal interface BindingStack {
       /*
       com.slack.circuit.star.Example1
        */
-      fun simpleTypeRef(typeKey: TypeKey, usage: String? = null): Entry =
-        Entry(typeKey = typeKey, usage = usage, graphContext = null, declaration = null)
+      fun simpleTypeRef(contextKey: ContextualTypeKey, usage: String? = null): Entry =
+        Entry(contextKey = contextKey, usage = usage, graphContext = null, declaration = null)
 
       /*
       java.lang.CharSequence is injected at
             [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.Example1(…, text2)
       */
       fun injectedAt(
-        typeKey: TypeKey,
+        contextKey: ContextualTypeKey,
         function: IrFunction,
         param: IrValueParameter? = null,
         declaration: IrDeclaration? = param,
-        displayTypeKey: TypeKey = typeKey,
+        displayTypeKey: TypeKey = contextKey.typeKey,
       ): Entry {
         val targetFqName = function.parent.kotlinFqName
         val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
         val end = if (param == null) "()" else "(…, ${param.name.asString()})"
         val context = "$targetFqName$middle$end"
         return Entry(
-          typeKey = typeKey,
+          contextKey = contextKey,
           displayTypeKey = displayTypeKey,
           usage = "is injected at",
           graphContext = context,

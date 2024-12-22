@@ -139,7 +139,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       } else if (with(context) { irClass.isAnnotatedWithAny(symbols.assistedFactoryAnnotations) }) {
         val function = irClass.singleAbstractFunction(context)
         val targetContextualTypeKey = ContextualTypeKey.from(context, function)
-        val bindingStackEntry = BindingStack.Entry.injectedAt(key, function)
+        val bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, function)
         val targetBinding =
           bindingStack.withEntry(bindingStackEntry) {
             getOrCreateBinding(targetContextualTypeKey, bindingStack)
@@ -218,7 +218,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
           when (binding) {
             is Binding.ConstructorInjected -> {
               BindingStack.Entry.injectedAt(
-                key,
+                binding.contextualTypeKey,
                 binding.injectedConstructor,
                 binding.parameterFor(dep),
                 displayTypeKey = dep,
@@ -226,14 +226,14 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
             }
             is Binding.Provided -> {
               BindingStack.Entry.injectedAt(
-                key,
+                binding.contextualTypeKey,
                 binding.providerFunction,
                 binding.parameterFor(dep),
                 displayTypeKey = dep,
               )
             }
             is Binding.Assisted -> {
-              BindingStack.Entry.injectedAt(key, binding.function, displayTypeKey = dep)
+              BindingStack.Entry.injectedAt(binding.contextualTypeKey, binding.function, displayTypeKey = dep)
             }
             is Binding.Multibinding -> {
               TODO()
@@ -273,7 +273,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
       .mapNotNull { param ->
         val paramKey = ContextualTypeKey.from(context, param)
         val binding =
-          bindingStack.withEntry(BindingStack.Entry.injectedAt(paramKey.typeKey, function, param)) {
+          bindingStack.withEntry(BindingStack.Entry.injectedAt(paramKey, function, param)) {
             // This recursive call will create bindings for injectable types as needed
             getOrCreateBinding(paramKey, bindingStack)
           }

@@ -295,7 +295,7 @@ internal fun IrValueParameter.toConstructorParameter(
     typeParameterRemapper?.invoke(this@toConstructorParameter.type)
       ?: this@toConstructorParameter.type
 
-  val typeMetadata =
+  val contextKey =
     declaredType.asContextualTypeKey(
       context,
       with(context) { qualifierAnnotation() },
@@ -315,14 +315,14 @@ internal fun IrValueParameter.toConstructorParameter(
       kind = kind,
       name = uniqueName,
       originalName = name,
-      contextualTypeKey = typeMetadata,
-      providerType = typeMetadata.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
-      lazyType = typeMetadata.typeKey.type.wrapInLazy(context.symbols),
+      contextualTypeKey = contextKey,
+      providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
+      lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
       isAssisted = assistedAnnotation != null,
       assistedIdentifier = assistedIdentifier,
       symbols = context.symbols,
       isGraphInstance = false,
-      bindingStackEntry = BindingStack.Entry.injectedAt(typeMetadata.typeKey, ownerFunction, this),
+      bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
       isBindsInstance = isBindsInstance,
       hasDefault = defaultValue != null,
       location = locationOrNull(),
