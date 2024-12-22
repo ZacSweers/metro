@@ -42,7 +42,7 @@ internal interface BindingStack {
   class Entry(
     val typeKey: TypeKey,
     val usage: String?,
-    val context: String?,
+    val graphContext: String?,
     val declaration: IrDeclaration?,
     val displayTypeKey: TypeKey = typeKey,
   ) {
@@ -53,7 +53,7 @@ internal interface BindingStack {
           append(' ')
           append(it)
         }
-        context?.let {
+        graphContext?.let {
           appendLine()
           append("    ")
           append("[${graph.asString()}]")
@@ -82,7 +82,7 @@ internal interface BindingStack {
         return Entry(
           typeKey = typeKey,
           usage = "is requested at",
-          context = "$targetFqName.$accessorString",
+          graphContext = "$targetFqName.$accessorString",
           declaration = declaration,
         )
       }
@@ -91,7 +91,7 @@ internal interface BindingStack {
       com.slack.circuit.star.Example1
        */
       fun simpleTypeRef(typeKey: TypeKey, usage: String? = null): Entry =
-        Entry(typeKey = typeKey, usage = usage, context = null, declaration = null)
+        Entry(typeKey = typeKey, usage = usage, graphContext = null, declaration = null)
 
       /*
       java.lang.CharSequence is injected at
@@ -112,7 +112,7 @@ internal interface BindingStack {
           typeKey = typeKey,
           displayTypeKey = displayTypeKey,
           usage = "is injected at",
-          context = context,
+          graphContext = context,
           declaration = declaration,
         )
       }
