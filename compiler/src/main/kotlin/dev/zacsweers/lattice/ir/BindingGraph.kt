@@ -297,7 +297,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         .sortedBy { it.key.toString() }
         .forEach { (typeKey, binding) ->
           appendLine("─".repeat(50))
-          appendLine("Type: ${typeKey}")
+          appendLine("Type: $typeKey")
           appendLine("├─ Binding: ${binding::class.simpleName}")
           appendLine("├─ Contextual Type: ${binding.contextualTypeKey}")
 
