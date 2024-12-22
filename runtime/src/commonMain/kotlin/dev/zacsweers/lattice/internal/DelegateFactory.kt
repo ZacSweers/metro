@@ -36,9 +36,9 @@ public class DelegateFactory<T : Any> : Factory<T> {
 
   public companion object {
     /**
-     * Sets `delegateFactory`'s delegate provider to `delegate`.
+     * Sets [delegateFactory]'s delegate provider to [delegate].
      *
-     * `delegateFactory` must be an instance of [DelegateFactory], otherwise this method will throw
+     * [delegateFactory] must be an instance of [DelegateFactory], otherwise this method will throw
      * a [ClassCastException].
      */
     public fun <T : Any> setDelegate(delegateFactory: Provider<T>, delegate: Provider<T>) {
