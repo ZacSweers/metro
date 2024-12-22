@@ -34,6 +34,8 @@ internal data class ContextualTypeKey(
   val hasDefault: Boolean,
 ) {
 
+  val isDeferrable get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
+
   val requiresProviderInstance: Boolean =
     isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
 
