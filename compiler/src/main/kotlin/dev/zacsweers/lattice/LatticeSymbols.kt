@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -174,6 +175,24 @@ internal class LatticeSymbols(
 
   val providerInvoke: IrSimpleFunctionSymbol by lazy {
     latticeProvider.getSimpleFunction("invoke")!!
+  }
+
+  val latticeDelegateFactory: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("DelegateFactory"))
+    )!!
+  }
+
+  val latticeDelegateFactoryConstructor: IrConstructorSymbol by lazy {
+    latticeDelegateFactory.constructors.single()
+  }
+
+  val latticeDelegateFactoryCompanion: IrClassSymbol by lazy {
+    latticeDelegateFactory.owner.companionObject()!!.symbol
+  }
+
+  val latticeDelegateFactorySetDelegate: IrFunctionSymbol by lazy {
+    latticeDelegateFactoryCompanion.getSimpleFunction("setDelegate")!!
   }
 
   val latticeFactory: IrClassSymbol by lazy {
