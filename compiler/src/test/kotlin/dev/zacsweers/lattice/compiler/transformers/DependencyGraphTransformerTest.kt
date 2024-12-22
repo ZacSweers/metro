@@ -28,6 +28,7 @@ import dev.zacsweers.lattice.compiler.createGraphViaFactory
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import java.util.concurrent.Callable
+import org.junit.Ignore
 import org.junit.Test
 
 class DependencyGraphTransformerTest : LatticeCompilerTest() {
@@ -1009,6 +1010,61 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
               ...
+        """
+          .trimIndent()
+      )
+  }
+
+  // TODO lazy, provideroflazy, with providers instead of classes, port dagger test, scoped
+  @Ignore("WIP")
+  @Test
+  fun `cycles can be broken - provider`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleGraph.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.Provider
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Singleton
+            import java.util.concurrent.Callable
+
+            @DependencyGraph
+            @Component
+            interface ExampleGraph {
+              val foo: Foo
+            }
+            
+            @Singleton
+            @Inject
+            class Foo(val barProvider: Provider<Bar>): Callable<String> {
+              override fun call(message: String) {
+                val bar = barProvider()
+                check(bar.foo === this)
+                bar.print(message)
+              }
+            }
+            
+            @Inject
+            class Bar(val foo: Foo): Callable<String> {
+              override fun call(message: String) {
+                println(message)
+              }
+            }
+
+          """
+            .trimIndent(),
+        ),
+      )
+
+    assertThat(result.messages)
+      .contains(
+        """
+          TODO print from methods called
         """
           .trimIndent()
       )
