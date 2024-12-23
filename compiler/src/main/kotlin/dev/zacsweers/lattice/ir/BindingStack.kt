@@ -67,6 +67,8 @@ internal interface BindingStack {
       }
     }
 
+    override fun toString(): String = render(FqName("..."))
+
     companion object {
       /*
       com.slack.circuit.star.Example1 is requested at
@@ -209,4 +211,6 @@ internal class BindingStackImpl(override val graph: IrClass) : BindingStack {
     if (index == -1) return emptyList()
     return stack.slice(index until stack.size)
   }
+
+  override fun toString() = buildString { appendBindingStack(this@BindingStackImpl) }
 }
