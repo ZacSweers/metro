@@ -947,7 +947,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           ExampleGraph.kt:7:1 [Lattice/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
           Cycle:
               Int <--> Int
-          
+
           Trace:
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph.provideInt(…, value)
@@ -1004,7 +1004,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           ExampleGraph.kt:6:1 [Lattice/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
           Cycle:
               String --> Int --> Double --> String
-          
+
           Trace:
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph.provideString(…, int)

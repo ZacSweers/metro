@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Zac Sweers
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package dev.zacsweers.lattice.test.integration
 
 import dev.zacsweers.lattice.Provider
@@ -15,7 +30,8 @@ class CycleBreakingTests {
   @Test
   fun `class injections cycle can be broken with provider`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithClassesBrokenWithProvider.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithClassesBrokenWithProvider.Factory>().create(message)
 
     val foo = graph.foo
     assertEquals(message, foo.call())
@@ -48,7 +64,9 @@ class CycleBreakingTests {
   @Test
   fun `class injections cycle can be broken with provider - bar exposed first`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithClassesBrokenWithProviderBarExposed.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithClassesBrokenWithProviderBarExposed.Factory>()
+        .create(message)
 
     val bar = graph.bar
     assertEquals(message, bar.call())
@@ -67,7 +85,9 @@ class CycleBreakingTests {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(@BindsInstance message: String): CyclicalGraphWithClassesBrokenWithProviderBarExposed
+      fun create(
+        @BindsInstance message: String
+      ): CyclicalGraphWithClassesBrokenWithProviderBarExposed
     }
 
     @Inject
@@ -124,7 +144,8 @@ class CycleBreakingTests {
   @Test
   fun `class injections cycle can be broken with provider of lazy`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithClassesBrokenWithProviderOfLazy.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithClassesBrokenWithProviderOfLazy.Factory>().create(message)
 
     val foo = graph.foo
     // Multiple calls to the underlying provider return new but different lazy instances
@@ -163,7 +184,8 @@ class CycleBreakingTests {
   @Test
   fun `scoped class injections cycle can be broken with provider`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithClassesBrokenWithProviderScoped.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithClassesBrokenWithProviderScoped.Factory>().create(message)
 
     val foo = graph.foo
     assertEquals(message, foo.call())
@@ -201,10 +223,12 @@ class CycleBreakingTests {
       override fun call() = message
     }
   }
+
   @Test
   fun `provides injections cycle can be broken with provider`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithProvidesBrokenWithProvider.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithProvidesBrokenWithProvider.Factory>().create(message)
 
     val foo = graph.foo
     assertEquals(message, foo.call())
@@ -223,11 +247,9 @@ class CycleBreakingTests {
       fun create(@BindsInstance message: String): CyclicalGraphWithProvidesBrokenWithProvider
     }
 
-    @Provides
-    private fun provideFoo(barProvider: Provider<Bar>): Foo = Foo(barProvider)
+    @Provides private fun provideFoo(barProvider: Provider<Bar>): Foo = Foo(barProvider)
 
-    @Provides
-    private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+    @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
 
     class Foo(val barProvider: Provider<Bar>) : Callable<String> {
       override fun call() = barProvider().call()
@@ -241,7 +263,8 @@ class CycleBreakingTests {
   @Test
   fun `provides injections cycle can be broken with lazy`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithProvidesBrokenWithLazy.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithProvidesBrokenWithLazy.Factory>().create(message)
 
     val foo = graph.foo
     // Multiple calls to the underlying lazy should result in its single instance's count
@@ -265,11 +288,9 @@ class CycleBreakingTests {
       fun create(@BindsInstance message: String): CyclicalGraphWithProvidesBrokenWithLazy
     }
 
-    @Provides
-    private fun provideFoo(barLazy: Lazy<Bar>): Foo = Foo(barLazy)
+    @Provides private fun provideFoo(barLazy: Lazy<Bar>): Foo = Foo(barLazy)
 
-    @Provides
-    private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+    @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
 
     class Foo(val barLazy: Lazy<Bar>) : Callable<String> {
       override fun call() = barLazy.value.call()
@@ -285,7 +306,9 @@ class CycleBreakingTests {
   @Test
   fun `provides injections cycle can be broken with provider of lazy`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithProvidesBrokenWithProviderOfLazy.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithProvidesBrokenWithProviderOfLazy.Factory>()
+        .create(message)
 
     val foo = graph.foo
     // Multiple calls to the underlying provider return new but different lazy instances
@@ -311,8 +334,7 @@ class CycleBreakingTests {
     @Provides
     private fun provideFoo(barLazyProvider: Provider<Lazy<Bar>>): Foo = Foo(barLazyProvider)
 
-    @Provides
-    private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+    @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
 
     class Foo(val barLazyProvider: Provider<Lazy<Bar>>) : Callable<String> {
       override fun call() = barLazyProvider().value.call()
@@ -328,7 +350,9 @@ class CycleBreakingTests {
   @Test
   fun `scoped provides injections cycle can be broken with provider`() {
     val message = "Hello, world!"
-    val graph = createGraphFactory<CyclicalGraphWithProvidesBrokenWithProviderScoped.Factory>().create(message)
+    val graph =
+      createGraphFactory<CyclicalGraphWithProvidesBrokenWithProviderScoped.Factory>()
+        .create(message)
 
     val foo = graph.foo
     assertEquals(message, foo.call())
@@ -351,12 +375,9 @@ class CycleBreakingTests {
       fun create(@BindsInstance message: String): CyclicalGraphWithProvidesBrokenWithProviderScoped
     }
 
-    @Singleton
-    @Provides
-    private fun provideFoo(barProvider: Provider<Bar>): Foo = Foo(barProvider)
+    @Singleton @Provides private fun provideFoo(barProvider: Provider<Bar>): Foo = Foo(barProvider)
 
-    @Provides
-    private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
+    @Provides private fun provideBar(foo: Foo, message: String): Bar = Bar(foo, message)
 
     class Foo(val barProvider: Provider<Bar>) : Callable<String> {
       override fun call(): String {
