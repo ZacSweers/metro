@@ -39,7 +39,10 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
   }
 
   fun addBinding(key: TypeKey, binding: Binding, bindingStack: BindingStack) {
-    require(binding !is Binding.Absent) { "Cannot store 'Absent' binding for typekey $key" }
+    if (binding is Binding.Absent) {
+      // Don't store absent bindings
+      return
+    }
     if (bindings.containsKey(key)) {
       val message = buildString {
         appendLine("Duplicate binding for $key")
@@ -83,7 +86,9 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         is Binding.Provided -> {
           getFunctionDependencies(binding.providerFunction, bindingStack)
         }
-        is Binding.Assisted -> getFunctionDependencies(binding.function, bindingStack)
+        is Binding.Assisted -> {
+          getConstructorDependencies(binding.target.type, bindingStack)
+        }
         is Binding.Multibinding -> {
           // This is a manual @Multibinds or triggered by the above
           // This type's dependencies are just its providers' dependencies
@@ -216,6 +221,11 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     fun dfs(binding: Binding, contextKey: ContextualTypeKey = binding.contextualTypeKey) {
       if (binding is Binding.Absent || binding is Binding.BoundInstance) return
 
+      if (binding is Binding.Assisted) {
+        // TODO add another synthetic entry here pointing at the assisted factory type?
+        return dfs(binding.target, contextKey)
+      }
+
       val key = contextKey.typeKey
       val entriesInCycle = stack.entriesSince(key)
       if (entriesInCycle.isNotEmpty()) {
@@ -285,6 +295,7 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
     bindingStack: BindingStack,
   ): Set<ContextualTypeKey> {
     return function.valueParameters
+      .filterNot { it.isAnnotatedWithAny(context.symbols.assistedAnnotations) }
       .mapNotNull { param ->
         val paramKey = ContextualTypeKey.from(context, param)
         val binding =
