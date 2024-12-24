@@ -1134,12 +1134,12 @@ class DependencyGraphProcessingTest {
     }
 
     @Inject
-    class Foo(val barProvider: Provider<Bar>): Callable<String> {
+    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
       override fun call() = barProvider().call()
     }
 
     @Inject
-    class Bar(val foo: Foo, val message: String): Callable<String> {
+    class Bar(val foo: Foo, val message: String) : Callable<String> {
       override fun call() = message
     }
   }
@@ -1172,13 +1172,14 @@ class DependencyGraphProcessingTest {
     }
 
     @Inject
-    class Foo(val barLazy: Lazy<Bar>): Callable<String> {
+    class Foo(val barLazy: Lazy<Bar>) : Callable<String> {
       override fun call() = barLazy.value.call()
     }
 
     @Inject
-    class Bar(val foo: Foo, val message: String): Callable<String> {
+    class Bar(val foo: Foo, val message: String) : Callable<String> {
       private var counter = 0
+
       override fun call() = message + counter++
     }
   }
@@ -1210,13 +1211,14 @@ class DependencyGraphProcessingTest {
     }
 
     @Inject
-    class Foo(val barLazyProvider: Provider<Lazy<Bar>>): Callable<String> {
+    class Foo(val barLazyProvider: Provider<Lazy<Bar>>) : Callable<String> {
       override fun call() = barLazyProvider().value.call()
     }
 
     @Inject
-    class Bar(val foo: Foo, val message: String): Callable<String> {
+    class Bar(val foo: Foo, val message: String) : Callable<String> {
       private var counter = 0
+
       override fun call() = message + counter++
     }
   }
@@ -1249,7 +1251,7 @@ class DependencyGraphProcessingTest {
 
     @Singleton
     @Inject
-    class Foo(val barProvider: Provider<Bar>): Callable<String> {
+    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
       override fun call(): String {
         val bar = barProvider()
         check(bar.foo === this)
@@ -1258,7 +1260,7 @@ class DependencyGraphProcessingTest {
     }
 
     @Inject
-    class Bar(val foo: Foo, val message: String): Callable<String> {
+    class Bar(val foo: Foo, val message: String) : Callable<String> {
       override fun call() = message
     }
   }
