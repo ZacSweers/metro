@@ -94,23 +94,25 @@ allprojects {
       licenseHeaderFile(rootProject.file("spotless/spotless.kt"), "(package|@file:)")
       target("src/**/*.kt")
       targetExclude(
+        "**/AbstractMapFactory.kt",
         "**/Assisted.kt",
         "**/AssistedFactory.kt",
         "**/AssistedInject.kt",
+        "**/DelegateFactory.kt",
         "**/DoubleCheck.kt",
         "**/DoubleCheckTest.kt",
         "**/InstanceFactory.kt",
         "**/InstanceFactoryTest.kt",
-        "**/ProviderOfLazy.kt",
-        "**/SetFactory.kt",
-        "**/AbstractMapFactory.kt",
-        "**/DelegateFactory.kt",
         "**/MapFactory.kt",
         "**/MapProviderFactory.kt",
         "**/MapProviderFactoryTest.kt",
-        "**/SetFactoryTest.kt",
         "**/NameAllocator.kt",
+        "**/ProviderOfLazy.kt",
+        "**/SetFactory.kt",
+        "**/SetFactoryTest.kt",
         "**/annotations/multibindings/*.kt",
+        "**/cycles/Cycles.kt",
+        "**/cycles/LongCycle.kt",
       )
     }
   }
