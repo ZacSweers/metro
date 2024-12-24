@@ -56,6 +56,8 @@ ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 
+picnic = "com.jakewharton.picnic:picnic:0.7.0"
+
 junit = { module = "junit:junit", version = "4.13.2" }
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
 kotlinCompileTesting = { module = "dev.zacsweers.kctfork:core", version.ref = "kotlinCompileTesting" }

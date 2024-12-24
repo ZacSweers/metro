@@ -33,6 +33,7 @@ dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
   implementation(libs.autoService)
+  implementation(libs.picnic)
   ksp(libs.autoService.ksp)
 
   testImplementation(project(":runtime"))
