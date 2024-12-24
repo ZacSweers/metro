@@ -231,6 +231,7 @@ internal fun Appendable.appendBindingStackEntries(
 
 internal class BindingStackImpl(override val graph: IrClass) : BindingStack {
   // TODO can we use one structure?
+  // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
   private val entrySet = mutableSetOf<TypeKey>()
   private val stack = ArrayDeque<Entry>()
   override val entries: List<Entry> = stack
@@ -253,6 +254,7 @@ internal class BindingStackImpl(override val graph: IrClass) : BindingStack {
     }
   }
 
+  // TODO optimize this by looking in the entrySet first
   override fun entriesSince(key: TypeKey): List<Entry> {
     val reversed = stack.asReversed()
     val index = reversed.indexOfFirst { it.typeKey == key }
