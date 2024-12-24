@@ -15,24 +15,32 @@
  */
 package dev.zacsweers.lattice.ir
 
-import dev.zacsweers.lattice.unsafeLazy
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.render
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
   Comparable<TypeKey> {
-  private val cachedToString by unsafeLazy {
-    buildString {
-      qualifier?.let {
-        append(it)
-        append(" ")
-      }
-      append(type.render())
-    }
-  }
-
-  override fun toString(): String = cachedToString
+  override fun toString(): String = render(short = true)
 
   override fun compareTo(other: TypeKey) = toString().compareTo(other.toString())
+
+  fun render(short: Boolean): String = buildString {
+    qualifier?.let {
+      append(it)
+      append(" ")
+    }
+    val typeString = if (short) {
+      val simpleName = type.simpleName
+      val args = (type as IrSimpleType).arguments.takeUnless { it.isEmpty() }?.joinToString(", ", prefix = "<", postfix = ">") {
+        it.typeOrNull?.simpleName ?: "<error>"
+      }.orEmpty()
+      "$simpleName$args"
+    } else {
+      type.render()
+    }
+    append(typeString)
+  }
 }
