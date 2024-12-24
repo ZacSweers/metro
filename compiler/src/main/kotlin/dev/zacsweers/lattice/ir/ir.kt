@@ -727,6 +727,7 @@ internal fun IrSimpleFunction.isAbstractAndVisible(): Boolean {
 
 internal fun IrClass.abstractFunctions(context: LatticeTransformerContext): List<IrSimpleFunction> {
   return allFunctions(context.pluginContext)
+    .filterNot { it.isFakeOverride }
     // Merge inherited functions with matching signatures
     .groupBy {
       // Don't include the return type because overrides may have different ones
@@ -816,3 +817,12 @@ internal fun IrFunction.isBindsProviderCandidate(symbols: LatticeSymbols): Boole
  */
 internal fun IrBuilderWithScope.irBlockBody(symbol: IrSymbol, expression: IrExpression) =
   context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
+
+internal fun IrFunction.buildBlockBody(
+  context: IrPluginContext,
+  blockBody: IrBlockBodyBuilder.() -> Unit,
+) {
+  body = context.createIrBuilder(symbol).irBlockBody(body = blockBody)
+}
+
+internal val IrType.simpleName: String? get() = rawTypeOrNull()?.name?.asString()
