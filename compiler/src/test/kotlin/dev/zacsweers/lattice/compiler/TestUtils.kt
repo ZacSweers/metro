@@ -220,12 +220,12 @@ fun Class<*>.graphImpl(): Class<*> {
   return declaredClasses.single { it.simpleName.endsWith("Impl") }
 }
 
-fun <T> Any.callGraphAccessor(name: String): T {
+fun <T> Any.callFunction(name: String): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass.getMethod(name).invoke(this) as T
 }
 
-fun <T> Any.callGraphAccessorProperty(name: String): T {
+fun <T> Any.callProperty(name: String): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass.getMethod("get${name.capitalizeUS()}").invoke(this) as T
 }
