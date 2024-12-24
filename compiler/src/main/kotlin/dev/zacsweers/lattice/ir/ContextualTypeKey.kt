@@ -34,10 +34,38 @@ internal data class ContextualTypeKey(
   val hasDefault: Boolean,
 ) {
 
-  val isDeferrable get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
+  val isDeferrable
+    get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
 
   val requiresProviderInstance: Boolean =
     isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
+
+  override fun toString(): String = render(short = true)
+
+  fun render(short: Boolean): String = buildString {
+    val wrapperType =
+      when {
+        isWrappedInProvider -> "Provider"
+        isWrappedInLazy -> "Lazy"
+        isLazyWrappedInProvider -> "Provider<Lazy<"
+        else -> null
+      }
+    if (wrapperType != null) {
+      append(wrapperType)
+      append("<")
+    }
+    append(typeKey.render(short))
+    if (wrapperType != null) {
+      append(">")
+      if (isLazyWrappedInProvider) {
+        // One more bracket
+        append(">")
+      }
+    }
+    if (hasDefault) {
+      append(" = ...")
+    }
+  }
 
   // TODO cache these in DependencyGraphTransformer or shared transformer data
   companion object {
