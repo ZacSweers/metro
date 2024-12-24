@@ -154,9 +154,8 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
 
 /** Returns the raw [IrClass] of this [IrType] or throws. */
 internal fun IrType.rawType(): IrClass {
-  return rawTypeOrNull() ?: run {
-    error("Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})")
-  }
+  return rawTypeOrNull()
+    ?: run { error("Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})") }
 }
 
 /** Returns the raw [IrClass] of this [IrType] or null. */
@@ -829,13 +828,15 @@ internal fun IrFunction.buildBlockBody(
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal val IrType.simpleName: String? get() = when (val classifier = classifierOrNull) {
-  is IrClassSymbol -> {
-    classifier.owner.name.asString()
-  }
-  is IrScriptSymbol -> error("No simple name for script symbol: ${dumpKotlinLike()}")
-  is IrTypeParameterSymbol -> {
-    classifier.owner.name.asString()
-  }
-  null -> error("No classifier for ${dumpKotlinLike()}")
-}
+internal val IrType.simpleName: String?
+  get() =
+    when (val classifier = classifierOrNull) {
+      is IrClassSymbol -> {
+        classifier.owner.name.asString()
+      }
+      is IrScriptSymbol -> error("No simple name for script symbol: ${dumpKotlinLike()}")
+      is IrTypeParameterSymbol -> {
+        classifier.owner.name.asString()
+      }
+      null -> error("No classifier for ${dumpKotlinLike()}")
+    }

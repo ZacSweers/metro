@@ -32,15 +32,21 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
       append(it)
       append(" ")
     }
-    val typeString = if (short) {
-      val simpleName = type.simpleName
-      val args = (type as IrSimpleType).arguments.takeUnless { it.isEmpty() }?.joinToString(", ", prefix = "<", postfix = ">") {
-        it.typeOrNull?.simpleName ?: "<error>"
-      }.orEmpty()
-      "$simpleName$args"
-    } else {
-      type.render()
-    }
+    val typeString =
+      if (short) {
+        val simpleName = type.simpleName
+        val args =
+          (type as IrSimpleType)
+            .arguments
+            .takeUnless { it.isEmpty() }
+            ?.joinToString(", ", prefix = "<", postfix = ">") {
+              it.typeOrNull?.simpleName ?: "<error>"
+            }
+            .orEmpty()
+        "$simpleName$args"
+      } else {
+        type.render()
+      }
     append(typeString)
   }
 }

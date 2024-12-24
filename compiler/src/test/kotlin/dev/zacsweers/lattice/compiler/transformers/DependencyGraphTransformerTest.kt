@@ -22,13 +22,12 @@ import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
-import dev.zacsweers.lattice.compiler.callGraphAccessor
-import dev.zacsweers.lattice.compiler.callGraphAccessorProperty
+import dev.zacsweers.lattice.compiler.callFunction
+import dev.zacsweers.lattice.compiler.callProperty
 import dev.zacsweers.lattice.compiler.createGraphViaFactory
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import java.util.concurrent.Callable
-import org.junit.Ignore
 import org.junit.Test
 
 class DependencyGraphTransformerTest : LatticeCompilerTest() {
@@ -80,7 +79,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
     val graph =
       result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")
 
-    val exampleClass = graph.callGraphAccessor<Callable<String>>("exampleClass")
+    val exampleClass = graph.callFunction<Callable<String>>("exampleClass")
     assertThat(exampleClass.call()).isEqualTo("Hello, world!")
 
     // 2nd pass exercising creating a graph via createGraphFactory()
@@ -422,12 +421,12 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     // Repeated calls to the scoped instance only every return one value
-    assertThat(graph.callGraphAccessorProperty<String>("scoped")).isEqualTo("text 0")
-    assertThat(graph.callGraphAccessorProperty<String>("scoped")).isEqualTo("text 0")
+    assertThat(graph.callProperty<String>("scoped")).isEqualTo("text 0")
+    assertThat(graph.callProperty<String>("scoped")).isEqualTo("text 0")
 
     // Repeated calls to the unscoped instance recompute each time
-    assertThat(graph.callGraphAccessorProperty<String>("unscoped")).isEqualTo("text 0")
-    assertThat(graph.callGraphAccessorProperty<String>("unscoped")).isEqualTo("text 1")
+    assertThat(graph.callProperty<String>("unscoped")).isEqualTo("text 0")
+    assertThat(graph.callProperty<String>("unscoped")).isEqualTo("text 1")
   }
 
   @Test
@@ -509,7 +508,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
-    assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
+    assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
   @Test
@@ -548,7 +547,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
-    assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
+    assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
   }
 
   @Test
@@ -671,8 +670,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
     // Get its computed value to plug in below
     val providerValue = provideValueProvider()
     assertThat(graph.javaClass.getDeclaredField("provideValueProvider"))
-    assertThat(graph.callGraphAccessorProperty<Int>("valueLengths"))
-      .isEqualTo(providerValue.length * 2)
+    assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo(providerValue.length * 2)
   }
 
   @Test
@@ -714,8 +712,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
     assertThat(graph.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" })
       .isNull()
 
-    assertThat(graph.callGraphAccessorProperty<Int>("valueLengths"))
-      .isEqualTo("Hello, world!".length)
+    assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo("Hello, world!".length)
   }
 
   @Test
@@ -835,9 +832,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
-    assertThat(graph.callGraphAccessorProperty<String>("value")).isEqualTo("Hello, world!")
+    assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
 
-    assertThat(graph.callGraphAccessorProperty<CharSequence>("value2")).isEqualTo("Hello, world!")
+    assertThat(graph.callProperty<CharSequence>("value2")).isEqualTo("Hello, world!")
   }
 
   @Test
@@ -1003,10 +1000,10 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           ExampleGraph.kt:6:1 [Lattice/DependencyCycle] Found a dependency cycle:
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
-              kotlin.String is injected at
-                  [test.ExampleGraph] test.ExampleGraph.provideDouble(…, string)
               kotlin.Double is injected at
                   [test.ExampleGraph] test.ExampleGraph.provideInt(…, double)
+              kotlin.String is injected at
+                  [test.ExampleGraph] test.ExampleGraph.provideDouble(…, string)
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
               ...
@@ -1016,7 +1013,6 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
   }
 
   // TODO lazy, provideroflazy, with providers instead of classes, port dagger test, scoped
-  @Ignore("WIP")
   @Test
   fun `cycles can be broken - provider`() {
     val result =
@@ -1027,47 +1023,174 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             package test
 
             import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
             import dev.zacsweers.lattice.Provider
             import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.annotations.BindsInstance
             import java.util.concurrent.Callable
 
             @DependencyGraph
-            @Component
             interface ExampleGraph {
               val foo: Foo
-            }
-            
-            @Singleton
-            @Inject
-            class Foo(val barProvider: Provider<Bar>): Callable<String> {
-              override fun call(message: String) {
-                val bar = barProvider()
-                check(bar.foo === this)
-                bar.print(message)
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance message: String): ExampleGraph
               }
             }
-            
+
             @Inject
-            class Bar(val foo: Foo): Callable<String> {
-              override fun call(message: String) {
-                println(message)
+            class Foo(val barProvider: Provider<Bar>): Callable<String> {
+              override fun call(): String {
+                val bar = barProvider()
+                return bar.call()
+              }
+            }
+
+            @Inject
+            class Bar(val foo: Foo, val message: String): Callable<String> {
+              override fun call(): String {
+                return message
               }
             }
 
           """
             .trimIndent(),
-        ),
+        )
       )
 
-    assertThat(result.messages)
-      .contains(
-        """
-          TODO print from methods called
-        """
-          .trimIndent()
+    val message = "Hello, world!"
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(message)
+    val foo: Callable<String> = graph.callProperty("foo")
+    assertThat(foo.call()).isEqualTo(message)
+
+    // Assert the foo.barProvider.invoke() yields the same message. Sorta redundant with the above
+    // but completionist
+    val barProvider = foo.callProperty<Provider<Callable<String>>>("barProvider")
+    val barInstance = barProvider()
+    assertThat(barInstance.call()).isEqualTo(message)
+  }
+
+  @Test
+  fun `cycles can be broken - lazy`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleGraph.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.BindsInstance
+            import java.util.concurrent.Callable
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val foo: Foo
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance message: String): ExampleGraph
+              }
+            }
+
+            @Inject
+            class Foo(val barLazy: Lazy<Bar>): Callable<String> {
+              override fun call(): String {
+                val bar = barLazy.value
+                return bar.call()
+              }
+            }
+
+            @Inject
+            class Bar(val foo: Foo, val message: String): Callable<String> {
+              private var counter = 0
+              override fun call(): String {
+                return message + counter++
+              }
+            }
+
+          """
+            .trimIndent(),
+        )
       )
+
+    val message = "Hello, world!"
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(message)
+    val foo: Callable<String> = graph.callProperty("foo")
+    // Multiple calls to the underlying lazy should result in its single instance's count
+    // incrementing
+    assertThat(foo.call()).isEqualTo(message + "0")
+    assertThat(foo.call()).isEqualTo(message + "1")
+
+    // Assert calling the same on the lazy directly
+    val barProvider = foo.callProperty<Lazy<Callable<String>>>("barLazy")
+    val barInstance = barProvider.value
+    assertThat(barInstance.call()).isEqualTo(message + "2")
+    assertThat(barInstance.call()).isEqualTo(message + "3")
+  }
+
+  @Test
+  fun `cycles can be broken - provider - scoped`() {
+    val result =
+      compile(
+        kotlin(
+          "ExampleGraph.kt",
+          """
+            package test
+
+            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.Provider
+            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.annotations.BindsInstance
+            import java.util.concurrent.Callable
+
+            @Singleton
+            @DependencyGraph
+            interface ExampleGraph {
+              val foo: Foo
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance message: String): ExampleGraph
+              }
+            }
+
+            @Singleton
+            @Inject
+            class Foo(val barProvider: Provider<Bar>): Callable<String> {
+              override fun call(): String {
+                val bar = barProvider()
+                check(bar.foo === this)
+                return bar.call()
+              }
+            }
+
+            @Inject
+            class Bar(val foo: Foo, val message: String): Callable<String> {
+              override fun call(): String {
+                return message
+              }
+            }
+
+          """
+            .trimIndent(),
+        )
+      )
+
+    val message = "Hello, world!"
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(message)
+    val foo: Callable<String> = graph.callProperty("foo")
+    assertThat(foo.call()).isEqualTo(message)
+
+    // Assert the foo.barProvider.invoke == bar
+    val barProvider = foo.callProperty<Provider<Callable<String>>>("barProvider")
+    val barInstance = barProvider()
+    assertThat(barInstance.call()).isEqualTo(message)
+
+    val fooInBar = barInstance.callProperty<Callable<String>>("foo")
+    assertThat(fooInBar).isSameInstanceAs(foo)
   }
 
   @Test
