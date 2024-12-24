@@ -157,7 +157,7 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
           buildValueParameterCopy(original.fir) {
             origin = LatticeKey.origin
             symbol = FirValueParameterSymbol(original.name)
-            containingFunctionSymbol = functionSymbol
+            containingDeclarationSymbol = functionSymbol
             // TODO default values are copied over in this case, is that enough or do they need
             //  references transformed? We should also check they're not referencing non-assisted
             //  params

@@ -48,6 +48,8 @@ import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
@@ -389,3 +391,6 @@ internal inline fun FirConstructorSymbol.validateVisibility(
     onError()
   }
 }
+
+internal val FirValueParameterSymbol.containingFunctionSymbol: FirFunctionSymbol<*>?
+  get() = containingDeclarationSymbol as? FirFunctionSymbol<*>
