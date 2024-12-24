@@ -232,17 +232,38 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
         // Check if there's a deferrable type in the stack, if so we can break the cycle
         // A -> B -> Lazy<A> is valid
         // A -> B -> A is not
-        // TODO if a type is already deferred, skip the entries check?
-        if (entriesInCycle.none { it.contextKey.isDeferrable }) {
+        val isATrueCycle =
+          key !in deferredTypes &&
+            !contextKey.isDeferrable &&
+            entriesInCycle.none { it.contextKey.isDeferrable }
+        if (isATrueCycle) {
           // Pull the root entry from the stack and add it back to the bottom of the stack to
           // highlight the cycle
           val fullCycle = entriesInCycle + entriesInCycle[0]
 
           val message = buildString {
-            appendLine("[Lattice/DependencyCycle] Found a dependency cycle:")
+            appendLine(
+              "[Lattice/DependencyCycle] Found a dependency cycle while processing '${node.sourceGraph.kotlinFqName}'."
+            )
+            // Print a simple diagram of the cycle first
+            val indent = "    "
+            appendLine("Cycle:")
+            // If the cycle is just the same binding pointing at itself, can make that a bit more
+            // explicit with the arrow
+            val separator = if (fullCycle.size == 2) " <--> " else " --> "
+            fullCycle.joinTo(this, separator = separator, prefix = indent) {
+              it.contextKey.render(short = true)
+            }
+
+            appendLine()
+            appendLine()
+
+            // Print the full stack
+            appendLine("Trace:")
             appendBindingStackEntries(
               stack.graph.kotlinFqName,
               fullCycle,
+              indent = indent,
               ellipse = true,
               short = false,
             )
