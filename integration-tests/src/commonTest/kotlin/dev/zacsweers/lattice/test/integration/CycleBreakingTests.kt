@@ -46,6 +46,42 @@ class CycleBreakingTests {
   }
 
   @Test
+  fun `class injections cycle can be broken with provider - bar exposed first`() {
+    val message = "Hello, world!"
+    val graph = createGraphFactory<CyclicalGraphWithClassesBrokenWithProviderBarExposed.Factory>().create(message)
+
+    val bar = graph.bar
+    assertEquals(message, bar.call())
+
+    val foo = bar.foo
+    assertEquals(message, foo.call())
+
+    val barProvider = foo.barProvider
+    val barInstance = barProvider()
+    assertEquals(message, barInstance.call())
+  }
+
+  @DependencyGraph
+  interface CyclicalGraphWithClassesBrokenWithProviderBarExposed {
+    val bar: Bar
+
+    @DependencyGraph.Factory
+    fun interface Factory {
+      fun create(@BindsInstance message: String): CyclicalGraphWithClassesBrokenWithProviderBarExposed
+    }
+
+    @Inject
+    class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+      override fun call() = barProvider().call()
+    }
+
+    @Inject
+    class Bar(val foo: Foo, val message: String) : Callable<String> {
+      override fun call() = message
+    }
+  }
+
+  @Test
   fun `class injections cycle can be broken with lazy`() {
     val message = "Hello, world!"
     val graph = createGraphFactory<CyclicalGraphWithClassesBrokenWithLazy.Factory>().create(message)
