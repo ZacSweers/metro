@@ -35,6 +35,7 @@ import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.allCallableMembers
 import dev.zacsweers.lattice.ir.appendBindingStack
 import dev.zacsweers.lattice.ir.asContextualTypeKey
+import dev.zacsweers.lattice.ir.buildBlockBody
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.doubleCheck
 import dev.zacsweers.lattice.ir.getAllSuperTypes
@@ -113,6 +114,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -244,7 +246,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         } else {
           appendLine("[Lattice/GraphDependencyCycle] Graph dependency cycle detected!")
         }
-        appendBindingStack(bindingStack)
+        appendBindingStack(bindingStack, short = false)
       }
       graphDeclaration.reportError(message)
       exitProcessing()
@@ -373,12 +375,13 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       )
 
     val bindingGraph = createBindingGraph(node)
-    bindingGraph.validate(node) { message ->
-      dependencyGraphDeclaration.reportError(message)
-      exitProcessing()
-    }
+    val deferredTypes =
+      bindingGraph.validate(node) { message ->
+        dependencyGraphDeclaration.reportError(message)
+        exitProcessing()
+      }
 
-    val latticeGraph = generateLatticeGraph(node, bindingGraph)
+    val latticeGraph = generateLatticeGraph(node, bindingGraph, deferredTypes)
 
     // TODO consolidate logic
     latticeGraph.dumpToLatticeLog()
@@ -484,6 +487,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           Binding.Multibinding.create(pluginContext, contextualTypeKey.typeKey),
           bindingStack,
         )
+      } else {
+        graph.addExposedType(
+          contextualTypeKey,
+          BindingStack.Entry.requestedAt(contextualTypeKey, getter),
+        )
       }
     }
 
@@ -510,7 +518,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun generateLatticeGraph(node: DependencyGraphNode, graph: BindingGraph): IrClass {
+  private fun generateLatticeGraph(
+    node: DependencyGraphNode,
+    graph: BindingGraph,
+    deferredTypes: Set<TypeKey>,
+  ): IrClass {
     /*
     Simple object that exposes a factory function
 
@@ -544,7 +556,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           origin = LatticeOrigin,
         )
 
-        val graphImpl = generateGraphImpl(node, graph)
+        val graphImpl = generateGraphImpl(node, graph, deferredTypes)
         addChild(graphImpl)
 
         val creator = node.creator
@@ -622,7 +634,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun generateGraphImpl(node: DependencyGraphNode, bindingGraph: BindingGraph): IrClass {
+  private fun generateGraphImpl(
+    node: DependencyGraphNode,
+    bindingGraph: BindingGraph,
+    deferredTypes: Set<TypeKey>,
+  ): IrClass {
     val graphImplName = "${node.sourceGraph.name.asString()}Impl"
     return pluginContext.irFactory
       .buildClass { name = Name.identifier(graphImplName) }
@@ -686,7 +702,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         }
 
         // Add fields for this graph and other instance params
-        // TODO just make this a graph field instead?
         val instanceFields = mutableMapOf<TypeKey, IrField>()
         val thisReceiverParameter = thisReceiver!!
         val thisGraphField =
@@ -714,12 +729,14 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val bindingStack = BindingStack(node.sourceGraph)
 
         // First pass: collect bindings and their dependencies for provider field ordering
+        // Note we do this in two passes rather than keep a TreeMap because otherwise we'd be doing
+        // dependency lookups at each insertion
         val bindingDependencies = collectBindings(node, bindingGraph, bindingStack)
 
         // Compute safe initialization order
         val initOrder =
-          bindingDependencies.entries
-            .sortedWith { (a, _), (b, _) ->
+          bindingDependencies.keys
+            .sortedWith { a, b ->
               when {
                 // If b depends on a, a should be initialized first
                 a in (bindingDependencies[b]?.dependencies.orEmpty()) -> -1
@@ -729,7 +746,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                 else -> a.compareTo(b)
               }
             }
-            .map { it.value }
+            .map { bindingDependencies.getValue(it) }
             .distinct()
 
         val generationContext =
@@ -745,46 +762,107 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
         val fieldNameAllocator = NameAllocator()
 
-        // Create fields in dependency-order
-        initOrder.forEach { binding ->
-          val key = binding.typeKey
-          // Since assisted injections don't implement Factory, we can't just type these as
-          // Provider<*> fields
-          val fieldType =
-            if (binding is Binding.ConstructorInjected && binding.isAssisted) {
-              injectConstructorTransformer
-                .getOrGenerateFactoryClass(binding.type, binding.injectedConstructor)
-                .typeWith() // TODO generic factories?
-            } else {
-              symbols.latticeProvider.typeWith(key.type)
-            }
-
-          val field =
-            addField(
-                fieldName =
-                  fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
-                fieldType = fieldType,
-                fieldVisibility = DescriptorVisibilities.PRIVATE,
-              )
-              .apply {
-                isFinal = true
-                initializer =
-                  pluginContext.createIrBuilder(symbol).run {
-                    val provider =
-                      generateBindingCode(binding, generationContext).letIf(binding.scope != null) {
-                        // If it's scoped, wrap it in double-check
-                        // DoubleCheck.provider(<provider>)
-                        it.doubleCheck(this@run, symbols)
+        // For all deferred types, assign them first as factories
+        // TODO For any types that depend on deferred types, they need providers too?
+        @Suppress("UNCHECKED_CAST")
+        val deferredFields: Map<TypeKey, IrField> =
+          deferredTypes
+            .associateWith { deferredTypeKey ->
+              val binding = bindingDependencies[deferredTypeKey] ?: return@associateWith null
+              val field =
+                addField(
+                    fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
+                    deferredTypeKey.type.wrapInProvider(symbols.latticeProvider),
+                  )
+                  .apply {
+                    initializer =
+                      pluginContext.createIrBuilder(symbol).run {
+                        irExprBody(
+                          irInvoke(callee = symbols.latticeDelegateFactoryConstructor).apply {
+                            putTypeArgument(0, deferredTypeKey.type)
+                          }
+                        )
                       }
-                    irExprBody(provider)
                   }
+
+              providerFields[deferredTypeKey] = field
+
+              with(ctor) {
+                val originalBody = checkNotNull(body)
+                buildBlockBody(pluginContext) {
+                  +originalBody.statements
+                  +irInvoke(
+                    dispatchReceiver = irGetObject(symbols.latticeDelegateFactoryCompanion),
+                    callee = symbols.latticeDelegateFactorySetDelegate,
+                    // TODO de-dupe?
+                    args =
+                      listOf(
+                        irGetField(irGet(thisReceiverParameter), field),
+                        pluginContext.createIrBuilder(symbol).run {
+                          generateBindingCode(
+                              binding,
+                              generationContext,
+                              fieldInitKey = deferredTypeKey,
+                            )
+                            .letIf(binding.scope != null) {
+                              // If it's scoped, wrap it in double-check
+                              // DoubleCheck.provider(<provider>)
+                              it.doubleCheck(this@run, symbols)
+                            }
+                        },
+                      ),
+                  )
+                }
               }
-          if (binding is Binding.Provided && binding.isMultibindingProvider) {
-            multibindingProviderFields[binding] = field
-          } else {
-            providerFields[key] = field
+
+              field
+            }
+            .filterValues { it != null } as Map<TypeKey, IrField>
+
+        // Create fields in dependency-order
+        initOrder
+          .filterNot { it.typeKey in deferredFields }
+          .forEach { binding ->
+            val key = binding.typeKey
+            // Since assisted injections don't implement Factory, we can't just type these as
+            // Provider<*> fields
+            val fieldType =
+              if (binding is Binding.ConstructorInjected && binding.isAssisted) {
+                injectConstructorTransformer
+                  .getOrGenerateFactoryClass(binding.type, binding.injectedConstructor)
+                  .typeWith() // TODO generic factories?
+              } else {
+                symbols.latticeProvider.typeWith(key.type)
+              }
+
+            val field =
+              addField(
+                  fieldName =
+                    fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
+                  fieldType = fieldType,
+                  fieldVisibility = DescriptorVisibilities.PRIVATE,
+                )
+                .apply {
+                  isFinal = true
+                  initializer =
+                    pluginContext.createIrBuilder(symbol).run {
+                      val provider =
+                        generateBindingCode(binding, generationContext).letIf(
+                          binding.scope != null
+                        ) {
+                          // If it's scoped, wrap it in double-check
+                          // DoubleCheck.provider(<provider>)
+                          it.doubleCheck(this@run, symbols)
+                        }
+                      irExprBody(provider)
+                    }
+                }
+            if (binding is Binding.Provided && binding.isMultibindingProvider) {
+              multibindingProviderFields[binding] = field
+            } else {
+              providerFields[key] = field
+            }
           }
-        }
 
         // Implement abstract getters for exposed types
         node.exposedTypes.entries
@@ -974,7 +1052,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         // Error if there are mismatched scopes
         val declarationToReport = node.sourceGraph
         bindingStack.push(
-          BindingStack.Entry.simpleTypeRef(binding.contextualTypeKey, usage = "(scoped to '$bindingScope')")
+          BindingStack.Entry.simpleTypeRef(
+            binding.contextualTypeKey,
+            usage = "(scoped to '$bindingScope')",
+          )
         )
         val message = buildString {
           append("[Lattice/IncompatiblyScopedBindings] ")
@@ -989,7 +1070,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             )
           }
           appendLine()
-          appendBindingStack(bindingStack)
+          appendBindingStack(bindingStack, short = false)
         }
         declarationToReport.reportError(message)
         exitProcessing()
@@ -1130,10 +1211,18 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             when (binding) {
               is Binding.ConstructorInjected -> {
                 val constructor = binding.injectedConstructor
-                BindingStack.Entry.injectedAt(contextualTypeKey, constructor, constructor.valueParameters[i])
+                BindingStack.Entry.injectedAt(
+                  contextualTypeKey,
+                  constructor,
+                  constructor.valueParameters[i],
+                )
               }
               is Binding.Provided -> {
-                BindingStack.Entry.injectedAt(contextualTypeKey, function, function.valueParameters[i])
+                BindingStack.Entry.injectedAt(
+                  contextualTypeKey,
+                  function,
+                  function.valueParameters[i],
+                )
               }
               is Binding.Assisted -> {
                 BindingStack.Entry.injectedAt(contextualTypeKey, function)
@@ -1232,10 +1321,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  private fun IrBuilderWithScope.generateBindingCode(
+  internal fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
     generationContext: GraphGenerationContext,
     contextualTypeKey: ContextualTypeKey = binding.contextualTypeKey,
+    fieldInitKey: TypeKey? = null,
   ): IrExpression {
     if (binding is Binding.Absent) {
       error("Absent bindings need to be checked prior to generateBindingCode()")
@@ -1251,8 +1341,14 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         return irGetField(irGet(generationContext.thisReceiver), it)
       }
     }
-    generationContext.providerFields[binding.typeKey]?.let {
-      return irGetField(irGet(generationContext.thisReceiver), it)
+
+    // If we're initializing the field for this key, don't ever try to reach for an existing
+    // provider for it.
+    // This is important for cases like DelegateFactory and breaking cycles.
+    if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
+      generationContext.providerFields[binding.typeKey]?.let {
+        return irGetField(irGet(generationContext.thisReceiver), it)
+      }
     }
 
     return when (binding) {
@@ -1632,7 +1728,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   }
 }
 
-private class GraphGenerationContext(
+internal class GraphGenerationContext(
   val graph: BindingGraph,
   val thisReceiver: IrValueParameter,
   val instanceFields: Map<TypeKey, IrField>,
