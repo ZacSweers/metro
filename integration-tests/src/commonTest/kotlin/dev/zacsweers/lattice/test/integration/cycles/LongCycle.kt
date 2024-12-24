@@ -24,6 +24,7 @@ import dev.zacsweers.lattice.annotations.Inject
  * separate {@code initialize} method from the one where it is used as a delegated factory.
  */
 // Each nested class's constructor has an intentionally unused parameter.
+// Ported from https://github.com/google/dagger/blob/master/javatests/dagger/functional/cycle/LongCycle.java
 @Suppress("unused")
 object LongCycle {
   @Inject class Class1(class2: Class2)
