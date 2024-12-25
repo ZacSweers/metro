@@ -28,9 +28,11 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
 internal interface BindingStack {
@@ -128,7 +130,11 @@ internal interface BindingStack {
         displayTypeKey: TypeKey = contextKey.typeKey,
       ): Entry {
         val targetFqName = function.parent.kotlinFqName
-        val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
+        val middle = when {
+          function is IrConstructor -> ""
+          function.isPropertyAccessor -> ".${(function.propertyIfAccessor as IrProperty).name.asString()}"
+          else -> ".${function.name.asString()}"
+        }
         val end = if (param == null) "()" else "(…, ${param.name.asString()})"
         val context = "$targetFqName$middle$end"
         return Entry(
