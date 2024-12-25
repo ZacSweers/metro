@@ -13,13 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.ir
+package dev.zacsweers.lattice.ir.parameters
 
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.ir.Parameter.Kind
+import dev.zacsweers.lattice.ir.BindingStack
+import dev.zacsweers.lattice.ir.ContextualTypeKey
+import dev.zacsweers.lattice.ir.LatticeTransformerContext
+import dev.zacsweers.lattice.ir.TypeKey
+import dev.zacsweers.lattice.ir.annotationsIn
+import dev.zacsweers.lattice.ir.asContextualTypeKey
+import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
+import dev.zacsweers.lattice.ir.locationOrNull
+import dev.zacsweers.lattice.ir.parameters.Parameter.Kind
 import dev.zacsweers.lattice.unsafeLazy
-import kotlin.collections.count
-import kotlin.collections.sumOf
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor

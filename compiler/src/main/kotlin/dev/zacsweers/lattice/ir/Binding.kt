@@ -16,6 +16,8 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.capitalizeUS
+import dev.zacsweers.lattice.ir.parameters.Parameter
+import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.isWordPrefixRegex
 import java.util.TreeSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext

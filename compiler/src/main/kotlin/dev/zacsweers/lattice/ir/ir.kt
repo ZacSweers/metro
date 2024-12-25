@@ -17,6 +17,11 @@ package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
+import dev.zacsweers.lattice.ir.parameters.Parameter
+import dev.zacsweers.lattice.ir.parameters.Parameters
+import dev.zacsweers.lattice.ir.parameters.wrapInLazy
+import dev.zacsweers.lattice.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.letIf
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -117,7 +122,6 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull

@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.ir.parameters.Parameters
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction

@@ -16,6 +16,8 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.exitProcessing
+import dev.zacsweers.lattice.ir.parameters.parameters
+import dev.zacsweers.lattice.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.mapToSet
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
