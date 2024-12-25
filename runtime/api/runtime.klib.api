@@ -136,6 +136,10 @@ abstract fun interface <#A: kotlin/Any> dev.zacsweers.lattice/Provider { // dev.
     abstract fun invoke(): #A // dev.zacsweers.lattice/Provider.invoke|invoke(){}[0]
 }
 
+abstract interface <#A: kotlin/Any> dev.zacsweers.lattice/MembersInjector { // dev.zacsweers.lattice/MembersInjector|null[0]
+    abstract fun injectMembers(#A) // dev.zacsweers.lattice/MembersInjector.injectMembers|injectMembers(1:0){}[0]
+}
+
 abstract class dev.zacsweers.lattice.annotations/AppScope // dev.zacsweers.lattice.annotations/AppScope|null[0]
 
 final inline fun <#A: kotlin/Any> dev.zacsweers.lattice/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]

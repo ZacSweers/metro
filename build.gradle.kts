@@ -107,6 +107,7 @@ allprojects {
         "**/MapProviderFactory.kt",
         "**/MapProviderFactoryTest.kt",
         "**/NameAllocator.kt",
+        "**/MembersInjector.kt",
         "**/ProviderOfLazy.kt",
         "**/SetFactory.kt",
         "**/SetFactoryTest.kt",
