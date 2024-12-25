@@ -344,6 +344,7 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
   )
 }
 
+// TODO create an instance of this that caches lookups?
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.allCallableMembers(
   excludeAnyFunctions: Boolean = true,
