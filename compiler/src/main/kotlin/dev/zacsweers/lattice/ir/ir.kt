@@ -63,6 +63,7 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
@@ -116,6 +117,7 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
@@ -344,10 +346,14 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.allCallableMembers(
-  excludeAnyFunctions: Boolean = true
+  excludeAnyFunctions: Boolean = true,
+  excludeInheritedMembers: Boolean = false,
+  excludeCompanionObjectMembers: Boolean = false,
+  functionFilter: (IrSimpleFunction) -> Boolean = { true },
+  propertyFilter: (IrProperty) -> Boolean = { true },
 ): Sequence<IrSimpleFunction> {
   return functions
-    .asSequence()
+    .filter(functionFilter)
     .letIf(excludeAnyFunctions) {
       // TODO optimize this?
       // TODO does this even work
@@ -357,11 +363,21 @@ internal fun IrClass.allCallableMembers(
         }
       }
     }
-    .plus(properties.asSequence().mapNotNull { property -> property.getter })
+    .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
+    .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
     .let { parentClassCallables ->
-      companionObject()?.let { companionObject ->
-        parentClassCallables + companionObject.allCallableMembers()
-      } ?: parentClassCallables
+      if (excludeCompanionObjectMembers) {
+        parentClassCallables
+      } else {
+        companionObject()?.let { companionObject ->
+          parentClassCallables +
+            companionObject.allCallableMembers(
+              excludeAnyFunctions,
+              excludeInheritedMembers,
+              excludeCompanionObjectMembers = false,
+            )
+        } ?: parentClassCallables
+      }
     }
 }
 
