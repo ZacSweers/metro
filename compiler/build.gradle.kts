@@ -44,5 +44,6 @@ dependencies {
   testImplementation(libs.kotlin.aptEmbeddable)
   testImplementation(libs.kotlinCompileTesting)
   testImplementation(libs.junit)
+  testImplementation(libs.kotlin.test)
   testImplementation(libs.truth)
 }

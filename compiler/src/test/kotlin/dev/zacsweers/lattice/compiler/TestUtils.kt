@@ -15,17 +15,20 @@
  */
 package dev.zacsweers.lattice.compiler
 
+import com.google.common.truth.ThrowableSubject
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.tschuchort.compiletesting.CompilationResult
 import com.tschuchort.compiletesting.JvmCompilationResult
 import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.MembersInjector
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.Provides
 import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.internal.Factory
 import dev.zacsweers.lattice.mapToSet
 import dev.zacsweers.lattice.provider
+import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
 import kotlin.reflect.KCallable
@@ -79,6 +82,12 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
 fun Class<*>.generatedFactoryClassAssisted(): Class<*> {
   val expectedName = LatticeSymbols.Names.LatticeFactory.asString()
   return classes.single { it.simpleName == expectedName }
+}
+
+fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
+  val expectedName = LatticeSymbols.Names.LatticeMembersInjector.asString()
+  @Suppress("UNCHECKED_CAST")
+  return classes.single { it.simpleName == expectedName } as Class<MembersInjector<*>>
 }
 
 fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
@@ -152,10 +161,12 @@ fun Class<Factory<*>>.invokeCreateAsFactory(vararg args: Any): Factory<*> {
   return invokeCreate(*args) as Factory<*>
 }
 
+// Cannot confine to Class<Factory<*>> because this is also used for assisted factories
 fun Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<*> {
   return invokeCreate(*args) as Provider<*>
 }
 
+// Cannot confine to Class<Factory<*>> because this is also used for assisted factories
 fun Class<*>.invokeCreate(vararg args: Any): Any {
   return declaredMethods
     .single { it.name == "create" && Modifier.isStatic(it.modifiers) }
@@ -276,6 +287,18 @@ fun Class<*>.generatedClassesString(separator: String = "_"): String {
     }
 }
 
+fun Class<MembersInjector<*>>.staticInjectMethod(memberName: String): Method {
+  val expectedName = "inject${memberName.capitalizeUS()}"
+  return declaredMethods
+    .filter { Modifier.isStatic(it.modifiers) }
+    .singleOrNull { it.name == expectedName }
+    ?: error("No static method with name '$expectedName' found in $this")
+}
+
+@Suppress("UNCHECKED_CAST")
+fun <T> Annotation.getValue(): T =
+  this::class.java.declaredMethods.single { it.name == "value" }.invoke(this) as T
+
 fun Class<*>.packageName(): String = `package`.name.let { if (it.isBlank()) "" else "$it." }
 
 fun CompilationResult.assertContainsAll(vararg messages: String) {
@@ -283,4 +306,17 @@ fun CompilationResult.assertContainsAll(vararg messages: String) {
   for (message in messages) {
     assertThat(this.messages).contains(message)
   }
+}
+
+inline fun <reified T> assertThrows(block: () -> Unit): ThrowableSubject {
+  try {
+    block()
+  } catch (e: Throwable) {
+    if (e is T) {
+      return assertThat(e)
+    } else {
+      throw e
+    }
+  }
+  throw AssertionError("Expected ${T::class.simpleName}")
 }
