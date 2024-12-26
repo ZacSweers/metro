@@ -142,6 +142,7 @@ abstract interface <#A: kotlin/Any> dev.zacsweers.lattice/MembersInjector { // d
 
 abstract class dev.zacsweers.lattice.annotations/AppScope // dev.zacsweers.lattice.annotations/AppScope|null[0]
 
+final fun <#A: kotlin/Any> dev.zacsweers.lattice/providerOf(#A): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/providerOf|providerOf(0:0){0§<kotlin.Any>}[0]
 final inline fun <#A: kotlin/Any> dev.zacsweers.lattice/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createGraph(): #A // dev.zacsweers.lattice/createGraph|createGraph(){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createGraphFactory(): #A // dev.zacsweers.lattice/createGraphFactory|createGraphFactory(){0§<kotlin.Any>}[0]
