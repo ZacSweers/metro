@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler
 
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.lattice.NameAllocator
+import dev.zacsweers.lattice.NameAllocator.Mode
 import kotlin.test.Test
 
 class NameAllocatorTest {
@@ -35,6 +36,13 @@ class NameAllocatorTest {
     assertThat(nameAllocator.newName("foo")).isEqualTo("foo__")
   }
 
+  @Test fun `name collision with count`() {
+    val nameAllocator = NameAllocator(mode = Mode.COUNT)
+    assertThat(nameAllocator.newName("foo")).isEqualTo("foo")
+    assertThat(nameAllocator.newName("foo")).isEqualTo("foo2")
+    assertThat(nameAllocator.newName("foo")).isEqualTo("foo3")
+  }
+
   @Test fun nameCollisionWithTag() {
     val nameAllocator = NameAllocator()
     assertThat(nameAllocator.newName("foo", 1)).isEqualTo("foo")
@@ -43,6 +51,16 @@ class NameAllocatorTest {
     assertThat(nameAllocator[1]).isEqualTo("foo")
     assertThat(nameAllocator[2]).isEqualTo("foo_")
     assertThat(nameAllocator[3]).isEqualTo("foo__")
+  }
+
+  @Test fun `name collision with tag and count`() {
+    val nameAllocator = NameAllocator(mode = Mode.COUNT)
+    assertThat(nameAllocator.newName("foo", 1)).isEqualTo("foo")
+    assertThat(nameAllocator.newName("foo", 2)).isEqualTo("foo2")
+    assertThat(nameAllocator.newName("foo", 3)).isEqualTo("foo3")
+    assertThat(nameAllocator[1]).isEqualTo("foo")
+    assertThat(nameAllocator[2]).isEqualTo("foo2")
+    assertThat(nameAllocator[3]).isEqualTo("foo3")
   }
 
   @Test fun characterMappingSubstitute() {

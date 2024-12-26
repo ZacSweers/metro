@@ -71,14 +71,15 @@ import org.jetbrains.kotlin.renderer.KeywordStringsGenerated.KEYWORDS
  * When dealing with multiple independent inner scopes, use a [copy][NameAllocator.copy] of the
  * NameAllocator used for the outer scope to further refine name allocation for a specific inner
  * scope.
+ *
+ * Changes from upstream: added [Mode] support for use with member inject parameters.
  */
-public class NameAllocator
+internal class NameAllocator
 private constructor(
   private val allocatedNames: MutableSet<String>,
   private val tagToName: MutableMap<Any, String>,
+  private val mode: Mode,
 ) {
-  public constructor() : this(preallocateKeywords = true)
-
   /**
    * @param preallocateKeywords If true, all Kotlin keywords will be preallocated. Requested names
    *   which collide with keywords will be suffixed with underscores to avoid being used as
@@ -104,11 +105,13 @@ private constructor(
    * The default behaviour of [NameAllocator] is to preallocate keywords - this is the behaviour
    * you'll get when using the no-arg constructor.
    */
-  public constructor(
-    preallocateKeywords: Boolean
+  constructor(
+    preallocateKeywords: Boolean = true,
+    mode: Mode = Mode.UNDERSCORE,
   ) : this(
     allocatedNames = if (preallocateKeywords) KEYWORDS.toMutableSet() else mutableSetOf(),
     tagToName = mutableMapOf(),
+    mode = mode,
   )
 
   /**
@@ -118,10 +121,12 @@ private constructor(
    */
   @OptIn(ExperimentalUuidApi::class)
   @JvmOverloads
-  public fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
-    var result = toJavaIdentifier(suggestion)
+  fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
+    var result = buildString { append(toJavaIdentifier(suggestion)) }
+    var count = 1
     while (!allocatedNames.add(result)) {
-      result += "_"
+      count++
+      result = result.suffix(suggestion, count)
     }
 
     val replaced = tagToName.put(tag, result)
@@ -133,8 +138,14 @@ private constructor(
     return result
   }
 
+  private fun String.suffix(name: String, count: Int) =
+    when (mode) {
+      Mode.UNDERSCORE -> "${this}_"
+      Mode.COUNT -> "$name$count"
+    }
+
   /** Retrieve a name created with [NameAllocator.newName]. */
-  public operator fun get(tag: Any): String = requireNotNull(tagToName[tag]) { "unknown tag: $tag" }
+  operator fun get(tag: Any): String = requireNotNull(tagToName[tag]) { "unknown tag: $tag" }
 
   /**
    * Create a deep copy of this NameAllocator. Useful to create multiple independent refinements of
@@ -143,8 +154,13 @@ private constructor(
    *
    * @return A deep copy of this NameAllocator.
    */
-  public fun copy(): NameAllocator {
-    return NameAllocator(allocatedNames.toMutableSet(), tagToName.toMutableMap())
+  fun copy(): NameAllocator {
+    return NameAllocator(allocatedNames.toMutableSet(), tagToName.toMutableMap(), mode = mode)
+  }
+
+  internal enum class Mode {
+    UNDERSCORE,
+    COUNT,
   }
 }
 
