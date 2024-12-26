@@ -69,6 +69,7 @@ abstract class LatticeCompilerTest {
     debug: Boolean = false,
     generateAssistedFactories: Boolean = false,
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
+    body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
     return prepareCompilation(
         sourceFiles = sourceFiles,
@@ -83,6 +84,7 @@ abstract class LatticeCompilerTest {
           )
         }
       }
+      .apply(body)
   }
 
   protected fun CompilationResult.assertContains(message: String) {
