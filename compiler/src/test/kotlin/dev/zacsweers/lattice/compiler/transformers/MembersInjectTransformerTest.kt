@@ -162,8 +162,12 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     membersInjector
       .staticInjectMethod("setterAnnotated2")
       .invoke(null, injectInstanceStatic, mapOf("Hello" to false))
-    membersInjector.staticInjectMethod("privateField").invoke(null, injectInstanceStatic, "private field")
-    membersInjector.staticInjectMethod("privateSetter").invoke(null, injectInstanceStatic, "private setter")
+    membersInjector
+      .staticInjectMethod("privateField")
+      .invoke(null, injectInstanceStatic, "private field")
+    membersInjector
+      .staticInjectMethod("privateSetter")
+      .invoke(null, injectInstanceStatic, "private setter")
 
     assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
     assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
@@ -279,7 +283,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     val constructor = membersInjector.declaredConstructors.single()
     assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
 
-    val membersInjectorInstance = constructor.newInstance(Provider { "a" }) as MembersInjector<Any>
+    @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor.newInstance(Provider { "a" }) as MembersInjector<Any>
 
     val injectInstanceConstructor = result.ExampleClass.getDeclaredConstructor().newInstance()
     membersInjectorInstance.injectMembers(injectInstanceConstructor)
@@ -380,5 +384,194 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     assertThat(classInstanceStatic.callProperty<Any>("middle2")).isEqualTo(middle2)
     assertThat(classInstanceStatic.callProperty<Any>("base1")).isEqualTo(base1)
     assertThat(classInstanceStatic.callProperty<Any>("base2")).isEqualTo(base2)
+  }
+
+  @Test
+  fun `a factory class is generated for a field injection with a generic class`() {
+    compile(
+      kotlin(
+        "ExampleClass.kt",
+        """
+          package test
+          
+          import dev.zacsweers.lattice.annotations.Inject
+          
+          abstract class ExampleClass<T> {
+            @Inject lateinit var string: String
+          }
+          """,
+      ),
+      debug = true
+    ) {
+      val membersInjector = ExampleClass.generatedMembersInjector()
+
+      val constructor = membersInjector.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
+    }
+  }
+
+  @Test
+  fun `a factory class is generated for a generic field injection with a generic class`() {
+    compile(
+      kotlin(
+        "ExampleClass.kt",
+        """
+          package test
+          
+          import dev.zacsweers.lattice.annotations.Inject
+          
+          class ExampleClass<T, R> {
+            @Inject lateinit var unknownItems: List<T>
+          }
+          """,
+      ),
+      debug = true
+    ) {
+      val membersInjector = ExampleClass.generatedMembersInjector()
+
+      val constructor = membersInjector.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList())
+        .containsExactly(Provider::class.java)
+    }
+  }
+
+  @Test
+  fun `a factory class is generated for a field injection in a class with a parent class with a generic field injection`() {
+    compile(
+      kotlin(
+        "ExampleClass.kt",
+        """
+          package test
+          
+          import dev.zacsweers.lattice.annotations.Inject
+          
+          abstract class Base<T> {
+            @Inject lateinit var unknownItems: List<T>
+          }
+    
+          class ExampleClass : Base<String>() {
+            @Inject lateinit var numbers: List<Int>
+            
+            override fun equals(other: Any?): Boolean {
+              if (this === other) return true
+              if (javaClass != other?.javaClass) return false
+         
+              other as ExampleClass
+    
+              if (unknownItems != other.unknownItems) return false
+              if (numbers != other.numbers) return false
+         
+              return true
+            }
+          }
+          """,
+      ),
+      debug = true
+    ) {
+      val baseMembersInjector = classLoader.loadClass("test.Base")
+        .generatedMembersInjector()
+      val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
+
+      val constructor = injectClassMembersInjector.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList())
+        .containsExactly(
+          Provider::class.java,
+          Provider::class.java,
+        )
+
+      @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor
+        .newInstance(
+          Provider { listOf("a", "b") },
+          Provider { listOf(1, 2) },
+        ) as MembersInjector<Any>
+
+      val injectInstanceConstructor = ExampleClass.getDeclaredConstructor().newInstance()
+      membersInjectorInstance.injectMembers(injectInstanceConstructor)
+
+      val injectInstanceStatic = ExampleClass.getDeclaredConstructor().newInstance()
+
+      injectClassMembersInjector.staticInjectMethod("numbers")
+        .invoke(null, injectInstanceStatic, listOf(1, 2))
+      baseMembersInjector.staticInjectMethod("unknownItems")
+        .invoke(null, injectInstanceStatic, listOf("a", "b"))
+
+      assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
+      assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
+    }
+  }
+
+  @Test
+  fun `a factory class is generated for a field injection in a class with an ancestor class with a generic field injection`() {
+    compile(
+      kotlin(
+        "ExampleClass.kt",
+        """
+          package test
+          
+          import dev.zacsweers.lattice.annotations.Inject
+          
+          abstract class Base<T> {
+            @Inject lateinit var unknownItems: List<T>
+          }
+    
+          abstract class Middle<R> : Base<R>() {
+            @Inject lateinit var numbers: List<Int>
+            
+            override fun equals(other: Any?): Boolean {
+              if (this === other) return true
+              if (javaClass != other?.javaClass) return false
+         
+              other as ExampleClass
+    
+              if (unknownItems != other.unknownItems) return false
+              if (numbers != other.numbers) return false
+         
+              return true
+            }
+          }
+    
+          class ExampleClass : Middle<String>() {
+            @Inject lateinit var bools: List<Boolean>
+          }
+          """,
+      ),
+      debug = true
+    ) {
+      val baseMembersInjector = classLoader.loadClass("test.Base")
+        .generatedMembersInjector()
+      val middleMembersInjector = classLoader.loadClass("test.Middle")
+        .generatedMembersInjector()
+      val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
+
+      val constructor = injectClassMembersInjector.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList())
+        .containsExactly(
+          Provider::class.java,
+          Provider::class.java,
+          Provider::class.java,
+        )
+
+      @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor
+        .newInstance(
+          Provider { listOf("a", "b") },
+          Provider { listOf(1, 2) },
+          Provider { listOf(true) },
+        ) as MembersInjector<Any>
+
+      val injectInstanceConstructor = ExampleClass.getDeclaredConstructor().newInstance()
+      membersInjectorInstance.injectMembers(injectInstanceConstructor)
+
+      val injectInstanceStatic = ExampleClass.getDeclaredConstructor().newInstance()
+
+      injectClassMembersInjector.staticInjectMethod("bools")
+        .invoke(null, injectInstanceStatic, listOf(true))
+      middleMembersInjector.staticInjectMethod("numbers")
+        .invoke(null, injectInstanceStatic, listOf(1, 2))
+      baseMembersInjector.staticInjectMethod("unknownItems")
+        .invoke(null, injectInstanceStatic, listOf("a", "b"))
+
+      assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
+      assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
+    }
   }
 }
