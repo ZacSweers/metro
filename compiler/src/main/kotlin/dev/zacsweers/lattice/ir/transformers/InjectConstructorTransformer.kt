@@ -23,15 +23,16 @@ import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
-import dev.zacsweers.lattice.ir.buildFactoryCreateFunction
+import dev.zacsweers.lattice.ir.addStaticCreateFunction
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
-import dev.zacsweers.lattice.ir.patchFactoryCreationParameters
+import dev.zacsweers.lattice.ir.patchStaticCreationParameters
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -58,7 +59,10 @@ import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappe
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.ClassId
 
-internal class InjectConstructorTransformer(context: LatticeTransformerContext) :
+internal class InjectConstructorTransformer(
+  context: LatticeTransformerContext,
+  private val membersInjectorTransformer: MembersInjectorTransformer
+) :
   LatticeTransformerContext by context {
 
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
@@ -142,7 +146,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       )
 
     val parametersToFields =
-      assignConstructorParamsToFields(ctor, factoryCls, constructorParameters)
+      assignConstructorParamsToFields(ctor, factoryCls, constructorParameters.allParameters)
 
     val newInstanceFunctionSymbol =
       generateCreators(
@@ -176,7 +180,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                   parameters = constructorParameters,
                   receiver = factoryCls.thisReceiver!!,
                   parametersToFields = parametersToFields,
-                  symbols = symbols,
                 )
 
               val instance =
@@ -227,7 +230,6 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
                         parameters = constructorParameters,
                         receiver = factoryCls.thisReceiver!!,
                         parametersToFields = parametersToFields,
-                        symbols = symbols,
                       ),
                   )
                 )
@@ -250,7 +252,7 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
     targetConstructor: IrConstructorSymbol,
     targetTypeParameterized: IrType,
     factoryClassParameterized: IrType,
-    constructorParameters: Parameters,
+    constructorParameters: Parameters<ConstructorParameter>,
     memberInjectParameters: List<Parameter>,
   ): IrSimpleFunctionSymbol {
     // If this is an object, we can generate directly into this object
@@ -263,11 +265,11 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
       }
 
     // Generate create()
-    classToGenerateCreatorsIn.buildFactoryCreateFunction(
+    classToGenerateCreatorsIn.addStaticCreateFunction(
       context = this,
-      factoryClass = factoryCls,
-      factoryClassParameterized = factoryClassParameterized,
-      factoryConstructor = factoryConstructor,
+      targetClass = factoryCls,
+      targetClassParameterized = factoryClassParameterized,
+      targetConstructor = factoryConstructor,
       parameters = constructorParameters,
       providerFunction = null,
     )
@@ -305,11 +307,11 @@ internal class InjectConstructorTransformer(context: LatticeTransformerContext) 
             addValueParameter(parameter.name, parameter.originalType, LatticeOrigin)
           }
 
-          patchFactoryCreationParameters(
+          patchStaticCreationParameters(
             providerFunction = null,
             sourceParameters = constructorParameters.valueParameters.map { it.ir },
-            factoryParameters = valueParameters,
-            factoryGraphParameter = null,
+            targetParameters = valueParameters,
+            targetGraphParameter = null,
           )
 
           body =

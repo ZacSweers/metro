@@ -31,35 +31,35 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 
 /**
- * Remaps default value expressions from [sourceParameters] to [factoryParameters].
+ * Remaps default value expressions from [sourceParameters] to [targetParameters].
  *
  * This works for both simple scalar values, complex expressions, instance references, and
  * back-references to other parameters. Part of supporting that is a local
  * [IrElementTransformerVoid] that remaps those references to the new parameters.
  */
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun LatticeTransformerContext.patchFactoryCreationParameters(
+internal fun LatticeTransformerContext.patchStaticCreationParameters(
   providerFunction: IrFunction?,
   sourceParameters: List<IrValueParameter>,
-  factoryParameters: List<IrValueParameter>,
-  factoryGraphParameter: IrValueParameter?,
+  targetParameters: List<IrValueParameter>,
+  targetGraphParameter: IrValueParameter?,
   wrapInProvider: Boolean = false,
 ) {
   if (sourceParameters.isEmpty()) return
-  check(sourceParameters.size == factoryParameters.size) {
-    "Source parameters (${sourceParameters.size}) and factory parameters (${factoryParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"
+  check(sourceParameters.size == targetParameters.size) {
+    "Source parameters (${sourceParameters.size}) and target parameters (${targetParameters.size}) must be the same size! Function: ${sourceParameters.first().parent.kotlinFqName}"
   }
   val transformer =
     object : IrElementTransformerVoid() {
       override fun visitGetValue(expression: IrGetValue): IrExpression {
         // Check if the expression is the instance receiver
         if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
-          return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, factoryGraphParameter!!.symbol)
+          return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, targetGraphParameter!!.symbol)
         }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }
         if (index != -1) {
           val newGet =
-            IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, factoryParameters[index].symbol)
+            IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, targetParameters[index].symbol)
           return if (wrapInProvider) {
             // Need to call invoke on the get
             IrCallImpl.fromSymbolOwner(
@@ -81,7 +81,7 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
     val defaultValue = parameter.defaultValue ?: continue
 
     if (wrapInProvider) {
-      val targetParam = factoryParameters[index]
+      val targetParam = targetParameters[index]
       val provider =
         IrCallImpl.fromSymbolOwner(
             SYNTHETIC_OFFSET,
@@ -111,7 +111,7 @@ internal fun LatticeTransformerContext.patchFactoryCreationParameters(
       targetParam.defaultValue =
         defaultValue.deepCopyWithoutPatchingParents().apply { expression = provider }
     } else {
-      factoryParameters[index].defaultValue =
+      targetParameters[index].defaultValue =
         defaultValue.deepCopyWithoutPatchingParents().transform(transformer, null)
     }
   }

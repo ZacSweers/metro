@@ -46,6 +46,7 @@ import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isExternalParent
+import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
@@ -126,7 +127,8 @@ internal class DependencyGraphData {
 internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   IrElementTransformer<DependencyGraphData>, LatticeTransformerContext by context {
 
-  private val injectConstructorTransformer = InjectConstructorTransformer(context)
+    private val membersInjectorTransformer = MembersInjectorTransformer(context)
+  private val injectConstructorTransformer = InjectConstructorTransformer(context, membersInjectorTransformer)
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
@@ -206,6 +208,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     log("Reading <$declaration>")
 
     // TODO need to better divvy these
+    membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
 
@@ -905,7 +908,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                       generateBindingCode(binding, generationContext, contextualTypeKey),
                       isAssisted = false,
                       isGraphInstance = false,
-                      symbols,
                     ),
                   )
                 }
@@ -1147,7 +1149,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   }
 
   private fun IrBuilderWithScope.generateBindingArguments(
-    targetParams: Parameters,
+    targetParams: Parameters<out Parameter>,
     function: IrFunction,
     binding: Binding,
     generationContext: GraphGenerationContext,
@@ -1723,7 +1725,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       bindingCode,
       false,
       false,
-      symbols,
     )
   }
 }

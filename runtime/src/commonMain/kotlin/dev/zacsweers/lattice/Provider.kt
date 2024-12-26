@@ -19,6 +19,7 @@ public fun interface Provider<T : Any> {
   public operator fun invoke(): T
 }
 
+// TODO can we get rid of this?
 public inline fun <T : Any> provider(crossinline provider: () -> T): Provider<T> {
   return Provider { provider() }
 }

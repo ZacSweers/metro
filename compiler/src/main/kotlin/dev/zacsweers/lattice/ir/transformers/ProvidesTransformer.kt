@@ -30,7 +30,7 @@ import dev.zacsweers.lattice.ir.TypeKey
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
-import dev.zacsweers.lattice.ir.buildFactoryCreateFunction
+import dev.zacsweers.lattice.ir.addStaticCreateFunction
 import dev.zacsweers.lattice.ir.checkNotNullCall
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irBlockBody
@@ -40,7 +40,7 @@ import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isCompanionObject
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
-import dev.zacsweers.lattice.ir.patchFactoryCreationParameters
+import dev.zacsweers.lattice.ir.patchStaticCreationParameters
 import dev.zacsweers.lattice.isWordPrefixRegex
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -263,7 +263,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         ir = null, // Will set later
       )
 
-    val parametersToFields = assignConstructorParamsToFields(ctor, factoryCls, factoryParameters)
+    val parametersToFields = assignConstructorParamsToFields(ctor, factoryCls, factoryParameters.allParameters)
 
     val bytecodeFunctionSymbol =
       generateCreators(
@@ -298,7 +298,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     parameters = factoryParameters,
                     receiver = factoryCls.thisReceiver!!,
                     parametersToFields = parametersToFields,
-                    symbols = symbols,
                   ),
               ),
             )
@@ -363,7 +362,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         isInternal = property.visibility == DescriptorVisibilities.INTERNAL,
         name = property.name,
         isProperty = true,
-        parameters = property.getter?.parameters(this) ?: Parameters.EMPTY,
+        parameters = property.getter?.parameters(this) ?: Parameters.empty(),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         isPublishedApi = property.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
@@ -380,7 +379,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     factoryConstructor: IrConstructorSymbol,
     reference: CallableReference,
     factoryClassParameterized: IrType,
-    factoryParameters: Parameters,
+    factoryParameters: Parameters<ConstructorParameter>,
     byteCodeFunctionName: String,
   ): IrSimpleFunctionSymbol {
     val targetTypeParameterized = reference.typeKey.type
@@ -396,11 +395,11 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       }
 
     // Generate create()
-    classToGenerateCreatorsIn.buildFactoryCreateFunction(
+    classToGenerateCreatorsIn.addStaticCreateFunction(
       context = this,
-      factoryClass = factoryCls,
-      factoryClassParameterized = factoryClassParameterized,
-      factoryConstructor = factoryConstructor,
+      targetClass = factoryCls,
+      targetClassParameterized = factoryClassParameterized,
+      targetConstructor = factoryConstructor,
       parameters = factoryParameters,
       providerFunction = reference.callee.owner,
     )
@@ -451,11 +450,11 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
               addValueParameter(it.name, it.originalType, LatticeOrigin)
             }
 
-          patchFactoryCreationParameters(
+          patchStaticCreationParameters(
             providerFunction = reference.callee.owner,
             sourceParameters = reference.parameters.valueParameters.map { it.ir },
-            factoryParameters = valueParametersToMap,
-            factoryGraphParameter = instanceParam,
+            targetParameters = valueParametersToMap,
+            targetGraphParameter = instanceParam,
           )
 
           val argumentsWithoutGraph: IrBuilderWithScope.() -> List<IrExpression> = {
@@ -535,7 +534,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val isInternal: Boolean,
     val name: Name,
     val isProperty: Boolean,
-    val parameters: Parameters,
+    val parameters: Parameters<ConstructorParameter>,
     val typeKey: TypeKey,
     val isNullable: Boolean,
     val isPublishedApi: Boolean,

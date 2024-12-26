@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -100,6 +101,11 @@ internal interface LatticeTransformerContext {
     }
   }
 
+  fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
+    if (this == null) return null
+    return allAnnotations.annotationsAnnotatedWith(symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
+  }
+
   fun IrAnnotationContainer?.qualifierAnnotation() =
     annotationsAnnotatedWith(symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
 
@@ -111,12 +117,19 @@ internal interface LatticeTransformerContext {
   fun IrAnnotationContainer.mapKeyAnnotation() =
     annotationsIn(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun IrAnnotationContainer?.annotationsAnnotatedWith(
     annotationsToLookFor: Collection<ClassId>
   ): Set<IrConstructorCall> {
     if (this == null) return emptySet()
-    return annotations.filterTo(LinkedHashSet()) {
+    return annotations.annotationsAnnotatedWith(annotationsToLookFor)
+  }
+
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
+  private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
+    annotationsToLookFor: Collection<ClassId>
+  ): Set<IrConstructorCall> {
+    if (this == null) return emptySet()
+    return filterTo(LinkedHashSet()) {
       it.type.classOrNull?.owner?.isAnnotatedWithAny(annotationsToLookFor) == true
     }
   }

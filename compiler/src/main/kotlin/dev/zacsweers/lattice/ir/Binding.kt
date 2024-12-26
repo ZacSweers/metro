@@ -35,7 +35,7 @@ internal sealed interface Binding {
   // TODO reconcile dependencies vs parameters in collectBindings
   val dependencies: Map<TypeKey, Parameter>
   // Track the list of parameters, which may not have unique type keys
-  val parameters: Parameters
+  val parameters: Parameters<out Parameter>
   val nameHint: String
   val contextualTypeKey: ContextualTypeKey
   val reportableLocation: CompilerMessageSourceLocation?
@@ -45,7 +45,7 @@ internal sealed interface Binding {
     val injectedConstructor: IrConstructor,
     val isAssisted: Boolean,
     override val typeKey: TypeKey,
-    override val parameters: Parameters,
+    override val parameters: Parameters<out Parameter>,
     override val scope: IrAnnotation? = null,
     override val dependencies: Map<TypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey },
@@ -65,7 +65,7 @@ internal sealed interface Binding {
   data class Provided(
     val providerFunction: IrSimpleFunction,
     override val contextualTypeKey: ContextualTypeKey,
-    override val parameters: Parameters,
+    override val parameters: Parameters<out Parameter>,
     override val scope: IrAnnotation? = null,
     override val dependencies: Map<TypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey },
@@ -95,7 +95,7 @@ internal sealed interface Binding {
     val type: IrClass,
     val target: ConstructorInjected,
     val function: IrSimpleFunction,
-    override val parameters: Parameters,
+    override val parameters: Parameters<out Parameter>,
     override val typeKey: TypeKey,
   ) : Binding {
     // Dependencies are handled by the target class
@@ -113,7 +113,7 @@ internal sealed interface Binding {
     override val scope: IrAnnotation? = null
     override val nameHint: String = "${parameter.name.asString()}Instance"
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
-    override val parameters: Parameters = Parameters.EMPTY
+    override val parameters: Parameters<out Parameter> = Parameters.empty()
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
 
@@ -127,7 +127,7 @@ internal sealed interface Binding {
       get() = error("Should never be called")
 
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
-    override val parameters: Parameters = Parameters.EMPTY
+    override val parameters: Parameters<out Parameter> = Parameters.empty()
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
 
@@ -155,7 +155,7 @@ internal sealed interface Binding {
       }
     }
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
-    override val parameters: Parameters = Parameters.EMPTY
+    override val parameters: Parameters<out Parameter> = Parameters.empty()
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
 
@@ -186,8 +186,8 @@ internal sealed interface Binding {
     override val dependencies: Map<TypeKey, Parameter>
       get() = emptyMap()
 
-    override val parameters: Parameters
-      get() = Parameters.EMPTY
+    override val parameters: Parameters<out Parameter>
+      get() = Parameters.empty()
 
     override val nameHint: String
       get() = error("Should never be called")

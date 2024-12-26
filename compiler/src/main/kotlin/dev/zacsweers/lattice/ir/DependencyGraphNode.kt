@@ -15,6 +15,8 @@
  */
 package dev.zacsweers.lattice.ir
 
+import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
+import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -39,7 +41,7 @@ internal data class DependencyGraphNode(
   data class Creator(
     val type: IrClass,
     val createFunction: IrSimpleFunction,
-    val parameters: Parameters,
+    val parameters: Parameters<ConstructorParameter>,
   )
 
   // Build a full type map including inherited providers
