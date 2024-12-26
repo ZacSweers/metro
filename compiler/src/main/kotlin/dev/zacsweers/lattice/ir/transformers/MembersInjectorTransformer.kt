@@ -31,6 +31,7 @@ import dev.zacsweers.lattice.ir.getAllSuperTypes
 import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.ir.isExternalParent
 import dev.zacsweers.lattice.ir.parameterAsProviderArgument
 import dev.zacsweers.lattice.ir.parameters.MembersInjectParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
@@ -40,8 +41,12 @@ import dev.zacsweers.lattice.ir.rawTypeOrNull
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
+import kotlin.collections.set
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.fir.backend.FirMetadataSource
+import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
+import org.jetbrains.kotlin.fir.declarations.builder.buildRegularClass
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -68,6 +73,7 @@ import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappe
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.ClassId
@@ -81,6 +87,10 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     getOrGenerateInjector(declaration)
   }
 
+  fun requireInjector(declaration: IrClass): IrClass? {
+    return getOrGenerateInjector(declaration) ?: error("No members injector found for ${declaration.kotlinFqName}.")
+  }
+
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateInjector(declaration: IrClass): IrClass? {
     // TODO if declaration is external to this compilation, look
@@ -89,6 +99,20 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     generatedInjectors[injectedClassId]?.let {
       return it
     }
+
+    if (declaration.isExternalParent) {
+      // Externally compiled, look up its generated class
+      // TODO won't be visible until we add metadata to generated classes
+      val generatedInjector =
+        declaration.nestedClasses.singleOrNull { it.name == LatticeSymbols.Names.LatticeMembersInjector }
+      return if (generatedInjector == null) {
+        null
+      } else {
+        generatedInjectors[injectedClassId] = generatedInjector
+        generatedInjector
+      }
+    }
+
 
     val injectedTypeParameters: List<IrTypeParameter> = declaration.typeParameters
 
@@ -147,7 +171,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       pluginContext.irFactory.addCompanionObject(symbols, parent = injectorClass)
 
     // Static create()
-    val createFunction =
       companionObject.addStaticCreateFunction(
         context = this,
         targetClass = injectorClass,
@@ -229,13 +252,14 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       // Locate function refs for supertypes
       for ((classId, injectedMembers) in injectedMembersByClass) {
         if (classId == injectedClassId) continue
+        if (injectedMembers.isEmpty()) continue
 
         val allParams =
           injectedMembers.flatMap { it.valueParameters }.associateBy { it.name.asString() }
 
         // This is what generates supertypes lazily as needed
         val functions =
-          getOrGenerateInjector(pluginContext.referenceClass(classId)!!.owner)!!
+          requireInjector(pluginContext.referenceClass(classId)!!.owner)!!
             .companionObject()!!
             .simpleFunctions()
             .mapNotNull { function ->
