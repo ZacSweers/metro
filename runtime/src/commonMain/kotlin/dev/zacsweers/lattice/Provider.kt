@@ -23,3 +23,7 @@ public fun interface Provider<T : Any> {
 public inline fun <T : Any> provider(crossinline provider: () -> T): Provider<T> {
   return Provider { provider() }
 }
+
+public fun <T : Any> providerOf(value: T): Provider<T> {
+  return Provider { value }
+}
