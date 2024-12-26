@@ -55,9 +55,11 @@ internal class LatticeSymbols(
     val CompanionObject = Name.identifier("Companion")
     val CreateFunction = Name.identifier("create")
     val Factory = Name.identifier("Factory")
+    val Instance = Name.identifier("instance")
     val LatticeGraph = Name.identifier("\$\$LatticeGraph")
     val LatticeFactory = Name.identifier("\$\$LatticeFactory")
     val LatticeImpl = Name.identifier("\$\$Impl")
+    val LatticeMembersInjector = Name.identifier("\$\$LatticeMembersInjector")
     // Used in @Assisted.value
     val Value = Name.identifier("value")
   }
@@ -193,6 +195,16 @@ internal class LatticeSymbols(
 
   val latticeDelegateFactorySetDelegate: IrFunctionSymbol by lazy {
     latticeDelegateFactoryCompanion.getSimpleFunction("setDelegate")!!
+  }
+
+  val latticeMembersInjector: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntime.packageFqName, Name.identifier("MembersInjector"))
+    )!!
+  }
+
+  val latticeMembersInjectorInjectMembers: IrSimpleFunctionSymbol by lazy {
+    latticeMembersInjector.getSimpleFunction("injectMembers")!!
   }
 
   val latticeFactory: IrClassSymbol by lazy {
