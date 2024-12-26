@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.compiler.getValue
 import dev.zacsweers.lattice.compiler.invokeCreate
 import dev.zacsweers.lattice.compiler.invokeNewInstance
 import dev.zacsweers.lattice.compiler.staticInjectMethod
+import dev.zacsweers.lattice.providerOf
 import org.junit.Test
 
 class MembersInjectTransformerTest : LatticeCompilerTest() {
@@ -59,7 +60,11 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               var setterAnnotated: Map<String, String> = emptyMap()
                 @Inject set
               @set:Inject var setterAnnotated2: Map<String, Boolean> = emptyMap()
-
+              @Inject private lateinit var privateField: String
+              @Inject
+              lateinit var privateSetter: String
+                private set
+              
               override fun equals(other: Any?): Boolean {
                 if (this === other) return true
                 if (javaClass != other?.javaClass) return false
@@ -74,6 +79,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
                 if (set.single().invoke(emptyList())[0] != other.set.single().invoke(emptyList())[0]) return false
                 if (setterAnnotated != other.setterAnnotated) return false
                 if (setterAnnotated2 != other.setterAnnotated2) return false
+                if (privateField != other.privateField) return false
+                if (privateSetter != other.privateSetter) return false
 
                 return true
               }
@@ -87,6 +94,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
                 result = 31 * result + set.single().invoke(emptyList())[0].hashCode()
                 result = 31 * result + setterAnnotated.hashCode()
                 result = 31 * result + setterAnnotated2.hashCode()
+                result = 31 * result + privateField.hashCode()
+                result = 31 * result + privateSetter.hashCode()
                 return result
               }
             }
@@ -110,6 +119,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
         Provider::class.java,
         Provider::class.java,
         Provider::class.java,
+        Provider::class.java,
+        Provider::class.java,
       )
 
     @Suppress("RedundantLambdaArrow", "UNCHECKED_CAST")
@@ -123,6 +134,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
         Provider { setOf { _: List<String> -> listOf("g") } },
         Provider { mapOf("Hello" to "World") },
         Provider { mapOf("Hello" to false) },
+        providerOf("private field"),
+        providerOf("private setter"),
       ) as MembersInjector<Any>
 
     val injectInstanceConstructor = result.ExampleClass.generatedFactoryClass().invokeNewInstance()
@@ -149,6 +162,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     membersInjector
       .staticInjectMethod("setterAnnotated2")
       .invoke(null, injectInstanceStatic, mapOf("Hello" to false))
+    membersInjector.staticInjectMethod("privateField").invoke(null, injectInstanceStatic, "private field")
+    membersInjector.staticInjectMethod("privateSetter").invoke(null, injectInstanceStatic, "private setter")
 
     assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
     assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
