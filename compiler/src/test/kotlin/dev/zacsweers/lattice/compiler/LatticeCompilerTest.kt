@@ -21,6 +21,7 @@ import com.tschuchort.compiletesting.JvmCompilationResult
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
+import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import dev.zacsweers.lattice.LatticeCommandLineProcessor
 import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_DEBUG
 import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_ENABLED
@@ -39,6 +40,7 @@ abstract class LatticeCompilerTest {
     vararg sourceFiles: SourceFile,
     debug: Boolean = false,
     generateAssistedFactories: Boolean = false,
+    previousCompilationResult: JvmCompilationResult? = null,
   ): KotlinCompilation {
     return KotlinCompilation().apply {
       workingDir = temporaryFolder.root
@@ -57,6 +59,10 @@ abstract class LatticeCompilerTest {
       jvmTarget = "11"
       // TODO need to support non-JVM invoke too
       kotlincArguments += "-Xjvm-default=all"
+
+      if (previousCompilationResult != null) {
+        addPreviousResultToClasspath(previousCompilationResult)
+      }
     }
   }
 
@@ -69,12 +75,14 @@ abstract class LatticeCompilerTest {
     debug: Boolean = false,
     generateAssistedFactories: Boolean = false,
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
+    previousCompilationResult: JvmCompilationResult? = null,
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
     return prepareCompilation(
         sourceFiles = sourceFiles,
         debug = debug,
         generateAssistedFactories = generateAssistedFactories,
+        previousCompilationResult = previousCompilationResult,
       )
       .compile()
       .apply {
