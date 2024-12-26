@@ -30,6 +30,7 @@ import dev.zacsweers.lattice.compiler.invokeCreate
 import dev.zacsweers.lattice.compiler.invokeNewInstance
 import dev.zacsweers.lattice.compiler.staticInjectMethod
 import dev.zacsweers.lattice.providerOf
+import org.junit.Ignore
 import org.junit.Test
 
 class MembersInjectTransformerTest : LatticeCompilerTest() {
@@ -569,6 +570,85 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
         .invoke(null, injectInstanceStatic, listOf(1, 2))
       baseMembersInjector.staticInjectMethod("unknownItems")
         .invoke(null, injectInstanceStatic, listOf("a", "b"))
+
+      assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
+      assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
+    }
+  }
+
+  @Ignore("Won't work until we support multi-module compilation, requires metadat")
+  @Test
+  fun `a member injector is generated for a class with a super class in another module`() {
+    val otherModuleResult = compile(
+      kotlin(
+        "Base.kt",
+        """
+          package test
+          
+          import dev.zacsweers.lattice.annotations.Inject
+          
+          abstract class Base {
+            @Inject lateinit var string: String
+          }
+          """,
+      ),
+    )
+
+    compile(
+      kotlin(
+        "ExampleClass.kt",
+        """
+          package test
+          
+          import dev.zacsweers.lattice.annotations.Inject
+          
+          class ExampleClass : Base() {
+            @Inject lateinit var numbers: List<Int>
+         
+            override fun equals(other: Any?): Boolean {
+              if (this === other) return true
+              if (javaClass != other?.javaClass) return false
+         
+              other as ExampleClass
+         
+              if (numbers != other.numbers) return false
+              if (string != other.string) return false
+         
+              return true
+            }
+          }
+          """,
+      ),
+      debug = true,
+      previousCompilationResult = otherModuleResult,
+    ) {
+      val baseMembersInjector = classLoader.loadClass("test.Base")
+        .generatedMembersInjector()
+
+      val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
+
+      val constructor = injectClassMembersInjector.declaredConstructors.single()
+      assertThat(constructor.parameterTypes.toList())
+        .containsExactly(
+          Provider::class.java,
+          Provider::class.java,
+        )
+
+      @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor
+        .newInstance(
+          Provider { "a" },
+          Provider { listOf(1, 2) },
+        ) as MembersInjector<Any>
+
+      val injectInstanceConstructor = ExampleClass.getDeclaredConstructor().newInstance()
+      membersInjectorInstance.injectMembers(injectInstanceConstructor)
+
+      val injectInstanceStatic = ExampleClass.getDeclaredConstructor().newInstance()
+
+      injectClassMembersInjector.staticInjectMethod("numbers")
+        .invoke(null, injectInstanceStatic, listOf(1, 2))
+      baseMembersInjector.staticInjectMethod("string")
+        .invoke(null, injectInstanceStatic, "a")
 
       assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
       assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
