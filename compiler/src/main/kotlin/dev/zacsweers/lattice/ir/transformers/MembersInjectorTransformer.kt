@@ -40,7 +40,6 @@ import dev.zacsweers.lattice.ir.rawTypeOrNull
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
-import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -71,7 +70,6 @@ import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.simpleFunctions
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
 internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
@@ -142,7 +140,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
         origin = LatticeOrigin,
       )
 
-    val allParameters = injectedMembersByClass.values.flatMap { it.flatMap{ it.valueParameters } }
+    val allParameters = injectedMembersByClass.values.flatMap { it.flatMap { it.valueParameters } }
     val parametersToFields = assignConstructorParamsToFields(ctor, injectorClass, allParameters)
 
     val companionObject =
@@ -166,7 +164,8 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
     // Implement static inject{name}() for each declared callable in this class
     val declaredInjectFunctions: Map<MembersInjectParameter, IrSimpleFunction> =
-      injectedMembersByClass.getValue(injectedClassId)
+      injectedMembersByClass
+        .getValue(injectedClassId)
         .flatMap { injectedMember ->
           injectedMember.valueParameters
             .filter { it.memberInjectorClassId == injectorClassId }
@@ -231,26 +230,31 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       for ((classId, injectedMembers) in injectedMembersByClass) {
         if (classId == injectedClassId) continue
 
-        val allParams = injectedMembers.flatMap { it.valueParameters }
-          .associateBy { it.name.asString() }
+        val allParams =
+          injectedMembers.flatMap { it.valueParameters }.associateBy { it.name.asString() }
 
         // This is what generates supertypes lazily as needed
-        val functions = getOrGenerateInjector(pluginContext.referenceClass(classId)!!.owner)!!.companionObject()!!
-          .simpleFunctions()
-          .mapNotNull { function ->
-            val name = function.name.asString()
-            // TODO generate a better marker annotation? Or use attributes?
-            if (!name.startsWith("inject")) return@mapNotNull null
-            val paramName = name.removePrefix("inject").decapitalizeUS()
-            val param = allParams[paramName] ?: error("Could not find param with name $paramName for $classId")
-            param to function
-          }
-          .associate { it.first to it.second }
+        val functions =
+          getOrGenerateInjector(pluginContext.referenceClass(classId)!!.owner)!!
+            .companionObject()!!
+            .simpleFunctions()
+            .mapNotNull { function ->
+              val name = function.name.asString()
+              // TODO generate a better marker annotation? Or use attributes?
+              if (!name.startsWith("inject")) return@mapNotNull null
+              val paramName = name.removePrefix("inject").decapitalizeUS()
+              val param =
+                allParams[paramName]
+                  ?: error("Could not find param with name $paramName for $classId")
+              param to function
+            }
+            .associate { it.first to it.second }
         putAll(functions)
       }
     }
 
-    val injectFunctions: Map<MembersInjectParameter, IrSimpleFunction> = inheritedInjectFunctions + declaredInjectFunctions
+    val injectFunctions: Map<MembersInjectParameter, IrSimpleFunction> =
+      inheritedInjectFunctions + declaredInjectFunctions
 
     // Override injectMembers()
     injectorClass
@@ -262,7 +266,8 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       )
       .apply {
         this.dispatchReceiverParameter = injectorClass.thisReceiver!!
-        val instanceParam = addValueParameter(LatticeSymbols.Names.Instance, injectedTypeParameterized)
+        val instanceParam =
+          addValueParameter(LatticeSymbols.Names.Instance, injectedTypeParameterized)
         body =
           pluginContext.createIrBuilder(symbol).irBlockBody {
             addMemberInjection(
@@ -307,31 +312,35 @@ internal fun IrClass.memberInjectParameters(
   context: LatticeTransformerContext
 ): Map<ClassId, List<Parameters<MembersInjectParameter>>> {
   return buildList {
-    val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-    for (type in getAllSuperTypes(context.pluginContext, excludeSelf = false, excludeAny = true)) {
-      val clazz = type.rawTypeOrNull() ?: continue
-      // TODO revisit - can we support this now? Interfaces can declare mutable vars that may not be implemented in
-      //  the consuming class if using class delegation
-      if (clazz.isInterface) continue
+      val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+      for (type in
+        getAllSuperTypes(context.pluginContext, excludeSelf = false, excludeAny = true)) {
+        val clazz = type.rawTypeOrNull() ?: continue
+        // TODO revisit - can we support this now? Interfaces can declare mutable vars that may not
+        // be implemented in
+        //  the consuming class if using class delegation
+        if (clazz.isInterface) continue
 
-      val injectedMembers = clazz.declaredCallableMembers(
-        functionFilter = { it.isAnnotatedWithAny(context.symbols.injectAnnotations) },
-        propertyFilter = {
-          (it.isVar || it.isLateinit) &&
-            (it.isAnnotatedWithAny(context.symbols.injectAnnotations) ||
-              it.setter?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true ||
-              it.backingField?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true)
-        },
-      )
-        .map { it.memberInjectParameters(context, nameAllocator, clazz) }
-        // TODO extension receivers not supported. What about overrides?
-        .toList()
+        val injectedMembers =
+          clazz
+            .declaredCallableMembers(
+              functionFilter = { it.isAnnotatedWithAny(context.symbols.injectAnnotations) },
+              propertyFilter = {
+                (it.isVar || it.isLateinit) &&
+                  (it.isAnnotatedWithAny(context.symbols.injectAnnotations) ||
+                    it.setter?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true ||
+                    it.backingField?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true)
+              },
+            )
+            .map { it.memberInjectParameters(context, nameAllocator, clazz) }
+            // TODO extension receivers not supported. What about overrides?
+            .toList()
 
-      if (injectedMembers.isNotEmpty()) {
-        add(clazz.classIdOrFail to injectedMembers)
+        if (injectedMembers.isNotEmpty()) {
+          add(clazz.classIdOrFail to injectedMembers)
+        }
       }
     }
-  }
     // Reverse it such that the supertypes are first
     .asReversed()
     .associate { it.first to it.second }

@@ -103,7 +103,10 @@ internal interface LatticeTransformerContext {
 
   fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
     if (this == null) return null
-    return allAnnotations.annotationsAnnotatedWith(symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
+    return allAnnotations
+      .annotationsAnnotatedWith(symbols.qualifierAnnotations)
+      .singleOrNull()
+      ?.let(::IrAnnotation)
   }
 
   fun IrAnnotationContainer?.qualifierAnnotation() =

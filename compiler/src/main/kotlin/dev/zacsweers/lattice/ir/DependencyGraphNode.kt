@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
-import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction

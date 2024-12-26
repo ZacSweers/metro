@@ -18,18 +18,18 @@ package dev.zacsweers.lattice.ir.transformers
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.LatticeTransformerContext
-import dev.zacsweers.lattice.ir.parameters.Parameter
-import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
-import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.addStaticCreateFunction
+import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
+import dev.zacsweers.lattice.ir.parameters.Parameter
+import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.ir.patchStaticCreationParameters
@@ -61,9 +61,8 @@ import org.jetbrains.kotlin.name.ClassId
 
 internal class InjectConstructorTransformer(
   context: LatticeTransformerContext,
-  private val membersInjectorTransformer: MembersInjectorTransformer
-) :
-  LatticeTransformerContext by context {
+  private val membersInjectorTransformer: MembersInjectorTransformer,
+) : LatticeTransformerContext by context {
 
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
 

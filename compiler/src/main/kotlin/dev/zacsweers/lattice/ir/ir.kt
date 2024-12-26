@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
-import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.wrapInLazy
@@ -352,13 +351,14 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
 internal fun IrClass.declaredCallableMembers(
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
-): Sequence<IrSimpleFunction> = allCallableMembers(
-  excludeAnyFunctions = true,
-  excludeInheritedMembers = true,
-  excludeCompanionObjectMembers = true,
-  functionFilter = functionFilter,
-  propertyFilter = propertyFilter,
-)
+): Sequence<IrSimpleFunction> =
+  allCallableMembers(
+    excludeAnyFunctions = true,
+    excludeInheritedMembers = true,
+    excludeCompanionObjectMembers = true,
+    functionFilter = functionFilter,
+    propertyFilter = propertyFilter,
+  )
 
 // TODO create an instance of this that caches lookups?
 @OptIn(UnsafeDuringIrConstructionAPI::class)
@@ -631,7 +631,7 @@ internal fun IrClass.addStaticCreateFunction(
   targetConstructor: IrConstructorSymbol,
   parameters: Parameters<out Parameter>,
   providerFunction: IrFunction?,
-  patchCreationParams: Boolean = true
+  patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
   return addFunction("create", targetClassParameterized, isStatic = true).apply {
     val thisFunction = this
@@ -873,11 +873,13 @@ internal val IrType.simpleName: String?
       null -> error("No classifier for ${dumpKotlinLike()}")
     }
 
-internal val IrProperty.allAnnotations: List<IrConstructorCall> get() {
-  return buildList {
-    addAll(annotations)
-    getter?.let { addAll(it.annotations) }
-    setter?.let { addAll(it.annotations) }
-    backingField?.let { addAll(it.annotations) }
-  }.distinct()
-}
+internal val IrProperty.allAnnotations: List<IrConstructorCall>
+  get() {
+    return buildList {
+        addAll(annotations)
+        getter?.let { addAll(it.annotations) }
+        setter?.let { addAll(it.annotations) }
+        backingField?.let { addAll(it.annotations) }
+      }
+      .distinct()
+  }

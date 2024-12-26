@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Zac Sweers
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package dev.zacsweers.lattice.ir.parameters
 
 import dev.zacsweers.lattice.LatticeSymbols
@@ -85,20 +100,20 @@ internal fun IrValueParameter.toConstructorParameter(
   val ownerFunction = this.parent as IrFunction // TODO is this safe
 
   return ConstructorParameter(
-    kind = kind,
-    name = uniqueName,
-    originalName = name,
-    contextualTypeKey = contextKey,
-    providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
-    lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
-    isAssisted = assistedAnnotation != null,
-    assistedIdentifier = assistedIdentifier,
-    symbols = context.symbols,
-    isGraphInstance = false,
-    bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
-    isBindsInstance = isBindsInstance,
-    hasDefault = defaultValue != null,
-    location = locationOrNull(),
-  )
+      kind = kind,
+      name = uniqueName,
+      originalName = name,
+      contextualTypeKey = contextKey,
+      providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
+      lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
+      isAssisted = assistedAnnotation != null,
+      assistedIdentifier = assistedIdentifier,
+      symbols = context.symbols,
+      isGraphInstance = false,
+      bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
+      isBindsInstance = isBindsInstance,
+      hasDefault = defaultValue != null,
+      location = locationOrNull(),
+    )
     .apply { this.ir = this@toConstructorParameter }
 }

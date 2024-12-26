@@ -21,16 +21,13 @@ import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.Binding
 import dev.zacsweers.lattice.ir.BindingStack
-import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.ir.ContextualTypeKey
 import dev.zacsweers.lattice.ir.LatticeTransformerContext
-import dev.zacsweers.lattice.ir.parameters.Parameter
-import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.TypeKey
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
-import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.addStaticCreateFunction
+import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.checkNotNullCall
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irBlockBody
@@ -38,6 +35,9 @@ import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isCompanionObject
+import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
+import dev.zacsweers.lattice.ir.parameters.Parameter
+import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.ir.patchStaticCreationParameters
@@ -263,7 +263,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         ir = null, // Will set later
       )
 
-    val parametersToFields = assignConstructorParamsToFields(ctor, factoryCls, factoryParameters.allParameters)
+    val parametersToFields =
+      assignConstructorParamsToFields(ctor, factoryCls, factoryParameters.allParameters)
 
     val bytecodeFunctionSymbol =
       generateCreators(

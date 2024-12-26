@@ -44,9 +44,9 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.annotations.Named
-            
+
             typealias StringList = List<String>
-            
+
             // Generate a factory too to cover for https://github.com/square/anvil/issues/362
             @Inject
             class ExampleClass {
@@ -59,13 +59,13 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               var setterAnnotated: Map<String, String> = emptyMap()
                 @Inject set
               @set:Inject var setterAnnotated2: Map<String, Boolean> = emptyMap()
-              
+
               override fun equals(other: Any?): Boolean {
                 if (this === other) return true
                 if (javaClass != other?.javaClass) return false
-            
+
                 other as ExampleClass
-            
+
                 if (string != other.string) return false
                 if (qualifiedString != other.qualifiedString) return false
                 if (charSequence != other.charSequence) return false
@@ -74,10 +74,10 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
                 if (set.single().invoke(emptyList())[0] != other.set.single().invoke(emptyList())[0]) return false
                 if (setterAnnotated != other.setterAnnotated) return false
                 if (setterAnnotated2 != other.setterAnnotated2) return false
-            
+
                 return true
               }
-            
+
               override fun hashCode(): Int {
                 var result = string.hashCode()
                 result = 31 * result + qualifiedString.hashCode()
@@ -172,18 +172,18 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.Provider
-            
+
             class ExampleClass {
               @Inject lateinit var string: String
               @Inject lateinit var stringProvider: Provider<String>
               @Inject lateinit var stringListProvider: Provider<List<String>>
               @Inject lateinit var lazyString: Lazy<String>
-              
+
               override fun equals(other: Any?): Boolean {
                 return toString() == other.toString()
               }
               override fun toString(): String {
-               return string + stringProvider() + 
+               return string + stringProvider() +
                    stringListProvider()[0] + lazyString.value
               }
             }
@@ -242,10 +242,10 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.Provider
-            
+
             class ExampleClass {
               @Inject lateinit var lazyStringProvider: Provider<Lazy<String>>
-        
+
               override fun equals(other: Any?): Boolean {
                 return toString() == other.toString()
               }
@@ -290,27 +290,27 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
             import dev.zacsweers.lattice.annotations.Inject
             import dev.zacsweers.lattice.Provider
-            
+
             class ExampleClass : Middle() {
 
               @Inject
               lateinit var name: String
             }
-      
+
             abstract class Middle : Base() {
-      
+
               @Inject
               lateinit var middle1: Set<Int>
-      
+
               @Inject
               lateinit var middle2: Set<String>
             }
-            
+
             abstract class Base {
-      
+
               @Inject
               lateinit var base1: List<Int>
-      
+
               @Inject
               lateinit var base2: List<String>
             }

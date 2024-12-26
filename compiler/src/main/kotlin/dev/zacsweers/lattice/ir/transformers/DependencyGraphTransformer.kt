@@ -23,12 +23,10 @@ import dev.zacsweers.lattice.exitProcessing
 import dev.zacsweers.lattice.ir.Binding
 import dev.zacsweers.lattice.ir.BindingGraph
 import dev.zacsweers.lattice.ir.BindingStack
-import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.ir.ContextualTypeKey
 import dev.zacsweers.lattice.ir.DependencyGraphNode
 import dev.zacsweers.lattice.ir.IrAnnotation
 import dev.zacsweers.lattice.ir.LatticeTransformerContext
-import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.TypeKey
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
@@ -46,15 +44,17 @@ import dev.zacsweers.lattice.ir.irLambda
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isExternalParent
+import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
+import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.parameters
+import dev.zacsweers.lattice.ir.parameters.wrapInLazy
+import dev.zacsweers.lattice.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.ir.rawType
 import dev.zacsweers.lattice.ir.rawTypeOrNull
 import dev.zacsweers.lattice.ir.singleAbstractFunction
 import dev.zacsweers.lattice.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.ir.withEntry
-import dev.zacsweers.lattice.ir.parameters.wrapInLazy
-import dev.zacsweers.lattice.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.letIf
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -127,8 +127,9 @@ internal class DependencyGraphData {
 internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   IrElementTransformer<DependencyGraphData>, LatticeTransformerContext by context {
 
-    private val membersInjectorTransformer = MembersInjectorTransformer(context)
-  private val injectConstructorTransformer = InjectConstructorTransformer(context, membersInjectorTransformer)
+  private val membersInjectorTransformer = MembersInjectorTransformer(context)
+  private val injectConstructorTransformer =
+    InjectConstructorTransformer(context, membersInjectorTransformer)
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
