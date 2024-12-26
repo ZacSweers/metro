@@ -30,6 +30,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val kind: Kind
   val name: Name
   val originalName: Name
+  // TODO make this just alias to contextualtypekey?
   val type: IrType
   val providerType: IrType
   val contextualTypeKey: ContextualTypeKey
