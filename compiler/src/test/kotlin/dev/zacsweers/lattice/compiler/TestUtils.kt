@@ -38,6 +38,7 @@ import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaMethod
+import kotlin.test.assertFailsWith
 
 fun JvmCompilationResult.assertCallableFactory(value: String) {
   val factory = ExampleClass.generatedFactoryClass()
@@ -308,15 +309,7 @@ fun CompilationResult.assertContainsAll(vararg messages: String) {
   }
 }
 
-inline fun <reified T> assertThrows(block: () -> Unit): ThrowableSubject {
-  try {
-    block()
-  } catch (e: Throwable) {
-    if (e is T) {
-      return assertThat(e)
-    } else {
-      throw e
-    }
-  }
-  throw AssertionError("Expected ${T::class.simpleName}")
+inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {
+  val throwable = assertFailsWith(T::class, block)
+  return assertThat(throwable)
 }
