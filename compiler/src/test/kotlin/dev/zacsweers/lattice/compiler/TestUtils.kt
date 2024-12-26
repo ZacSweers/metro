@@ -87,8 +87,10 @@ fun Class<*>.generatedFactoryClassAssisted(): Class<*> {
 
 fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
   val expectedName = LatticeSymbols.Names.LatticeMembersInjector.asString()
+  val nestedClass = declaredClasses.singleOrNull { it.simpleName == expectedName }
+    ?: error("Did not find nested class with name $expectedName in $this. Available: ${classes.joinToString { it.simpleName }}")
   @Suppress("UNCHECKED_CAST")
-  return classes.single { it.simpleName == expectedName } as Class<MembersInjector<*>>
+  return nestedClass as Class<MembersInjector<*>>
 }
 
 fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
@@ -297,8 +299,10 @@ fun Class<MembersInjector<*>>.staticInjectMethod(memberName: String): Method {
 }
 
 @Suppress("UNCHECKED_CAST")
-fun <T> Annotation.getValue(): T =
-  this::class.java.declaredMethods.single { it.name == "value" }.invoke(this) as T
+fun <T> Annotation.getValue(name: String = "value"): T {
+  val value = this::class.java.declaredMethods.singleOrNull { it.name == name } ?: error("No 'value' property found on $this")
+  return value.invoke(this) as T
+}
 
 fun Class<*>.packageName(): String = `package`.name.let { if (it.isBlank()) "" else "$it." }
 
