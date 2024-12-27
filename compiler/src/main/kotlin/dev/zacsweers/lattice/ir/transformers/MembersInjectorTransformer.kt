@@ -19,7 +19,6 @@ import dev.zacsweers.lattice.LatticeOrigin
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.NameAllocator
 import dev.zacsweers.lattice.capitalizeUS
-import dev.zacsweers.lattice.decapitalizeUS
 import dev.zacsweers.lattice.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
@@ -38,15 +37,8 @@ import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.memberInjectParameters
 import dev.zacsweers.lattice.ir.rawTypeOrNull
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.iterator
-import kotlin.collections.set
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.fir.backend.FirMetadataSource
-import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.declarations.builder.buildRegularClass
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
@@ -70,29 +62,34 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.ClassId
 
 internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
   LatticeTransformerContext by context {
 
-  private val generatedInjectors = mutableMapOf<ClassId, IrClass?>()
+  data class MemberInjectClass(
+    val ir: IrClass,
+    val parameters: Map<ClassId, List<Parameters<MembersInjectParameter>>>,
+    val injectFunctions: Map<MembersInjectParameter, IrSimpleFunction>,
+  )
+
+  private val generatedInjectors = mutableMapOf<ClassId, MemberInjectClass?>()
 
   fun visitClass(declaration: IrClass) {
     getOrGenerateInjector(declaration)
   }
 
-  fun requireInjector(declaration: IrClass): IrClass? {
-    return getOrGenerateInjector(declaration) ?: error("No members injector found for ${declaration.kotlinFqName}.")
+  fun requireInjector(declaration: IrClass): MemberInjectClass? {
+    return getOrGenerateInjector(declaration)
+      ?: error("No members injector found for ${declaration.kotlinFqName}.")
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  fun getOrGenerateInjector(declaration: IrClass): IrClass? {
+  fun getOrGenerateInjector(declaration: IrClass): MemberInjectClass? {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
     val injectedClassId: ClassId = declaration.classIdOrFail
@@ -104,15 +101,39 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       // Externally compiled, look up its generated class
       // TODO won't be visible until we add metadata to generated classes
       val generatedInjector =
-        declaration.nestedClasses.singleOrNull { it.name == LatticeSymbols.Names.LatticeMembersInjector }
+        declaration.nestedClasses.singleOrNull {
+          it.name == LatticeSymbols.Names.LatticeMembersInjector
+        }
+
       return if (generatedInjector == null) {
         null
       } else {
-        generatedInjectors[injectedClassId] = generatedInjector
-        generatedInjector
+        //        val params = TODO()
+        //
+        //        val allParams =
+        //          injectedMembers.flatMap { it.valueParameters }.associateBy { it.name.asString()
+        // }
+        //        val functions =
+        //          declaration
+        //            .companionObject()!!
+        //            .simpleFunctions()
+        //            .mapNotNull { function ->
+        //              val name = function.name.asString()
+        //              // TODO generate a better marker annotation? Or use attributes?
+        //              if (!name.startsWith("inject")) return@mapNotNull null
+        //              val paramName = name.removePrefix("inject").decapitalizeUS()
+        //              val param =
+        //                allParams[paramName]
+        //                  ?: error("Could not find param with name $paramName for
+        // $injectedClassId")
+        //              param to function
+        //            }
+        //            .associate { it.first to it.second }
+        MemberInjectClass(generatedInjector, TODO(), TODO()).also {
+          generatedInjectors[injectedClassId] = it
+        }
       }
     }
-
 
     val injectedTypeParameters: List<IrTypeParameter> = declaration.typeParameters
 
@@ -171,19 +192,19 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       pluginContext.irFactory.addCompanionObject(symbols, parent = injectorClass)
 
     // Static create()
-      companionObject.addStaticCreateFunction(
-        context = this,
-        targetClass = injectorClass,
-        targetClassParameterized = injectorClassParameterized,
-        targetConstructor = ctor.symbol,
-        parameters =
-          injectedMembersByClass.values
-            .flatten()
-            .reduce { current, next -> current.mergeValueParametersWith(next) }
-            .let { Parameters(null, null, it.valueParameters, null) },
-        providerFunction = null,
-        patchCreationParams = false, // TODO when we support absent
-      )
+    companionObject.addStaticCreateFunction(
+      context = this,
+      targetClass = injectorClass,
+      targetClassParameterized = injectorClassParameterized,
+      targetConstructor = ctor.symbol,
+      parameters =
+        injectedMembersByClass.values
+          .flatten()
+          .reduce { current, next -> current.mergeValueParametersWith(next) }
+          .let { Parameters(null, null, it.valueParameters, null) },
+      providerFunction = null,
+      patchCreationParams = false, // TODO when we support absent
+    )
 
     // Implement static inject{name}() for each declared callable in this class
     val declaredInjectFunctions: Map<MembersInjectParameter, IrSimpleFunction> =
@@ -254,25 +275,10 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
         if (classId == injectedClassId) continue
         if (injectedMembers.isEmpty()) continue
 
-        val allParams =
-          injectedMembers.flatMap { it.valueParameters }.associateBy { it.name.asString() }
-
         // This is what generates supertypes lazily as needed
-        val functions =
-          requireInjector(pluginContext.referenceClass(classId)!!.owner)!!
-            .companionObject()!!
-            .simpleFunctions()
-            .mapNotNull { function ->
-              val name = function.name.asString()
-              // TODO generate a better marker annotation? Or use attributes?
-              if (!name.startsWith("inject")) return@mapNotNull null
-              val paramName = name.removePrefix("inject").decapitalizeUS()
-              val param =
-                allParams[paramName]
-                  ?: error("Could not find param with name $paramName for $classId")
-              param to function
-            }
-            .associate { it.first to it.second }
+        val functions: Map<MembersInjectParameter, IrSimpleFunction> =
+          requireInjector(pluginContext.referenceClass(classId)!!.owner)!!.injectFunctions
+
         putAll(functions)
       }
     }
@@ -306,8 +312,9 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
     injectorClass.dumpToLatticeLog()
 
-    generatedInjectors[injectedClassId] = injectorClass
-    return injectorClass
+    return MemberInjectClass(injectorClass, injectedMembersByClass, declaredInjectFunctions).also {
+      generatedInjectors[injectedClassId] = it
+    }
   }
 }
 
