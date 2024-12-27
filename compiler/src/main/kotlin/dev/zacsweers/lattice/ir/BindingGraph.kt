@@ -98,6 +98,9 @@ internal class BindingGraph(private val context: LatticeTransformerContext) {
             getFunctionDependencies(it.providerFunction, bindingStack)
           }
         }
+        is Binding.MembersInjected -> {
+          binding.parameters.valueParameters.mapToSet { it.contextualTypeKey }
+        }
         is Binding.BoundInstance -> emptySet()
         is Binding.GraphDependency -> emptySet()
         is Binding.Absent -> error("Should never happen")

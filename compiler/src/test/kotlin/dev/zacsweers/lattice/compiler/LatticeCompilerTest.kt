@@ -86,12 +86,14 @@ abstract class LatticeCompilerTest {
    */
   protected fun source(
     @Language("kotlin") source: String,
-    fileName: String = "ExampleClass.kt",
+    fileNameWithoutExtension: String? = null,
     packageName: String = "test",
     vararg extraImports: String,
   ): SourceFile {
+    val fileName =
+      fileNameWithoutExtension ?: CLASS_NAME_REGEX.find(source)?.groups?.get(2)?.value ?: "source"
     return SourceFile.kotlin(
-      fileName,
+      "${fileName}.kt",
       buildString {
         // Package statement
         appendLine("package $packageName")
@@ -135,5 +137,9 @@ abstract class LatticeCompilerTest {
 
   protected fun CompilationResult.assertContains(message: String) {
     assertThat(messages).contains(message)
+  }
+
+  companion object {
+    val CLASS_NAME_REGEX = Regex("(class|object|interface) ([a-zA-Z0-9_]+)")
   }
 }

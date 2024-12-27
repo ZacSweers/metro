@@ -16,18 +16,23 @@
 package dev.zacsweers.lattice.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
-import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.MembersInjector
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.compiler.ExampleClass
+import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
+import dev.zacsweers.lattice.compiler.callInject
 import dev.zacsweers.lattice.compiler.callProperty
+import dev.zacsweers.lattice.compiler.createGraphViaFactory
+import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedFactoryClass
+import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import dev.zacsweers.lattice.compiler.generatedMembersInjector
 import dev.zacsweers.lattice.compiler.getValue
 import dev.zacsweers.lattice.compiler.invokeCreate
 import dev.zacsweers.lattice.compiler.invokeNewInstance
+import dev.zacsweers.lattice.compiler.newInstanceStrict
 import dev.zacsweers.lattice.compiler.staticInjectMethod
 import dev.zacsweers.lattice.providerOf
 import org.junit.Ignore
@@ -39,14 +44,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   fun simple() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
-
             typealias StringList = List<String>
 
             // Generate a factory too to cover for https://github.com/square/anvil/issues/362
@@ -102,9 +101,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
-        debug = true,
+            .trimIndent()
+        )
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -185,14 +183,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   fun `a factory class is generated for a field injection with Lazy and Provider`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.Provider
-
             class ExampleClass {
               @Inject lateinit var string: String
               @Inject lateinit var stringProvider: Provider<String>
@@ -208,9 +200,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
-        ),
-        debug = true,
+            .trimIndent()
+        )
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -233,10 +224,10 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
         Provider { "d" },
       ) as MembersInjector<Any>
 
-    val injectInstanceConstructor = result.ExampleClass.getDeclaredConstructor().newInstance()
+    val injectInstanceConstructor = result.ExampleClass.newInstanceStrict()
     membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-    val injectInstanceStatic = result.ExampleClass.getDeclaredConstructor().newInstance()
+    val injectInstanceStatic = result.ExampleClass.newInstanceStrict()
 
     membersInjector.staticInjectMethod("string").invoke(null, injectInstanceStatic, "a")
     membersInjector
@@ -255,14 +246,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   fun `a factory class is generated for a field injection with Lazy wrapped in a Provider`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.Provider
-
             class ExampleClass {
               @Inject lateinit var lazyStringProvider: Provider<Lazy<String>>
 
@@ -274,9 +259,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
-        ),
-        debug = true,
+            .trimIndent()
+        )
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -284,12 +268,13 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     val constructor = membersInjector.declaredConstructors.single()
     assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
 
-    @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor.newInstance(Provider { "a" }) as MembersInjector<Any>
+    @Suppress("UNCHECKED_CAST")
+    val membersInjectorInstance = constructor.newInstance(Provider { "a" }) as MembersInjector<Any>
 
-    val injectInstanceConstructor = result.ExampleClass.getDeclaredConstructor().newInstance()
+    val injectInstanceConstructor = result.ExampleClass.newInstanceStrict()
     membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-    val injectInstanceStatic = result.ExampleClass.getDeclaredConstructor().newInstance()
+    val injectInstanceStatic = result.ExampleClass.newInstanceStrict()
 
     membersInjector
       .staticInjectMethod("lazyStringProvider")
@@ -303,14 +288,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   fun `a factory class is generated for a field injection on a super class`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.Provider
-
             class ExampleClass : Middle() {
 
               @Inject
@@ -335,9 +314,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               lateinit var base2: List<String>
             }
           """
-            .trimIndent(),
-        ),
-        debug = true,
+            .trimIndent()
+        )
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
@@ -368,7 +346,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
         Provider { name },
       ) as MembersInjector<Any>
 
-    val classInstanceConstructor = result.ExampleClass.getDeclaredConstructor().newInstance()
+    val classInstanceConstructor = result.ExampleClass.newInstanceStrict()
     injectorInstance.injectMembers(classInstanceConstructor)
 
     assertThat(classInstanceConstructor.callProperty<Any>("name")).isEqualTo(name)
@@ -377,7 +355,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     assertThat(classInstanceConstructor.callProperty<Any>("base1")).isEqualTo(base1)
     assertThat(classInstanceConstructor.callProperty<Any>("base2")).isEqualTo(base2)
 
-    val classInstanceStatic = result.ExampleClass.getDeclaredConstructor().newInstance()
+    val classInstanceStatic = result.ExampleClass.newInstanceStrict()
     injectorInstance.injectMembers(classInstanceStatic)
 
     assertThat(classInstanceStatic.callProperty<Any>("name")).isEqualTo(name)
@@ -390,19 +368,13 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   @Test
   fun `a factory class is generated for a field injection with a generic class`() {
     compile(
-      kotlin(
-        "ExampleClass.kt",
+      source(
         """
-          package test
-          
-          import dev.zacsweers.lattice.annotations.Inject
-          
           abstract class ExampleClass<T> {
             @Inject lateinit var string: String
           }
-          """,
-      ),
-      debug = true
+          """
+      )
     ) {
       val membersInjector = ExampleClass.generatedMembersInjector()
 
@@ -414,38 +386,26 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   @Test
   fun `a factory class is generated for a generic field injection with a generic class`() {
     compile(
-      kotlin(
-        "ExampleClass.kt",
+      source(
         """
-          package test
-          
-          import dev.zacsweers.lattice.annotations.Inject
-          
           class ExampleClass<T, R> {
             @Inject lateinit var unknownItems: List<T>
           }
-          """,
-      ),
-      debug = true
+          """
+      )
     ) {
       val membersInjector = ExampleClass.generatedMembersInjector()
 
       val constructor = membersInjector.declaredConstructors.single()
-      assertThat(constructor.parameterTypes.toList())
-        .containsExactly(Provider::class.java)
+      assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
     }
   }
 
   @Test
   fun `a factory class is generated for a field injection in a class with a parent class with a generic field injection`() {
     compile(
-      kotlin(
-        "ExampleClass.kt",
+      source(
         """
-          package test
-          
-          import dev.zacsweers.lattice.annotations.Inject
-          
           abstract class Base<T> {
             @Inject lateinit var unknownItems: List<T>
           }
@@ -465,35 +425,31 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               return true
             }
           }
-          """,
-      ),
-      debug = true
+          """
+      )
     ) {
-      val baseMembersInjector = classLoader.loadClass("test.Base")
-        .generatedMembersInjector()
+      val baseMembersInjector = classLoader.loadClass("test.Base").generatedMembersInjector()
       val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
 
       val constructor = injectClassMembersInjector.declaredConstructors.single()
       assertThat(constructor.parameterTypes.toList())
-        .containsExactly(
-          Provider::class.java,
-          Provider::class.java,
-        )
+        .containsExactly(Provider::class.java, Provider::class.java)
 
-      @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor
-        .newInstance(
-          Provider { listOf("a", "b") },
-          Provider { listOf(1, 2) },
-        ) as MembersInjector<Any>
+      @Suppress("UNCHECKED_CAST")
+      val membersInjectorInstance =
+        constructor.newInstance(Provider { listOf("a", "b") }, Provider { listOf(1, 2) })
+          as MembersInjector<Any>
 
-      val injectInstanceConstructor = ExampleClass.getDeclaredConstructor().newInstance()
+      val injectInstanceConstructor = ExampleClass.newInstanceStrict()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-      val injectInstanceStatic = ExampleClass.getDeclaredConstructor().newInstance()
+      val injectInstanceStatic = ExampleClass.newInstanceStrict()
 
-      injectClassMembersInjector.staticInjectMethod("numbers")
+      injectClassMembersInjector
+        .staticInjectMethod("numbers")
         .invoke(null, injectInstanceStatic, listOf(1, 2))
-      baseMembersInjector.staticInjectMethod("unknownItems")
+      baseMembersInjector
+        .staticInjectMethod("unknownItems")
         .invoke(null, injectInstanceStatic, listOf("a", "b"))
 
       assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
@@ -504,13 +460,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   @Test
   fun `a factory class is generated for a field injection in a class with an ancestor class with a generic field injection`() {
     compile(
-      kotlin(
-        "ExampleClass.kt",
+      source(
         """
-          package test
-          
-          import dev.zacsweers.lattice.annotations.Inject
-          
           abstract class Base<T> {
             @Inject lateinit var unknownItems: List<T>
           }
@@ -534,41 +485,38 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
           class ExampleClass : Middle<String>() {
             @Inject lateinit var bools: List<Boolean>
           }
-          """,
-      ),
-      debug = true
+          """
+      )
     ) {
-      val baseMembersInjector = classLoader.loadClass("test.Base")
-        .generatedMembersInjector()
-      val middleMembersInjector = classLoader.loadClass("test.Middle")
-        .generatedMembersInjector()
+      val baseMembersInjector = classLoader.loadClass("test.Base").generatedMembersInjector()
+      val middleMembersInjector = classLoader.loadClass("test.Middle").generatedMembersInjector()
       val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
 
       val constructor = injectClassMembersInjector.declaredConstructors.single()
       assertThat(constructor.parameterTypes.toList())
-        .containsExactly(
-          Provider::class.java,
-          Provider::class.java,
-          Provider::class.java,
-        )
+        .containsExactly(Provider::class.java, Provider::class.java, Provider::class.java)
 
-      @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor
-        .newInstance(
+      @Suppress("UNCHECKED_CAST")
+      val membersInjectorInstance =
+        constructor.newInstance(
           Provider { listOf("a", "b") },
           Provider { listOf(1, 2) },
           Provider { listOf(true) },
         ) as MembersInjector<Any>
 
-      val injectInstanceConstructor = ExampleClass.getDeclaredConstructor().newInstance()
+      val injectInstanceConstructor = ExampleClass.newInstanceStrict()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-      val injectInstanceStatic = ExampleClass.getDeclaredConstructor().newInstance()
+      val injectInstanceStatic = ExampleClass.newInstanceStrict()
 
-      injectClassMembersInjector.staticInjectMethod("bools")
+      injectClassMembersInjector
+        .staticInjectMethod("bools")
         .invoke(null, injectInstanceStatic, listOf(true))
-      middleMembersInjector.staticInjectMethod("numbers")
+      middleMembersInjector
+        .staticInjectMethod("numbers")
         .invoke(null, injectInstanceStatic, listOf(1, 2))
-      baseMembersInjector.staticInjectMethod("unknownItems")
+      baseMembersInjector
+        .staticInjectMethod("unknownItems")
         .invoke(null, injectInstanceStatic, listOf("a", "b"))
 
       assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
@@ -579,29 +527,21 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   @Ignore("Won't work until we support multi-module compilation, requires metadat")
   @Test
   fun `a member injector is generated for a class with a super class in another module`() {
-    val otherModuleResult = compile(
-      kotlin(
-        "Base.kt",
-        """
-          package test
-          
-          import dev.zacsweers.lattice.annotations.Inject
-          
+    val otherModuleResult =
+      compile(
+        source(
+          source =
+            """
           abstract class Base {
             @Inject lateinit var string: String
           }
-          """,
-      ),
-    )
+          """
+        )
+      )
 
     compile(
-      kotlin(
-        "ExampleClass.kt",
+      source(
         """
-          package test
-          
-          import dev.zacsweers.lattice.annotations.Inject
-          
           class ExampleClass : Base() {
             @Inject lateinit var numbers: List<Int>
          
@@ -617,41 +557,86 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               return true
             }
           }
-          """,
+          """
       ),
-      debug = true,
       previousCompilationResult = otherModuleResult,
     ) {
-      val baseMembersInjector = classLoader.loadClass("test.Base")
-        .generatedMembersInjector()
+      val baseMembersInjector = classLoader.loadClass("test.Base").generatedMembersInjector()
 
       val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
 
       val constructor = injectClassMembersInjector.declaredConstructors.single()
       assertThat(constructor.parameterTypes.toList())
-        .containsExactly(
-          Provider::class.java,
-          Provider::class.java,
-        )
+        .containsExactly(Provider::class.java, Provider::class.java)
 
-      @Suppress("UNCHECKED_CAST") val membersInjectorInstance = constructor
-        .newInstance(
-          Provider { "a" },
-          Provider { listOf(1, 2) },
-        ) as MembersInjector<Any>
+      @Suppress("UNCHECKED_CAST")
+      val membersInjectorInstance =
+        constructor.newInstance(Provider { "a" }, Provider { listOf(1, 2) }) as MembersInjector<Any>
 
-      val injectInstanceConstructor = ExampleClass.getDeclaredConstructor().newInstance()
+      val injectInstanceConstructor = ExampleClass.newInstanceStrict()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
 
-      val injectInstanceStatic = ExampleClass.getDeclaredConstructor().newInstance()
+      val injectInstanceStatic = ExampleClass.newInstanceStrict()
 
-      injectClassMembersInjector.staticInjectMethod("numbers")
+      injectClassMembersInjector
+        .staticInjectMethod("numbers")
         .invoke(null, injectInstanceStatic, listOf(1, 2))
-      baseMembersInjector.staticInjectMethod("string")
-        .invoke(null, injectInstanceStatic, "a")
+      baseMembersInjector.staticInjectMethod("string").invoke(null, injectInstanceStatic, "a")
 
       assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
       assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
+    }
+  }
+
+  @Test
+  fun `graph empty inject function`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              fun inject(value: ExampleClass)
+            }
+            
+            class ExampleClass
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val instance = ExampleClass.newInstanceStrict()
+      // noop call
+      graph.callInject(instance)
+    }
+  }
+
+  @Test
+  fun `graph inject function simple`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              fun inject(value: ExampleClass)
+              
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance value: Int): ExampleGraph
+              }
+            }
+            
+            class ExampleClass {
+              @Inject var int: Int = 2
+            }
+          """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3)
+      val instance = ExampleClass.newInstanceStrict()
+      graph.callInject(instance)
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
     }
   }
 }

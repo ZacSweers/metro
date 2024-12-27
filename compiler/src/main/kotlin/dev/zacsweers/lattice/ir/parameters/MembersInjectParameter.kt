@@ -35,7 +35,8 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
-internal data class MembersInjectParameter(
+// TODO use poko + exclusions
+internal class MembersInjectParameter(
   override val kind: Kind,
   override val name: Name,
   override val contextualTypeKey: ContextualTypeKey,
@@ -64,6 +65,48 @@ internal data class MembersInjectParameter(
     Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier)
   override val isBindsInstance: Boolean = false
   override val isGraphInstance: Boolean = false
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as MembersInjectParameter
+
+    if (hasDefault != other.hasDefault) return false
+    if (isProperty != other.isProperty) return false
+    if (kind != other.kind) return false
+    if (name != other.name) return false
+    if (contextualTypeKey != other.contextualTypeKey) return false
+    if (memberInjectorClassId != other.memberInjectorClassId) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = hasDefault.hashCode()
+    result = 31 * result + isProperty.hashCode()
+    result = 31 * result + kind.hashCode()
+    result = 31 * result + name.hashCode()
+    result = 31 * result + contextualTypeKey.hashCode()
+    result = 31 * result + memberInjectorClassId.hashCode()
+    return result
+  }
+
+  override fun toString(): String {
+    return buildString {
+      if (isProperty) {
+        append("var ")
+      } else {
+        append("fun ")
+      }
+      append(name)
+      if (!isProperty) {
+        append("(...)")
+      }
+      append(':')
+      append(' ')
+      append(contextualTypeKey)
+    }
+  }
 }
 
 internal fun List<IrValueParameter>.mapToMemberInjectParameters(
@@ -120,7 +163,7 @@ internal fun IrProperty.toMemberInjectParameter(
       hasDefault = defaultValue != null,
       location = locationOrNull(),
       memberInjectorClassId = memberInjectorClass,
-      isProperty = isPropertyAccessor,
+      isProperty = true,
     )
     .apply {
       this.setterFunction = setter!!

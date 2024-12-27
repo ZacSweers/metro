@@ -72,6 +72,14 @@ val JvmCompilationResult.ExampleClass: Class<*>
 val JvmCompilationResult.ExampleClassFactory: Class<*>
   get() = classLoader.loadClass("test.ExampleClassFactory")
 
+fun Class<*>.newInstanceStrict(vararg args: Any): Any {
+  return getDeclaredConstructor(*args.map { it::class.java }.toTypedArray()).newInstance(*args)
+}
+
+fun Any.callInject(instance: Any) {
+  javaClass.getMethod("inject", instance::class.java).invoke(this, instance)
+}
+
 val Class<*>.Factory: Class<*>
   get() = classes.single { it.simpleName == "Factory" }
 

@@ -15,6 +15,10 @@
  */
 package dev.zacsweers.lattice
 
+import dev.zacsweers.lattice.LatticeSymbols.FqNames.kotlinCollectionsPackageFqn
+import dev.zacsweers.lattice.LatticeSymbols.StringNames.latticeRuntimeAnnotationsPackage
+import dev.zacsweers.lattice.LatticeSymbols.StringNames.latticeRuntimeInternalPackage
+import dev.zacsweers.lattice.LatticeSymbols.StringNames.latticeRuntimePackage
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
@@ -43,8 +47,17 @@ internal class LatticeSymbols(
   val latticeClassIds: LatticeClassIds,
 ) {
 
+  object StringNames {
+    const val latticeRuntimePackage = "dev.zacsweers.lattice"
+    const val latticeRuntimeAnnotationsPackage = "dev.zacsweers.lattice.annotations"
+    const val latticeRuntimeInternalPackage = "dev.zacsweers.lattice.internal"
+  }
+
+  object FqNames {
+    val kotlinCollectionsPackageFqn = FqName("kotlin.collections")
+  }
+
   object ClassIds {
-    private val kotlinCollectionsPackageFqn = FqName("kotlin.collections")
     val AnyClass = ClassId(kotlinPackageFqn, Name.identifier("Any"))
     val PublishedApi = ClassId(kotlinPackageFqn, Name.identifier("PublishedApi"))
     val Set = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Set"))
@@ -66,16 +79,16 @@ internal class LatticeSymbols(
 
   // TODO use more constants from StandardNames.FqNames
 
-  private val latticeRuntime: IrPackageFragment by lazy { createPackage("dev.zacsweers.lattice") }
+  private val latticeRuntime: IrPackageFragment by lazy { createPackage(latticeRuntimePackage) }
   private val latticeRuntimeInternal: IrPackageFragment by lazy {
-    createPackage("dev.zacsweers.lattice.internal")
+    createPackage(latticeRuntimeInternalPackage)
   }
   private val latticeAnnotations: IrPackageFragment by lazy {
-    createPackage("dev.zacsweers.lattice.annotations")
+    createPackage(latticeRuntimeAnnotationsPackage)
   }
-  private val stdlib: IrPackageFragment by lazy { createPackage("kotlin") }
+  private val stdlib: IrPackageFragment by lazy { createPackage(kotlinPackageFqn.asString()) }
   private val stdlibJvm: IrPackageFragment by lazy { createPackage("kotlin.jvm") }
-  private val stdlibCollections: IrPackageFragment by lazy { createPackage("kotlin.collections") }
+  private val stdlibCollections: IrPackageFragment by lazy { createPackage(kotlinCollectionsPackageFqn.asString()) }
 
   val anyConstructor by lazy { pluginContext.irBuiltIns.anyClass.owner.constructors.single() }
 
@@ -205,6 +218,16 @@ internal class LatticeSymbols(
 
   val latticeMembersInjectorInjectMembers: IrSimpleFunctionSymbol by lazy {
     latticeMembersInjector.getSimpleFunction("injectMembers")!!
+  }
+
+  val latticeMembersInjectors: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("MembersInjectors"))
+    )!!
+  }
+
+  val latticeMembersInjectorsNoOp: IrSimpleFunctionSymbol by lazy {
+    latticeMembersInjectors.getSimpleFunction("noOp")!!
   }
 
   val latticeFactory: IrClassSymbol by lazy {

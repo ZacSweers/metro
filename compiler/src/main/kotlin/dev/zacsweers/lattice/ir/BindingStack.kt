@@ -347,6 +347,9 @@ internal fun bindingStackEntryForDependency(
     is Binding.Assisted -> {
       Entry.injectedAt(contextKey, binding.function, displayTypeKey = targetKey)
     }
+    is Binding.MembersInjected -> {
+      Entry.injectedAt(contextKey, binding.function, displayTypeKey = targetKey)
+    }
     is Binding.Multibinding -> {
       TODO()
     }

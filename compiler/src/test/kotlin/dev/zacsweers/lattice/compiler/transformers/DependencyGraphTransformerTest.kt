@@ -19,14 +19,17 @@ import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.Provider
+import dev.zacsweers.lattice.compiler.ExampleClass
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
 import dev.zacsweers.lattice.compiler.callFunction
+import dev.zacsweers.lattice.compiler.callInject
 import dev.zacsweers.lattice.compiler.callProperty
 import dev.zacsweers.lattice.compiler.createGraphViaFactory
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
+import dev.zacsweers.lattice.compiler.newInstanceStrict
 import java.util.concurrent.Callable
 import org.junit.Test
 
@@ -1536,8 +1539,6 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
 
   // TODO
   //  - advanced graph resolution (i.e. complex dep chains)
-  //  - break-the-chain deps
   //  - @get:Provides?
-  //  - Binds examples
   //  - Inherited exposed types + deduping overrides?
 }

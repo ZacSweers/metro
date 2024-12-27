@@ -31,8 +31,8 @@ internal data class DependencyGraphNode(
   val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, IrSimpleFunction>>,
   // Types accessible via this graph (includes inherited)
-  // TODO this should eventually expand to cover inject(...) calls too once we have member injection
   val exposedTypes: Map<IrSimpleFunction, ContextualTypeKey>,
+  val injectors: Map<IrSimpleFunction, ContextualTypeKey>,
   val isExternal: Boolean,
   val creator: Creator?,
   val typeKey: TypeKey,

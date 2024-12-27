@@ -16,18 +16,25 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.capitalizeUS
+import dev.zacsweers.lattice.ir.parameters.MembersInjectParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.isWordPrefixRegex
+import dev.zacsweers.lattice.unsafeLazy
 import java.util.TreeSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
+import org.jetbrains.kotlin.name.ClassId
 
 internal sealed interface Binding {
   val typeKey: TypeKey
@@ -215,5 +222,22 @@ internal sealed interface Binding {
         return Multibinding(typeKey, isSet = isSet, isMap = isMap)
       }
     }
+  }
+
+  data class MembersInjected(
+    override val contextualTypeKey: ContextualTypeKey,
+    override val parameters: Parameters<MembersInjectParameter>,
+    override val reportableLocation: CompilerMessageSourceLocation?,
+    val function: IrFunction,
+    val isFromInjectorFunction: Boolean,
+    val targetClassId: ClassId,
+  ) : Binding {
+    override val typeKey: TypeKey = contextualTypeKey.typeKey
+
+    override val dependencies: Map<TypeKey, Parameter> =
+      parameters.nonInstanceParameters.associateBy { it.typeKey }
+    override val scope: IrAnnotation? = null
+
+    override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
   }
 }
