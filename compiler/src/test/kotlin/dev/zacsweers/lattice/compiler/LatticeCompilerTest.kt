@@ -27,6 +27,8 @@ import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_DEBUG
 import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_ENABLED
 import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_GENERATE_ASSISTED_FACTORIES
 import dev.zacsweers.lattice.LatticeCompilerPluginRegistrar
+import dev.zacsweers.lattice.LatticeSymbols
+import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.junit.Rule
@@ -35,6 +37,14 @@ import org.junit.rules.TemporaryFolder
 abstract class LatticeCompilerTest {
 
   @Rule @JvmField val temporaryFolder: TemporaryFolder = TemporaryFolder()
+
+  val defaultImports =
+    listOf(
+      "${LatticeSymbols.StringNames.latticeRuntimePackage}.*",
+      "${LatticeSymbols.StringNames.latticeRuntimeAnnotationsPackage}.*",
+      // For Callable access
+      "java.util.concurrent.*",
+    )
 
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
@@ -68,6 +78,34 @@ abstract class LatticeCompilerTest {
 
   protected fun CommandLineProcessor.option(key: CliOption, value: Any?): PluginOption {
     return PluginOption(pluginId, key.optionName, value.toString())
+  }
+
+  /**
+   * Returns a [SourceFile] representation of this [source]. This includes common imports from
+   * Lattice.
+   */
+  protected fun source(
+    @Language("kotlin") source: String,
+    fileName: String = "ExampleClass.kt",
+    packageName: String = "test",
+    vararg extraImports: String,
+  ): SourceFile {
+    return SourceFile.kotlin(
+      fileName,
+      buildString {
+        // Package statement
+        appendLine("package $packageName")
+
+        // Imports
+        for (import in defaultImports + extraImports) {
+          appendLine("import $import")
+        }
+
+        appendLine()
+        appendLine()
+        appendLine(source)
+      },
+    )
   }
 
   protected fun compile(
