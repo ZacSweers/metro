@@ -20,6 +20,7 @@ import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
+import dev.zacsweers.lattice.compiler.assertDiagnostics
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import dev.zacsweers.lattice.compiler.invokeCreateAs
@@ -40,8 +41,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -73,8 +74,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -106,8 +107,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -143,8 +144,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -180,8 +181,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -218,8 +219,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -260,9 +261,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Named
 
             @DependencyGraph
             interface ExampleGraph {
@@ -303,9 +304,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Named
 
             @DependencyGraph
             interface ExampleGraph {
@@ -350,9 +351,9 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Named
 
             @DependencyGraph
             interface ExampleGraph {
@@ -391,8 +392,10 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
-      "ExampleGraph.kt:11:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these."
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.
+      """.trimIndent()
     )
   }
 

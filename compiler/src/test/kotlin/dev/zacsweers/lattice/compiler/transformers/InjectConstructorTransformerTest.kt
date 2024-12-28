@@ -41,7 +41,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
             import java.util.concurrent.Callable
 
             class ExampleClass @Inject constructor(private val value: String) : Callable<String> {
@@ -64,7 +64,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
             import java.util.concurrent.Callable
 
             class ExampleClass<T> @Inject constructor(private val value: T) : Callable<T> {
@@ -87,7 +87,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
             import java.util.concurrent.Callable
 
             @Inject
@@ -111,7 +111,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
             import java.util.concurrent.Callable
 
             @Inject
@@ -148,7 +148,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
             import dev.zacsweers.lattice.Provider
             import java.util.concurrent.Callable
 
@@ -181,7 +181,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
             import java.util.concurrent.Callable
 
             @Inject
@@ -213,7 +213,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
             import dev.zacsweers.lattice.Provider
             import java.util.concurrent.Callable
 

@@ -19,15 +19,20 @@ import com.google.common.truth.ThrowableSubject
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.tschuchort.compiletesting.CompilationResult
+import com.tschuchort.compiletesting.DiagnosticMessage
+import com.tschuchort.compiletesting.DiagnosticSeverity
 import com.tschuchort.compiletesting.JvmCompilationResult
 import dev.zacsweers.lattice.MembersInjector
 import dev.zacsweers.lattice.Provider
-import dev.zacsweers.lattice.annotations.Provides
+import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.internal.Factory
 import dev.zacsweers.lattice.provider
+import java.io.File
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
+import kotlin.collections.component1
+import kotlin.collections.map
 import kotlin.reflect.KCallable
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.companionObject
@@ -321,6 +326,81 @@ fun CompilationResult.assertContainsAll(vararg messages: String) {
   for (message in messages) {
     assertThat(this.messages).contains(message)
   }
+}
+
+/**
+ * Allows passing in a raw diagnostic output that it will parse and match up with recorded kotlinc
+ * diagnostics in [this].
+ */
+fun CompilationResult.assertDiagnostics(expected: String) {
+  val diagnostics = expected.parseDiagnostics()
+  check(diagnostics.isNotEmpty()) { "No diagnostics supplied" }
+  assertDiagnostics(diagnostics)
+}
+
+fun CompilationResult.assertNoWarningsOrErrors() {
+  assertDiagnostics(emptyList(), emptyList())
+}
+
+fun CompilationResult.assertErrors(vararg errors: String) {
+  assertDiagnostics(emptyList(), errors.toList())
+}
+
+fun CompilationResult.assertWarnings(vararg warnings: String) {
+  assertDiagnostics(warnings.toList(), emptyList())
+}
+
+fun CompilationResult.assertDiagnostics(warnings: List<String>, errors: List<String>) {
+  assertDiagnostics(
+    mapOf(DiagnosticSeverity.WARNING to warnings, DiagnosticSeverity.ERROR to errors)
+  )
+}
+
+fun CompilationResult.assertDiagnostics(diagnostics: Map<DiagnosticSeverity, List<String>>) {
+  assertThat(cleanedDiagnostics).containsExactlyEntriesIn(diagnostics)
+}
+
+val CompilationResult.cleanedDiagnostics: Map<DiagnosticSeverity, List<String>>
+  get() {
+    return messages.parseDiagnostics()
+  }
+
+// Shorten messages, removing the intermediary temp dir and just printing the file name
+private fun String.parseDiagnostics() =
+  lineSequence()
+    .filterNot { it.isBlank() }
+    .mapNotNull { line ->
+      if (line.startsWith("e: ")) {
+        DiagnosticMessage(DiagnosticSeverity.ERROR, line.substring(3).trim())
+      } else if (line.startsWith("w: ")) {
+        DiagnosticMessage(DiagnosticSeverity.WARNING, line.substring(3).trim())
+      } else if (line.startsWith("i: ")) {
+        DiagnosticMessage(DiagnosticSeverity.INFO, line.substring(3).trim())
+      } else {
+        null
+      }
+    }
+    .groupBy { it.severity }
+    .mapValues { (_, messages) ->
+      messages.map { it.message.cleanOutputLine(includeSeverity = false) }
+    }
+
+fun String.cleanOutputLine(includeSeverity: Boolean): String {
+  val trimmed = trim()
+  val sourceFileIndex = trimmed.indexOf(".kt")
+  if (sourceFileIndex == -1) return trimmed
+  val startIndex =
+    trimmed.withIndex().indexOfLast { (i, char) ->
+      i < sourceFileIndex && char == File.separatorChar
+    }
+  if (startIndex == -1) return trimmed
+  val severity =
+    if (includeSeverity) {
+      "${trimmed.substringBefore(": ", "")}: "
+    } else {
+      ""
+    }
+  return "$severity${trimmed.substring(startIndex + 1)}"
 }
 
 inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {

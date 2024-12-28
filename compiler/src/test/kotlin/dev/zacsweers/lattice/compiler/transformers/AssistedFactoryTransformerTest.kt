@@ -23,6 +23,7 @@ import dev.zacsweers.lattice.compiler.ExampleClassFactory
 import dev.zacsweers.lattice.compiler.Factory
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
+import dev.zacsweers.lattice.compiler.assertDiagnostics
 import dev.zacsweers.lattice.compiler.generatedAssistedFactoryImpl
 import dev.zacsweers.lattice.compiler.generatedFactoryClassAssisted
 import dev.zacsweers.lattice.compiler.invokeCreate
@@ -45,9 +46,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
             import java.util.concurrent.Callable
 
             class ExampleClass @AssistedInject constructor(
@@ -81,9 +82,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
             import java.util.concurrent.Callable
 
             class ExampleClass @AssistedInject constructor(
@@ -121,9 +122,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
             import java.util.concurrent.Callable
 
             class ExampleClass @AssistedInject constructor(
@@ -166,9 +167,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
             import java.util.concurrent.Callable
 
             class ExampleClass @AssistedInject constructor(
@@ -211,9 +212,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
             import java.util.concurrent.Callable
 
             class ExampleClass @AssistedInject constructor(
@@ -257,10 +258,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @Inject constructor(
               val count: Int,
@@ -291,10 +292,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass
 
@@ -322,10 +323,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass
 
@@ -364,7 +365,11 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:3 Assisted factory must be public or internal.")
+    result.assertDiagnostics(
+      """
+        e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
+      """.trimIndent()
+    )
   }
 
   @Test
@@ -387,7 +392,11 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:3 Assisted factory must be public or internal.")
+    result.assertDiagnostics(
+      """
+        e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
+      """.trimIndent()
+    )
   }
 
   @Test
@@ -399,10 +408,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -434,10 +443,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -467,10 +476,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -500,10 +509,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -538,10 +547,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -573,10 +582,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -608,10 +617,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -639,10 +648,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -674,10 +683,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -712,10 +721,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -751,9 +760,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -783,9 +792,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
@@ -816,9 +825,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: String,
@@ -853,9 +862,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted("count") val count: String,
@@ -890,9 +899,9 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
+            import dev.zacsweers.lattice.Assisted
+            import dev.zacsweers.lattice.AssistedInject
+            import dev.zacsweers.lattice.AssistedFactory
 
             class ExampleClass @AssistedInject constructor(
               @Assisted("count") val count: String,

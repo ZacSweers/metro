@@ -32,7 +32,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             @Inject
             class ExampleClass @Inject constructor(private val value: String)
@@ -59,7 +59,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             class ExampleClass @Inject constructor()
 
@@ -84,7 +84,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             class ExampleClass @Inject constructor() {
               @Inject constructor(value: String) : this()
@@ -113,7 +113,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             @Inject
             enum class EnumExampleClass {
@@ -155,7 +155,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             @Inject
             open class OpenExampleClass
@@ -189,7 +189,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             fun example() {
               @Inject
@@ -217,7 +217,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             @Inject
             private class PrivateClass
@@ -252,7 +252,7 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.Inject
 
             @Inject
             class ClassWithPrivateConstructor private constructor()

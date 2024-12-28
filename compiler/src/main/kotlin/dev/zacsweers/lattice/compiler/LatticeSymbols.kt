@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.compiler
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols.FqNames.kotlinCollectionsPackageFqn
-import dev.zacsweers.lattice.compiler.LatticeSymbols.StringNames.latticeRuntimeAnnotationsPackage
 import dev.zacsweers.lattice.compiler.LatticeSymbols.StringNames.latticeRuntimeInternalPackage
 import dev.zacsweers.lattice.compiler.LatticeSymbols.StringNames.latticeRuntimePackage
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -49,8 +48,6 @@ internal class LatticeSymbols(
 
   object StringNames {
     const val latticeRuntimePackage = "dev.zacsweers.lattice"
-    const val latticeRuntimeAnnotationsPackage = "dev.zacsweers.lattice.annotations"
-    const val latticeRuntimeMultibindingsPackage = "dev.zacsweers.lattice.annotations.multibindings"
     const val latticeRuntimeInternalPackage = "dev.zacsweers.lattice.internal"
   }
 
@@ -84,9 +81,6 @@ internal class LatticeSymbols(
   private val latticeRuntimeInternal: IrPackageFragment by lazy {
     createPackage(latticeRuntimeInternalPackage)
   }
-  private val latticeAnnotations: IrPackageFragment by lazy {
-    createPackage(latticeRuntimeAnnotationsPackage)
-  }
   private val stdlib: IrPackageFragment by lazy { createPackage(kotlinPackageFqn.asString()) }
   private val stdlibJvm: IrPackageFragment by lazy { createPackage("kotlin.jvm") }
   private val stdlibCollections: IrPackageFragment by lazy {
@@ -111,37 +105,37 @@ internal class LatticeSymbols(
 
   val latticeInject: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(latticeAnnotations.packageFqName, Name.identifier("Inject"))
+      ClassId(latticeRuntime.packageFqName, Name.identifier("Inject"))
     )!!
   }
 
   val latticeProvides: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(latticeAnnotations.packageFqName, Name.identifier("Provides"))
+      ClassId(latticeRuntime.packageFqName, Name.identifier("Provides"))
     )!!
   }
 
   val latticeQualifier: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(latticeAnnotations.packageFqName, Name.identifier("Qualifier"))
+      ClassId(latticeRuntime.packageFqName, Name.identifier("Qualifier"))
     )!!
   }
 
   val latticeScope: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(latticeAnnotations.packageFqName, Name.identifier("Scope"))
+      ClassId(latticeRuntime.packageFqName, Name.identifier("Scope"))
     )!!
   }
 
   val latticeComponent: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(latticeAnnotations.packageFqName, Name.identifier("Component"))
+      ClassId(latticeRuntime.packageFqName, Name.identifier("Component"))
     )!!
   }
 
   val latticeBindsInstance: IrClassSymbol by lazy {
     pluginContext.referenceClass(
-      ClassId(latticeAnnotations.packageFqName, Name.identifier("BindsInstance"))
+      ClassId(latticeRuntime.packageFqName, Name.identifier("BindsInstance"))
     )!!
   }
   val latticeComponentFactory by lazy {

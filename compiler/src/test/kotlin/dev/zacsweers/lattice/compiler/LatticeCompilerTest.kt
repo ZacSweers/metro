@@ -25,6 +25,7 @@ import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_DEBUG
 import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_ENABLED
 import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_GENERATE_ASSISTED_FACTORIES
+import okio.Buffer
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
@@ -38,8 +39,6 @@ abstract class LatticeCompilerTest {
   val defaultImports =
     listOf(
       "${LatticeSymbols.StringNames.latticeRuntimePackage}.*",
-      "${LatticeSymbols.StringNames.latticeRuntimeAnnotationsPackage}.*",
-      "${LatticeSymbols.StringNames.latticeRuntimeMultibindingsPackage}.*",
       // For Callable access
       "java.util.concurrent.*",
     )
@@ -116,13 +115,23 @@ abstract class LatticeCompilerTest {
     previousCompilationResult: JvmCompilationResult? = null,
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
-    return prepareCompilation(
-        sourceFiles = sourceFiles,
-        debug = debug,
-        generateAssistedFactories = generateAssistedFactories,
-        previousCompilationResult = previousCompilationResult,
-      )
-      .compile()
+    val cleaningOutput = Buffer()
+    val result =
+      prepareCompilation(
+          sourceFiles = sourceFiles,
+          debug = debug,
+          generateAssistedFactories = generateAssistedFactories,
+          previousCompilationResult = previousCompilationResult,
+        )
+        .apply { this.messageOutputStream = cleaningOutput.outputStream() }
+        .compile()
+
+    // Print cleaned output
+    while (!cleaningOutput.exhausted()) {
+      println(cleaningOutput.readUtf8Line()?.cleanOutputLine(includeSeverity = true))
+    }
+
+    return result
       .apply {
         if (exitCode != expectedExitCode) {
           throw AssertionError(

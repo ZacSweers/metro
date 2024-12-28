@@ -47,6 +47,7 @@ dependencies {
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
   testImplementation(libs.kotlinCompileTesting)
+  testImplementation(libs.okio)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation(libs.truth)

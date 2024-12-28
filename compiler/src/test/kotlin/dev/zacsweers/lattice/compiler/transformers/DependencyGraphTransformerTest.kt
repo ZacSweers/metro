@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
+import dev.zacsweers.lattice.compiler.assertDiagnostics
 import dev.zacsweers.lattice.compiler.callFunction
 import dev.zacsweers.lattice.compiler.callProperty
 import dev.zacsweers.lattice.compiler.createGraphViaFactory
@@ -41,11 +42,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.BindsInstance
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.BindsInstance
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Singleton
             import dev.zacsweers.lattice.createGraphFactory
             import java.util.concurrent.Callable
 
@@ -102,8 +103,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Inject
             import java.util.concurrent.Callable
 
             @DependencyGraph
@@ -139,9 +140,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
             import java.util.concurrent.Callable
 
             @DependencyGraph
@@ -178,9 +179,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
             import java.util.concurrent.Callable
 
             @DependencyGraph
@@ -217,8 +218,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Inject
             import java.util.concurrent.Callable
 
             @DependencyGraph
@@ -254,9 +255,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
             import java.util.concurrent.Callable
 
             @DependencyGraph
@@ -293,9 +294,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
 
             @DependencyGraph
             abstract class ExampleGraph() {
@@ -335,10 +336,10 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
 
             @DependencyGraph
             abstract class ExampleGraph() {
@@ -381,11 +382,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
+            import dev.zacsweers.lattice.Singleton
 
             @Singleton
             @DependencyGraph
@@ -439,11 +440,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Singleton
-            import dev.zacsweers.lattice.annotations.SingleIn
-            import dev.zacsweers.lattice.annotations.AppScope
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Singleton
+            import dev.zacsweers.lattice.SingleIn
+            import dev.zacsweers.lattice.AppScope
 
             abstract class UserScope private constructor()
 
@@ -486,11 +487,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
+            import dev.zacsweers.lattice.Singleton
 
             @DependencyGraph
             interface ExampleGraph : TextProvider {
@@ -522,11 +523,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
+            import dev.zacsweers.lattice.Singleton
 
             @DependencyGraph
             interface ExampleGraph : TextProvider {
@@ -559,11 +560,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
+            import dev.zacsweers.lattice.Singleton
 
             @DependencyGraph
             interface ExampleGraph : TextProvider {
@@ -597,11 +598,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Named
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Named
+            import dev.zacsweers.lattice.Singleton
 
             @DependencyGraph
             interface ExampleGraph : TextProvider {
@@ -637,8 +638,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
 
             @DependencyGraph
             interface ExampleGraph {
@@ -687,8 +688,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
 
             @DependencyGraph
             interface ExampleGraph {
@@ -724,9 +725,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Singleton
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Singleton
 
             @DependencyGraph
             interface ExampleGraph {
@@ -767,8 +768,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
 
             @DependencyGraph
             interface ExampleGraph {
@@ -839,11 +840,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Singleton
-            import dev.zacsweers.lattice.annotations.Named
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.Inject
+            import dev.zacsweers.lattice.Singleton
+            import dev.zacsweers.lattice.Named
             import dev.zacsweers.lattice.Provider
             import java.nio.file.FileSystem
             import java.nio.file.FileSystems
@@ -882,8 +883,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
         """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
             import dev.zacsweers.lattice.Provider
 
             @DependencyGraph
@@ -915,8 +916,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
             import dev.zacsweers.lattice.Provider
 
             @DependencyGraph
@@ -961,8 +962,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
 
             @DependencyGraph
             interface ExampleGraph {
@@ -1022,9 +1023,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.BindsInstance
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
+            import dev.zacsweers.lattice.BindsInstance
 
             @DependencyGraph
             abstract class ExampleGraph(
@@ -1064,8 +1065,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
 
             @DependencyGraph
             interface CharSequenceGraph {
@@ -1106,8 +1107,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.Provides
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.Provides
 
             @DependencyGraph
             interface CharSequenceGraph {
@@ -1164,7 +1165,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.DependencyGraph
 
             // Ok
             @DependencyGraph
@@ -1260,7 +1261,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface GraphWithAbstractClass {
@@ -1344,9 +1345,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContainsAll(
-      "graphs.kt:38:3 DependencyGraph factory must be public or internal.",
-      "graphs.kt:46:3 DependencyGraph factory must be public or internal.",
+    result.assertDiagnostics(
+      """
+        e: graphs.kt:36:3 DependencyGraph factory must be public or internal.
+        e: graphs.kt:44:3 DependencyGraph factory must be public or internal.
+      """.trimIndent()
     )
   }
 
@@ -1359,7 +1362,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -1393,7 +1396,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.DependencyGraph
 
             @DependencyGraph
             interface ExampleGraph {
@@ -1424,7 +1427,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
+            import dev.zacsweers.lattice.DependencyGraph
 
             interface BaseFactory1<T> {
               fun create1(): T
@@ -1460,8 +1463,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.BindsInstance
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.BindsInstance
 
             @DependencyGraph
             interface ExampleGraph {
@@ -1492,8 +1495,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
             package test
 
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-            import dev.zacsweers.lattice.annotations.BindsInstance
+            import dev.zacsweers.lattice.DependencyGraph
+            import dev.zacsweers.lattice.BindsInstance
 
             @DependencyGraph
             interface ExampleGraph {
