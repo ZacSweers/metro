@@ -45,7 +45,6 @@ import dev.zacsweers.lattice.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.ir.isBindsProviderCandidate
 import dev.zacsweers.lattice.ir.isExternalParent
 import dev.zacsweers.lattice.ir.location
-import dev.zacsweers.lattice.ir.parameterAsProviderArgument
 import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
@@ -101,20 +100,17 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
-import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -304,17 +300,18 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
     for (function in graphDeclaration.allCallableMembers()) {
       // Abstract check is important. We leave alone any non-providers/injectors
-      val isCandidate = function.modality == Modality.ABSTRACT &&
-        function.body == null &&
-        !function.isBindsProviderCandidate(symbols) &&
-        !function.isAnnotatedWithAny(symbols.providesAnnotations) &&
-        function.correspondingPropertySymbol
-          ?.owner
-          ?.isAnnotatedWithAny(symbols.providesAnnotations) != true
+      val isCandidate =
+        function.modality == Modality.ABSTRACT &&
+          function.body == null &&
+          !function.isBindsProviderCandidate(symbols) &&
+          !function.isAnnotatedWithAny(symbols.providesAnnotations) &&
+          function.correspondingPropertySymbol
+            ?.owner
+            ?.isAnnotatedWithAny(symbols.providesAnnotations) != true
       if (isCandidate) {
         if (function.valueParameters.isEmpty()) {
-            val contextKey = ContextualTypeKey.Companion.from(this, function)
-            exposedTypes[function] = contextKey
+          val contextKey = ContextualTypeKey.Companion.from(this, function)
+          exposedTypes[function] = contextKey
         } else {
           // TODO FIR check only one param, no intrinsics, no return type
           val target = function.parameters(this).valueParameters.single()
@@ -533,9 +530,12 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
 
     // Add MembersInjector bindings defined on injector functions
-    // I was half asleep when I wrote the below and some day I will translate what I was trying to say
-    // This will add bindings as provider fields for each type. We do need this, but we don't want that for
-    // these. Maybe we add a property to indicate if it's from an inject() function and don't add to provider fields
+    // I was half asleep when I wrote the below and some day I will translate what I was trying to
+    // say
+    // This will add bindings as provider fields for each type. We do need this, but we don't want
+    // that for
+    // these. Maybe we add a property to indicate if it's from an inject() function and don't add to
+    // provider fields
     // for those cases
     node.injectors.forEach { (injector, contextualTypeKey) ->
       val entry = BindingStack.Entry.requestedAt(contextualTypeKey, injector)
@@ -544,22 +544,25 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val targetClass = injector.valueParameters.single().type.rawType()
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
         val parameters = generatedInjector?.injectFunctions?.keys?.toList().orEmpty()
-        val membersInjectorKey = ContextualTypeKey(
-          typeKey = TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type)),
-          isWrappedInProvider = false,
-          isWrappedInLazy = false,
-          isLazyWrappedInProvider = false,
-          hasDefault = false,
-        )
-        val binding = Binding.MembersInjected(
-          membersInjectorKey,
-          // Need to look up the injector class and gather all params
-          parameters = Parameters(null, null, parameters, null),
-          reportableLocation = injector.location(),
-          function = injector,
-          isFromInjectorFunction = true,
-          targetClassId = targetClass.classIdOrFail,
-        )
+        val membersInjectorKey =
+          ContextualTypeKey(
+            typeKey =
+              TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type)),
+            isWrappedInProvider = false,
+            isWrappedInLazy = false,
+            isLazyWrappedInProvider = false,
+            hasDefault = false,
+          )
+        val binding =
+          Binding.MembersInjected(
+            membersInjectorKey,
+            // Need to look up the injector class and gather all params
+            parameters = Parameters(null, null, parameters, null),
+            reportableLocation = injector.location(),
+            function = injector,
+            isFromInjectorFunction = true,
+            targetClassId = targetClass.classIdOrFail,
+          )
         graph.addBinding(membersInjectorKey.typeKey, binding, bindingStack)
       }
     }
@@ -738,13 +741,13 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                         // TODO consolidate with membersinjector
                         irExprBody(
                           irInvoke(
-                            dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-                            callee = symbols.instanceFactoryCreate,
-                            args = listOf(irGet(irParam)),
-                            typeHint = param.type.wrapInProvider(symbols.latticeFactory),
-                          ).apply {
-                            putTypeArgument(0, param.type)
-                          }
+                              dispatchReceiver =
+                                irGetObject(symbols.instanceFactoryCompanionObject),
+                              callee = symbols.instanceFactoryCreate,
+                              args = listOf(irGet(irParam)),
+                              typeHint = param.type.wrapInProvider(symbols.latticeFactory),
+                            )
+                            .apply { putTypeArgument(0, param.type) }
                         )
                       }
                   }
@@ -933,17 +936,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           .forEach { (function, contextualTypeKey) ->
             val property =
               function.correspondingPropertySymbol?.owner?.let { property ->
-                addProperty {
-                  name = property.name
-                }.apply {
-                  setDeclarationsParent(graphImpl)
-                }
+                addProperty { name = property.name }.apply { setDeclarationsParent(graphImpl) }
               }
             val getter =
               property
-                ?.addGetter {
-                  returnType = function.returnType
-                }
+                ?.addGetter { returnType = function.returnType }
                 ?.apply {
                   this.overriddenSymbols += function.symbol
                   this.correspondingPropertySymbol = property.symbol
@@ -988,29 +985,39 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               .thenComparing { it.value.typeKey }
           )
           .forEach { (function, contextualTypeKey) ->
-            val overriddenFunction = addOverride(
-                  function.kotlinFqName,
-                  function.name,
-                  function.returnType,
-                  overriddenSymbols = listOf(function.symbol),
-                )
+            val overriddenFunction =
+              addOverride(
+                function.kotlinFqName,
+                function.name,
+                function.returnType,
+                overriddenSymbols = listOf(function.symbol),
+              )
             overriddenFunction.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
               setDeclarationsParent(graphImpl)
               val targetParam = addValueParameter("target", contextualTypeKey.typeKey.type)
-              val membersInjectorKey = TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type))
-              val binding = bindingGraph.requireBinding(membersInjectorKey) as Binding.MembersInjected
+              val membersInjectorKey =
+                TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type))
+              val binding =
+                bindingGraph.requireBinding(membersInjectorKey) as Binding.MembersInjected
               bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function))
 
-              // We don't get a MembersInjector instance/provider from the graph. Instead, we call all the target inject
+              // We don't get a MembersInjector instance/provider from the graph. Instead, we call
+              // all the target inject
               // functions directly
               body =
                 pluginContext.createIrBuilder(symbol).irBlockBody {
-                  for (type in pluginContext.referenceClass(binding.targetClassId)!!.owner.getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
+                  for (type in
+                    pluginContext
+                      .referenceClass(binding.targetClassId)!!
+                      .owner
+                      .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
                     val clazz = type.rawType()
-                    val injectors = membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
+                    val injectors =
+                      membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
                     for ((parameter, function) in injectors.injectFunctions) {
-                      val paramBinding = bindingGraph.getOrCreateBinding(parameter.contextualTypeKey, bindingStack)
+                      val paramBinding =
+                        bindingGraph.getOrCreateBinding(parameter.contextualTypeKey, bindingStack)
                       +irInvoke(
                         dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                         callee = function.symbol,
@@ -1020,7 +1027,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                             typeAsProviderArgument(
                               this@DependencyGraphTransformer,
                               parameter.contextualTypeKey,
-                              generateBindingCode(paramBinding, generationContext, parameter.contextualTypeKey),
+                              generateBindingCode(
+                                paramBinding,
+                                generationContext,
+                                parameter.contextualTypeKey,
+                              ),
                               isAssisted = false,
                               isGraphInstance = false,
                             ),
@@ -1200,7 +1211,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     visitedBindings += key
 
     // Scoped, graph, and membersinjector bindings always need (provider) fields
-    if (bindingScope != null || binding is Binding.GraphDependency || (binding is Binding.MembersInjected && !binding.isFromInjectorFunction)) {
+    if (
+      bindingScope != null ||
+        binding is Binding.GraphDependency ||
+        (binding is Binding.MembersInjected && !binding.isFromInjectorFunction)
+    ) {
       bindingDependencies[key] = binding
     }
 
@@ -1784,11 +1799,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         if (injectorClass == null) {
           // Return a noop
           irInvoke(
-            dispatchReceiver = irGetObject(symbols.latticeMembersInjectors),
-            callee = symbols.latticeMembersInjectorsNoOp
-          ).apply {
-            putTypeArgument(0, injectedClass.typeWith())
-          }
+              dispatchReceiver = irGetObject(symbols.latticeMembersInjectors),
+              callee = symbols.latticeMembersInjectorsNoOp,
+            )
+            .apply { putTypeArgument(0, injectedClass.typeWith()) }
         } else {
           val createFunction = injectorClass.getSimpleFunction("create")!!
           val args =
@@ -1801,20 +1815,21 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           // InstanceFactory.create(...);
           // TODO share logic with above instancefactory
           irInvoke(
-            dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-            callee = symbols.instanceFactoryCreate,
-            args = listOf(
-              // InjectableClass_MembersInjector.create(stringValueProvider, exampleComponentProvider)
-              irInvoke(
-                dispatchReceiver = irGetObject(injectorClass.symbol),
-                callee = createFunction,
-                args = args,
-              )
-            ),
-            typeHint = binding.typeKey.type.wrapInProvider(symbols.latticeFactory),
-          ).apply {
-            putTypeArgument(0, injectedClass.typeWith())
-          }
+              dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
+              callee = symbols.instanceFactoryCreate,
+              args =
+                listOf(
+                  // InjectableClass_MembersInjector.create(stringValueProvider,
+                  // exampleComponentProvider)
+                  irInvoke(
+                    dispatchReceiver = irGetObject(injectorClass.symbol),
+                    callee = createFunction,
+                    args = args,
+                  )
+                ),
+              typeHint = binding.typeKey.type.wrapInProvider(symbols.latticeFactory),
+            )
+            .apply { putTypeArgument(0, injectedClass.typeWith()) }
         }
       }
       is Binding.Absent -> {

@@ -44,7 +44,9 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
 
   fun with(ir: IrFunction): Parameters<T>
 
-  fun mergeValueParametersWithAll(others: List<Parameters<out Parameter>>): Parameters<out Parameter> {
+  fun mergeValueParametersWithAll(
+    others: List<Parameters<out Parameter>>
+  ): Parameters<out Parameter> {
     return listOf(this).reduce { current, next ->
       @Suppress("UNCHECKED_CAST")
       current.mergeValueParametersWithUntyped(next) as Parameters<T>

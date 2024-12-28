@@ -20,7 +20,6 @@ import dev.zacsweers.lattice.ir.parameters.MembersInjectParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.isWordPrefixRegex
-import dev.zacsweers.lattice.unsafeLazy
 import java.util.TreeSet
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -30,10 +29,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
 
 internal sealed interface Binding {

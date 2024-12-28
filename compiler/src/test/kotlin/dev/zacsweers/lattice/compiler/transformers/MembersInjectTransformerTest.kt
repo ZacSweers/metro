@@ -64,7 +64,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               @Inject
               lateinit var privateSetter: String
                 private set
-              
+
               override fun equals(other: Any?): Boolean {
                 if (this === other) return true
                 if (javaClass != other?.javaClass) return false
@@ -409,19 +409,19 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
           abstract class Base<T> {
             @Inject lateinit var unknownItems: List<T>
           }
-    
+
           class ExampleClass : Base<String>() {
             @Inject lateinit var numbers: List<Int>
-            
+
             override fun equals(other: Any?): Boolean {
               if (this === other) return true
               if (javaClass != other?.javaClass) return false
-         
+
               other as ExampleClass
-    
+
               if (unknownItems != other.unknownItems) return false
               if (numbers != other.numbers) return false
-         
+
               return true
             }
           }
@@ -465,23 +465,23 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
           abstract class Base<T> {
             @Inject lateinit var unknownItems: List<T>
           }
-    
+
           abstract class Middle<R> : Base<R>() {
             @Inject lateinit var numbers: List<Int>
-            
+
             override fun equals(other: Any?): Boolean {
               if (this === other) return true
               if (javaClass != other?.javaClass) return false
-         
+
               other as ExampleClass
-    
+
               if (unknownItems != other.unknownItems) return false
               if (numbers != other.numbers) return false
-         
+
               return true
             }
           }
-    
+
           class ExampleClass : Middle<String>() {
             @Inject lateinit var bools: List<Boolean>
           }
@@ -544,16 +544,16 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
         """
           class ExampleClass : Base() {
             @Inject lateinit var numbers: List<Int>
-         
+
             override fun equals(other: Any?): Boolean {
               if (this === other) return true
               if (javaClass != other?.javaClass) return false
-         
+
               other as ExampleClass
-         
+
               if (numbers != other.numbers) return false
               if (string != other.string) return false
-         
+
               return true
             }
           }
@@ -597,7 +597,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             interface ExampleGraph {
               fun inject(value: ExampleClass)
             }
-            
+
             class ExampleClass
           """
           .trimIndent()
@@ -618,13 +618,13 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               fun inject(value: ExampleClass)
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@BindsInstance value: Int): ExampleGraph
               }
             }
-            
+
             class ExampleClass {
               @Inject var int: Int = 2
             }
@@ -648,13 +648,13 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
               }
             }
-            
+
             @Inject
             class ExampleClass(val long: Long) {
               @Inject var int: Int = 2

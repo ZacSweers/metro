@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.addStaticCreateFunction
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.ir.checkNotNullCall
+import dev.zacsweers.lattice.ir.copyParameterDefaultValues
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
@@ -40,7 +41,6 @@ import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
-import dev.zacsweers.lattice.ir.copyParameterDefaultValues
 import dev.zacsweers.lattice.isWordPrefixRegex
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind

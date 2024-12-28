@@ -88,7 +88,9 @@ internal class LatticeSymbols(
   }
   private val stdlib: IrPackageFragment by lazy { createPackage(kotlinPackageFqn.asString()) }
   private val stdlibJvm: IrPackageFragment by lazy { createPackage("kotlin.jvm") }
-  private val stdlibCollections: IrPackageFragment by lazy { createPackage(kotlinCollectionsPackageFqn.asString()) }
+  private val stdlibCollections: IrPackageFragment by lazy {
+    createPackage(kotlinCollectionsPackageFqn.asString())
+  }
 
   val anyConstructor by lazy { pluginContext.irBuiltIns.anyClass.owner.constructors.single() }
 

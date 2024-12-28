@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.ir.addCompanionObject
 import dev.zacsweers.lattice.ir.addOverride
 import dev.zacsweers.lattice.ir.addStaticCreateFunction
 import dev.zacsweers.lattice.ir.assignConstructorParamsToFields
+import dev.zacsweers.lattice.ir.copyParameterDefaultValues
 import dev.zacsweers.lattice.ir.createIrBuilder
 import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
@@ -33,7 +34,6 @@ import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
-import dev.zacsweers.lattice.ir.copyParameterDefaultValues
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -127,9 +127,7 @@ internal class InjectConstructorTransformer(
     val allParameters =
       buildList {
           add(constructorParameters)
-          injectors?.let {
-            addAll(memberInjectParameters)
-          }
+          injectors?.let { addAll(memberInjectParameters) }
         }
         .distinct()
 
@@ -312,7 +310,8 @@ internal class InjectConstructorTransformer(
         pluginContext.irFactory.addCompanionObject(symbols, parent = factoryCls)
       }
 
-    val mergedParameters = allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next)}
+    val mergedParameters =
+      allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
 
     // Generate create()
     classToGenerateCreatorsIn.addStaticCreateFunction(
