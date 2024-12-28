@@ -83,7 +83,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     getOrGenerateInjector(declaration)
   }
 
-  fun requireInjector(declaration: IrClass): MemberInjectClass? {
+  fun requireInjector(declaration: IrClass): MemberInjectClass {
     return getOrGenerateInjector(declaration)
       ?: error("No members injector found for ${declaration.kotlinFqName}.")
   }

@@ -86,7 +86,7 @@ public fun ClassId.joinSimpleNamesAndTruncate(
 ): ClassId =
   joinSimpleNamesPrivate(separator = separator, suffix = suffix)
     .truncate(
-      hashParams = kotlin.collections.listOf(this) + hashParams,
+      hashParams = listOf(this) + hashParams,
       separator = separator,
       innerClassLength = innerClassLength,
     )

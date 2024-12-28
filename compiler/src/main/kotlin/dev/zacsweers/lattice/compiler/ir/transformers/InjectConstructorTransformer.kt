@@ -66,7 +66,8 @@ import org.jetbrains.kotlin.name.ClassId
 
 internal class InjectConstructorTransformer(
   context: LatticeTransformerContext,
-  private val membersInjectorTransformer: dev.zacsweers.lattice.compiler.ir.transformers.MembersInjectorTransformer,
+  private val membersInjectorTransformer:
+    MembersInjectorTransformer,
 ) : LatticeTransformerContext by context {
 
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
@@ -224,7 +225,10 @@ internal class InjectConstructorTransformer(
     function: IrFunction,
     newInstanceFunctionSymbol: IrSimpleFunctionSymbol,
     constructorParameters: Parameters<ConstructorParameter>,
-    injectors: List<dev.zacsweers.lattice.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass>,
+    injectors:
+      List<
+        MembersInjectorTransformer.MemberInjectClass
+      >,
     factoryReceiver: IrValueParameter,
     parametersToFields: Map<Parameter, IrField>,
   ) {

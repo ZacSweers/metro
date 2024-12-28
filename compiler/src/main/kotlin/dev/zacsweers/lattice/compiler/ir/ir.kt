@@ -867,7 +867,7 @@ internal fun IrFunction.buildBlockBody(
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal val IrType.simpleName: String?
+internal val IrType.simpleName: String
   get() =
     when (val classifier = classifierOrNull) {
       is IrClassSymbol -> {
