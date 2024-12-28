@@ -56,6 +56,16 @@ private fun warning0(
     psiType = psiElementClass,
   )
 
+private fun <T> warning1(
+  positioningStrategy: AbstractSourceElementPositioningStrategy =
+    SourceElementPositioningStrategies.DEFAULT
+) =
+  DiagnosticFactory1DelegateProvider<T>(
+    severity = Severity.WARNING,
+    positioningStrategy = positioningStrategy,
+    psiType = psiElementClass,
+  )
+
 private fun error0(
   positioningStrategy: AbstractSourceElementPositioningStrategy =
     SourceElementPositioningStrategies.DEFAULT
@@ -116,9 +126,12 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val ASSISTED_INJECTION by error1<String>(NAME_IDENTIFIER)
 
   // Provides errors
-  val PROVIDES_SHOULD_BE_PRIVATE by warning0(VISIBILITY_MODIFIER)
+  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE by warning1<String>(VISIBILITY_MODIFIER)
+  // TODO make this severity configurable
+  val PROVIDES_COULD_BE_BINDS by warning1<String>(NAME_IDENTIFIER)
   val PROVIDER_OVERRIDES by error0(MODALITY_MODIFIER)
   val PROVIDES_ERROR by error1<String>(NAME_IDENTIFIER)
+  val BINDS_ERROR by error1<String>(NAME_IDENTIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("Lattice").apply {
@@ -176,7 +189,9 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       )
       put(ASSISTED_INJECTION, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
-      put(PROVIDES_SHOULD_BE_PRIVATE, "`@Provides` declarations should be private.")
+      put(BINDS_ERROR, "{0}", STRING)
+      put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
+      put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE, "{0}", STRING)
       put(
         PROVIDER_OVERRIDES,
         "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",

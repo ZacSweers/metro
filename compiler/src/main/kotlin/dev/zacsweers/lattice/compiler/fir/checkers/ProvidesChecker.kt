@@ -31,12 +31,15 @@ import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.expressions.FirBlock
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
+import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
 // TODO
-//  some of this changes if we reuse this for `@Binds`
 //  What about future Kotlin versions where you can have different get signatures
 //  Make visibility error configurable? ERROR/WARN/NONE
 internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
@@ -63,7 +66,9 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       }
     }
 
-    if (!declaration.isAnnotatedWithAny(session, latticeClassIds.providesAnnotations)) {
+    val isProvides = declaration.isAnnotatedWithAny(session, latticeClassIds.providesAnnotations)
+    val isBinds = declaration.isAnnotatedWithAny(session, latticeClassIds.bindsAnnotations)
+    if (!isProvides && !isBinds) {
       return
     }
 
@@ -76,63 +81,127 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         else -> return
       }
 
-    if (declaration.visibility != Visibilities.Private && bodyExpression != null) {
-      reporter.reportOn(source, FirLatticeErrors.PROVIDES_SHOULD_BE_PRIVATE, context)
+    val isPrivate = declaration.visibility == Visibilities.Private
+    if (!isPrivate && (isProvides || /* isBinds && */ bodyExpression != null)) {
+      val message =
+        if (isBinds) {
+          "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
+        } else {
+          "`@Provides` declarations should be private."
+        }
+      reporter.reportOn(
+        source,
+        FirLatticeErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE,
+        message,
+        context,
+      )
     }
 
     if (declaration.receiverParameter != null) {
       if (bodyExpression == null) {
-        // Treat this as a Binds provider
-        // Validate the assignability
-        val implType = declaration.receiverParameter?.typeRef?.coneType ?: return
-        val boundType = declaration.returnTypeRef.coneType
+        if (isBinds) {
+          // Treat this as a Binds provider
+          // Validate the assignability
+          val implType = declaration.receiverParameter?.typeRef?.coneType ?: return
+          val boundType = declaration.returnTypeRef.coneType
 
-        if (implType == boundType) {
-          // Compare type keys. Different qualifiers are ok
-          val returnTypeKey =
-            when (declaration) {
-              is FirSimpleFunction -> FirTypeKey.from(session, latticeClassIds, declaration)
-              is FirProperty -> FirTypeKey.from(session, latticeClassIds, declaration)
-              else -> return
+          if (implType == boundType) {
+            // Compare type keys. Different qualifiers are ok
+            val returnTypeKey =
+              when (declaration) {
+                is FirSimpleFunction -> FirTypeKey.from(session, latticeClassIds, declaration)
+                is FirProperty -> FirTypeKey.from(session, latticeClassIds, declaration)
+                else -> return
+              }
+            val receiverTypeKey =
+              FirTypeKey.from(
+                session,
+                latticeClassIds,
+                declaration.receiverParameter!!,
+                declaration,
+              )
+            if (returnTypeKey == receiverTypeKey) {
+              reporter.reportOn(
+                source,
+                FirLatticeErrors.PROVIDES_ERROR,
+                "Binds receiver type `${receiverTypeKey.simpleString()}` is the same type and qualifier as the bound type `${returnTypeKey.simpleString()}`.",
+                context,
+              )
             }
-          val receiverTypeKey =
-            FirTypeKey.from(session, latticeClassIds, declaration.receiverParameter!!, declaration)
-          if (returnTypeKey == receiverTypeKey) {
+          } else if (!implType.isSubtypeOf(boundType, session)) {
             reporter.reportOn(
               source,
               FirLatticeErrors.PROVIDES_ERROR,
-              "Binds receiver type `${receiverTypeKey.simpleString()}` is the same type and qualifier as the bound type `${returnTypeKey.simpleString()}`.",
+              "Binds receiver type `${implType.renderReadableWithFqNames()}` is not a subtype of bound type `${boundType.renderReadableWithFqNames()}`.",
               context,
             )
           }
-        } else if (!implType.isSubtypeOf(boundType, session)) {
+          return
+        } else {
+          // Fall through to the Provides-without-body error below
+        }
+      } else {
+        val name = if (declaration is FirSimpleFunction) "functions" else "properties"
+        // Check if the body expression is just returning "this"
+        // NOTE we only do this check for `@Provides`. It's valid to annotate a
+        // `@Binds` with a body if the caller wants to still mark it private
+        val returnsThis = bodyExpression.returnsThis()
+        if (returnsThis && isProvides) {
+          reporter.reportOn(
+            source,
+            FirLatticeErrors.PROVIDES_COULD_BE_BINDS,
+            // TODO link a docsite link
+            "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these.",
+            context,
+          )
+          return
+        } else if (!returnsThis && isBinds) {
+          reporter.reportOn(
+            source,
+            FirLatticeErrors.BINDS_ERROR,
+            "`@Binds` declarations with bodies should just return `this`.",
+            context,
+          )
+          return
+        }
+
+        if (isProvides) {
           reporter.reportOn(
             source,
             FirLatticeErrors.PROVIDES_ERROR,
-            "Binds receiver type `${implType.renderReadableWithFqNames()}` is not a subtype of bound type `${boundType.renderReadableWithFqNames()}`.",
+            // TODO link a docsite link
+            "`@Provides` $name may not be extension $name. Use `@Binds` instead for these.",
             context,
           )
+          return
         }
-      } else {
+      }
+    }
+
+    if (isProvides) {
+      if (bodyExpression == null) {
         reporter.reportOn(
           source,
           FirLatticeErrors.PROVIDES_ERROR,
-          // TODO link a docsite link
-          "`@Provides` declarations may not have receiver parameters unless they are binds providers.",
+          "`@Provides` declarations must have bodies.",
           context,
         )
+        return
       }
-      return
     }
+  }
 
-    if (bodyExpression == null) {
-      reporter.reportOn(
-        source,
-        FirLatticeErrors.PROVIDES_ERROR,
-        "`@Provides` declarations must have bodies.",
-        context,
-      )
-      return
+  private fun FirExpression.returnsThis(): Boolean {
+    if (this is FirBlock) {
+      if (statements.size == 1) {
+        val singleStatement = statements[0]
+        if (singleStatement is FirReturnExpression) {
+          if (singleStatement.result is FirThisReceiverExpression) {
+            return true
+          }
+        }
+      }
     }
+    return false
   }
 }
