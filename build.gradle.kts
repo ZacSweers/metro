@@ -42,6 +42,7 @@ plugins {
   alias(libs.plugins.atomicfu) apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.binaryCompatibilityValidator)
+  alias(libs.plugins.poko) apply false
 }
 
 apiValidation {

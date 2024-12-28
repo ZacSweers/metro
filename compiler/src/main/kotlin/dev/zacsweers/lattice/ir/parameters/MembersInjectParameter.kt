@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.ir.parameters
 
+import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.NameAllocator
 import dev.zacsweers.lattice.asName
@@ -25,6 +26,7 @@ import dev.zacsweers.lattice.ir.TypeKey
 import dev.zacsweers.lattice.ir.asContextualTypeKey
 import dev.zacsweers.lattice.ir.locationOrNull
 import dev.zacsweers.lattice.ir.parameters.Parameter.Kind
+import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -35,22 +37,21 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
-// TODO use poko + exclusions
+@Poko
 internal class MembersInjectParameter(
   override val kind: Kind,
   override val name: Name,
   override val contextualTypeKey: ContextualTypeKey,
-  override val originalName: Name,
-  override val providerType: IrType,
-  override val lazyType: IrType,
-  override val symbols: LatticeSymbols,
+  @Poko.Skip override val originalName: Name,
+  @Poko.Skip override val providerType: IrType,
+  @Poko.Skip override val lazyType: IrType,
+  @Poko.Skip override val symbols: LatticeSymbols,
   override val hasDefault: Boolean,
-  override val location: CompilerMessageSourceLocation?,
-  val bindingStackEntry: BindingStack.Entry,
+  @Poko.Skip override val location: CompilerMessageSourceLocation?,
+  @Poko.Skip val bindingStackEntry: BindingStack.Entry,
   val memberInjectorClassId: ClassId,
-  val isProperty: Boolean,
+  @Poko.Skip val isProperty: Boolean,
 ) : Parameter {
-  // TODO figure this out
   override lateinit var ir: IrValueParameter
   lateinit var setterFunction: IrFunction
   var irProperty: IrProperty? = null
@@ -65,34 +66,9 @@ internal class MembersInjectParameter(
     Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier)
   override val isBindsInstance: Boolean = false
   override val isGraphInstance: Boolean = false
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
 
-    other as MembersInjectParameter
-
-    if (hasDefault != other.hasDefault) return false
-    if (isProperty != other.isProperty) return false
-    if (kind != other.kind) return false
-    if (name != other.name) return false
-    if (contextualTypeKey != other.contextualTypeKey) return false
-    if (memberInjectorClassId != other.memberInjectorClassId) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = hasDefault.hashCode()
-    result = 31 * result + isProperty.hashCode()
-    result = 31 * result + kind.hashCode()
-    result = 31 * result + name.hashCode()
-    result = 31 * result + contextualTypeKey.hashCode()
-    result = 31 * result + memberInjectorClassId.hashCode()
-    return result
-  }
-
-  override fun toString(): String {
-    return buildString {
+  private val cachedToString by unsafeLazy {
+    buildString {
       if (isProperty) {
         append("var ")
       } else {
@@ -107,6 +83,8 @@ internal class MembersInjectParameter(
       append(contextualTypeKey)
     }
   }
+
+  override fun toString(): String = cachedToString
 }
 
 internal fun List<IrValueParameter>.mapToMemberInjectParameters(

@@ -32,6 +32,7 @@ buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.5.1" }
 dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.30.0" }
+poko = { id = "dev.drewhamilton.poko", version = "0.18.2" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.0.BETA4" }
 
 [libraries]

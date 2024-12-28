@@ -18,11 +18,15 @@ plugins {
   alias(libs.plugins.dokka)
   alias(libs.plugins.mavenPublish)
   alias(libs.plugins.ksp)
+  alias(libs.plugins.poko)
 }
 
 kotlin {
   compilerOptions {
-    optIn.addAll("org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi")
+    optIn.addAll(
+      "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
+      "dev.drewhamilton.poko.SkipSupport",
+    )
     freeCompilerArgs.addAll("-Xjvm-default=all")
   }
 }
