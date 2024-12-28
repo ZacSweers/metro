@@ -13,9 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations
+package dev.zacsweers.lattice
 
-@Target(AnnotationTarget.CLASS)
-public annotation class DependencyGraph {
-  @Target(AnnotationTarget.CLASS) public annotation class Factory
-}
+import kotlin.reflect.KClass
+
+@Target(
+  AnnotationTarget.CLASS,
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.VALUE_PARAMETER,
+)
+@Scope
+public annotation class SingleIn(val scope: KClass<*>)

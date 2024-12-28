@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations.multibindings
+package dev.zacsweers.lattice
 
 /**
  * The method's return type forms the type argument for the value of a `Map<K, Provider<V>>`, and

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Dagger Authors.
+ * Copyright (C) 2015 The Dagger Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations.multibindings
+@file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
 
-/**
- * The method's return type forms the generic type argument of a `Set<T>`, and the returned value is
- * contributed to the set. The object graph will pass dependencies to the method as parameters. The
- * `Set<T>` produced from the accumulation of values will be immutable.
- *
- * @see <a href="https://dagger.dev/multibindings.set-multibindings">Set multibinding</a>
- */
+package dev.zacsweers.lattice
+
+/** A [MapKey] annotation for maps with [Long] keys. */
 @MustBeDocumented
-@Target(AnnotationTarget.FUNCTION)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-public annotation class IntoSet
+@MapKey
+public annotation class LongKey(val value: Long)

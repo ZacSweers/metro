@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations.multibindings
+package dev.zacsweers.lattice
 
 /**
  * The method's return type is `Set<T>` and all values are contributed to the set. The `Set<T>`

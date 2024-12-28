@@ -15,8 +15,6 @@
  */
 package dev.zacsweers.lattice
 
-import dev.zacsweers.lattice.annotations.DependencyGraph
-
 /**
  * Creates a new parameter-less graph of type [T]. Note this is _only_ applicable for graphs that
  * have no creators (i.e. [DependencyGraph.Factory]).

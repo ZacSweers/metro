@@ -13,14 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations
+package dev.zacsweers.lattice
 
-@Target(
-  AnnotationTarget.CLASS,
-  AnnotationTarget.FUNCTION,
-  AnnotationTarget.PROPERTY,
-  AnnotationTarget.PROPERTY_GETTER,
-  AnnotationTarget.VALUE_PARAMETER,
-)
-@Qualifier
-public annotation class Named(val name: String)
+@Target(AnnotationTarget.ANNOTATION_CLASS) public annotation class Qualifier

@@ -13,6 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations
+package dev.zacsweers.lattice
 
-@Target(AnnotationTarget.ANNOTATION_CLASS) public annotation class Scope
+public abstract class AppScope private constructor()

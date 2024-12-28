@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Dagger Authors.
+ * Copyright (C) 2016 The Dagger Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,20 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
-
-package dev.zacsweers.lattice.annotations.multibindings
-
-import kotlin.reflect.KClass
+package dev.zacsweers.lattice
 
 /**
- * A [MapKey] annotation for maps with `KClass<*>` keys.
+ * The method's return type forms the generic type argument of a `Set<T>`, and the returned value is
+ * contributed to the set. The object graph will pass dependencies to the method as parameters. The
+ * `Set<T>` produced from the accumulation of values will be immutable.
  *
- * If your map's keys can be constrained, consider using a custom annotation instead, with a member
- * whose type is `KClass<out Something>`.
+ * @see <a href="https://dagger.dev/multibindings.set-multibindings">Set multibinding</a>
  */
 @MustBeDocumented
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
+@Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
-@MapKey
-public annotation class ClassKey(val value: KClass<*>)
+public annotation class IntoSet

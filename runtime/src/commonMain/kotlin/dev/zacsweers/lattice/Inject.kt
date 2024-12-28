@@ -13,6 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations
+package dev.zacsweers.lattice
 
-public abstract class AppScope private constructor()
+/** TODO standard injection docs */
+@Target(
+  AnnotationTarget.CLASS,
+  AnnotationTarget.CONSTRUCTOR,
+  AnnotationTarget.PROPERTY_SETTER,
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+)
+public annotation class Inject

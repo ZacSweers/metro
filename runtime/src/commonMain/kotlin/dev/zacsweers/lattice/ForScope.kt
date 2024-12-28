@@ -13,7 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations
+package dev.zacsweers.lattice
 
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY)
-public annotation class Binds
+import kotlin.reflect.KClass
+
+@Target(
+  AnnotationTarget.CLASS,
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.VALUE_PARAMETER,
+)
+@Qualifier
+public annotation class ForScope(val scope: KClass<*>)

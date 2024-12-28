@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations.multibindings
-
-import dev.zacsweers.lattice.annotations.Provides
+package dev.zacsweers.lattice
 
 /**
  * Identifies annotation types that are used to associate keys with values returned by

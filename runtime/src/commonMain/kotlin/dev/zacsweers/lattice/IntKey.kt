@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Dagger Authors.
+ * Copyright (C) 2015 The Dagger Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,11 @@
  */
 @file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
 
-package dev.zacsweers.lattice.annotations.multibindings
+package dev.zacsweers.lattice
 
-import kotlin.reflect.KClass
-
-/**
- * A [MapKey] annotation for maps with `Class<?>` keys.
- *
- * The difference from [ClassKey] is that dagger generates a string representation for the class to
- * use under the hood, which prevents loading unused classes at runtime.
- */
+/** A [MapKey] annotation for maps with [Int] keys. */
+@MustBeDocumented
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-@MustBeDocumented
 @MapKey
-public annotation class LazyClassKey(val value: KClass<*>)
+public annotation class IntKey(val value: Int)

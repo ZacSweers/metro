@@ -15,11 +15,18 @@
  */
 @file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED") // Only read at compile-time
 
-package dev.zacsweers.lattice.annotations.multibindings
+package dev.zacsweers.lattice
 
-/** A [MapKey] annotation for maps with [Long] keys. */
+import kotlin.reflect.KClass
+
+/**
+ * A [MapKey] annotation for maps with `KClass<*>` keys.
+ *
+ * If your map's keys can be constrained, consider using a custom annotation instead, with a member
+ * whose type is `KClass<out Something>`.
+ */
 @MustBeDocumented
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 @MapKey
-public annotation class LongKey(val value: Long)
+public annotation class ClassKey(val value: KClass<*>)

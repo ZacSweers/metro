@@ -15,8 +15,6 @@
  */
 package dev.zacsweers.lattice
 
-import dev.zacsweers.lattice.annotations.DependencyGraph
-
 /**
  * Injects dependencies into the properties and functions on instances of type [T]. Ignores the
  * presence or absence of an injectable constructor.

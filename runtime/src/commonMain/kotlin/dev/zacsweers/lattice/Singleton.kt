@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.annotations
-
-import kotlin.reflect.KClass
+package dev.zacsweers.lattice
 
 @Target(
   AnnotationTarget.CLASS,
@@ -24,5 +22,5 @@ import kotlin.reflect.KClass
   AnnotationTarget.PROPERTY_GETTER,
   AnnotationTarget.VALUE_PARAMETER,
 )
-@Qualifier
-public annotation class ForScope(val scope: KClass<*>)
+@Scope
+public annotation class Singleton
