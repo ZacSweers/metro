@@ -22,12 +22,9 @@ import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
-import dev.zacsweers.lattice.LatticeCommandLineProcessor
-import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_DEBUG
-import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_ENABLED
-import dev.zacsweers.lattice.LatticeCommandLineProcessor.Companion.OPTION_GENERATE_ASSISTED_FACTORIES
-import dev.zacsweers.lattice.LatticeCompilerPluginRegistrar
-import dev.zacsweers.lattice.LatticeSymbols
+import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_DEBUG
+import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_ENABLED
+import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_GENERATE_ASSISTED_FACTORIES
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor

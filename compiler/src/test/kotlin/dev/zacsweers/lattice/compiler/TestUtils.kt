@@ -20,13 +20,10 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.tschuchort.compiletesting.CompilationResult
 import com.tschuchort.compiletesting.JvmCompilationResult
-import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.MembersInjector
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.annotations.Provides
-import dev.zacsweers.lattice.capitalizeUS
 import dev.zacsweers.lattice.internal.Factory
-import dev.zacsweers.lattice.mapToSet
 import dev.zacsweers.lattice.provider
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier

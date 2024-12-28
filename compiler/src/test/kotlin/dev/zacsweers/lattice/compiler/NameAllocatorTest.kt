@@ -16,8 +16,7 @@
 package dev.zacsweers.lattice.compiler
 
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.lattice.NameAllocator
-import dev.zacsweers.lattice.NameAllocator.Mode
+import dev.zacsweers.lattice.compiler.NameAllocator.Mode
 import kotlin.test.Test
 
 class NameAllocatorTest {
