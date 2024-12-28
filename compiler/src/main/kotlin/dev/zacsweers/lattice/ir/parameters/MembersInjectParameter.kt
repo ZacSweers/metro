@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
@@ -52,8 +51,6 @@ internal class MembersInjectParameter(
   @Poko.Skip val bindingStackEntry: BindingStack.Entry,
   @Poko.Skip val isProperty: Boolean,
   @Poko.Skip override val ir: IrValueParameter,
-  @Poko.Skip val setterFunction: IrFunction,
-  @Poko.Skip val irProperty: IrProperty?,
 ) : Parameter {
   override val typeKey: TypeKey = contextualTypeKey.typeKey
   override val type: IrType = contextualTypeKey.typeKey.type
@@ -73,22 +70,10 @@ internal class MembersInjectParameter(
         append(it)
         append(' ')
       }
-      append("@Inject ")
-      if (isProperty) {
-        append("var ")
-      } else {
-        append("fun ")
-      }
       append(name)
-      if (!isProperty) {
-        append("(")
-      }
       append(':')
       append(' ')
       append(contextualTypeKey.render(short = true, includeQualifier = false))
-      if (!isProperty) {
-        append(")")
-      }
     }
   }
 
@@ -154,8 +139,6 @@ internal fun IrProperty.toMemberInjectParameter(
     memberInjectorClassId = memberInjectorClass,
     isProperty = true,
     ir = setterParam!!,
-    setterFunction = setter!!,
-    irProperty = this,
   )
 }
 
@@ -199,7 +182,5 @@ internal fun IrValueParameter.toMemberInjectParameter(
     memberInjectorClassId = memberInjectorClass,
     isProperty = isPropertyAccessor,
     ir = this,
-    setterFunction = ownerFunction,
-    irProperty = if (isPropertyAccessor) ownerFunction.propertyIfAccessor as IrProperty else null,
   )
 }

@@ -65,6 +65,7 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
+import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -257,6 +258,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     val factoryParameters =
       Parameters(
+        reference.callee.owner.callableId,
         instance = instanceParam,
         extensionReceiver = null,
         valueParameters = valueParameters,

@@ -25,16 +25,22 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
+import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
+import org.jetbrains.kotlin.name.SpecialNames
 
 internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> {
+  val callableId: CallableId
   val instance: Parameter?
   val extensionReceiver: T?
   val valueParameters: List<T>
@@ -42,6 +48,12 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
 
   val nonInstanceParameters: List<Parameter>
   val allParameters: List<Parameter>
+
+  val isProperty: Boolean
+    get() = (ir as? IrSimpleFunction)?.isPropertyAccessor == true
+
+  val irProperty: IrProperty
+    get() = (ir as IrSimpleFunction).propertyIfAccessor as IrProperty
 
   fun with(ir: IrFunction): Parameters<T>
 
@@ -60,13 +72,24 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
   }
 
   fun mergeValueParametersWithUntyped(other: Parameters<*>): Parameters<*> {
-    return ParametersImpl(instance, extensionReceiver, valueParameters + other.valueParameters)
+    return ParametersImpl(
+      callableId,
+      instance,
+      extensionReceiver,
+      valueParameters + other.valueParameters,
+    )
   }
 
   override fun compareTo(other: Parameters<*>): Int = COMPARATOR.compare(this, other)
 
   companion object {
-    private val EMPTY: Parameters<*> = ParametersImpl(null, null, emptyList())
+    private val EMPTY: Parameters<*> =
+      ParametersImpl(
+        CallableId(PACKAGE_FQ_NAME_FOR_LOCAL, null, SpecialNames.NO_NAME_PROVIDED),
+        null,
+        null,
+        emptyList(),
+      )
 
     @Suppress("UNCHECKED_CAST") fun <T : Parameter> empty(): Parameters<T> = EMPTY as Parameters<T>
 
@@ -76,12 +99,13 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
         .thenComparator { a, b -> compareValues(a, b) }
 
     operator fun <T : Parameter> invoke(
+      callableId: CallableId,
       instance: Parameter?,
       extensionReceiver: T?,
       valueParameters: List<T>,
       ir: IrFunction?,
     ): Parameters<T> =
-      ParametersImpl<T>(instance, extensionReceiver, valueParameters).apply {
+      ParametersImpl<T>(callableId, instance, extensionReceiver, valueParameters).apply {
         ir?.let { this.ir = it }
       }
   }
@@ -89,6 +113,7 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
 
 @Poko
 private class ParametersImpl<T : Parameter>(
+  override val callableId: CallableId,
   override val instance: Parameter?,
   override val extensionReceiver: T?,
   override val valueParameters: List<T>,
@@ -97,6 +122,18 @@ private class ParametersImpl<T : Parameter>(
 
   private val cachedToString by unsafeLazy {
     buildString {
+      append('\'')
+      append(callableId.toString())
+      append('\'')
+      append(' ')
+      if (valueParameters.firstOrNull() is MembersInjectParameter) {
+        append("@Inject ")
+        if (isProperty) {
+          append("var ")
+        } else {
+          append("fun ")
+        }
+      }
       instance?.let {
         append(it)
         append('.')
@@ -105,14 +142,23 @@ private class ParametersImpl<T : Parameter>(
         append(it)
         append('.')
       }
-      append('(')
-      valueParameters.joinTo(this)
-      append(')')
+      append(callableId.callableName)
+      if (!isProperty) {
+        append('(')
+        valueParameters.joinTo(this)
+        append(')')
+      } else {
+        append(": ")
+        append(valueParameters[0].typeKey.render(short = true, includeQualifier = false))
+        append(" = ...")
+      }
     }
   }
 
   override fun with(ir: IrFunction): Parameters<T> {
-    return ParametersImpl(instance, extensionReceiver, valueParameters).apply { this.ir = ir }
+    return ParametersImpl(callableId, instance, extensionReceiver, valueParameters).apply {
+      this.ir = ir
+    }
   }
 
   override val nonInstanceParameters: List<T> by unsafeLazy {
@@ -152,6 +198,7 @@ internal fun IrFunction.parameters(
     }
 
   return Parameters(
+    callableId = callableId,
     instance =
       dispatchReceiverParameter?.toConstructorParameter(
         context,
@@ -211,6 +258,7 @@ internal fun IrFunction.memberInjectParameters(
     }
 
   return Parameters(
+    callableId = callableId,
     instance = null,
     // TODO not supported for now
     extensionReceiver = null,

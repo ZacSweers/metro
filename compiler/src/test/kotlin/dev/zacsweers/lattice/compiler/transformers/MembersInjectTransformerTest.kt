@@ -29,7 +29,6 @@ import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedFactoryClass
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import dev.zacsweers.lattice.compiler.generatedMembersInjector
-import dev.zacsweers.lattice.compiler.getValue
 import dev.zacsweers.lattice.compiler.invokeCreate
 import dev.zacsweers.lattice.compiler.invokeNewInstance
 import dev.zacsweers.lattice.compiler.newInstanceStrict
@@ -776,6 +775,42 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
+  fun `graph inject function - constructor injected - with qualifiers`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance @Named("int") value: Int, @BindsInstance value2: Long): ExampleGraph
+              }
+            }
+            @Inject
+            class ExampleClass {
+              var long: Long = 0
+              var int: Int = 0
+
+              @Inject fun injectValues(long: Long, @Named("int") int: Int) {
+                this.long = long
+                this.int = int
+              }
+            }
+          """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
+      val instance = graph.callProperty<Any>("exampleClass")
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+      assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
+    }
+  }
+
+  @Test
   fun `graph inject function - graph injector`() {
     compile(
       source(
@@ -795,6 +830,43 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
               var int: Int = 0
 
               @Inject fun injectValues(long: Long, int: Int) {
+                this.long = long
+                this.int = int
+              }
+            }
+          """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
+      val instance = ExampleClass.newInstanceStrict()
+      graph.callInject(instance)
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+      assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
+    }
+  }
+
+  @Test
+  fun `graph inject function - graph injector - with qualifier`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              fun inject(exampleClass: ExampleClass)
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance @Named("int") value: Int, @BindsInstance value2: Long): ExampleGraph
+              }
+            }
+
+            class ExampleClass {
+              var long: Long = 0
+              var int: Int = 0
+
+              @Inject fun injectValues(long: Long, @Named("int") int: Int) {
                 this.long = long
                 this.int = int
               }

@@ -28,7 +28,6 @@ import dev.zacsweers.lattice.ir.irBlockBody
 import dev.zacsweers.lattice.ir.irInvoke
 import dev.zacsweers.lattice.ir.irTemporary
 import dev.zacsweers.lattice.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.ir.parameterAsProviderArgument
 import dev.zacsweers.lattice.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
@@ -250,20 +249,21 @@ internal class InjectConstructorTransformer(
 
         if (injectors.isNotEmpty()) {
           for (injector in injectors) {
-            for ((parameter, function) in injector.injectFunctions) {
+            for ((function, parameters) in injector.injectFunctions) {
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,
-                args =
-                  listOf(
-                    irGet(instance),
-                    parameterAsProviderArgument(
+                args = buildList {
+                  add(irGet(instance))
+                  addAll(
+                    parametersAsProviderArguments(
                       this@InjectConstructorTransformer,
-                      parameter,
+                      parameters,
                       factoryReceiver,
                       parametersToFields,
-                    ),
-                  ),
+                    )
+                  )
+                },
               )
             }
           }

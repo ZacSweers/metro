@@ -102,6 +102,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
+import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
@@ -549,7 +550,21 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       bindingStack.withEntry(entry) {
         val targetClass = injector.valueParameters.single().type.rawType()
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
-        val parameters = generatedInjector?.injectFunctions?.keys?.toList().orEmpty()
+        val allParams = generatedInjector?.injectFunctions?.values?.toList().orEmpty()
+        val parameters = when (allParams.size) {
+          0 -> {
+            Parameters.empty()
+          }
+          1 -> {
+            allParams.first()
+          }
+          else -> {
+            allParams
+              .reduce { current, next ->
+                current.mergeValueParametersWith(next)
+              }
+          }
+        }
         val membersInjectorKey =
           ContextualTypeKey(
             typeKey =
@@ -563,7 +578,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           Binding.MembersInjected(
             membersInjectorKey,
             // Need to look up the injector class and gather all params
-            parameters = Parameters(null, null, parameters, null),
+            parameters =
+              Parameters(injector.callableId, null, null, parameters.valueParameters, null),
             reportableLocation = injector.location(),
             function = injector,
             isFromInjectorFunction = true,
@@ -1050,27 +1066,34 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                     val clazz = type.rawType()
                     val injectors =
                       membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
-                    for ((parameter, function) in injectors.injectFunctions) {
-                      val paramBinding =
-                        bindingGraph.getOrCreateBinding(parameter.contextualTypeKey, bindingStack)
+                    for ((function, parameters) in injectors.injectFunctions) {
                       +irInvoke(
                         dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                         callee = function.symbol,
                         args =
-                          listOf(
-                            irGet(targetParam),
-                            typeAsProviderArgument(
-                              this@DependencyGraphTransformer,
-                              parameter.contextualTypeKey,
-                              generateBindingCode(
-                                paramBinding,
-                                generationContext,
-                                parameter.contextualTypeKey,
-                              ),
-                              isAssisted = false,
-                              isGraphInstance = false,
-                            ),
-                          ),
+                          buildList {
+                            add(irGet(targetParam))
+                            for (parameter in parameters.valueParameters) {
+                              val paramBinding =
+                                bindingGraph.getOrCreateBinding(
+                                  parameter.contextualTypeKey,
+                                  bindingStack,
+                                )
+                              add(
+                                typeAsProviderArgument(
+                                  this@DependencyGraphTransformer,
+                                  parameter.contextualTypeKey,
+                                  generateBindingCode(
+                                    paramBinding,
+                                    generationContext,
+                                    parameter.contextualTypeKey,
+                                  ),
+                                  isAssisted = false,
+                                  isGraphInstance = false,
+                                )
+                              )
+                            }
+                          },
                       )
                     }
                   }
