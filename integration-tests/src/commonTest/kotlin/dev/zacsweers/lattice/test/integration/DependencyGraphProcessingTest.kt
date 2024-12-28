@@ -1111,6 +1111,17 @@ class DependencyGraphProcessingTest {
     @Provides private fun provideValue(): String = "Hello, world!"
   }
 
+  @Test
+  fun `graph instances can be requested`() {
+    val graph = createGraph<SelfRequestingGraph>()
+    assertSame(graph, graph.self)
+  }
+
+  @DependencyGraph
+  interface SelfRequestingGraph {
+    val self: SelfRequestingGraph
+  }
+
   enum class Seasoning {
     SPICY,
     REGULAR,

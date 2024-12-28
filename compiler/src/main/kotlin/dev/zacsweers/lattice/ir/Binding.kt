@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.capitalizeUS
+import dev.zacsweers.lattice.ir.location
 import dev.zacsweers.lattice.ir.parameters.MembersInjectParameter
 import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
@@ -111,17 +112,17 @@ internal sealed interface Binding {
       get() = type.location()
   }
 
-  data class BoundInstance(val parameter: Parameter) : Binding {
-    override val typeKey: TypeKey = parameter.typeKey
+  data class BoundInstance(
+    override val typeKey: TypeKey,
+    override val nameHint: String,
+    override val reportableLocation: CompilerMessageSourceLocation?
+  ) : Binding {
+    constructor(parameter: Parameter): this(parameter.typeKey, "${parameter.name.asString()}Instance", parameter.location)
     override val scope: IrAnnotation? = null
-    override val nameHint: String = "${parameter.name.asString()}Instance"
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
     override val parameters: Parameters<out Parameter> = Parameters.empty()
     override val contextualTypeKey: ContextualTypeKey =
       ContextualTypeKey(typeKey, false, false, false, false)
-
-    override val reportableLocation: CompilerMessageSourceLocation?
-      get() = parameter.location
   }
 
   data class Absent(override val typeKey: TypeKey) : Binding {

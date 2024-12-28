@@ -487,6 +487,15 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
 
     // Add instance parameters
+    graph.addBinding(
+      node.typeKey,
+      Binding.BoundInstance(
+        node.typeKey,
+        "${node.sourceGraph.name}Provider",
+        node.sourceGraph.location(),
+      ),
+      bindingStack,
+    )
     node.creator?.parameters?.valueParameters.orEmpty().forEach {
       graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
     }
@@ -716,6 +725,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val providerFields = mutableMapOf<TypeKey, IrField>()
         val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
         val graphTypesToCtorParams = mutableMapOf<TypeKey, IrValueParameter>()
+        val fieldNameAllocator = NameAllocator()
 
         node.creator?.let { creator ->
           for (param in creator.parameters.valueParameters) {
@@ -726,7 +736,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             if (isBindsInstance) {
               providerFields[param.typeKey] =
                 addField(
-                    fieldName = "${param.name}Instance",
+                    fieldName = fieldNameAllocator.newName("${param.name}Instance"),
                     fieldType = symbols.latticeProvider.typeWith(param.type),
                     fieldVisibility = DescriptorVisibilities.PRIVATE,
                   )
@@ -765,7 +775,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val thisReceiverParameter = thisReceiver!!
         val thisGraphField =
           addField(
-              fieldName = graphImplName.decapitalizeUS(),
+              fieldName = fieldNameAllocator.newName(graphImplName.decapitalizeUS()),
               fieldType = thisReceiverParameter.type,
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
@@ -783,6 +793,30 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         for (superType in node.sourceGraph.getAllSuperTypes(pluginContext)) {
           instanceFields[TypeKey(superType)] = thisGraphField
         }
+
+        // Expose the graph as a provider binding
+        providerFields[node.typeKey] =
+          addField(
+              fieldName = fieldNameAllocator.newName("${node.sourceGraph.name}Provider"),
+              fieldType = symbols.latticeProvider.typeWith(node.typeKey.type),
+              fieldVisibility = DescriptorVisibilities.PRIVATE,
+            )
+            .apply {
+              isFinal = true
+              initializer =
+                pluginContext.createIrBuilder(symbol).run {
+                  // InstanceFactory.create(...)
+                  irExprBody(
+                    irInvoke(
+                        dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
+                        callee = symbols.instanceFactoryCreate,
+                        args = listOf(irGetField(irGet(thisReceiverParameter), thisGraphField)),
+                        typeHint = node.typeKey.type.wrapInProvider(symbols.latticeFactory),
+                      )
+                      .apply { putTypeArgument(0, node.typeKey.type) }
+                  )
+                }
+            }
 
         // Track a stack for bindings
         val bindingStack = BindingStack(node.sourceGraph)
@@ -818,8 +852,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             multibindingProviderFields,
             bindingStack,
           )
-
-        val fieldNameAllocator = NameAllocator()
 
         // For all deferred types, assign them first as factories
         // TODO For any types that depend on deferred types, they need providers too?
