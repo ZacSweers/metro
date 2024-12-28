@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.ir.parameters
 
+import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.LatticeSymbols
 import dev.zacsweers.lattice.ir.BindingStack
 import dev.zacsweers.lattice.ir.ContextualTypeKey
@@ -25,29 +26,31 @@ import dev.zacsweers.lattice.ir.asContextualTypeKey
 import dev.zacsweers.lattice.ir.constArgumentOfTypeAt
 import dev.zacsweers.lattice.ir.locationOrNull
 import dev.zacsweers.lattice.ir.parameters.Parameter.Kind
+import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
 
-internal data class ConstructorParameter(
+@Poko
+internal class ConstructorParameter(
   override val kind: Kind,
   override val name: Name,
   override val contextualTypeKey: ContextualTypeKey,
-  override val originalName: Name,
-  override val providerType: IrType,
-  override val lazyType: IrType,
   override val isAssisted: Boolean,
+  override val isGraphInstance: Boolean,
+  override val isBindsInstance: Boolean,
+  override val hasDefault: Boolean,
   override val assistedIdentifier: String,
   override val assistedParameterKey: Parameter.AssistedParameterKey =
     Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
-  override val symbols: LatticeSymbols,
-  override val isGraphInstance: Boolean,
-  val bindingStackEntry: BindingStack.Entry,
-  override val isBindsInstance: Boolean,
-  override val hasDefault: Boolean,
-  override val location: CompilerMessageSourceLocation?,
+  @Poko.Skip override val originalName: Name,
+  @Poko.Skip override val providerType: IrType,
+  @Poko.Skip override val lazyType: IrType,
+  @Poko.Skip override val symbols: LatticeSymbols,
+  @Poko.Skip val bindingStackEntry: BindingStack.Entry,
+  @Poko.Skip override val location: CompilerMessageSourceLocation?,
 ) : Parameter {
   override lateinit var ir: IrValueParameter
   override val typeKey: TypeKey = contextualTypeKey.typeKey
@@ -55,6 +58,20 @@ internal data class ConstructorParameter(
   override val isWrappedInProvider: Boolean = contextualTypeKey.isWrappedInProvider
   override val isWrappedInLazy: Boolean = contextualTypeKey.isWrappedInLazy
   override val isLazyWrappedInProvider: Boolean = contextualTypeKey.isLazyWrappedInProvider
+
+  private val cachedToString by unsafeLazy {
+    buildString {
+      contextualTypeKey.typeKey.qualifier?.let {
+        append(it)
+      }
+      append(name)
+      append(':')
+      append(' ')
+      append(contextualTypeKey.render(short = true, includeQualifier = false))
+    }
+  }
+
+  override fun toString(): String = cachedToString
 }
 
 internal fun List<IrValueParameter>.mapToConstructorParameters(

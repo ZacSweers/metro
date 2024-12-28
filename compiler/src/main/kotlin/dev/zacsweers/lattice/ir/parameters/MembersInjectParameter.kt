@@ -69,6 +69,11 @@ internal class MembersInjectParameter(
 
   private val cachedToString by unsafeLazy {
     buildString {
+      contextualTypeKey.typeKey.qualifier?.let {
+        append(it)
+        append(' ')
+      }
+      append("@Inject ")
       if (isProperty) {
         append("var ")
       } else {
@@ -76,11 +81,14 @@ internal class MembersInjectParameter(
       }
       append(name)
       if (!isProperty) {
-        append("(...)")
+        append("(")
       }
       append(':')
       append(' ')
-      append(contextualTypeKey)
+      append(contextualTypeKey.render(short = true, includeQualifier = false))
+      if (!isProperty) {
+        append(")")
+      }
     }
   }
 

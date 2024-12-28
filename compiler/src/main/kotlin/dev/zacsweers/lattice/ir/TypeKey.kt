@@ -27,10 +27,12 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
 
   override fun compareTo(other: TypeKey) = toString().compareTo(other.toString())
 
-  fun render(short: Boolean): String = buildString {
-    qualifier?.let {
-      append(it)
-      append(" ")
+  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+    if (includeQualifier) {
+      qualifier?.let {
+        append(it)
+        append(" ")
+      }
     }
     val typeString =
       if (short) {

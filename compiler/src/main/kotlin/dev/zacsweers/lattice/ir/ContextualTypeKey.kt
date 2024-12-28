@@ -42,7 +42,7 @@ internal data class ContextualTypeKey(
 
   override fun toString(): String = render(short = true)
 
-  fun render(short: Boolean): String = buildString {
+  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
     val wrapperType =
       when {
         isWrappedInProvider -> "Provider"
@@ -54,7 +54,7 @@ internal data class ContextualTypeKey(
       append(wrapperType)
       append("<")
     }
-    append(typeKey.render(short))
+    append(typeKey.render(short, includeQualifier))
     if (wrapperType != null) {
       append(">")
       if (isLazyWrappedInProvider) {
