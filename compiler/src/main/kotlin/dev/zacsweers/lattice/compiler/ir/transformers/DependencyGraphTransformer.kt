@@ -133,10 +133,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
   private val injectConstructorTransformer =
-    InjectConstructorTransformer(
-      context,
-      membersInjectorTransformer,
-    )
+    InjectConstructorTransformer(context, membersInjectorTransformer)
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)

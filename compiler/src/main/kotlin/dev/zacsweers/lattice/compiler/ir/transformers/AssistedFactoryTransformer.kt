@@ -61,8 +61,7 @@ import org.jetbrains.kotlin.name.Name
 
 internal class AssistedFactoryTransformer(
   context: LatticeTransformerContext,
-  private val injectConstructorTransformer:
-    InjectConstructorTransformer,
+  private val injectConstructorTransformer: InjectConstructorTransformer,
 ) : LatticeTransformerContext by context {
 
   companion object {
