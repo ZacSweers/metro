@@ -56,6 +56,8 @@ internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation
   override fun compareTo(other: IrAnnotation): Int = cachedToString.compareTo(other.cachedToString)
 }
 
+internal fun IrConstructorCall.asIrAnnotation() = IrAnnotation(this)
+
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall) {
   val annotationClassName =
