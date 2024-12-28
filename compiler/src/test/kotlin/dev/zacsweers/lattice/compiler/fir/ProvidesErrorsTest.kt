@@ -27,13 +27,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `provides should be private - in interface`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             interface ExampleGraph {
               @Provides val provideCharSequence: String get() = "Hello"
               @Provides fun provideString(): String = "Hello"
@@ -44,8 +39,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.OK,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:17 `@Provides` declarations should be private.",
-      "ExampleClass.kt:7:17 `@Provides` declarations should be private.",
+      "ExampleGraph.kt:9:17 `@Provides` declarations should be private.",
+      "ExampleGraph.kt:10:17 `@Provides` declarations should be private.",
     )
   }
 
@@ -53,13 +48,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `provides should be private - in abstract class`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             abstract class ExampleGraph {
               @Provides val provideInt: Int = 0
               @Provides val provideCharSequence: String get() = "Hello"
@@ -71,9 +61,9 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.OK,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:17 `@Provides` declarations should be private.",
-      "ExampleClass.kt:7:17 `@Provides` declarations should be private.",
-      "ExampleClass.kt:8:17 `@Provides` declarations should be private.",
+      "ExampleGraph.kt:9:17 `@Provides` declarations should be private.",
+      "ExampleGraph.kt:10:17 `@Provides` declarations should be private.",
+      "ExampleGraph.kt:11:17 `@Provides` declarations should be private.",
     )
   }
 
@@ -81,13 +71,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `provides cannot have receivers - interface`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             interface ExampleGraph {
               @Provides private val Long.provideInt: Int get() = this.toInt()
               @Provides private fun CharSequence.provideString(): String = this.toString()
@@ -98,8 +83,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:30 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
-      "ExampleClass.kt:7:38 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
+      "ExampleGraph.kt:9:30 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.",
+      "ExampleGraph.kt:10:38 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.",
     )
   }
 
@@ -107,13 +92,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `provides cannot have receivers - abstract class`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             abstract class ExampleGraph {
               @Provides private val Long.provideInt: Int get() = this.toInt()
               @Provides private fun CharSequence.provideString(): String = "Hello"
@@ -124,8 +104,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:30 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
-      "ExampleClass.kt:7:38 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
+      "ExampleGraph.kt:9:30 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.",
+      "ExampleGraph.kt:10:38 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.",
     )
   }
 
@@ -133,13 +113,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `provides must have a body - interface`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             @Suppress("PROVIDES_SHOULD_BE_PRIVATE")
             interface ExampleGraph {
               @Provides val provideInt: Int
@@ -151,8 +126,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:7:17 `@Provides` declarations must have bodies.",
-      "ExampleClass.kt:8:17 `@Provides` declarations must have bodies.",
+      "ExampleGraph.kt:10:17 `@Provides` declarations must have bodies.",
+      "ExampleGraph.kt:11:17 `@Provides` declarations must have bodies.",
     )
   }
 
@@ -160,13 +135,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `provides must have a body - abstract class`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             abstract class ExampleGraph {
               @Provides abstract val provideInt: Int
               @Provides abstract fun provideString(): String
@@ -177,24 +147,19 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:26 `@Provides` declarations must have bodies.",
-      "ExampleClass.kt:7:26 `@Provides` declarations must have bodies.",
+      "ExampleGraph.kt:9:26 `@Provides` declarations must have bodies.",
+      "ExampleGraph.kt:10:26 `@Provides` declarations must have bodies.",
     )
   }
 
   @Test
   fun `binds providers - interface - ok case`() {
     compile(
-      kotlin(
-        "ExampleClass.kt",
+      source(
         """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             interface ExampleGraph {
-              @Provides val Int.bind: Number
-              @Provides fun String.bind(): CharSequence
+              @Binds val Int.bind: Number
+              @Binds fun String.bind(): CharSequence
             }
           """
           .trimIndent(),
@@ -207,16 +172,11 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `binds providers - interface - must not have bodies`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-
             interface ExampleGraph {
-              @Provides val Int.bind: Number get() = 9
-              @Provides fun String.bind(): CharSequence = "Hello"
+              @Binds val Int.bind: Number get() = 9
+              @Binds fun String.bind(): CharSequence = "Hello"
             }
           """
             .trimIndent(),
@@ -225,8 +185,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleClass.kt:6:21 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
-      "ExampleClass.kt:7:24 `@Provides` declarations may not have receiver parameters unless they are binds providers.",
+      "ExampleGraph.kt:9:18 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.",
+      "ExampleGraph.kt:10:21 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.",
     )
   }
 
@@ -234,26 +194,20 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `binds providers - interface - same types cannot have same qualifiers`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Named
-
             interface ExampleGraph {
               // Valid cases
-              @Provides @Named("named") val Int.bindNamed: Int
-              @Provides val @receiver:Named("named") Int.bindNamedReceiver: Int
-              @Provides @Named("named") fun String.bindNamed(): String
-              @Provides fun @receiver:Named("named") String.bindNamedReceiver(): String
+              @Binds @Named("named") val Int.bindNamed: Int
+              @Binds val @receiver:Named("named") Int.bindNamedReceiver: Int
+              @Binds @Named("named") fun String.bindNamed(): String
+              @Binds fun @receiver:Named("named") String.bindNamedReceiver(): String
 
               // Bad cases
-              @Provides val Int.bindSelf: Int
-              @Provides @Named("named") val @receiver:Named("named") Int.bindSameNamed: Int
-              @Provides fun String.bindSelf(): String
-              @Provides @Named("named") fun @receiver:Named("named") String.bindSameNamed(): String
+              @Binds val Int.bindSelf: Int
+              @Binds @Named("named") val @receiver:Named("named") Int.bindSameNamed: Int
+              @Binds fun String.bindSelf(): String
+              @Binds @Named("named") fun @receiver:Named("named") String.bindSameNamed(): String
             }
           """
             .trimIndent(),
@@ -262,10 +216,10 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleClass.kt:14:21 Binds receiver type `kotlin.Int` is the same type and qualifier as the bound type `kotlin.Int`.",
-      "ExampleClass.kt:15:62 Binds receiver type `@Named(\"named\") kotlin.Int` is the same type and qualifier as the bound type `@Named(\"named\") kotlin.Int`.",
-      "ExampleClass.kt:16:24 Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `kotlin.String`.",
-      "ExampleClass.kt:17:65 Binds receiver type `@Named(\"named\") kotlin.String` is the same type and qualifier as the bound type `@Named(\"named\") kotlin.String`.",
+      "ExampleGraph.kt:16:18 Binds receiver type `kotlin.Int` is the same type and qualifier as the bound type `kotlin.Int`.",
+      "ExampleGraph.kt:17:59 Binds receiver type `@Named(\"named\") kotlin.Int` is the same type and qualifier as the bound type `@Named(\"named\") kotlin.Int`.",
+      "ExampleGraph.kt:18:21 Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `kotlin.String`.",
+      "ExampleGraph.kt:19:62 Binds receiver type `@Named(\"named\") kotlin.String` is the same type and qualifier as the bound type `@Named(\"named\") kotlin.String`.",
     )
   }
 
@@ -273,21 +227,15 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   fun `binds providers - interface - bound types must be subtypes`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.Named
-
             interface ExampleGraph {
               // Valid cases
-              @Provides fun String.bind(): CharSequence
+              @Binds fun String.bind(): CharSequence
 
               // Bad cases
-              @Provides val Number.bind: Int
-              @Provides fun CharSequence.bind(): String
+              @Binds val Number.bind: Int
+              @Binds fun CharSequence.bind(): String
             }
           """
             .trimIndent(),
@@ -296,8 +244,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleClass.kt:11:24 Binds receiver type `kotlin.Number` is not a subtype of bound type `kotlin.Int`.",
-      "ExampleClass.kt:12:30 Binds receiver type `kotlin.CharSequence` is not a subtype of bound type `kotlin.String`.",
+      "ExampleGraph.kt:13:21 Binds receiver type `kotlin.Number` is not a subtype of bound type `kotlin.Int`.",
+      "ExampleGraph.kt:14:27 Binds receiver type `kotlin.CharSequence` is not a subtype of bound type `kotlin.String`.",
     )
   }
 }
