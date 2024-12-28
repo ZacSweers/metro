@@ -51,6 +51,7 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -184,22 +185,14 @@ internal class InjectConstructorTransformer(
           body =
             pluginContext.createIrBuilder(symbol).irBlockBody {
               val assistedArgs = this@apply.valueParameters.map { irGet(it) }
-              val providerArgs =
-                parametersAsProviderArguments(
-                  context = this@InjectConstructorTransformer,
-                  parameters = constructorParameters,
-                  receiver = factoryCls.thisReceiver!!,
-                  parametersToFields = parametersToFields,
-                )
-
-              val instance =
-                irTemporary(
-                  irInvoke(callee = newInstanceFunctionSymbol, args = assistedArgs + providerArgs)
-                )
-
-              addMemberInjection(injectors, instance, factoryCls.thisReceiver!!, parametersToFields)
-
-              +irReturn(irGet(instance))
+              invokeNewInstance(
+                newInstanceFunctionSymbol,
+                constructorParameters,
+                injectors,
+                factoryCls.thisReceiver!!,
+                parametersToFields,
+                assistedArgs = assistedArgs,
+              )
             }
         }
     } else {
@@ -232,23 +225,14 @@ internal class InjectConstructorTransformer(
           this.dispatchReceiverParameter = factoryCls.thisReceiver!!
           body =
             pluginContext.createIrBuilder(symbol).irBlockBody {
-              val instance =
-                irTemporary(
-                  irInvoke(
-                    callee = newInstanceFunctionSymbol,
-                    args =
-                      parametersAsProviderArguments(
-                        context = this@InjectConstructorTransformer,
-                        parameters = constructorParameters,
-                        receiver = factoryCls.thisReceiver!!,
-                        parametersToFields = parametersToFields,
-                      ),
-                  )
-                )
-
-              addMemberInjection(injectors, instance, factoryCls.thisReceiver!!, parametersToFields)
-
-              +irReturn(irGet(instance))
+              invokeNewInstance(
+                newInstanceFunctionSymbol,
+                constructorParameters,
+                injectors,
+                factoryCls.thisReceiver!!,
+                parametersToFields,
+                assistedArgs = emptyList(),
+              )
             }
         }
     }
@@ -259,12 +243,28 @@ internal class InjectConstructorTransformer(
     return factoryCls
   }
 
-  private fun IrBlockBodyBuilder.addMemberInjection(
+  private fun IrBlockBodyBuilder.invokeNewInstance(
+    newInstanceFunctionSymbol: IrSimpleFunctionSymbol,
+    constructorParameters: Parameters<ConstructorParameter>,
     injectors: MembersInjectorTransformer.MemberInjectClass?,
-    instance: IrVariable,
     factoryReceiver: IrValueParameter,
     parametersToFields: Map<Parameter, IrField>,
+    assistedArgs: List<IrExpression>,
   ) {
+    val instance =
+      irTemporary(
+        irInvoke(
+          callee = newInstanceFunctionSymbol,
+          args = assistedArgs +
+            parametersAsProviderArguments(
+              context = this@InjectConstructorTransformer,
+              parameters = constructorParameters,
+              receiver = factoryReceiver,
+              parametersToFields = parametersToFields,
+            ),
+        )
+      )
+
     injectors?.let {
       for ((parameter, function) in it.injectFunctions) {
         +irInvoke(
@@ -283,6 +283,8 @@ internal class InjectConstructorTransformer(
         )
       }
     }
+
+    +irReturn(irGet(instance))
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
