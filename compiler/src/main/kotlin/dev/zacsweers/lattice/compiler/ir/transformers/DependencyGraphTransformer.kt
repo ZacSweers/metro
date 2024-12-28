@@ -25,7 +25,6 @@ import dev.zacsweers.lattice.compiler.ir.BindingGraph
 import dev.zacsweers.lattice.compiler.ir.BindingStack
 import dev.zacsweers.lattice.compiler.ir.ContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.DependencyGraphNode
-import dev.zacsweers.lattice.compiler.ir.IrAnnotation
 import dev.zacsweers.lattice.compiler.ir.LatticeSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.TypeKey
@@ -43,11 +42,7 @@ import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irLambda
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.compiler.ir.isBindsAnnotated
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
-import dev.zacsweers.lattice.compiler.ir.latticeAnnotations
-import dev.zacsweers.lattice.compiler.ir.latticeAnnotationsOf
-import dev.zacsweers.lattice.compiler.ir.latticeFunctionOf
 import dev.zacsweers.lattice.compiler.ir.location
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
@@ -85,7 +80,6 @@ import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
-import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -115,7 +109,6 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -289,12 +282,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               // not actually user-implemented in the subtype
               !function.isFakeOverride &&
                 function.correspondingPropertySymbol?.owner?.isFakeOverride != true
-            }
+            },
           )
         }
-        .filter { function ->
-          function.annotations.run { isProvides || isBinds }
-        }
+        .filter { function -> function.annotations.run { isProvides || isBinds } }
         .map { function -> ContextualTypeKey.Companion.from(this, function.ir).typeKey to function }
         .toList()
 
@@ -1091,7 +1082,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           }
           // Stable sort. First the name then the type
           .sortedWith(
-            compareBy<Pair<TypeKey, LatticeSimpleFunction>> { it.second.ir.name }.thenComparing { it.first }
+            compareBy<Pair<TypeKey, LatticeSimpleFunction>> { it.second.ir.name }
+              .thenComparing { it.first }
           )
           .forEach { (_, function) ->
             // TODO dedupe with accessors gen

@@ -890,4 +890,5 @@ internal val IrProperty.allAnnotations: List<IrConstructorCall>
       .distinct()
   }
 
-internal fun LatticeTransformerContext.latticeAnnotationsOf(ir: IrAnnotationContainer) = ir.latticeAnnotations(symbols.latticeClassIds)
+internal fun LatticeTransformerContext.latticeAnnotationsOf(ir: IrAnnotationContainer) =
+  ir.latticeAnnotations(symbols.latticeClassIds)

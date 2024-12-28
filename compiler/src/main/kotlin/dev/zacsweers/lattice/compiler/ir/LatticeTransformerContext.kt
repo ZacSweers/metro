@@ -45,7 +45,9 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
 
 // TODO make this extend IrPluginContext?
 internal interface LatticeTransformerContext {
-  val latticeContext get() = this
+  val latticeContext
+    get() = this
+
   val pluginContext: IrPluginContext
   val messageCollector: MessageCollector
   val symbols: LatticeSymbols

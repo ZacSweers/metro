@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
-import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
 import org.junit.Test
@@ -34,8 +33,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Provides fun provideString(): String = "Hello"
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
     result.assertContainsAll(
       "ExampleGraph.kt:9:17 `@Provides` declarations should be private.",
@@ -55,8 +54,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Provides fun provideString(): String = "Hello"
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
     result.assertContainsAll(
       "ExampleGraph.kt:9:17 `@Provides` declarations should be private.",
@@ -76,8 +75,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds fun Int.provideNumber(): Number = this
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
     result.assertContainsAll(
       "ExampleGraph.kt:9:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
@@ -96,8 +95,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds fun Int.provideNumber(): Number = this
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
     result.assertContainsAll(
       "ExampleGraph.kt:9:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
@@ -116,7 +115,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Provides fun Int.provideNumber(): Number = 3
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -137,7 +136,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds fun Int.provideNumber(): Number = 3
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -158,7 +157,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds fun Int.provideNumber(): Number = 3
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -179,7 +178,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Provides private fun CharSequence.provideString(): String = this.toString()
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -200,7 +199,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Provides private fun CharSequence.provideString(): String = "Hello"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -222,7 +221,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Provides fun provideString(): String
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -243,7 +242,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Provides abstract fun provideString(): String
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -263,8 +262,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds fun String.bind(): CharSequence
             }
           """
-          .trimIndent(),
-      ),
+          .trimIndent()
+      )
     )
   }
 
@@ -279,8 +278,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds fun String.bind(): CharSequence = this
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
     result.assertContainsAll(
@@ -309,7 +308,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds @Named("named") fun @receiver:Named("named") String.bindSameNamed(): String
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -337,7 +336,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
               @Binds fun CharSequence.bind(): String
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )

@@ -624,7 +624,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3)
       val instance = ExampleClass.newInstanceStrict()
@@ -654,7 +654,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -688,7 +688,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -724,7 +724,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -760,7 +760,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -795,7 +795,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
       val instance = graph.callProperty<Any>("exampleClass")
@@ -830,7 +830,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()
@@ -866,7 +866,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
       val instance = ExampleClass.newInstanceStrict()

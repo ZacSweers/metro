@@ -819,7 +819,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
               fun provideValue(): String = "Hello, world!"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 

@@ -74,11 +74,19 @@ internal sealed interface Binding {
       parameters.nonInstanceParameters.associateBy { it.typeKey },
     val aliasedType: ContextualTypeKey?,
   ) : Binding {
-    override val scope: IrAnnotation? get() = annotations.scope
-    val intoSet: Boolean get() = annotations.isIntoSet
-    val elementsIntoSet: Boolean get() = annotations.isElementsIntoSet
+    override val scope: IrAnnotation?
+      get() = annotations.scope
+
+    val intoSet: Boolean
+      get() = annotations.isIntoSet
+
+    val elementsIntoSet: Boolean
+      get() = annotations.isElementsIntoSet
+
     // TODO are both necessary? Is there any case where only one is specified?
-    val intoMap: Boolean get() = annotations.isIntoMap
+    val intoMap: Boolean
+      get() = annotations.isIntoMap
+
     val mapKey: IrAnnotation? = annotations.mapKeys.singleOrNull()
     override val typeKey: TypeKey = contextualTypeKey.typeKey
     val isMultibindingProvider

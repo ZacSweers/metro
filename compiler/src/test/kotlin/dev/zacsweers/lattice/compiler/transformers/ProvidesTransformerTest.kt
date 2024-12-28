@@ -386,12 +386,14 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               private fun String.provideValue(): Int = length
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleGraph.kt:11:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.")
+    result.assertContains(
+      "ExampleGraph.kt:11:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these."
+    )
   }
 
   // TODO
