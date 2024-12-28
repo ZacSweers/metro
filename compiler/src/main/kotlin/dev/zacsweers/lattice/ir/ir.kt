@@ -647,10 +647,17 @@ internal fun IrClass.addStaticCreateFunction(
     val valueParamsToPatch =
       parameters.valueParameters
         .filterNot { it.isAssisted }
-        .map { addValueParameter(it.name, it.providerType, LatticeOrigin) }
+        .map {
+          addValueParameter(it.name, it.providerType, LatticeOrigin).also { irParam ->
+            it.typeKey.qualifier?.let {
+              // Copy any qualifiers over so they're retrievable during dependency graph resolution
+              irParam.annotations += it.ir
+            }
+          }
+        }
 
     if (patchCreationParams) {
-      context.patchStaticCreationParameters(
+      context.copyParameterDefaultValues(
         providerFunction = providerFunction,
         sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
         targetParameters = valueParamsToPatch,

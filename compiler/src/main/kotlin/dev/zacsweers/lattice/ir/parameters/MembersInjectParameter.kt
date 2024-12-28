@@ -135,6 +135,9 @@ internal fun IrProperty.toMemberInjectParameter(
 ): MembersInjectParameter {
   val propertyType =
     getter?.returnType ?: backingField?.type ?: error("No getter or backing field!")
+
+  val setterParam = setter?.valueParameters?.singleOrNull()
+
   // Remap type parameters in underlying types to the new target container. This is important for
   // type mangling
   val declaredType = typeParameterRemapper?.invoke(propertyType) ?: propertyType
@@ -166,6 +169,7 @@ internal fun IrProperty.toMemberInjectParameter(
       isProperty = true,
     )
     .apply {
+      this.ir = setterParam!!
       this.setterFunction = setter!!
       this.irProperty = this@toMemberInjectParameter
     }

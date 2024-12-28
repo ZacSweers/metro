@@ -44,8 +44,20 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
 
   fun with(ir: IrFunction): Parameters<T>
 
+  fun mergeValueParametersWithAll(others: List<Parameters<out Parameter>>): Parameters<out Parameter> {
+    return listOf(this).reduce { current, next ->
+      @Suppress("UNCHECKED_CAST")
+      current.mergeValueParametersWithUntyped(next) as Parameters<T>
+    }
+  }
+
   fun mergeValueParametersWith(other: Parameters<T>): Parameters<T> {
-    return ParametersImpl<T>(instance, extensionReceiver, valueParameters + other.valueParameters)
+    @Suppress("UNCHECKED_CAST")
+    return mergeValueParametersWithUntyped(other) as Parameters<T>
+  }
+
+  fun mergeValueParametersWithUntyped(other: Parameters<*>): Parameters<*> {
+    return ParametersImpl(instance, extensionReceiver, valueParameters + other.valueParameters)
   }
 
   override fun compareTo(other: Parameters<*>): Int = COMPARATOR.compare(this, other)
@@ -176,12 +188,7 @@ internal fun IrFunction.memberInjectParameters(
     }
 
   return Parameters(
-    instance =
-      dispatchReceiverParameter?.toConstructorParameter(
-        context,
-        Kind.INSTANCE,
-        typeParameterRemapper = mapper,
-      ),
+    instance = null,
     // TODO not supported for now
     extensionReceiver = null,
     valueParameters = valueParams,

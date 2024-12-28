@@ -639,4 +639,35 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
     }
   }
+
+  @Test
+  fun `graph inject function simple constructed class`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+              }
+            }
+            
+            @Inject
+            class ExampleClass(val long: Long) {
+              @Inject var int: Int = 2
+            }
+          """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
+      val instance = graph.callProperty<Any>("exampleClass")
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+      assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
+    }
+  }
 }

@@ -38,7 +38,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
  * [IrElementTransformerVoid] that remaps those references to the new parameters.
  */
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun LatticeTransformerContext.patchStaticCreationParameters(
+internal fun LatticeTransformerContext.copyParameterDefaultValues(
   providerFunction: IrFunction?,
   sourceParameters: List<IrValueParameter>,
   targetParameters: List<IrValueParameter>,

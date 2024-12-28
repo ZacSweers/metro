@@ -988,13 +988,13 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               .thenComparing { it.value.typeKey }
           )
           .forEach { (function, contextualTypeKey) ->
-            val overridenFunction = addOverride(
+            val overriddenFunction = addOverride(
                   function.kotlinFqName,
                   function.name,
                   function.returnType,
                   overriddenSymbols = listOf(function.symbol),
                 )
-            overridenFunction.apply {
+            overriddenFunction.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
               setDeclarationsParent(graphImpl)
               val targetParam = addValueParameter("target", contextualTypeKey.typeKey.type)
@@ -1251,7 +1251,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
     // Recursively process dependencies
     binding.parameters.nonInstanceParameters.forEach { param ->
-      val depKey = param.typeKey
       // Process binding dependencies
       findAndProcessBinding(
         contextKey = param.contextualTypeKey,
@@ -1494,9 +1493,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val createFunction = creatorClass.getSimpleFunction("create")!!
         val args =
           generateBindingArguments(
-            // Must use the injectable constructor's params for TypeKey as that
-            // has qualifier annotations
-            binding.parameters,
+            createFunction.owner.parameters(this@DependencyGraphTransformer),
             createFunction.owner,
             binding,
             generationContext,

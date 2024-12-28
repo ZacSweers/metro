@@ -40,7 +40,7 @@ import dev.zacsweers.lattice.ir.parameters.Parameter
 import dev.zacsweers.lattice.ir.parameters.Parameters
 import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
-import dev.zacsweers.lattice.ir.patchStaticCreationParameters
+import dev.zacsweers.lattice.ir.copyParameterDefaultValues
 import dev.zacsweers.lattice.isWordPrefixRegex
 import dev.zacsweers.lattice.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -451,7 +451,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
               addValueParameter(it.name, it.originalType, LatticeOrigin)
             }
 
-          patchStaticCreationParameters(
+          copyParameterDefaultValues(
             providerFunction = reference.callee.owner,
             sourceParameters = reference.parameters.valueParameters.map { it.ir },
             targetParameters = valueParametersToMap,
