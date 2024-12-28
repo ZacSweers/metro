@@ -348,16 +348,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
   fun `assisted factories cannot be protected`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
-
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
@@ -367,28 +359,20 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:27 Assisted factory must be public or internal.")
+    result.assertContains("ExampleClass.kt:11:3 Assisted factory must be public or internal.")
   }
 
   @Test
   fun `assisted factories cannot be private`() {
     val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Inject
-            import dev.zacsweers.lattice.annotations.Assisted
-            import dev.zacsweers.lattice.annotations.AssistedInject
-            import dev.zacsweers.lattice.annotations.AssistedFactory
-
             class ExampleClass @AssistedInject constructor(
               @Assisted val count: Int,
             ) {
@@ -398,12 +382,12 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:12:25 Assisted factory must be public or internal.")
+    result.assertContains("ExampleClass.kt:11:3 Assisted factory must be public or internal.")
   }
 
   @Test

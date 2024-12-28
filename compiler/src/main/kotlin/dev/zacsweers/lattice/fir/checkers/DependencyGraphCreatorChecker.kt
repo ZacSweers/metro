@@ -15,7 +15,13 @@
  */
 package dev.zacsweers.lattice.fir.checkers
 
-import dev.zacsweers.lattice.fir.*
+import dev.zacsweers.lattice.fir.FirLatticeErrors
+import dev.zacsweers.lattice.fir.FirTypeKey
+import dev.zacsweers.lattice.fir.annotationsIn
+import dev.zacsweers.lattice.fir.isAnnotatedWithAny
+import dev.zacsweers.lattice.fir.latticeClassIds
+import dev.zacsweers.lattice.fir.singleAbstractFunction
+import dev.zacsweers.lattice.fir.validateApiDeclaration
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -35,7 +41,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
     if (graphFactoryAnnotation.isEmpty()) return
 
-    declaration.validateFactoryClass(context, reporter, "DependencyGraph factory") {
+    declaration.validateApiDeclaration(context, reporter, "DependencyGraph factory") {
       return
     }
 

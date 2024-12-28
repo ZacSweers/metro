@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.appendIterableWith
 import dev.zacsweers.lattice.unsafeLazy
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
@@ -34,11 +35,11 @@ internal class LatticeFirAnnotation(val fir: FirAnnotationCall) {
 
   fun simpleString() = buildString { renderAsAnnotation(fir, simple = true) }
 
-  // TODO
-  //  fun isQualifier(session: FirSession) =
-  // fir.resolvedType.toClassSymbol(session).isQualifierAnnotation
-  //
-  //  fun isScope(session: FirSession) = fir.resolvedType.toClassSymbol(session).isScopeAnnotation
+  fun isQualifier(session: FirSession) =
+    fir.isAnnotatedWithAny(session, session.latticeClassIds.qualifierAnnotations)
+
+  fun isScope(session: FirSession) =
+    fir.isAnnotatedWithAny(session, session.latticeClassIds.scopeAnnotations)
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.fir
 
 import dev.zacsweers.lattice.fir.checkers.AssistedInjectChecker
+import dev.zacsweers.lattice.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.lattice.fir.checkers.DependencyGraphCreatorChecker
 import dev.zacsweers.lattice.fir.checkers.InjectConstructorChecker
 import dev.zacsweers.lattice.fir.checkers.ProvidesChecker
@@ -30,7 +31,7 @@ internal class LatticeFirCheckers(session: FirSession) : FirAdditionalCheckersEx
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>
         get() =
-          setOf(InjectConstructorChecker, AssistedInjectChecker, DependencyGraphCreatorChecker)
+          setOf(InjectConstructorChecker, AssistedInjectChecker, DependencyGraphCreatorChecker, DependencyGraphChecker)
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
         get() = setOf(ProvidesChecker)

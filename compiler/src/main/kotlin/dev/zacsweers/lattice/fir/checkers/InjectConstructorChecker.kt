@@ -55,7 +55,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     }
 
     val constructorToValidate = injectedConstructor ?: declaration.primaryConstructorIfAny(session)
-    constructorToValidate?.validateVisibility(context, reporter) {
+    constructorToValidate?.validateVisibility(context, reporter, "Injected constructors") {
       return
     }
   }

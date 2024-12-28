@@ -124,19 +124,7 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
       annotations: List<FirAnnotation>,
     ): FirTypeKey {
       // Check duplicate params
-      val qualifier =
-        annotations
-          .filterIsInstance<FirAnnotationCall>()
-          .singleOrNull { annotationCall ->
-            val annotationType =
-              annotationCall.resolvedType as? ConeClassLikeType ?: return@singleOrNull false
-            val annotationClass = annotationType.toClassSymbol(session) ?: return@singleOrNull false
-            annotationClass.annotations.isAnnotatedWithAny(
-              session,
-              latticeClassIds.qualifierAnnotations,
-            )
-          }
-          ?.let { LatticeFirAnnotation(it) }
+      val qualifier = annotations.qualifierAnnotation(session)
       return FirTypeKey(typeRef, qualifier)
     }
   }

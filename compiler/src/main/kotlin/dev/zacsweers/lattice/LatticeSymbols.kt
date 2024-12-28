@@ -50,6 +50,7 @@ internal class LatticeSymbols(
   object StringNames {
     const val latticeRuntimePackage = "dev.zacsweers.lattice"
     const val latticeRuntimeAnnotationsPackage = "dev.zacsweers.lattice.annotations"
+    const val latticeRuntimeMultibindingsPackage = "dev.zacsweers.lattice.annotations.multibindings"
     const val latticeRuntimeInternalPackage = "dev.zacsweers.lattice.internal"
   }
 

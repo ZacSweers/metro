@@ -90,17 +90,15 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
 
   // Common
   val FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by error2<String, String>(NAME_IDENTIFIER)
-  val FACTORY_CLASS_CANNOT_BE_LOCAL by error1<String>(NAME_IDENTIFIER)
-  val FACTORY_SHOULD_BE_INTERFACE_OR_ABSTRACT by error1<String>(NAME_IDENTIFIER)
-  val FACTORY_MUST_BE_VISIBLE by error1<String>(NAME_IDENTIFIER)
-  val FACTORY_FACTORY_FUNCTION_MUST_BE_VISIBLE by error1<String>(NAME_IDENTIFIER)
+  val LATTICE_DECLARATION_ERROR by error1<String>(NAME_IDENTIFIER)
+  val LATTICE_DECLARATION_VISIBILITY_ERROR by error1<String>(VISIBILITY_MODIFIER)
 
   // DependencyGraph factory errors
   val GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0(NAME_IDENTIFIER)
   val GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS by error0(NAME_IDENTIFIER)
 
   // DependencyGraph errors
-  val OBJECT_GRAPH_SHOULD_BE_CLASS_OR_INTERFACE by error0(NAME_IDENTIFIER)
+  val DEPENDENCY_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)
 
   // Inject constructor errors
   val SUGGEST_CLASS_INJECTION_IF_NO_PARAMS by warning0(NAME_IDENTIFIER)
@@ -112,7 +110,6 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val ONLY_FINAL_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error0(VISIBILITY_MODIFIER)
-  val INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE by error0(VISIBILITY_MODIFIER)
 
   // Assisted factory/inject errors
   // All errors are just passed through this one
@@ -136,18 +133,8 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
         LOCAL_CLASSES_CANNOT_BE_INJECTED,
         "Local classes cannot be annotated with @Inject or have @(Assisted)Inject-constructors.",
       )
-      put(FACTORY_CLASS_CANNOT_BE_LOCAL, "{0} classes cannot be local classes.", TO_STRING)
-      put(
-        FACTORY_SHOULD_BE_INTERFACE_OR_ABSTRACT,
-        "{0} classes should be non-sealed abstract classes or interfaces.",
-        TO_STRING,
-      )
-      put(FACTORY_MUST_BE_VISIBLE, "{0} must be public or internal.", TO_STRING)
-      put(
-        FACTORY_FACTORY_FUNCTION_MUST_BE_VISIBLE,
-        "{0} classes' single abstract functions must be public or internal.",
-        TO_STRING,
-      )
+      put(LATTICE_DECLARATION_ERROR, "{0}", TO_STRING)
+      put(LATTICE_DECLARATION_VISIBILITY_ERROR, "{0} must be public or internal.", TO_STRING)
 
       // DependencyGraph creator errors
       put(
@@ -160,10 +147,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       )
 
       // DependencyGraph errors
-      put(
-        OBJECT_GRAPH_SHOULD_BE_CLASS_OR_INTERFACE,
-        "@DependencyGraph-annotated types should be abstract classes or interfaces.",
-      )
+      put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
 
       // Inject Constructor errors
       put(
@@ -189,10 +173,6 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(
         INJECTED_CLASSES_MUST_BE_VISIBLE,
         "Injected classes must be visible, either `public` or `internal`.",
-      )
-      put(
-        INJECTED_CONSTRUCTOR_MUST_BE_VISIBLE,
-        "Injected constructors must be visible, either `public` or `internal`.",
       )
       put(ASSISTED_INJECTION, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)

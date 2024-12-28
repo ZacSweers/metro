@@ -42,6 +42,7 @@ abstract class LatticeCompilerTest {
     listOf(
       "${LatticeSymbols.StringNames.latticeRuntimePackage}.*",
       "${LatticeSymbols.StringNames.latticeRuntimeAnnotationsPackage}.*",
+      "${LatticeSymbols.StringNames.latticeRuntimeMultibindingsPackage}.*",
       // For Callable access
       "java.util.concurrent.*",
     )
