@@ -54,12 +54,12 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.isInterface
@@ -86,6 +86,21 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
   fun requireInjector(declaration: IrClass): MemberInjectClass? {
     return getOrGenerateInjector(declaration)
       ?: error("No members injector found for ${declaration.kotlinFqName}.")
+  }
+
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
+  fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {
+    return declaration.getAllSuperTypes(
+      pluginContext,
+      excludeSelf = false,
+      excludeAny = true
+    ).mapNotNull { it.classOrNull?.owner }
+      .filterNot { it.isInterface }
+      .mapNotNull {
+        getOrGenerateInjector(it)
+      }
+      .toList()
+      .asReversed() // Base types go first
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)

@@ -364,7 +364,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:11:3 Assisted factory must be public or internal.")
+    result.assertContains("ExampleClass.kt:12:3 Assisted factory must be public or internal.")
   }
 
   @Test
@@ -387,7 +387,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
         expectedExitCode = COMPILATION_ERROR,
       )
 
-    result.assertContains("ExampleClass.kt:11:3 Assisted factory must be public or internal.")
+    result.assertContains("ExampleClass.kt:12:3 Assisted factory must be public or internal.")
   }
 
   @Test

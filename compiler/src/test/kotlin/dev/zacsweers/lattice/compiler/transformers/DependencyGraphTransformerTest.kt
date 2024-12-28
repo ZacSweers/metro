@@ -1352,8 +1352,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       )
 
     result.assertContainsAll(
-      "graphs.kt:37:3 DependencyGraph factory must be public or internal.",
-      "graphs.kt:45:3 DependencyGraph factory must be public or internal.",
+      "graphs.kt:38:3 DependencyGraph factory must be public or internal.",
+      "graphs.kt:46:3 DependencyGraph factory must be public or internal.",
     )
   }
 

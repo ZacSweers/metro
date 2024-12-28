@@ -1003,10 +1003,14 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function))
 
               // We don't get a MembersInjector instance/provider from the graph. Instead, we call
-              // all the target inject
-              // functions directly
+              // all the target inject functions directly
               body =
                 pluginContext.createIrBuilder(symbol).irBlockBody {
+                  // TODO reuse, consolidate calling code with how we implement this in
+                  //  constructor inject code gen
+                  // val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
+                  // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
+
                   for (type in
                     pluginContext
                       .referenceClass(binding.targetClassId)!!

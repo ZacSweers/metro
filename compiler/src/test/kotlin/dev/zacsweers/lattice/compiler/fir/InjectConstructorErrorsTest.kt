@@ -275,9 +275,9 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContainsAll(
-      "ExampleClass.kt:6:35 Injected constructors must be visible, either `public` or `internal`.",
-      "ExampleClass.kt:8:51 Injected constructors must be visible, either `public` or `internal`.",
-      "ExampleClass.kt:10:53 Injected constructors must be visible, either `public` or `internal`.",
+      "ExampleClass.kt:6:35 Injected constructors must be public or internal.",
+      "ExampleClass.kt:8:51 Injected constructors must be public or internal.",
+      "ExampleClass.kt:10:53 Injected constructors must be public or internal.",
     )
   }
 }

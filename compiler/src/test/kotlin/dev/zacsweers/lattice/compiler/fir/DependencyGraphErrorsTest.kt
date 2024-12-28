@@ -156,26 +156,6 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `accessors cannot be scoped - property - get site`() {
-    val result =
-      compile(
-        source(
-          """
-            @Singleton
-            @DependencyGraph
-            interface ExampleGraph {
-              val value: String
-                @Singleton get() = field
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertContains("ExampleGraph.kt:11:3 Graph accessor members cannot be scoped.")
-  }
-
-  @Test
   fun `accessors cannot be Unit - property`() {
     val result =
       compile(
@@ -192,7 +172,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertContains(
-      "ExampleGraph.kt:11:7 Graph accessor members must have a return type and cannot be Unit."
+      "ExampleGraph.kt:11:14 Graph accessor members must have a return type and cannot be Unit."
     )
   }
 

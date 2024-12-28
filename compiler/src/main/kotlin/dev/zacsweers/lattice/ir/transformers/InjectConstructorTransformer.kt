@@ -90,8 +90,8 @@ internal class InjectConstructorTransformer(
 
     val targetTypeParameters: List<IrTypeParameter> = declaration.typeParameters
 
-    val injectors = membersInjectorTransformer.getOrGenerateInjector(declaration)
-    val memberInjectParameters = injectors?.parameters.orEmpty().values.flatten()
+    val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
+    val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
 
     val canGenerateAnObject =
       targetConstructor.valueParameters.isEmpty() &&
@@ -130,7 +130,7 @@ internal class InjectConstructorTransformer(
     val allParameters =
       buildList {
           add(constructorParameters)
-          injectors?.let { addAll(memberInjectParameters) }
+          addAll(memberInjectParameters)
         }
         .distinct()
 
@@ -225,7 +225,7 @@ internal class InjectConstructorTransformer(
     function: IrFunction,
     newInstanceFunctionSymbol: IrSimpleFunctionSymbol,
     constructorParameters: Parameters<ConstructorParameter>,
-    injectors: MembersInjectorTransformer.MemberInjectClass?,
+    injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     factoryReceiver: IrValueParameter,
     parametersToFields: Map<Parameter, IrField>,
   ) {
@@ -248,22 +248,24 @@ internal class InjectConstructorTransformer(
             )
           )
 
-        injectors?.let {
-          for ((parameter, function) in it.injectFunctions) {
-            +irInvoke(
-              dispatchReceiver = irGetObject(function.parentAsClass.symbol),
-              callee = function.symbol,
-              args =
-                listOf(
-                  irGet(instance),
-                  parameterAsProviderArgument(
-                    this@InjectConstructorTransformer,
-                    parameter,
-                    factoryReceiver,
-                    parametersToFields,
+        if (injectors.isNotEmpty()) {
+          for (injector in injectors) {
+            for ((parameter, function) in injector.injectFunctions) {
+              +irInvoke(
+                dispatchReceiver = irGetObject(function.parentAsClass.symbol),
+                callee = function.symbol,
+                args =
+                  listOf(
+                    irGet(instance),
+                    parameterAsProviderArgument(
+                      this@InjectConstructorTransformer,
+                      parameter,
+                      factoryReceiver,
+                      parametersToFields,
+                    ),
                   ),
-                ),
-            )
+              )
+            }
           }
         }
 
@@ -290,6 +292,10 @@ internal class InjectConstructorTransformer(
         pluginContext.irFactory.addCompanionObject(symbols, parent = factoryCls)
       }
 
+    // TODO
+    //  Dagger will de-dupe these by type key to shrink the code. We could do the same but only for parameters
+    //  that don't have default values. For those cases, we would need to keep them as-is.
+    //  Something for another day.
     val mergedParameters =
       allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
 
