@@ -36,7 +36,6 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        expectedExitCode = ExitCode.OK,
       )
     result.assertContainsAll(
       "ExampleGraph.kt:9:17 `@Provides` declarations should be private.",
@@ -58,12 +57,114 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        expectedExitCode = ExitCode.OK,
       )
     result.assertContainsAll(
       "ExampleGraph.kt:9:17 `@Provides` declarations should be private.",
       "ExampleGraph.kt:10:17 `@Provides` declarations should be private.",
       "ExampleGraph.kt:11:17 `@Provides` declarations should be private.",
+    )
+  }
+
+  @Test
+  fun `binds with bodies should be private - in interface`() {
+    val result =
+      compile(
+        source(
+          """
+            interface ExampleGraph {
+              @Binds val String.provideCharSequence: CharSequence get() = this
+              @Binds fun Int.provideNumber(): Number = this
+            }
+          """
+            .trimIndent(),
+        ),
+      )
+    result.assertContainsAll(
+      "ExampleGraph.kt:9:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
+      "ExampleGraph.kt:10:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
+    )
+  }
+
+  @Test
+  fun `binds with bodies should be private - in abstract class`() {
+    val result =
+      compile(
+        source(
+          """
+            abstract class ExampleGraph {
+              @Binds val String.provideCharSequence: CharSequence get() = this
+              @Binds fun Int.provideNumber(): Number = this
+            }
+          """
+            .trimIndent(),
+        ),
+      )
+    result.assertContainsAll(
+      "ExampleGraph.kt:9:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
+      "ExampleGraph.kt:10:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
+    )
+  }
+
+  @Test
+  fun `provides with extensions and non-this-returning bodies should error`() {
+    val result =
+      compile(
+        source(
+          """
+            abstract class ExampleGraph {
+              @Provides val String.provideCharSequence: CharSequence get() = "hello"
+              @Provides fun Int.provideNumber(): Number = 3
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertContainsAll(
+      "ExampleGraph.kt:9:24 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.",
+      "ExampleGraph.kt:10:21 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.",
+    )
+  }
+
+  @Test
+  fun `binds non-this-returning bodies should error - interface`() {
+    val result =
+      compile(
+        source(
+          """
+            interface ExampleGraph {
+              @Binds val String.provideCharSequence: CharSequence get() = "something else"
+              @Binds fun Int.provideNumber(): Number = 3
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertContainsAll(
+      "ExampleGraph.kt:9:21 `@Binds` declarations with bodies should just return `this`.",
+      "ExampleGraph.kt:10:18 `@Binds` declarations with bodies should just return `this`.",
+    )
+  }
+
+  @Test
+  fun `binds non-this-returning bodies should error - abstract class`() {
+    val result =
+      compile(
+        source(
+          """
+            abstract class ExampleGraph {
+              @Binds val String.provideCharSequence: CharSequence get() = "something else"
+              @Binds fun Int.provideNumber(): Number = 3
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertContainsAll(
+      "ExampleGraph.kt:9:21 `@Binds` declarations with bodies should just return `this`.",
+      "ExampleGraph.kt:10:18 `@Binds` declarations with bodies should just return `this`.",
     )
   }
 
@@ -153,7 +254,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `binds providers - interface - ok case`() {
+  fun `binds - interface - ok case`() {
     compile(
       source(
         """
@@ -164,34 +265,32 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
           """
           .trimIndent(),
       ),
-      expectedExitCode = ExitCode.OK,
     )
   }
 
   @Test
-  fun `binds providers - interface - must not have bodies`() {
+  fun `binds - interface - should not have bodies`() {
     val result =
       compile(
         source(
           """
             interface ExampleGraph {
-              @Binds val Int.bind: Number get() = 9
-              @Binds fun String.bind(): CharSequence = "Hello"
+              @Binds val Int.bind: Number get() = this
+              @Binds fun String.bind(): CharSequence = this
             }
           """
             .trimIndent(),
         ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
     result.assertContainsAll(
-      "ExampleGraph.kt:9:18 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.",
-      "ExampleGraph.kt:10:21 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.",
+      "ExampleGraph.kt:9:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
+      "ExampleGraph.kt:10:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.",
     )
   }
 
   @Test
-  fun `binds providers - interface - same types cannot have same qualifiers`() {
+  fun `binds - interface - same types cannot have same qualifiers`() {
     val result =
       compile(
         source(
@@ -224,7 +323,7 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `binds providers - interface - bound types must be subtypes`() {
+  fun `binds - interface - bound types must be subtypes`() {
     val result =
       compile(
         source(

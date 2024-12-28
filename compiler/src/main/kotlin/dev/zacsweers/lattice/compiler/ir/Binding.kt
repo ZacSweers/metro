@@ -67,18 +67,19 @@ internal sealed interface Binding {
 
   data class Provided(
     val providerFunction: IrSimpleFunction,
+    val annotations: LatticeIrAnnotations,
     override val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters<out Parameter>,
-    override val scope: IrAnnotation? = null,
     override val dependencies: Map<TypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey },
-    val intoSet: Boolean,
-    val elementsIntoSet: Boolean,
-    // TODO are both necessary? Is there any case where only one is specified?
-    val intoMap: Boolean,
-    val mapKey: IrAnnotation?,
     val aliasedType: ContextualTypeKey?,
   ) : Binding {
+    override val scope: IrAnnotation? get() = annotations.scope
+    val intoSet: Boolean get() = annotations.isIntoSet
+    val elementsIntoSet: Boolean get() = annotations.isElementsIntoSet
+    // TODO are both necessary? Is there any case where only one is specified?
+    val intoMap: Boolean get() = annotations.isIntoMap
+    val mapKey: IrAnnotation? = annotations.mapKeys.singleOrNull()
     override val typeKey: TypeKey = contextualTypeKey.typeKey
     val isMultibindingProvider
       get() = intoSet || elementsIntoSet || mapKey != null || intoMap

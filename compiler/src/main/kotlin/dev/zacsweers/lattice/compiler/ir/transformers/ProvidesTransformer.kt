@@ -34,7 +34,7 @@ import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.compiler.ir.isBindsProviderCandidate
+import dev.zacsweers.lattice.compiler.ir.isBindsAnnotated
 import dev.zacsweers.lattice.compiler.ir.isCompanionObject
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
@@ -116,7 +116,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       return
     }
 
-    if (declaration.getter?.isBindsProviderCandidate(symbols) == true) {
+    if (declaration.getter?.isBindsAnnotated(symbols) == true) {
       return
     }
 
@@ -125,7 +125,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
   fun visitFunction(declaration: IrSimpleFunction) {
     if (!declaration.isAnnotatedWithAny(symbols.providesAnnotations)) return
-    if (declaration.isBindsProviderCandidate(symbols)) return
+    if (declaration.isBindsAnnotated(symbols)) return
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
   }
 
@@ -167,7 +167,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO unimplemented for now
     if (reference.parameters.extensionReceiver != null) {
       // Checked in FIR
-      error("Unexpected extension receiver")
+      reference.parameters.ir.reportError(
+        "Unexpected extension receiver. This is a bug in Lattice, please file a bug report at https://github.com/zacsweers/lattice/issues/new"
+      )
+      exitProcessing()
     }
 
     // TODO FIR check parent class (if any) is a graph. What about (companion) objects?

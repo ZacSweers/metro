@@ -26,6 +26,7 @@ import dev.zacsweers.lattice.compiler.ir.BindingStack
 import dev.zacsweers.lattice.compiler.ir.ContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.DependencyGraphNode
 import dev.zacsweers.lattice.compiler.ir.IrAnnotation
+import dev.zacsweers.lattice.compiler.ir.LatticeSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.TypeKey
 import dev.zacsweers.lattice.compiler.ir.addCompanionObject
@@ -42,8 +43,11 @@ import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irLambda
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.compiler.ir.isBindsProviderCandidate
+import dev.zacsweers.lattice.compiler.ir.isBindsAnnotated
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
+import dev.zacsweers.lattice.compiler.ir.latticeAnnotations
+import dev.zacsweers.lattice.compiler.ir.latticeAnnotationsOf
+import dev.zacsweers.lattice.compiler.ir.latticeFunctionOf
 import dev.zacsweers.lattice.compiler.ir.location
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
@@ -273,46 +277,44 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // TODO not currently reading supertypes yet.
     val scopes = graphDeclaration.scopeAnnotations()
 
+    // TODO is this enough for properties like @get:Provides
     val providerFunctions =
       graphDeclaration
         .getAllSuperTypes(pluginContext, excludeSelf = false)
-        .flatMap { it.classOrFail.owner.allCallableMembers() }
-        .filterNot { function ->
-          // Skip fake overrides. These are types that are inherited from a supertype but
-          // not actually user-implemented in the subtype
-          function.isFakeOverride ||
-            function.correspondingPropertySymbol?.owner?.isFakeOverride == true
+        .flatMap {
+          it.classOrFail.owner.allCallableMembers(
+            latticeContext,
+            functionFilter = { function ->
+              // Skip fake overrides. These are types that are inherited from a supertype but
+              // not actually user-implemented in the subtype
+              !function.isFakeOverride &&
+                function.correspondingPropertySymbol?.owner?.isFakeOverride != true
+            }
+          )
         }
-        // TODO is this enough for properties like @get:Provides
         .filter { function ->
-          function.isAnnotatedWithAny(symbols.providesAnnotations) ||
-            function.correspondingPropertySymbol
-              ?.owner
-              ?.isAnnotatedWithAny(symbols.providesAnnotations) == true
+          function.annotations.run { isProvides || isBinds }
         }
-        .map { function -> ContextualTypeKey.Companion.from(this, function).typeKey to function }
+        .map { function -> ContextualTypeKey.Companion.from(this, function.ir).typeKey to function }
         .toList()
 
-    val exposedTypes = mutableMapOf<IrSimpleFunction, ContextualTypeKey>()
-    val injectors = mutableMapOf<IrSimpleFunction, ContextualTypeKey>()
+    val exposedTypes = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
+    val injectors = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
 
-    for (function in graphDeclaration.allCallableMembers()) {
+    for (function in graphDeclaration.allCallableMembers(latticeContext)) {
       // Abstract check is important. We leave alone any non-providers/injectors
       val isCandidate =
-        function.modality == Modality.ABSTRACT &&
-          function.body == null &&
-          !function.isBindsProviderCandidate(symbols) &&
-          !function.isAnnotatedWithAny(symbols.providesAnnotations) &&
-          function.correspondingPropertySymbol
-            ?.owner
-            ?.isAnnotatedWithAny(symbols.providesAnnotations) != true
+        function.ir.modality == Modality.ABSTRACT &&
+          function.ir.body == null &&
+          !function.annotations.isBinds &&
+          !function.annotations.isProvides
       if (isCandidate) {
-        if (function.valueParameters.isEmpty()) {
-          val contextKey = ContextualTypeKey.Companion.from(this, function)
+        if (function.ir.valueParameters.isEmpty()) {
+          val contextKey = ContextualTypeKey.Companion.from(this, function.ir)
           exposedTypes[function] = contextKey
         } else {
           // TODO FIR check only one param, no intrinsics, no return type
-          val target = function.parameters(this).valueParameters.single()
+          val target = function.ir.parameters(this).valueParameters.single()
           injectors[function] = target.contextualTypeKey
         }
       }
@@ -414,14 +416,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // Add explicit bindings from @Provides methods
     val bindingStack = BindingStack(node.sourceGraph)
     node.providerFunctions.forEach { (typeKey, function) ->
-      // TODO these annotation searches are greedy. Need a single-pass lookup
-
-      var isBinds = function.isBindsProviderCandidate(symbols)
-
-      val parameters = function.parameters(this)
+      val annotations = function.annotations
+      val parameters = function.ir.parameters(latticeContext)
 
       val bindsImplType =
-        if (isBinds) {
+        if (annotations.isBinds) {
           parameters.extensionReceiver!!.contextualTypeKey
         } else {
           null
@@ -429,27 +428,13 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
       val provider =
         Binding.Provided(
-          providerFunction = function,
-          contextualTypeKey = ContextualTypeKey.from(this, function),
+          providerFunction = function.ir,
+          contextualTypeKey = ContextualTypeKey.from(latticeContext, function.ir),
           parameters = parameters,
-          scope = function.scopeAnnotation(),
           // TODO FIR only one annotation is allowed
           // TODO FIR no scopes on multibindings
           // TODO FIR can't mix @Multibinds and @Provides
-          intoSet = function.isAnnotatedWithAny(symbols.latticeClassIds.intoSetAnnotations),
-          elementsIntoSet =
-            function.isAnnotatedWithAny(symbols.latticeClassIds.elementsIntoSetAnnotations),
-          intoMap = function.isAnnotatedWithAny(symbols.latticeClassIds.intoMapAnnotations),
-          mapKey =
-            function.annotations
-              .firstOrNull { annotation ->
-                val annotationClass = annotation.symbol.owner.parentAsClass
-                for (id in symbols.latticeClassIds.mapKeyAnnotations) {
-                  if (annotationClass.hasAnnotation(id)) return@firstOrNull true
-                }
-                false
-              }
-              ?.let(::IrAnnotation),
+          annotations = annotations,
           aliasedType = bindsImplType,
         )
 
@@ -502,10 +487,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
 
     node.exposedTypes.forEach { getter, contextualTypeKey ->
-      val annotationContainer: IrAnnotationContainer =
-        getter.correspondingPropertySymbol?.owner ?: getter
-      val isMultibindingDeclaration =
-        annotationContainer.isAnnotatedWithAny(symbols.latticeClassIds.multibindsAnnotations)
+      val isMultibindingDeclaration = getter.annotations.isMultibinds
 
       if (isMultibindingDeclaration) {
         graph.addBinding(
@@ -516,7 +498,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       } else {
         graph.addExposedType(
           contextualTypeKey,
-          BindingStack.Entry.requestedAt(contextualTypeKey, getter),
+          BindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
         )
       }
     }
@@ -528,7 +510,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           contextualTypeKey.typeKey,
           Binding.GraphDependency(
             graph = depNode.sourceGraph,
-            getter = getter,
+            getter = getter.ir,
             typeKey = contextualTypeKey.typeKey,
           ),
           bindingStack,
@@ -545,10 +527,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // provider fields
     // for those cases
     node.injectors.forEach { (injector, contextualTypeKey) ->
-      val entry = BindingStack.Entry.requestedAt(contextualTypeKey, injector)
+      val entry = BindingStack.Entry.requestedAt(contextualTypeKey, injector.ir)
 
       bindingStack.withEntry(entry) {
-        val targetClass = injector.valueParameters.single().type.rawType()
+        val targetClass = injector.ir.valueParameters.single().type.rawType()
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
         val allParams = generatedInjector?.injectFunctions?.values?.toList().orEmpty()
         val parameters =
@@ -578,8 +560,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             // Need to look up the injector class and gather all params
             parameters =
               Parameters(injector.callableId, null, null, parameters.valueParameters, null),
-            reportableLocation = injector.location(),
-            function = injector,
+            reportableLocation = injector.ir.location(),
+            function = injector.ir,
             isFromInjectorFunction = true,
             targetClassId = targetClass.classIdOrFail,
           )
@@ -973,31 +955,31 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         node.exposedTypes.entries
           // Stable sort. First the name then the type
           .sortedWith(
-            compareBy<Map.Entry<IrSimpleFunction, ContextualTypeKey>> { it.key.name }
+            compareBy<Map.Entry<LatticeSimpleFunction, ContextualTypeKey>> { it.key.ir.name }
               .thenComparing { it.value.typeKey }
           )
           .forEach { (function, contextualTypeKey) ->
             val property =
-              function.correspondingPropertySymbol?.owner?.let { property ->
+              function.ir.correspondingPropertySymbol?.owner?.let { property ->
                 addProperty { name = property.name }.apply { setDeclarationsParent(graphImpl) }
               }
             val getter =
               property
-                ?.addGetter { returnType = function.returnType }
+                ?.addGetter { returnType = function.ir.returnType }
                 ?.apply {
-                  this.overriddenSymbols += function.symbol
+                  this.overriddenSymbols += function.ir.symbol
                   this.correspondingPropertySymbol = property.symbol
                 }
                 ?: addOverride(
-                  function.kotlinFqName,
-                  function.name,
-                  function.returnType,
-                  overriddenSymbols = listOf(function.symbol),
+                  function.ir.kotlinFqName,
+                  function.ir.name,
+                  function.ir.returnType,
+                  overriddenSymbols = listOf(function.ir.symbol),
                 )
             getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
               val binding = bindingGraph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
-              bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function))
+              bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   if (binding is Binding.Multibinding) {
@@ -1024,16 +1006,16 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         node.injectors.entries
           // Stable sort. First the name then the type
           .sortedWith(
-            compareBy<Map.Entry<IrSimpleFunction, ContextualTypeKey>> { it.key.name }
+            compareBy<Map.Entry<LatticeSimpleFunction, ContextualTypeKey>> { it.key.ir.name }
               .thenComparing { it.value.typeKey }
           )
           .forEach { (function, contextualTypeKey) ->
             val overriddenFunction =
               addOverride(
-                function.kotlinFqName,
-                function.name,
-                function.returnType,
-                overriddenSymbols = listOf(function.symbol),
+                function.ir.kotlinFqName,
+                function.ir.name,
+                function.ir.returnType,
+                overriddenSymbols = listOf(function.ir.symbol),
               )
             overriddenFunction.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
@@ -1043,7 +1025,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                 TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type))
               val binding =
                 bindingGraph.requireBinding(membersInjectorKey) as Binding.MembersInjected
-              bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function))
+              bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
 
               // We don't get a MembersInjector instance/provider from the graph. Instead, we call
               // all the target inject functions directly
@@ -1102,35 +1084,34 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
         // Implement no-op bodies for Binds providers
         node.providerFunctions
-          // TODO this isn't a great check. Let's refactor once there's a ProviderHolder class
-          .filter { it.second.body == null }
+          .filter { it.second.annotations.isBinds }
           .filter { (key, _) ->
             val binding = bindingGraph.requireBinding(key) as Binding.Provided
             binding.aliasedType != null
           }
           // Stable sort. First the name then the type
           .sortedWith(
-            compareBy<Pair<TypeKey, IrSimpleFunction>> { it.second.name }.thenComparing { it.first }
+            compareBy<Pair<TypeKey, LatticeSimpleFunction>> { it.second.ir.name }.thenComparing { it.first }
           )
           .forEach { (_, function) ->
             // TODO dedupe with accessors gen
             val property =
-              function.correspondingPropertySymbol?.owner?.let { property ->
+              function.ir.correspondingPropertySymbol?.owner?.let { property ->
                 addProperty { name = property.name }
               }
             val getter =
               property
-                ?.addGetter { returnType = function.returnType }
-                ?.apply { this.overriddenSymbols += function.symbol }
+                ?.addGetter { returnType = function.ir.returnType }
+                ?.apply { this.overriddenSymbols += function.ir.symbol }
                 ?: addOverride(
-                  function.kotlinFqName,
-                  function.name,
-                  function.returnType,
-                  overriddenSymbols = listOf(function.symbol),
+                  function.ir.kotlinFqName,
+                  function.ir.name,
+                  function.ir.returnType,
+                  overriddenSymbols = listOf(function.ir.symbol),
                 )
             getter.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
-              this.extensionReceiverParameter = function.extensionReceiverParameter?.copyTo(this)
+              this.extensionReceiverParameter = function.ir.extensionReceiverParameter?.copyTo(this)
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irBlockBody(
@@ -1161,7 +1142,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     node.exposedTypes.forEach { (accessor, contextualTypeKey) ->
       findAndProcessBinding(
         contextKey = contextualTypeKey,
-        stackEntry = BindingStack.Entry.requestedAt(contextualTypeKey, accessor),
+        stackEntry = BindingStack.Entry.requestedAt(contextualTypeKey, accessor.ir),
         node = node,
         graph = graph,
         bindingStack = bindingStack,

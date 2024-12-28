@@ -349,10 +349,12 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
 
 // TODO create an instance of this that caches lookups?
 internal fun IrClass.declaredCallableMembers(
+  context: LatticeTransformerContext,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
-): Sequence<IrSimpleFunction> =
+): Sequence<LatticeSimpleFunction> =
   allCallableMembers(
+    context,
     excludeAnyFunctions = true,
     excludeInheritedMembers = true,
     excludeCompanionObjectMembers = true,
@@ -363,12 +365,13 @@ internal fun IrClass.declaredCallableMembers(
 // TODO create an instance of this that caches lookups?
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.allCallableMembers(
+  context: LatticeTransformerContext,
   excludeAnyFunctions: Boolean = true,
   excludeInheritedMembers: Boolean = false,
   excludeCompanionObjectMembers: Boolean = false,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
-): Sequence<IrSimpleFunction> {
+): Sequence<LatticeSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
       // TODO optimize this?
@@ -383,17 +386,19 @@ internal fun IrClass.allCallableMembers(
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
     .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
     .let { parentClassCallables ->
+      val asFunctions = parentClassCallables.map { context.latticeFunctionOf(it) }
       if (excludeCompanionObjectMembers) {
-        parentClassCallables
+        asFunctions
       } else {
         companionObject()?.let { companionObject ->
-          parentClassCallables +
+          asFunctions +
             companionObject.allCallableMembers(
+              context,
               excludeAnyFunctions,
               excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
             )
-        } ?: parentClassCallables
+        } ?: asFunctions
       }
     }
 }
@@ -841,14 +846,8 @@ internal fun IrClass.getSuperClassNotAny(): IrClass? {
 internal val IrDeclarationParent.isExternalParent: Boolean
   get() = this is Fir2IrLazyClass || this is IrExternalPackageFragment
 
-internal fun IrFunction.isBindsProviderCandidate(symbols: LatticeSymbols): Boolean {
-  var isBinds = isAnnotatedWithAny(symbols.latticeClassIds.bindsAnnotations)
-  if (!isBinds) {
-    // Second pass to check if this is a functional binds candidate
-    // FIR validates these are correct
-    isBinds = body == null && extensionReceiverParameter != null
-  }
-  return isBinds
+internal fun IrFunction.isBindsAnnotated(symbols: LatticeSymbols): Boolean {
+  return isAnnotatedWithAny(symbols.latticeClassIds.bindsAnnotations)
 }
 
 /**
@@ -890,3 +889,5 @@ internal val IrProperty.allAnnotations: List<IrConstructorCall>
       }
       .distinct()
   }
+
+internal fun LatticeTransformerContext.latticeAnnotationsOf(ir: IrAnnotationContainer) = ir.latticeAnnotations(symbols.latticeClassIds)

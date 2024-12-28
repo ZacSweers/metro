@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classOrNull
@@ -23,23 +24,50 @@ internal class LatticeIrAnnotations(
   val isIntoSet: Boolean,
   val isElementsIntoSet: Boolean,
   val isIntoMap: Boolean,
+  val isMultibinds: Boolean,
   val assisted: IrAnnotation?,
   val scope: IrAnnotation?,
   val qualifier: IrAnnotation?,
   val mapKeys: Set<IrAnnotation>,
 ) {
+  val isAssisted
+    get() = assisted != null
+
   val isScoped
     get() = scope != null
 
   val isQualified
     get() = qualifier != null
 
-  val isAssisted
-    get() = assisted != null
+  fun mergeWith(other: LatticeIrAnnotations): LatticeIrAnnotations =
+    LatticeIrAnnotations(
+      isDependencyGraph = isDependencyGraph || other.isDependencyGraph,
+      isDependencyGraphFactory = isDependencyGraphFactory || other.isDependencyGraphFactory,
+      isInject = isInject || other.isInject,
+      isAssistedInject = isAssistedInject || other.isAssistedInject,
+      isProvides = isProvides || other.isProvides,
+      isBinds = isBinds || other.isBinds,
+      isBindsInstance = isBindsInstance || other.isBindsInstance,
+      isIntoSet = isIntoSet || other.isIntoSet,
+      isElementsIntoSet = isElementsIntoSet || other.isElementsIntoSet,
+      isIntoMap = isIntoMap || other.isIntoMap,
+      isMultibinds = isMultibinds || other.isMultibinds,
+      assisted = assisted ?: other.assisted,
+      scope = scope ?: other.scope,
+      qualifier = qualifier ?: other.qualifier,
+      mapKeys = mapKeys + other.mapKeys,
+    )
 }
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun IrAnnotationContainer.latticeAnnotations(ids: LatticeClassIds): LatticeIrAnnotations {
+internal fun IrAnnotationContainer.latticeAnnotations(ids: LatticeClassIds): LatticeIrAnnotations =
+  latticeAnnotations(ids, null)
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+private fun IrAnnotationContainer.latticeAnnotations(
+  ids: LatticeClassIds,
+  callingContainer: IrAnnotationContainer?,
+): LatticeIrAnnotations {
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
   var isInject = false
@@ -50,6 +78,7 @@ internal fun IrAnnotationContainer.latticeAnnotations(ids: LatticeClassIds): Lat
   var isIntoSet = false
   var isElementsIntoSet = false
   var isIntoMap = false
+  var isMultibinds = false
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
   var qualifier: IrAnnotation? = null
@@ -88,6 +117,9 @@ internal fun IrAnnotationContainer.latticeAnnotations(ids: LatticeClassIds): Lat
           continue
         } else if (classId in ids.intoMapAnnotations) {
           isIntoMap = true
+          continue
+        } else if (classId in ids.multibindsAnnotations) {
+          isMultibinds = true
           continue
         }
       }
@@ -128,22 +160,60 @@ internal fun IrAnnotationContainer.latticeAnnotations(ids: LatticeClassIds): Lat
       continue
     }
   }
-  return LatticeIrAnnotations(
-    isDependencyGraph = isDependencyGraph,
-    isDependencyGraphFactory = isDependencyGraphFactory,
-    isInject = isInject,
-    isAssistedInject = isAssistedInject,
-    isProvides = isProvides,
-    isBinds = isBinds,
-    isBindsInstance = isBindsInstance,
-    isIntoSet = isIntoSet,
-    isElementsIntoSet = isElementsIntoSet,
-    isIntoMap = isIntoMap,
-    assisted = assisted,
-    scope = scope,
-    qualifier = qualifier,
-    mapKeys = mapKeys,
-  )
+
+  val annotations =
+    LatticeIrAnnotations(
+      isDependencyGraph = isDependencyGraph,
+      isDependencyGraphFactory = isDependencyGraphFactory,
+      isInject = isInject,
+      isAssistedInject = isAssistedInject,
+      isProvides = isProvides,
+      isBinds = isBinds,
+      isBindsInstance = isBindsInstance,
+      isIntoSet = isIntoSet,
+      isElementsIntoSet = isElementsIntoSet,
+      isIntoMap = isIntoMap,
+      isMultibinds = isMultibinds,
+      assisted = assisted,
+      scope = scope,
+      qualifier = qualifier,
+      mapKeys = mapKeys,
+    )
+
+  val thisContainer = this
+
+  return sequence {
+      yield(annotations)
+
+      // You can fit so many annotations in properties
+      if (thisContainer is IrProperty) {
+        // Retrieve annotations from this property's various accessors
+        getter?.let { getter ->
+          if (getter != callingContainer) {
+            yield(getter.latticeAnnotations(ids, callingContainer = thisContainer))
+          }
+        }
+        setter?.let { setter ->
+          if (setter != callingContainer) {
+            yield(setter.latticeAnnotations(ids, callingContainer = thisContainer))
+          }
+        }
+        backingField?.let { field ->
+          if (field != callingContainer) {
+            yield(field.latticeAnnotations(ids, callingContainer = thisContainer))
+          }
+        }
+      } else if (thisContainer is IrSimpleFunction) {
+        correspondingPropertySymbol?.owner?.let { property ->
+          if (property != callingContainer) {
+            val propertyAnnotations =
+              property.latticeAnnotations(ids, callingContainer = thisContainer)
+            yield(propertyAnnotations)
+          }
+        }
+      }
+    }
+    .reduce(LatticeIrAnnotations::mergeWith)
 }
 
 internal fun <T> expectNullAndSet(type: String, current: T?, value: T): T {

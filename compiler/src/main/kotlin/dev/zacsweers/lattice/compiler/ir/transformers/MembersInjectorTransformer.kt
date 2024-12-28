@@ -369,6 +369,7 @@ internal fun IrClass.memberInjectParameters(
         val injectedMembers =
           clazz
             .declaredCallableMembers(
+              context = context,
               functionFilter = { it.isAnnotatedWithAny(context.symbols.injectAnnotations) },
               propertyFilter = {
                 (it.isVar || it.isLateinit) &&
@@ -377,7 +378,7 @@ internal fun IrClass.memberInjectParameters(
                     it.backingField?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true)
               },
             )
-            .map { it.memberInjectParameters(context, nameAllocator, clazz) }
+            .map { it.ir.memberInjectParameters(context, nameAllocator, clazz) }
             // TODO extension receivers not supported. What about overrides?
             .toList()
 

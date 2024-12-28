@@ -29,10 +29,10 @@ internal data class DependencyGraphNode(
   val isAnnotatedWithDependencyGraph: Boolean,
   val dependencies: List<DependencyGraphNode>,
   val scopes: Set<IrAnnotation>,
-  val providerFunctions: List<Pair<TypeKey, IrSimpleFunction>>,
+  val providerFunctions: List<Pair<TypeKey, LatticeSimpleFunction>>,
   // Types accessible via this graph (includes inherited)
-  val exposedTypes: Map<IrSimpleFunction, ContextualTypeKey>,
-  val injectors: Map<IrSimpleFunction, ContextualTypeKey>,
+  val exposedTypes: Map<LatticeSimpleFunction, ContextualTypeKey>,
+  val injectors: Map<LatticeSimpleFunction, ContextualTypeKey>,
   val isExternal: Boolean,
   val creator: Creator?,
   val typeKey: TypeKey,
@@ -44,14 +44,14 @@ internal data class DependencyGraphNode(
   )
 
   // Build a full type map including inherited providers
-  fun getAllProviders(context: LatticeTransformerContext): Map<TypeKey, IrFunction> {
+  fun getAllProviders(context: LatticeTransformerContext): Map<TypeKey, LatticeSimpleFunction> {
     return sourceGraph.getAllProviders(context)
   }
 
   private fun IrClass.getAllProviders(
     context: LatticeTransformerContext
-  ): Map<TypeKey, IrFunction> {
-    val result = mutableMapOf<TypeKey, IrFunction>()
+  ): Map<TypeKey, LatticeSimpleFunction> {
+    val result = mutableMapOf<TypeKey, LatticeSimpleFunction>()
 
     // Add supertype providers first (can be overridden)
     // TODO cache these recursive lookups

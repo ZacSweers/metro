@@ -378,14 +378,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
   fun `function with receivers are not currently supported`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.annotations.Provides
-            import dev.zacsweers.lattice.annotations.DependencyGraph
-
             @DependencyGraph
             interface ExampleGraph {
               @Provides
@@ -397,13 +391,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    assertThat(result.messages)
-      .contains(
-        """
-          ExampleGraph.kt:9:22 `@Provides` declarations may not have receiver parameters unless they are binds providers.
-        """
-          .trimIndent()
-      )
+    result.assertContains("ExampleGraph.kt:11:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.")
   }
 
   // TODO
