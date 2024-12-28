@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.annotations.AppScope
 import dev.zacsweers.lattice.annotations.Assisted
 import dev.zacsweers.lattice.annotations.AssistedFactory
 import dev.zacsweers.lattice.annotations.AssistedInject
+import dev.zacsweers.lattice.annotations.Binds
 import dev.zacsweers.lattice.annotations.BindsInstance
 import dev.zacsweers.lattice.annotations.DependencyGraph
 import dev.zacsweers.lattice.annotations.Inject
@@ -1077,7 +1078,7 @@ class DependencyGraphProcessingTest {
     private val provideInt: Int
       get() = 3
 
-    @Provides val Int.provideNumber: Number
+    @Binds val Int.provideNumber: Number
   }
 
   @Test
@@ -1092,7 +1093,7 @@ class DependencyGraphProcessingTest {
 
     @Provides private fun provideInt(): Int = 3
 
-    @Provides fun Int.provideNumber(): Number
+    @Binds fun Int.provideNumber(): Number
   }
 
   @Test
@@ -1106,7 +1107,7 @@ class DependencyGraphProcessingTest {
     val string: String
     val charSequence: CharSequence
 
-    @get:Provides val String.binds: CharSequence
+    @get:Binds val String.binds: CharSequence
 
     @Provides private fun provideValue(): String = "Hello, world!"
   }
