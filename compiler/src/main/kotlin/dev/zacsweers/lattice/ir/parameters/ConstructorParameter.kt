@@ -61,9 +61,7 @@ internal class ConstructorParameter(
 
   private val cachedToString by unsafeLazy {
     buildString {
-      contextualTypeKey.typeKey.qualifier?.let {
-        append(it)
-      }
+      contextualTypeKey.typeKey.qualifier?.let { append(it) }
       append(name)
       append(':')
       append(' ')

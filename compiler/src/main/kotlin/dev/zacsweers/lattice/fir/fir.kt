@@ -34,7 +34,6 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
-import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
@@ -401,7 +400,11 @@ internal inline fun FirClass.validateApiDeclaration(
     onError()
   }
   if (isAbstract && classKind == ClassKind.CLASS) {
-    primaryConstructorIfAny(context.session)?.validateVisibility(context, reporter, "$type classes' primary constructor") {
+    primaryConstructorIfAny(context.session)?.validateVisibility(
+      context,
+      reporter,
+      "$type classes' primary constructor",
+    ) {
       onError()
     }
   }
@@ -419,17 +422,14 @@ internal inline fun FirConstructorSymbol.validateVisibility(
   }
 }
 
-internal fun List<FirAnnotation>.qualifierAnnotation(
-  session: FirSession,
-): LatticeFirAnnotation? = asSequence().annotationAnnotatedWithAny(session, session.latticeClassIds.qualifierAnnotations)
+internal fun List<FirAnnotation>.qualifierAnnotation(session: FirSession): LatticeFirAnnotation? =
+  asSequence().annotationAnnotatedWithAny(session, session.latticeClassIds.qualifierAnnotations)
 
-internal fun List<FirAnnotation>.scopeAnnotation(
-  session: FirSession,
-): LatticeFirAnnotation? = asSequence().scopeAnnotation(session)
+internal fun List<FirAnnotation>.scopeAnnotation(session: FirSession): LatticeFirAnnotation? =
+  asSequence().scopeAnnotation(session)
 
-internal fun Sequence<FirAnnotation>.scopeAnnotation(
-  session: FirSession,
-): LatticeFirAnnotation? = annotationAnnotatedWithAny(session, session.latticeClassIds.scopeAnnotations)
+internal fun Sequence<FirAnnotation>.scopeAnnotation(session: FirSession): LatticeFirAnnotation? =
+  annotationAnnotatedWithAny(session, session.latticeClassIds.scopeAnnotations)
 
 // TODO add a single = true|false param? How would we propagate errors
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
@@ -437,21 +437,15 @@ internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
   names: Set<ClassId>,
 ): LatticeFirAnnotation? {
   return filterIsInstance<FirAnnotationCall>()
-    .firstOrNull { annotationCall ->
-      annotationCall.isAnnotatedWithAny(session, names)
-    }
+    .firstOrNull { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
     ?.let { LatticeFirAnnotation(it) }
 }
 
 internal fun FirAnnotationCall.isAnnotatedWithAny(
   session: FirSession,
-  names: Set<ClassId>
+  names: Set<ClassId>,
 ): Boolean {
-  val annotationType =
-    resolvedType as? ConeClassLikeType ?: return false
+  val annotationType = resolvedType as? ConeClassLikeType ?: return false
   val annotationClass = annotationType.toClassSymbol(session) ?: return false
-  return annotationClass.annotations.isAnnotatedWithAny(
-    session,
-    names,
-  )
+  return annotationClass.annotations.isAnnotatedWithAny(session, names)
 }

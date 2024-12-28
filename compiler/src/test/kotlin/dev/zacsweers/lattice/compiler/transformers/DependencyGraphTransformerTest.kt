@@ -1301,7 +1301,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       compile(
         source(
           fileNameWithoutExtension = "graphs",
-          source = """
+          source =
+            """
             // Ok
             @DependencyGraph
             abstract class GraphWithImplicitPublicFactory {
@@ -1345,7 +1346,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+              .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )

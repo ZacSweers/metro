@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
-import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
 import org.junit.Test
@@ -29,11 +28,12 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
       compile(
         source(
           fileNameWithoutExtension = "graphs",
-          source = """
+          source =
+            """
             // Ok
             @DependencyGraph interface InterfaceGraph
             @DependencyGraph abstract class AbstractClassGraph
-            
+
             // Not ok
             @DependencyGraph class FinalClassGraph
             @DependencyGraph open class OpenClassGraph
@@ -44,7 +44,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
             @DependencyGraph private interface PrivateGraph
             @DependencyGraph abstract class PrivateConstructorGraph private constructor()
           """
-            .trimIndent(),
+              .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -71,7 +71,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               @Multibinds val values: Map<String, String> get() = emptyMap()
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -89,7 +89,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               @Multibinds fun values(): Map<String, String> = emptyMap()
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -108,7 +108,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               @Multibinds @Singleton fun values(): Map<String, String>
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -128,7 +128,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               val value: String
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -148,7 +148,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               val value: String
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -168,7 +168,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
                 @Singleton get() = field
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -187,11 +187,13 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               val value: Unit
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertContains("ExampleGraph.kt:11:7 Graph accessor members must have a return type and cannot be Unit.")
+    result.assertContains(
+      "ExampleGraph.kt:11:7 Graph accessor members must have a return type and cannot be Unit."
+    )
   }
 
   @Suppress("RedundantUnitReturnType")
@@ -207,11 +209,13 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               fun value(): Unit
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertContains("ExampleGraph.kt:11:16 Graph accessor members must have a return type and cannot be Unit.")
+    result.assertContains(
+      "ExampleGraph.kt:11:16 Graph accessor members must have a return type and cannot be Unit."
+    )
   }
 
   @Test
@@ -226,11 +230,13 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               fun value()
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertContains("ExampleGraph.kt:11:7 Graph accessor members must have a return type and cannot be Unit.")
+    result.assertContains(
+      "ExampleGraph.kt:11:7 Graph accessor members must have a return type and cannot be Unit."
+    )
   }
 
   @Test
@@ -245,7 +251,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               val value: Nothing
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -264,7 +270,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               fun value(): Nothing
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -283,7 +289,7 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               fun inject(target: Int, target2: Int)
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -302,11 +308,13 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               fun inject(target: Int): Int
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertContains("ExampleGraph.kt:11:28 Inject functions must not return anything other than Unit.")
+    result.assertContains(
+      "ExampleGraph.kt:11:28 Inject functions must not return anything other than Unit."
+    )
   }
 
   @Test
@@ -323,11 +331,13 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
 
             @Inject class ExampleClass
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertContains("ExampleGraph.kt:11:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary.")
+    result.assertContains(
+      "ExampleGraph.kt:11:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary."
+    )
   }
 
   @Test
@@ -344,11 +354,13 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
 
             class ExampleClass @Inject constructor()
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertContains("ExampleGraph.kt:11:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary.")
+    result.assertContains(
+      "ExampleGraph.kt:11:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary."
+    )
   }
 
   @Test
@@ -367,10 +379,12 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
               @Inject constructor() : this(0)
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertContains("ExampleGraph.kt:11:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary.")
+    result.assertContains(
+      "ExampleGraph.kt:11:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary."
+    )
   }
 }

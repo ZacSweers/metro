@@ -31,7 +31,12 @@ internal class LatticeFirCheckers(session: FirSession) : FirAdditionalCheckersEx
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>
         get() =
-          setOf(InjectConstructorChecker, AssistedInjectChecker, DependencyGraphCreatorChecker, DependencyGraphChecker)
+          setOf(
+            InjectConstructorChecker,
+            AssistedInjectChecker,
+            DependencyGraphCreatorChecker,
+            DependencyGraphChecker,
+          )
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
         get() = setOf(ProvidesChecker)
