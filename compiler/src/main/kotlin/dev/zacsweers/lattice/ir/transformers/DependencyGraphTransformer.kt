@@ -551,20 +551,18 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val targetClass = injector.valueParameters.single().type.rawType()
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
         val allParams = generatedInjector?.injectFunctions?.values?.toList().orEmpty()
-        val parameters = when (allParams.size) {
-          0 -> {
-            Parameters.empty()
+        val parameters =
+          when (allParams.size) {
+            0 -> {
+              Parameters.empty()
+            }
+            1 -> {
+              allParams.first()
+            }
+            else -> {
+              allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
+            }
           }
-          1 -> {
-            allParams.first()
-          }
-          else -> {
-            allParams
-              .reduce { current, next ->
-                current.mergeValueParametersWith(next)
-              }
-          }
-        }
         val membersInjectorKey =
           ContextualTypeKey(
             typeKey =

@@ -253,17 +253,18 @@ internal class InjectConstructorTransformer(
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,
-                args = buildList {
-                  add(irGet(instance))
-                  addAll(
-                    parametersAsProviderArguments(
-                      this@InjectConstructorTransformer,
-                      parameters,
-                      factoryReceiver,
-                      parametersToFields,
+                args =
+                  buildList {
+                    add(irGet(instance))
+                    addAll(
+                      parametersAsProviderArguments(
+                        this@InjectConstructorTransformer,
+                        parameters,
+                        factoryReceiver,
+                        parametersToFields,
+                      )
                     )
-                  )
-                },
+                  },
               )
             }
           }
