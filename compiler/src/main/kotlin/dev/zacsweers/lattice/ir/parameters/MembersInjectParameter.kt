@@ -42,19 +42,19 @@ internal class MembersInjectParameter(
   override val kind: Kind,
   override val name: Name,
   override val contextualTypeKey: ContextualTypeKey,
+  override val hasDefault: Boolean,
+  val memberInjectorClassId: ClassId,
   @Poko.Skip override val originalName: Name,
   @Poko.Skip override val providerType: IrType,
   @Poko.Skip override val lazyType: IrType,
   @Poko.Skip override val symbols: LatticeSymbols,
-  override val hasDefault: Boolean,
   @Poko.Skip override val location: CompilerMessageSourceLocation?,
   @Poko.Skip val bindingStackEntry: BindingStack.Entry,
-  val memberInjectorClassId: ClassId,
   @Poko.Skip val isProperty: Boolean,
+  @Poko.Skip override val ir: IrValueParameter,
+  @Poko.Skip val setterFunction: IrFunction,
+  @Poko.Skip val irProperty: IrProperty?,
 ) : Parameter {
-  override lateinit var ir: IrValueParameter
-  lateinit var setterFunction: IrFunction
-  var irProperty: IrProperty? = null
   override val typeKey: TypeKey = contextualTypeKey.typeKey
   override val type: IrType = contextualTypeKey.typeKey.type
   override val isWrappedInProvider: Boolean = contextualTypeKey.isWrappedInProvider
@@ -133,24 +133,22 @@ internal fun IrProperty.toMemberInjectParameter(
     declaringClass.createNestedClassId(LatticeSymbols.Names.LatticeMembersInjector)
 
   return MembersInjectParameter(
-      kind = kind,
-      name = uniqueName,
-      originalName = name,
-      contextualTypeKey = contextKey,
-      providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
-      lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
-      symbols = context.symbols,
-      bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, setter!!, null, this),
-      hasDefault = defaultValue != null,
-      location = locationOrNull(),
-      memberInjectorClassId = memberInjectorClass,
-      isProperty = true,
-    )
-    .apply {
-      this.ir = setterParam!!
-      this.setterFunction = setter!!
-      this.irProperty = this@toMemberInjectParameter
-    }
+    kind = kind,
+    name = uniqueName,
+    originalName = name,
+    contextualTypeKey = contextKey,
+    providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
+    lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
+    symbols = context.symbols,
+    bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, setter!!, null, this),
+    hasDefault = defaultValue != null,
+    location = locationOrNull(),
+    memberInjectorClassId = memberInjectorClass,
+    isProperty = true,
+    ir = setterParam!!,
+    setterFunction = setter!!,
+    irProperty = this,
+  )
 }
 
 internal fun IrValueParameter.toMemberInjectParameter(
@@ -180,23 +178,20 @@ internal fun IrValueParameter.toMemberInjectParameter(
     declaringClass.createNestedClassId(LatticeSymbols.Names.LatticeMembersInjector)
 
   return MembersInjectParameter(
-      kind = kind,
-      name = uniqueName,
-      originalName = name,
-      contextualTypeKey = contextKey,
-      providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
-      lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
-      symbols = context.symbols,
-      bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
-      hasDefault = defaultValue != null,
-      location = locationOrNull(),
-      memberInjectorClassId = memberInjectorClass,
-      isProperty = isPropertyAccessor,
-    )
-    .apply {
-      this.ir = this@toMemberInjectParameter
-      this.setterFunction = ownerFunction
-      this.irProperty =
-        if (isPropertyAccessor) ownerFunction.propertyIfAccessor as IrProperty else null
-    }
+    kind = kind,
+    name = uniqueName,
+    originalName = name,
+    contextualTypeKey = contextKey,
+    providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
+    lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
+    symbols = context.symbols,
+    bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
+    hasDefault = defaultValue != null,
+    location = locationOrNull(),
+    memberInjectorClassId = memberInjectorClass,
+    isProperty = isPropertyAccessor,
+    ir = this,
+    setterFunction = ownerFunction,
+    irProperty = if (isPropertyAccessor) ownerFunction.propertyIfAccessor as IrProperty else null,
+  )
 }
