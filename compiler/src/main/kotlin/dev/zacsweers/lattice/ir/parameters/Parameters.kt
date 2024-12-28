@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.ir.parameters
 
+import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.NameAllocator
 import dev.zacsweers.lattice.asName
 import dev.zacsweers.lattice.ir.LatticeTransformerContext
@@ -86,15 +87,32 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
   }
 }
 
-private data class ParametersImpl<T : Parameter>(
+@Poko
+private class ParametersImpl<T : Parameter>(
   override val instance: Parameter?,
   override val extensionReceiver: T?,
   override val valueParameters: List<T>,
 ) : Parameters<T> {
   override lateinit var ir: IrFunction
 
+  private val cachedToString by unsafeLazy {
+    buildString {
+      instance?.let {
+        append(it)
+        append('.')
+      }
+      extensionReceiver?.let {
+        append(it)
+        append('.')
+      }
+      append('(')
+      valueParameters.joinTo(this)
+      append(')')
+    }
+  }
+
   override fun with(ir: IrFunction): Parameters<T> {
-    return copy().apply { this.ir = ir }
+    return ParametersImpl(instance, extensionReceiver, valueParameters).apply { this.ir = ir }
   }
 
   override val nonInstanceParameters: List<T> by unsafeLazy {
@@ -103,12 +121,15 @@ private data class ParametersImpl<T : Parameter>(
       addAll(valueParameters)
     }
   }
+
   override val allParameters: List<Parameter> by unsafeLazy {
     buildList {
       instance?.let(::add)
       addAll(nonInstanceParameters)
     }
   }
+
+  override fun toString(): String = cachedToString
 }
 
 internal fun IrFunction.parameters(
