@@ -23,9 +23,15 @@ package dev.zacsweers.lattice.internal
  * unnecessary. However, using this with [DoubleCheck.provider] is valid and may be desired for
  * testing or contractual guarantees.
  */
-public class InstanceFactory<T : Any> private constructor(instance: T) :
-  Factory<T>, Lazy<T> by lazyOf(instance) {
+public class InstanceFactory<T : Any> private constructor(instance: T) : Factory<T>, Lazy<T> {
+
+  override fun isInitialized(): Boolean = true
+
+  override val value: T = instance
+
   public override fun invoke(): T = value
+
+  override fun toString(): String = value.toString()
 
   public companion object {
     public fun <T : Any> create(instance: T): Factory<T> {
