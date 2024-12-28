@@ -104,9 +104,7 @@ internal class LatticeSymbols(
   }
 
   val latticeInject: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(latticeRuntime.packageFqName, Name.identifier("Inject"))
-    )!!
+    pluginContext.referenceClass(ClassId(latticeRuntime.packageFqName, Name.identifier("Inject")))!!
   }
 
   val latticeProvides: IrClassSymbol by lazy {
@@ -122,9 +120,7 @@ internal class LatticeSymbols(
   }
 
   val latticeScope: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(latticeRuntime.packageFqName, Name.identifier("Scope"))
-    )!!
+    pluginContext.referenceClass(ClassId(latticeRuntime.packageFqName, Name.identifier("Scope")))!!
   }
 
   val latticeComponent: IrClassSymbol by lazy {

@@ -15,8 +15,8 @@
  */
 package dev.zacsweers.lattice.internal
 
-import dev.zacsweers.lattice.MembersInjector
 import dev.zacsweers.lattice.Inject
+import dev.zacsweers.lattice.MembersInjector
 
 /** Basic [MembersInjector] implementations used by the framework. */
 public object MembersInjectors {

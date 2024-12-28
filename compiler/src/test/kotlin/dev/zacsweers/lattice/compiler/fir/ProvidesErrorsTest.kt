@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
-import dev.zacsweers.lattice.compiler.assertContainsAll
 import dev.zacsweers.lattice.compiler.assertDiagnostics
 import org.junit.Test
 
@@ -41,7 +40,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         w: ExampleGraph.kt:7:17 `@Provides` declarations should be private.
         w: ExampleGraph.kt:8:17 `@Provides` declarations should be private.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -65,7 +65,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         w: ExampleGraph.kt:7:17 `@Provides` declarations should be private.
         w: ExampleGraph.kt:8:17 `@Provides` declarations should be private.
         w: ExampleGraph.kt:9:17 `@Provides` declarations should be private.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -87,7 +88,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         w: ExampleGraph.kt:7:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
         w: ExampleGraph.kt:8:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -109,7 +111,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         w: ExampleGraph.kt:7:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
         w: ExampleGraph.kt:8:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -132,7 +135,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:7:24 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.
         e: ExampleGraph.kt:8:21 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -155,7 +159,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:7:21 `@Binds` declarations with bodies should just return `this`.
         e: ExampleGraph.kt:8:18 `@Binds` declarations with bodies should just return `this`.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -178,7 +183,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:7:21 `@Binds` declarations with bodies should just return `this`.
         e: ExampleGraph.kt:8:18 `@Binds` declarations with bodies should just return `this`.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -226,7 +232,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:7:30 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.
         e: ExampleGraph.kt:8:38 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -250,7 +257,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:8:17 `@Provides` declarations must have bodies.
         e: ExampleGraph.kt:9:17 `@Provides` declarations must have bodies.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -273,7 +281,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:7:26 `@Provides` declarations must have bodies.
         e: ExampleGraph.kt:8:26 `@Provides` declarations must have bodies.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -311,7 +320,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         w: ExampleGraph.kt:7:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
         w: ExampleGraph.kt:8:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -346,7 +356,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         e: ExampleGraph.kt:15:59 Binds receiver type `@Named("named") kotlin.Int` is the same type and qualifier as the bound type `@Named("named") kotlin.Int`.
         e: ExampleGraph.kt:16:21 Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `kotlin.String`.
         e: ExampleGraph.kt:17:62 Binds receiver type `@Named("named") kotlin.String` is the same type and qualifier as the bound type `@Named("named") kotlin.String`.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -374,7 +385,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:11:21 Binds receiver type `kotlin.Number` is not a subtype of bound type `kotlin.Int`.
         e: ExampleGraph.kt:12:27 Binds receiver type `kotlin.CharSequence` is not a subtype of bound type `kotlin.String`.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 }

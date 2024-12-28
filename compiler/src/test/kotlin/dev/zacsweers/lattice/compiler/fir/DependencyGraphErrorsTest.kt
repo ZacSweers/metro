@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
-import dev.zacsweers.lattice.compiler.assertContainsAll
 import dev.zacsweers.lattice.compiler.assertDiagnostics
 import org.junit.Test
 
@@ -59,7 +58,8 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
         e: graphs.kt:16:35 DependencyGraph classes should be non-sealed abstract classes or interfaces.
         e: graphs.kt:17:18 DependencyGraph must be public or internal.
         e: graphs.kt:18:57 DependencyGraph classes' primary constructor must be public or internal.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -177,7 +177,8 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleGraph.kt:9:14 Graph accessor members must have a return type and cannot be Unit.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -198,7 +199,9 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:16 Graph accessor members must have a return type and cannot be Unit.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:9:16 Graph accessor members must have a return type and cannot be Unit."
+    )
   }
 
   @Test
@@ -220,7 +223,8 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleGraph.kt:9:7 Graph accessor members must have a return type and cannot be Unit.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -278,7 +282,9 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:7 Inject functions must have exactly one parameter.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:9:7 Inject functions must have exactly one parameter."
+    )
   }
 
   @Test
@@ -297,7 +303,9 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:28 Inject functions must not return anything other than Unit.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:9:28 Inject functions must not return anything other than Unit."
+    )
   }
 
   @Test
@@ -321,7 +329,8 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleGraph.kt:9:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -346,7 +355,8 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleGraph.kt:9:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -373,7 +383,8 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleGraph.kt:9:14 Injected type is constructor-injected and can be instantiated by Lattice directly, so this inject function is unnecessary.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 }

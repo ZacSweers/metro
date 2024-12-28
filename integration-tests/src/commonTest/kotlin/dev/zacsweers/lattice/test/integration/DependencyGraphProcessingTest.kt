@@ -15,27 +15,27 @@
  */
 package dev.zacsweers.lattice.test.integration
 
-import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.AppScope
 import dev.zacsweers.lattice.Assisted
 import dev.zacsweers.lattice.AssistedFactory
 import dev.zacsweers.lattice.AssistedInject
 import dev.zacsweers.lattice.Binds
 import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.Inject
-import dev.zacsweers.lattice.Named
-import dev.zacsweers.lattice.Provides
-import dev.zacsweers.lattice.SingleIn
-import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.ClassKey
+import dev.zacsweers.lattice.DependencyGraph
 import dev.zacsweers.lattice.ElementsIntoSet
+import dev.zacsweers.lattice.Inject
 import dev.zacsweers.lattice.IntKey
 import dev.zacsweers.lattice.IntoMap
 import dev.zacsweers.lattice.IntoSet
 import dev.zacsweers.lattice.LongKey
 import dev.zacsweers.lattice.MapKey
 import dev.zacsweers.lattice.Multibinds
+import dev.zacsweers.lattice.Named
+import dev.zacsweers.lattice.Provider
+import dev.zacsweers.lattice.Provides
+import dev.zacsweers.lattice.SingleIn
+import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.StringKey
 import dev.zacsweers.lattice.createGraph
 import dev.zacsweers.lattice.createGraphFactory

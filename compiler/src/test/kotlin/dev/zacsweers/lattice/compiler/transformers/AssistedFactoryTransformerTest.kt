@@ -368,7 +368,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -395,7 +396,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 

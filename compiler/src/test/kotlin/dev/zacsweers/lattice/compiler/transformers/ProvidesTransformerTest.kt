@@ -395,7 +395,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     result.assertDiagnostics(
       """
         e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 

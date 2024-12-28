@@ -15,10 +15,10 @@
  */
 package dev.zacsweers.lattice.test.integration
 
-import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.BindsInstance
 import dev.zacsweers.lattice.DependencyGraph
 import dev.zacsweers.lattice.Inject
+import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.createGraphFactory

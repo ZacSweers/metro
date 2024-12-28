@@ -1349,7 +1349,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       """
         e: graphs.kt:36:3 DependencyGraph factory must be public or internal.
         e: graphs.kt:44:3 DependencyGraph factory must be public or internal.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
