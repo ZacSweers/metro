@@ -16,8 +16,8 @@
 package dev.zacsweers.lattice.test.integration.cycles
 
 import dev.zacsweers.lattice.Provider
-import dev.zacsweers.lattice.annotations.DependencyGraph
-import dev.zacsweers.lattice.annotations.Inject
+import dev.zacsweers.lattice.DependencyGraph
+import dev.zacsweers.lattice.Inject
 
 /**
  * Component with a long enough cycle such that the initialization of a provider happens in a
