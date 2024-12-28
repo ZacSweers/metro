@@ -36,6 +36,7 @@ import dev.zacsweers.lattice.ir.parameters.parameters
 import dev.zacsweers.lattice.ir.parametersAsProviderArguments
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
@@ -46,7 +47,10 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -193,25 +197,7 @@ internal class InjectConstructorTransformer(
                   irInvoke(callee = newInstanceFunctionSymbol, args = assistedArgs + providerArgs)
                 )
 
-              // TODO dedupe
-              injectors?.let {
-                for ((parameter, function) in it.injectFunctions) {
-                  +irInvoke(
-                    dispatchReceiver = irGetObject(function.parentAsClass.symbol),
-                    callee = function.symbol,
-                    args =
-                      listOf(
-                        irGet(instance),
-                        parameterAsProviderArgument(
-                          this@InjectConstructorTransformer,
-                          parameter,
-                          factoryCls.thisReceiver!!,
-                          parametersToFields,
-                        ),
-                      ),
-                  )
-                }
-              }
+              addMemberInjection(injectors, instance, factoryCls.thisReceiver!!, parametersToFields)
 
               +irReturn(irGet(instance))
             }
@@ -260,25 +246,7 @@ internal class InjectConstructorTransformer(
                   )
                 )
 
-              // TODO dedupe
-              injectors?.let {
-                for ((parameter, function) in it.injectFunctions) {
-                  +irInvoke(
-                    dispatchReceiver = irGetObject(function.parentAsClass.symbol),
-                    callee = function.symbol,
-                    args =
-                      listOf(
-                        irGet(instance),
-                        parameterAsProviderArgument(
-                          this@InjectConstructorTransformer,
-                          parameter,
-                          factoryCls.thisReceiver!!,
-                          parametersToFields,
-                        ),
-                      ),
-                  )
-                }
-              }
+              addMemberInjection(injectors, instance, factoryCls.thisReceiver!!, parametersToFields)
 
               +irReturn(irGet(instance))
             }
@@ -289,6 +257,32 @@ internal class InjectConstructorTransformer(
 
     generatedFactories[injectedClassId] = factoryCls
     return factoryCls
+  }
+
+  private fun IrBlockBodyBuilder.addMemberInjection(
+    injectors: MembersInjectorTransformer.MemberInjectClass?,
+    instance: IrVariable,
+    factoryReceiver: IrValueParameter,
+    parametersToFields: Map<Parameter, IrField>,
+  ) {
+    injectors?.let {
+      for ((parameter, function) in it.injectFunctions) {
+        +irInvoke(
+          dispatchReceiver = irGetObject(function.parentAsClass.symbol),
+          callee = function.symbol,
+          args =
+            listOf(
+              irGet(instance),
+              parameterAsProviderArgument(
+                this@InjectConstructorTransformer,
+                parameter,
+                factoryReceiver,
+                parametersToFields,
+              ),
+            ),
+        )
+      }
+    }
   }
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
