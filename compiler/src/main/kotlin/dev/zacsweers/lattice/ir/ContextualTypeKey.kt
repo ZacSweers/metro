@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.ir
 
 import dev.zacsweers.lattice.expectAs
-import kotlin.collections.contains
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI

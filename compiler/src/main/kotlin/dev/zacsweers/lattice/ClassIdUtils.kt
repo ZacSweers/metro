@@ -16,14 +16,6 @@
 package dev.zacsweers.lattice
 
 import java.security.MessageDigest
-import kotlin.collections.dropLast
-import kotlin.collections.forEach
-import kotlin.collections.joinToString
-import kotlin.collections.plus
-import kotlin.collections.sumOf
-import kotlin.collections.take
-import kotlin.text.format
-import kotlin.text.toByteArray
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name

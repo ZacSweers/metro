@@ -57,9 +57,6 @@ import dev.zacsweers.lattice.ir.singleAbstractFunction
 import dev.zacsweers.lattice.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.ir.withEntry
 import dev.zacsweers.lattice.letIf
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.iterator
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
