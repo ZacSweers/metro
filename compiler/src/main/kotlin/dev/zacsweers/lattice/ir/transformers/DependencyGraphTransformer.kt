@@ -1005,8 +1005,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                 pluginContext.createIrBuilder(symbol).irBlockBody {
                   // TODO reuse, consolidate calling code with how we implement this in
                   //  constructor inject code gen
-                  // val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
-                  // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
+                  // val injectors =
+                  // membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
+                  // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
+                  // }
 
                   for (type in
                     pluginContext

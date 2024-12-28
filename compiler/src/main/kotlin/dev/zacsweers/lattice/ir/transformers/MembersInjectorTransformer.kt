@@ -90,15 +90,11 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {
-    return declaration.getAllSuperTypes(
-      pluginContext,
-      excludeSelf = false,
-      excludeAny = true
-    ).mapNotNull { it.classOrNull?.owner }
+    return declaration
+      .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)
+      .mapNotNull { it.classOrNull?.owner }
       .filterNot { it.isInterface }
-      .mapNotNull {
-        getOrGenerateInjector(it)
-      }
+      .mapNotNull { getOrGenerateInjector(it) }
       .toList()
       .asReversed() // Base types go first
   }

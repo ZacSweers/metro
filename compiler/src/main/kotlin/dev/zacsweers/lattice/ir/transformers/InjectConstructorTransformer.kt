@@ -293,7 +293,8 @@ internal class InjectConstructorTransformer(
       }
 
     // TODO
-    //  Dagger will de-dupe these by type key to shrink the code. We could do the same but only for parameters
+    //  Dagger will de-dupe these by type key to shrink the code. We could do the same but only for
+    // parameters
     //  that don't have default values. For those cases, we would need to keep them as-is.
     //  Something for another day.
     val mergedParameters =
