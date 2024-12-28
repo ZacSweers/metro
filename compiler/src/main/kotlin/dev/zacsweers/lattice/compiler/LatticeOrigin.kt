@@ -17,5 +17,6 @@ package dev.zacsweers.lattice.compiler
 
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOriginImpl
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOriginImpl.Companion.provideDelegate
 
 internal val LatticeOrigin: IrDeclarationOrigin by IrDeclarationOriginImpl

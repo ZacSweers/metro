@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.lattice.compiler
 
-import dev.zacsweers.lattice.compiler.NameAllocator.Mode
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import org.jetbrains.kotlin.renderer.KeywordStringsGenerated.KEYWORDS

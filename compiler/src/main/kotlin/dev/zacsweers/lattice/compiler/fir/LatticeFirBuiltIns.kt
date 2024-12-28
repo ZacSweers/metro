@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeClassIds
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
-import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent.Factory
 
 internal class LatticeFirBuiltIns(session: FirSession, val latticeClassIds: LatticeClassIds) :
   FirExtensionSessionComponent(session) {
