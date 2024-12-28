@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.annotations.Named
 import dev.zacsweers.lattice.compiler.ExampleClass
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
+import dev.zacsweers.lattice.compiler.callFunction
 import dev.zacsweers.lattice.compiler.callInject
 import dev.zacsweers.lattice.compiler.callProperty
 import dev.zacsweers.lattice.compiler.createGraphViaFactory
@@ -668,6 +669,79 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
       val instance = graph.callProperty<Any>("exampleClass")
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
+    }
+  }
+
+  @Test
+  fun `graph inject function simple constructed class with inherited members`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+              }
+            }
+
+            abstract class Base {
+              @Inject var baseLong: Long = 0L
+            }
+
+            @Inject
+            class ExampleClass(val long: Long) : Base() {
+              @Inject var int: Int = 2
+            }
+          """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
+      val instance = graph.callProperty<Any>("exampleClass")
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+      assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
+      assertThat(instance.callProperty<Long>("baseLong")).isEqualTo(4L)
+    }
+  }
+
+  @Test
+  fun `graph inject function simple constructed class with private inherited members`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+              }
+            }
+
+            abstract class Base {
+              @Inject private var privateBaseLong: Long = 0L
+              fun baseLong() = privateBaseLong
+            }
+
+            @Inject
+            class ExampleClass(val long: Long) : Base() {
+              @Inject var int: Int = 2
+            }
+          """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(3, 4L)
+      val instance = graph.callProperty<Any>("exampleClass")
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+      assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
+      assertThat(instance.callFunction<Long>("baseLong")).isEqualTo(4L)
     }
   }
 }
