@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2024 Zac Sweers
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package dev.zacsweers.lattice.compiler.ir.transformers
 
 import dev.zacsweers.lattice.compiler.LatticeOrigin
@@ -24,7 +39,6 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.isObject
 
@@ -51,49 +65,54 @@ internal fun generateStaticCreateFunction(
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
-  return parentClass.addFunction(LatticeSymbols.StringNames.Create, targetClassParameterized).apply {
-    val thisFunction = this
-    this.copyTypeParameters(targetClass.typeParameters)
-    this.origin = LatticeOrigin
-    this.visibility = DescriptorVisibilities.PUBLIC
+  return parentClass
+    .addFunction(LatticeSymbols.StringNames.Create, targetClassParameterized)
+    .apply {
+      val thisFunction = this
+      this.copyTypeParameters(targetClass.typeParameters)
+      this.origin = LatticeOrigin
+      this.visibility = DescriptorVisibilities.PUBLIC
 
-    val instanceParam =
-      parameters.instance?.let { addValueParameter(it.name, it.providerType, LatticeOrigin) }
-    parameters.extensionReceiver?.let { addValueParameter(it.name, it.providerType, LatticeOrigin) }
-    val valueParamsToPatch =
-      parameters.valueParameters
-        .filterNot { it.isAssisted }
-        .map {
-          addValueParameter(it.name, it.providerType, LatticeOrigin).also { irParam ->
-            it.typeKey.qualifier?.let {
-              // Copy any qualifiers over so they're retrievable during dependency graph resolution
-              irParam.annotations += it.ir
+      val instanceParam =
+        parameters.instance?.let { addValueParameter(it.name, it.providerType, LatticeOrigin) }
+      parameters.extensionReceiver?.let {
+        addValueParameter(it.name, it.providerType, LatticeOrigin)
+      }
+      val valueParamsToPatch =
+        parameters.valueParameters
+          .filterNot { it.isAssisted }
+          .map {
+            addValueParameter(it.name, it.providerType, LatticeOrigin).also { irParam ->
+              it.typeKey.qualifier?.let {
+                // Copy any qualifiers over so they're retrievable during dependency graph
+                // resolution
+                irParam.annotations += it.ir
+              }
             }
           }
-        }
 
-    if (patchCreationParams) {
-      context.copyParameterDefaultValues(
-        providerFunction = providerFunction,
-        sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
-        targetParameters = valueParamsToPatch,
-        targetGraphParameter = instanceParam,
-        wrapInProvider = true,
-      )
-    }
-
-    body =
-      context.pluginContext.createIrBuilder(symbol).run {
-        irBlockBody(
-          symbol,
-          if (targetClass.isObject) {
-            irGetObject(targetClass.symbol)
-          } else {
-            irCallConstructorWithSameParameters(thisFunction, targetConstructor)
-          },
+      if (patchCreationParams) {
+        context.copyParameterDefaultValues(
+          providerFunction = providerFunction,
+          sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
+          targetParameters = valueParamsToPatch,
+          targetGraphParameter = instanceParam,
+          wrapInProvider = true,
         )
       }
-  }
+
+      body =
+        context.pluginContext.createIrBuilder(symbol).run {
+          irBlockBody(
+            symbol,
+            if (targetClass.isObject) {
+              irGetObject(targetClass.symbol)
+            } else {
+              irCallConstructorWithSameParameters(thisFunction, targetConstructor)
+            },
+          )
+        }
+    }
 }
 
 /**

@@ -50,7 +50,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -312,22 +311,23 @@ internal class InjectConstructorTransformer(
       providerFunction = null,
     )
 
-    val newInstanceFunction = generateStaticNewInstanceFunction(
-      latticeContext,
-      classToGenerateCreatorsIn,
-      LatticeSymbols.StringNames.NewInstance,
-      targetTypeParameterized,
-      constructorParameters,
-      sourceParameters = constructorParameters.valueParameters.map { it.ir },
-      sourceTypeParameters = targetConstructor.owner.typeParameters,
-    ) { function ->
-      irCallConstructor(targetConstructor, emptyList()).apply {
-        for (index in constructorParameters.allParameters.indices) {
-          val parameter = function.valueParameters[index]
-          putValueArgument(parameter.index, irGet(parameter))
+    val newInstanceFunction =
+      generateStaticNewInstanceFunction(
+        latticeContext,
+        classToGenerateCreatorsIn,
+        LatticeSymbols.StringNames.NewInstance,
+        targetTypeParameterized,
+        constructorParameters,
+        sourceParameters = constructorParameters.valueParameters.map { it.ir },
+        sourceTypeParameters = targetConstructor.owner.typeParameters,
+      ) { function ->
+        irCallConstructor(targetConstructor, emptyList()).apply {
+          for (index in constructorParameters.allParameters.indices) {
+            val parameter = function.valueParameters[index]
+            putValueArgument(parameter.index, irGet(parameter))
+          }
         }
       }
-    }
     return newInstanceFunction
   }
 }

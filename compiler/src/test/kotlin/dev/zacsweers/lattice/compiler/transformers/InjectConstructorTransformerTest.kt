@@ -51,7 +51,7 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         ),
-        debug = true
+        debug = true,
       )
     result.assertCallableFactory("Hello, world!")
   }

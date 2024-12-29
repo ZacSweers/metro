@@ -200,22 +200,23 @@ class StaticMethod(val method: Method, val instance: Any? = null) {
   operator fun invoke(vararg args: Any?): Any? = method.invoke(instance, *args)
 }
 
-val Class<*>.objectInstanceFieldOrNull: Field? get() {
-  return fields.find {
-    Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers) && it.name == "INSTANCE"
+val Class<*>.objectInstanceFieldOrNull: Field?
+  get() {
+    return fields.find {
+      Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers) && it.name == "INSTANCE"
+    }
   }
-}
 
-val Class<*>.companionObjectInstanceFieldOrNull: Field? get() {
-  return fields.find {
-    Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers) && it.name == "Companion"
+val Class<*>.companionObjectInstanceFieldOrNull: Field?
+  get() {
+    return fields.find {
+      Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers) && it.name == "Companion"
+    }
   }
-}
 
 fun Class<*>.staticMethods(
   objectInstanceField: Field? = objectInstanceFieldOrNull
 ): Sequence<StaticMethod> = sequence {
-
   yieldAll(declaredMethods.filter { Modifier.isStatic(it.modifiers) }.map(::StaticMethod))
 
   if (objectInstanceField != null) {
@@ -226,7 +227,9 @@ fun Class<*>.staticMethods(
     )
   }
 
-  companionObjectClassOrNull?.let { yieldAll(it.staticMethods(companionObjectInstanceFieldOrNull!!)) }
+  companionObjectClassOrNull?.let {
+    yieldAll(it.staticMethods(companionObjectInstanceFieldOrNull!!))
+  }
 }
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories

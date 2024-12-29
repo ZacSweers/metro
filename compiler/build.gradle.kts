@@ -40,7 +40,9 @@ buildConfig {
       topLevelConstants = true
     }
   }
-  sourceSets.named("test") { buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" }) }
+  sourceSets.named("test") {
+    buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
+  }
 }
 
 tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }

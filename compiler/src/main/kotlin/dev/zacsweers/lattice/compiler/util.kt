@@ -90,4 +90,5 @@ internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
 
 internal fun String.asName(): Name = Name.identifier(this)
 
-internal inline fun <T, C : Collection<T>, O> C.ifNotEmpty(body: C.() -> O?): O? = if (isNotEmpty()) this.body() else null
+internal inline fun <T, C : Collection<T>, O> C.ifNotEmpty(body: C.() -> O?): O? =
+  if (isNotEmpty()) this.body() else null

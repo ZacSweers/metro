@@ -146,8 +146,7 @@ internal class AssistedFactoryTransformer(
             this.returnType = returnType
             val functionParams =
               valueParameters.associateBy { valueParam ->
-                val key =
-                  ContextualTypeKey.from(latticeContext, valueParam).typeKey
+                val key = ContextualTypeKey.from(latticeContext, valueParam).typeKey
                 valueParam.toAssistedParameterKey(symbols, key)
               }
             body =
@@ -187,29 +186,33 @@ internal class AssistedFactoryTransformer(
     implConstructor: IrConstructor,
     generatedFactoryType: IrClass,
   ) {
-    addFunction(LatticeSymbols.StringNames.Create, originClassName.wrapInProvider(symbols.latticeProvider)).apply {
-      this.copyTypeParametersFrom(implClass)
-      this.origin = LatticeOrigin
-      this.visibility = DescriptorVisibilities.PUBLIC
+    addFunction(
+        LatticeSymbols.StringNames.Create,
+        originClassName.wrapInProvider(symbols.latticeProvider),
+      )
+      .apply {
+        this.copyTypeParametersFrom(implClass)
+        this.origin = LatticeOrigin
+        this.visibility = DescriptorVisibilities.PUBLIC
 
-      val factoryParam = addValueParameter(DELEGATE_FACTORY_NAME, generatedFactoryType.typeWith())
-      // InstanceFactory.create(Impl(delegateFactory))
-      body =
-        pluginContext.createIrBuilder(symbol).run {
-          irBlockBody(
-            symbol,
-            irInvoke(
-                dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-                callee = symbols.instanceFactoryCreate,
-                args =
-                  listOf(
-                    irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
-                  ),
-              )
-              .apply { putTypeArgument(0, originClassName) },
-          )
-        }
-    }
+        val factoryParam = addValueParameter(DELEGATE_FACTORY_NAME, generatedFactoryType.typeWith())
+        // InstanceFactory.create(Impl(delegateFactory))
+        body =
+          pluginContext.createIrBuilder(symbol).run {
+            irBlockBody(
+              symbol,
+              irInvoke(
+                  dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
+                  callee = symbols.instanceFactoryCreate,
+                  args =
+                    listOf(
+                      irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
+                    ),
+                )
+                .apply { putTypeArgument(0, originClassName) },
+            )
+          }
+      }
   }
 
   /** Represents a parsed function in an `@AssistedInject.Factory`-annotated interface. */

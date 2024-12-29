@@ -1582,7 +1582,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         // Example9_Factory_Impl.create(example9Provider);
         val implClass = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
         val implClassCompanion = implClass.companionObject()!!
-        val createFunction = implClassCompanion.getSimpleFunction(LatticeSymbols.StringNames.Create)!!
+        val createFunction =
+          implClassCompanion.getSimpleFunction(LatticeSymbols.StringNames.Create)!!
         val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)
         irInvoke(
           dispatchReceiver = irGetObject(implClassCompanion.symbol),
@@ -1716,11 +1717,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           val keyType: IrType = mapTypeArgs[0].typeOrFail
           val rawValueType = mapTypeArgs[1].typeOrFail
           val rawValueTypeMetadata =
-            rawValueType.typeOrFail.asContextualTypeKey(
-              latticeContext,
-              null,
-              false,
-            )
+            rawValueType.typeOrFail.asContextualTypeKey(latticeContext, null, false)
           val useProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
           val valueType: IrType = rawValueTypeMetadata.typeKey.type
 

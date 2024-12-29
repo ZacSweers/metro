@@ -56,7 +56,6 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
@@ -411,80 +410,81 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     )
 
     // Generate the named newInstance function
-    val newInstanceFunction = generateStaticNewInstanceFunction(
-      latticeContext,
-      classToGenerateCreatorsIn,
-      byteCodeFunctionName,
-      targetTypeParameterized,
-      factoryParameters,
-      targetFunction = reference.callee.owner,
-      sourceParameters = reference.parameters.valueParameters.map { it.ir },
-    ) { function ->
-      val valueParameters = function.valueParameters
+    val newInstanceFunction =
+      generateStaticNewInstanceFunction(
+        latticeContext,
+        classToGenerateCreatorsIn,
+        byteCodeFunctionName,
+        targetTypeParameterized,
+        factoryParameters,
+        targetFunction = reference.callee.owner,
+        sourceParameters = reference.parameters.valueParameters.map { it.ir },
+      ) { function ->
+        val valueParameters = function.valueParameters
 
-      val argumentsWithoutGraph: IrBuilderWithScope.() -> List<IrExpression> = {
-        valueParameters.drop(1).map { irGet(it) }
-      }
-      val arguments: IrBuilderWithScope.() -> List<IrExpression> = {
-        valueParameters.map { irGet(it) }
-      }
-
-      when {
-        isObject && returnTypeIsNullable -> {
-          // Static graph call, allows nullable returns
-          // ExampleGraph.$callableName$arguments
-          irInvoke(
-            dispatchReceiver = irGetObject(reference.parent),
-            extensionReceiver = null, // TODO unimplemented
-            callee = reference.callee,
-            args = arguments(),
-          )
+        val argumentsWithoutGraph: IrBuilderWithScope.() -> List<IrExpression> = {
+          valueParameters.drop(1).map { irGet(it) }
         }
-        isObject && !returnTypeIsNullable -> {
-          // Static graph call that doesn't allow nullable
-          // checkNotNull(ExampleGraph.$callableName$arguments) {
-          //   "Cannot return null from a non-@Nullable @Provides method"
-          // }
-          checkNotNullCall(
-            latticeContext,
-            function,
+        val arguments: IrBuilderWithScope.() -> List<IrExpression> = {
+          valueParameters.map { irGet(it) }
+        }
+
+        when {
+          isObject && returnTypeIsNullable -> {
+            // Static graph call, allows nullable returns
+            // ExampleGraph.$callableName$arguments
             irInvoke(
               dispatchReceiver = irGetObject(reference.parent),
               extensionReceiver = null, // TODO unimplemented
               callee = reference.callee,
               args = arguments(),
-            ),
-            "Cannot return null from a non-@Nullable @Provides method",
-          )
-        }
-        !isObject && returnTypeIsNullable -> {
-          // Instance graph call, allows nullable returns
-          // exampleGraph.$callableName$arguments
-          irInvoke(
-            dispatchReceiver = irGet(valueParameters[0]),
-            extensionReceiver = null, // TODO unimplemented
-            reference.callee,
-            args = argumentsWithoutGraph(),
-          )
-        }
-        // !isObject && !returnTypeIsNullable
-        else -> {
-          // Instance graph call, does not allow nullable returns
-          // exampleGraph.$callableName$arguments
-          checkNotNullCall(
-            latticeContext,
-            function,
+            )
+          }
+          isObject && !returnTypeIsNullable -> {
+            // Static graph call that doesn't allow nullable
+            // checkNotNull(ExampleGraph.$callableName$arguments) {
+            //   "Cannot return null from a non-@Nullable @Provides method"
+            // }
+            checkNotNullCall(
+              latticeContext,
+              function,
+              irInvoke(
+                dispatchReceiver = irGetObject(reference.parent),
+                extensionReceiver = null, // TODO unimplemented
+                callee = reference.callee,
+                args = arguments(),
+              ),
+              "Cannot return null from a non-@Nullable @Provides method",
+            )
+          }
+          !isObject && returnTypeIsNullable -> {
+            // Instance graph call, allows nullable returns
+            // exampleGraph.$callableName$arguments
             irInvoke(
               dispatchReceiver = irGet(valueParameters[0]),
               extensionReceiver = null, // TODO unimplemented
-              callee = reference.callee,
+              reference.callee,
               args = argumentsWithoutGraph(),
-            ),
-            "Cannot return null from a non-@Nullable @Provides method",
-          )
+            )
+          }
+          // !isObject && !returnTypeIsNullable
+          else -> {
+            // Instance graph call, does not allow nullable returns
+            // exampleGraph.$callableName$arguments
+            checkNotNullCall(
+              latticeContext,
+              function,
+              irInvoke(
+                dispatchReceiver = irGet(valueParameters[0]),
+                extensionReceiver = null, // TODO unimplemented
+                callee = reference.callee,
+                args = argumentsWithoutGraph(),
+              ),
+              "Cannot return null from a non-@Nullable @Provides method",
+            )
+          }
         }
       }
-    }
 
     return newInstanceFunction
   }
