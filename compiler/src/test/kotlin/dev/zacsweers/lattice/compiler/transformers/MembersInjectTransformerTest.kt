@@ -124,14 +124,14 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     @Suppress("RedundantLambdaArrow", "UNCHECKED_CAST")
     val membersInjectorInstance =
       constructor.newInstance(
-        Provider { "a" },
-        Provider { "b" },
-        Provider<CharSequence> { "c" },
-        Provider { listOf("d") },
-        Provider { Pair(Pair("e", 1), setOf("f")) },
-        Provider { setOf { _: List<String> -> listOf("g") } },
-        Provider { mapOf("Hello" to "World") },
-        Provider { mapOf("Hello" to false) },
+        providerOf("a"),
+        providerOf("b"),
+        providerOf<CharSequence>("c"),
+        providerOf(listOf("d")),
+        providerOf(Pair(Pair("e", 1), setOf("f"))),
+        providerOf(setOf { _: List<String> -> listOf("g") }),
+        providerOf(mapOf("Hello" to "World")),
+        providerOf(mapOf("Hello" to false)),
         providerOf("private field"),
         providerOf("private setter"),
       ) as MembersInjector<Any>
@@ -210,10 +210,10 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     @Suppress("UNCHECKED_CAST")
     val membersInjectorInstance =
       constructor.newInstance(
-        Provider { "a" },
-        Provider { "b" },
-        Provider { listOf("c") },
-        Provider { "d" },
+        providerOf("a"),
+        providerOf("b"),
+        providerOf(listOf("c")),
+        providerOf("d"),
       ) as MembersInjector<Any>
 
     val injectInstanceConstructor = result.ExampleClass.newInstanceStrict()
@@ -224,10 +224,10 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     membersInjector.staticInjectMethod("string").invoke(injectInstanceStatic, "a")
     membersInjector
       .staticInjectMethod("stringProvider")
-      .invoke(injectInstanceStatic, Provider { "b" })
+      .invoke(injectInstanceStatic, providerOf("b"))
     membersInjector
       .staticInjectMethod("stringListProvider")
-      .invoke(injectInstanceStatic, Provider { listOf("c") })
+      .invoke(injectInstanceStatic, providerOf(listOf("c")))
     membersInjector.staticInjectMethod("lazyString").invoke(injectInstanceStatic, lazyOf("d"))
 
     assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
@@ -261,7 +261,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
 
     @Suppress("UNCHECKED_CAST")
-    val membersInjectorInstance = constructor.newInstance(Provider { "a" }) as MembersInjector<Any>
+    val membersInjectorInstance = constructor.newInstance(providerOf("a")) as MembersInjector<Any>
 
     val injectInstanceConstructor = result.ExampleClass.newInstanceStrict()
     membersInjectorInstance.injectMembers(injectInstanceConstructor)
@@ -270,7 +270,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
     membersInjector
       .staticInjectMethod("lazyStringProvider")
-      .invoke(injectInstanceStatic, Provider { lazyOf("a") })
+      .invoke(injectInstanceStatic, providerOf(lazyOf("a")))
 
     assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
     assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
@@ -331,11 +331,11 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     @Suppress("UNCHECKED_CAST")
     val injectorInstance =
       membersInjector.invokeCreate(
-        Provider { base1 },
-        Provider { base2 },
-        Provider { middle1 },
-        Provider { middle2 },
-        Provider { name },
+        providerOf(base1),
+        providerOf(base2),
+        providerOf(middle1),
+        providerOf(middle2),
+        providerOf(name),
       ) as MembersInjector<Any>
 
     val classInstanceConstructor = result.ExampleClass.newInstanceStrict()
@@ -429,7 +429,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
       @Suppress("UNCHECKED_CAST")
       val membersInjectorInstance =
-        constructor.newInstance(Provider { listOf("a", "b") }, Provider { listOf(1, 2) })
+        constructor.newInstance(providerOf(listOf("a", "b")), providerOf(listOf(1, 2)))
           as MembersInjector<Any>
 
       val injectInstanceConstructor = ExampleClass.newInstanceStrict()
@@ -491,9 +491,9 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
       @Suppress("UNCHECKED_CAST")
       val membersInjectorInstance =
         constructor.newInstance(
-          Provider { listOf("a", "b") },
-          Provider { listOf(1, 2) },
-          Provider { listOf(true) },
+          providerOf(listOf("a", "b")),
+          providerOf(listOf(1, 2)),
+          providerOf(listOf(true)),
         ) as MembersInjector<Any>
 
       val injectInstanceConstructor = ExampleClass.newInstanceStrict()
@@ -561,7 +561,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
       @Suppress("UNCHECKED_CAST")
       val membersInjectorInstance =
-        constructor.newInstance(Provider { "a" }, Provider { listOf(1, 2) }) as MembersInjector<Any>
+        constructor.newInstance(providerOf("a"), providerOf(listOf(1, 2))) as MembersInjector<Any>
 
       val injectInstanceConstructor = ExampleClass.newInstanceStrict()
       membersInjectorInstance.injectMembers(injectInstanceConstructor)
