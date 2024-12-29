@@ -1363,32 +1363,14 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
           generateBindingCode(paramBinding, generationContext)
         }
-      // TODO share logic from InjectConstructorTransformer
-      if (param.isWrappedInLazy) {
-        // DoubleCheck.lazy(...)
-        irInvoke(
-          dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-          callee = symbols.doubleCheckLazy,
-          typeHint = param.type.wrapInLazy(symbols),
-          args = listOf(providerInstance),
-        )
-      } else if (param.isLazyWrappedInProvider) {
-        // ProviderOfLazy.create(provider)
-        irInvoke(
-          dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
-          callee = symbols.providerOfLazyCreate,
-          args = listOf(providerInstance),
-          typeHint = param.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
-        )
-      } else if (param.isWrappedInProvider) {
-        providerInstance
-      } else {
-        irInvoke(
-          dispatchReceiver = providerInstance,
-          callee = symbols.providerInvoke,
-          typeHint = param.type,
-        )
-      }
+
+      typeAsProviderArgument(
+        latticeContext,
+        param.contextualTypeKey,
+        providerInstance,
+        isAssisted = param.isAssisted,
+        isGraphInstance = param.isGraphInstance,
+      )
     }
   }
 
