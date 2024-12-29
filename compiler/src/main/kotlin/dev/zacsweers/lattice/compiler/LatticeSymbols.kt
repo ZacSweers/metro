@@ -47,6 +47,8 @@ internal class LatticeSymbols(
 ) {
 
   object StringNames {
+    const val Create = "create"
+    const val NewInstance = "newInstance"
     const val latticeRuntimePackage = "dev.zacsweers.lattice"
     const val latticeRuntimeInternalPackage = "dev.zacsweers.lattice.internal"
   }
@@ -64,13 +66,14 @@ internal class LatticeSymbols(
 
   object Names {
     val CompanionObject = Name.identifier("Companion")
-    val CreateFunction = Name.identifier("create")
+    val Create = StringNames.Create.asName()
     val Factory = Name.identifier("Factory")
     val Instance = Name.identifier("instance")
     val LatticeGraph = Name.identifier("\$\$LatticeGraph")
     val LatticeFactory = Name.identifier("\$\$LatticeFactory")
     val LatticeImpl = Name.identifier("\$\$Impl")
     val LatticeMembersInjector = Name.identifier("\$\$LatticeMembersInjector")
+    val NewInstanceFunction = StringNames.NewInstance.asName()
     // Used in @Assisted.value
     val Value = Name.identifier("value")
   }
@@ -156,7 +159,7 @@ internal class LatticeSymbols(
   }
   val providerOfLazyCompanionObject by lazy { providerOfLazy.owner.companionObject()!!.symbol }
   val providerOfLazyCreate: IrFunctionSymbol by lazy {
-    providerOfLazyCompanionObject.getSimpleFunction("create")!!
+    providerOfLazyCompanionObject.getSimpleFunction(StringNames.Create)!!
   }
 
   val instanceFactory: IrClassSymbol by lazy {
@@ -166,7 +169,7 @@ internal class LatticeSymbols(
   }
   val instanceFactoryCompanionObject by lazy { instanceFactory.owner.companionObject()!!.symbol }
   val instanceFactoryCreate: IrFunctionSymbol by lazy {
-    instanceFactoryCompanionObject.getSimpleFunction("create")!!
+    instanceFactoryCompanionObject.getSimpleFunction(StringNames.Create)!!
   }
 
   val latticeProvider: IrClassSymbol by lazy {

@@ -315,7 +315,7 @@ internal class InjectConstructorTransformer(
     val newInstanceFunction = generateStaticNewInstanceFunction(
       latticeContext,
       classToGenerateCreatorsIn,
-      "newInstance",
+      LatticeSymbols.StringNames.Create,
       targetTypeParameterized,
       constructorParameters, // TODO ensure no instance or extension
       sourceParameters = constructorParameters.valueParameters.map { it.ir },

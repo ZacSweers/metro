@@ -186,7 +186,7 @@ internal class AssistedFactoryTransformer(
     implConstructor: IrConstructor,
     generatedFactoryType: IrClass,
   ) {
-    addFunction("create", originClassName.wrapInProvider(symbols.latticeProvider)).apply {
+    addFunction(LatticeSymbols.StringNames.Create, originClassName.wrapInProvider(symbols.latticeProvider)).apply {
       this.copyTypeParametersFrom(implClass)
       this.origin = LatticeOrigin
       this.visibility = DescriptorVisibilities.PUBLIC

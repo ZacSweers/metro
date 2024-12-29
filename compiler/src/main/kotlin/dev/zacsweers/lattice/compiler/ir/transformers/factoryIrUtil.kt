@@ -1,6 +1,7 @@
 package dev.zacsweers.lattice.compiler.ir.transformers
 
 import dev.zacsweers.lattice.compiler.LatticeOrigin
+import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ifNotEmpty
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.copyParameterDefaultValues
@@ -27,8 +28,8 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.isObject
 
-/*
- * Implement a static `create()` function for a given target [generatedConstructor].
+/**
+ * Implement a static `create()` function for a given [targetConstructor].
  *
  * ```kotlin
  * // Simple
@@ -50,7 +51,7 @@ internal fun generateStaticCreateFunction(
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
-  return parentClass.addFunction("create", targetClassParameterized, isStatic = true).apply {
+  return parentClass.addFunction(LatticeSymbols.StringNames.Create, targetClassParameterized, isStatic = true).apply {
     val thisFunction = this
     dispatchReceiverParameter = parentClass.thisReceiver?.copyTo(this)
     this.copyTypeParameters(targetClass.typeParameters)
@@ -97,21 +98,23 @@ internal fun generateStaticCreateFunction(
   }
 }
 
-/*
- Implement a static newInstance() function
-
- // Simple
- @JvmStatic // JVM only
- fun newInstance(value: T): Example = Example(value)
-
- // Generic
- @JvmStatic // JVM only
- fun <T> newInstance(value: T): Example<T> = Example<T>(value)
-
- // Provider
- @JvmStatic // JVM only
- fun newInstance(value: Provider<String>): Example = Example(value)
-*/
+/**
+ * Generates a static `newInstance()` function into a given [parentClass].
+ *
+ * ```
+ * // Simple
+ * @JvmStatic // JVM only
+ * fun newInstance(value: T): Example = Example(value)
+ *
+ * // Generic
+ * @JvmStatic // JVM only
+ * fun <T> newInstance(value: T): Example<T> = Example<T>(value)
+ *
+ * // Provider
+ * @JvmStatic // JVM only
+ * fun newInstance(value: Provider<String>): Example = Example(value)
+ * ```
+ */
 // TODO need to support either calling JvmDefault or DefaultImpls?
 internal fun generateStaticNewInstanceFunction(
   context: LatticeTransformerContext,
@@ -133,9 +136,7 @@ internal fun generateStaticNewInstanceFunction(
       visibility = DescriptorVisibilities.PUBLIC,
     )
     .apply {
-      sourceTypeParameters.ifNotEmpty {
-        this@apply.copyTypeParameters(this)
-      }
+      sourceTypeParameters.ifNotEmpty { this@apply.copyTypeParameters(this) }
       with(context) { markJvmStatic() }
 
       val newInstanceParameters = parameters.with(this)

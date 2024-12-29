@@ -82,7 +82,7 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
     assistedFactoriesToClasses[classSymbol]?.let { targetClass ->
       assistedInjectClasses[targetClass]?.let { constructor ->
         // Need to generate a SAM create() for this
-        val id = CallableId(classSymbol.classId, LatticeSymbols.Names.CreateFunction)
+        val id = CallableId(classSymbol.classId, LatticeSymbols.Names.Create)
         createIdsToFactories[id] = classSymbol
         return setOf(id.callableName)
       }
