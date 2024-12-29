@@ -105,6 +105,7 @@ import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
@@ -1528,6 +1529,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       }
       is Binding.MembersInjected -> {
         val injectedClass = pluginContext.referenceClass(binding.targetClassId)!!.owner
+        val injectedType = injectedClass.defaultType
         val injectorClass = membersInjectorTransformer.getOrGenerateInjector(injectedClass)?.ir
 
         if (injectorClass == null) {
@@ -1536,7 +1538,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               dispatchReceiver = irGetObject(symbols.latticeMembersInjectors),
               callee = symbols.latticeMembersInjectorsNoOp,
             )
-            .apply { putTypeArgument(0, injectedClass.typeWith()) }
+            .apply { putTypeArgument(0, injectedType) }
         } else {
           val createFunction = injectorClass.getSimpleFunction(LatticeSymbols.StringNames.Create)!!
           val args =
@@ -1546,24 +1548,16 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               binding,
               generationContext,
             )
-          // InstanceFactory.create(...);
-          // TODO share logic with above instancefactory
-          irInvoke(
-              dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-              callee = symbols.instanceFactoryCreate,
-              args =
-                listOf(
-                  // InjectableClass_MembersInjector.create(stringValueProvider,
-                  // exampleComponentProvider)
-                  irInvoke(
-                    dispatchReceiver = irGetObject(injectorClass.symbol),
-                    callee = createFunction,
-                    args = args,
-                  )
-                ),
-              typeHint = binding.typeKey.type.wrapInProvider(symbols.latticeFactory),
-            )
-            .apply { putTypeArgument(0, injectedClass.typeWith()) }
+          instanceFactory(
+            injectedType,
+            // InjectableClass_MembersInjector.create(stringValueProvider,
+            // exampleComponentProvider)
+            irInvoke(
+              dispatchReceiver = irGetObject(injectorClass.symbol),
+              callee = createFunction,
+              args = args,
+            ),
+          )
         }
       }
       is Binding.Absent -> {
