@@ -198,18 +198,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     return super.visitCall(expression, data)
   }
 
-  override fun visitProperty(declaration: IrProperty, data: DependencyGraphData): IrStatement {
-    providesTransformer.visitProperty(declaration)
-    return super.visitProperty(declaration, data)
-  }
-
-  override fun visitFunction(declaration: IrFunction, data: DependencyGraphData): IrStatement {
-    if (declaration is IrSimpleFunction) {
-      providesTransformer.visitFunction(declaration)
-    }
-    return super.visitFunction(declaration, data)
-  }
-
   override fun visitClass(declaration: IrClass, data: DependencyGraphData): IrStatement {
     log("Reading <$declaration>")
 
@@ -217,11 +205,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
+    providesTransformer.visitClass(declaration)
 
     val isDependencyGraph = declaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
     if (!isDependencyGraph) return super.visitClass(declaration, data)
-
-    providesTransformer.visitClass(declaration)
 
     getOrBuildDependencyGraph(declaration)
 
@@ -788,7 +775,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         // Expose the graph as a provider binding
         providerFields[node.typeKey] =
           addField(
-              fieldName = fieldNameAllocator.newName("${node.sourceGraph.name}Provider"),
+              fieldName = fieldNameAllocator.newName("${node.sourceGraph.name.asString().decapitalizeUS()}Provider"),
               fieldType = symbols.latticeProvider.typeWith(node.typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
