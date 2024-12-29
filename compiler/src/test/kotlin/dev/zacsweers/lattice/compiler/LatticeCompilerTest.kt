@@ -63,8 +63,8 @@ abstract class LatticeCompilerTest {
       inheritClassPath = true
       sources = sourceFiles.asList()
       verbose = false
-      jvmTarget = "11"
-      // TODO need to support non-JVM invoke too
+      jvmTarget = JVM_TARGET
+      // TODO this is needed until/unless we implement JVM reflection support for DefaultImpls invocations
       kotlincArguments += "-Xjvm-default=all"
 
       if (previousCompilationResult != null) {

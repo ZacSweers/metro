@@ -141,31 +141,29 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
     val injectInstanceStatic = result.ExampleClass.generatedFactoryClass().invokeNewInstance()
 
-    membersInjector.staticInjectMethod("string").invoke(null, injectInstanceStatic, "a")
-    membersInjector.staticInjectMethod("qualifiedString").invoke(null, injectInstanceStatic, "b")
+    membersInjector.staticInjectMethod("string").invoke(injectInstanceStatic, "a")
+    membersInjector.staticInjectMethod("qualifiedString").invoke(injectInstanceStatic, "b")
     membersInjector
       .staticInjectMethod("charSequence")
-      .invoke(null, injectInstanceStatic, "c" as CharSequence)
-    membersInjector.staticInjectMethod("list").invoke(null, injectInstanceStatic, listOf("d"))
+      .invoke(injectInstanceStatic, "c" as CharSequence)
+    membersInjector.staticInjectMethod("list").invoke(injectInstanceStatic, listOf("d"))
     membersInjector
       .staticInjectMethod("pair")
-      .invoke(null, injectInstanceStatic, Pair(Pair("e", 1), setOf("f")))
+      .invoke(injectInstanceStatic, Pair(Pair("e", 1), setOf("f")))
     membersInjector
       .staticInjectMethod("set")
-      .invoke(null, injectInstanceStatic, setOf { _: List<String> -> listOf("g") })
+      .invoke(injectInstanceStatic, setOf { _: List<String> -> listOf("g") })
     // NOTE unlike dagger, we don't put the "Get" or "Set" names from property accessors in these
     membersInjector
       .staticInjectMethod("setterAnnotated")
-      .invoke(null, injectInstanceStatic, mapOf("Hello" to "World"))
+      .invoke(injectInstanceStatic, mapOf("Hello" to "World"))
     membersInjector
       .staticInjectMethod("setterAnnotated2")
-      .invoke(null, injectInstanceStatic, mapOf("Hello" to false))
-    membersInjector
-      .staticInjectMethod("privateField")
-      .invoke(null, injectInstanceStatic, "private field")
+      .invoke(injectInstanceStatic, mapOf("Hello" to false))
+    membersInjector.staticInjectMethod("privateField").invoke(injectInstanceStatic, "private field")
     membersInjector
       .staticInjectMethod("privateSetter")
-      .invoke(null, injectInstanceStatic, "private setter")
+      .invoke(injectInstanceStatic, "private setter")
 
     assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
     assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
@@ -223,14 +221,14 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
     val injectInstanceStatic = result.ExampleClass.newInstanceStrict()
 
-    membersInjector.staticInjectMethod("string").invoke(null, injectInstanceStatic, "a")
+    membersInjector.staticInjectMethod("string").invoke(injectInstanceStatic, "a")
     membersInjector
       .staticInjectMethod("stringProvider")
-      .invoke(null, injectInstanceStatic, Provider { "b" })
+      .invoke(injectInstanceStatic, Provider { "b" })
     membersInjector
       .staticInjectMethod("stringListProvider")
-      .invoke(null, injectInstanceStatic, Provider { listOf("c") })
-    membersInjector.staticInjectMethod("lazyString").invoke(null, injectInstanceStatic, lazyOf("d"))
+      .invoke(injectInstanceStatic, Provider { listOf("c") })
+    membersInjector.staticInjectMethod("lazyString").invoke(injectInstanceStatic, lazyOf("d"))
 
     assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
     assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
@@ -272,7 +270,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
     membersInjector
       .staticInjectMethod("lazyStringProvider")
-      .invoke(null, injectInstanceStatic, Provider { lazyOf("a") })
+      .invoke(injectInstanceStatic, Provider { lazyOf("a") })
 
     assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
     assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
@@ -441,10 +439,10 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
       injectClassMembersInjector
         .staticInjectMethod("numbers")
-        .invoke(null, injectInstanceStatic, listOf(1, 2))
+        .invoke(injectInstanceStatic, listOf(1, 2))
       baseMembersInjector
         .staticInjectMethod("unknownItems")
-        .invoke(null, injectInstanceStatic, listOf("a", "b"))
+        .invoke(injectInstanceStatic, listOf("a", "b"))
 
       assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
       assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
@@ -505,13 +503,11 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
       injectClassMembersInjector
         .staticInjectMethod("bools")
-        .invoke(null, injectInstanceStatic, listOf(true))
-      middleMembersInjector
-        .staticInjectMethod("numbers")
-        .invoke(null, injectInstanceStatic, listOf(1, 2))
+        .invoke(injectInstanceStatic, listOf(true))
+      middleMembersInjector.staticInjectMethod("numbers").invoke(injectInstanceStatic, listOf(1, 2))
       baseMembersInjector
         .staticInjectMethod("unknownItems")
-        .invoke(null, injectInstanceStatic, listOf("a", "b"))
+        .invoke(injectInstanceStatic, listOf("a", "b"))
 
       assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
       assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)
@@ -574,8 +570,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
       injectClassMembersInjector
         .staticInjectMethod("numbers")
-        .invoke(null, injectInstanceStatic, listOf(1, 2))
-      baseMembersInjector.staticInjectMethod("string").invoke(null, injectInstanceStatic, "a")
+        .invoke(injectInstanceStatic, listOf(1, 2))
+      baseMembersInjector.staticInjectMethod("string").invoke(injectInstanceStatic, "a")
 
       assertThat(injectInstanceConstructor).isEqualTo(injectInstanceStatic)
       assertThat(injectInstanceConstructor).isNotSameInstanceAs(injectInstanceStatic)

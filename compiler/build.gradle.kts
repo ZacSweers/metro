@@ -19,6 +19,7 @@ plugins {
   alias(libs.plugins.mavenPublish)
   alias(libs.plugins.ksp)
   alias(libs.plugins.poko)
+  alias(libs.plugins.buildConfig)
 }
 
 kotlin {
@@ -27,8 +28,19 @@ kotlin {
       "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
       "dev.drewhamilton.poko.SkipSupport",
     )
-    freeCompilerArgs.addAll("-Xjvm-default=all")
   }
+}
+
+buildConfig {
+  generateAtSync = true
+  packageName("dev.zacsweers.lattice.compiler")
+  kotlin {
+    useKotlinOutput {
+      internalVisibility = true
+      topLevelConstants = true
+    }
+  }
+  sourceSets.named("test") { buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" }) }
 }
 
 tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }

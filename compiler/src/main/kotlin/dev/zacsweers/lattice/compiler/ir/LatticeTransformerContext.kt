@@ -97,13 +97,6 @@ internal interface LatticeTransformerContext {
     arguments: List<IrTypeArgument> = emptyList(),
   ) = pluginContext.irType(classId, nullable, arguments)
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
-  fun IrSimpleFunction.markJvmStatic() {
-    if (pluginContext.platform.isJvm()) {
-      addAnnotation(symbols.jvmStatic.typeWith(), symbols.jvmStatic.constructors.single())
-    }
-  }
-
   fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
     if (this == null) return null
     return allAnnotations

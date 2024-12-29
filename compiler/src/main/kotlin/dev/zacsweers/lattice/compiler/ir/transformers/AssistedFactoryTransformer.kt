@@ -191,7 +191,6 @@ internal class AssistedFactoryTransformer(
       this.copyTypeParametersFrom(implClass)
       this.origin = LatticeOrigin
       this.visibility = DescriptorVisibilities.PUBLIC
-      markJvmStatic()
 
       val factoryParam = addValueParameter(DELEGATE_FACTORY_NAME, generatedFactoryType.typeWith())
       // InstanceFactory.create(Impl(delegateFactory))

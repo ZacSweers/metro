@@ -28,6 +28,7 @@ import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.internal.Factory
 import dev.zacsweers.lattice.provider
 import java.io.File
+import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
@@ -58,9 +59,9 @@ fun <T> JvmCompilationResult.invokeTopLevel(name: String, vararg args: Any?): T 
   @Suppress("UNCHECKED_CAST")
   return classLoader
     .loadClass("test.ExampleClassKt")!!
-    .declaredMethods
-    .single { it.name == name && Modifier.isStatic(it.modifiers) }
-    .invoke(null, *args) as T
+    .staticMethods()
+    .single { it.name == name }
+    .invoke(*args) as T
 }
 
 fun <T> JvmCompilationResult.invokeMain(vararg args: Any?): T {
@@ -165,7 +166,7 @@ fun Class<*>.providesFactoryClass(
 }
 
 fun Class<Factory<*>>.invokeNewInstance(vararg args: Any): Any {
-  return declaredMethods.single { it.name == "newInstance" }.invoke(null, *args)
+  return staticMethods().single { it.name == "newInstance" }.invoke(*args)!!
 }
 
 fun <T> Class<Factory<*>>.invokeNewInstanceAs(vararg args: Any): T {
@@ -182,22 +183,68 @@ fun Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<*> {
   return invokeCreate(*args) as Provider<*>
 }
 
-// Cannot confine to Class<Factory<*>> because this is also used for assisted factories
-fun Class<*>.invokeCreate(vararg args: Any): Any {
-  val createFunctions = declaredMethods
-    .filter { it.name == "create" && Modifier.isStatic(it.modifiers) }
+val Class<*>.companionObjectClass: Class<*>
+  get() {
+    return companionObjectClassOrNull ?: error("No companion object found on $this")
+  }
 
-  return when (createFunctions.size) {
-    0 -> error("No create functions found in $this")
-    1 -> createFunctions.single().invoke(null, *args)
-    else -> {
-      error("Multiple create functions found in $this:\n${createFunctions.joinToString("\n")}")
-    }
+val Class<*>.companionObjectClassOrNull: Class<*>?
+  get() {
+    return classes.find { it.simpleName == "Companion" }
+  }
+
+class StaticMethod(val method: Method, val instance: Any? = null) {
+  val name: String
+    get() = method.name
+
+  operator fun invoke(vararg args: Any?): Any? = method.invoke(instance, *args)
+}
+
+val Class<*>.objectInstanceFieldOrNull: Field? get() {
+  return fields.find {
+    Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers) && it.name == "INSTANCE"
   }
 }
 
+val Class<*>.companionObjectInstanceFieldOrNull: Field? get() {
+  return fields.find {
+    Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers) && it.name == "Companion"
+  }
+}
+
+fun Class<*>.staticMethods(
+  objectInstanceField: Field? = objectInstanceFieldOrNull
+): Sequence<StaticMethod> = sequence {
+
+  yieldAll(declaredMethods.filter { Modifier.isStatic(it.modifiers) }.map(::StaticMethod))
+
+  if (objectInstanceField != null) {
+    yieldAll(
+      declaredMethods
+        .filter { !Modifier.isStatic(it.modifiers) }
+        .map { StaticMethod(it, objectInstanceField.get(null)) }
+    )
+  }
+
+  companionObjectClassOrNull?.let { yieldAll(it.staticMethods(companionObjectInstanceFieldOrNull!!)) }
+}
+
+// Cannot confine to Class<Factory<*>> because this is also used for assisted factories
+fun Class<*>.invokeCreate(vararg args: Any): Any {
+  val createFunctions =
+    staticMethods().filter { it.name == LatticeSymbols.StringNames.Create }.toList()
+
+  return when (createFunctions.size) {
+    0 -> error("No create functions found in $this")
+    1 -> createFunctions.single()(*args)
+    else -> {
+      error("Multiple create functions found in $this:\n${createFunctions.joinToString("\n")}")
+    }
+  }!!
+}
+
 fun Class<Factory<*>>.invokeProvider(providerName: String, vararg args: Any): Any {
-  return declaredMethods.single { it.name == providerName }.invoke(null, *args)
+  return staticMethods().single { it.name == providerName }.invoke(*args)!!
 }
 
 fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
@@ -277,27 +324,23 @@ fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
 
 /** Returns a new instance of a graph's factory class by invoking its static "factory" function. */
 fun Class<*>.invokeGraphFactory(): Any {
-  return declaredMethods
-    .single { Modifier.isStatic(it.modifiers) && it.name == "factory" }
-    .invoke(null)
+  return staticMethods().single { it.name == "factory" }.invoke()!!
 }
 
 /** Creates a graph instance via its generated no-arg static create() function. */
 fun Class<*>.createGraphWithNoArgs(): Any {
-  return declaredMethods
-    .single { Modifier.isStatic(it.modifiers) && it.name == "create" }
-    .invoke(null)
+  return invokeCreate()
 }
 
 /**
  * Invokes a generated Graph Factory class's create() function with the supplied [args].
  *
- * Note the function must be called "create".
+ * Note the function must be called [LatticeSymbols.StringNames.Create].
  */
 fun Class<*>.createGraphViaFactory(vararg args: Any): Any {
   val factoryInstance = invokeGraphFactory()
   return factoryInstance.javaClass.declaredMethods
-    .single { it.name == "create" }
+    .single { it.name == LatticeSymbols.StringNames.Create }
     .invoke(factoryInstance, *args)
 }
 
@@ -310,11 +353,9 @@ fun Class<*>.generatedClassesString(separator: String = "_"): String {
     }
 }
 
-fun Class<MembersInjector<*>>.staticInjectMethod(memberName: String): Method {
+fun Class<MembersInjector<*>>.staticInjectMethod(memberName: String): StaticMethod {
   val expectedName = "inject${memberName.capitalizeUS()}"
-  return declaredMethods
-    .filter { Modifier.isStatic(it.modifiers) }
-    .singleOrNull { it.name == expectedName }
+  return staticMethods().singleOrNull { it.name == expectedName }
     ?: error("No static method with name '$expectedName' found in $this")
 }
 

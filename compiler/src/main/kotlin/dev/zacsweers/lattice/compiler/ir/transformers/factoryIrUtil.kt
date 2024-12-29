@@ -56,7 +56,6 @@ internal fun generateStaticCreateFunction(
     this.copyTypeParameters(targetClass.typeParameters)
     this.origin = LatticeOrigin
     this.visibility = DescriptorVisibilities.PUBLIC
-    with(context) { markJvmStatic() }
 
     val instanceParam =
       parameters.instance?.let { addValueParameter(it.name, it.providerType, LatticeOrigin) }
@@ -135,7 +134,6 @@ internal fun generateStaticNewInstanceFunction(
     )
     .apply {
       sourceTypeParameters.ifNotEmpty { this@apply.copyTypeParameters(this) }
-      with(context) { markJvmStatic() }
 
       val newInstanceParameters = parameters.with(this)
 

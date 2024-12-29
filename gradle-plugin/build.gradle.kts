@@ -40,7 +40,7 @@ buildConfig {
     topLevelConstants = true
     internalVisibility = true
   }
-  buildConfigField("String", "VERSION", "\"${project.property("VERSION_NAME")}\"")
+  buildConfigField("String", "VERSION", providers.gradleProperty("VERSION_NAME").map { "\"$it\"" })
 }
 
 tasks.withType<KotlinCompile>().configureEach {

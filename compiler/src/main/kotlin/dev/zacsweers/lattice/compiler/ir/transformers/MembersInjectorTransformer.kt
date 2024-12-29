@@ -246,8 +246,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
               origin = LatticeOrigin,
             )
             .apply {
-              markJvmStatic()
-
               // Params
               // Add instance
               val instanceParam =

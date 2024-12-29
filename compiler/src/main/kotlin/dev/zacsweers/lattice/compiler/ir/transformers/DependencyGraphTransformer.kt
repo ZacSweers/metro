@@ -652,7 +652,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               this.dispatchReceiverParameter = thisReceiver?.copyTo(this)
               this.origin = LatticeOrigin
               this.visibility = DescriptorVisibilities.PUBLIC
-              markJvmStatic()
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irBlockBody(
@@ -668,7 +667,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             addFunction(LatticeSymbols.StringNames.Create, node.sourceGraph.typeWith()).apply {
               this.origin = LatticeOrigin
               this.visibility = DescriptorVisibilities.PUBLIC
-              markJvmStatic()
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irBlockBody(
