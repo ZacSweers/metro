@@ -36,7 +36,6 @@ import dev.zacsweers.lattice.compiler.ir.appendBindingStack
 import dev.zacsweers.lattice.compiler.ir.asContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.buildBlockBody
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
-import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
 import dev.zacsweers.lattice.compiler.ir.doubleCheck
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
 import dev.zacsweers.lattice.compiler.ir.getSingleConstBooleanArgumentOrNull
@@ -86,8 +85,6 @@ import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -260,46 +257,33 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
     val scopes = mutableSetOf<IrAnnotation>()
     val providerFunctions = mutableListOf<Pair<TypeKey, LatticeSimpleFunction>>()
+    val exposedTypes = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
+    val injectors = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
 
     for (type in graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false)) {
       val clazz = type.classOrFail.owner
       scopes += clazz.scopeAnnotations()
 
-      providerFunctions +=
-        clazz
-          .allCallableMembers(
-            latticeContext,
-            functionFilter = { function ->
-              // Skip fake overrides. These are types that are inherited from a supertype but
-              // not actually user-implemented in the subtype
-              !function.isFakeOverride &&
-                function.correspondingPropertySymbol?.owner?.isFakeOverride != true
-            },
-          )
-          .filter { function -> function.annotations.run { isProvides || isBinds } }
-          .map { function ->
-            ContextualTypeKey.from(this, function.ir).typeKey to function
-          }
-    }
-
-    val exposedTypes = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
-    val injectors = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
-
-    for (function in graphDeclaration.allCallableMembers(latticeContext)) {
-      // Abstract check is important. We leave alone any non-providers/injectors
-      val isCandidate =
-        function.ir.modality == Modality.ABSTRACT &&
-          function.ir.body == null &&
-          !function.annotations.isBinds &&
-          !function.annotations.isProvides
-      if (isCandidate) {
-        if (function.ir.valueParameters.isEmpty()) {
-          val contextKey = ContextualTypeKey.from(this, function.ir)
-          exposedTypes[function] = contextKey
+      for (function in clazz.allCallableMembers(latticeContext, excludeInheritedMembers = true)) {
+        if (function.annotations.isProvides || function.annotations.isBinds) {
+          providerFunctions += ContextualTypeKey.from(this, function.ir).typeKey to function
         } else {
-          // TODO FIR check only one param, no intrinsics, no return type
-          val target = function.ir.parameters(this).valueParameters.single()
-          injectors[function] = target.contextualTypeKey
+          // Abstract check is important. We leave alone any non-providers/injectors
+          val isCandidate =
+            function.ir.modality == Modality.ABSTRACT &&
+              function.ir.body == null &&
+              !function.annotations.isBinds &&
+              !function.annotations.isProvides
+          if (isCandidate) {
+            if (function.ir.valueParameters.isEmpty()) {
+              val contextKey = ContextualTypeKey.from(this, function.ir)
+              exposedTypes[function] = contextKey
+            } else {
+              // TODO FIR check only one param, no intrinsics, no return type
+              val target = function.ir.parameters(this).valueParameters.single()
+              injectors[function] = target.contextualTypeKey
+            }
+          }
         }
       }
     }
@@ -774,7 +758,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         // Expose the graph as a provider binding
         providerFields[node.typeKey] =
           addField(
-              fieldName = fieldNameAllocator.newName("${node.sourceGraph.name.asString().decapitalizeUS()}Provider"),
+              fieldName =
+                fieldNameAllocator.newName(
+                  "${node.sourceGraph.name.asString().decapitalizeUS()}Provider"
+                ),
               fieldType = symbols.latticeProvider.typeWith(node.typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
