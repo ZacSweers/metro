@@ -25,14 +25,12 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
@@ -156,17 +154,13 @@ internal interface LatticeTransformerContext {
   }
 
   // InstanceFactory.create(...)
-  fun IrBuilderWithScope.instanceFactory(
-    type: IrType,
-    arg: IrExpression,
-  ): IrExpression {
+  fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
     return irInvoke(
-      dispatchReceiver =
-        irGetObject(symbols.instanceFactoryCompanionObject),
-      callee = symbols.instanceFactoryCreate,
-      args = listOf(arg),
-      typeHint = type.wrapInProvider(symbols.latticeFactory),
-    )
+        dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
+        callee = symbols.instanceFactoryCreate,
+        args = listOf(arg),
+        typeHint = type.wrapInProvider(symbols.latticeFactory),
+      )
       .apply { putTypeArgument(0, type) }
   }
 
