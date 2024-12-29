@@ -960,7 +960,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               )
             overriddenFunction.apply {
               this.dispatchReceiverParameter = thisReceiverParameter
-              setDeclarationsParent(graphImpl)
               val targetParam = addValueParameter("target", contextualTypeKey.typeKey.type)
               val membersInjectorKey =
                 TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type))
