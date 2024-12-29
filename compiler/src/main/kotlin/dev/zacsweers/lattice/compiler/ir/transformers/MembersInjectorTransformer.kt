@@ -314,7 +314,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
         body =
           pluginContext.createIrBuilder(symbol).irBlockBody {
             addMemberInjection(
-              context = this@MembersInjectorTransformer,
+              context = latticeContext,
               instanceReceiver = instanceParam,
               injectorReceiver = injectorClassReceiver,
               injectFunctions = injectFunctions,

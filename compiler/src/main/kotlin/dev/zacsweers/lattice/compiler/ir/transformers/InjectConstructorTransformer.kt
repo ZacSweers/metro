@@ -125,7 +125,7 @@ internal class InjectConstructorTransformer(
     val typeParameters = factoryCls.copyTypeParameters(targetTypeParameters)
 
     val constructorParameters =
-      targetConstructor.parameters(this@InjectConstructorTransformer, factoryCls, declaration)
+      targetConstructor.parameters(latticeContext, factoryCls, declaration)
     val allParameters =
       buildList {
           add(constructorParameters)
@@ -239,7 +239,7 @@ internal class InjectConstructorTransformer(
               args =
                 assistedArgs +
                   parametersAsProviderArguments(
-                    context = this@InjectConstructorTransformer,
+                    context = latticeContext,
                     parameters = constructorParameters,
                     receiver = factoryReceiver,
                     parametersToFields = parametersToFields,
@@ -258,7 +258,7 @@ internal class InjectConstructorTransformer(
                     add(irGet(instance))
                     addAll(
                       parametersAsProviderArguments(
-                        this@InjectConstructorTransformer,
+                        latticeContext,
                         parameters,
                         factoryReceiver,
                         parametersToFields,

@@ -146,7 +146,7 @@ internal class AssistedFactoryTransformer(
             val functionParams =
               valueParameters.associateBy { valueParam ->
                 val key =
-                  ContextualTypeKey.from(this@AssistedFactoryTransformer, valueParam).typeKey
+                  ContextualTypeKey.from(latticeContext, valueParam).typeKey
                 valueParam.toAssistedParameterKey(symbols, key)
               }
             body =

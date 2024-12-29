@@ -980,7 +980,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                   irBlockBody(
                     symbol,
                     typeAsProviderArgument(
-                      this@DependencyGraphTransformer,
+                      latticeContext,
                       contextualTypeKey,
                       generateBindingCode(binding, generationContext, contextualTypeKey),
                       isAssisted = false,
@@ -1051,7 +1051,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                                 )
                               add(
                                 typeAsProviderArgument(
-                                  this@DependencyGraphTransformer,
+                                  latticeContext,
                                   parameter.contextualTypeKey,
                                   generateBindingCode(
                                     paramBinding,
@@ -1314,7 +1314,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     binding: Binding,
     generationContext: GraphGenerationContext,
   ): List<IrExpression?> {
-    val params = function.parameters(this@DependencyGraphTransformer)
+    val params = function.parameters(latticeContext)
     // TODO only value args are supported atm
     val paramsToMap = buildList {
       // Can't use isStatic here because companion object functions actually have
@@ -1336,7 +1336,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           Input type keys:
             - ${paramsToMap.map { it.typeKey }.joinToString()}
           Binding parameters (${function.kotlinFqName}):
-            - ${function.valueParameters.map { ContextualTypeKey.from(this@DependencyGraphTransformer, it).typeKey }.joinToString()}
+            - ${function.valueParameters.map { ContextualTypeKey.from(latticeContext, it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
@@ -1536,7 +1536,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val createFunction = creatorClass.getSimpleFunction("create")!!
         val args =
           generateBindingArguments(
-            createFunction.owner.parameters(this@DependencyGraphTransformer),
+            createFunction.owner.parameters(latticeContext),
             createFunction.owner,
             binding,
             generationContext,
@@ -1725,7 +1725,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           val rawValueType = mapTypeArgs[1].typeOrFail
           val rawValueTypeMetadata =
             rawValueType.typeOrFail.asContextualTypeKey(
-              this@DependencyGraphTransformer,
+              latticeContext,
               null,
               false,
             )
@@ -1921,7 +1921,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   ): IrExpression {
     val bindingCode = generateBindingCode(provider, generationContext)
     return typeAsProviderArgument(
-      this@DependencyGraphTransformer,
+      latticeContext,
       ContextualTypeKey(provider.typeKey, false, false, false, false),
       bindingCode,
       false,

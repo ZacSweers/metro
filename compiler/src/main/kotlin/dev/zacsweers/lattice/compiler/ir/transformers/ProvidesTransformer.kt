@@ -300,7 +300,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                 callee = bytecodeFunctionSymbol,
                 args =
                   parametersAsProviderArguments(
-                    this@ProvidesTransformer,
+                    latticeContext,
                     parameters = factoryParameters,
                     receiver = factoryCls.thisReceiver!!,
                     parametersToFields = parametersToFields,
@@ -490,7 +490,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     //   "Cannot return null from a non-@Nullable @Provides method"
                     // }
                     checkNotNullCall(
-                      this@ProvidesTransformer,
+                      latticeContext,
                       this@apply.parent, // TODO this is obvi wrong
                       irInvoke(
                         dispatchReceiver = irGetObject(reference.parent),
@@ -516,7 +516,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
                     // Instance graph call, does not allow nullable returns
                     // exampleGraph.$callableName$arguments
                     checkNotNullCall(
-                      this@ProvidesTransformer,
+                      latticeContext,
                       this@apply.parent, // TODO this is obvi wrong
                       irInvoke(
                         dispatchReceiver = irGet(valueParameters[0]),
