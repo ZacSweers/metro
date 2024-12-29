@@ -44,13 +44,13 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
   val instance: Parameter?
   val extensionReceiver: T?
   val valueParameters: List<T>
-  val ir: IrFunction
+  val ir: IrFunction?
 
   val nonInstanceParameters: List<Parameter>
   val allParameters: List<Parameter>
 
   val isProperty: Boolean
-    get() = (ir as? IrSimpleFunction)?.isPropertyAccessor == true
+    get() = (ir as? IrSimpleFunction?)?.isPropertyAccessor == true
 
   val irProperty: IrProperty
     get() = (ir as IrSimpleFunction).propertyIfAccessor as IrProperty
@@ -118,7 +118,7 @@ private class ParametersImpl<T : Parameter>(
   override val extensionReceiver: T?,
   override val valueParameters: List<T>,
 ) : Parameters<T> {
-  override lateinit var ir: IrFunction
+  override var ir: IrFunction? = null
 
   private val cachedToString by unsafeLazy {
     buildString {

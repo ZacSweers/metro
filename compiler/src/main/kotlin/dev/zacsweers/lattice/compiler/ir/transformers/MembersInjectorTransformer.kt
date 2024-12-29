@@ -263,7 +263,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
                       if (irField == null) {
                         irInvoke(
                           irGet(instanceParam),
-                          callee = params.ir.symbol,
+                          callee = params.ir!!.symbol,
                           args = listOf(irGet(value)),
                         )
                       } else {
@@ -272,7 +272,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
                     } else {
                       irInvoke(
                         irGet(instanceParam),
-                        callee = params.ir.symbol,
+                        callee = params.ir!!.symbol,
                         args = valueParameters.drop(1).map { irGet(it) },
                       )
                     }

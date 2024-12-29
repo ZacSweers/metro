@@ -311,60 +311,25 @@ internal class InjectConstructorTransformer(
       providerFunction = null,
     )
 
-    /*
-     Implement a static newInstance() function
-
-     // Simple
-     @JvmStatic // JVM only
-     fun newInstance(value: T): Example = Example(value)
-
-     // Generic
-     @JvmStatic // JVM only
-     fun <T> newInstance(value: T): Example<T> = Example<T>(value)
-
-     // Provider
-     @JvmStatic // JVM only
-     fun newInstance(value: Provider<String>): Example = Example(value)
-    */
-    // TODO dedupe with provider factory code gen
-    val newInstanceFunction =
-      classToGenerateCreatorsIn
-        .addFunction(
-          "newInstance",
-          targetTypeParameterized,
-          isStatic = true,
-          origin = LatticeOrigin,
-          visibility = DescriptorVisibilities.PUBLIC,
-        )
-        .apply {
-          this.copyTypeParameters(targetConstructor.owner.typeParameters)
-          markJvmStatic()
-
-          for (parameter in constructorParameters.valueParameters) {
-            addValueParameter(parameter.name, parameter.originalType, LatticeOrigin)
-          }
-
-          copyParameterDefaultValues(
-            providerFunction = null,
-            sourceParameters = constructorParameters.valueParameters.map { it.ir },
-            targetParameters = valueParameters,
-            targetGraphParameter = null,
-          )
-
-          body =
-            pluginContext.createIrBuilder(symbol).run {
-              irBlockBody(
-                symbol,
-                irCallConstructor(targetConstructor, emptyList()).apply {
-                  for (index in constructorParameters.allParameters.indices) {
-                    val parameter = valueParameters[index]
-                    putValueArgument(parameter.index, irGet(parameter))
-                  }
-                },
-              )
-            }
+    check(constructorParameters.instance == null) {
+      "wat"
+    }
+    val newInstanceFunction = generateNewInstanceFunction(
+      latticeContext,
+      classToGenerateCreatorsIn,
+      "newInstance",
+      targetTypeParameterized,
+      constructorParameters, // TODO ensure no instance or extension
+      sourceParameters = constructorParameters.valueParameters.map { it.ir },
+      sourceTypeParameters = targetConstructor.owner.typeParameters,
+    ) { function ->
+      irCallConstructor(targetConstructor, emptyList()).apply {
+        for (index in constructorParameters.allParameters.indices) {
+          val parameter = function.valueParameters[index]
+          putValueArgument(parameter.index, irGet(parameter))
         }
-
+      }
+    }
     return newInstanceFunction.symbol
   }
 }
