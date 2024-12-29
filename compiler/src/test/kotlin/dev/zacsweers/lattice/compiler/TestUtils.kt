@@ -184,9 +184,16 @@ fun Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<*> {
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
 fun Class<*>.invokeCreate(vararg args: Any): Any {
-  return declaredMethods
-    .single { it.name == "create" && Modifier.isStatic(it.modifiers) }
-    .invoke(null, *args)
+  val createFunctions = declaredMethods
+    .filter { it.name == "create" && Modifier.isStatic(it.modifiers) }
+
+  return when (createFunctions.size) {
+    0 -> error("No create functions found in $this")
+    1 -> createFunctions.single().invoke(null, *args)
+    else -> {
+      error("Multiple create functions found in $this:\n${createFunctions.joinToString("\n")}")
+    }
+  }
 }
 
 fun Class<Factory<*>>.invokeProvider(providerName: String, vararg args: Any): Any {

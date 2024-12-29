@@ -73,6 +73,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.declarations.addMember
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
+import org.jetbrains.kotlin.ir.expressions.IrCallableReference
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -615,6 +616,20 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   }
   return parametersToFields
 }
+
+internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExpression {
+  val parent = function.parentAsClass
+  return if (parent.isObject) {
+    irGetObject(parent.symbol)
+  } else {
+    irGet(parent.thisReceiverOrFail)
+  }
+}
+
+internal val IrClass.thisReceiverOrFail: IrValueParameter
+  get() =
+    this.thisReceiver
+      ?: error("No thisReceiver for $classId")
 
 internal fun IrBuilderWithScope.checkNotNullCall(
   context: LatticeTransformerContext,

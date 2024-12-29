@@ -31,6 +31,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.compiler.ir.rawType
 import dev.zacsweers.lattice.compiler.ir.singleAbstractFunction
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addField
@@ -120,7 +121,7 @@ internal class AssistedFactoryTransformer(
           superTypes += declaration.symbol.typeWith()
 
           createImplicitParameterDeclarationWithWrappedDescriptor()
-          val implClassInstance = thisReceiver!!
+          val implClassInstance = thisReceiverOrFail
           val ctor =
             addSimpleDelegatingConstructor(
               if (!declaration.isInterface) {

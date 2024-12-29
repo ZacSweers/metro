@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.compiler.ir.addCompanionObject
 import dev.zacsweers.lattice.compiler.ir.addOverride
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
+import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irTemporary
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
@@ -30,6 +31,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -44,6 +46,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -153,7 +156,7 @@ internal class InjectConstructorTransformer(
     val parametersToFields =
       assignConstructorParamsToFields(ctor, factoryCls, allParameters.flatMap { it.allParameters })
 
-    val newInstanceFunctionSymbol =
+    val newInstanceFunction =
       generateCreators(
         factoryCls,
         ctor.symbol,
@@ -204,10 +207,10 @@ internal class InjectConstructorTransformer(
 
     implementInvokeOrGetBody(
       invokeOrGet,
-      newInstanceFunctionSymbol,
+      newInstanceFunction,
       constructorParameters,
       injectors,
-      factoryCls.thisReceiver!!,
+      factoryCls.thisReceiverOrFail,
       parametersToFields,
     )
 
@@ -219,7 +222,7 @@ internal class InjectConstructorTransformer(
 
   private fun implementInvokeOrGetBody(
     function: IrFunction,
-    newInstanceFunctionSymbol: IrSimpleFunctionSymbol,
+    newInstanceFunction: IrSimpleFunction,
     constructorParameters: Parameters<ConstructorParameter>,
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     factoryReceiver: IrValueParameter,
@@ -232,7 +235,8 @@ internal class InjectConstructorTransformer(
         val instance =
           irTemporary(
             irInvoke(
-              callee = newInstanceFunctionSymbol,
+              dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
+              callee = newInstanceFunction.symbol,
               args =
                 assistedArgs +
                   parametersAsProviderArguments(
@@ -280,7 +284,7 @@ internal class InjectConstructorTransformer(
     factoryClassParameterized: IrType,
     constructorParameters: Parameters<ConstructorParameter>,
     allParameters: List<Parameters<out Parameter>>,
-  ): IrSimpleFunctionSymbol {
+  ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
     val classToGenerateCreatorsIn =
@@ -311,7 +315,7 @@ internal class InjectConstructorTransformer(
     val newInstanceFunction = generateStaticNewInstanceFunction(
       latticeContext,
       classToGenerateCreatorsIn,
-      LatticeSymbols.StringNames.Create,
+      LatticeSymbols.StringNames.NewInstance,
       targetTypeParameterized,
       constructorParameters,
       sourceParameters = constructorParameters.valueParameters.map { it.ir },
@@ -324,6 +328,6 @@ internal class InjectConstructorTransformer(
         }
       }
     }
-    return newInstanceFunction.symbol
+    return newInstanceFunction
   }
 }

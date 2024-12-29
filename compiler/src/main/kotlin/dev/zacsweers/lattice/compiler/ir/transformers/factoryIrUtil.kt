@@ -51,9 +51,8 @@ internal fun generateStaticCreateFunction(
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
-  return parentClass.addFunction(LatticeSymbols.StringNames.Create, targetClassParameterized, isStatic = true).apply {
+  return parentClass.addFunction(LatticeSymbols.StringNames.Create, targetClassParameterized).apply {
     val thisFunction = this
-    dispatchReceiverParameter = parentClass.thisReceiver?.copyTo(this)
     this.copyTypeParameters(targetClass.typeParameters)
     this.origin = LatticeOrigin
     this.visibility = DescriptorVisibilities.PUBLIC
@@ -131,7 +130,6 @@ internal fun generateStaticNewInstanceFunction(
     .addFunction(
       name,
       returnType,
-      isStatic = true,
       origin = LatticeOrigin,
       visibility = DescriptorVisibilities.PUBLIC,
     )

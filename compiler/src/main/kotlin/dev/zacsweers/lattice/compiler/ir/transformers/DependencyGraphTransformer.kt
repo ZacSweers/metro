@@ -53,6 +53,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.compiler.ir.rawType
 import dev.zacsweers.lattice.compiler.ir.rawTypeOrNull
 import dev.zacsweers.lattice.compiler.ir.singleAbstractFunction
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.withEntry
 import dev.zacsweers.lattice.compiler.letIf
@@ -664,8 +665,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         } else {
           // Generate a no-arg create() function
           pluginContext.irFactory.addCompanionObject(symbols, parent = this) {
-            addFunction(LatticeSymbols.StringNames.Create, node.sourceGraph.typeWith(), isStatic = true).apply {
-              this.dispatchReceiverParameter = thisReceiver?.copyTo(this)
+            addFunction(LatticeSymbols.StringNames.Create, node.sourceGraph.typeWith()).apply {
               this.origin = LatticeOrigin
               this.visibility = DescriptorVisibilities.PUBLIC
               markJvmStatic()
@@ -758,7 +758,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
         // Add fields for this graph and other instance params
         val instanceFields = mutableMapOf<TypeKey, IrField>()
-        val thisReceiverParameter = thisReceiver!!
+        val thisReceiverParameter = thisReceiverOrFail
         val thisGraphField =
           addField(
               fieldName = fieldNameAllocator.newName(graphImplName.decapitalizeUS()),
@@ -1317,8 +1317,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val params = function.parameters(latticeContext)
     // TODO only value args are supported atm
     val paramsToMap = buildList {
-      // Can't use isStatic here because companion object functions actually have
-      // dispatch receivers
       if (
         binding is Binding.Provided &&
           targetParams.instance?.type?.rawTypeOrNull()?.isObject != true
@@ -1549,9 +1547,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       }
 
       is Binding.Provided -> {
-        // TODO if there are default params, compute a mask
-        // TODO what about inherited/overridden providers?
-
         // For binds functions, just use the backing type
         binding.aliasedType?.let {
           return generateBindingCode(
@@ -1561,7 +1556,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           )
         }
 
-        //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
         val factoryClass = providesTransformer.getOrGenerateFactoryClass(binding)
         // Invoke its factory's create() function
         val creatorClass =

@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.compiler.ir.addOverride
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.checkNotNullCall
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
+import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
@@ -39,6 +40,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.isWordPrefixRegex
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -267,7 +269,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val parametersToFields =
       assignConstructorParamsToFields(ctor, factoryCls, factoryParameters.allParameters)
 
-    val bytecodeFunctionSymbol =
+    val bytecodeFunction =
       generateCreators(
         factoryCls,
         ctor.symbol,
@@ -287,18 +289,19 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         overriddenSymbols = listOf(symbols.providerInvoke),
       )
       .apply {
-        this.dispatchReceiverParameter = factoryCls.thisReceiver!!
+        this.dispatchReceiverParameter = factoryCls.thisReceiverOrFail
         body =
           pluginContext.createIrBuilder(symbol).run {
             irBlockBody(
               symbol,
               irInvoke(
-                callee = bytecodeFunctionSymbol,
+                dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
+                callee = bytecodeFunction.symbol,
                 args =
                   parametersAsProviderArguments(
                     latticeContext,
                     parameters = factoryParameters,
-                    receiver = factoryCls.thisReceiver!!,
+                    receiver = factoryCls.thisReceiverOrFail,
                     parametersToFields = parametersToFields,
                   ),
               ),
@@ -383,7 +386,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     factoryClassParameterized: IrType,
     factoryParameters: Parameters<ConstructorParameter>,
     byteCodeFunctionName: String,
-  ): IrSimpleFunctionSymbol {
+  ): IrSimpleFunction {
     val targetTypeParameterized = reference.typeKey.type
     val returnTypeIsNullable = reference.isNullable
 
@@ -483,7 +486,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       }
     }
 
-    return newInstanceFunction.symbol
+    return newInstanceFunction
   }
 
   internal class CallableReference(

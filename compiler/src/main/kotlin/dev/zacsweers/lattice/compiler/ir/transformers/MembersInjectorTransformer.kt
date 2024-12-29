@@ -36,6 +36,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.memberInjectParameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.compiler.ir.rawTypeOrNull
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -185,7 +186,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     val typeParameters = injectorClass.copyTypeParameters(injectedTypeParameters)
 
     injectorClass.createImplicitParameterDeclarationWithWrappedDescriptor()
-    val injectorClassReceiver = injectorClass.thisReceiver!!
+    val injectorClassReceiver = injectorClass.thisReceiverOrFail
 
     val injectorClassParameterized = injectorClass.symbol.typeWithParameters(typeParameters)
 
@@ -310,7 +311,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
         overriddenSymbols = listOf(symbols.latticeMembersInjectorInjectMembers),
       )
       .apply {
-        this.dispatchReceiverParameter = injectorClass.thisReceiver!!
+        this.dispatchReceiverParameter = injectorClass.thisReceiverOrFail
         val instanceParam =
           addValueParameter(LatticeSymbols.Names.Instance, injectedTypeParameterized)
         body =
