@@ -265,7 +265,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       val clazz = type.classOrFail.owner
       scopes += clazz.scopeAnnotations()
 
-      // TODO is this enough for properties like @get:Provides
       providerFunctions +=
         clazz
           .allCallableMembers(

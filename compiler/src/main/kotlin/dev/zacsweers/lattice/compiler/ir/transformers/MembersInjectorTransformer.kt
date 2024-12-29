@@ -234,7 +234,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       parameterGroupsForClass.associate { params ->
         val name =
           if (params.isProperty) {
-            params.irProperty.name
+            params.irProperty!!.name
           } else {
             params.callableId.callableName
           }
@@ -260,7 +260,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
                   val bodyExpression: IrExpression =
                     if (params.isProperty) {
                       val value = valueParameters[1]
-                      val irField = params.irProperty.backingField
+                      val irField = params.irProperty!!.backingField
                       if (irField == null) {
                         irInvoke(
                           irGet(instanceParam),

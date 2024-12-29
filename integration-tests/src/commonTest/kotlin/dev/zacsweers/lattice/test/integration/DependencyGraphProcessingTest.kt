@@ -113,6 +113,19 @@ class DependencyGraphProcessingTest {
   }
 
   @Test
+  fun `providers on site targets`() {
+    val graph = createGraph<ProvidersWithSiteTargetsGraph>()
+    assertEquals(3, graph.count)
+  }
+
+  @DependencyGraph
+  abstract class ProvidersWithSiteTargetsGraph {
+    abstract val count: Int
+
+    @get:Provides private val countProvider: Int = 3
+  }
+
+  @Test
   fun `different provider types`() {
     val graph = createGraphFactory<ProviderTypesGraph.Factory>().create()
     val counter = graph.counter

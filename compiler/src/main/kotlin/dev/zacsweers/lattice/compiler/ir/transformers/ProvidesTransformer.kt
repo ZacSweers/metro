@@ -35,6 +35,7 @@ import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.ir.isBindsAnnotated
 import dev.zacsweers.lattice.compiler.ir.isCompanionObject
+import dev.zacsweers.lattice.compiler.ir.latticeAnnotationsOf
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -106,14 +107,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   }
 
   fun visitProperty(declaration: IrProperty) {
-    if (
-      !declaration.isAnnotatedWithAny(symbols.providesAnnotations) &&
-        declaration.getter?.isAnnotatedWithAny(symbols.providesAnnotations) != true
-    ) {
-      return
-    }
-
-    if (declaration.getter?.isBindsAnnotated(symbols) == true) {
+    val annotations = latticeAnnotationsOf(declaration)
+    if (!annotations.isProvides) {
       return
     }
 
