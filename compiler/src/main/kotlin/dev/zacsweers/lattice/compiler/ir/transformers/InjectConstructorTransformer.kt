@@ -292,9 +292,8 @@ internal class InjectConstructorTransformer(
 
     // TODO
     //  Dagger will de-dupe these by type key to shrink the code. We could do the same but only for
-    // parameters
-    //  that don't have default values. For those cases, we would need to keep them as-is.
-    //  Something for another day.
+    //  parameters that don't have default values. For those cases, we would need to keep them
+    //  as-is. Something for another day.
     val mergedParameters =
       allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
 
@@ -314,7 +313,7 @@ internal class InjectConstructorTransformer(
       classToGenerateCreatorsIn,
       LatticeSymbols.StringNames.Create,
       targetTypeParameterized,
-      constructorParameters, // TODO ensure no instance or extension
+      constructorParameters,
       sourceParameters = constructorParameters.valueParameters.map { it.ir },
       sourceTypeParameters = targetConstructor.owner.typeParameters,
     ) { function ->

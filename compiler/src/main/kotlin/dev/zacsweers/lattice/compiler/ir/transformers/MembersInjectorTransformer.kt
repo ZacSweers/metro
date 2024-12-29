@@ -159,8 +159,12 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     val membersInjectorType = symbols.latticeMembersInjector.typeWith(injectedTypeParameterized)
 
     /*
-    TODO doc how this looks
-    */
+     Generates an implementation of a MembersInjector for the given target type. This includes
+     - Dependencies as provider params
+     - A static create() to instantiate it
+     - An implementation of MembersInjector.injectMembers()
+     - Static inject* functions for each member of the target class's _declared_ members.
+     */
     val injectorClass =
       pluginContext.irFactory
         .buildClass {
