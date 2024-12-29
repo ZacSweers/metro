@@ -309,9 +309,6 @@ internal class InjectConstructorTransformer(
       providerFunction = null,
     )
 
-    check(constructorParameters.instance == null) {
-      "wat"
-    }
     val newInstanceFunction = generateStaticNewInstanceFunction(
       latticeContext,
       classToGenerateCreatorsIn,
