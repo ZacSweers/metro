@@ -693,18 +693,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                     isFinal = true
                     initializer =
                       pluginContext.createIrBuilder(symbol).run {
-                        // InstanceFactory.create(...)
-                        // TODO consolidate with membersinjector
-                        irExprBody(
-                          irInvoke(
-                              dispatchReceiver =
-                                irGetObject(symbols.instanceFactoryCompanionObject),
-                              callee = symbols.instanceFactoryCreate,
-                              args = listOf(irGet(irParam)),
-                              typeHint = param.type.wrapInProvider(symbols.latticeFactory),
-                            )
-                            .apply { putTypeArgument(0, param.type) }
-                        )
+                        irExprBody(instanceFactory(param.type, irGet(irParam)))
                       }
                   }
             } else {
@@ -757,15 +746,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               isFinal = true
               initializer =
                 pluginContext.createIrBuilder(symbol).run {
-                  // InstanceFactory.create(...)
                   irExprBody(
-                    irInvoke(
-                        dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-                        callee = symbols.instanceFactoryCreate,
-                        args = listOf(irGetField(irGet(thisReceiverParameter), thisGraphField)),
-                        typeHint = node.typeKey.type.wrapInProvider(symbols.latticeFactory),
-                      )
-                      .apply { putTypeArgument(0, node.typeKey.type) }
+                    instanceFactory(
+                      node.typeKey.type,
+                      irGetField(irGet(thisReceiverParameter), thisGraphField),
+                    )
                   )
                 }
             }
