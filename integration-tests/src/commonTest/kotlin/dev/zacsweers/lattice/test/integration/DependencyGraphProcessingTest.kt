@@ -39,6 +39,8 @@ import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.StringKey
 import dev.zacsweers.lattice.createGraph
 import dev.zacsweers.lattice.createGraphFactory
+import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.GraphWithInheritedScopes.AppScopeBase
+import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.GraphWithInheritedScopes.SingletonBase
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1053,6 +1055,33 @@ class DependencyGraphProcessingTest {
   @SingleIn(AppScope::class)
   @DependencyGraph
   abstract class GraphWithMultipleScopes {
+    private var intCounter = 0
+    private var longCounter = 0L
+
+    abstract val intValue: Int
+    abstract val longValue: Long
+
+    @Provides @Singleton private fun provideInt(): Int = intCounter++
+
+    @Provides @SingleIn(AppScope::class) private fun provideLong(): Long = longCounter++
+  }
+
+  @Test
+  fun `graphs can inherit multiple scopes from supertypes`() {
+    // This graph supports multiple scopes and still respects their scoping requirementts
+    val graph = createGraph<GraphWithInheritedScopes>()
+    assertEquals(0, graph.intValue)
+    assertEquals(0, graph.intValue)
+    assertEquals(0L, graph.longValue)
+    assertEquals(0L, graph.longValue)
+  }
+
+  @DependencyGraph
+  abstract class GraphWithInheritedScopes : SingletonBase, AppScopeBase {
+    @Singleton interface SingletonBase
+
+    @SingleIn(AppScope::class) interface AppScopeBase
+
     private var intCounter = 0
     private var longCounter = 0L
 

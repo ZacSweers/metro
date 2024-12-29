@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.compiler.ir.BindingGraph
 import dev.zacsweers.lattice.compiler.ir.BindingStack
 import dev.zacsweers.lattice.compiler.ir.ContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.DependencyGraphNode
+import dev.zacsweers.lattice.compiler.ir.IrAnnotation
 import dev.zacsweers.lattice.compiler.ir.LatticeSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.TypeKey
@@ -35,6 +36,7 @@ import dev.zacsweers.lattice.compiler.ir.appendBindingStack
 import dev.zacsweers.lattice.compiler.ir.asContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.buildBlockBody
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
+import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
 import dev.zacsweers.lattice.compiler.ir.doubleCheck
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
 import dev.zacsweers.lattice.compiler.ir.getSingleConstBooleanArgumentOrNull
@@ -177,7 +179,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val rawType = type.rawType()
         if (!rawType.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)) {
           // TODO FIR error
-          error("Cannot create an object graph instance of non-graph type ${rawType.kotlinFqName}")
+          error(
+            "Cannot create an dependency graph instance of non-graph type ${rawType.kotlinFqName}"
+          )
         }
         val graphClass = getOrBuildDependencyGraph(rawType)
         val graphCompanion = graphClass.companionObject()!!
@@ -267,15 +271,17 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       }
     }
 
-    // TODO not currently reading supertypes yet.
-    val scopes = graphDeclaration.scopeAnnotations()
+    val scopes = mutableSetOf<IrAnnotation>()
+    val providerFunctions = mutableListOf<Pair<TypeKey, LatticeSimpleFunction>>()
 
-    // TODO is this enough for properties like @get:Provides
-    val providerFunctions =
-      graphDeclaration
-        .getAllSuperTypes(pluginContext, excludeSelf = false)
-        .flatMap {
-          it.classOrFail.owner.allCallableMembers(
+    for (type in graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false)) {
+      val clazz = type.classOrFail.owner
+      scopes += clazz.scopeAnnotations()
+
+      // TODO is this enough for properties like @get:Provides
+      providerFunctions +=
+        clazz
+          .allCallableMembers(
             latticeContext,
             functionFilter = { function ->
               // Skip fake overrides. These are types that are inherited from a supertype but
@@ -284,10 +290,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                 function.correspondingPropertySymbol?.owner?.isFakeOverride != true
             },
           )
-        }
-        .filter { function -> function.annotations.run { isProvides || isBinds } }
-        .map { function -> ContextualTypeKey.Companion.from(this, function.ir).typeKey to function }
-        .toList()
+          .filter { function -> function.annotations.run { isProvides || isBinds } }
+          .map { function ->
+            ContextualTypeKey.from(this, function.ir).typeKey to function
+          }
+    }
 
     val exposedTypes = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
     val injectors = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
@@ -301,7 +308,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           !function.annotations.isProvides
       if (isCandidate) {
         if (function.ir.valueParameters.isEmpty()) {
-          val contextKey = ContextualTypeKey.Companion.from(this, function.ir)
+          val contextKey = ContextualTypeKey.from(this, function.ir)
           exposedTypes[function] = contextKey
         } else {
           // TODO FIR check only one param, no intrinsics, no return type
@@ -371,7 +378,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           it.name == LatticeSymbols.Names.LatticeGraph
         }
       if (generatedGraph == null) {
-        error("Expected generated object graph for $graphClassId")
+        error("Expected generated dependency graph for $graphClassId")
       } else {
         latticeDependencyGraphsByClass[graphClassId] = generatedGraph
         return generatedGraph
@@ -1876,7 +1883,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
         val graphParameter =
           generationContext.graphTypesToCtorParams[binding.typeKey]
-            ?: run { error("No matching object graph instance found for type $binding.typeKey") }
+            ?: run {
+              error("No matching dependency graph instance found for type $binding.typeKey")
+            }
         val lambda =
           irLambda(
             context = pluginContext,
