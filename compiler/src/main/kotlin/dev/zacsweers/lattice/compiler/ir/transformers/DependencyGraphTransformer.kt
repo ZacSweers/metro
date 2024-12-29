@@ -295,7 +295,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         }
         ?.let { factory ->
           // Validated in FIR so we can assume we'll find just one here
-          // TODO support properties? Would be odd but technically possible
           val createFunction = factory.singleAbstractFunction(this)
           DependencyGraphNode.Creator(factory, createFunction, createFunction.parameters(this))
         }
@@ -370,7 +369,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
     val latticeGraph = generateLatticeGraph(node, bindingGraph, deferredTypes)
 
-    // TODO consolidate logic
     latticeGraph.dumpToLatticeLog()
     dependencyGraphDeclaration.addChild(latticeGraph)
     latticeDependencyGraphsByClass[graphClassId] = latticeGraph
@@ -487,13 +485,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
 
     // Add MembersInjector bindings defined on injector functions
-    // I was half asleep when I wrote the below and some day I will translate what I was trying to
-    // say
-    // This will add bindings as provider fields for each type. We do need this, but we don't want
-    // that for
-    // these. Maybe we add a property to indicate if it's from an inject() function and don't add to
-    // provider fields
-    // for those cases
     node.injectors.forEach { (injector, contextualTypeKey) ->
       val entry = BindingStack.Entry.requestedAt(contextualTypeKey, injector.ir)
 
@@ -503,16 +494,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val allParams = generatedInjector?.injectFunctions?.values?.toList().orEmpty()
         val parameters =
           when (allParams.size) {
-            0 -> {
-              Parameters.empty()
-            }
-            1 -> {
-              allParams.first()
-            }
-            else -> {
-              allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
-            }
+            0 -> Parameters.empty()
+            1 -> allParams.first()
+            else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
           }
+
         val membersInjectorKey =
           ContextualTypeKey(
             typeKey =
@@ -522,6 +508,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             isLazyWrappedInProvider = false,
             hasDefault = false,
           )
+
         val binding =
           Binding.MembersInjected(
             membersInjectorKey,
@@ -533,6 +520,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             isFromInjectorFunction = true,
             targetClassId = targetClass.classIdOrFail,
           )
+
         graph.addBinding(membersInjectorKey.typeKey, binding, bindingStack)
       }
     }
