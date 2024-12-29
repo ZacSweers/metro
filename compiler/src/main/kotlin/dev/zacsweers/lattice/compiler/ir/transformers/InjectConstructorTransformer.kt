@@ -20,11 +20,8 @@ import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.addCompanionObject
 import dev.zacsweers.lattice.compiler.ir.addOverride
-import dev.zacsweers.lattice.compiler.ir.addStaticCreateFunction
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
-import dev.zacsweers.lattice.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
-import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irTemporary
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
@@ -302,8 +299,9 @@ internal class InjectConstructorTransformer(
       allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
 
     // Generate create()
-    classToGenerateCreatorsIn.addStaticCreateFunction(
-      context = this,
+    generateStaticCreateFunction(
+      context = latticeContext,
+      parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
       targetClassParameterized = factoryClassParameterized,
       targetConstructor = factoryConstructor,
@@ -314,7 +312,7 @@ internal class InjectConstructorTransformer(
     check(constructorParameters.instance == null) {
       "wat"
     }
-    val newInstanceFunction = generateNewInstanceFunction(
+    val newInstanceFunction = generateStaticNewInstanceFunction(
       latticeContext,
       classToGenerateCreatorsIn,
       "newInstance",

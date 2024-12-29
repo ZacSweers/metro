@@ -26,10 +26,8 @@ import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.TypeKey
 import dev.zacsweers.lattice.compiler.ir.addCompanionObject
 import dev.zacsweers.lattice.compiler.ir.addOverride
-import dev.zacsweers.lattice.compiler.ir.addStaticCreateFunction
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.checkNotNullCall
-import dev.zacsweers.lattice.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irInvoke
@@ -46,8 +44,6 @@ import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -401,8 +397,9 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       }
 
     // Generate create()
-    classToGenerateCreatorsIn.addStaticCreateFunction(
-      context = this,
+    generateStaticCreateFunction(
+      context = latticeContext,
+      parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
       targetClassParameterized = factoryClassParameterized,
       targetConstructor = factoryConstructor,
@@ -411,7 +408,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     )
 
     // Generate the named newInstance function
-    val newInstanceFunction = generateNewInstanceFunction(
+    val newInstanceFunction = generateStaticNewInstanceFunction(
       latticeContext,
       classToGenerateCreatorsIn,
       byteCodeFunctionName,

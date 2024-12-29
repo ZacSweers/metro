@@ -22,7 +22,6 @@ import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.addCompanionObject
 import dev.zacsweers.lattice.compiler.ir.addOverride
-import dev.zacsweers.lattice.compiler.ir.addStaticCreateFunction
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
@@ -179,8 +178,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
           declaration.addChild(this)
         }
 
-    val injectorClassId = injectorClass.classIdOrFail
-
     val typeParameters = injectorClass.copyTypeParameters(injectedTypeParameters)
 
     injectorClass.createImplicitParameterDeclarationWithWrappedDescriptor()
@@ -203,8 +200,9 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       pluginContext.irFactory.addCompanionObject(symbols, parent = injectorClass)
 
     // Static create()
-    companionObject.addStaticCreateFunction(
-      context = this,
+    generateStaticCreateFunction(
+      context = latticeContext,
+      parentClass = companionObject,
       targetClass = injectorClass,
       targetClassParameterized = injectorClassParameterized,
       targetConstructor = ctor.symbol,
