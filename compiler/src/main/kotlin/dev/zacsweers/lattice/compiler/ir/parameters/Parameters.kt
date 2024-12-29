@@ -19,6 +19,7 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.compiler.NameAllocator
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
+import dev.zacsweers.lattice.compiler.ir.TypeKey
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter.Kind
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -29,6 +30,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.get
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -37,6 +39,7 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> {
@@ -52,8 +55,8 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
   val isProperty: Boolean
     get() = (ir as? IrSimpleFunction?)?.isPropertyAccessor == true
 
-  val irProperty: IrProperty
-    get() = (ir as IrSimpleFunction).propertyIfAccessor as IrProperty
+  val irProperty: IrProperty?
+    get() = (ir as? IrSimpleFunction?)?.propertyIfAccessor as IrProperty?
 
   fun with(ir: IrFunction): Parameters<T>
 
@@ -122,36 +125,35 @@ private class ParametersImpl<T : Parameter>(
 
   private val cachedToString by unsafeLazy {
     buildString {
-      append('\'')
-      append(callableId.toString())
-      append('\'')
-      append(' ')
       if (valueParameters.firstOrNull() is MembersInjectParameter) {
         append("@Inject ")
-        if (isProperty) {
-          append("var ")
-        } else {
-          append("fun ")
-        }
+      }
+      if (isProperty) {
+        append("var ")
+      } else {
+        append("fun ")
       }
       instance?.let {
-        append(it)
+        append(it.typeKey.render(short = true, includeQualifier = false))
         append('.')
       }
       extensionReceiver?.let {
-        append(it)
+        append(it.typeKey.render(short = true, includeQualifier = false))
         append('.')
       }
-      append(callableId.callableName)
+      val name: Name = irProperty?.name ?: ir?.name ?: callableId.callableName
+      append(name.asString())
       if (!isProperty) {
         append('(')
         valueParameters.joinTo(this)
         append(')')
-      } else {
-        append(": ")
-        append(valueParameters[0].typeKey.render(short = true, includeQualifier = false))
-        append(" = ...")
       }
+      append(": ")
+      ir?.let {
+        val typeKey = TypeKey(it.returnType)
+        append(typeKey.render(short = true, includeQualifier = false))
+      } ?: run { append("<error>") }
+      append(" = ...")
     }
   }
 
