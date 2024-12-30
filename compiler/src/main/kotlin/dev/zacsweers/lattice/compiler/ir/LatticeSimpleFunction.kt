@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.ir
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.lattice.compiler.LatticeAnnotations
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.name.CallableId

@@ -21,6 +21,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.lattice.compiler.latticeAnnotations
 import dev.zacsweers.lattice.compiler.letIf
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext

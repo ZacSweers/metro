@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.compiler.ir
 
+import dev.zacsweers.lattice.compiler.LatticeAnnotations
 import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter

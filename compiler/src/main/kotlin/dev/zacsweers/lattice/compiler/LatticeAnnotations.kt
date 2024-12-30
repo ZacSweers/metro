@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.compiler.ir
+package dev.zacsweers.lattice.compiler
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.fir.LatticeFirAnnotation
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.ir.IrAnnotation
+import dev.zacsweers.lattice.compiler.ir.asIrAnnotation
+import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass

@@ -19,8 +19,7 @@ import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
-import dev.zacsweers.lattice.compiler.ir.latticeAnnotations
-import java.util.Objects
+import dev.zacsweers.lattice.compiler.latticeAnnotations
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
