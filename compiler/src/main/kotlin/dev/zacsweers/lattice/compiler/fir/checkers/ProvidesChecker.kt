@@ -19,6 +19,8 @@ import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.ir.latticeAnnotations
+import java.util.Objects
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -66,9 +68,8 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       }
     }
 
-    val isProvides = declaration.isAnnotatedWithAny(session, latticeClassIds.providesAnnotations)
-    val isBinds = declaration.isAnnotatedWithAny(session, latticeClassIds.bindsAnnotations)
-    if (!isProvides && !isBinds) {
+    val annotations = declaration.latticeAnnotations(session)
+    if (!annotations.isProvides && !annotations.isBinds) {
       return
     }
 
@@ -82,9 +83,9 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       }
 
     val isPrivate = declaration.visibility == Visibilities.Private
-    if (!isPrivate && (isProvides || /* isBinds && */ bodyExpression != null)) {
+    if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
       val message =
-        if (isBinds) {
+        if (annotations.isBinds) {
           "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
         } else {
           "`@Provides` declarations should be private."
@@ -99,7 +100,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
 
     if (declaration.receiverParameter != null) {
       if (bodyExpression == null) {
-        if (isBinds) {
+        if (annotations.isBinds) {
           // Treat this as a Binds provider
           // Validate the assignability
           val implType = declaration.receiverParameter?.typeRef?.coneType ?: return
@@ -120,7 +121,9 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
                 declaration.receiverParameter!!,
                 declaration,
               )
-            if (returnTypeKey == receiverTypeKey) {
+
+            // TODO add a test for isIntoMultibinding
+            if (returnTypeKey == receiverTypeKey && !annotations.isIntoMultibinding) {
               reporter.reportOn(
                 source,
                 FirLatticeErrors.PROVIDES_ERROR,
@@ -146,7 +149,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         // NOTE we only do this check for `@Provides`. It's valid to annotate a
         // `@Binds` with a body if the caller wants to still mark it private
         val returnsThis = bodyExpression.returnsThis()
-        if (returnsThis && isProvides) {
+        if (returnsThis && annotations.isProvides) {
           reporter.reportOn(
             source,
             FirLatticeErrors.PROVIDES_COULD_BE_BINDS,
@@ -155,7 +158,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
             context,
           )
           return
-        } else if (!returnsThis && isBinds) {
+        } else if (!returnsThis && annotations.isBinds) {
           reporter.reportOn(
             source,
             FirLatticeErrors.BINDS_ERROR,
@@ -165,7 +168,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           return
         }
 
-        if (isProvides) {
+        if (annotations.isProvides) {
           reporter.reportOn(
             source,
             FirLatticeErrors.PROVIDES_ERROR,
@@ -178,7 +181,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       }
     }
 
-    if (isProvides) {
+    if (annotations.isProvides) {
       if (bodyExpression == null) {
         reporter.reportOn(
           source,

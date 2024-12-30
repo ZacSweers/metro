@@ -21,6 +21,7 @@ import dev.zacsweers.lattice.compiler.fir.findInjectConstructor
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.validateInjectedClass
 import dev.zacsweers.lattice.compiler.fir.validateVisibility
+import dev.zacsweers.lattice.compiler.ir.latticeAnnotations
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind

@@ -67,7 +67,7 @@ internal sealed interface Binding {
 
   data class Provided(
     val providerFunction: IrSimpleFunction,
-    val annotations: LatticeIrAnnotations,
+    val annotations: LatticeAnnotations<IrAnnotation>,
     override val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters<out Parameter>,
     override val dependencies: Map<TypeKey, Parameter> =

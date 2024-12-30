@@ -25,7 +25,7 @@ import org.jetbrains.kotlin.name.CallableId
 @Poko
 internal class LatticeSimpleFunction(
   @Poko.Skip val ir: IrSimpleFunction,
-  val annotations: LatticeIrAnnotations,
+  val annotations: LatticeAnnotations<IrAnnotation>,
   val callableId: CallableId = ir.callableId,
 ) {
   override fun toString() = callableId.toString()
