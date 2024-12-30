@@ -71,7 +71,7 @@ internal class InjectConstructorTransformer(
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
 
   fun visitClass(declaration: IrClass) {
-    val injectableConstructor = declaration.findInjectableConstructor()
+    val injectableConstructor = declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
     if (injectableConstructor != null) {
       getOrGenerateFactoryClass(declaration, injectableConstructor)
     }
@@ -231,23 +231,35 @@ internal class InjectConstructorTransformer(
     function.body =
       pluginContext.createIrBuilder(function.symbol).irBlockBody {
         val assistedArgs = function.valueParameters.map { irGet(it) }
-        val instance =
-          irTemporary(
-            irInvoke(
-              dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
-              callee = newInstanceFunction.symbol,
-              args =
-                assistedArgs +
-                  parametersAsProviderArguments(
-                    context = latticeContext,
-                    parameters = constructorParameters,
-                    receiver = factoryReceiver,
-                    parametersToFields = parametersToFields,
-                  ),
-            )
-          )
+        val newInstance = irInvoke(
+          dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
+          callee = newInstanceFunction.symbol,
+          args =
+            assistedArgs +
+              parametersAsProviderArguments(
+                context = latticeContext,
+                parameters = constructorParameters,
+                receiver = factoryReceiver,
+                parametersToFields = parametersToFields,
+              ),
+        )
 
         if (injectors.isNotEmpty()) {
+          val instance =
+            irTemporary(
+              irInvoke(
+                dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
+                callee = newInstanceFunction.symbol,
+                args =
+                  assistedArgs +
+                    parametersAsProviderArguments(
+                      context = latticeContext,
+                      parameters = constructorParameters,
+                      receiver = factoryReceiver,
+                      parametersToFields = parametersToFields,
+                    ),
+              )
+            )
           for (injector in injectors) {
             for ((function, parameters) in injector.injectFunctions) {
               +irInvoke(
@@ -268,9 +280,11 @@ internal class InjectConstructorTransformer(
               )
             }
           }
-        }
 
-        +irReturn(irGet(instance))
+          +irReturn(irGet(instance))
+        } else {
+          +irReturn(newInstance)
+        }
       }
   }
 
