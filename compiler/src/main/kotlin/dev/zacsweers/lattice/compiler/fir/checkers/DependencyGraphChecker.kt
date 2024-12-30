@@ -81,6 +81,9 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
       if (!callable.isAbstract) continue
 
+      val isBindsOrProvides = callable.isAnnotatedWithAny(session, latticeClassIds.providesAnnotations + latticeClassIds.bindsAnnotations)
+      if (isBindsOrProvides) continue
+
       // Functions with no params are accessors
       if (
         callable is FirProperty || (callable is FirFunction && callable.valueParameters.isEmpty())
