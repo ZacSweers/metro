@@ -36,19 +36,26 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
     }
     val typeString =
       if (short) {
-        val simpleName = type.simpleName
-        val args =
-          (type as IrSimpleType)
-            .arguments
-            .takeUnless { it.isEmpty() }
-            ?.joinToString(", ", prefix = "<", postfix = ">") {
-              it.typeOrNull?.simpleName ?: "<error>"
-            }
-            .orEmpty()
-        "$simpleName$args"
+        type.renderShort()
       } else {
         type.render()
       }
     append(typeString)
+  }
+
+  private fun IrType.renderShort(): String? {
+    val simpleName = simpleName
+    val args =
+      if (this is IrSimpleType) {
+        arguments
+          .takeUnless { it.isEmpty() }
+          ?.joinToString(", ", prefix = "<", postfix = ">") {
+            it.typeOrNull?.renderShort() ?: "<error>"
+          }
+          .orEmpty()
+      } else {
+        ""
+      }
+    return "$simpleName$args"
   }
 }
