@@ -19,7 +19,7 @@ import dev.zacsweers.lattice.Provider
 
 /**
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K, V>`
- * when calling [.get] (as specified by [Factory]).
+ * when calling [invoke] (as specified by [Factory]).
  */
 public class MapFactory<K : Any, V : Any> private constructor(map: Map<K, Provider<V>>) :
   AbstractMapFactory<K, V, V>(map) {
