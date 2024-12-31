@@ -58,6 +58,9 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
   val irProperty: IrProperty?
     get() = (ir as? IrSimpleFunction?)?.propertyIfAccessor as IrProperty?
 
+  val extensionOrFirstParameter: T?
+    get() = extensionReceiver ?: valueParameters.firstOrNull()
+
   fun with(ir: IrFunction): Parameters<T>
 
   fun mergeValueParametersWithAll(
