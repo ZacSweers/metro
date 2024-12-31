@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler.ir
 
 import dev.zacsweers.lattice.compiler.ExitProcessingException
 import dev.zacsweers.lattice.compiler.LatticeClassIds
+import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ir.transformers.DependencyGraphData
 import dev.zacsweers.lattice.compiler.ir.transformers.DependencyGraphTransformer
@@ -28,12 +29,12 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 internal class LatticeIrGenerationExtension(
   private val messageCollector: MessageCollector,
   private val classIds: LatticeClassIds,
-  private val debug: Boolean,
+  private val options: LatticeOptions,
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = LatticeSymbols(moduleFragment, pluginContext, classIds)
-    val context = LatticeTransformerContext(pluginContext, messageCollector, symbols, debug)
+    val context = LatticeTransformerContext(pluginContext, messageCollector, symbols, options)
     val dependencyGraphTransformer = DependencyGraphTransformer(context)
     // TODO is this really necessary?
     val dependencyGraphData = DependencyGraphData()

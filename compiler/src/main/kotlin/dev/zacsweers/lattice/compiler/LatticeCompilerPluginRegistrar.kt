@@ -19,6 +19,7 @@ import com.google.auto.service.AutoService
 import dev.zacsweers.lattice.compiler.fir.LatticeFirExtensionRegistrar
 import dev.zacsweers.lattice.compiler.ir.LatticeIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -34,19 +35,24 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
     get() = true
 
   override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-    if (configuration[KEY_ENABLED] == false) return
-    val debug = configuration[KEY_DEBUG] == true
-    val generateAssistedFactories = configuration[KEY_GENERATE_ASSISTED_FACTORIES] == true
-
-    val messageCollector =
-      configuration.get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
+    val options = LatticeOptions.load(configuration)
+    if (!options.enabled) return
 
     val classIds = LatticeClassIds()
     FirExtensionRegistrarAdapter.registerExtension(
-      LatticeFirExtensionRegistrar(classIds, generateAssistedFactories)
+      LatticeFirExtensionRegistrar(classIds, options)
     )
     IrGenerationExtension.registerExtension(
-      LatticeIrGenerationExtension(messageCollector, classIds, debug)
+      LatticeIrGenerationExtension(configuration.messageCollector, classIds, options)
     )
+  }
+}
+
+internal val CompilerConfiguration.messageCollector: MessageCollector
+  get() = get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
+
+internal fun MessageCollector.asFunctionOutput(): (String) -> Unit {
+  return {
+    report(CompilerMessageSeverity.OUTPUT, it)
   }
 }

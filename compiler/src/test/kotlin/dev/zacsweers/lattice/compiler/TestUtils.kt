@@ -437,7 +437,7 @@ private fun String.parseDiagnostics() =
     }
 
 fun String.cleanOutputLine(includeSeverity: Boolean): String {
-  val trimmed = trim()
+  val trimmed = trimEnd()
   val sourceFileIndex = trimmed.indexOf(".kt")
   if (sourceFileIndex == -1) return trimmed
   val startIndex =

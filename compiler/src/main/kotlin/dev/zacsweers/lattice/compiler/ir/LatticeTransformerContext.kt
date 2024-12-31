@@ -16,6 +16,8 @@
 package dev.zacsweers.lattice.compiler.ir
 
 import dev.zacsweers.lattice.compiler.LOG_PREFIX
+import dev.zacsweers.lattice.compiler.LatticeLogger
+import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.compiler.mapToSet
@@ -42,6 +44,7 @@ import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 
@@ -53,7 +56,11 @@ internal interface LatticeTransformerContext {
   val pluginContext: IrPluginContext
   val messageCollector: MessageCollector
   val symbols: LatticeSymbols
+  val options: LatticeOptions
   val debug: Boolean
+    get() = options.debug
+
+  fun loggerFor(type: LatticeLogger.Type): LatticeLogger
 
   fun LatticeTransformerContext.log(message: String) {
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
@@ -77,7 +84,13 @@ internal interface LatticeTransformerContext {
   }
 
   fun IrClass.dumpToLatticeLog() {
-    dumpToLatticeLog(name = name.asString())
+    val name =
+      parentDeclarationsWithSelf.filterIsInstance<IrClass>().toList().asReversed().joinToString(
+        separator = "."
+      ) {
+        it.name.asString()
+      }
+    dumpToLatticeLog(name = name)
   }
 
   fun IrElement.dumpToLatticeLog(name: String) {
@@ -86,10 +99,12 @@ internal interface LatticeTransformerContext {
         dumpKotlinLike(
           KotlinLikeDumpOptions(visibilityPrintingStrategy = VisibilityPrintingStrategy.ALWAYS)
         )
-      messageCollector.report(
-        CompilerMessageSeverity.STRONG_WARNING,
-        "LATTICE: Dumping current IR src for ${name}\n$irSrc",
-      )
+      val message = buildString {
+        append("LATTICE: Dumping current IR src for ")
+        appendLine(name)
+        appendLine(irSrc)
+      }
+      messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, message)
     }
   }
 
@@ -142,9 +157,8 @@ internal interface LatticeTransformerContext {
     get() = isAnnotatedWithAny(symbols.scopeAnnotations)
 
   @OptIn(UnsafeDuringIrConstructionAPI::class)
-  fun IrClass.findInjectableConstructor(): IrConstructor? {
-    // TODO FIR error if primary constructor is missing but class annotated with inject
-    return if (isAnnotatedWithAny(symbols.injectAnnotations)) {
+  fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
+    return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(symbols.injectAnnotations)) {
       primaryConstructor
     } else {
       constructors.singleOrNull { constructor ->
@@ -169,15 +183,27 @@ internal interface LatticeTransformerContext {
       pluginContext: IrPluginContext,
       messageCollector: MessageCollector,
       symbols: LatticeSymbols,
-      debug: Boolean,
+      options: LatticeOptions,
     ): LatticeTransformerContext =
-      SimpleLatticeTransformerContext(pluginContext, messageCollector, symbols, debug)
+      SimpleLatticeTransformerContext(pluginContext, messageCollector, symbols, options)
 
     private class SimpleLatticeTransformerContext(
       override val pluginContext: IrPluginContext,
       override val messageCollector: MessageCollector,
       override val symbols: LatticeSymbols,
-      override val debug: Boolean,
-    ) : LatticeTransformerContext
+      override val options: LatticeOptions,
+    ) : LatticeTransformerContext {
+      private val loggerCache = mutableMapOf<LatticeLogger.Type, LatticeLogger>()
+
+      override fun loggerFor(type: LatticeLogger.Type): LatticeLogger {
+        return loggerCache.getOrPut(type) {
+          if (type in options.enabledLoggers) {
+            LatticeLogger(type, System.out::println)
+          } else {
+            LatticeLogger.NONE
+          }
+        }
+      }
+    }
   }
 }

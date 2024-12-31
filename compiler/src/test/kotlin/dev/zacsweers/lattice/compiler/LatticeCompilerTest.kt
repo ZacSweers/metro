@@ -22,9 +22,6 @@ import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
-import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_DEBUG
-import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_ENABLED
-import dev.zacsweers.lattice.compiler.LatticeCommandLineProcessor.Companion.OPTION_GENERATE_ASSISTED_FACTORIES
 import okio.Buffer
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.compiler.plugin.CliOption
@@ -45,8 +42,11 @@ abstract class LatticeCompilerTest {
 
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
-    debug: Boolean = false,
-    generateAssistedFactories: Boolean = false,
+    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
+    generateAssistedFactories: Boolean =
+      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
+    options: LatticeOptions =
+      LatticeOptions(debug = debug, generateAssistedFactories = generateAssistedFactories),
     previousCompilationResult: JvmCompilationResult? = null,
   ): KotlinCompilation {
     return KotlinCompilation().apply {
@@ -54,12 +54,7 @@ abstract class LatticeCompilerTest {
       compilerPluginRegistrars = listOf(LatticeCompilerPluginRegistrar())
       val processor = LatticeCommandLineProcessor()
       commandLineProcessors = listOf(processor)
-      pluginOptions =
-        listOf(
-          processor.option(OPTION_ENABLED, "true"),
-          processor.option(OPTION_DEBUG, debug),
-          processor.option(OPTION_GENERATE_ASSISTED_FACTORIES, generateAssistedFactories),
-        )
+      pluginOptions = options.toPluginOptions(processor)
       inheritClassPath = true
       sources = sourceFiles.asList()
       verbose = false
@@ -72,6 +67,26 @@ abstract class LatticeCompilerTest {
         addPreviousResultToClasspath(previousCompilationResult)
       }
     }
+  }
+
+  private fun LatticeOptions.toPluginOptions(processor: CommandLineProcessor): List<PluginOption> {
+    return sequence {
+        for (entry in LatticeOption.entries) {
+          val option =
+            when (entry) {
+              LatticeOption.DEBUG -> processor.option(entry.raw.cliOption, debug)
+              LatticeOption.ENABLED -> processor.option(entry.raw.cliOption, enabled)
+              LatticeOption.GENERATE_ASSISTED_FACTORIES ->
+                processor.option(entry.raw.cliOption, generateAssistedFactories)
+              LatticeOption.LOGGING -> {
+                if (enabledLoggers.isEmpty()) continue
+                processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
+              }
+            }
+          yield(option)
+        }
+      }
+      .toList()
   }
 
   protected fun CommandLineProcessor.option(key: CliOption, value: Any?): PluginOption {
@@ -110,8 +125,11 @@ abstract class LatticeCompilerTest {
 
   protected fun compile(
     vararg sourceFiles: SourceFile,
-    debug: Boolean = false,
-    generateAssistedFactories: Boolean = false,
+    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
+    generateAssistedFactories: Boolean =
+      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
+    options: LatticeOptions =
+      LatticeOptions(debug = debug, generateAssistedFactories = generateAssistedFactories),
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
     previousCompilationResult: JvmCompilationResult? = null,
     body: JvmCompilationResult.() -> Unit = {},
@@ -121,7 +139,7 @@ abstract class LatticeCompilerTest {
       prepareCompilation(
           sourceFiles = sourceFiles,
           debug = debug,
-          generateAssistedFactories = generateAssistedFactories,
+          options = options,
           previousCompilationResult = previousCompilationResult,
         )
         .apply { this.messageOutputStream = cleaningOutput.outputStream() }
