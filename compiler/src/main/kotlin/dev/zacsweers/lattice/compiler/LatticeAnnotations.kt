@@ -61,6 +61,7 @@ internal class LatticeAnnotations<T>(
   val isElementsIntoSet: Boolean,
   val isIntoMap: Boolean,
   val isMultibinds: Boolean,
+  val isAssistedFactory: Boolean,
   val assisted: T?,
   val scope: T?,
   val qualifier: T?,
@@ -75,10 +76,48 @@ internal class LatticeAnnotations<T>(
   val isQualified
     get() = qualifier != null
 
-  val isIntoMultibinding get() = isIntoSet || isElementsIntoSet || isIntoMap
+  val isIntoMultibinding get() = isIntoSet || isElementsIntoSet || isIntoMap || mapKeys.isNotEmpty()
+
+  fun copy(
+    isDependencyGraph: Boolean = this.isDependencyGraph,
+    isDependencyGraphFactory: Boolean = this.isDependencyGraphFactory,
+    isInject: Boolean = this.isInject,
+    isAssistedInject: Boolean = this.isAssistedInject,
+    isProvides: Boolean = this.isProvides,
+    isBinds: Boolean = this.isBinds,
+    isBindsInstance: Boolean = this.isBindsInstance,
+    isIntoSet: Boolean = this.isIntoSet,
+    isElementsIntoSet: Boolean = this.isElementsIntoSet,
+    isIntoMap: Boolean = this.isIntoMap,
+    isMultibinds: Boolean = this.isMultibinds,
+    isAssistedFactory: Boolean = this.isAssistedFactory,
+    assisted: T? = this.assisted,
+    scope: T? = this.scope,
+    qualifier: T? = this.qualifier,
+    mapKeys: Set<T> = this.mapKeys,
+  ): LatticeAnnotations<T> {
+    return LatticeAnnotations(
+      isDependencyGraph,
+        isDependencyGraphFactory,
+        isInject,
+        isAssistedInject,
+        isProvides,
+        isBinds,
+        isBindsInstance,
+        isIntoSet,
+        isElementsIntoSet,
+        isIntoMap,
+        isMultibinds,
+        isAssistedFactory,
+        assisted,
+        scope,
+        qualifier,
+        mapKeys,
+    )
+  }
 
   fun mergeWith(other: LatticeAnnotations<T>): LatticeAnnotations<T> =
-    LatticeAnnotations(
+    copy(
       isDependencyGraph = isDependencyGraph || other.isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory || other.isDependencyGraphFactory,
       isInject = isInject || other.isInject,
@@ -90,6 +129,7 @@ internal class LatticeAnnotations<T>(
       isElementsIntoSet = isElementsIntoSet || other.isElementsIntoSet,
       isIntoMap = isIntoMap || other.isIntoMap,
       isMultibinds = isMultibinds || other.isMultibinds,
+      isAssistedFactory = isAssistedFactory || other.isAssistedFactory,
       assisted = assisted ?: other.assisted,
       scope = scope ?: other.scope,
       qualifier = qualifier ?: other.qualifier,
@@ -118,6 +158,7 @@ private fun IrAnnotationContainer.latticeAnnotations(
   var isElementsIntoSet = false
   var isIntoMap = false
   var isMultibinds = false
+  var isAssistedFactory = false
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
   var qualifier: IrAnnotation? = null
@@ -166,7 +207,7 @@ private fun IrAnnotationContainer.latticeAnnotations(
       is IrClass -> {
         // AssistedFactory, DependencyGraph, DependencyGraph.Factory
         if (classId in ids.assistedFactoryAnnotations) {
-          isBinds = true
+          isAssistedFactory = true
           continue
         } else if (classId in ids.dependencyGraphAnnotations) {
           isDependencyGraph = true
@@ -213,6 +254,7 @@ private fun IrAnnotationContainer.latticeAnnotations(
       isElementsIntoSet = isElementsIntoSet,
       isIntoMap = isIntoMap,
       isMultibinds = isMultibinds,
+      isAssistedFactory = isAssistedFactory,
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
@@ -292,6 +334,7 @@ private fun FirAnnotationContainer.latticeAnnotations(
   var isElementsIntoSet = false
   var isIntoMap = false
   var isMultibinds = false
+  var isAssistedFactory = false
   var assisted: LatticeFirAnnotation? = null
   var scope: LatticeFirAnnotation? = null
   var qualifier: LatticeFirAnnotation? = null
@@ -342,7 +385,7 @@ private fun FirAnnotationContainer.latticeAnnotations(
       is FirClass -> {
         // AssistedFactory, DependencyGraph, DependencyGraph.Factory
         if (classId in ids.assistedFactoryAnnotations) {
-          isBinds = true
+          isAssistedFactory = true
           continue
         } else if (classId in ids.dependencyGraphAnnotations) {
           isDependencyGraph = true
@@ -389,6 +432,7 @@ private fun FirAnnotationContainer.latticeAnnotations(
       isElementsIntoSet = isElementsIntoSet,
       isIntoMap = isIntoMap,
       isMultibinds = isMultibinds,
+      isAssistedFactory = isAssistedFactory,
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
