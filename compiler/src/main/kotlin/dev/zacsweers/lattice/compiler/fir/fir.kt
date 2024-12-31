@@ -45,8 +45,13 @@ import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
+import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
+import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
@@ -55,6 +60,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.name.ClassId
@@ -238,7 +244,34 @@ internal inline fun FirClass.singleAbstractFunction(
 internal fun FirAnnotationCall.computeAnnotationHash(): Int {
   return Objects.hash(
     resolvedType.classId,
-    arguments.map { (it as FirLiteralExpression).value }.toTypedArray().contentDeepHashCode(),
+    arguments
+      .map {
+        when (it) {
+          is FirLiteralExpression -> it.value
+          is FirGetClassCall -> {
+            val argument = it.argument
+            if (argument is FirResolvedQualifier) {
+              argument.classId
+            } else {
+              argument.resolvedType.classId
+            }
+          }
+          // Enum entry reference
+          is FirPropertyAccessExpression -> {
+            it.calleeReference
+              .toResolvedPropertySymbol()
+              ?.receiverParameter
+              ?.typeRef
+              ?.coneTypeOrNull
+              ?.classId
+          }
+          else -> {
+            error("Unexpected annotation argument type: ${it::class.java} - ${it.render()}")
+          }
+        }
+      }
+      .toTypedArray()
+      .contentDeepHashCode(),
   )
 }
 
