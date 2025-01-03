@@ -15,6 +15,8 @@
  */
 package dev.zacsweers.lattice.compiler.ir.transformers
 
+import dev.zacsweers.lattice.compiler.ExitProcessingException
+import dev.zacsweers.lattice.compiler.LatticeLogger
 import dev.zacsweers.lattice.compiler.LatticeOrigin
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.NameAllocator
@@ -57,6 +59,7 @@ import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.withEntry
 import dev.zacsweers.lattice.compiler.letIf
+import java.lang.AssertionError
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -266,7 +269,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
       for (function in clazz.allCallableMembers(latticeContext, excludeInheritedMembers = true)) {
         if (function.annotations.isProvides || function.annotations.isBinds) {
-          providerFunctions += ContextualTypeKey.from(this, function.ir).typeKey to function
+          providerFunctions +=
+            ContextualTypeKey.from(this, function.ir, function.annotations).typeKey to function
         } else {
           // Abstract check is important. We leave alone any non-providers/injectors
           val isCandidate =
@@ -276,7 +280,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               !function.annotations.isProvides
           if (isCandidate) {
             if (function.ir.valueParameters.isEmpty()) {
-              val contextKey = ContextualTypeKey.from(this, function.ir)
+              val contextKey = ContextualTypeKey.from(this, function.ir, function.annotations)
               exposedTypes[function] = contextKey
             } else {
               // TODO FIR check only one param, no intrinsics, no return type
@@ -357,7 +361,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val node =
       getOrComputeDependencyGraphNode(
         dependencyGraphDeclaration,
-        BindingStack(dependencyGraphDeclaration),
+        BindingStack(
+          dependencyGraphDeclaration,
+          latticeContext.loggerFor(LatticeLogger.Type.GraphNodeConstruction),
+        ),
       )
 
     val bindingGraph = createBindingGraph(node)
@@ -367,11 +374,22 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         exitProcessing()
       }
 
-    val latticeGraph = generateLatticeGraph(node, bindingGraph, deferredTypes)
+    val latticeGraph =
+      try {
+        generateLatticeGraph(node, bindingGraph, deferredTypes)
+      } catch (e: Exception) {
+        if (e is ExitProcessingException) throw e
+        throw AssertionError(
+          "Code gen exception while processing ${dependencyGraphDeclaration.classIdOrFail}",
+          e,
+        )
+      }
 
-    latticeGraph.dumpToLatticeLog()
     dependencyGraphDeclaration.addChild(latticeGraph)
     latticeDependencyGraphsByClass[graphClassId] = latticeGraph
+
+    latticeGraph.dumpToLatticeLog()
+
     return latticeGraph
   }
 
@@ -380,22 +398,36 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val graph = BindingGraph(this)
 
     // Add explicit bindings from @Provides methods
-    val bindingStack = BindingStack(node.sourceGraph)
+    val bindingStack =
+      BindingStack(
+        node.sourceGraph,
+        latticeContext.loggerFor(LatticeLogger.Type.BindingGraphConstruction),
+      )
     node.providerFunctions.forEach { (typeKey, function) ->
       val annotations = function.annotations
       val parameters = function.ir.parameters(latticeContext)
+      val contextKey = ContextualTypeKey.from(latticeContext, function.ir, annotations)
 
+      // TODO what about T -> T but into multibinding
       val bindsImplType =
         if (annotations.isBinds) {
-          parameters.extensionReceiver!!.contextualTypeKey
+          parameters.extensionOrFirstParameter!!.contextualTypeKey
         } else {
           null
         }
 
+      if (bindsImplType != null) {
+        if (bindsImplType.typeKey == contextKey.typeKey) {
+          // TODO check in FIR
+          check(annotations.isIntoMultibinding) { "Checked in FIR" }
+          //          error("Binds into multibinding is unsupported")
+        }
+      }
+
       val provider =
         Binding.Provided(
           providerFunction = function.ir,
-          contextualTypeKey = ContextualTypeKey.from(latticeContext, function.ir),
+          contextualTypeKey = contextKey,
           parameters = parameters,
           // TODO FIR only one annotation is allowed
           // TODO FIR no scopes on multibindings
@@ -404,7 +436,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           aliasedType = bindsImplType,
         )
 
-      if (provider.isMultibindingProvider) {
+      if (provider.isIntoMultibinding) {
         val multibindingType =
           when {
             provider.intoSet -> {
@@ -432,7 +464,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             else -> error("Not possible")
           }
         val multibindingTypeKey = provider.typeKey.copy(type = multibindingType)
-        graph.getOrCreateMultibinding(pluginContext, multibindingTypeKey).providers.add(provider)
+        graph
+          .getOrCreateMultibinding(pluginContext, multibindingTypeKey)
+          .sourceBindings
+          .add(provider)
       } else {
         graph.addBinding(typeKey, provider, bindingStack)
       }
@@ -458,7 +493,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       if (isMultibindingDeclaration) {
         graph.addBinding(
           contextualTypeKey.typeKey,
-          Binding.Multibinding.create(pluginContext, contextualTypeKey.typeKey),
+          Binding.Multibinding.create(latticeContext, contextualTypeKey.typeKey, getter.ir),
           bindingStack,
         )
       } else {
@@ -733,6 +768,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         }
 
         // Expose the graph as a provider binding
+        // TODO can we just add a binding instead and store a
+        //  field only if requested more than once?
         providerFields[node.typeKey] =
           addField(
               fieldName =
@@ -756,7 +793,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             }
 
         // Track a stack for bindings
-        val bindingStack = BindingStack(node.sourceGraph)
+        val bindingStack =
+          BindingStack(
+            node.sourceGraph,
+            latticeContext.loggerFor(LatticeLogger.Type.GraphImplCodeGen),
+          )
 
         // First pass: collect bindings and their dependencies for provider field ordering
         // Note we do this in two passes rather than keep a TreeMap because otherwise we'd be doing
@@ -803,6 +844,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                     deferredTypeKey.type.wrapInProvider(symbols.latticeProvider),
                   )
                   .apply {
+                    isFinal = true
                     initializer =
                       pluginContext.createIrBuilder(symbol).run {
                         irExprBody(
@@ -814,35 +856,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                   }
 
               providerFields[deferredTypeKey] = field
-
-              with(ctor) {
-                val originalBody = checkNotNull(body)
-                buildBlockBody(pluginContext) {
-                  +originalBody.statements
-                  +irInvoke(
-                    dispatchReceiver = irGetObject(symbols.latticeDelegateFactoryCompanion),
-                    callee = symbols.latticeDelegateFactorySetDelegate,
-                    // TODO de-dupe?
-                    args =
-                      listOf(
-                        irGetField(irGet(thisReceiverParameter), field),
-                        pluginContext.createIrBuilder(symbol).run {
-                          generateBindingCode(
-                              binding,
-                              generationContext,
-                              fieldInitKey = deferredTypeKey,
-                            )
-                            .letIf(binding.scope != null) {
-                              // If it's scoped, wrap it in double-check
-                              // DoubleCheck.provider(<provider>)
-                              it.doubleCheck(this@run, symbols)
-                            }
-                        },
-                      ),
-                  )
-                }
-              }
-
               field
             }
             .filterValues { it != null } as Map<TypeKey, IrField>
@@ -885,12 +898,47 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                       irExprBody(provider)
                     }
                 }
-            if (binding is Binding.Provided && binding.isMultibindingProvider) {
+            if (binding is Binding.Provided && binding.isIntoMultibinding) {
               multibindingProviderFields[binding] = field
             } else {
               providerFields[key] = field
             }
           }
+
+        // Add statements to our constructor's deferred fields _after_ we've added all provider
+        // fields
+        // for everything else. This is important in case they reference each other
+        for ((deferredTypeKey, field) in deferredFields) {
+          val binding = bindingGraph.requireBinding(deferredTypeKey, bindingStack)
+          with(ctor) {
+            val originalBody = checkNotNull(body)
+            buildBlockBody(pluginContext) {
+              +originalBody.statements
+              +irInvoke(
+                  dispatchReceiver = irGetObject(symbols.latticeDelegateFactoryCompanion),
+                  callee = symbols.latticeDelegateFactorySetDelegate,
+                  // TODO de-dupe?
+                  args =
+                    listOf(
+                      irGetField(irGet(thisReceiverParameter), field),
+                      pluginContext.createIrBuilder(symbol).run {
+                        generateBindingCode(
+                            binding,
+                            generationContext,
+                            fieldInitKey = deferredTypeKey,
+                          )
+                          .letIf(binding.scope != null) {
+                            // If it's scoped, wrap it in double-check
+                            // DoubleCheck.provider(<provider>)
+                            it.doubleCheck(this@run, symbols)
+                          }
+                      },
+                    ),
+                )
+                .apply { putTypeArgument(0, deferredTypeKey.type) }
+            }
+          }
+        }
 
         // Implement abstract getters for exposed types
         node.exposedTypes.entries
@@ -964,7 +1012,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               val membersInjectorKey =
                 TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type))
               val binding =
-                bindingGraph.requireBinding(membersInjectorKey) as Binding.MembersInjected
+                bindingGraph.requireBinding(membersInjectorKey, bindingStack)
+                  as Binding.MembersInjected
               bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
 
               // We don't get a MembersInjector instance/provider from the graph. Instead, we call
@@ -1025,10 +1074,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         // Implement no-op bodies for Binds providers
         node.providerFunctions
           .filter { it.second.annotations.isBinds }
-          .filter { (key, _) ->
-            val binding = bindingGraph.requireBinding(key) as Binding.Provided
-            binding.aliasedType != null
-          }
           // Stable sort. First the name then the type
           .sortedWith(
             compareBy<Pair<TypeKey, LatticeSimpleFunction>> { it.second.ir.name }
@@ -1110,7 +1155,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     if (key in visitedBindings) {
       if (key in usedUnscopedBindings && key !in bindingDependencies) {
         // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key)
+        bindingDependencies[key] = graph.requireBinding(key, bindingStack)
       }
       return
     }
@@ -1138,7 +1183,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     usedUnscopedBindings: MutableSet<TypeKey>,
     visitedBindings: MutableSet<TypeKey>,
   ) {
-    val isMultibindingProvider = binding is Binding.Provided && binding.isMultibindingProvider
+    val isMultibindingProvider = binding is Binding.Provided && binding.isIntoMultibinding
     val key = binding.typeKey
 
     // Skip if already visited
@@ -1146,7 +1191,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     if (!isMultibindingProvider && key in visitedBindings) {
       if (key in usedUnscopedBindings && key !in bindingDependencies) {
         // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key)
+        bindingDependencies[key] = graph.requireBinding(key, bindingStack)
       }
       return
     }
@@ -1222,7 +1267,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         //  }
       } else {
         // Process all providers deps, but don't need a specific dep for this one
-        for (provider in binding.providers) {
+        for (provider in binding.sourceBindings) {
           processBinding(
             binding = provider,
             node = node,
@@ -1309,7 +1354,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           )
         } else if (
           binding is Binding.Provided &&
-            binding.isMultibindingProvider &&
+            binding.isIntoMultibinding &&
             binding in generationContext.multibindingProviderFields
         ) {
           irGetField(
@@ -1384,10 +1429,16 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   }
 
   private fun IrBuilderWithScope.generateMapKeyLiteral(
-    binding: Binding.Provided,
+    binding: Binding,
     keyType: IrType,
   ): IrExpression {
-    val mapKey = binding.mapKey!!.ir
+    // TODO this is iffy
+    val mapKey =
+      when (binding) {
+        is Binding.Provided -> binding.annotations.mapKeys.first().ir
+        is Binding.ConstructorInjected -> binding.annotations.mapKeys.first().ir
+        else -> error("Unsupported multibinding source: $binding")
+      }
 
     val unwrapValue = mapKey.shouldUnwrapMapKeyValues()
     val expression =
@@ -1429,7 +1480,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // If we already have a provider field we can just return it
     if (
       binding is Binding.Provided &&
-        binding.isMultibindingProvider &&
+        binding.isIntoMultibinding &&
         binding in generationContext.multibindingProviderFields
     ) {
       generationContext.multibindingProviderFields[binding]?.let {
@@ -1525,7 +1576,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         )
       }
       is Binding.Multibinding -> {
-        generateMultibindingExpression(binding, contextualTypeKey, generationContext)
+        generateMultibindingExpression(binding, contextualTypeKey, generationContext, fieldInitKey)
       }
       is Binding.MembersInjected -> {
         val injectedClass = pluginContext.referenceClass(binding.targetClassId)!!.owner
@@ -1621,12 +1672,13 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     binding: Binding.Multibinding,
     contextualTypeKey: ContextualTypeKey,
     generationContext: GraphGenerationContext,
+    fieldInitKey: TypeKey?,
   ): IrExpression {
     return if (binding.isSet) {
-      generateSetMultibindingExpression(binding, contextualTypeKey, generationContext)
+      generateSetMultibindingExpression(binding, contextualTypeKey, generationContext, fieldInitKey)
     } else {
       // It's a map
-      generateMapMultibindingExpression(binding, contextualTypeKey, generationContext)
+      generateMapMultibindingExpression(binding, contextualTypeKey, generationContext, fieldInitKey)
     }
   }
 
@@ -1634,11 +1686,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     binding: Binding.Multibinding,
     contextualTypeKey: ContextualTypeKey,
     generationContext: GraphGenerationContext,
+    fieldInitKey: TypeKey?,
   ): IrExpression {
     val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
     val (collectionProviders, individualProviders) =
-      binding.providers.partition { it.elementsIntoSet }
-    check(individualProviders.all { it.intoSet })
+      binding.sourceBindings.partition { it is Binding.Provided && it.elementsIntoSet }
     // If we have any @ElementsIntoSet, we need to use SetFactory
     return if (collectionProviders.isNotEmpty() || contextualTypeKey.requiresProviderInstance) {
       generateSetFactoryExpression(
@@ -1646,9 +1698,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         collectionProviders,
         individualProviders,
         generationContext,
+        fieldInitKey,
       )
     } else {
-      generateSetBuilderExpression(binding, elementType, generationContext)
+      generateSetBuilderExpression(binding, elementType, generationContext, fieldInitKey)
     }
   }
 
@@ -1656,10 +1709,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     binding: Binding.Multibinding,
     elementType: IrType,
     generationContext: GraphGenerationContext,
+    fieldInitKey: TypeKey?,
   ): IrExpression {
     val callee: IrSimpleFunctionSymbol
     val args: List<IrExpression>
-    when (val size = binding.providers.size) {
+    when (val size = binding.sourceBindings.size) {
       0 -> {
         // emptySet()
         callee = symbols.emptySet
@@ -1668,8 +1722,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       1 -> {
         // setOf(<one>)
         callee = symbols.setOfSingleton
-        val provider = binding.providers.first()
-        args = listOf(generateMultibindingArgument(provider, generationContext))
+        val provider = binding.sourceBindings.first()
+        args = listOf(generateMultibindingArgument(provider, generationContext, fieldInitKey))
       }
       else -> {
         // buildSet(<size>) { ... }
@@ -1687,11 +1741,12 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             ) { function ->
               // This is the mutable set receiver
               val functionReceiver = function.extensionReceiverParameter!!
-              binding.providers.forEach { provider ->
+              binding.sourceBindings.forEach { provider ->
                 +irInvoke(
                   dispatchReceiver = irGet(functionReceiver),
                   callee = symbols.mutableSetAdd.symbol,
-                  args = listOf(generateMultibindingArgument(provider, generationContext)),
+                  args =
+                    listOf(generateMultibindingArgument(provider, generationContext, fieldInitKey)),
                 )
               }
             }
@@ -1710,9 +1765,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
   private fun IrBuilderWithScope.generateSetFactoryExpression(
     elementType: IrType,
-    collectionProviders: List<Binding.Provided>,
-    individualProviders: List<Binding.Provided>,
+    collectionProviders: List<Binding>,
+    individualProviders: List<Binding>,
     generationContext: GraphGenerationContext,
+    fieldInitKey: TypeKey?,
   ): IrExpression {
     // SetFactory.<String>builder(1, 1)
     //   .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
@@ -1739,7 +1795,12 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             callee = symbols.setFactoryBuilderAddProviderFunction,
             typeHint = builder.type,
           )
-          .apply { putValueArgument(0, generateBindingCode(provider, generationContext)) }
+          .apply {
+            putValueArgument(
+              0,
+              generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey),
+            )
+          }
       }
 
     // .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
@@ -1750,7 +1811,12 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             callee = symbols.setFactoryBuilderAddCollectionProviderFunction,
             typeHint = builder.type,
           )
-          .apply { putValueArgument(0, generateBindingCode(provider, generationContext)) }
+          .apply {
+            putValueArgument(
+              0,
+              generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey),
+            )
+          }
       }
 
     // .build()
@@ -1768,6 +1834,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     binding: Binding.Multibinding,
     contextualTypeKey: ContextualTypeKey,
     generationContext: GraphGenerationContext,
+    fieldInitKey: TypeKey?,
   ): IrExpression {
     // MapFactory.<Integer, Integer>builder(2)
     //   .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
@@ -1782,7 +1849,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val keyType: IrType = mapTypeArgs[0].typeOrFail
     val rawValueType = mapTypeArgs[1].typeOrFail
     val rawValueTypeMetadata =
-      rawValueType.typeOrFail.asContextualTypeKey(latticeContext, null, false)
+      rawValueType.typeOrFail.asContextualTypeKey(latticeContext, null, false, false)
     val useProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
     val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
@@ -1816,7 +1883,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         .apply {
           putTypeArgument(0, keyType)
           putTypeArgument(1, valueType)
-          putValueArgument(0, irInt(binding.providers.size))
+          putValueArgument(0, irInt(binding.sourceBindings.size))
         }
 
     val putFunction =
@@ -1833,8 +1900,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       }
 
     val withProviders =
-      binding.providers.fold(builder) { receiver, provider ->
-        val providerTypeMetadata = provider.contextualTypeKey
+      binding.sourceBindings.fold(builder) { receiver, sourceBinding ->
+        val providerTypeMetadata = sourceBinding.contextualTypeKey
 
         // TODO FIR this should be an error actually
         val isMap =
@@ -1851,8 +1918,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             putFunction
           }
         irInvoke(dispatchReceiver = receiver, callee = putter, typeHint = builder.type).apply {
-          putValueArgument(0, generateMapKeyLiteral(provider, keyType))
-          putValueArgument(1, generateBindingCode(provider, generationContext))
+          putValueArgument(0, generateMapKeyLiteral(sourceBinding, keyType))
+          putValueArgument(
+            1,
+            generateBindingCode(sourceBinding, generationContext, fieldInitKey = fieldInitKey),
+          )
         }
       }
 
@@ -1875,10 +1945,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   }
 
   private fun IrBuilderWithScope.generateMultibindingArgument(
-    provider: Binding.Provided,
+    provider: Binding,
     generationContext: GraphGenerationContext,
+    fieldInitKey: TypeKey?,
   ): IrExpression {
-    val bindingCode = generateBindingCode(provider, generationContext)
+    val bindingCode = generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)
     return typeAsProviderArgument(
       latticeContext,
       ContextualTypeKey(provider.typeKey, false, false, false, false),
