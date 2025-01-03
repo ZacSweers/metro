@@ -378,7 +378,7 @@ internal fun IrClass.allCallableMembers(
       // TODO does this even work
       it.filterNot { function ->
         function.overriddenSymbols.any { symbol ->
-          symbol.owner.parentClassId == LatticeSymbols.ClassIds.AnyClass
+          symbol.owner.parentClassId == LatticeSymbols.ClassIds.anyClass
         }
       }
     }
@@ -449,7 +449,7 @@ internal fun irLambda(
 internal fun IrFactory.addCompanionObject(
   symbols: LatticeSymbols,
   parent: IrClass,
-  name: Name = LatticeSymbols.Names.CompanionObject,
+  name: Name = LatticeSymbols.Names.companionObject,
   body: IrClass.() -> Unit = {},
 ): IrClass {
   return buildClass {

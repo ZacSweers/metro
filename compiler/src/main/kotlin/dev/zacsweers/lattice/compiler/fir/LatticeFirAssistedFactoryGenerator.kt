@@ -82,7 +82,7 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
     assistedFactoriesToClasses[classSymbol]?.let { targetClass ->
       assistedInjectClasses[targetClass]?.let { constructor ->
         // Need to generate a SAM create() for this
-        val id = CallableId(classSymbol.classId, LatticeSymbols.Names.Create)
+        val id = CallableId(classSymbol.classId, LatticeSymbols.Names.create)
         createIdsToFactories[id] = classSymbol
         return setOf(id.callableName)
       }
@@ -189,7 +189,7 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
       val existingFactory =
         classSymbol.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().singleOrNull {
           // TODO also check for factory annotation? Not sure what else we'd do anyway though
-          it.name == LatticeSymbols.Names.Factory
+          it.name == LatticeSymbols.Names.factory
         }
       if (existingFactory != null) {
         // TODO test this case
@@ -198,7 +198,7 @@ internal class LatticeFirAssistedFactoryGenerator(session: FirSession) :
 
       assistedInjectClasses[classSymbol] = constructor
       // We want to generate an assisted factory
-      return setOf(LatticeSymbols.Names.Factory)
+      return setOf(LatticeSymbols.Names.factory)
     }
     return super.getNestedClassifiersNames(classSymbol, context)
   }

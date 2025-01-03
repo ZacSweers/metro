@@ -113,7 +113,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       // TODO won't be visible until we add metadata to generated classes
       val generatedInjector =
         declaration.nestedClasses.singleOrNull {
-          it.name == LatticeSymbols.Names.LatticeMembersInjector
+          it.name == LatticeSymbols.Names.latticeMembersInjector
         }
 
       return if (generatedInjector == null) {
@@ -169,7 +169,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     val injectorClass =
       pluginContext.irFactory
         .buildClass {
-          name = LatticeSymbols.Names.LatticeMembersInjector
+          name = LatticeSymbols.Names.latticeMembersInjector
           kind = ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
           origin = LatticeOrigin
@@ -249,7 +249,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
               // Params
               // Add instance
               val instanceParam =
-                addValueParameter(LatticeSymbols.Names.Instance, injectedTypeParameterized)
+                addValueParameter(LatticeSymbols.Names.instance, injectedTypeParameterized)
 
               for (parameter in params.valueParameters) {
                 addValueParameter(parameter.name, parameter.originalType, LatticeOrigin)
@@ -311,7 +311,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       .apply {
         this.dispatchReceiverParameter = injectorClass.thisReceiverOrFail
         val instanceParam =
-          addValueParameter(LatticeSymbols.Names.Instance, injectedTypeParameterized)
+          addValueParameter(LatticeSymbols.Names.instance, injectedTypeParameterized)
         body =
           pluginContext.createIrBuilder(symbol).irBlockBody {
             addMemberInjection(

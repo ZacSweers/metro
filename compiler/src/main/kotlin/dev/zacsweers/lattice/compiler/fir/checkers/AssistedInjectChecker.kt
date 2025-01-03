@@ -197,7 +197,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           annotations
             .annotationsIn(session, latticeClassIds.assistedAnnotations)
             .singleOrNull()
-            ?.getStringArgument(LatticeSymbols.Names.Value, session)
+            ?.getStringArgument(LatticeSymbols.Names.value, session)
             .orEmpty(),
         )
       }

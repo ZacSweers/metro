@@ -335,7 +335,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         parameters = function.parameters(this),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
-        isPublishedApi = function.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
+        isPublishedApi = function.hasAnnotation(LatticeSymbols.ClassIds.publishedApi),
         reportableNode = function,
         parent = parent.symbol,
         callee = function.symbol,
@@ -373,7 +373,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         parameters = property.getter?.parameters(this) ?: Parameters.empty(),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
-        isPublishedApi = property.hasAnnotation(LatticeSymbols.ClassIds.PublishedApi),
+        isPublishedApi = property.hasAnnotation(LatticeSymbols.ClassIds.publishedApi),
         reportableNode = property,
         parent = parent.symbol,
         callee = property.getter!!.symbol,
@@ -540,7 +540,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           append("Get")
         }
         append(name.capitalizeUS())
-        append(LatticeSymbols.Names.LatticeFactory.asString())
+        append(LatticeSymbols.Names.latticeFactory.asString())
       }
     }
 

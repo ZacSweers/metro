@@ -124,7 +124,7 @@ internal fun IrProperty.toMemberInjectParameter(
     )
 
   val memberInjectorClass =
-    declaringClass.createNestedClassId(LatticeSymbols.Names.LatticeMembersInjector)
+    declaringClass.createNestedClassId(LatticeSymbols.Names.latticeMembersInjector)
 
   return MembersInjectParameter(
     kind = kind,
@@ -168,7 +168,7 @@ internal fun IrValueParameter.toMemberInjectParameter(
   val isPropertyAccessor = ownerFunction.isPropertyAccessor
 
   val memberInjectorClass =
-    declaringClass.createNestedClassId(LatticeSymbols.Names.LatticeMembersInjector)
+    declaringClass.createNestedClassId(LatticeSymbols.Names.latticeMembersInjector)
 
   return MembersInjectParameter(
     kind = kind,

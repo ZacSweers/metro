@@ -90,12 +90,12 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
 }
 
 fun Class<*>.generatedFactoryClassAssisted(): Class<*> {
-  val expectedName = LatticeSymbols.Names.LatticeFactory.asString()
+  val expectedName = LatticeSymbols.Names.latticeFactory.asString()
   return classes.single { it.simpleName == expectedName }
 }
 
 fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
-  val expectedName = LatticeSymbols.Names.LatticeMembersInjector.asString()
+  val expectedName = LatticeSymbols.Names.latticeMembersInjector.asString()
   val nestedClass =
     declaredClasses.singleOrNull { it.simpleName == expectedName }
       ?: error(
@@ -106,7 +106,7 @@ fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
 }
 
 fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
-  val expectedName = LatticeSymbols.Names.LatticeImpl.asString()
+  val expectedName = LatticeSymbols.Names.latticeImpl.asString()
   return classes.single { it.simpleName == expectedName }
 }
 
@@ -157,7 +157,7 @@ fun Class<*>.providesFactoryClass(
   val methodName = providerCallableName ?: providesCallables.single()
 
   val expectedName =
-    "${companionString}${methodName.capitalizeUS()}${LatticeSymbols.Names.LatticeFactory.asString()}"
+    "${companionString}${methodName.capitalizeUS()}${LatticeSymbols.Names.latticeFactory.asString()}"
   @Suppress("UNCHECKED_CAST")
   return this.classes.singleOrNull { it.simpleName == expectedName } as Class<Factory<*>>?
     ?: error("Could not find nested class $this.$expectedName")
@@ -233,7 +233,7 @@ fun Class<*>.staticMethods(
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
 fun Class<*>.invokeCreate(vararg args: Any): Any {
   val createFunctions =
-    staticMethods().filter { it.name == LatticeSymbols.StringNames.Create }.toList()
+    staticMethods().filter { it.name == LatticeSymbols.StringNames.create }.toList()
 
   return when (createFunctions.size) {
     0 -> error("No create functions found in $this")
@@ -292,9 +292,9 @@ val JvmCompilationResult.ExampleGraph: Class<*>
   get() = classLoader.loadClass("test.ExampleGraph")
 
 fun Class<*>.generatedLatticeGraphClass(): Class<*> {
-  return classes.singleOrNull { it.simpleName == LatticeSymbols.Names.LatticeGraph.asString() }
+  return classes.singleOrNull { it.simpleName == LatticeSymbols.Names.latticeGraph.asString() }
     ?: error(
-      "Could not find nested class $this.${LatticeSymbols.Names.LatticeGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
+      "Could not find nested class $this.${LatticeSymbols.Names.latticeGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
     )
 }
 
@@ -336,12 +336,12 @@ fun Class<*>.createGraphWithNoArgs(): Any {
 /**
  * Invokes a generated Graph Factory class's create() function with the supplied [args].
  *
- * Note the function must be called [LatticeSymbols.StringNames.Create].
+ * Note the function must be called [LatticeSymbols.StringNames.create].
  */
 fun Class<*>.createGraphViaFactory(vararg args: Any): Any {
   val factoryInstance = invokeGraphFactory()
   return factoryInstance.javaClass.declaredMethods
-    .single { it.name == LatticeSymbols.StringNames.Create }
+    .single { it.name == LatticeSymbols.StringNames.create }
     .invoke(factoryInstance, *args)
 }
 

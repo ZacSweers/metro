@@ -16,7 +16,9 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import dev.zacsweers.lattice.compiler.LatticeClassIds
+import dev.zacsweers.lattice.compiler.LatticeSymbols
 import java.util.Objects
+import kotlin.collections.set
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -31,10 +33,12 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.constructors
+import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
@@ -43,27 +47,46 @@ import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirEmptyArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
+import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
+import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.types.ConstantValueKind
+import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
 internal object LatticeKey : GeneratedDeclarationKey() {
   override fun toString() = "LatticeKey"
@@ -481,4 +504,57 @@ internal fun FirAnnotationCall.isAnnotatedWithAny(
   val annotationType = resolvedType as? ConeClassLikeType ?: return false
   val annotationClass = annotationType.toClassSymbol(session) ?: return false
   return annotationClass.annotations.isAnnotatedWithAny(session, names)
+}
+
+internal fun FirDeclaration.excludeFromJsExport(session: FirSession) {
+  if (!session.moduleData.platform.isJs()) {
+    return
+  }
+  val jsExportIgnore = session.symbolProvider.getClassLikeSymbolByClassId(
+    LatticeSymbols.ClassIds.jsExportIgnore
+  )
+  val jsExportIgnoreAnnotation = jsExportIgnore as? FirRegularClassSymbol ?: return
+  val jsExportIgnoreConstructor = jsExportIgnoreAnnotation.declarationSymbols.firstIsInstanceOrNull<FirConstructorSymbol>() ?: return
+
+  val jsExportIgnoreAnnotationCall = buildAnnotationCall {
+    argumentList = FirEmptyArgumentList
+    annotationTypeRef = buildResolvedTypeRef {
+      coneType = jsExportIgnoreAnnotation.defaultType()
+    }
+    calleeReference = buildResolvedNamedReference {
+      name = jsExportIgnoreAnnotation.name
+      resolvedSymbol = jsExportIgnoreConstructor
+    }
+
+    containingDeclarationSymbol = this@excludeFromJsExport.symbol
+  }
+
+  replaceAnnotations(annotations + jsExportIgnoreAnnotationCall)
+}
+
+internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotation = buildAnnotation {
+  val deprecatedAnno =
+    session.symbolProvider.getClassLikeSymbolByClassId(StandardClassIds.Annotations.Deprecated) as FirRegularClassSymbol
+
+  annotationTypeRef = deprecatedAnno.defaultType().toFirResolvedTypeRef()
+
+  argumentMapping = buildAnnotationArgumentMapping {
+    mapping[Name.identifier("message")] = buildLiteralExpression(
+      null,
+      ConstantValueKind.String,
+      "This synthesized declaration should not be used directly",
+      setType = true
+    )
+
+    // It has nothing to do with enums deserialization, but it is simply easier to build it this way.
+    mapping[Name.identifier("level")] = buildEnumEntryDeserializedAccessExpression {
+      enumClassId = StandardClassIds.DeprecationLevel
+      enumEntryName = Name.identifier("HIDDEN")
+    }.toQualifiedPropertyAccessExpression(session)
+  }
+}
+
+internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
+  replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
+  replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }

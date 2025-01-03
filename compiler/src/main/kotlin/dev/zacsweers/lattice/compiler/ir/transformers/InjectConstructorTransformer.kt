@@ -111,7 +111,7 @@ internal class InjectConstructorTransformer(
     val factoryCls =
       pluginContext.irFactory
         .buildClass {
-          name = LatticeSymbols.Names.LatticeFactory
+          name = LatticeSymbols.Names.latticeFactory
           kind = if (canGenerateAnObject) ClassKind.OBJECT else ClassKind.CLASS
           visibility = DescriptorVisibilities.PUBLIC
           origin = LatticeOrigin
@@ -331,7 +331,7 @@ internal class InjectConstructorTransformer(
       generateStaticNewInstanceFunction(
         latticeContext,
         classToGenerateCreatorsIn,
-        LatticeSymbols.StringNames.NewInstance,
+        LatticeSymbols.StringNames.newInstance,
         targetTypeParameterized,
         constructorParameters,
         sourceParameters = constructorParameters.valueParameters.map { it.ir },

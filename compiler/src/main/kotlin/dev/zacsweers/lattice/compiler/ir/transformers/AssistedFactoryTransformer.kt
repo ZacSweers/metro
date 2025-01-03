@@ -112,7 +112,7 @@ internal class AssistedFactoryTransformer(
     val implClass =
       pluginContext.irFactory
         .buildClass {
-          name = LatticeSymbols.Names.LatticeImpl
+          name = LatticeSymbols.Names.latticeImpl
           origin = LatticeOrigin
         }
         .apply {
@@ -189,7 +189,7 @@ internal class AssistedFactoryTransformer(
     generatedFactoryType: IrClass,
   ) {
     addFunction(
-        LatticeSymbols.StringNames.Create,
+        LatticeSymbols.StringNames.create,
         originClassName.wrapInProvider(symbols.latticeProvider),
       )
       .apply {

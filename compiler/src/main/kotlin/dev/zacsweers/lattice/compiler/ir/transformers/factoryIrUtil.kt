@@ -66,7 +66,7 @@ internal fun generateStaticCreateFunction(
   patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
   return parentClass
-    .addFunction(LatticeSymbols.StringNames.Create, targetClassParameterized)
+    .addFunction(LatticeSymbols.StringNames.create, targetClassParameterized)
     .apply {
       val thisFunction = this
       this.copyTypeParameters(targetClass.typeParameters)
