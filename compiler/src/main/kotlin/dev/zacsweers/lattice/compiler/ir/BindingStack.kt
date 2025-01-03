@@ -18,7 +18,9 @@ package dev.zacsweers.lattice.compiler.ir
 import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
+import dev.zacsweers.lattice.compiler.LatticeLogger
 import dev.zacsweers.lattice.compiler.ir.BindingStack.Entry
+import dev.zacsweers.lattice.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -108,13 +110,25 @@ internal interface BindingStack {
       /*
       com.slack.circuit.star.Example1
        */
+      fun contributedToMultibinding(contextKey: ContextualTypeKey, declaration: IrDeclaration?): Entry =
+        Entry(
+          contextKey = contextKey,
+          usage = "is a defined multibinding",
+          graphContext = null,
+          declaration = declaration,
+          isSynthetic = false,
+        )
+
+      /*
+      com.slack.circuit.star.Example1
+       */
       fun simpleTypeRef(contextKey: ContextualTypeKey, usage: String? = null): Entry =
         Entry(
           contextKey = contextKey,
           usage = usage,
           graphContext = null,
           declaration = null,
-          isSynthetic = true,
+          isSynthetic = false,
         )
 
       /*
@@ -127,6 +141,7 @@ internal interface BindingStack {
         param: IrValueParameter? = null,
         declaration: IrDeclaration? = param,
         displayTypeKey: TypeKey = contextKey.typeKey,
+        isSynthetic: Boolean = false,
       ): Entry {
         val targetFqName = function.parent.kotlinFqName
         val middle =
@@ -144,6 +159,7 @@ internal interface BindingStack {
           usage = "is injected at",
           graphContext = context,
           declaration = declaration,
+          isSynthetic = isSynthetic,
         )
       }
 
@@ -196,7 +212,7 @@ internal interface BindingStack {
         }
       }
 
-    operator fun invoke(graph: IrClass): BindingStack = BindingStackImpl(graph)
+    operator fun invoke(graph: IrClass, logger: LatticeLogger): BindingStack = BindingStackImpl(graph, logger)
 
     fun empty() = EMPTY
   }
@@ -236,19 +252,35 @@ internal fun Appendable.appendBindingStackEntries(
   }
 }
 
-internal class BindingStackImpl(override val graph: IrClass) : BindingStack {
+internal class BindingStackImpl(
+  override val graph: IrClass,
+  private val logger: LatticeLogger
+) : BindingStack {
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
   private val entrySet = mutableSetOf<TypeKey>()
   private val stack = ArrayDeque<Entry>()
   override val entries: List<Entry> = stack
 
+  init {
+    logger.log("New stack: ${logger.type}")
+  }
+
   override fun push(entry: Entry) {
+    val logPrefix = if (stack.isEmpty()) {
+      "\uD83C\uDF32"
+    } else {
+      "└─"
+    }
+    val contextHint = if (entry.typeKey != entry.displayTypeKey) "(${entry.typeKey.render(short = true)}) " else ""
+    logger.log("$logPrefix $contextHint${entry.toString().withoutLineBreaks}")
     stack.addFirst(entry)
     entrySet.add(entry.typeKey)
+    logger.indent()
   }
 
   override fun pop() {
+    logger.unindent()
     val removed = stack.removeFirstOrNull() ?: error("Binding stack is empty!")
     entrySet.remove(removed.typeKey)
   }
@@ -264,7 +296,9 @@ internal class BindingStackImpl(override val graph: IrClass) : BindingStack {
   // TODO optimize this by looking in the entrySet first
   override fun entriesSince(key: TypeKey): List<Entry> {
     val reversed = stack.asReversed()
-    val index = reversed.indexOfFirst { it.typeKey == key }
+    val index = reversed.indexOfFirst {
+      !it.contextKey.isIntoMultibinding && it.typeKey == key
+    }
     if (index == -1) return emptyList()
     return reversed.slice(index until reversed.size).filterNot { it.isSynthetic }
   }
@@ -350,7 +384,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(contextKey, binding.function, displayTypeKey = targetKey)
     }
     is Binding.Multibinding -> {
-      TODO()
+      Entry.contributedToMultibinding(contextKey, binding.declaration)
     }
     is Binding.BoundInstance -> TODO()
     is Binding.GraphDependency -> TODO()
