@@ -61,6 +61,9 @@ import org.jetbrains.kotlin.name.Name
 /**
  * For assisted injection, we can generate the assisted factory _for_ the assisted type as a nested
  * interface of the annotated class. This saves the user some boilerplate.
+ *
+ * Note this is specifically for generating `@AssistedFactory`-annotated declarations, not for generating assisted
+ * factory impls.
  */
 internal class AssistedFactoryFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
