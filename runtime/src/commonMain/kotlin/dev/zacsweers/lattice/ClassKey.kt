@@ -26,7 +26,13 @@ import kotlin.reflect.KClass
  * whose type is `KClass<out Something>`.
  */
 @MustBeDocumented
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.CLASS,
+)
 @Retention(AnnotationRetention.RUNTIME)
 @MapKey
 public annotation class ClassKey(val value: KClass<*>)

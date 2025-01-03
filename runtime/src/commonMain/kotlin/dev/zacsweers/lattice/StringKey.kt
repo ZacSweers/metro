@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Zac Sweers
+ * Copyright (C) 2015 The Dagger Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,13 @@ package dev.zacsweers.lattice
 
 /** A [MapKey] annotation for maps with [String] keys. */
 @MustBeDocumented
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.CLASS,
+)
 @Retention(AnnotationRetention.RUNTIME)
 @MapKey
 public annotation class StringKey(val value: String)

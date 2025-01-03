@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Zac Sweers
+ * Copyright (C) 2024 The Dagger Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,13 @@ import kotlin.reflect.KClass
  * The difference from [ClassKey] is that dagger generates a string representation for the class to
  * use under the hood, which prevents loading unused classes at runtime.
  */
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.FIELD, AnnotationTarget.CLASS)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.CLASS,
+)
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
 @MapKey
