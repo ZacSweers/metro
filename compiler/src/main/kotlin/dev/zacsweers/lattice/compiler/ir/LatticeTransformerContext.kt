@@ -94,17 +94,16 @@ internal interface LatticeTransformerContext {
   }
 
   fun IrElement.dumpToLatticeLog(name: String) {
-    if (debug) {
+    loggerFor(LatticeLogger.Type.GeneratedFactories).log {
       val irSrc =
         dumpKotlinLike(
           KotlinLikeDumpOptions(visibilityPrintingStrategy = VisibilityPrintingStrategy.ALWAYS)
         )
-      val message = buildString {
-        append("LATTICE: Dumping current IR src for ")
+      buildString {
+        append("IR source dump for ")
         appendLine(name)
         appendLine(irSrc)
       }
-      messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, message)
     }
   }
 
