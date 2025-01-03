@@ -17,11 +17,12 @@ package dev.zacsweers.lattice.test.integration.cycles
 
 import dev.zacsweers.lattice.createGraph
 import kotlin.test.Test
+import kotlin.test.assertNotNull
 
 class LongCycleTest {
   @Test
   fun testLongCycle() {
     val graph = createGraph<LongCycle.LongCycleGraph>()
-    val class1 = graph.class1
+    assertNotNull(graph.class1)
   }
 }
