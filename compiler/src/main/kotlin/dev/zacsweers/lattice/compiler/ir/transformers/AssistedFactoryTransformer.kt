@@ -95,7 +95,7 @@ internal class AssistedFactoryTransformer(
 
     val returnType = function.returnType
     val targetType = returnType.rawType()
-    val injectConstructor = targetType.findInjectableConstructor()!!
+    val injectConstructor = targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
 
     val generatedFactory =
       injectConstructorTransformer.getOrGenerateFactoryClass(targetType, injectConstructor)
@@ -138,6 +138,7 @@ internal class AssistedFactoryTransformer(
           val param = ctor.addValueParameter(DELEGATE_FACTORY_NAME, generatedFactory.typeWith())
           val delegateFactoryField =
             addField(DELEGATE_FACTORY_NAME, generatedFactory.typeWith()).apply {
+              isFinal = true
               initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(param)) }
             }
 
