@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.compiler.ir.transformers
 
+import dev.zacsweers.lattice.compiler.LatticeAnnotations
 import dev.zacsweers.lattice.compiler.LatticeOrigin
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.capitalizeUS
@@ -22,6 +23,7 @@ import dev.zacsweers.lattice.compiler.exitProcessing
 import dev.zacsweers.lattice.compiler.ir.Binding
 import dev.zacsweers.lattice.compiler.ir.BindingStack
 import dev.zacsweers.lattice.compiler.ir.ContextualTypeKey
+import dev.zacsweers.lattice.compiler.ir.IrAnnotation
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.TypeKey
 import dev.zacsweers.lattice.compiler.ir.addCompanionObject
@@ -32,8 +34,6 @@ import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irInvoke
-import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
-import dev.zacsweers.lattice.compiler.ir.isBindsAnnotated
 import dev.zacsweers.lattice.compiler.ir.isCompanionObject
 import dev.zacsweers.lattice.compiler.ir.latticeAnnotationsOf
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
@@ -112,13 +112,15 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       return
     }
 
-    getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
+    getOrGenerateFactoryClass(getOrPutCallableReference(declaration, annotations))
   }
 
   fun visitFunction(declaration: IrSimpleFunction) {
-    if (!declaration.isAnnotatedWithAny(symbols.providesAnnotations)) return
-    if (declaration.isBindsAnnotated(symbols)) return
-    getOrGenerateFactoryClass(getOrPutCallableReference(declaration))
+    val annotations = latticeAnnotationsOf(declaration)
+    if (!annotations.isProvides) {
+      return
+    }
+    getOrGenerateFactoryClass(getOrPutCallableReference(declaration, annotations))
   }
 
   // TODO what about inherited/overridden providers?
@@ -309,7 +311,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     return factoryCls
   }
 
-  fun getOrPutCallableReference(function: IrSimpleFunction): CallableReference {
+  fun getOrPutCallableReference(function: IrSimpleFunction, annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(function)): CallableReference {
     // TODO report in FIR
     if (function.typeParameters.isNotEmpty()) {
       function.reportError("@Provides functions may not have type parameters")
@@ -321,7 +323,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       // TODO FIR error if it is top-level/not in graph
 
       val parent = function.parentAsClass
-      val typeKey = ContextualTypeKey.from(this, function).typeKey
+      val typeKey = ContextualTypeKey.from(this, function, annotations).typeKey
       CallableReference(
         fqName = function.kotlinFqName,
         isInternal = function.visibility == DescriptorVisibilities.INTERNAL,
@@ -334,11 +336,12 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         reportableNode = function,
         parent = parent.symbol,
         callee = function.symbol,
+        annotations = annotations,
       )
     }
   }
 
-  fun getOrPutCallableReference(property: IrProperty): CallableReference {
+  fun getOrPutCallableReference(property: IrProperty, annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(property)): CallableReference {
     val fqName = property.fqNameWhenAvailable ?: error("No FqName for property ${property.name}")
     return references.getOrPut(fqName) {
       // TODO FIR error if it has a receiver param
@@ -353,7 +356,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
             "No getter found for property $fqName. Note that field properties are not supported"
           )
 
-      val typeKey = ContextualTypeKey.from(this, getter).typeKey
+      val typeKey = ContextualTypeKey.from(this, getter, annotations).typeKey
 
       val parent = property.parentAsClass
       return CallableReference(
@@ -368,6 +371,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         reportableNode = property,
         parent = parent.symbol,
         callee = property.getter!!.symbol,
+        annotations = annotations,
       )
     }
   }
@@ -496,6 +500,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val reportableNode: Any,
     val parent: IrClassSymbol,
     val callee: IrFunctionSymbol,
+    val annotations: LatticeAnnotations<IrAnnotation>
   ) {
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     val isInCompanionObject: Boolean
