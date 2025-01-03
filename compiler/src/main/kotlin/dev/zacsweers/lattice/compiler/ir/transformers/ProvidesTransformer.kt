@@ -311,7 +311,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     return factoryCls
   }
 
-  fun getOrPutCallableReference(function: IrSimpleFunction, annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(function)): CallableReference {
+  fun getOrPutCallableReference(
+    function: IrSimpleFunction,
+    annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(function),
+  ): CallableReference {
     // TODO report in FIR
     if (function.typeParameters.isNotEmpty()) {
       function.reportError("@Provides functions may not have type parameters")
@@ -341,7 +344,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  fun getOrPutCallableReference(property: IrProperty, annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(property)): CallableReference {
+  fun getOrPutCallableReference(
+    property: IrProperty,
+    annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(property),
+  ): CallableReference {
     val fqName = property.fqNameWhenAvailable ?: error("No FqName for property ${property.name}")
     return references.getOrPut(fqName) {
       // TODO FIR error if it has a receiver param
@@ -500,7 +506,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val reportableNode: Any,
     val parent: IrClassSymbol,
     val callee: IrFunctionSymbol,
-    val annotations: LatticeAnnotations<IrAnnotation>
+    val annotations: LatticeAnnotations<IrAnnotation>,
   ) {
     @OptIn(UnsafeDuringIrConstructionAPI::class)
     val isInCompanionObject: Boolean

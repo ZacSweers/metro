@@ -59,7 +59,6 @@ import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.withEntry
 import dev.zacsweers.lattice.compiler.letIf
-import java.lang.AssertionError
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities

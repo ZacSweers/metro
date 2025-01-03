@@ -76,7 +76,8 @@ internal class LatticeAnnotations<T>(
   val isQualified
     get() = qualifier != null
 
-  val isIntoMultibinding get() = isIntoSet || isElementsIntoSet || isIntoMap || mapKeys.isNotEmpty()
+  val isIntoMultibinding
+    get() = isIntoSet || isElementsIntoSet || isIntoMap || mapKeys.isNotEmpty()
 
   fun copy(
     isDependencyGraph: Boolean = this.isDependencyGraph,
@@ -98,21 +99,21 @@ internal class LatticeAnnotations<T>(
   ): LatticeAnnotations<T> {
     return LatticeAnnotations(
       isDependencyGraph,
-        isDependencyGraphFactory,
-        isInject,
-        isAssistedInject,
-        isProvides,
-        isBinds,
-        isBindsInstance,
-        isIntoSet,
-        isElementsIntoSet,
-        isIntoMap,
-        isMultibinds,
-        isAssistedFactory,
-        assisted,
-        scope,
-        qualifier,
-        mapKeys,
+      isDependencyGraphFactory,
+      isInject,
+      isAssistedInject,
+      isProvides,
+      isBinds,
+      isBindsInstance,
+      isIntoSet,
+      isElementsIntoSet,
+      isIntoMap,
+      isMultibinds,
+      isAssistedFactory,
+      assisted,
+      scope,
+      qualifier,
+      mapKeys,
     )
   }
 
@@ -307,12 +308,13 @@ private fun IrAnnotationContainer.latticeAnnotations(
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun FirAnnotationContainer.latticeAnnotations(
-  session: FirSession,
+  session: FirSession
 ): LatticeAnnotations<LatticeFirAnnotation> {
-  val anchorElement = when (this) {
-    is FirDeclaration -> symbol
-    else -> error("Unsupported declaration type: ${this::class.simpleName}")
-  }
+  val anchorElement =
+    when (this) {
+      is FirDeclaration -> symbol
+      else -> error("Unsupported declaration type: ${this::class.simpleName}")
+    }
   return latticeAnnotations(session, anchorElement, null)
 }
 

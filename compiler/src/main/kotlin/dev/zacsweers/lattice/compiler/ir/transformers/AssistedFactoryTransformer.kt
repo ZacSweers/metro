@@ -95,7 +95,8 @@ internal class AssistedFactoryTransformer(
 
     val returnType = function.returnType
     val targetType = returnType.rawType()
-    val injectConstructor = targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
+    val injectConstructor =
+      targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
 
     val generatedFactory =
       injectConstructorTransformer.getOrGenerateFactoryClass(targetType, injectConstructor)

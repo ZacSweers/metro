@@ -110,7 +110,10 @@ internal interface BindingStack {
       /*
       com.slack.circuit.star.Example1
        */
-      fun contributedToMultibinding(contextKey: ContextualTypeKey, declaration: IrDeclaration?): Entry =
+      fun contributedToMultibinding(
+        contextKey: ContextualTypeKey,
+        declaration: IrDeclaration?,
+      ): Entry =
         Entry(
           contextKey = contextKey,
           usage = "is a defined multibinding",
@@ -212,7 +215,8 @@ internal interface BindingStack {
         }
       }
 
-    operator fun invoke(graph: IrClass, logger: LatticeLogger): BindingStack = BindingStackImpl(graph, logger)
+    operator fun invoke(graph: IrClass, logger: LatticeLogger): BindingStack =
+      BindingStackImpl(graph, logger)
 
     fun empty() = EMPTY
   }
@@ -252,10 +256,8 @@ internal fun Appendable.appendBindingStackEntries(
   }
 }
 
-internal class BindingStackImpl(
-  override val graph: IrClass,
-  private val logger: LatticeLogger
-) : BindingStack {
+internal class BindingStackImpl(override val graph: IrClass, private val logger: LatticeLogger) :
+  BindingStack {
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
   private val entrySet = mutableSetOf<TypeKey>()
@@ -267,12 +269,14 @@ internal class BindingStackImpl(
   }
 
   override fun push(entry: Entry) {
-    val logPrefix = if (stack.isEmpty()) {
-      "\uD83C\uDF32"
-    } else {
-      "└─"
-    }
-    val contextHint = if (entry.typeKey != entry.displayTypeKey) "(${entry.typeKey.render(short = true)}) " else ""
+    val logPrefix =
+      if (stack.isEmpty()) {
+        "\uD83C\uDF32"
+      } else {
+        "└─"
+      }
+    val contextHint =
+      if (entry.typeKey != entry.displayTypeKey) "(${entry.typeKey.render(short = true)}) " else ""
     logger.log("$logPrefix $contextHint${entry.toString().withoutLineBreaks}")
     stack.addFirst(entry)
     entrySet.add(entry.typeKey)
@@ -296,9 +300,7 @@ internal class BindingStackImpl(
   // TODO optimize this by looking in the entrySet first
   override fun entriesSince(key: TypeKey): List<Entry> {
     val reversed = stack.asReversed()
-    val index = reversed.indexOfFirst {
-      !it.contextKey.isIntoMultibinding && it.typeKey == key
-    }
+    val index = reversed.indexOfFirst { !it.contextKey.isIntoMultibinding && it.typeKey == key }
     if (index == -1) return emptyList()
     return reversed.slice(index until reversed.size).filterNot { it.isSynthetic }
   }

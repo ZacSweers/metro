@@ -39,9 +39,7 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
     if (!options.enabled) return
 
     val classIds = LatticeClassIds()
-    FirExtensionRegistrarAdapter.registerExtension(
-      LatticeFirExtensionRegistrar(classIds, options)
-    )
+    FirExtensionRegistrarAdapter.registerExtension(LatticeFirExtensionRegistrar(classIds, options))
     IrGenerationExtension.registerExtension(
       LatticeIrGenerationExtension(configuration.messageCollector, classIds, options)
     )
@@ -52,7 +50,5 @@ internal val CompilerConfiguration.messageCollector: MessageCollector
   get() = get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
 
 internal fun MessageCollector.asFunctionOutput(): (String) -> Unit {
-  return {
-    report(CompilerMessageSeverity.OUTPUT, it)
-  }
+  return { report(CompilerMessageSeverity.OUTPUT, it) }
 }

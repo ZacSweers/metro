@@ -32,8 +32,6 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
-import kotlin.collections.component1
-import kotlin.collections.map
 import kotlin.reflect.KCallable
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.companionObject

@@ -71,7 +71,8 @@ internal class InjectConstructorTransformer(
   private val generatedFactories = mutableMapOf<ClassId, IrClass>()
 
   fun visitClass(declaration: IrClass) {
-    val injectableConstructor = declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
+    val injectableConstructor =
+      declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
     if (injectableConstructor != null) {
       getOrGenerateFactoryClass(declaration, injectableConstructor)
     }
@@ -231,18 +232,19 @@ internal class InjectConstructorTransformer(
     function.body =
       pluginContext.createIrBuilder(function.symbol).irBlockBody {
         val assistedArgs = function.valueParameters.map { irGet(it) }
-        val newInstance = irInvoke(
-          dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
-          callee = newInstanceFunction.symbol,
-          args =
-            assistedArgs +
-              parametersAsProviderArguments(
-                context = latticeContext,
-                parameters = constructorParameters,
-                receiver = factoryReceiver,
-                parametersToFields = parametersToFields,
-              ),
-        )
+        val newInstance =
+          irInvoke(
+            dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
+            callee = newInstanceFunction.symbol,
+            args =
+              assistedArgs +
+                parametersAsProviderArguments(
+                  context = latticeContext,
+                  parameters = constructorParameters,
+                  receiver = factoryReceiver,
+                  parametersToFields = parametersToFields,
+                ),
+          )
 
         if (injectors.isNotEmpty()) {
           val instance =
