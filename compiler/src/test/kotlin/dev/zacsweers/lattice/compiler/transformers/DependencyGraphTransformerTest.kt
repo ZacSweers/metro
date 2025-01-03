@@ -1527,9 +1527,4 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       "ExampleGraph.kt:12:36 DependencyGraph.Factory abstract function parameters must be unique."
     )
   }
-
-  // TODO
-  //  - advanced graph resolution (i.e. complex dep chains)
-  //  - @get:Provides?
-  //  - Inherited exposed types + deduping overrides?
 }
