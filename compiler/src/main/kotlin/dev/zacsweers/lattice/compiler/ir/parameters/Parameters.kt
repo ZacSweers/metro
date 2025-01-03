@@ -30,7 +30,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
-import org.jetbrains.kotlin.ir.get
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -56,7 +55,13 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
     get() = (ir as? IrSimpleFunction?)?.isPropertyAccessor == true
 
   val irProperty: IrProperty?
-    get() = (ir as? IrSimpleFunction?)?.propertyIfAccessor as IrProperty?
+    get() {
+      return if (isProperty) {
+        (ir as IrSimpleFunction).propertyIfAccessor as? IrProperty
+      } else {
+        null
+      }
+    }
 
   val extensionOrFirstParameter: T?
     get() = extensionReceiver ?: valueParameters.firstOrNull()
