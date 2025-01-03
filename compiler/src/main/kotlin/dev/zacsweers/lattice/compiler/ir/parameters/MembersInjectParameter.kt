@@ -120,6 +120,7 @@ internal fun IrProperty.toMemberInjectParameter(
       context,
       with(context) { qualifierAnnotation() },
       defaultValue != null,
+      false,
     )
 
   val memberInjectorClass =
@@ -160,6 +161,7 @@ internal fun IrValueParameter.toMemberInjectParameter(
       context,
       with(context) { qualifierAnnotation() },
       defaultValue != null,
+      false,
     )
 
   val ownerFunction = this.parent as IrFunction // TODO is this safe

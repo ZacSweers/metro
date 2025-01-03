@@ -103,6 +103,7 @@ internal fun IrValueParameter.toConstructorParameter(
       context,
       with(context) { qualifierAnnotation() },
       defaultValue != null,
+      false,
     )
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
