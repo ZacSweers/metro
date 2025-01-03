@@ -19,6 +19,7 @@ public interface LatticeLogger {
     BindingGraphConstruction,
     CycleDetection,
     GraphImplCodeGen,
+    GeneratedFactories,
   }
 
   public companion object {
