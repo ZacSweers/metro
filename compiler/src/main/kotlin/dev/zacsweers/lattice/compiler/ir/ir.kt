@@ -789,10 +789,6 @@ internal fun IrClass.getSuperClassNotAny(): IrClass? {
 internal val IrDeclarationParent.isExternalParent: Boolean
   get() = this is Fir2IrLazyClass || this is IrExternalPackageFragment
 
-internal fun IrFunction.isBindsAnnotated(symbols: LatticeSymbols): Boolean {
-  return isAnnotatedWithAny(symbols.latticeClassIds.bindsAnnotations)
-}
-
 /**
  * An [irBlockBody] with a single [expression]. This is useful because [irExprBody] is not
  * serializable in IR and cannot be used in some places like function bodies. This replicates that
