@@ -15,6 +15,8 @@
  */
 package dev.zacsweers.lattice.compiler.ir
 
+import dev.drewhamilton.poko.Poko
+import dev.zacsweers.lattice.compiler.LatticeAnnotations
 import dev.zacsweers.lattice.compiler.expectAs
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -25,16 +27,16 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.render
 
-internal data class ContextualTypeKey(
+@Poko
+internal class ContextualTypeKey(
   val typeKey: TypeKey,
-  val isWrappedInProvider: Boolean,
-  val isWrappedInLazy: Boolean,
-  val isLazyWrappedInProvider: Boolean,
-  val hasDefault: Boolean,
+  val isWrappedInProvider: Boolean = false,
+  val isWrappedInLazy: Boolean = false,
+  val isLazyWrappedInProvider: Boolean = false,
+  val hasDefault: Boolean = false,
+  val isDeferrable: Boolean = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider,
+  val isIntoMultibinding: Boolean = false,
 ) {
-
-  val isDeferrable
-    get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
 
   val requiresProviderInstance: Boolean =
     isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
@@ -72,6 +74,7 @@ internal data class ContextualTypeKey(
     fun from(
       context: LatticeTransformerContext,
       function: IrSimpleFunction,
+      annotations: LatticeAnnotations<IrAnnotation>,
       type: IrType = function.returnType,
     ): ContextualTypeKey =
       type.asContextualTypeKey(
@@ -81,6 +84,7 @@ internal data class ContextualTypeKey(
             ?: function.qualifierAnnotation()
         },
         false,
+        annotations.isIntoMultibinding,
       )
 
     fun from(
@@ -89,9 +93,10 @@ internal data class ContextualTypeKey(
       type: IrType = parameter.type,
     ): ContextualTypeKey =
       type.asContextualTypeKey(
-        context,
-        with(context) { parameter.qualifierAnnotation() },
-        parameter.defaultValue != null,
+        context = context,
+        qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
+        hasDefault = parameter.defaultValue != null,
+        isIntoMultibinding = false,
       )
   }
 }
@@ -106,19 +111,21 @@ internal fun IrType.isLatticeProviderType(context: LatticeTransformerContext): B
   return rawTypeClass!!.implementsAny(context.pluginContext, context.symbols.providerTypes)
 }
 
+@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrType.asContextualTypeKey(
   context: LatticeTransformerContext,
   qualifierAnnotation: IrAnnotation?,
   hasDefault: Boolean,
+  isIntoMultibinding: Boolean,
 ): ContextualTypeKey {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
   val declaredType = this
-  val rawTypeClass = declaredType.rawTypeOrNull()
-  val rawType = rawTypeClass?.classId
+  val rawClass = declaredType.rawTypeOrNull()
+  val rawClassId = rawClass?.classId
 
-  val isWrappedInProvider = rawType in context.symbols.providerTypes
-  val isWrappedInLazy = rawType in context.symbols.lazyTypes
+  val isWrappedInProvider = rawClassId in context.symbols.providerTypes
+  val isWrappedInLazy = rawClassId in context.symbols.lazyTypes
   val isLazyWrappedInProvider =
     isWrappedInProvider &&
       declaredType.arguments[0].typeOrFail.rawTypeOrNull()?.classId in context.symbols.lazyTypes
@@ -136,6 +143,35 @@ internal fun IrType.asContextualTypeKey(
       isWrappedInProvider || isWrappedInLazy -> declaredType.arguments.single().typeOrFail
       else -> declaredType
     }
+
+  val isDeferrable =
+    isLazyWrappedInProvider ||
+      isWrappedInProvider ||
+      isWrappedInLazy ||
+      run {
+        // Check if this is a Map<Key, Provider<Value>>
+        // If it has no type args we can skip
+        if (declaredType.arguments.size != 2) return@run false
+        val isMap =
+          rawClass?.implements(
+            context.pluginContext,
+            context.pluginContext.irBuiltIns.mapClass.owner.classId!!,
+          ) == true
+        if (!isMap) return@run false
+        val valueTypeContextKey =
+          declaredType.arguments[1]
+            .typeOrFail
+            .asContextualTypeKey(
+              context,
+              // TODO could we actually support these?
+              qualifierAnnotation = null,
+              hasDefault = false,
+              isIntoMultibinding = false,
+            )
+
+        valueTypeContextKey.isDeferrable
+      }
+
   val typeKey = TypeKey(type, qualifierAnnotation)
   return ContextualTypeKey(
     typeKey = typeKey,
@@ -143,5 +179,7 @@ internal fun IrType.asContextualTypeKey(
     isWrappedInLazy = isWrappedInLazy,
     isLazyWrappedInProvider = isLazyWrappedInProvider,
     hasDefault = hasDefault,
+    isDeferrable = isDeferrable,
+    isIntoMultibinding = isIntoMultibinding,
   )
 }
