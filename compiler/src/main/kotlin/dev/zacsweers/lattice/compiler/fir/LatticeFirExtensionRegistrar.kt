@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler.fir
 
 import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeOptions
+import dev.zacsweers.lattice.compiler.fir.generators.LatticeFirAssistedFactoryGenerator
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 
 internal class LatticeFirExtensionRegistrar(
