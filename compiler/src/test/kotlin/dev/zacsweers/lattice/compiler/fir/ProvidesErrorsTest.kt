@@ -389,4 +389,62 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         .trimIndent()
     )
   }
+
+  @Test
+  fun `provides - interface - may not have type parameters`() {
+    val result =
+      compile(
+        source(
+          """
+            interface ExampleGraph {
+              @Provides
+              fun <T> provideString(): String = "Hello"
+
+              companion object {
+                @Provides
+                fun <T> provideInt(): Int = 0
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:8:7 `@Provides` declarations may not have type parameters.
+        e: ExampleGraph.kt:12:9 `@Provides` declarations may not have type parameters.
+      """.trimIndent()
+    )
+  }
+
+  @Test
+  fun `provides - abstract class - may not have type parameters`() {
+    val result =
+      compile(
+        source(
+          """
+            abstract class ExampleGraph {
+              @Provides
+              fun <T> provideString(): String = "Hello"
+
+              companion object {
+                @Provides
+                fun <T> provideInt(): Int = 0
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:8:7 `@Provides` declarations may not have type parameters.
+        e: ExampleGraph.kt:12:9 `@Provides` declarations may not have type parameters.
+      """.trimIndent()
+    )
+  }
 }

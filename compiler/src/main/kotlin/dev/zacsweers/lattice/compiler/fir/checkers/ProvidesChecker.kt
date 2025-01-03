@@ -72,6 +72,17 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
+    if (declaration.typeParameters.isNotEmpty()) {
+      val type = if (annotations.isProvides) "Provides" else "Binds"
+      reporter.reportOn(
+        source,
+        FirLatticeErrors.LATTICE_TYPE_PARAMETERS_ERROR,
+        "`@$type` declarations may not have type parameters.",
+        context,
+      )
+      return
+    }
+
     val bodyExpression =
       when (declaration) {
         is FirSimpleFunction -> declaration.body

@@ -167,7 +167,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       exitProcessing()
     }
 
-    // TODO FIR check parent class (if any) is a graph. What about (companion) objects?
     // TODO FIR check function is not abstract
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho

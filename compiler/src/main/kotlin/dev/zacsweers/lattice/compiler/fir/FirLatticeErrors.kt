@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
+import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.TYPE_PARAMETERS_LIST
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VISIBILITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers.STRING
@@ -102,6 +103,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by error2<String, String>(NAME_IDENTIFIER)
   val LATTICE_DECLARATION_ERROR by error1<String>(NAME_IDENTIFIER)
   val LATTICE_DECLARATION_VISIBILITY_ERROR by error1<String>(VISIBILITY_MODIFIER)
+  val LATTICE_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
 
   // DependencyGraph factory errors
   val GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0(NAME_IDENTIFIER)
@@ -148,6 +150,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       )
       put(LATTICE_DECLARATION_ERROR, "{0}", TO_STRING)
       put(LATTICE_DECLARATION_VISIBILITY_ERROR, "{0} must be public or internal.", TO_STRING)
+      put(LATTICE_TYPE_PARAMETERS_ERROR, "{0}", STRING)
 
       // DependencyGraph creator errors
       put(
