@@ -97,6 +97,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       )
     }
 
+    // TODO support first, non-receiver parameter
     if (declaration.receiverParameter != null) {
       if (bodyExpression == null) {
         if (annotations.isBinds) {
