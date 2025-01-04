@@ -60,6 +60,7 @@ internal class LatticeSymbols(
   object FqNames {
     val kotlinCollectionsPackageFqn = FqName("kotlin.collections")
     val latticeRuntimePackage = FqName(StringNames.latticeRuntimePackage)
+    val latticeRuntimeInternalPackage = FqName(StringNames.latticeRuntimeInternalPackage)
   }
 
   object ClassIds {
@@ -67,7 +68,7 @@ internal class LatticeSymbols(
     val publishedApi = ClassId(kotlinPackageFqn, Name.identifier("PublishedApi"))
     val set = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Set"))
     val map = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Map"))
-    val latticeFactory = ClassId(FqNames.latticeRuntimePackage, Names.factoryClassName)
+    val latticeFactory = ClassId(FqNames.latticeRuntimeInternalPackage, Names.factoryClassName)
     val latticeProvider = ClassId(FqNames.latticeRuntimePackage, Names.providerClassName)
     val jsExportIgnore = ClassId.fromString("kotlin/js/JsExport.Ignore")
   }
