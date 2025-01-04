@@ -1018,15 +1018,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
   fun `graphs cannot have constructors with parameters`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.DependencyGraph
-            import dev.zacsweers.lattice.Provides
-            import dev.zacsweers.lattice.BindsInstance
-
             @DependencyGraph
             abstract class ExampleGraph(
               @get:Provides
@@ -1047,13 +1040,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    assertThat(result.messages)
-      .contains(
-        """
-          ExampleGraph.kt:8:28 Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead.
-        """
-          .trimIndent()
-      )
+    result.assertDiagnostics("e: ExampleGraph.kt:7:28 Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead.")
   }
 
   @Test
@@ -1102,14 +1089,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
   fun `graph dependency cycles should fail across multiple graphs`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.lattice.DependencyGraph
-            import dev.zacsweers.lattice.Provides
-
+        source(
+          fileNameWithoutExtension = "ExampleGraph",
+          source = """
             @DependencyGraph
             interface CharSequenceGraph {
 
@@ -1144,15 +1126,20 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
+    result.assertDiagnostics(
       """
-        ExampleGraph.kt:6:1 [Lattice/GraphDependencyCycle] Graph dependency cycle detected!
+        e: ExampleGraph.kt:6:1 [Lattice/GraphDependencyCycle] Graph dependency cycle detected!
             test.StringGraph is requested at
                 [test.CharSequenceGraph] test.StringGraph.Factory.create()
             test.CharSequenceGraph is requested at
                 [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
-      """
-        .trimIndent()
+        
+        e: ExampleGraph.kt:20:1 [Lattice/GraphDependencyCycle] Graph dependency cycle detected!
+            test.CharSequenceGraph is requested at
+                [test.StringGraph] test.CharSequenceGraph.Factory.create()
+            test.StringGraph is requested at
+                [test.StringGraph] test.StringGraph.Factory.create()
+      """.trimIndent()
     )
   }
 
