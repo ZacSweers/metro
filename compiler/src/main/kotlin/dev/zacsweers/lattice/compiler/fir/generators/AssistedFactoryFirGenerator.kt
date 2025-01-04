@@ -196,7 +196,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
       val existingFactory =
         classSymbol.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().singleOrNull {
           // TODO also check for factory annotation? Not sure what else we'd do anyway though
-          it.name == LatticeSymbols.Names.factory
+          it.name == LatticeSymbols.Names.factoryClassName
         }
       if (existingFactory != null) {
         // TODO test this case
@@ -205,7 +205,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
 
       assistedInjectClasses[classSymbol] = constructor
       // We want to generate an assisted factory
-      return setOf(LatticeSymbols.Names.factory)
+      return setOf(LatticeSymbols.Names.factoryClassName)
     }
     return super.getNestedClassifiersNames(classSymbol, context)
   }
