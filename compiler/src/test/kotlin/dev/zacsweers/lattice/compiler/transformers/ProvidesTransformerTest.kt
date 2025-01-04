@@ -21,6 +21,7 @@ import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertDiagnostics
+import dev.zacsweers.lattice.compiler.callProperty
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import dev.zacsweers.lattice.compiler.invokeCreateAs
@@ -373,6 +374,94 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       """
         .trimIndent()
     )
+  }
+
+  @Test
+  fun `a provider is visible from a supertype in another module`() {
+    val otherModuleResult =
+      compile(
+        source(
+          """
+            interface Base {
+              @Provides fun provideInt(): Int = 2
+            }
+          """.trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph : Base {
+            val int: Int
+          }
+        """.trimIndent()
+      ),
+      previousCompilationResult = otherModuleResult,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
+    }
+  }
+
+  @Test
+  fun `a qualified provider is visible from a supertype in another module`() {
+    val otherModuleResult =
+      compile(
+        source(
+          """
+            interface Base {
+              @Provides @Named("int") fun provideInt(): Int = 2
+            }
+          """.trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph : Base {
+            @Named("int") 
+            val int: Int
+          }
+        """.trimIndent()
+      ),
+      previousCompilationResult = otherModuleResult,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
+    }
+  }
+
+  @Test
+  fun `a provider with a default is visible from a supertype in another module`() {
+    val otherModuleResult =
+      compile(
+        source(
+          """
+            interface Base {
+              @Provides fun provideString(value: Int = 2): String = value.toString()
+            }
+          """.trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph : Base {
+            val string: String
+          }
+        """.trimIndent()
+      ),
+      previousCompilationResult = otherModuleResult,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<String>("string")).isEqualTo("2")
+    }
   }
 
   // TODO
