@@ -343,7 +343,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         .filter { it.isAnnotatedWithAny(session, session.latticeClassIds.providesAnnotations) }
         .mapNotNullToSet { providesCallable ->
           val providerCallable =
-            ProviderCallable.create(classSymbol, providesCallable) ?: return@mapNotNullToSet null
+            providesCallable.asProviderCallable(classSymbol) ?: return@mapNotNullToSet null
           val simpleName =
             buildString {
                 if (providerCallable.useGetPrefix) {
@@ -400,8 +400,18 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     }
   }
 
-  class ProviderCallable
-  private constructor(
+  fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
+    val instanceReceiver = if (owner.isCompanion) null else owner.defaultType()
+    val params =
+      when (this) {
+        is FirPropertySymbol -> emptyList()
+        is FirNamedFunctionSymbol -> this.valueParameterSymbols
+        else -> return null
+      }
+    return ProviderCallable(owner, this, instanceReceiver, params)
+  }
+
+  class ProviderCallable(
     val owner: FirClassSymbol<*>,
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
@@ -430,19 +440,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           }
         }
         .asName()
-    }
-
-    companion object {
-      fun create(owner: FirClassSymbol<*>, symbol: FirCallableSymbol<*>): ProviderCallable? {
-        val instanceReceiver = if (owner.isCompanion) null else owner.defaultType()
-        val params =
-          when (symbol) {
-            is FirPropertySymbol -> emptyList()
-            is FirNamedFunctionSymbol -> symbol.valueParameterSymbols
-            else -> return null
-          }
-        return ProviderCallable(owner, symbol, instanceReceiver, params)
-      }
     }
   }
 }
