@@ -102,14 +102,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
   fun `simple function provider in a companion object`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Provides
-            import dev.zacsweers.lattice.DependencyGraph
-
             @DependencyGraph
             interface ExampleGraph {
               companion object {
@@ -139,14 +133,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
   fun `simple property provider in a companion object`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Provides
-            import dev.zacsweers.lattice.DependencyGraph
-
             @DependencyGraph
             interface ExampleGraph {
               companion object {
@@ -346,15 +334,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
   fun `providers cannot have type parameters`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Provides
-            import dev.zacsweers.lattice.DependencyGraph
-            import dev.zacsweers.lattice.Named
-
             @DependencyGraph
             interface ExampleGraph {
               @Provides
@@ -366,13 +347,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    assertThat(result.messages)
-      .contains(
-        """
-        ExampleGraph.kt:9:3 @Provides functions may not have type parameters
-      """
-          .trimIndent()
-      )
+    result.assertDiagnostics("e: ExampleGraph.kt:9:7 `@Provides` declarations may not have type parameters.")
   }
 
   @Test

@@ -114,8 +114,6 @@ fun Class<*>.providesFactoryClass(
   providerCallableName: String? = null,
   companion: Boolean = false,
 ): Class<Factory<*>> {
-  val companionString = if (companion) "Companion_" else ""
-
   val callables: List<KCallable<*>> =
     if (companion) {
       kotlin.companionObject!!.let { companionObject ->
@@ -157,9 +155,12 @@ fun Class<*>.providesFactoryClass(
   val methodName = providerCallableName ?: providesCallables.single()
 
   val expectedName =
-    "${companionString}${methodName.capitalizeUS()}${LatticeSymbols.Names.latticeFactory.asString()}"
+    "${methodName.capitalizeUS()}${LatticeSymbols.Names.latticeFactory.asString()}"
+
+  val classToSearch = if (companion) companionObjectClass else this
+
   @Suppress("UNCHECKED_CAST")
-  return this.classes.singleOrNull { it.simpleName == expectedName } as Class<Factory<*>>?
+  return classToSearch.classes.singleOrNull { it.simpleName == expectedName } as Class<Factory<*>>?
     ?: error("Could not find nested class $this.$expectedName")
 }
 
