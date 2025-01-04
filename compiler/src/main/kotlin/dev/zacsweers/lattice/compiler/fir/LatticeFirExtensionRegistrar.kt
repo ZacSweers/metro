@@ -28,6 +28,8 @@ internal class LatticeFirExtensionRegistrar(
   override fun ExtensionRegistrarContext.configurePlugin() {
     +LatticeFirBuiltIns.getFactory(latticeClassIds)
     +::LatticeFirCheckers
+    // TODO enable once we support metadata propagation
+//    +::FirProvidesStatusTransformer
     +::ProvidesFactoryFirGenerator
     if (options.generateAssistedFactories) {
       +::AssistedFactoryFirGenerator
