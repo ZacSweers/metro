@@ -107,8 +107,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       functionParams.mapToSetWithDupes {
         it.symbol.toAssistedParameterKey(
           session,
-          latticeClassIds,
-          FirTypeKey.from(session, latticeClassIds, it),
+          FirTypeKey.from(session, it),
         )
       }
 
@@ -126,8 +125,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       constructorAssistedParams.mapToSetWithDupes {
         it.toAssistedParameterKey(
           session,
-          latticeClassIds,
-          FirTypeKey.from(session, latticeClassIds, it),
+          FirTypeKey.from(session, it),
         )
       }
 
@@ -189,13 +187,12 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     companion object {
       fun FirValueParameterSymbol.toAssistedParameterKey(
         session: FirSession,
-        latticeClassIds: LatticeClassIds,
         typeKey: FirTypeKey,
       ): FirAssistedParameterKey {
         return FirAssistedParameterKey(
           typeKey,
           annotations
-            .annotationsIn(session, latticeClassIds.assistedAnnotations)
+            .annotationsIn(session, session.latticeClassIds.assistedAnnotations)
             .singleOrNull()
             ?.getStringArgument(LatticeSymbols.Names.value, session)
             .orEmpty(),

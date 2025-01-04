@@ -66,7 +66,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         return
       }
 
-      val typeKey = FirTypeKey.from(session, latticeClassIds, param)
+      val typeKey = FirTypeKey.from(session, param)
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
           param.source,

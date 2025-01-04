@@ -121,14 +121,13 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
             // Compare type keys. Different qualifiers are ok
             val returnTypeKey =
               when (declaration) {
-                is FirSimpleFunction -> FirTypeKey.from(session, latticeClassIds, declaration)
-                is FirProperty -> FirTypeKey.from(session, latticeClassIds, declaration)
+                is FirSimpleFunction -> FirTypeKey.from(session, declaration)
+                is FirProperty -> FirTypeKey.from(session, declaration)
                 else -> return
               }
             val receiverTypeKey =
               FirTypeKey.from(
                 session,
-                latticeClassIds,
                 declaration.receiverParameter!!,
                 declaration,
               )
