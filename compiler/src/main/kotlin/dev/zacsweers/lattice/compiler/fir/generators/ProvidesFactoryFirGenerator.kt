@@ -20,6 +20,9 @@ import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
+import dev.zacsweers.lattice.compiler.fir.buildSimpleValueParameter
+import dev.zacsweers.lattice.compiler.fir.copyParametersWithDefaults
+import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
@@ -32,7 +35,8 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
-import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
+import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
+import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -45,6 +49,7 @@ import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -52,6 +57,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneType
@@ -89,25 +95,27 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
       } ?: return emptySet()
 
     return buildSet {
-        add(SpecialNames.INIT)
-        if (!classSymbol.isCompanion) {
-          add(LatticeSymbols.Names.invoke)
-        }
-        if (classSymbol.classKind == ClassKind.OBJECT) {
-          // Generate create() and newInstance headers
-          add(LatticeSymbols.Names.create)
-          add(callable.bytecodeName)
-        }
+      add(SpecialNames.INIT)
+      if (!classSymbol.isCompanion) {
+        add(LatticeSymbols.Names.invoke)
       }
+      if (classSymbol.classKind == ClassKind.OBJECT) {
+        // Generate create() and newInstance headers
+        add(LatticeSymbols.Names.create)
+        add(callable.bytecodeName)
+      }
+    }
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
-    val constructor = if (context.owner.classKind == ClassKind.OBJECT) {
-      createDefaultPrivateConstructor(context.owner, LatticeKeys.Default)
-    } else {
-      val callable = providerFactoryClassIdsToCallables[context.owner.classId] ?: return emptyList()
-      buildFactoryConstructor(context, callable.instanceReceiver, null, callable.valueParameters)
-    }
+    val constructor =
+      if (context.owner.classKind == ClassKind.OBJECT) {
+        createDefaultPrivateConstructor(context.owner, LatticeKeys.Default)
+      } else {
+        val callable =
+          providerFactoryClassIdsToCallables[context.owner.classId] ?: return emptyList()
+        buildFactoryConstructor(context, callable.instanceReceiver, null, callable.valueParameters)
+      }
     return listOf(constructor.symbol)
   }
 
@@ -120,26 +128,38 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     valueParameters: List<FirValueParameterSymbol>,
   ): FirConstructor {
     val owner = context.owner
-    return createConstructor(owner, LatticeKeys.Default, isPrimary = true, generateDelegatedNoArgConstructorCall = true) {
-      instanceReceiver?.let { valueParameter(LatticeSymbols.Names.instance, it, key = LatticeKeys.InstanceParameter) }
-      extensionReceiver?.let {
-        valueParameter(LatticeSymbols.Names.receiver, it.wrapInProvider(), key = LatticeKeys.ReceiverParameter)
-      }
-      for (valueParameter in valueParameters) {
-        // TODO toe-hold for later factory gen
-        if (
-          valueParameter.isAnnotatedWithAny(
-            session,
-            session.latticeClassIds.assistedAnnotations,
-          )
-        ) {
-          continue
+    return createConstructor(
+        owner,
+        LatticeKeys.Default,
+        isPrimary = true,
+        generateDelegatedNoArgConstructorCall = true,
+      ) {
+        instanceReceiver?.let {
+          valueParameter(LatticeSymbols.Names.instance, it, key = LatticeKeys.InstanceParameter)
         }
-        // TODO refactor this conversion up
-        val typeKey = FirTypeKey.from(session, valueParameter)
-        valueParameter(valueParameter.name, typeKey.type.coneType.wrapInProvider(), key = LatticeKeys.ValueParameter)
+        extensionReceiver?.let {
+          valueParameter(
+            LatticeSymbols.Names.receiver,
+            it.wrapInProvider(),
+            key = LatticeKeys.ReceiverParameter,
+          )
+        }
+        for (valueParameter in valueParameters) {
+          // TODO toe-hold for later factory gen
+          if (
+            valueParameter.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+          ) {
+            continue
+          }
+          // TODO refactor this conversion up
+          val typeKey = FirTypeKey.from(session, valueParameter)
+          valueParameter(
+            valueParameter.name,
+            typeKey.type.coneType.wrapInProvider(),
+            key = LatticeKeys.ValueParameter,
+          )
+        }
       }
-    }
       .also { it.containingClassForStaticMemberAttr = owner.toLookupTag() }
   }
 
@@ -148,11 +168,12 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
     val context = context ?: return emptyList()
-    val factoryClassId = if (context.owner.isCompanion) {
-      context.owner.getContainingClassSymbol()?.classId ?: return emptyList()
-    } else {
-      context.owner.classId
-    }
+    val factoryClassId =
+      if (context.owner.isCompanion) {
+        context.owner.getContainingClassSymbol()?.classId ?: return emptyList()
+      } else {
+        context.owner.classId
+      }
     val callable = providerFactoryClassIdsToCallables[factoryClassId] ?: return emptyList()
     val function =
       when (callableId.callableName) {
@@ -196,6 +217,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     return listOf(function)
   }
 
+  @OptIn(SymbolInternals::class)
   private fun buildFactoryCreateFunction(
     context: MemberGenerationContext,
     returnType: ConeKotlinType,
@@ -203,51 +225,48 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     extensionReceiver: ConeClassLikeType?,
     valueParameters: List<FirValueParameterSymbol>,
   ): FirNamedFunctionSymbol {
-    return createMemberFunction(
-        owner = context.owner,
-        key = LatticeKeys.Default,
-        name = LatticeSymbols.Names.create,
-        returnType = returnType,
+    return generateMemberFunction(
+        context.owner,
+        returnType.toFirResolvedTypeRef(),
+        CallableId(context.owner.classId, LatticeSymbols.Names.create),
       ) {
+        val thisFunctionSymbol = symbol
         for (typeParameter in context.owner.typeParameterSymbols) {
-          typeParameter(
-            typeParameter.name,
-            typeParameter.variance,
-            isReified = false,
-            key = LatticeKeys.Default,
-          ) {
-            if (typeParameter.isBound) {
-              for (bound in typeParameter.resolvedBounds) {
-                bound(bound.coneType)
-              }
-            }
-          }
+          typeParameters += buildTypeParameterCopy(typeParameter.fir) {}
         }
-        instanceReceiver?.let { valueParameter(LatticeSymbols.Names.instance, it, key = LatticeKeys.InstanceParameter) }
-        extensionReceiver?.let {
-          valueParameter(LatticeSymbols.Names.receiver, it.wrapInProvider(), key = LatticeKeys.ReceiverParameter)
-        }
-        for (valueParameter in valueParameters) {
-          // TODO toe-hold for later factory gen
-          if (
-            valueParameter.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
-          ) {
-            continue
-          }
 
-          val typeKey = FirTypeKey.from(session, valueParameter)
-          // TODO copy qualifier
-          valueParameter(
-            name = valueParameter.name,
-            type = typeKey.type.coneType.wrapInProvider(),
-            hasDefaultValue = valueParameter.hasDefaultValue,
-            key = LatticeKeys.ValueParameter,
-          )
+        instanceReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = LatticeSymbols.Names.instance,
+              type = it.toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = LatticeKeys.InstanceParameter.origin,
+            )
+        }
+        extensionReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = LatticeSymbols.Names.receiver,
+              type = it.wrapInProvider().toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = LatticeKeys.ReceiverParameter.origin,
+            )
+        }
+
+        copyParametersWithDefaults(
+          valueParameters.filterNot {
+            it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+          }
+        ) { original ->
+          val typeKey = FirTypeKey.from(session, original)
+          this.returnTypeRef = typeKey.type.coneType.wrapInProvider().toFirResolvedTypeRef()
         }
       }
       .symbol
   }
 
+  @OptIn(SymbolInternals::class)
   private fun buildNewInstanceFunction(
     context: MemberGenerationContext,
     name: Name,
@@ -256,41 +275,43 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     extensionReceiver: ConeClassLikeType?,
     valueParameters: List<FirValueParameterSymbol>,
   ): FirNamedFunctionSymbol {
-    return createMemberFunction(
-        owner = context.owner,
-        key = LatticeKeys.ProviderNewInstanceFunction,
-        name = name,
-        returnType = returnType,
+    return generateMemberFunction(
+        context.owner,
+        returnType.toFirResolvedTypeRef(),
+        CallableId(context.owner.classId, name),
+        origin = LatticeKeys.ProviderNewInstanceFunction.origin,
       ) {
+        val thisFunctionSymbol = symbol
         for (typeParameter in context.owner.typeParameterSymbols) {
-          typeParameter(
-            typeParameter.name,
-            typeParameter.variance,
-            isReified = false,
-            key = LatticeKeys.Default,
-          ) {
-            if (typeParameter.isBound) {
-              for (bound in typeParameter.resolvedBounds) {
-                bound(bound.coneType)
-              }
-            }
-          }
+          typeParameters += buildTypeParameterCopy(typeParameter.fir) {}
         }
-        instanceReceiver?.let { valueParameter(LatticeSymbols.Names.instance, it, key = LatticeKeys.InstanceParameter) }
-        extensionReceiver?.let { valueParameter(LatticeSymbols.Names.receiver, it, key = LatticeKeys.ReceiverParameter) }
-        for (valueParameter in valueParameters) {
-          // TODO toe-hold for later factory gen
-          if (
-            valueParameter.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
-          ) {
-            continue
+
+        instanceReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = LatticeSymbols.Names.instance,
+              type = it.toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = LatticeKeys.InstanceParameter.origin,
+            )
+        }
+        extensionReceiver?.let {
+          this.valueParameters +=
+            buildSimpleValueParameter(
+              name = LatticeSymbols.Names.receiver,
+              type = it.toFirResolvedTypeRef(),
+              containingFunctionSymbol = thisFunctionSymbol,
+              origin = LatticeKeys.ReceiverParameter.origin,
+            )
+        }
+
+        copyParametersWithDefaults(
+          valueParameters.filterNot {
+            it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
           }
-          valueParameter(
-            valueParameter.name,
-            valueParameter.resolvedReturnType,
-            hasDefaultValue = valueParameter.hasDefaultValue,
-            key = LatticeKeys.ValueParameter,
-          )
+        ) { original ->
+          val typeKey = FirTypeKey.from(session, original)
+          this.returnTypeRef = typeKey.type.coneType.toFirResolvedTypeRef()
         }
       }
       .symbol
@@ -389,14 +410,14 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
 
     val bytecodeName: Name by unsafeLazy {
       buildString {
-        when {
-          useGetPrefix -> {
-            append("get")
-            append(name.asString().capitalizeUS())
+          when {
+            useGetPrefix -> {
+              append("get")
+              append(name.asString().capitalizeUS())
+            }
+            else -> append(name.asString())
           }
-          else -> append(name.asString())
         }
-      }
         .asName()
     }
 
