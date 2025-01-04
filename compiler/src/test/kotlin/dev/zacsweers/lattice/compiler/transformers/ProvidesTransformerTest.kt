@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.compiler.provideValueAs
 import dev.zacsweers.lattice.compiler.providesFactoryClass
 import dev.zacsweers.lattice.internal.Factory
 import dev.zacsweers.lattice.provider
+import org.junit.Ignore
 import org.junit.Test
 
 class ProvidesTransformerTest : LatticeCompilerTest() {
@@ -113,7 +114,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -144,7 +145,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -343,12 +344,14 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               fun <T> provideValue(): Int = 1
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertDiagnostics("e: ExampleGraph.kt:9:7 `@Provides` declarations may not have type parameters.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:9:7 `@Provides` declarations may not have type parameters."
+    )
   }
 
   @Test
@@ -385,7 +388,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface Base {
               @Provides fun provideInt(): Int = 2
             }
-          """.trimIndent()
+          """
+            .trimIndent()
         )
       )
 
@@ -396,7 +400,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           interface ExampleGraph : Base {
             val int: Int
           }
-        """.trimIndent()
+        """
+          .trimIndent()
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -414,7 +419,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface Base {
               @Provides @Named("int") fun provideInt(): Int = 2
             }
-          """.trimIndent()
+          """
+            .trimIndent()
         )
       )
 
@@ -426,7 +432,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             @Named("int") 
             val int: Int
           }
-        """.trimIndent()
+        """
+          .trimIndent()
       ),
       previousCompilationResult = otherModuleResult,
     ) {
@@ -444,7 +451,8 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
             interface Base {
               @Provides fun provideString(value: Int = 2): String = value.toString()
             }
-          """.trimIndent()
+          """
+            .trimIndent()
         )
       )
 
@@ -455,12 +463,45 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
           interface ExampleGraph : Base {
             val string: String
           }
-        """.trimIndent()
+        """
+          .trimIndent()
       ),
       previousCompilationResult = otherModuleResult,
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       assertThat(graph.callProperty<String>("string")).isEqualTo("2")
+    }
+  }
+
+  @Ignore("Won't work until we support propagating metadata info")
+  @Test
+  fun `a private provider is visible from a supertype in another module`() {
+    val otherModuleResult =
+      compile(
+        source(
+          """
+            interface Base {
+              @Provides private fun provideInt(): Int = 2
+            }
+          """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph : Base {
+            val int: Int
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = otherModuleResult,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
 
