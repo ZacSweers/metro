@@ -32,6 +32,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.constructors
+import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -55,13 +56,15 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     // TODO dagger doesn't appear to error for this case to model off of
     for (constructor in declaration.constructors(session)) {
-      reporter.reportOn(
-        constructor.source,
-        FirLatticeErrors.DEPENDENCY_GRAPH_ERROR,
-        "Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead.",
-        context,
-      )
-      return
+      if (constructor.valueParameterSymbols.isNotEmpty()) {
+        reporter.reportOn(
+          constructor.source,
+          FirLatticeErrors.DEPENDENCY_GRAPH_ERROR,
+          "Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.",
+          context,
+        )
+        return
+      }
     }
 
     // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?

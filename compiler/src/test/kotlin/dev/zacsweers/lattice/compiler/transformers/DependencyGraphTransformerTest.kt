@@ -1040,7 +1040,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertDiagnostics("e: ExampleGraph.kt:7:28 Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead.")
+    result.assertDiagnostics("e: ExampleGraph.kt:7:28 Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.")
   }
 
   @Test
