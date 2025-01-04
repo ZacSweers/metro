@@ -247,16 +247,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       exitProcessing()
     }
 
-    graphDeclaration.constructors.forEach { constructor ->
-      if (constructor.valueParameters.isNotEmpty()) {
-        // TODO dagger doesn't appear to error for this case to model off of
-        constructor.reportError(
-          "Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead."
-        )
-        exitProcessing()
-      }
-    }
-
     val scopes = mutableSetOf<IrAnnotation>()
     val providerFunctions = mutableListOf<Pair<TypeKey, LatticeSimpleFunction>>()
     val exposedTypes = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()

@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -49,6 +50,17 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     if (!isDependencyGraph) return
 
     declaration.validateApiDeclaration(context, reporter, "DependencyGraph") {
+      return
+    }
+
+    // TODO dagger doesn't appear to error for this case to model off of
+    for (constructor in declaration.constructors(session)) {
+      reporter.reportOn(
+        constructor.source,
+        FirLatticeErrors.DEPENDENCY_GRAPH_ERROR,
+        "Dependency graphs cannot have constructors. Use @DependencyGraph.Factory instead.",
+        context,
+      )
       return
     }
 
