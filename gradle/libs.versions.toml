@@ -22,6 +22,7 @@ jvmTarget = "11"
 ksp = "2.1.0-1.0.29"
 ktfmt = "0.53"
 okio = "3.9.1"
+pluginId = "dev.zacsweers.lattice.compiler"
 
 [plugins]
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.26.1" }

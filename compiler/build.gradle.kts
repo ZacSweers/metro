@@ -40,6 +40,9 @@ buildConfig {
       topLevelConstants = true
     }
   }
+  sourceSets.named("main") {
+    buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
+  }
   sourceSets.named("test") {
     buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
   }

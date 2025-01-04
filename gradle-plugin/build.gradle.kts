@@ -41,6 +41,7 @@ buildConfig {
     internalVisibility = true
   }
   buildConfigField("String", "VERSION", providers.gradleProperty("VERSION_NAME").map { "\"$it\"" })
+  buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
 }
 
 tasks.withType<KotlinCompile>().configureEach {

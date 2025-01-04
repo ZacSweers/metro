@@ -28,7 +28,7 @@ public class LatticeGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     target.extensions.create("lattice", LatticePluginExtension::class.java)
   }
 
-  override fun getCompilerPluginId(): String = "dev.zacsweers.lattice.compiler"
+  override fun getCompilerPluginId(): String = PLUGIN_ID
 
   override fun getPluginArtifact(): SubpluginArtifact =
     SubpluginArtifact(
