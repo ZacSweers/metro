@@ -416,16 +416,20 @@ val CompilationResult.cleanedDiagnostics: Map<DiagnosticSeverity, List<String>>
   }
 
 // Shorten messages, removing the intermediary temp dir and just printing the file name
-private fun String.parseDiagnostics() =
-  lineSequence()
-    .filterNot { it.isBlank() }
-    .mapNotNull { line ->
-      if (line.startsWith("e: ")) {
-        DiagnosticMessage(DiagnosticSeverity.ERROR, line.substring(3).trim())
-      } else if (line.startsWith("w: ")) {
-        DiagnosticMessage(DiagnosticSeverity.WARNING, line.substring(3).trim())
-      } else if (line.startsWith("i: ")) {
-        DiagnosticMessage(DiagnosticSeverity.INFO, line.substring(3).trim())
+// Note diagnostics may be multi-line, so we chunk by severity prefixes
+private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
+  return lineSequence()
+    .chunkedLinesBy {
+      it.startsWith("e: ") || it.startsWith("w: ") || it.startsWith("i: ")
+    }
+    .map { it.trim() }
+    .mapNotNull { text ->
+      if (text.startsWith("e: ")) {
+        DiagnosticMessage(DiagnosticSeverity.ERROR, text.substring(3).trim())
+      } else if (text.startsWith("w: ")) {
+        DiagnosticMessage(DiagnosticSeverity.WARNING, text.substring(3).trim())
+      } else if (text.startsWith("i: ")) {
+        DiagnosticMessage(DiagnosticSeverity.INFO, text.substring(3).trim())
       } else {
         null
       }
@@ -434,6 +438,7 @@ private fun String.parseDiagnostics() =
     .mapValues { (_, messages) ->
       messages.map { it.message.cleanOutputLine(includeSeverity = false) }
     }
+}
 
 fun String.cleanOutputLine(includeSeverity: Boolean): String {
   val trimmed = trimEnd()
@@ -456,4 +461,22 @@ fun String.cleanOutputLine(includeSeverity: Boolean): String {
 inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {
   val throwable = assertFailsWith(T::class, block)
   return assertThat(throwable)
+}
+
+fun Sequence<String>.chunkedLinesBy(predicate: (String) -> Boolean): Sequence<String> {
+  return chunkedBy(predicate).map { it.joinToString("\n") }
+}
+
+fun <T> Sequence<T>.chunkedBy(predicate: (T) -> Boolean): Sequence<List<T>> = sequence {
+  val current = mutableListOf<T>()
+  for (item in this@chunkedBy) {
+    if (predicate(item) && current.isNotEmpty()) {
+      yield(current.toList())
+      current.clear()
+    }
+    current.add(item)
+  }
+  if (current.isNotEmpty()) {
+    yield(current)
+  }
 }
