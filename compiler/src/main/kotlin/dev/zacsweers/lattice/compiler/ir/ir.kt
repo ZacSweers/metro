@@ -795,7 +795,7 @@ internal val IrDeclarationParent.isExternalParent: Boolean
  * serializable in IR and cannot be used in some places like function bodies. This replicates that
  * ease of use.
  */
-internal fun IrBuilderWithScope.irBlockBody(symbol: IrSymbol, expression: IrExpression) =
+internal fun IrBuilderWithScope.irExprBodySafe(symbol: IrSymbol, expression: IrExpression) =
   context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
 
 internal fun IrFunction.buildBlockBody(

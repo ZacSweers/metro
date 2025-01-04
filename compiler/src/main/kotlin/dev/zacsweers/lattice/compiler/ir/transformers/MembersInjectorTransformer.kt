@@ -26,7 +26,7 @@ import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
-import dev.zacsweers.lattice.compiler.ir.irBlockBody
+import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
@@ -277,7 +277,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
                         args = valueParameters.drop(1).map { irGet(it) },
                       )
                     }
-                  irBlockBody(symbol, bodyExpression)
+                  irExprBodySafe(symbol, bodyExpression)
                 }
             }
         function to params

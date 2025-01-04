@@ -22,7 +22,7 @@ import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.addCompanionObject
 import dev.zacsweers.lattice.compiler.ir.addOverride
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
-import dev.zacsweers.lattice.compiler.ir.irBlockBody
+import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
@@ -54,7 +54,6 @@ import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -161,7 +160,7 @@ internal class AssistedFactoryTransformer(
                     irGet(functionParams.getValue(assistedParameterKey))
                   }
 
-                irBlockBody(
+                irExprBodySafe(
                   symbol,
                   irInvoke(
                     dispatchReceiver =
@@ -202,7 +201,7 @@ internal class AssistedFactoryTransformer(
         // InstanceFactory.create(Impl(delegateFactory))
         body =
           pluginContext.createIrBuilder(symbol).run {
-            irBlockBody(
+            irExprBodySafe(
               symbol,
               irInvoke(
                   dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),

@@ -41,7 +41,7 @@ import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.doubleCheck
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
 import dev.zacsweers.lattice.compiler.ir.getSingleConstBooleanArgumentOrNull
-import dev.zacsweers.lattice.compiler.ir.irBlockBody
+import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irLambda
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
@@ -110,7 +110,6 @@ import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -632,7 +631,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                 addOverride(node.creator.createFunction).apply {
                   body =
                     pluginContext.createIrBuilder(symbol).run {
-                      irBlockBody(
+                      irExprBodySafe(
                         symbol,
                         irCall(graphImpl.primaryConstructor!!.symbol).apply {
                           for (param in valueParameters) {
@@ -654,7 +653,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               this.visibility = DescriptorVisibilities.PUBLIC
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  irBlockBody(
+                  irExprBodySafe(
                     symbol,
                     irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()),
                   )
@@ -669,7 +668,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               this.visibility = DescriptorVisibilities.PUBLIC
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  irBlockBody(
+                  irExprBodySafe(
                     symbol,
                     irCallConstructor(graphImpl.primaryConstructor!!.symbol, emptyList()),
                   )
@@ -976,7 +975,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                     //  one and make the rest call that one. Not multibinding specific. Maybe
                     //  groupBy { typekey }?
                   }
-                  irBlockBody(
+                  irExprBodySafe(
                     symbol,
                     typeAsProviderArgument(
                       latticeContext,
@@ -1100,7 +1099,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               this.extensionReceiverParameter = function.ir.extensionReceiverParameter?.copyTo(this)
               body =
                 pluginContext.createIrBuilder(symbol).run {
-                  irBlockBody(
+                  irExprBodySafe(
                     symbol,
                     irInvoke(
                       callee = symbols.stdlibErrorFunction,
