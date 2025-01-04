@@ -321,12 +321,16 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    return if (classSymbol.name == SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT) {
+    return if (classSymbol.isCompanion && classSymbol.getContainingClassSymbol()?.origin == LatticeKeys.ProviderFactoryClassDeclaration.origin) {
       // It's a factory's companion object
       emptySet()
     } else if (classSymbol.classId in providerFactoryClassIdsToCallables) {
       // It's a generated factory, give it a companion object if it isn't going to be an object
-      setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
+      if (classSymbol.classKind == ClassKind.OBJECT) {
+        emptySet()
+      } else {
+        setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
+      }
     } else {
       // It's a provider-containing class, generated factory class names and store callable info
       classSymbol.declarationSymbols
@@ -337,9 +341,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             ProviderCallable.create(classSymbol, providesCallable) ?: return@mapNotNullToSet null
           val simpleName =
             buildString {
-                if (classSymbol.isCompanion) {
-                  append("Companion_")
-                }
                 if (providerCallable.useGetPrefix) {
                   append("Get")
                 }
@@ -376,7 +377,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         }
       val returnType = sourceCallable.returnType
 
-      createNestedClass(owner, name.capitalizeUS(), LatticeKeys.Default, classKind = classKind) {
+      createNestedClass(owner, name.capitalizeUS(), LatticeKeys.ProviderFactoryClassDeclaration, classKind = classKind) {
           superType(
             LatticeSymbols.ClassIds.latticeFactory.constructClassLikeType(arrayOf(returnType))
           )
