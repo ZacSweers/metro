@@ -429,7 +429,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
         """
           @DependencyGraph
           interface ExampleGraph : Base {
-            @Named("int") 
+            @Named("int")
             val int: Int
           }
         """

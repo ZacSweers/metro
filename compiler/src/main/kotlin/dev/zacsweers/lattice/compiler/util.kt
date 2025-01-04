@@ -101,4 +101,5 @@ internal val String.withoutLineBreaks: String
   get() = lineSequence().joinToString(" ") { it.trim() }
 
 internal infix operator fun Name.plus(other: String) = (asString() + other).asName()
+
 internal infix operator fun Name.plus(other: Name) = (asString() + other.asString()).asName()

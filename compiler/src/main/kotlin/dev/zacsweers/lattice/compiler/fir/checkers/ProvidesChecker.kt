@@ -126,11 +126,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
                 else -> return
               }
             val receiverTypeKey =
-              FirTypeKey.from(
-                session,
-                declaration.receiverParameter!!,
-                declaration,
-              )
+              FirTypeKey.from(session, declaration.receiverParameter!!, declaration)
 
             // TODO add a test for isIntoMultibinding
             if (returnTypeKey == receiverTypeKey && !annotations.isIntoMultibinding) {

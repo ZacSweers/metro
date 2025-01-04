@@ -104,7 +104,6 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
 import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
@@ -162,7 +161,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val parentDeclaration = rawType.parentAsClass
         val graphClass = getOrBuildDependencyGraph(parentDeclaration)
         val graphCompanion = graphClass.companionObject()!!
-        val factoryFunction = graphCompanion.requireSimpleFunction(LatticeSymbols.StringNames.factory)
+        val factoryFunction =
+          graphCompanion.requireSimpleFunction(LatticeSymbols.StringNames.factory)
         // Replace it with a call directly to the factory function
         return pluginContext.createIrBuilder(expression.symbol).run {
           irCall(callee = factoryFunction, type = type).apply {
@@ -184,7 +184,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         }
         val graphClass = getOrBuildDependencyGraph(rawType)
         val graphCompanion = graphClass.companionObject()!!
-        val factoryFunction = graphCompanion.requireSimpleFunction(LatticeSymbols.StringNames.create)
+        val factoryFunction =
+          graphCompanion.requireSimpleFunction(LatticeSymbols.StringNames.create)
         // Replace it with a call directly to the create function
         return pluginContext.createIrBuilder(expression.symbol).run {
           irCall(callee = factoryFunction, type = type).apply {
@@ -1584,7 +1585,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             )
             .apply { putTypeArgument(0, injectedType) }
         } else {
-          val createFunction = injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.create)
+          val createFunction =
+            injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.create)
           val args =
             generateBindingArguments(
               binding.parameters,

@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.lattice.compiler.fir.checkers
 
-import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors.ASSISTED_INJECTION
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
@@ -105,10 +104,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val (factoryKeys, dupeFactoryKeys) =
       functionParams.mapToSetWithDupes {
-        it.symbol.toAssistedParameterKey(
-          session,
-          FirTypeKey.from(session, it),
-        )
+        it.symbol.toAssistedParameterKey(session, FirTypeKey.from(session, it))
       }
 
     if (dupeFactoryKeys.isNotEmpty()) {
@@ -123,10 +119,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val (constructorKeys, dupeConstructorKeys) =
       constructorAssistedParams.mapToSetWithDupes {
-        it.toAssistedParameterKey(
-          session,
-          FirTypeKey.from(session, it),
-        )
+        it.toAssistedParameterKey(session, FirTypeKey.from(session, it))
       }
 
     if (dupeConstructorKeys.isNotEmpty()) {

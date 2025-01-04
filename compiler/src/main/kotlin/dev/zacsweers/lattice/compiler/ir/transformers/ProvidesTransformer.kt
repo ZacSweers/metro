@@ -166,9 +166,9 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       // TODO properties?
       // TODO registerFunctionAsMetadataVisible doesn't appear to work unless the function is public
       //  ... so I don't understand what it's for
-//      pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
-//        reference.callee.owner as IrSimpleFunction
-//      )
+      //      pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
+      //        reference.callee.owner as IrSimpleFunction
+      //      )
     }
 
     val sourceValueParameters = reference.parameters.valueParameters

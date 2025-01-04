@@ -154,8 +154,7 @@ fun Class<*>.providesFactoryClass(
 
   val methodName = providerCallableName ?: providesCallables.single()
 
-  val expectedName =
-    "${methodName.capitalizeUS()}${LatticeSymbols.Names.latticeFactory.asString()}"
+  val expectedName = "${methodName.capitalizeUS()}${LatticeSymbols.Names.latticeFactory.asString()}"
 
   val classToSearch = if (companion) companionObjectClass else this
 
@@ -419,9 +418,7 @@ val CompilationResult.cleanedDiagnostics: Map<DiagnosticSeverity, List<String>>
 // Note diagnostics may be multi-line, so we chunk by severity prefixes
 private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
   return lineSequence()
-    .chunkedLinesBy {
-      it.startsWith("e: ") || it.startsWith("w: ") || it.startsWith("i: ")
-    }
+    .chunkedLinesBy { it.startsWith("e: ") || it.startsWith("w: ") || it.startsWith("i: ") }
     .map { it.trim() }
     .mapNotNull { text ->
       if (text.startsWith("e: ")) {

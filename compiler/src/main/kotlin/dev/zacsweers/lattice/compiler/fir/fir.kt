@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import java.util.Objects
-import kotlin.collections.set
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -115,7 +114,6 @@ internal object LatticeKeys {
     override fun toString() = "ProviderNewInstanceFunction"
   }
 }
-
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
   session: FirSession,
@@ -535,17 +533,16 @@ internal fun FirDeclaration.excludeFromJsExport(session: FirSession) {
   if (!session.moduleData.platform.isJs()) {
     return
   }
-  val jsExportIgnore = session.symbolProvider.getClassLikeSymbolByClassId(
-    LatticeSymbols.ClassIds.jsExportIgnore
-  )
+  val jsExportIgnore =
+    session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.jsExportIgnore)
   val jsExportIgnoreAnnotation = jsExportIgnore as? FirRegularClassSymbol ?: return
-  val jsExportIgnoreConstructor = jsExportIgnoreAnnotation.declarationSymbols.firstIsInstanceOrNull<FirConstructorSymbol>() ?: return
+  val jsExportIgnoreConstructor =
+    jsExportIgnoreAnnotation.declarationSymbols.firstIsInstanceOrNull<FirConstructorSymbol>()
+      ?: return
 
   val jsExportIgnoreAnnotationCall = buildAnnotationCall {
     argumentList = FirEmptyArgumentList
-    annotationTypeRef = buildResolvedTypeRef {
-      coneType = jsExportIgnoreAnnotation.defaultType()
-    }
+    annotationTypeRef = buildResolvedTypeRef { coneType = jsExportIgnoreAnnotation.defaultType() }
     calleeReference = buildResolvedNamedReference {
       name = jsExportIgnoreAnnotation.name
       resolvedSymbol = jsExportIgnoreConstructor
@@ -557,31 +554,38 @@ internal fun FirDeclaration.excludeFromJsExport(session: FirSession) {
   replaceAnnotations(annotations + jsExportIgnoreAnnotationCall)
 }
 
-internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotation = buildAnnotation {
-  val deprecatedAnno =
-    session.symbolProvider.getClassLikeSymbolByClassId(StandardClassIds.Annotations.Deprecated) as FirRegularClassSymbol
+internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotation =
+  buildAnnotation {
+    val deprecatedAnno =
+      session.symbolProvider.getClassLikeSymbolByClassId(StandardClassIds.Annotations.Deprecated)
+        as FirRegularClassSymbol
 
-  annotationTypeRef = deprecatedAnno.defaultType().toFirResolvedTypeRef()
+    annotationTypeRef = deprecatedAnno.defaultType().toFirResolvedTypeRef()
 
-  argumentMapping = buildAnnotationArgumentMapping {
-    mapping[Name.identifier("message")] = buildLiteralExpression(
-      null,
-      ConstantValueKind.String,
-      "This synthesized declaration should not be used directly",
-      setType = true
-    )
+    argumentMapping = buildAnnotationArgumentMapping {
+      mapping[Name.identifier("message")] =
+        buildLiteralExpression(
+          null,
+          ConstantValueKind.String,
+          "This synthesized declaration should not be used directly",
+          setType = true,
+        )
 
-    // It has nothing to do with enums deserialization, but it is simply easier to build it this way.
-    mapping[Name.identifier("level")] = buildEnumEntryDeserializedAccessExpression {
-      enumClassId = StandardClassIds.DeprecationLevel
-      enumEntryName = Name.identifier("HIDDEN")
-    }.toQualifiedPropertyAccessExpression(session)
+      // It has nothing to do with enums deserialization, but it is simply easier to build it this
+      // way.
+      mapping[Name.identifier("level")] =
+        buildEnumEntryDeserializedAccessExpression {
+            enumClassId = StandardClassIds.DeprecationLevel
+            enumEntryName = Name.identifier("HIDDEN")
+          }
+          .toQualifiedPropertyAccessExpression(session)
+    }
   }
-}
 
 internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession) {
   replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }
 
-internal fun ConeTypeProjection.wrapInProvider() = LatticeSymbols.ClassIds.latticeProvider.constructClassLikeType(arrayOf(this))
+internal fun ConeTypeProjection.wrapInProvider() =
+  LatticeSymbols.ClassIds.latticeProvider.constructClassLikeType(arrayOf(this))

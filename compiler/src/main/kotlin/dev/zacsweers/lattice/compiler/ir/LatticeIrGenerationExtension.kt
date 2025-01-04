@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.lattice.compiler.ir
 
-import dev.zacsweers.lattice.compiler.ExitProcessingException
 import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.LatticeSymbols

@@ -415,7 +415,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:8:7 `@Provides` declarations may not have type parameters.
         e: ExampleGraph.kt:12:9 `@Provides` declarations may not have type parameters.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -444,7 +445,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
       """
         e: ExampleGraph.kt:8:7 `@Provides` declarations may not have type parameters.
         e: ExampleGraph.kt:12:9 `@Provides` declarations may not have type parameters.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 }

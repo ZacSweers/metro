@@ -500,9 +500,7 @@ internal fun IrBuilderWithScope.irCallWithSameParameters(
   }
 }
 
-/**
- * For use with generated factory creator functions, converts parameters to Provider<T> types.
- */
+/** For use with generated factory creator functions, converts parameters to Provider<T> types. */
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   context: LatticeTransformerContext,
   parameters: Parameters<out Parameter>,
@@ -606,7 +604,11 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   for (parameter in parameters) {
     if (parameter.isAssisted) continue
     val irParameter =
-      constructor.addValueParameter(parameter.name, parameter.providerType, LatticeOrigins.ValueParameter)
+      constructor.addValueParameter(
+        parameter.name,
+        parameter.providerType,
+        LatticeOrigins.ValueParameter,
+      )
     val irField =
       clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
         isFinal = true

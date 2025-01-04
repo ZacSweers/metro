@@ -29,7 +29,7 @@ internal class LatticeFirExtensionRegistrar(
     +LatticeFirBuiltIns.getFactory(latticeClassIds)
     +::LatticeFirCheckers
     // TODO enable once we support metadata propagation
-//    +::FirProvidesStatusTransformer
+    //    +::FirProvidesStatusTransformer
     +::ProvidesFactoryFirGenerator
     if (options.generateAssistedFactories) {
       +::AssistedFactoryFirGenerator

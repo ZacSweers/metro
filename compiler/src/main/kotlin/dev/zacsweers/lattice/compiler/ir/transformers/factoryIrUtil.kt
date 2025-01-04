@@ -153,46 +153,46 @@ internal fun generateStaticNewInstanceFunction(
   sourceTypeParameters: List<IrTypeParameter> = emptyList(),
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
-  val function = parentClass.functions
-    .find { it.origin == LatticeOrigins.ProviderNewInstanceFunction }
-    ?: run {
-      parentClass
-        .addFunction(
-          name,
-          returnType,
-          origin = LatticeOrigin,
-          visibility = DescriptorVisibilities.PUBLIC,
-        )
-        .apply {
-          sourceTypeParameters.ifNotEmpty { this@apply.copyTypeParameters(this) }
+  val function =
+    parentClass.functions.find { it.origin == LatticeOrigins.ProviderNewInstanceFunction }
+      ?: run {
+        parentClass
+          .addFunction(
+            name,
+            returnType,
+            origin = LatticeOrigin,
+            visibility = DescriptorVisibilities.PUBLIC,
+          )
+          .apply {
+            sourceTypeParameters.ifNotEmpty { this@apply.copyTypeParameters(this) }
 
-          val newInstanceParameters = parameters.with(this)
+            val newInstanceParameters = parameters.with(this)
 
-          newInstanceParameters.instance?.let {
-            addValueParameter(it.name, it.originalType, LatticeOrigins.InstanceParameter)
+            newInstanceParameters.instance?.let {
+              addValueParameter(it.name, it.originalType, LatticeOrigins.InstanceParameter)
+            }
+            newInstanceParameters.extensionReceiver?.let {
+              addValueParameter(it.name, it.originalType, LatticeOrigins.ReceiverParameter)
+            }
+            newInstanceParameters.valueParameters.map {
+              addValueParameter(it.name, it.originalType, LatticeOrigins.ValueParameter)
+            }
           }
-          newInstanceParameters.extensionReceiver?.let {
-            addValueParameter(it.name, it.originalType, LatticeOrigins.ReceiverParameter)
-          }
-          newInstanceParameters.valueParameters.map {
-            addValueParameter(it.name, it.originalType, LatticeOrigins.ValueParameter)
-          }
-        }
-    }
+      }
 
   return function.apply {
-      val instanceParam = valueParameters.find { it.origin == LatticeOrigins.InstanceParameter }
-      val valueParametersToMap = valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }
-      context.copyParameterDefaultValues(
-        providerFunction = targetFunction,
-        sourceParameters = sourceParameters,
-        targetParameters = valueParametersToMap,
-        targetGraphParameter = instanceParam,
-      )
+    val instanceParam = valueParameters.find { it.origin == LatticeOrigins.InstanceParameter }
+    val valueParametersToMap = valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }
+    context.copyParameterDefaultValues(
+      providerFunction = targetFunction,
+      sourceParameters = sourceParameters,
+      targetParameters = valueParametersToMap,
+      targetGraphParameter = instanceParam,
+    )
 
-      body =
-        context.pluginContext.createIrBuilder(symbol).run {
-          irExprBodySafe(symbol, buildBody(this@apply))
-        }
-    }
+    body =
+      context.pluginContext.createIrBuilder(symbol).run {
+        irExprBodySafe(symbol, buildBody(this@apply))
+      }
+  }
 }

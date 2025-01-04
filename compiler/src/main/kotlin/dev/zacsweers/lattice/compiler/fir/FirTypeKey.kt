@@ -60,24 +60,15 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
   }
 
   companion object {
-    fun from(
-      session: FirSession,
-      property: FirProperty,
-    ): FirTypeKey {
+    fun from(session: FirSession, property: FirProperty): FirTypeKey {
       return from(session, property.returnTypeRef, property.annotations)
     }
 
-    fun from(
-      session: FirSession,
-      parameter: FirValueParameter,
-    ): FirTypeKey {
+    fun from(session: FirSession, parameter: FirValueParameter): FirTypeKey {
       return from(session, parameter.symbol)
     }
 
-    fun from(
-      session: FirSession,
-      parameter: FirValueParameterSymbol,
-    ): FirTypeKey {
+    fun from(session: FirSession, parameter: FirValueParameterSymbol): FirTypeKey {
       val annotations =
         if (parameter.containingFunctionSymbol.receiverParameter == parameter) {
           parameter.containingFunctionSymbol.annotations.filter {
@@ -100,10 +91,7 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
       return from(session, parameter.typeRef, receiverAnnotations)
     }
 
-    fun from(
-      session: FirSession,
-      function: FirSimpleFunction,
-    ): FirTypeKey {
+    fun from(session: FirSession, function: FirSimpleFunction): FirTypeKey {
       return from(session, function.returnTypeRef, function.annotations)
     }
 

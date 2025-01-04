@@ -1035,12 +1035,14 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertDiagnostics("e: ExampleGraph.kt:7:28 Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:7:28 Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead."
+    )
   }
 
   @Test
@@ -1091,7 +1093,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       compile(
         source(
           fileNameWithoutExtension = "ExampleGraph",
-          source = """
+          source =
+            """
             @DependencyGraph
             interface CharSequenceGraph {
 
@@ -1121,7 +1124,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             }
 
           """
-            .trimIndent(),
+              .trimIndent(),
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -1133,13 +1136,14 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
                 [test.CharSequenceGraph] test.StringGraph.Factory.create()
             test.CharSequenceGraph is requested at
                 [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
-        
+
         e: ExampleGraph.kt:20:1 [Lattice/GraphDependencyCycle] Graph dependency cycle detected!
             test.CharSequenceGraph is requested at
                 [test.StringGraph] test.CharSequenceGraph.Factory.create()
             test.StringGraph is requested at
                 [test.StringGraph] test.StringGraph.Factory.create()
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
