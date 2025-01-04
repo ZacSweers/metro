@@ -51,6 +51,10 @@ internal fun <T, R> Iterable<T>.mapToSet(transform: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), transform)
 }
 
+internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
+  return mapNotNullTo(mutableSetOf(), transform)
+}
+
 internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set<R>, Set<R>> {
   val dupes = mutableSetOf<R>()
   val destination = mutableSetOf<R>()
@@ -95,3 +99,6 @@ internal inline fun <T, C : Collection<T>, O> C.ifNotEmpty(body: C.() -> O?): O?
 
 internal val String.withoutLineBreaks: String
   get() = lineSequence().joinToString(" ") { it.trim() }
+
+internal infix operator fun Name.plus(other: String) = (asString() + other).asName()
+internal infix operator fun Name.plus(other: Name) = (asString() + other.asString()).asName()
