@@ -16,13 +16,14 @@
 package dev.zacsweers.lattice.compiler.ir.transformers
 
 import dev.zacsweers.lattice.compiler.LatticeOrigin
+import dev.zacsweers.lattice.compiler.LatticeOrigins
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ifNotEmpty
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
-import dev.zacsweers.lattice.compiler.ir.irBlockBody
 import dev.zacsweers.lattice.compiler.ir.irCallConstructorWithSameParameters
+import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -47,11 +48,9 @@ import org.jetbrains.kotlin.ir.util.isObject
  *
  * ```kotlin
  * // Simple
- * @JvmStatic // JVM only
  * fun create(valueProvider: Provider<String>): Example_Factory = Example_Factory(valueProvider)
  *
  * // Generic
- * @JvmStatic // JVM only
  * fun <T> create(valueProvider: Provider<T>): Example_Factory<T> = Example_Factory<T>(valueProvider)
  * ```
  */
@@ -74,24 +73,28 @@ internal fun generateStaticCreateFunction(
       this.visibility = DescriptorVisibilities.PUBLIC
 
       val instanceParam =
-        parameters.instance?.let { addValueParameter(it.name, it.providerType, LatticeOrigin) }
+        parameters.instance?.let {
+          addValueParameter(it.name, it.providerType, LatticeOrigins.InstanceParameter)
+        }
       parameters.extensionReceiver?.let {
-        addValueParameter(it.name, it.providerType, LatticeOrigin)
+        addValueParameter(it.name, it.providerType, LatticeOrigins.ReceiverParameter)
       }
-      val valueParamsToPatch =
-        parameters.valueParameters
-          .filterNot { it.isAssisted }
-          .map {
-            addValueParameter(it.name, it.providerType, LatticeOrigin).also { irParam ->
-              it.typeKey.qualifier?.let {
-                // Copy any qualifiers over so they're retrievable during dependency graph
-                // resolution
-                irParam.annotations += it.ir
-              }
+      parameters.valueParameters
+        .filterNot { it.isAssisted }
+        .map {
+          addValueParameter(it.name, it.providerType, LatticeOrigins.ValueParameter).also { irParam
+            ->
+            it.typeKey.qualifier?.let {
+              // Copy any qualifiers over so they're retrievable during dependency graph
+              // resolution
+              irParam.annotations += it.ir
             }
           }
+        }
 
       if (patchCreationParams) {
+        val valueParamsToPatch =
+          valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }
         context.copyParameterDefaultValues(
           providerFunction = providerFunction,
           sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
@@ -103,7 +106,7 @@ internal fun generateStaticCreateFunction(
 
       body =
         context.pluginContext.createIrBuilder(symbol).run {
-          irBlockBody(
+          irExprBodySafe(
             symbol,
             if (targetClass.isObject) {
               irGetObject(targetClass.symbol)
@@ -178,7 +181,7 @@ internal fun generateStaticNewInstanceFunction(
 
       body =
         context.pluginContext.createIrBuilder(symbol).run {
-          irBlockBody(symbol, buildBody(this@apply))
+          irExprBodySafe(symbol, buildBody(this@apply))
         }
     }
 }
