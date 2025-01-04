@@ -30,6 +30,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameter.AssistedParameterK
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.compiler.ir.rawType
+import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.singleAbstractFunction
 import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
@@ -165,7 +166,7 @@ internal class AssistedFactoryTransformer(
                   irInvoke(
                     dispatchReceiver =
                       irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
-                    callee = generatedFactory.getSimpleFunction("get")!!,
+                    callee = generatedFactory.requireSimpleFunction("get"),
                     args = argumentList,
                   ),
                 )

@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.compiler
 
+import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -41,11 +42,6 @@ internal class LatticeClassIds(
   customIntoMapAnnotations: Set<ClassId> = emptySet(),
   customMultibindsAnnotations: Set<ClassId> = emptySet(),
 ) {
-  companion object {
-    val STDLIB_PACKAGE = FqName("kotlin")
-    val LATTICE_RUNTIME_PACKAGE = FqName("dev.zacsweers.lattice")
-  }
-
   fun FqName.classIdOf(simpleName: String): ClassId {
     return classIdOf(Name.identifier(simpleName))
   }
@@ -59,7 +55,7 @@ internal class LatticeClassIds(
   }
 
   // Graphs
-  private val dependencyGraphAnnotation = LATTICE_RUNTIME_PACKAGE.classIdOf("DependencyGraph")
+  private val dependencyGraphAnnotation = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("DependencyGraph")
   val dependencyGraphAnnotations =
     setOf(dependencyGraphAnnotation) + customDependencyGraphAnnotations
   val dependencyGraphFactoryAnnotations =
@@ -67,51 +63,51 @@ internal class LatticeClassIds(
 
   // Assisted inject
   val assistedInjectAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("AssistedInject")) + customAssistedInjectAnnotations
-  val latticeAssisted = LATTICE_RUNTIME_PACKAGE.classIdOf("Assisted")
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("AssistedInject")) + customAssistedInjectAnnotations
+  val latticeAssisted = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Assisted")
   val assistedAnnotations = setOf(latticeAssisted) + customAssistedAnnotations
-  val latticeAssistedFactory = LATTICE_RUNTIME_PACKAGE.classIdOf("AssistedFactory")
+  val latticeAssistedFactory = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("AssistedFactory")
   val assistedFactoryAnnotations = setOf(latticeAssistedFactory) + customAssistedFactoryAnnotations
 
   val injectAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Inject")) +
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Inject")) +
       customInjectAnnotations +
       assistedInjectAnnotations
 
   val qualifierAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Qualifier")) + customQualifierAnnotations
-  val scopeAnnotations = setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Scope")) + customScopeAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Qualifier")) + customQualifierAnnotations
+  val scopeAnnotations = setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Scope")) + customScopeAnnotations
 
-  val bindsAnnotations = setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Binds")) + customBindsAnnotations
+  val bindsAnnotations = setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Binds")) + customBindsAnnotations
 
   val providesAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Provides")) + customProvidesAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Provides")) + customProvidesAnnotations
 
   val bindsInstanceAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("BindsInstance")) + customBindsInstanceAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("BindsInstance")) + customBindsInstanceAnnotations
 
   // Multibindings
   val intoSetAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("IntoSet")) + customIntoSetAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("IntoSet")) + customIntoSetAnnotations
   val elementsIntoSetAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("ElementsIntoSet")) + customElementsIntoSetAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ElementsIntoSet")) + customElementsIntoSetAnnotations
   val mapKeyAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("MapKey")) + customMapKeyAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("MapKey")) + customMapKeyAnnotations
   val classKeyAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("ClassKey")) + customClassKeyAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ClassKey")) + customClassKeyAnnotations
   val intKeyAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("IntKey")) + customIntKeyAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("IntKey")) + customIntKeyAnnotations
   val longKeyAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("LongKey")) + customLongKeyAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("LongKey")) + customLongKeyAnnotations
   val stringKeyAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("StringKey")) + customStringKeyAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("StringKey")) + customStringKeyAnnotations
   val lazyClassKeyAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("LazyClassKey")) + customLazyClassKeyAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("LazyClassKey")) + customLazyClassKeyAnnotations
   val intoMapAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("IntoMap")) + customIntoMapAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("IntoMap")) + customIntoMapAnnotations
   val multibindsAnnotations =
-    setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Multibinds")) + customMultibindsAnnotations
+    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Multibinds")) + customMultibindsAnnotations
 
-  val providerTypes = setOf(LATTICE_RUNTIME_PACKAGE.classIdOf("Provider"))
-  val lazyTypes = setOf(STDLIB_PACKAGE.classIdOf("Lazy"))
+  val providerTypes = setOf(LatticeSymbols.ClassIds.latticeProvider)
+  val lazyTypes = setOf(kotlinPackageFqn.classIdOf("Lazy"))
 }

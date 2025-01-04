@@ -119,6 +119,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -831,3 +832,10 @@ internal val IrProperty.allAnnotations: List<IrConstructorCall>
 
 internal fun LatticeTransformerContext.latticeAnnotationsOf(ir: IrAnnotationContainer) =
   ir.latticeAnnotations(symbols.latticeClassIds)
+
+internal fun IrClass.requireSimpleFunction(name: String) =
+  getSimpleFunction(name) ?: error("No function $name in class $classId")
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrClassSymbol.requireSimpleFunction(name: String) =
+  getSimpleFunction(name) ?: error("No function $name in class ${owner.classId}")
