@@ -612,7 +612,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         if (creator != null) {
           val factoryClass =
             pluginContext.irFactory
-              .buildClass { name = LatticeSymbols.Names.factory }
+              .buildClass { name = LatticeSymbols.Names.factoryClassName }
               .apply {
                 this.origin = LatticeOrigin
                 superTypes += node.creator.type.symbol.typeWith()
