@@ -15,8 +15,24 @@
  */
 package dev.zacsweers.lattice.compiler
 
+import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOriginImpl
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOriginImpl.Companion.provideDelegate
 
-internal val LatticeOrigin: IrDeclarationOrigin by IrDeclarationOriginImpl
+// TODO migrate
+//@Deprecated("", ReplaceWith("LatticeOrigins.Default", imports = ["dev.zacsweers.lattice.compiler.LatticeOrigins"]))
+internal val LatticeOrigin: IrDeclarationOrigin = LatticeOrigins.Default
+
+internal object LatticeOrigins {
+  val Default: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.Default)
+  val InstanceParameter: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.InstanceParameter)
+  val ReceiverParameter: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.ReceiverParameter)
+  val ValueParameter: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.ValueParameter)
+  val ProviderNewInstanceFunction: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.ProviderNewInstanceFunction)
+  val ProviderFactoryClassDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.ProviderFactoryClassDeclaration)
+}

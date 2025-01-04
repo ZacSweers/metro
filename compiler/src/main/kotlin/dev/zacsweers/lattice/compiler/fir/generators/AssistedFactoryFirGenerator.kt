@@ -18,6 +18,8 @@ package dev.zacsweers.lattice.compiler.fir.generators
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.annotationsIn
+import dev.zacsweers.lattice.compiler.fir.copyParametersWithDefaults
+import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.unsafeLazy
@@ -134,42 +136,13 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     factoryClass: FirClassSymbol<*>,
     callableId: CallableId,
   ): FirSimpleFunction {
-    return buildSimpleFunction {
-      resolvePhase = FirResolvePhase.BODY_RESOLVE
-      moduleData = session.moduleData
-      origin = LatticeKeys.Default.origin
-
-      source = targetClass.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-
-      val functionSymbol = FirNamedFunctionSymbol(callableId)
-      symbol = functionSymbol
-      name = callableId.callableName
-
-      // TODO is there a non-impl API for this?
-      status =
-        FirResolvedDeclarationStatusImpl(
-          Visibilities.Public,
-          Modality.ABSTRACT,
-          Visibilities.Public.toEffectiveVisibility(targetClass, forClass = true),
-        )
-
-      dispatchReceiverType = targetClass.constructType()
-
-      // TODO type params?
-
-      returnTypeRef = targetClass.constructType().toFirResolvedTypeRef()
-
-      for (original in assistedParams) {
-        valueParameters +=
-          buildValueParameterCopy(original.fir) {
-            origin = LatticeKeys.ValueParameter.origin
-            symbol = FirValueParameterSymbol(original.name)
-            containingFunctionSymbol = functionSymbol
-            // TODO default values are copied over in this case, is that enough or do they need
-            //  references transformed? We should also check they're not referencing non-assisted
-            //  params
-          }
-      }
+    return generateMemberFunction(
+      targetClass = targetClass,
+      returnTypeRef = targetClass.constructType().toFirResolvedTypeRef(),
+      modality = Modality.ABSTRACT,
+      callableId = callableId
+    ) {
+      copyParametersWithDefaults(assistedParams)
     }
   }
 

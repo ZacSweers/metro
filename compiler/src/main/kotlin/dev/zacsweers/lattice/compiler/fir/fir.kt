@@ -76,10 +76,12 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.coneTypeSafe
+import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -88,9 +90,32 @@ import org.jetbrains.kotlin.platform.isJs
 import org.jetbrains.kotlin.types.ConstantValueKind
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
-internal object LatticeKey : GeneratedDeclarationKey() {
-  override fun toString() = "LatticeKey"
+internal object LatticeKeys {
+  data object Default : GeneratedDeclarationKey() {
+    override fun toString() = "Default"
+  }
+
+  data object InstanceParameter : GeneratedDeclarationKey() {
+    override fun toString() = "InstanceParameter"
+  }
+
+  data object ReceiverParameter : GeneratedDeclarationKey() {
+    override fun toString() = "ReceiverParameter"
+  }
+
+  data object ValueParameter : GeneratedDeclarationKey() {
+    override fun toString() = "ValueParameter"
+  }
+
+  data object ProviderFactoryClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "ProviderFactoryClassDeclaration"
+  }
+
+  data object ProviderNewInstanceFunction : GeneratedDeclarationKey() {
+    override fun toString() = "ProviderNewInstanceFunction"
+  }
 }
+
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
   session: FirSession,
@@ -558,3 +583,5 @@ internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession)
   replaceAnnotations(annotations + listOf(createDeprecatedHiddenAnnotation(session)))
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }
+
+internal fun ConeTypeProjection.wrapInProvider() = LatticeSymbols.ClassIds.latticeProvider.constructClassLikeType(arrayOf(this))

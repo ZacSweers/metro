@@ -317,6 +317,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
       .symbol
   }
 
+  // TODO can we get a finer-grained callback other than just per-class?
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,

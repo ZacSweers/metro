@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.ir
 
 import dev.zacsweers.lattice.compiler.LatticeOrigin
+import dev.zacsweers.lattice.compiler.LatticeOrigins
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -500,8 +501,7 @@ internal fun IrBuilderWithScope.irCallWithSameParameters(
 }
 
 /**
- * For use with generated factory create() functions, converts parameters to Provider<T> types + any
- * bitmasks for default functions.
+ * For use with generated factory creator functions, converts parameters to Provider<T> types.
  */
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   context: LatticeTransformerContext,
@@ -606,13 +606,29 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   for (parameter in parameters) {
     if (parameter.isAssisted) continue
     val irParameter =
-      constructor.addValueParameter(parameter.name, parameter.providerType, LatticeOrigin)
+      constructor.addValueParameter(parameter.name, parameter.providerType, LatticeOrigins.ValueParameter)
     val irField =
       clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
         isFinal = true
         initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
       }
     parametersToFields[parameter] = irField
+  }
+  return parametersToFields
+}
+
+internal fun LatticeTransformerContext.assignConstructorParamsToFields(
+  constructor: IrConstructor,
+  clazz: IrClass,
+): Map<IrValueParameter, IrField> {
+  val parametersToFields = mutableMapOf<IrValueParameter, IrField>()
+  for (irParameter in constructor.valueParameters) {
+    val irField =
+      clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
+        isFinal = true
+        initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
+      }
+    parametersToFields[irParameter] = irField
   }
   return parametersToFields
 }

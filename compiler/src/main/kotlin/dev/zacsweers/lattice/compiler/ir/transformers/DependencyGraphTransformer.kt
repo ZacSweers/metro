@@ -209,7 +209,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val isDependencyGraph = declaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
     if (!isDependencyGraph) return super.visitClass(declaration, data)
 
-    getOrBuildDependencyGraph(declaration)
+    try {
+      getOrBuildDependencyGraph(declaration)
+    } catch (_: ExitProcessingException) {
+      // End processing, don't fail up because this would've been warned before
+    }
 
     // TODO dump option to detect unused
 

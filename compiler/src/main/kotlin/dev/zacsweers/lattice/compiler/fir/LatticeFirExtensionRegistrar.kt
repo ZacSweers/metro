@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryFirGenerator
+import dev.zacsweers.lattice.compiler.fir.generators.ProvidesFactoryFirGenerator
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 
 internal class LatticeFirExtensionRegistrar(
@@ -27,6 +28,7 @@ internal class LatticeFirExtensionRegistrar(
   override fun ExtensionRegistrarContext.configurePlugin() {
     +LatticeFirBuiltIns.getFactory(latticeClassIds)
     +::LatticeFirCheckers
+    +::ProvidesFactoryFirGenerator
     if (options.generateAssistedFactories) {
       +::AssistedFactoryFirGenerator
     }

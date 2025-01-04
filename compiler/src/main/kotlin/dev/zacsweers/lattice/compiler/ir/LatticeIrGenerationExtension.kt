@@ -38,10 +38,6 @@ internal class LatticeIrGenerationExtension(
     val dependencyGraphTransformer = DependencyGraphTransformer(context)
     // TODO is this really necessary?
     val dependencyGraphData = DependencyGraphData()
-    try {
-      moduleFragment.transform(dependencyGraphTransformer, dependencyGraphData)
-    } catch (_: ExitProcessingException) {
-      // End processing, don't fail up because this would've been warned before
-    }
+    moduleFragment.transform(dependencyGraphTransformer, dependencyGraphData)
   }
 }

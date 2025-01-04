@@ -39,8 +39,11 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
+import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 
 /**
@@ -54,6 +57,7 @@ import org.jetbrains.kotlin.ir.util.isObject
  * fun <T> create(valueProvider: Provider<T>): Example_Factory<T> = Example_Factory<T>(valueProvider)
  * ```
  */
+@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun generateStaticCreateFunction(
   context: LatticeTransformerContext,
   parentClass: IrClass,
@@ -64,58 +68,63 @@ internal fun generateStaticCreateFunction(
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
-  return parentClass
-    .addFunction(LatticeSymbols.StringNames.create, targetClassParameterized)
-    .apply {
-      val thisFunction = this
-      this.copyTypeParameters(targetClass.typeParameters)
-      this.origin = LatticeOrigin
-      this.visibility = DescriptorVisibilities.PUBLIC
+  // TODO remove the run block once all factory gen is in FIR
+  val function =
+    parentClass.getSimpleFunction(LatticeSymbols.StringNames.create)?.owner.takeIf {
+      it?.origin == LatticeOrigins.Default
+    }
+      ?: run {
+        parentClass.addFunction(LatticeSymbols.StringNames.create, targetClassParameterized).apply {
+          this.copyTypeParameters(targetClass.typeParameters)
+          this.origin = LatticeOrigin
+          this.visibility = DescriptorVisibilities.PUBLIC
 
-      val instanceParam =
-        parameters.instance?.let {
-          addValueParameter(it.name, it.providerType, LatticeOrigins.InstanceParameter)
-        }
-      parameters.extensionReceiver?.let {
-        addValueParameter(it.name, it.providerType, LatticeOrigins.ReceiverParameter)
-      }
-      parameters.valueParameters
-        .filterNot { it.isAssisted }
-        .map {
-          addValueParameter(it.name, it.providerType, LatticeOrigins.ValueParameter).also { irParam
-            ->
-            it.typeKey.qualifier?.let {
-              // Copy any qualifiers over so they're retrievable during dependency graph
-              // resolution
-              irParam.annotations += it.ir
-            }
+          parameters.instance?.let {
+            addValueParameter(it.name, it.providerType, LatticeOrigins.InstanceParameter)
           }
+          parameters.extensionReceiver?.let {
+            addValueParameter(it.name, it.providerType, LatticeOrigins.ReceiverParameter)
+          }
+          parameters.valueParameters
+            .filterNot { it.isAssisted }
+            .map {
+              addValueParameter(it.name, it.providerType, LatticeOrigins.ValueParameter).also {
+                irParam ->
+                it.typeKey.qualifier?.let {
+                  // Copy any qualifiers over so they're retrievable during dependency graph
+                  // resolution
+                  irParam.annotations += it.ir
+                }
+              }
+            }
         }
+      }
 
-      if (patchCreationParams) {
-        val valueParamsToPatch =
-          valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }
-        context.copyParameterDefaultValues(
-          providerFunction = providerFunction,
-          sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
-          targetParameters = valueParamsToPatch,
-          targetGraphParameter = instanceParam,
-          wrapInProvider = true,
+  return function.apply {
+    if (patchCreationParams) {
+      val instanceParam = valueParameters.find { it.origin == LatticeOrigins.InstanceParameter }
+      val valueParamsToPatch = valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }
+      context.copyParameterDefaultValues(
+        providerFunction = providerFunction,
+        sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
+        targetParameters = valueParamsToPatch,
+        targetGraphParameter = instanceParam,
+        wrapInProvider = true,
+      )
+    }
+
+    body =
+      context.pluginContext.createIrBuilder(symbol).run {
+        irExprBodySafe(
+          symbol,
+          if (targetClass.isObject) {
+            irGetObject(targetClass.symbol)
+          } else {
+            irCallConstructorWithSameParameters(function, targetConstructor)
+          },
         )
       }
-
-      body =
-        context.pluginContext.createIrBuilder(symbol).run {
-          irExprBodySafe(
-            symbol,
-            if (targetClass.isObject) {
-              irGetObject(targetClass.symbol)
-            } else {
-              irCallConstructorWithSameParameters(thisFunction, targetConstructor)
-            },
-          )
-        }
-    }
+  }
 }
 
 /**
@@ -123,19 +132,16 @@ internal fun generateStaticCreateFunction(
  *
  * ```
  * // Simple
- * @JvmStatic // JVM only
  * fun newInstance(value: T): Example = Example(value)
  *
  * // Generic
- * @JvmStatic // JVM only
  * fun <T> newInstance(value: T): Example<T> = Example<T>(value)
  *
  * // Provider
- * @JvmStatic // JVM only
  * fun newInstance(value: Provider<String>): Example = Example(value)
  * ```
  */
-// TODO need to support either calling JvmDefault or DefaultImpls?
+@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun generateStaticNewInstanceFunction(
   context: LatticeTransformerContext,
   parentClass: IrClass,
@@ -147,31 +153,36 @@ internal fun generateStaticNewInstanceFunction(
   sourceTypeParameters: List<IrTypeParameter> = emptyList(),
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
-  return parentClass
-    .addFunction(
-      name,
-      returnType,
-      origin = LatticeOrigin,
-      visibility = DescriptorVisibilities.PUBLIC,
-    )
-    .apply {
-      sourceTypeParameters.ifNotEmpty { this@apply.copyTypeParameters(this) }
+  val function = parentClass.functions
+    .find { it.origin == LatticeOrigins.ProviderNewInstanceFunction }
+    ?: run {
+      parentClass
+        .addFunction(
+          name,
+          returnType,
+          origin = LatticeOrigin,
+          visibility = DescriptorVisibilities.PUBLIC,
+        )
+        .apply {
+          sourceTypeParameters.ifNotEmpty { this@apply.copyTypeParameters(this) }
 
-      val newInstanceParameters = parameters.with(this)
+          val newInstanceParameters = parameters.with(this)
 
-      val instanceParam =
-        newInstanceParameters.instance?.let {
-          addValueParameter(it.name, it.originalType, LatticeOrigin)
+          newInstanceParameters.instance?.let {
+            addValueParameter(it.name, it.originalType, LatticeOrigins.InstanceParameter)
+          }
+          newInstanceParameters.extensionReceiver?.let {
+            addValueParameter(it.name, it.originalType, LatticeOrigins.ReceiverParameter)
+          }
+          newInstanceParameters.valueParameters.map {
+            addValueParameter(it.name, it.originalType, LatticeOrigins.ValueParameter)
+          }
         }
-      newInstanceParameters.extensionReceiver?.let {
-        addValueParameter(it.name, it.originalType, LatticeOrigin)
-      }
+    }
 
-      val valueParametersToMap =
-        newInstanceParameters.valueParameters.map {
-          addValueParameter(it.name, it.originalType, LatticeOrigin)
-        }
-
+  return function.apply {
+      val instanceParam = valueParameters.find { it.origin == LatticeOrigins.InstanceParameter }
+      val valueParametersToMap = valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }
       context.copyParameterDefaultValues(
         providerFunction = targetFunction,
         sourceParameters = sourceParameters,
