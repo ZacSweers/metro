@@ -16,7 +16,7 @@
 package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
-import dev.zacsweers.lattice.compiler.fir.LatticeKey
+import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.annotationsIn
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
@@ -137,7 +137,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     return buildSimpleFunction {
       resolvePhase = FirResolvePhase.BODY_RESOLVE
       moduleData = session.moduleData
-      origin = LatticeKey.origin
+      origin = LatticeKeys.Default.origin
 
       source = targetClass.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
 
@@ -162,7 +162,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
       for (original in assistedParams) {
         valueParameters +=
           buildValueParameterCopy(original.fir) {
-            origin = LatticeKey.origin
+            origin = LatticeKeys.ValueParameter.origin
             symbol = FirValueParameterSymbol(original.name)
             containingFunctionSymbol = functionSymbol
             // TODO default values are copied over in this case, is that enough or do they need
@@ -219,7 +219,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     if (owner !is FirRegularClassSymbol) return null
     // This assumes that all callbacks are for assisted. If we ever make this broader in scope then
     // need to track their combos somewhere to check here
-    return createNestedClass(owner, name, LatticeKey, classKind = ClassKind.INTERFACE) {
+    return createNestedClass(owner, name, LatticeKeys.Default, classKind = ClassKind.INTERFACE) {
         status { isFun = true }
       }
       .apply {
