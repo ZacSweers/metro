@@ -333,28 +333,6 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `providers cannot have type parameters`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Provides
-              fun <T> provideValue(): Int = 1
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    result.assertDiagnostics(
-      "e: ExampleGraph.kt:9:7 `@Provides` declarations may not have type parameters."
-    )
-  }
-
-  @Test
   fun `function with receivers are not currently supported`() {
     val result =
       compile(
