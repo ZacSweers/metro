@@ -195,7 +195,13 @@ class StaticMethod(val method: Method, val instance: Any? = null) {
   val name: String
     get() = method.name
 
-  operator fun invoke(vararg args: Any?): Any? = method.invoke(instance, *args)
+  operator fun invoke(vararg args: Any?): Any? {
+    try {
+      return method.invoke(instance, *args)
+    } catch (e: Exception) {
+      throw AssertionError("Error invoking!\n Method: $method\nArgs: ${args.contentToString()}\n", e)
+    }
+  }
 }
 
 val Class<*>.objectInstanceFieldOrNull: Field?
@@ -312,8 +318,8 @@ fun <T> Any.callProperty(name: String): T {
   return javaClass.getMethod("get${name.capitalizeUS()}").invoke(this) as T
 }
 
-fun <T> Any.invokeFactoryGet(vararg args: Any): T {
-  return invokeInstanceMethod("get", *args) as T
+fun <T> Any.callFactoryInvoke(vararg args: Any): T {
+  return invokeInstanceMethod(LatticeSymbols.StringNames.invoke, *args) as T
 }
 
 fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
