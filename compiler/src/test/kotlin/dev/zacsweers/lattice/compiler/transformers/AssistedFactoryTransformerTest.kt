@@ -26,7 +26,7 @@ import dev.zacsweers.lattice.compiler.generatedAssistedFactoryImpl
 import dev.zacsweers.lattice.compiler.generatedFactoryClassAssisted
 import dev.zacsweers.lattice.compiler.invokeCreate
 import dev.zacsweers.lattice.compiler.invokeCreateAsProvider
-import dev.zacsweers.lattice.compiler.invokeFactoryGet
+import dev.zacsweers.lattice.compiler.callFactoryInvoke
 import dev.zacsweers.lattice.compiler.invokeInstanceMethod
 import dev.zacsweers.lattice.compiler.invokeMain
 import dev.zacsweers.lattice.provider
@@ -57,7 +57,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     ) {
       val exampleClassFactory =
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
-      val exampleClass = exampleClassFactory.invokeFactoryGet<Callable<String>>(2)
+      val exampleClass = exampleClassFactory.callFactoryInvoke<Callable<String>>(2)
       assertThat(exampleClass.call()).isEqualTo("Hello, 2")
     }
   }
@@ -80,7 +80,8 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      )
+      ),
+      debug = true
     ) {
       val exampleClassFactory =
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
