@@ -25,7 +25,6 @@ import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irTemporary
-import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -132,7 +131,6 @@ internal class InjectConstructorTransformer(
         .distinct()
 
     factoryCls.createImplicitParameterDeclarationWithWrappedDescriptor()
-
 
     val isAssistedInject = constructorParameters.valueParameters.any { it.isAssisted }
     if (!isAssistedInject) {

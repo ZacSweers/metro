@@ -356,9 +356,7 @@ class DependencyGraphProcessingTest {
       fun create(@BindsInstance message: String): AssistedInjectGraph
     }
 
-    class ExampleClass
-    @Inject
-    constructor(@Assisted val intValue: Int, val message: String) {
+    class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {
       @AssistedFactory
       fun interface Factory {
         fun create(intValue: Int): ExampleClass
@@ -468,9 +466,7 @@ class DependencyGraphProcessingTest {
       fun create(dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
     }
 
-    class ExampleClass
-    @Inject
-    constructor(@Assisted val intValue: Int, val message: String) {
+    class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {
       @AssistedFactory
       fun interface Factory {
         fun create(intValue: Int): ExampleClass

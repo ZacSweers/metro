@@ -147,9 +147,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     context: NestedClassGenerationContext,
   ): Set<Name> {
     val constructor =
-      if (
-        classSymbol.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
-      ) {
+      if (classSymbol.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)) {
         classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().singleOrNull {
           it.isPrimary
         }
