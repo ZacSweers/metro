@@ -589,3 +589,6 @@ internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession)
 
 internal fun ConeTypeProjection.wrapInProvider() =
   LatticeSymbols.ClassIds.latticeProvider.constructClassLikeType(arrayOf(this))
+
+internal fun ConeTypeProjection.wrapInLazy() =
+  LatticeSymbols.ClassIds.lazy.constructClassLikeType(arrayOf(this))
