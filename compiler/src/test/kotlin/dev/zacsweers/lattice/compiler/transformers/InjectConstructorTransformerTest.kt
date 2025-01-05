@@ -235,4 +235,42 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
       assertThat(graph.callProperty<Callable<Int>>("exampleClass").call()).isEqualTo(2)
     }
   }
+
+  @Ignore("Enable once we support private inject constructors")
+  @Test
+  fun `an injected class with a private constructor is visible from another module`() {
+    val otherModuleResult =
+      compile(
+        source(
+          """
+            @Inject
+            class ExampleClass private constructor(private val value: Int) : Callable<Int> {
+              override fun call(): Int = value
+            }
+          """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClass: ExampleClass
+            
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@BindsInstance int: Int): ExampleGraph
+            }
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = otherModuleResult,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(2)
+      assertThat(graph.callProperty<Callable<Int>>("exampleClass").call()).isEqualTo(2)
+    }
+  }
 }
