@@ -101,7 +101,8 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent()
-        )
+        ),
+        debug = true
       )
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()

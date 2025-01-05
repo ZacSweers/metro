@@ -23,6 +23,7 @@ import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertCallableFactory
 import dev.zacsweers.lattice.compiler.assertNoArgCallableFactory
 import dev.zacsweers.lattice.compiler.callProperty
+import dev.zacsweers.lattice.compiler.createGraphViaFactory
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.createNewInstanceAs
 import dev.zacsweers.lattice.compiler.generatedFactoryClass
@@ -196,5 +197,42 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
         assertThat(lazy2.value).isEqualTo("Hello World! - 1")
         assertThat(counter.get()).isEqualTo(2)
       }
+  }
+
+  @Test
+  fun `an injected class is visible from another module`() {
+    val otherModuleResult =
+      compile(
+        source(
+          """
+            @Inject
+            class ExampleClass(private val value: Int) : Callable<Int> {
+              override fun call(): Int = value
+            }
+          """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClass: ExampleClass
+            
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@BindsInstance int: Int): ExampleGraph
+            }
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = otherModuleResult,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory(2)
+      assertThat(graph.callProperty<Callable<Int>>("exampleClass").call()).isEqualTo(2)
+    }
   }
 }

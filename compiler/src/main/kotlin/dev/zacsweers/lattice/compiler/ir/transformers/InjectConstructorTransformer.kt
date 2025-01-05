@@ -17,12 +17,14 @@ package dev.zacsweers.lattice.compiler.ir.transformers
 
 import dev.zacsweers.lattice.compiler.LatticeOrigins
 import dev.zacsweers.lattice.compiler.LatticeSymbols
+import dev.zacsweers.lattice.compiler.exitProcessing
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irTemporary
+import dev.zacsweers.lattice.compiler.ir.isExternalParent
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -45,6 +47,7 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWithParameters
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
@@ -79,13 +82,10 @@ internal class InjectConstructorTransformer(
       return it
     }
 
-    val targetTypeParameters: List<IrTypeParameter> = declaration.typeParameters
-
-    val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
-    val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
+    val isExternal = declaration.isExternalParent
 
     /*
-    Create a simple Factory class that takes all injected values as providers
+    Implement a simple Factory class that takes all injected values as providers
 
     // Simple
     class Example_Factory(private val valueProvider: Provider<String>) : Factory<Example_Factory>
@@ -95,12 +95,44 @@ internal class InjectConstructorTransformer(
     */
     val factoryCls =
       declaration.nestedClasses.singleOrNull {
-        it.origin == LatticeOrigins.InjectConstructorFactoryClassDeclaration &&
-          it.name == LatticeSymbols.Names.latticeFactory
+        val isLatticeFactory = it.name == LatticeSymbols.Names.latticeFactory
+        // If not external, double check its origin
+        if (isLatticeFactory && !isExternal) {
+          if (it.origin != LatticeOrigins.InjectConstructorFactoryClassDeclaration) {
+            declaration.reportError(
+              "Found a Lattice factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
+            )
+            exitProcessing()
+          }
+        }
+        isLatticeFactory
       }
-        ?: error(
-          "No factory class generated for ${declaration.kotlinFqName}. Report this bug with a repro case at https://github.com/zacsweers/lattice/issues/new"
+
+    if (factoryCls == null) {
+      if (isExternal) {
+        declaration.reportError(
+          "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Lattice compiler over that module too."
         )
+        exitProcessing()
+      } else {
+        error(
+          "No expected factory class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/lattice/issues/new"
+        )
+      }
+    }
+
+    // If it's from another module, we're done!
+    // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
+    //  external but no factory is found?
+    if (isExternal) {
+      generatedFactories[injectedClassId] = factoryCls
+      return factoryCls
+    }
+
+    val targetTypeParameters: List<IrTypeParameter> = declaration.typeParameters
+
+    val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
+    val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
 
     val typeParameters = factoryCls.copyTypeParameters(targetTypeParameters)
 
@@ -114,8 +146,6 @@ internal class InjectConstructorTransformer(
         .distinct()
     val allValueParameters = allParameters.flatMap { it.valueParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
-
-//    factoryCls.createImplicitParameterDeclarationWithWrappedDescriptor()
 
     val factoryClassParameterized = factoryCls.symbol.typeWithParameters(typeParameters)
     val targetTypeParameterized = declaration.symbol.typeWithParameters(typeParameters)
