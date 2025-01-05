@@ -670,7 +670,7 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+                fun create(@BindsInstance int: Int, @BindsInstance long: Long): ExampleGraph
               }
             }
 
