@@ -27,7 +27,13 @@ internal fun <T> unsafeLazy(initializer: () -> T) = lazy(LazyThreadSafetyMode.NO
 @OptIn(ExperimentalContracts::class)
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
-  check(this is T) { "Expected $this to be of type ${T::class.qualifiedName}" }
+  return expectAsOrNull<T>() ?: error("Expected $this to be of type ${T::class.qualifiedName}")
+}
+
+@OptIn(ExperimentalContracts::class)
+internal inline fun <reified T : Any> Any.expectAsOrNull(): T? {
+  contract { returnsNotNull() implies (this@expectAsOrNull is T) }
+  if (this !is T) return null
   return this
 }
 
