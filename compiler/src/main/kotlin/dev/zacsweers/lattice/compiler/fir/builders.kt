@@ -34,9 +34,14 @@ import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.declarations.origin
+import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
+import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildExpressionStub
+import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
+import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
@@ -47,6 +52,7 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.ConstantValueKind
 
 @OptIn(ExperimentalContracts::class)
 internal fun FirExtension.generateMemberFunction(
@@ -89,20 +95,46 @@ internal fun FirExtension.generateMemberFunction(
 }
 
 @OptIn(SymbolInternals::class)
-internal fun FirSimpleFunctionBuilder.copyParametersWithDefaults(
-  parametersToCopy: List<FirValueParameterSymbol>,
-  parameterInit: FirValueParameterBuilder.(original: FirValueParameterSymbol) -> Unit = {},
+internal fun FirExtension.copyParameters(
+  functionBuilder: FirSimpleFunctionBuilder,
+  sourceParameters: List<LatticeFirValueParameter>,
+  // TODO it would be neat to transform default value expressions in FIR? Right now only
+  //  simple ones are supported
+  copyParameterDefaults: Boolean,
+  parameterInit: FirValueParameterBuilder.(original: LatticeFirValueParameter) -> Unit = {},
 ) {
-  for (original in parametersToCopy) {
-    valueParameters +=
-      buildValueParameterCopy(original.fir) {
+  for (original in sourceParameters) {
+    val originalFir = original.symbol.fir
+    functionBuilder.valueParameters +=
+      buildValueParameterCopy(originalFir) {
         origin = LatticeKeys.ValueParameter.origin
-        symbol = FirValueParameterSymbol(original.name)
-        containingFunctionSymbol = this@copyParametersWithDefaults.symbol
+        symbol = FirValueParameterSymbol(original.symbol.name)
+        containingFunctionSymbol = functionBuilder.symbol
         parameterInit(original)
-        // TODO default values are copied over in this case, is that enough or do they need
-        //  references transformed? We should also check they're not referencing non-assisted
-        //  params
+        if (!copyParameterDefaults) {
+          if (original.symbol.hasDefaultValue) {
+            defaultValue = buildFunctionCall {
+              this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
+              this.calleeReference = buildResolvedNamedReference {
+                this.resolvedSymbol = session.latticeFirBuiltIns.errorFunctionSymbol
+                this.name = session.latticeFirBuiltIns.errorFunctionSymbol.name
+              }
+              argumentList =
+                buildResolvedArgumentList(
+                  buildArgumentList {
+                    this.arguments +=
+                      buildLiteralExpression(
+                        source = null,
+                        kind = ConstantValueKind.String,
+                        value = "Replaced in IR",
+                        setType = false,
+                      )
+                  },
+                  LinkedHashMap(),
+                )
+            }
+          }
+        }
       }
   }
 }
