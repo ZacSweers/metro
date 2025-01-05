@@ -39,19 +39,10 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun `assisted inject class generates factory with custom get function`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-            import java.util.concurrent.Callable
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -65,29 +56,20 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
-
-    val exampleClassFactory =
-      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
-    val exampleClass = exampleClassFactory.invokeFactoryGet<Callable<String>>(2)
-    assertThat(exampleClass.call()).isEqualTo("Hello, 2")
+      ) {
+        val exampleClassFactory =
+          ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+        val exampleClass = exampleClassFactory.invokeFactoryGet<Callable<String>>(2)
+        assertThat(exampleClass.call()).isEqualTo("Hello, 2")
+      }
   }
 
   @Test
   fun `assisted factory impl smoke test`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-            import java.util.concurrent.Callable
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -101,33 +83,24 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
+      ) {
+        val exampleClassFactory =
+          ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
-    val exampleClassFactory =
-      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
-
-    val factoryImplClass = result.ExampleClassFactory.generatedAssistedFactoryImpl()
-    val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
-    val factoryImpl = factoryImplProvider()
-    val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
-    assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
+        val factoryImplClass = ExampleClassFactory.generatedAssistedFactoryImpl()
+        val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+        val factoryImpl = factoryImplProvider()
+        val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
+        assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
+      }
   }
 
   @Test
   fun `default assisted factory is generated in FIR`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-            import java.util.concurrent.Callable
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
               val message: String,
             ) : Callable<String> {
@@ -142,37 +115,28 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         generateAssistedFactories = true,
-      )
+      ) {
+        val exampleClassFactory =
+          ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
-    val exampleClassFactory =
-      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+        val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
+        val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+        val factoryImpl = factoryImplProvider()
+        val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
+        assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
 
-    val factoryImplClass = result.ExampleClass.Factory.generatedAssistedFactoryImpl()
-    val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
-    val factoryImpl = factoryImplProvider()
-    val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
-    assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
-
-    // Run through FIR's generated one too
-    val exampleClass3 = result.invokeMain<Callable<String>>(factoryImpl, 3)
-    assertThat(exampleClass3.call()).isEqualTo("Hello, 3")
+        // Run through FIR's generated one too
+        val exampleClass3 = invokeMain<Callable<String>>(factoryImpl, 3)
+        assertThat(exampleClass3.call()).isEqualTo("Hello, 3")
+      }
   }
 
   @Test
   fun `default assisted factory with default values`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-            import java.util.concurrent.Callable
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int = 2,
               val message: String,
             ) : Callable<String> {
@@ -187,37 +151,28 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         generateAssistedFactories = true,
-      )
+      ) {
+        val exampleClassFactory =
+          ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
-    val exampleClassFactory =
-      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+        val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
+        val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+        val factoryImpl = factoryImplProvider()
+        val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
+        assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
 
-    val factoryImplClass = result.ExampleClass.Factory.generatedAssistedFactoryImpl()
-    val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
-    val factoryImpl = factoryImplProvider()
-    val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
-    assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
-
-    // Run through FIR's generated one too
-    val exampleClass3 = result.invokeMain<Callable<String>>(factoryImpl)
-    assertThat(exampleClass3.call()).isEqualTo("Hello, 2")
+        // Run through FIR's generated one too
+        val exampleClass3 = invokeMain<Callable<String>>(factoryImpl)
+        assertThat(exampleClass3.call()).isEqualTo("Hello, 2")
+      }
   }
 
   @Test
   fun `default assisted factory with custom identifiers`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-            import java.util.concurrent.Callable
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted("1") val count1: Int,
               @Assisted("2") val count2: Int,
               val message: String,
@@ -233,36 +188,27 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         generateAssistedFactories = true,
-      )
+      ) {
+        val exampleClassFactory =
+          ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
-    val exampleClassFactory =
-      result.ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+        val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
+        val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+        val factoryImpl = factoryImplProvider()
+        val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2, 3)
+        assertThat(exampleClass2.call()).isEqualTo("Hello, 2 3")
 
-    val factoryImplClass = result.ExampleClass.Factory.generatedAssistedFactoryImpl()
-    val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
-    val factoryImpl = factoryImplProvider()
-    val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2, 3)
-    assertThat(exampleClass2.call()).isEqualTo("Hello, 2 3")
-
-    // Run through FIR's generated one too
-    val exampleClass3 = result.invokeMain<Callable<String>>(factoryImpl, 2, 3)
-    assertThat(exampleClass3.call()).isEqualTo("Hello, 2 3")
+        // Run through FIR's generated one too
+        val exampleClass3 = invokeMain<Callable<String>>(factoryImpl, 2, 3)
+        assertThat(exampleClass3.call()).isEqualTo("Hello, 2 3")
+      }
   }
 
   @Test
-  fun `assisted factory must target assisted inject types`() {
-    val result =
+  fun `assisted factory must target assisted inject types with matching assisted parameters`() {
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
             class ExampleClass @Inject constructor(
               val count: Int,
               val message: String,
@@ -276,27 +222,16 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:8:7 `@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:6:7 Assisted parameter mismatch. Expected 1 assisted parameters but found 0.")
+      }
   }
 
   @Test
   fun `assisted factory must target assisted inject types - missing constructor`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
             class ExampleClass
 
             @AssistedFactory
@@ -307,27 +242,16 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:8:7 `@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:6:7 `@AssistedFactory` targets must have a single `@Inject`-annotated constructor.")
+      }
   }
 
   @Test
   fun `assisted factories cannot be local`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
             class ExampleClass
 
             fun example() {
@@ -340,18 +264,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains("ExampleClass.kt:12:18 Assisted factory classes cannot be local classes.")
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:18 Assisted factory classes cannot be local classes.")
+      }
   }
 
   @Test
   fun `assisted factories cannot be protected`() {
-    val result =
       compile(
         source(
           """
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -363,23 +286,22 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent()
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertDiagnostics(
-      """
-        e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
-      """
-        .trimIndent()
-    )
+      ) {
+        assertDiagnostics(
+          """
+            e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
+          """
+            .trimIndent()
+        )
+      }
   }
 
   @Test
   fun `assisted factories cannot be private`() {
-    val result =
       compile(
         source(
           """
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -391,31 +313,22 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent()
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertDiagnostics(
-      """
-        e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
-      """
-        .trimIndent()
-    )
+      ) {
+        assertDiagnostics(
+          """
+            e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
+          """
+            .trimIndent()
+        )
+      }
   }
 
   @Test
   fun `assisted factories cannot be final`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -429,28 +342,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:12:9 Assisted factory classes should be non-sealed abstract classes or interfaces."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:9 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+      }
   }
 
   @Test
   fun `assisted factories cannot be sealed classes`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -462,28 +364,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:12:16 Assisted factory classes should be non-sealed abstract classes or interfaces."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:16 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+      }
   }
 
   @Test
   fun `assisted factories cannot be sealed interfaces`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -495,28 +386,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:12:20 Assisted factory classes should be non-sealed abstract classes or interfaces."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:20 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+      }
   }
 
   @Test
   fun `assisted factories cannot be enums`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -533,28 +413,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:12:14 Assisted factory classes should be non-sealed abstract classes or interfaces."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:14 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+      }
   }
 
   @Test
   fun `assisted factories cannot be annotation classes`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -568,28 +437,22 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:12:20 Assisted factory classes should be non-sealed abstract classes or interfaces."
-    )
+      ) {
+        assertDiagnostics(
+          """
+            e: ExampleClass.kt:10:20 Assisted factory classes should be non-sealed abstract classes or interfaces.
+            e: ExampleClass.kt:11:5 Members are prohibited in annotation classes.
+          """.trimIndent()
+        )
+      }
   }
 
   @Test
   fun `assisted factories cannot be objects`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -603,28 +466,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:12:10 Assisted factory classes should be non-sealed abstract classes or interfaces."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:10 Assisted factory classes should be non-sealed abstract classes or interfaces.")
+      }
   }
 
   @Test
   fun `assisted factories must have a single abstract function - absent`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -634,28 +486,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:12:13 @AssistedFactory classes must have exactly one abstract function but found none."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:13 @AssistedFactory classes must have exactly one abstract function but found none.")
+      }
   }
 
   @Test
   fun `assisted factories must have a single abstract function - multiple`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -668,29 +509,22 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContainsAll(
-      "ExampleClass.kt:13:9 @AssistedFactory classes must have exactly one abstract function but found 2.",
-      "ExampleClass.kt:14:9 @AssistedFactory classes must have exactly one abstract function but found 2.",
-    )
+      ) {
+        assertDiagnostics(
+          """
+            e: ExampleClass.kt:11:9 @AssistedFactory classes must have exactly one abstract function but found 2.
+            e: ExampleClass.kt:12:9 @AssistedFactory classes must have exactly one abstract function but found 2.
+          """.trimIndent()
+        )
+      }
   }
 
   @Test
   fun `assisted factories must have a single abstract function - implemented from supertype`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               interface BaseFactory {
@@ -707,28 +541,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:15:13 @AssistedFactory classes must have exactly one abstract function but found none."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:13:13 @AssistedFactory classes must have exactly one abstract function but found none.")
+      }
   }
 
   @Test
   fun `assisted factories must have a single abstract function - implemented in supertype`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               interface GrandParentFactory {
@@ -746,27 +569,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:20:13 @AssistedFactory classes must have exactly one abstract function but found none."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:18:13 @AssistedFactory classes must have exactly one abstract function but found none.")
+      }
   }
 
   @Test
   fun `assisted parameter mismatch - different count - one empty`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
             ) {
               @AssistedFactory
@@ -778,27 +591,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:7:7 Assisted parameter mismatch. Expected 0 assisted parameters but found 1."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:6:7 Assisted parameter mismatch. Expected 0 assisted parameters but found 1.")
+      }
   }
 
   @Test
   fun `assisted parameter mismatch - different count`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: Int,
               @Assisted val message: String,
             ) {
@@ -811,27 +614,17 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      "ExampleClass.kt:7:7 Assisted parameter mismatch. Expected 1 assisted parameters but found 2."
-    )
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:6:7 Assisted parameter mismatch. Expected 1 assisted parameters but found 2.")
+      }
   }
 
   @Test
   fun `assisted parameter mismatch - different types`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted val count: String,
             ) {
               @AssistedFactory
@@ -843,32 +636,23 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      """
-        ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.Int
-          Missing from factory: kotlin.String
-      """
-        .trimIndent()
-    )
+      ) {
+        assertDiagnostics(
+          """
+            e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+              Missing from factory: kotlin.Int
+              Missing from factory: kotlin.String
+          """.trimIndent()
+        )
+      }
   }
 
   @Test
   fun `assisted parameter mismatch - different identifiers`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted("count") val count: String,
             ) {
               @AssistedFactory
@@ -880,32 +664,23 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      """
-        ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.Int (notcount)
-          Missing from factory: kotlin.String (count)
-      """
-        .trimIndent()
-    )
+      ) {
+        assertDiagnostics(
+          """
+            e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+              Missing from factory: kotlin.Int (notcount)
+              Missing from factory: kotlin.String (count)
+          """.trimIndent()
+        )
+      }
   }
 
   @Test
   fun `assisted parameter mismatch - matching identifiers - different types`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Assisted
-            import dev.zacsweers.lattice.AssistedInject
-            import dev.zacsweers.lattice.AssistedFactory
-
-            class ExampleClass @AssistedInject constructor(
+            class ExampleClass @Inject constructor(
               @Assisted("count") val count: String,
             ) {
               @AssistedFactory
@@ -917,15 +692,14 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             .trimIndent(),
         ),
         expectedExitCode = COMPILATION_ERROR,
-      )
-
-    result.assertContains(
-      """
-        ExampleClass.kt:7:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-          Missing from factory: kotlin.Int (count)
-          Missing from factory: kotlin.String (count)
-      """
-        .trimIndent()
-    )
+      ) {
+        assertDiagnostics(
+          """
+            e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+              Missing from factory: kotlin.Int (count)
+              Missing from factory: kotlin.String (count)
+          """.trimIndent()
+        )
+      }
   }
 }

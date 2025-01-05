@@ -409,7 +409,7 @@ internal class LatticeSymbols(
     get() = latticeClassIds.dependencyGraphFactoryAnnotations
 
   val injectAnnotations
-    get() = latticeClassIds.injectAnnotations + latticeClassIds.assistedInjectAnnotations
+    get() = latticeClassIds.injectAnnotations
 
   val qualifierAnnotations
     get() = latticeClassIds.qualifierAnnotations
@@ -428,9 +428,6 @@ internal class LatticeSymbols(
 
   val assistedAnnotations
     get() = latticeClassIds.assistedAnnotations
-
-  val assistedInjectAnnotations
-    get() = latticeClassIds.assistedInjectAnnotations
 
   val assistedFactoryAnnotations
     get() = latticeClassIds.assistedFactoryAnnotations

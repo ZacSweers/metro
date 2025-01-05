@@ -60,23 +60,17 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         return
       }
 
-    // Ensure target type has an assistedinject constructor
+    // Ensure target type has an inject constructor
     val targetType = function.returnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
       targetType.findInjectConstructor(session, latticeClassIds, context, reporter) {
         return
       }
-    if (
-      injectConstructor == null ||
-        !injectConstructor.annotations.isAnnotatedWithAny(
-          session,
-          latticeClassIds.assistedInjectAnnotations,
-        )
-    ) {
+    if (injectConstructor == null) {
       reporter.reportOn(
         targetType.source,
         ASSISTED_INJECTION,
-        "`@AssistedFactory` targets must have a single `@AssistedInject`-annotated constructor.",
+        "`@AssistedFactory` targets must have a single `@Inject`-annotated constructor.",
         context,
       )
       return

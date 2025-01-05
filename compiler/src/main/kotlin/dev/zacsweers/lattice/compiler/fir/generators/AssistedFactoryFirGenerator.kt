@@ -60,7 +60,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   private val assistedInjectAnnotationPredicate by unsafeLazy {
-    annotated(session.latticeClassIds.assistedInjectAnnotations.map { it.asSingleFqName() })
+    annotated(session.latticeClassIds.injectAnnotations.map { it.asSingleFqName() })
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
@@ -148,14 +148,14 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
   ): Set<Name> {
     val constructor =
       if (
-        classSymbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedInjectAnnotations)
+        classSymbol.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
       ) {
         classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().singleOrNull {
           it.isPrimary
         }
       } else {
         classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().firstOrNull {
-          it.isAnnotatedWithAny(session, session.latticeClassIds.assistedInjectAnnotations)
+          it.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
         }
       }
 

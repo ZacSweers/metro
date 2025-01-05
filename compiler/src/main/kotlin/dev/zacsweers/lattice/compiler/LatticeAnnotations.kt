@@ -53,7 +53,6 @@ internal class LatticeAnnotations<T>(
   val isDependencyGraph: Boolean,
   val isDependencyGraphFactory: Boolean,
   val isInject: Boolean,
-  val isAssistedInject: Boolean,
   val isProvides: Boolean,
   val isBinds: Boolean,
   val isBindsInstance: Boolean,
@@ -83,7 +82,6 @@ internal class LatticeAnnotations<T>(
     isDependencyGraph: Boolean = this.isDependencyGraph,
     isDependencyGraphFactory: Boolean = this.isDependencyGraphFactory,
     isInject: Boolean = this.isInject,
-    isAssistedInject: Boolean = this.isAssistedInject,
     isProvides: Boolean = this.isProvides,
     isBinds: Boolean = this.isBinds,
     isBindsInstance: Boolean = this.isBindsInstance,
@@ -101,7 +99,6 @@ internal class LatticeAnnotations<T>(
       isDependencyGraph,
       isDependencyGraphFactory,
       isInject,
-      isAssistedInject,
       isProvides,
       isBinds,
       isBindsInstance,
@@ -122,7 +119,6 @@ internal class LatticeAnnotations<T>(
       isDependencyGraph = isDependencyGraph || other.isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory || other.isDependencyGraphFactory,
       isInject = isInject || other.isInject,
-      isAssistedInject = isAssistedInject || other.isAssistedInject,
       isProvides = isProvides || other.isProvides,
       isBinds = isBinds || other.isBinds,
       isBindsInstance = isBindsInstance || other.isBindsInstance,
@@ -151,7 +147,6 @@ private fun IrAnnotationContainer.latticeAnnotations(
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
   var isInject = false
-  var isAssistedInject = false
   var isProvides = false
   var isBinds = false
   var isBindsInstance = false
@@ -225,9 +220,6 @@ private fun IrAnnotationContainer.latticeAnnotations(
     if (classId in ids.injectAnnotations) {
       isInject = true
       continue
-    } else if (classId in ids.assistedInjectAnnotations) {
-      isAssistedInject = true
-      continue
     }
 
     if (annotationClass.isAnnotatedWithAny(ids.scopeAnnotations)) {
@@ -247,7 +239,6 @@ private fun IrAnnotationContainer.latticeAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
       isInject = isInject,
-      isAssistedInject = isAssistedInject,
       isProvides = isProvides,
       isBinds = isBinds,
       isBindsInstance = isBindsInstance,
@@ -328,7 +319,6 @@ private fun FirAnnotationContainer.latticeAnnotations(
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
   var isInject = false
-  var isAssistedInject = false
   var isProvides = false
   var isBinds = false
   var isBindsInstance = false
@@ -404,9 +394,6 @@ private fun FirAnnotationContainer.latticeAnnotations(
     if (classId in ids.injectAnnotations) {
       isInject = true
       continue
-    } else if (classId in ids.assistedInjectAnnotations) {
-      isAssistedInject = true
-      continue
     }
 
     if (annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
@@ -426,7 +413,6 @@ private fun FirAnnotationContainer.latticeAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
       isInject = isInject,
-      isAssistedInject = isAssistedInject,
       isProvides = isProvides,
       isBinds = isBinds,
       isBindsInstance = isBindsInstance,

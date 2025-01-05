@@ -153,7 +153,7 @@ internal class AssistedFactoryTransformer(
               }
             body =
               pluginContext.createIrBuilder(symbol).run {
-                // We call the @AssistedInject constructor. Therefore, find for each assisted
+                // We call the @Inject constructor. Therefore, find for each assisted
                 // parameter the function parameter where the keys match.
                 val argumentList =
                   assistedParameterKeys.map { assistedParameterKey ->
@@ -217,7 +217,7 @@ internal class AssistedFactoryTransformer(
       }
   }
 
-  /** Represents a parsed function in an `@AssistedInject.Factory`-annotated interface. */
+  /** Represents a parsed function in an `@AssistedFactory`-annotated interface. */
   private data class AssistedFactoryFunction(
     val simpleName: String,
     val qualifiedName: String,

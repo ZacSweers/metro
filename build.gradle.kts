@@ -98,7 +98,6 @@ allprojects {
         "**/AbstractMapFactory.kt",
         "**/Assisted.kt",
         "**/AssistedFactory.kt",
-        "**/AssistedInject.kt",
         "**/BindsInstance.kt",
         "**/ClassKey.kt",
         "**/DelegateFactory.kt",

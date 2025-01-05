@@ -358,10 +358,7 @@ internal sealed interface Binding {
             type = irClass,
             injectedConstructor = injectableConstructor,
             annotations = classAnnotations,
-            isAssisted =
-              injectableConstructor.isAnnotatedWithAny(
-                latticeContext.symbols.assistedInjectAnnotations
-              ),
+            isAssisted = parameters.valueParameters.any { it.isAssisted },
             typeKey = key,
             parameters = parameters,
           )

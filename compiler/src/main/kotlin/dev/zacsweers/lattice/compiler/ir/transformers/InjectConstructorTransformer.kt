@@ -97,8 +97,6 @@ internal class InjectConstructorTransformer(
         memberInjectParameters.all { it.valueParameters.isEmpty() } &&
         targetTypeParameters.isEmpty()
 
-    val isAssistedInject = targetConstructor.isAnnotatedWithAny(symbols.assistedInjectAnnotations)
-
     /*
     Create a simple Factory class that takes all injected values as providers
 
@@ -135,6 +133,8 @@ internal class InjectConstructorTransformer(
 
     factoryCls.createImplicitParameterDeclarationWithWrappedDescriptor()
 
+
+    val isAssistedInject = constructorParameters.valueParameters.any { it.isAssisted }
     if (!isAssistedInject) {
       factoryCls.superTypes =
         listOf(

@@ -63,9 +63,6 @@ internal class LatticeClassIds(
     setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory")))
 
   // Assisted inject
-  val assistedInjectAnnotations =
-    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("AssistedInject")) +
-      customAssistedInjectAnnotations
   val latticeAssisted = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Assisted")
   val assistedAnnotations = setOf(latticeAssisted) + customAssistedAnnotations
   val latticeAssistedFactory =
@@ -75,7 +72,7 @@ internal class LatticeClassIds(
   val injectAnnotations =
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Inject")) +
       customInjectAnnotations +
-      assistedInjectAnnotations
+      customAssistedInjectAnnotations
 
   val qualifierAnnotations =
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Qualifier")) +
