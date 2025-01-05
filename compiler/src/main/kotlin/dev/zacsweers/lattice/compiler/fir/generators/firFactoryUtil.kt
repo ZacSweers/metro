@@ -60,7 +60,7 @@ internal fun FirExtension.buildFactoryConstructor(
         continue
       }
       valueParameter(
-        valueParameter.symbol.name,
+        valueParameter.name,
         valueParameter.contextKey.typeKey.type.wrapInProvider(),
         key = LatticeKeys.ValueParameter,
       )
@@ -135,7 +135,7 @@ internal fun FirExtension.buildNewInstanceFunction(
     context.owner,
     returnType.toFirResolvedTypeRef(),
     CallableId(context.owner.classId, name),
-    origin = LatticeKeys.ProviderNewInstanceFunction.origin,
+    origin = LatticeKeys.FactoryNewInstanceFunction.origin,
   ) {
     val thisFunctionSymbol = symbol
     for (typeParameter in context.owner.typeParameterSymbols) {
@@ -163,10 +163,7 @@ internal fun FirExtension.buildNewInstanceFunction(
 
     copyParameters(
       functionBuilder = this,
-      sourceParameters =
-        valueParameters.filterNot {
-          it.symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
-        },
+      sourceParameters = valueParameters,
       // Will be copied in IR
       copyParameterDefaults = false,
     ) { original ->

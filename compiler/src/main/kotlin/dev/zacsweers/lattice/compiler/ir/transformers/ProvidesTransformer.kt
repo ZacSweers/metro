@@ -188,7 +188,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
     val factoryClassParameterized = factoryCls.typeWith()
 
-    // Implement constructor w/ params if necessary
     val ctor = factoryCls.primaryConstructor!!
 
     val graphType = reference.graphParent.typeWith()
@@ -389,11 +388,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // Generate the named newInstance function
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
-        latticeContext,
-        classToGenerateCreatorsIn,
-        SpecialNames.NO_NAME_PROVIDED.asString(), // TODO remove
-        targetTypeParameterized,
-        factoryParameters,
+        context = latticeContext,
+        parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee.owner,
         sourceParameters = reference.parameters.valueParameters.map { it.ir },
       ) { function ->
