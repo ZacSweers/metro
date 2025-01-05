@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import java.util.Objects
-import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -65,12 +64,14 @@ import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
@@ -89,30 +90,8 @@ import org.jetbrains.kotlin.platform.isJs
 import org.jetbrains.kotlin.types.ConstantValueKind
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
-internal object LatticeKeys {
-  data object Default : GeneratedDeclarationKey() {
-    override fun toString() = "Default"
-  }
-
-  data object InstanceParameter : GeneratedDeclarationKey() {
-    override fun toString() = "InstanceParameter"
-  }
-
-  data object ReceiverParameter : GeneratedDeclarationKey() {
-    override fun toString() = "ReceiverParameter"
-  }
-
-  data object ValueParameter : GeneratedDeclarationKey() {
-    override fun toString() = "ValueParameter"
-  }
-
-  data object ProviderFactoryClassDeclaration : GeneratedDeclarationKey() {
-    override fun toString() = "ProviderFactoryClassDeclaration"
-  }
-
-  data object ProviderNewInstanceFunction : GeneratedDeclarationKey() {
-    override fun toString() = "ProviderNewInstanceFunction"
-  }
+internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
+  return isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
 }
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
@@ -206,6 +185,31 @@ internal fun FirClass.allFunctions(session: FirSession): Sequence<FirFunction> {
         .mapNotNull { it.toClassSymbol(session)?.fir }
         .flatMap { it.allFunctions(session) }
     )
+  }
+}
+
+internal fun FirClassSymbol<*>.allCallableMembers(
+  session: FirSession,
+  /** Member injection wants to yield ancestor members first */
+  yieldAncestorsFirst: Boolean = true,
+): Sequence<FirCallableSymbol<*>> {
+  return sequence {
+    val declaredMembers =
+      declarationSymbols.asSequence().filterIsInstance<FirCallableSymbol<*>>().filterNot {
+        it is FirConstructorSymbol
+      }
+
+    if (!yieldAncestorsFirst) {
+      yieldAll(declaredMembers)
+    }
+    yieldAll(
+      getSuperTypes(session)
+        .mapNotNull { it.toClassSymbol(session) }
+        .flatMap { it.allCallableMembers(session) }
+    )
+    if (yieldAncestorsFirst) {
+      yieldAll(declaredMembers)
+    }
   }
 }
 
