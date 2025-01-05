@@ -19,18 +19,24 @@ import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.name.Name
 
 internal interface LatticeFirValueParameter {
   val symbol: FirValueParameterSymbol
+  val name: Name
   val contextKey: FirContextualTypeKey
+  val isAssisted: Boolean
 
   companion object {
     operator fun invoke(
       session: FirSession,
       symbol: FirValueParameterSymbol,
+      name: Name = symbol.name,
     ): LatticeFirValueParameter =
       object : LatticeFirValueParameter {
         override val symbol = symbol
+        override val name = name
+        override val isAssisted: Boolean by unsafeLazy { symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations) }
 
         /**
          * Must be lazy because we may create this sooner than the [FirResolvePhase.TYPES] resolve

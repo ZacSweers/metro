@@ -107,6 +107,7 @@ internal fun FirExtension.copyParameters(
     val originalFir = original.symbol.fir
     functionBuilder.valueParameters +=
       buildValueParameterCopy(originalFir) {
+        name = original.name
         origin = LatticeKeys.ValueParameter.origin
         symbol = FirValueParameterSymbol(original.symbol.name)
         containingFunctionSymbol = functionBuilder.symbol
