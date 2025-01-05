@@ -25,12 +25,14 @@ import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
 // TODO cache these?
-internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotation? = null) :
+internal class FirTypeKey(val type: ConeKotlinType, val qualifier: LatticeFirAnnotation? = null) :
   Comparable<FirTypeKey> {
   private val cachedToString by unsafeLazy {
     buildString {
@@ -38,7 +40,7 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
         append(it)
         append(" ")
       }
-      append(type.coneType.renderReadableWithFqNames())
+      append(type.renderReadableWithFqNames())
     }
   }
 
@@ -50,13 +52,22 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
 
   override fun compareTo(other: FirTypeKey) = toString().compareTo(other.toString())
 
-  fun simpleString(): String = buildString {
-    qualifier?.let {
-      append("@")
-      append(it.simpleString())
-      append(" ")
+  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+    if (includeQualifier) {
+      qualifier?.let {
+        append("@")
+        append(it.simpleString())
+        append(" ")
+      }
     }
-    append(type.coneType.renderReadableWithFqNames())
+    val typeString =
+      if (short) {
+        // TODO reimpl renderShort from IR?
+        type.renderReadable()
+      } else {
+        type.renderReadableWithFqNames()
+      }
+    append(typeString)
   }
 
   companion object {
@@ -102,7 +113,7 @@ internal class FirTypeKey(val type: FirTypeRef, val qualifier: LatticeFirAnnotat
     ): FirTypeKey {
       // Check duplicate params
       val qualifier = annotations.qualifierAnnotation(session)
-      return FirTypeKey(typeRef, qualifier)
+      return FirTypeKey(typeRef.coneType, qualifier)
     }
   }
 }

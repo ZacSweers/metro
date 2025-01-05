@@ -133,7 +133,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
               reporter.reportOn(
                 source,
                 FirLatticeErrors.PROVIDES_ERROR,
-                "Binds receiver type `${receiverTypeKey.simpleString()}` is the same type and qualifier as the bound type `${returnTypeKey.simpleString()}`.",
+                "Binds receiver type `${receiverTypeKey.render(short = false)}` is the same type and qualifier as the bound type `${returnTypeKey.render(short = false)}`.",
                 context,
               )
             }
