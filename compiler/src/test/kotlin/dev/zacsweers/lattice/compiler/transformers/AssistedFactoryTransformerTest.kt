@@ -81,7 +81,6 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
           """
           .trimIndent()
       ),
-      debug = true
     ) {
       val exampleClassFactory =
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
