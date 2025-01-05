@@ -65,7 +65,7 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
-/** Generates declarations for `@Provides`-annotated members. */
+/** Generates factory declarations for `@Provides`-annotated members. */
 internal class ProvidesFactoryFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
