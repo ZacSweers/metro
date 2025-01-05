@@ -50,10 +50,11 @@ internal class LatticeSymbols(
     const val create = "create"
     const val factory = "factory"
     const val invoke = "invoke"
-    const val newInstance = "newInstance"
     const val latticeFactory = "\$\$LatticeFactory"
-    const val latticeRuntimePackage = "dev.zacsweers.lattice"
     const val latticeRuntimeInternalPackage = "dev.zacsweers.lattice.internal"
+    const val latticeRuntimePackage = "dev.zacsweers.lattice"
+    const val newInstance = "newInstance"
+    const val provider = "provider"
   }
 
   object FqNames {
@@ -64,12 +65,13 @@ internal class LatticeSymbols(
 
   object ClassIds {
     val anyClass = ClassId(kotlinPackageFqn, Name.identifier("Any"))
-    val publishedApi = ClassId(kotlinPackageFqn, Name.identifier("PublishedApi"))
-    val set = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Set"))
-    val map = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Map"))
+    val jsExportIgnore = ClassId.fromString("kotlin/js/JsExport.Ignore")
     val latticeFactory = ClassId(FqNames.latticeRuntimeInternalPackage, Names.factoryClassName)
     val latticeProvider = ClassId(FqNames.latticeRuntimePackage, Names.providerClassName)
-    val jsExportIgnore = ClassId.fromString("kotlin/js/JsExport.Ignore")
+    val lazy = ClassId(kotlinPackageFqn, Name.identifier("Lazy"))
+    val map = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Map"))
+    val publishedApi = ClassId(kotlinPackageFqn, Name.identifier("PublishedApi"))
+    val set = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Set"))
   }
 
   object Names {
@@ -78,12 +80,13 @@ internal class LatticeSymbols(
     val factoryClassName = Name.identifier("Factory")
     val instance = Name.identifier("instance")
     val invoke = Name.identifier(StringNames.invoke)
-    val latticeGraph = Name.identifier("\$\$LatticeGraph")
     val latticeFactory = Name.identifier(StringNames.latticeFactory)
+    val latticeGraph = Name.identifier("\$\$LatticeGraph")
     val latticeImpl = Name.identifier("\$\$Impl")
     val latticeMembersInjector = Name.identifier("\$\$LatticeMembersInjector")
     val newInstanceFunction = StringNames.newInstance.asName()
     val providerClassName = Name.identifier("Provider")
+    val providerFunction = Name.identifier(StringNames.provider)
     val receiver = Name.identifier("receiver")
     // Used in @Assisted.value
     val value = Name.identifier("value")
