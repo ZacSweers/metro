@@ -138,8 +138,10 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     if (binding.providerFunction.parentAsClass.isExternalParent) {
       // Look up the external class
       // TODO do we generate it here + warn like dagger does?
-      val generatedClass = binding.providerFunction.parentAsClass.nestedClasses
-        .find { it.name == reference.generatedClassId.shortClassName }
+      val generatedClass =
+        binding.providerFunction.parentAsClass.nestedClasses.find {
+          it.name == reference.generatedClassId.shortClassName
+        }
       if (generatedClass == null) {
         reference.callee.owner.reportError(
           "Could not find generated factory for ${reference.fqName} in upstream module where it's defined. Run the Lattice compiler over that module too."

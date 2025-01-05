@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.NameAllocator
-import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
@@ -26,13 +25,11 @@ import dev.zacsweers.lattice.compiler.fir.isAnnotatedInject
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
-import dev.zacsweers.lattice.compiler.fir.wrapInProvider
 import dev.zacsweers.lattice.compiler.newName
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
-import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -86,9 +83,7 @@ internal class InjectConstructorFactoryFirGenerator(session: FirSession) :
 
     init {
       // preallocate constructor param names
-      constructorParameters.forEach {
-        nameAllocator.newName(it.name.asString())
-      }
+      constructorParameters.forEach { nameAllocator.newName(it.name.asString()) }
     }
 
     val assistedParameters by unsafeLazy { constructorParameters.filter { it.isAssisted } }
@@ -117,23 +112,21 @@ internal class InjectConstructorFactoryFirGenerator(session: FirSession) :
           .flatMap {
             when (it) {
               is FirPropertySymbol ->
-                it.setterSymbol?.valueParameterSymbols.orEmpty()
-                  .map {
-                    LatticeFirValueParameter(
-                      session = session,
-                      symbol = it,
-                      name = nameAllocator.newName(it.name)
-                    )
-                  }
+                it.setterSymbol?.valueParameterSymbols.orEmpty().map {
+                  LatticeFirValueParameter(
+                    session = session,
+                    symbol = it,
+                    name = nameAllocator.newName(it.name),
+                  )
+                }
               is FirNamedFunctionSymbol -> {
-                it.valueParameterSymbols
-                  .map {
-                    LatticeFirValueParameter(
-                      session = session,
-                      symbol = it,
-                      name = nameAllocator.newName(it.name)
-                    )
-                  }
+                it.valueParameterSymbols.map {
+                  LatticeFirValueParameter(
+                    session = session,
+                    symbol = it,
+                    name = nameAllocator.newName(it.name),
+                  )
+                }
               }
               else -> emptyList()
             }
@@ -333,11 +326,14 @@ internal class InjectConstructorFactoryFirGenerator(session: FirSession) :
         LatticeSymbols.Names.create -> {
           // TODO what about type params
           val factoryClassType = factoryClass.constructType()
-          val factoryClassReturnType = if (injectedClass.isAssisted) {
-            factoryClassType
-          } else {
-            LatticeSymbols.ClassIds.latticeFactory.constructClassLikeType(arrayOf(factoryClassType))
-          }
+          val factoryClassReturnType =
+            if (injectedClass.isAssisted) {
+              factoryClassType
+            } else {
+              LatticeSymbols.ClassIds.latticeFactory.constructClassLikeType(
+                arrayOf(factoryClassType)
+              )
+            }
           buildFactoryCreateFunction(
             context,
             factoryClassReturnType,

@@ -22,11 +22,11 @@ import dev.zacsweers.lattice.compiler.ExampleClassFactory
 import dev.zacsweers.lattice.compiler.Factory
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertDiagnostics
+import dev.zacsweers.lattice.compiler.callFactoryInvoke
 import dev.zacsweers.lattice.compiler.generatedAssistedFactoryImpl
 import dev.zacsweers.lattice.compiler.generatedFactoryClassAssisted
 import dev.zacsweers.lattice.compiler.invokeCreate
 import dev.zacsweers.lattice.compiler.invokeCreateAsProvider
-import dev.zacsweers.lattice.compiler.callFactoryInvoke
 import dev.zacsweers.lattice.compiler.invokeInstanceMethod
 import dev.zacsweers.lattice.compiler.invokeMain
 import dev.zacsweers.lattice.provider
@@ -80,7 +80,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val exampleClassFactory =
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })

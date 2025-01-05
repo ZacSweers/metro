@@ -47,11 +47,9 @@ import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWithParameters
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTypeParameters
-import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -156,10 +154,8 @@ internal class InjectConstructorTransformer(
 
     // TODO This is ugly. Can we just source all the params directly from the FIR class now?
     val sourceParametersToFields: Map<Parameter, IrField> =
-      constructorParametersToFields.entries
-        .withIndex()
-        .associate { (index, pair) ->
-          val (irParam, field) = pair
+      constructorParametersToFields.entries.withIndex().associate { (index, pair) ->
+        val (irParam, field) = pair
         val sourceParam = nonAssistedParameters[index]
         sourceParam to field
       }
@@ -304,8 +300,7 @@ internal class InjectConstructorTransformer(
       generateStaticNewInstanceFunction(
         context = latticeContext,
         parentClass = classToGenerateCreatorsIn,
-        sourceParameters = constructorParameters.valueParameters
-          .map { it.ir },
+        sourceParameters = constructorParameters.valueParameters.map { it.ir },
       ) { function ->
         irCallConstructor(targetConstructor, emptyList()).apply {
           for (index in constructorParameters.allParameters.indices) {

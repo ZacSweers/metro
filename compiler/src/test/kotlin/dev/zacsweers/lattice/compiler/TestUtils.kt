@@ -199,7 +199,10 @@ class StaticMethod(val method: Method, val instance: Any? = null) {
     try {
       return method.invoke(instance, *args)
     } catch (e: Exception) {
-      throw AssertionError("Error invoking!\n Method: $method\nArgs: ${args.contentToString()}\n", e)
+      throw AssertionError(
+        "Error invoking!\n Method: $method\nArgs: ${args.contentToString()}\n",
+        e,
+      )
     }
   }
 }

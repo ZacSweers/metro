@@ -36,7 +36,9 @@ internal interface LatticeFirValueParameter {
       object : LatticeFirValueParameter {
         override val symbol = symbol
         override val name = name
-        override val isAssisted: Boolean by unsafeLazy { symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations) }
+        override val isAssisted: Boolean by unsafeLazy {
+          symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+        }
 
         /**
          * Must be lazy because we may create this sooner than the [FirResolvePhase.TYPES] resolve

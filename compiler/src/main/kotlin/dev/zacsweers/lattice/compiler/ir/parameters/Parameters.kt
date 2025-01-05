@@ -154,16 +154,16 @@ private class ParametersImpl<T : Parameter>(
         append(it.typeKey.render(short = true, includeQualifier = false))
         append('.')
       }
-      val name: Name? = irProperty?.name ?: run {
-        if (ir is IrConstructor) {
-          null
-        } else {
-          ir?.name ?: callableId.callableName
-        }
-      }
-      name?.let {
-        append(it)
-      }
+      val name: Name? =
+        irProperty?.name
+          ?: run {
+            if (ir is IrConstructor) {
+              null
+            } else {
+              ir?.name ?: callableId.callableName
+            }
+          }
+      name?.let { append(it) }
       if (!isProperty) {
         append('(')
         valueParameters.joinTo(this)

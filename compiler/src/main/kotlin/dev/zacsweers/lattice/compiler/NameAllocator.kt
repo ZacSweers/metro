@@ -189,7 +189,6 @@ private fun toJavaIdentifier(suggestion: String) = buildString {
   }
 }
 
-
 internal fun NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
   return newName(suggestion.asString(), tag).asName()
 }
