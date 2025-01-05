@@ -619,6 +619,7 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   return parametersToFields
 }
 
+// TODO eventually just return a Map<TypeKey, IrField>
 internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   constructor: IrConstructor,
   clazz: IrClass,
