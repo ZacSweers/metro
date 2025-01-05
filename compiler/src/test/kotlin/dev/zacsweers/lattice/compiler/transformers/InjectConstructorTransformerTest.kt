@@ -18,56 +18,46 @@ package dev.zacsweers.lattice.compiler.transformers
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleClass
+import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertCallableFactory
 import dev.zacsweers.lattice.compiler.assertNoArgCallableFactory
+import dev.zacsweers.lattice.compiler.callProperty
+import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.createNewInstanceAs
 import dev.zacsweers.lattice.compiler.generatedFactoryClass
+import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import dev.zacsweers.lattice.compiler.invokeCreateAsFactory
 import dev.zacsweers.lattice.compiler.invokeNewInstance
 import dev.zacsweers.lattice.provider
 import java.util.concurrent.Callable
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.Ignore
 import org.junit.Test
 
 class InjectConstructorTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun simple() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import java.util.concurrent.Callable
-
             class ExampleClass @Inject constructor(private val value: String) : Callable<String> {
               override fun call(): String = value
             }
-
           """
             .trimIndent(),
         ),
-        debug = true,
-      )
-    result.assertCallableFactory("Hello, world!")
+      ) {
+        assertCallableFactory("Hello, world!")
+      }
   }
 
   @Test
   fun simpleGeneric() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import java.util.concurrent.Callable
-
             class ExampleClass<T> @Inject constructor(private val value: T) : Callable<T> {
               override fun call(): T = value
             }
@@ -75,23 +65,17 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
-    result.assertCallableFactory("Hello, world!")
+      ) {
+        assertCallableFactory("Hello, world!")
+      }
   }
 
   @Test
   fun `class annotated with inject`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import java.util.concurrent.Callable
-
-            @Inject
+            @Inject 
             class ExampleClass(private val value: String) : Callable<String> {
               override fun call(): String = value
             }
@@ -99,23 +83,17 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
-    result.assertCallableFactory("Hello, world!")
+      ) {
+        assertCallableFactory("Hello, world!")
+      }
   }
 
   @Test
   fun `class annotated with inject and no constructor or params`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import java.util.concurrent.Callable
-
-            @Inject
+            @Inject 
             class ExampleClass : Callable<String> {
               override fun call(): String = "Hello, world!"
             }
@@ -123,36 +101,28 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
+      ) {
+        val factoryClass = ExampleClass.generatedFactoryClass()
 
-    val factoryClass = result.ExampleClass.generatedFactoryClass()
+        // Assert that the factory class is a singleton since there are no args
+        val factory1 = factoryClass.invokeCreateAsFactory()
+        val factory2 = factoryClass.invokeCreateAsFactory()
+        assertThat(factory1).isSameInstanceAs(factory2)
 
-    // Assert that the factory class is a singleton since there are no args
-    val factory1 = factoryClass.invokeCreateAsFactory()
-    val factory2 = factoryClass.invokeCreateAsFactory()
-    assertThat(factory1).isSameInstanceAs(factory2)
+        // Assert that newInstance still returns new instances
+        assertThat(factoryClass.invokeNewInstance())
+          .isNotSameInstanceAs(factoryClass.invokeNewInstance())
 
-    // Assert that newInstance still returns new instances
-    assertThat(factoryClass.invokeNewInstance())
-      .isNotSameInstanceAs(factoryClass.invokeNewInstance())
-
-    // Last smoke test on functionality
-    result.assertNoArgCallableFactory("Hello, world!")
+        // Last smoke test on functionality
+        assertNoArgCallableFactory("Hello, world!")
+      }
   }
 
   @Test
   fun `injected providers`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Provider
-            import java.util.concurrent.Callable
-
             @Inject
             class ExampleClass(private val value: Provider<String>) : Callable<String> {
               override fun call(): String = value()
@@ -161,31 +131,24 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
-
-    val factory = result.ExampleClass.generatedFactoryClass()
-    val counter = AtomicInteger()
-    val provider = provider { "Hello World! - ${counter.andIncrement}" }
-    val instance = factory.createNewInstanceAs<Callable<String>>(provider)
-    // Calling multiple times calls the provider every time
-    assertThat(instance.call()).isEqualTo("Hello World! - 0")
-    assertThat(instance.call()).isEqualTo("Hello World! - 1")
-    assertThat(counter.get()).isEqualTo(2)
+      ) {
+        val factory = ExampleClass.generatedFactoryClass()
+        val counter = AtomicInteger()
+        val provider = provider { "Hello World! - ${counter.andIncrement}" }
+        val instance = factory.createNewInstanceAs<Callable<String>>(provider)
+        // Calling multiple times calls the provider every time
+        assertThat(instance.call()).isEqualTo("Hello World! - 0")
+        assertThat(instance.call()).isEqualTo("Hello World! - 1")
+        assertThat(counter.get()).isEqualTo(2)
+      }
   }
 
   @Test
   fun `injected lazy`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import java.util.concurrent.Callable
-
-            @Inject
+            @Inject 
             class ExampleClass(private val value: Lazy<String>) : Callable<String> {
               override fun call(): String = value.value
             }
@@ -193,31 +156,23 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
-
-    val factoryClass = result.ExampleClass.generatedFactoryClass()
-    val counter = AtomicInteger()
-    val provider = provider { "Hello World! - ${counter.andIncrement}" }
-    val instance = factoryClass.createNewInstanceAs<Callable<String>>(provider)
-    // Calling multiple times caches the lazy instance
-    assertThat(instance.call()).isEqualTo("Hello World! - 0")
-    assertThat(instance.call()).isEqualTo("Hello World! - 0")
-    assertThat(counter.get()).isEqualTo(1)
+      ) {
+        val factoryClass = ExampleClass.generatedFactoryClass()
+        val counter = AtomicInteger()
+        val provider = provider { "Hello World! - ${counter.andIncrement}" }
+        val instance = factoryClass.createNewInstanceAs<Callable<String>>(provider)
+        // Calling multiple times caches the lazy instance
+        assertThat(instance.call()).isEqualTo("Hello World! - 0")
+        assertThat(instance.call()).isEqualTo("Hello World! - 0")
+        assertThat(counter.get()).isEqualTo(1)
+      }
   }
 
   @Test
   fun `injected provider of lazy`() {
-    val result =
       compile(
-        kotlin(
-          "ExampleClass.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Provider
-            import java.util.concurrent.Callable
-
             @Inject
             class ExampleClass(private val value: Provider<Lazy<String>>) : Callable<Lazy<String>> {
               override fun call(): Lazy<String> = value()
@@ -226,20 +181,20 @@ class InjectConstructorTransformerTest : LatticeCompilerTest() {
           """
             .trimIndent(),
         )
-      )
-
-    val factoryClass = result.ExampleClass.generatedFactoryClass()
-    val counter = AtomicInteger()
-    val provider = provider { "Hello World! - ${counter.andIncrement}" }
-    val instance = factoryClass.createNewInstanceAs<Callable<Lazy<String>>>(provider)
-    // Every call creates a new Lazy instance
-    // Calling multiple times caches the lazy instance
-    val lazy = instance.call()
-    assertThat(lazy.value).isEqualTo("Hello World! - 0")
-    assertThat(lazy.value).isEqualTo("Hello World! - 0")
-    val lazy2 = instance.call()
-    assertThat(lazy2.value).isEqualTo("Hello World! - 1")
-    assertThat(lazy2.value).isEqualTo("Hello World! - 1")
-    assertThat(counter.get()).isEqualTo(2)
+      ) {
+        val factoryClass = ExampleClass.generatedFactoryClass()
+        val counter = AtomicInteger()
+        val provider = provider { "Hello World! - ${counter.andIncrement}" }
+        val instance = factoryClass.createNewInstanceAs<Callable<Lazy<String>>>(provider)
+        // Every call creates a new Lazy instance
+        // Calling multiple times caches the lazy instance
+        val lazy = instance.call()
+        assertThat(lazy.value).isEqualTo("Hello World! - 0")
+        assertThat(lazy.value).isEqualTo("Hello World! - 0")
+        val lazy2 = instance.call()
+        assertThat(lazy2.value).isEqualTo("Hello World! - 1")
+        assertThat(lazy2.value).isEqualTo("Hello World! - 1")
+        assertThat(counter.get()).isEqualTo(2)
+      }
   }
 }
