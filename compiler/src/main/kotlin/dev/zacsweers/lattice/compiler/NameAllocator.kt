@@ -13,10 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:OptIn(ExperimentalUuidApi::class)
+
 package dev.zacsweers.lattice.compiler
 
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.renderer.KeywordStringsGenerated.KEYWORDS
 
 /**
@@ -74,6 +77,7 @@ import org.jetbrains.kotlin.renderer.KeywordStringsGenerated.KEYWORDS
  *
  * Changes from upstream: added [Mode] support for use with member inject parameters.
  */
+// TODO change to Name?
 internal class NameAllocator
 private constructor(
   private val allocatedNames: MutableSet<String>,
@@ -119,8 +123,6 @@ private constructor(
    * names. The returned value can be queried multiple times by passing `tag` to
    * [NameAllocator.get].
    */
-  @OptIn(ExperimentalUuidApi::class)
-  @JvmOverloads
   fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
     var result = buildString { append(toJavaIdentifier(suggestion)) }
     var count = 1
@@ -185,4 +187,9 @@ private fun toJavaIdentifier(suggestion: String) = buildString {
     appendCodePoint(validCodePoint)
     i += Character.charCount(codePoint)
   }
+}
+
+
+internal fun NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
+  return newName(suggestion.asString(), tag).asName()
 }
