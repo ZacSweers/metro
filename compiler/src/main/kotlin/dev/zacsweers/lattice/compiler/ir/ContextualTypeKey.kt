@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.compiler.LatticeAnnotations
+import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.expectAs
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -27,6 +28,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.render
 
+// TODO refactor/merge with FirContextualTypeKey
 @Poko
 internal class ContextualTypeKey(
   val typeKey: TypeKey,
@@ -152,11 +154,7 @@ internal fun IrType.asContextualTypeKey(
         // Check if this is a Map<Key, Provider<Value>>
         // If it has no type args we can skip
         if (declaredType.arguments.size != 2) return@run false
-        val isMap =
-          rawClass?.implements(
-            context.pluginContext,
-            context.pluginContext.irBuiltIns.mapClass.owner.classId!!,
-          ) == true
+        val isMap = rawClassId == LatticeSymbols.ClassIds.map
         if (!isMap) return@run false
         val valueTypeContextKey =
           declaredType.arguments[1]
