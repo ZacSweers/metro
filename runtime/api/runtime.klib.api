@@ -17,10 +17,6 @@ open annotation class dev.zacsweers.lattice/AssistedFactory : kotlin/Annotation 
     constructor <init>() // dev.zacsweers.lattice/AssistedFactory.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/AssistedInject : kotlin/Annotation { // dev.zacsweers.lattice/AssistedInject|null[0]
-    constructor <init>() // dev.zacsweers.lattice/AssistedInject.<init>|<init>(){}[0]
-}
-
 open annotation class dev.zacsweers.lattice/Binds : kotlin/Annotation { // dev.zacsweers.lattice/Binds|null[0]
     constructor <init>() // dev.zacsweers.lattice/Binds.<init>|<init>(){}[0]
 }

@@ -8,9 +8,6 @@ public abstract interface annotation class dev/zacsweers/lattice/Assisted : java
 public abstract interface annotation class dev/zacsweers/lattice/AssistedFactory : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/AssistedInject : java/lang/annotation/Annotation {
-}
-
 public abstract interface annotation class dev/zacsweers/lattice/Binds : java/lang/annotation/Annotation {
 }
 
