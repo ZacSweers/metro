@@ -18,10 +18,10 @@ package dev.zacsweers.lattice.compiler.fir.generators
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
-import dev.zacsweers.lattice.compiler.fir.FirTypeKey
+import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.buildSimpleValueParameter
-import dev.zacsweers.lattice.compiler.fir.copyParametersWithDefaults
+import dev.zacsweers.lattice.compiler.fir.copyParameters
 import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
@@ -56,11 +56,9 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
-import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -79,6 +77,10 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     register(providesAnnotationPredicate)
   }
 
+  // TODO apparently writing these types of caches is bad and
+  //  generate* functions should be side-effect-free, but honestly
+  //  how is this practical without this? Or is it ok if it's just an
+  //  internal cache? Unclear what "should not leak" means.
   private val providerFactoryClassIdsToCallables = mutableMapOf<ClassId, ProviderCallable>()
   private val providerFactoryClassIdsToSymbols = mutableMapOf<ClassId, FirClassLikeSymbol<*>>()
 
@@ -125,7 +127,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     context: MemberGenerationContext,
     instanceReceiver: ConeClassLikeType?,
     extensionReceiver: ConeClassLikeType?,
-    valueParameters: List<FirValueParameterSymbol>,
+    valueParameters: List<LatticeFirValueParameter>,
   ): FirConstructor {
     val owner = context.owner
     return createConstructor(
@@ -144,18 +146,20 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             key = LatticeKeys.ReceiverParameter,
           )
         }
-        for (valueParameter in valueParameters) {
+        for (i in valueParameters.indices) {
+          val valueParameter = valueParameters[i]
           // TODO toe-hold for later factory gen
           if (
-            valueParameter.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+            valueParameter.symbol.isAnnotatedWithAny(
+              session,
+              session.latticeClassIds.assistedAnnotations,
+            )
           ) {
             continue
           }
-          // TODO refactor this conversion up
-          val typeKey = FirTypeKey.from(session, valueParameter)
           valueParameter(
-            valueParameter.name,
-            typeKey.type.coneType.wrapInProvider(),
+            valueParameter.symbol.name,
+            valueParameter.contextKey.typeKey.type.wrapInProvider(),
             key = LatticeKeys.ValueParameter,
           )
         }
@@ -223,7 +227,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     returnType: ConeKotlinType,
     instanceReceiver: ConeClassLikeType?,
     extensionReceiver: ConeClassLikeType?,
-    valueParameters: List<FirValueParameterSymbol>,
+    valueParameters: List<LatticeFirValueParameter>,
   ): FirNamedFunctionSymbol {
     return generateMemberFunction(
         context.owner,
@@ -254,13 +258,17 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             )
         }
 
-        copyParametersWithDefaults(
-          valueParameters.filterNot {
-            it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
-          }
+        copyParameters(
+          functionBuilder = this,
+          sourceParameters =
+            valueParameters.filterNot {
+              it.symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+            },
+          // Will be copied in IR
+          copyParameterDefaults = false,
         ) { original ->
-          val typeKey = FirTypeKey.from(session, original)
-          this.returnTypeRef = typeKey.type.coneType.wrapInProvider().toFirResolvedTypeRef()
+          this.returnTypeRef =
+            original.contextKey.typeKey.type.wrapInProvider().toFirResolvedTypeRef()
         }
       }
       .symbol
@@ -273,7 +281,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     returnType: ConeKotlinType,
     instanceReceiver: ConeClassLikeType?,
     extensionReceiver: ConeClassLikeType?,
-    valueParameters: List<FirValueParameterSymbol>,
+    valueParameters: List<LatticeFirValueParameter>,
   ): FirNamedFunctionSymbol {
     return generateMemberFunction(
         context.owner,
@@ -305,13 +313,16 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             )
         }
 
-        copyParametersWithDefaults(
-          valueParameters.filterNot {
-            it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
-          }
+        copyParameters(
+          functionBuilder = this,
+          sourceParameters =
+            valueParameters.filterNot {
+              it.symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+            },
+          // Will be copied in IR
+          copyParameterDefaults = false,
         ) { original ->
-          val typeKey = FirTypeKey.from(session, original)
-          this.returnTypeRef = typeKey.type.coneType.toFirResolvedTypeRef()
+          this.returnTypeRef = original.contextKey.originalType.toFirResolvedTypeRef()
         }
       }
       .symbol
@@ -340,7 +351,12 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
       // It's a provider-containing class, generated factory class names and store callable info
       classSymbol.declarationSymbols
         .filterIsInstance<FirCallableSymbol<*>>()
-        .filter { it.isAnnotatedWithAny(session, session.latticeClassIds.providesAnnotations) }
+        .filter {
+          it.isAnnotatedWithAny(session, session.latticeClassIds.providesAnnotations) ||
+            (it as? FirPropertySymbol)
+              ?.getterSymbol
+              ?.isAnnotatedWithAny(session, session.latticeClassIds.providesAnnotations) == true
+        }
         .mapNotNullToSet { providesCallable ->
           val providerCallable =
             providesCallable.asProviderCallable(classSymbol) ?: return@mapNotNullToSet null
@@ -405,7 +421,8 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     val params =
       when (this) {
         is FirPropertySymbol -> emptyList()
-        is FirNamedFunctionSymbol -> this.valueParameterSymbols
+        is FirNamedFunctionSymbol ->
+          this.valueParameterSymbols.map { LatticeFirValueParameter(session, it) }
         else -> return null
       }
     return ProviderCallable(owner, this, instanceReceiver, params)
@@ -415,7 +432,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     val owner: FirClassSymbol<*>,
     val symbol: FirCallableSymbol<*>,
     val instanceReceiver: ConeClassLikeType?,
-    val valueParameters: List<FirValueParameterSymbol>,
+    val valueParameters: List<LatticeFirValueParameter>,
   ) {
     val name = symbol.name
     val shouldGenerateObject by unsafeLazy {

@@ -16,9 +16,9 @@
 package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
+import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
-import dev.zacsweers.lattice.compiler.fir.annotationsIn
-import dev.zacsweers.lattice.compiler.fir.copyParametersWithDefaults
+import dev.zacsweers.lattice.compiler.fir.copyParameters
 import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
@@ -44,7 +44,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
@@ -105,10 +104,12 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
             constructor.valueParameterSymbols
               // TODO need a predicate?
               .mapNotNull { param ->
-                param
-                  .annotationsIn(session, session.latticeClassIds.assistedAnnotations)
-                  .singleOrNull() ?: return@mapNotNull null
-                param
+                if (
+                  !param.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+                ) {
+                  return@mapNotNull null
+                }
+                LatticeFirValueParameter(session, param)
               }
           val createFunction =
             generateCreateFunction(assistedParams, targetClass, factoryClass, callableId)
@@ -121,7 +122,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
 
   @OptIn(SymbolInternals::class)
   private fun FirExtension.generateCreateFunction(
-    assistedParams: List<FirValueParameterSymbol>,
+    assistedParams: List<LatticeFirValueParameter>,
     targetClass: FirClassLikeSymbol<*>,
     factoryClass: FirClassSymbol<*>,
     callableId: CallableId,
@@ -132,7 +133,11 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
       modality = Modality.ABSTRACT,
       callableId = callableId,
     ) {
-      copyParametersWithDefaults(assistedParams)
+      copyParameters(
+        functionBuilder = this,
+        sourceParameters = assistedParams,
+        copyParameterDefaults = true,
+      )
     }
   }
 
