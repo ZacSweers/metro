@@ -133,11 +133,16 @@ private class ParametersImpl<T : Parameter>(
 
   private val cachedToString by unsafeLazy {
     buildString {
-      if (valueParameters.firstOrNull() is MembersInjectParameter) {
+      if (ir is IrConstructor || valueParameters.firstOrNull() is MembersInjectParameter) {
         append("@Inject ")
       }
       if (isProperty) {
+        if (irProperty?.isLateinit == true) {
+          append("lateinit ")
+        }
         append("var ")
+      } else if (ir is IrConstructor) {
+        append("constructor")
       } else {
         append("fun ")
       }
@@ -149,8 +154,16 @@ private class ParametersImpl<T : Parameter>(
         append(it.typeKey.render(short = true, includeQualifier = false))
         append('.')
       }
-      val name: Name = irProperty?.name ?: ir?.name ?: callableId.callableName
-      append(name.asString())
+      val name: Name? = irProperty?.name ?: run {
+        if (ir is IrConstructor) {
+          null
+        } else {
+          ir?.name ?: callableId.callableName
+        }
+      }
+      name?.let {
+        append(it)
+      }
       if (!isProperty) {
         append('(')
         valueParameters.joinTo(this)
@@ -161,7 +174,6 @@ private class ParametersImpl<T : Parameter>(
         val typeKey = TypeKey(it.returnType)
         append(typeKey.render(short = true, includeQualifier = false))
       } ?: run { append("<error>") }
-      append(" = ...")
     }
   }
 
