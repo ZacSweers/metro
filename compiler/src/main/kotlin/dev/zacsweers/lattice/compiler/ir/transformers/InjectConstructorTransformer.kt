@@ -155,7 +155,7 @@ internal class InjectConstructorTransformer(
     // TODO This is ugly. Can we just source all the params directly from the FIR class now?
     val sourceParametersToFields: Map<Parameter, IrField> =
       constructorParametersToFields.entries.withIndex().associate { (index, pair) ->
-        val (irParam, field) = pair
+        val (_, field) = pair
         val sourceParam = nonAssistedParameters[index]
         sourceParam to field
       }
