@@ -146,7 +146,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       )
       put(
         LOCAL_CLASSES_CANNOT_BE_INJECTED,
-        "Local classes cannot be annotated with @Inject or have @(Assisted)Inject-constructors.",
+        "Local classes cannot be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(LATTICE_DECLARATION_ERROR, "{0}", TO_STRING)
       put(LATTICE_DECLARATION_VISIBILITY_ERROR, "{0} must be public or internal.", TO_STRING)
@@ -180,11 +180,11 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       // TODO eventually this will change to allow function injection
       put(
         ONLY_CLASSES_CAN_BE_INJECTED,
-        "Only classes can be annotated with @Inject or have @(Assisted)Inject-constructors.",
+        "Only classes can be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(
         ONLY_FINAL_CLASSES_CAN_BE_INJECTED,
-        "Only final classes be annotated with @Inject or have @(Assisted)Inject-constructors.",
+        "Only final classes be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(
         INJECTED_CLASSES_MUST_BE_VISIBLE,
