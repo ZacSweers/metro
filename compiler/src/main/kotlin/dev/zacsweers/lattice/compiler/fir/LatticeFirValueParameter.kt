@@ -15,27 +15,34 @@
  */
 package dev.zacsweers.lattice.compiler.fir
 
+import dev.zacsweers.lattice.compiler.asName
+import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.name.Name
 
 internal interface LatticeFirValueParameter {
-  val symbol: FirValueParameterSymbol
+  val symbol: FirCallableSymbol<*>
   val name: Name
   val contextKey: FirContextualTypeKey
   val isAssisted: Boolean
+  val memberInjectorFunctionName: Name
 
   companion object {
     operator fun invoke(
       session: FirSession,
-      symbol: FirValueParameterSymbol,
+      symbol: FirCallableSymbol<*>,
       name: Name = symbol.name,
+      memberKey: Name = name,
     ): LatticeFirValueParameter =
       object : LatticeFirValueParameter {
         override val symbol = symbol
         override val name = name
+        override val memberInjectorFunctionName: Name by unsafeLazy {
+          "inject${memberKey.capitalizeUS().asString()}".asName()
+        }
         override val isAssisted: Boolean by unsafeLazy {
           symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
         }

@@ -22,8 +22,12 @@ import dev.zacsweers.lattice.compiler.expectAs
 import dev.zacsweers.lattice.compiler.expectAsOrNull
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.propertyIfAccessor
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
@@ -81,31 +85,18 @@ internal class FirContextualTypeKey(
 
   // TODO cache these?
   companion object {
-    @OptIn(SymbolInternals::class)
     fun from(
       session: FirSession,
-      function: FirFunctionSymbol<*>,
-      annotations: LatticeAnnotations<LatticeFirAnnotation>,
-      type: ConeKotlinType = function.resolvedReturnTypeRef.coneType,
-    ): FirContextualTypeKey =
-      type.asFirContextualTypeKey(
-        session,
-        function.fir.propertyIfAccessor.annotations.qualifierAnnotation(session),
-        false,
-        annotations.isIntoMultibinding,
-      )
-
-    fun from(
-      session: FirSession,
-      parameter: FirValueParameterSymbol,
-      type: ConeKotlinType = parameter.resolvedReturnTypeRef.coneType,
-    ): FirContextualTypeKey =
-      type.asFirContextualTypeKey(
+      callable: FirCallableSymbol<*>,
+      type: ConeKotlinType = callable.resolvedReturnTypeRef.coneType,
+    ): FirContextualTypeKey {
+      return type.asFirContextualTypeKey(
         session = session,
-        qualifierAnnotation = parameter.annotations.qualifierAnnotation(session),
-        hasDefault = parameter.hasDefaultValue,
+        qualifierAnnotation = callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
+        hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
         isIntoMultibinding = false,
       )
+    }
   }
 }
 

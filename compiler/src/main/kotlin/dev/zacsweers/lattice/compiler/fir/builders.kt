@@ -128,7 +128,7 @@ internal fun FirExtension.copyParameters(
   parameterInit: FirValueParameterBuilder.(original: LatticeFirValueParameter) -> Unit = {},
 ) {
   for (original in sourceParameters) {
-    val originalFir = original.symbol.fir
+    val originalFir = original.symbol.fir as FirValueParameter
     functionBuilder.valueParameters +=
       buildValueParameterCopy(originalFir) {
         name = original.name
@@ -137,7 +137,7 @@ internal fun FirExtension.copyParameters(
         containingFunctionSymbol = functionBuilder.symbol
         parameterInit(original)
         if (!copyParameterDefaults) {
-          if (original.symbol.hasDefaultValue) {
+          if (originalFir.symbol.hasDefaultValue) {
             defaultValue = buildFunctionCall {
               this.coneTypeOrNull = session.builtinTypes.nothingType.coneType
               this.calleeReference = buildResolvedNamedReference {
