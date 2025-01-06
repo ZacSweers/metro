@@ -32,7 +32,6 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.constructors
@@ -65,6 +64,7 @@ import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
+import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
@@ -73,6 +73,7 @@ import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -176,13 +177,12 @@ internal fun FirClass.allSuperTypeConeRefs(session: FirSession): Sequence<ConeCl
   }
 }
 
-@OptIn(SymbolInternals::class) // TODO is there a non-internal API?
-internal fun FirClass.allFunctions(session: FirSession): Sequence<FirFunction> {
+internal fun FirClassSymbol<*>.allFunctions(session: FirSession): Sequence<FirNamedFunctionSymbol> {
   return sequence {
-    yieldAll(declarations.filterIsInstance<FirFunction>())
+    yieldAll(declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>())
     yieldAll(
-      allSuperTypeConeRefs(session)
-        .mapNotNull { it.toClassSymbol(session)?.fir }
+      lookupSuperTypes(this@allFunctions, true, true, session)
+        .mapNotNull { it.toClassSymbol(session) }
         .flatMap { it.allFunctions(session) }
     )
   }
@@ -213,18 +213,21 @@ internal fun FirClassSymbol<*>.allCallableMembers(
   }
 }
 
-internal fun FirClass.abstractFunctions(session: FirSession): List<FirFunction> {
+@OptIn(SymbolInternals::class) // TODO is there a non-internal API?
+internal fun FirClassSymbol<*>.abstractFunctions(
+  session: FirSession
+): List<FirNamedFunctionSymbol> {
   return allFunctions(session)
     // Merge inherited functions with matching signatures
     .groupBy {
       // Don't include the return type because overrides may have different ones
-      it.computeJvmDescriptor(includeReturnType = false)
+      it.fir.computeJvmDescriptor(includeReturnType = false)
     }
     .mapValues { (_, functions) ->
       val (abstract, implemented) =
         functions.partition {
           it.modality == Modality.ABSTRACT &&
-            it.body == null &&
+            it.fir.body == null &&
             (it.visibility == Visibilities.Public || it.visibility == Visibilities.Protected)
         }
       if (abstract.isEmpty()) {
@@ -248,8 +251,8 @@ internal inline fun FirClass.singleAbstractFunction(
   reporter: DiagnosticReporter,
   type: String,
   onError: () -> Nothing,
-): FirFunction {
-  val abstractFunctions = abstractFunctions(session)
+): FirNamedFunctionSymbol {
+  val abstractFunctions = symbol.abstractFunctions(session)
   if (abstractFunctions.size != 1) {
     if (abstractFunctions.isEmpty()) {
       reporter.reportOn(

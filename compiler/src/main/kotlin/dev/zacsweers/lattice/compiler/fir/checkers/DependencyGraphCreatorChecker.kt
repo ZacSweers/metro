@@ -52,8 +52,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 
-    for (param in createFunction.valueParameters) {
-      val clazz = param.returnTypeRef.firClassLike(session)!!
+    for (param in createFunction.valueParameterSymbols) {
+      val clazz = param.resolvedReturnTypeRef.firClassLike(session)!!
       val isValid =
         param.isAnnotatedWithAny(session, latticeClassIds.bindsInstanceAnnotations) ||
           clazz.isAnnotatedWithAny(session, latticeClassIds.dependencyGraphAnnotations)

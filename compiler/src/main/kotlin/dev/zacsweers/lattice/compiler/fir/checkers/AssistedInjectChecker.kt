@@ -61,7 +61,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       }
 
     // TODO dagger doesn't allow type params on these, but seems like we could?
-    if (function.typeParameters.isNotEmpty()) {
+    if (function.typeParameterSymbols.isNotEmpty()) {
       reporter.reportOn(
         function.source,
         ASSISTED_INJECTION_ERROR,
@@ -72,7 +72,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     }
 
     // Ensure target type has an inject constructor
-    val targetType = function.returnTypeRef.firClassLike(session) as? FirClass? ?: return
+    val targetType = function.resolvedReturnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
       targetType.findInjectConstructor(session, latticeClassIds, context, reporter) {
         return
@@ -90,10 +90,10 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // check for scopes? Scopes not allowed, dagger ignores them
     // TODO error + test
 
-    val functionParams = function.valueParameters
+    val functionParams = function.valueParameterSymbols
     val constructorAssistedParams =
       injectConstructor.valueParameterSymbols.filter {
-        it.annotations.isAnnotatedWithAny(session, latticeClassIds.assistedAnnotations)
+        it.isAnnotatedWithAny(session, latticeClassIds.assistedAnnotations)
       }
 
     // ensure assisted params match
@@ -109,7 +109,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val (factoryKeys, dupeFactoryKeys) =
       functionParams.mapToSetWithDupes {
-        it.symbol.toAssistedParameterKey(session, FirTypeKey.from(session, it))
+        it.toAssistedParameterKey(session, FirTypeKey.from(session, it))
       }
 
     if (dupeFactoryKeys.isNotEmpty()) {
