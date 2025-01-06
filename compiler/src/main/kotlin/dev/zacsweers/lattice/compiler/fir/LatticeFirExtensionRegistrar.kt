@@ -33,10 +33,10 @@ internal class LatticeFirExtensionRegistrar(
     // TODO enable once we support metadata propagation
     //    +::FirProvidesStatusTransformer
     +::InjectConstructorFactoryFirGenerator
-    +::AssistedFactoryImplFirGenerator
-    +::ProvidesFactoryFirGenerator
     if (options.generateAssistedFactories) {
       +::AssistedFactoryFirGenerator
     }
+    +::AssistedFactoryImplFirGenerator
+    +::ProvidesFactoryFirGenerator
   }
 }
