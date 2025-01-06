@@ -26,6 +26,8 @@ import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.wrapInProvider
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
+import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
+import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.extensions.FirExtension
@@ -83,7 +85,6 @@ internal fun FirExtension.buildFactoryConstructor(
     .also { it.containingClassForStaticMemberAttr = owner.toLookupTag() }
 }
 
-@OptIn(SymbolInternals::class)
 internal fun FirExtension.buildFactoryCreateFunction(
   context: MemberGenerationContext,
   returnType: ConeKotlinType,
@@ -91,9 +92,20 @@ internal fun FirExtension.buildFactoryCreateFunction(
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<LatticeFirValueParameter>,
 ): FirNamedFunctionSymbol {
+  return buildFactoryCreateFunction(context, { returnType }, instanceReceiver, extensionReceiver, valueParameters)
+}
+
+@OptIn(SymbolInternals::class)
+internal fun FirExtension.buildFactoryCreateFunction(
+  context: MemberGenerationContext,
+  returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,
+  instanceReceiver: ConeClassLikeType?,
+  extensionReceiver: ConeClassLikeType?,
+  valueParameters: List<LatticeFirValueParameter>,
+): FirNamedFunctionSymbol {
   return generateMemberFunction(
       context.owner,
-      returnType.toFirResolvedTypeRef(),
+    returnTypeProvider,
       CallableId(context.owner.classId, LatticeSymbols.Names.create),
     ) {
       val thisFunctionSymbol = symbol
