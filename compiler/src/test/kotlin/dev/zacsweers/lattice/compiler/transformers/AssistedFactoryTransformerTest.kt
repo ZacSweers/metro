@@ -31,6 +31,7 @@ import dev.zacsweers.lattice.compiler.invokeInstanceMethod
 import dev.zacsweers.lattice.compiler.invokeMain
 import dev.zacsweers.lattice.provider
 import java.util.concurrent.Callable
+import org.junit.Ignore
 import org.junit.Test
 
 class AssistedFactoryTransformerTest : LatticeCompilerTest() {
@@ -93,6 +94,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     }
   }
 
+  @Ignore("Ignored until we merge the assisted FIR generators")
   @Test
   fun `default assisted factory is generated in FIR`() {
     compile(
@@ -129,6 +131,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     }
   }
 
+  @Ignore("Ignored until we merge the assisted FIR generators")
   @Test
   fun `default assisted factory with default values`() {
     compile(
@@ -165,6 +168,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
     }
   }
 
+  @Ignore("Ignored until we merge the assisted FIR generators")
   @Test
   fun `default assisted factory with custom identifiers`() {
     compile(
