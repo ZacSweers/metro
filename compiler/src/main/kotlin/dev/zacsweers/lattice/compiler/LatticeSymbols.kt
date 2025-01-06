@@ -49,6 +49,7 @@ internal class LatticeSymbols(
   object StringNames {
     const val create = "create"
     const val factory = "factory"
+    const val injectMembers = "injectMembers"
     const val invoke = "invoke"
     const val latticeFactory = "\$\$LatticeFactory"
     const val latticeRuntimeInternalPackage = "dev.zacsweers.lattice.internal"
@@ -68,6 +69,7 @@ internal class LatticeSymbols(
     val jsExportIgnore = ClassId.fromString("kotlin/js/JsExport.Ignore")
     val latticeFactory = ClassId(FqNames.latticeRuntimeInternalPackage, Names.factoryClassName)
     val latticeProvider = ClassId(FqNames.latticeRuntimePackage, Names.providerClassName)
+    val membersInjector = ClassId(FqNames.latticeRuntimePackage, Names.membersInjector)
     val lazy = ClassId(kotlinPackageFqn, Name.identifier("Lazy"))
     val map = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Map"))
     val publishedApi = ClassId(kotlinPackageFqn, Name.identifier("PublishedApi"))
@@ -80,11 +82,13 @@ internal class LatticeSymbols(
     val delegateFactory = Name.identifier("delegateFactory")
     val factoryClassName = Name.identifier("Factory")
     val instance = Name.identifier("instance")
+    val injectMembers = Name.identifier(StringNames.injectMembers)
     val invoke = Name.identifier(StringNames.invoke)
     val latticeFactory = Name.identifier(StringNames.latticeFactory)
     val latticeGraph = Name.identifier("\$\$LatticeGraph")
     val latticeImpl = Name.identifier("\$\$Impl")
     val latticeMembersInjector = Name.identifier("\$\$LatticeMembersInjector")
+    val membersInjector = Name.identifier("MembersInjector")
     val newInstanceFunction = StringNames.newInstance.asName()
     val providerClassName = Name.identifier("Provider")
     val providerFunction = Name.identifier(StringNames.provider)

@@ -54,6 +54,18 @@ internal object LatticeKeys {
     override fun toString() = "InjectConstructorFactoryCompanionDeclaration"
   }
 
+  data object MembersInjectorClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "MembersInjectorClassDeclaration"
+  }
+
+  data object MembersInjectorCompanionDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "MembersInjectorCompanionDeclaration"
+  }
+
+  data object MembersInjectorStaticInjectFunction : GeneratedDeclarationKey() {
+    override fun toString() = "MembersInjectorStaticInjectFunction"
+  }
+
   data object ProviderFactoryClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "ProviderFactoryClassDeclaration"
   }
