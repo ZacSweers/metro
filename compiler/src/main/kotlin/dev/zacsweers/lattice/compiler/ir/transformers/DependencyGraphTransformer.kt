@@ -202,6 +202,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     log("Reading <$declaration>")
 
     // TODO need to better divvy these
+    // TODO can we eagerly check for known lattice types and skip?
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
