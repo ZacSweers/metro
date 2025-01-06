@@ -31,6 +31,8 @@ internal object LatticeOrigins {
     IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.ReceiverParameter)
   val ValueParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.ValueParameter)
+  val AssistedFactoryImplClassDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.AssistedFactoryImplClassDeclaration)
   val InjectConstructorFactoryClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.InjectConstructorFactoryClassDeclaration)
   val FactoryNewInstanceFunction: IrDeclarationOrigin =

@@ -34,6 +34,10 @@ internal object LatticeKeys {
     override fun toString() = "ValueParameter"
   }
 
+  data object AssistedFactoryImplClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "AssistedFactoryImplClassDeclaration"
+  }
+
   data object InjectConstructorFactoryClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "InjectConstructorFactoryClassDeclaration"
   }
