@@ -59,8 +59,7 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 /** Generates factory and membersinjector declarations for `@Inject`-annotated classes. */
-// TODO rename
-internal class InjectConstructorFactoryFirGenerator(session: FirSession) :
+internal class InjectedClassFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   private val injectAnnotationPredicate by unsafeLazy {
