@@ -146,9 +146,7 @@ internal class InjectConstructorFactoryFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    return if (
-      classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryCompanionDeclaration)
-    ) {
+    return if (classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryCompanionDeclaration)) {
       // It's a factory's companion object
       emptySet()
     } else if (classSymbol.classId in injectFactoryClassIdsToSymbols) {
@@ -200,7 +198,8 @@ internal class InjectConstructorFactoryFirGenerator(session: FirSession) :
     return when (name) {
       SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT -> {
         // It's a factory's companion object, just generate the declaration
-        createCompanionObject(owner, LatticeKeys.InjectConstructorFactoryCompanionDeclaration).symbol
+        createCompanionObject(owner, LatticeKeys.InjectConstructorFactoryCompanionDeclaration)
+          .symbol
       }
       LatticeSymbols.Names.latticeFactory -> {
         // It's a factory class itself

@@ -169,9 +169,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    return if (
-      classSymbol.hasOrigin(LatticeKeys.ProviderFactoryCompanionDeclaration)
-    ) {
+    return if (classSymbol.hasOrigin(LatticeKeys.ProviderFactoryCompanionDeclaration)) {
       // It's a factory's companion object
       emptySet()
     } else if (classSymbol.classId in providerFactoryClassIdsToCallables) {

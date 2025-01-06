@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
-import org.jetbrains.kotlin.fir.analysis.checkers.overriddenFunctions
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
@@ -249,9 +248,9 @@ internal fun FirClassSymbol<*>.abstractFunctions(
       } else {
         // Only need one for the rest of this
         abstract.first {
-          // If it's declared in our class, grab that one. Otherwise grab the first non-overridden one
-          it.getContainingClassSymbol() == this ||
-            !it.isOverride
+          // If it's declared in our class, grab that one. Otherwise grab the first non-overridden
+          // one
+          it.getContainingClassSymbol() == this || !it.isOverride
         }
       }
     }
@@ -621,7 +620,8 @@ internal fun FirClassSymbol<*>.constructType(
 }
 
 // Annoyingly, FirDeclarationOrigin.Plugin does not implement equals()
-internal fun FirBasedSymbol<*>.hasOrigin(key: GeneratedDeclarationKey): Boolean = hasOrigin(key.origin)
+internal fun FirBasedSymbol<*>.hasOrigin(key: GeneratedDeclarationKey): Boolean =
+  hasOrigin(key.origin)
 
 internal fun FirBasedSymbol<*>.hasOrigin(o: FirDeclarationOrigin): Boolean {
   val thisOrigin = origin
