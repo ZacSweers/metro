@@ -128,7 +128,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     callableId: CallableId,
   ): FirSimpleFunction {
     return generateMemberFunction(
-      targetClass = targetClass,
+      owner = targetClass,
       returnTypeRef = targetClass.constructType().toFirResolvedTypeRef(),
       modality = Modality.ABSTRACT,
       callableId = callableId,

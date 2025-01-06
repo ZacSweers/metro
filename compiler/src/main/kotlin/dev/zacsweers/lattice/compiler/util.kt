@@ -61,6 +61,10 @@ internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set
   return mapNotNullTo(mutableSetOf(), transform)
 }
 
+internal inline fun <T, reified R> List<T>.mapToArray(transform: (T) -> R): Array<R> {
+  return Array(size) { transform(get(it)) }
+}
+
 internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set<R>, Set<R>> {
   val dupes = mutableSetOf<R>()
   val destination = mutableSetOf<R>()

@@ -624,16 +624,16 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
   constructor: IrConstructor,
   clazz: IrClass,
 ): Map<IrValueParameter, IrField> {
-  val parametersToFields = mutableMapOf<IrValueParameter, IrField>()
-  for (irParameter in constructor.valueParameters) {
-    val irField =
-      clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
-        isFinal = true
-        initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
-      }
-    parametersToFields[irParameter] = irField
+  return buildMap {
+    for (irParameter in constructor.valueParameters) {
+      val irField =
+        clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
+          isFinal = true
+          initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
+        }
+      put(irParameter, irField)
+    }
   }
-  return parametersToFields
 }
 
 internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExpression {

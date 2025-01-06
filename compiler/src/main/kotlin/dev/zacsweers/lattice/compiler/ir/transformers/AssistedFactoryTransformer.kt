@@ -15,59 +15,44 @@
  */
 package dev.zacsweers.lattice.compiler.ir.transformers
 
-import dev.zacsweers.lattice.compiler.LatticeOrigin
+import dev.zacsweers.lattice.compiler.LatticeOrigins
 import dev.zacsweers.lattice.compiler.LatticeSymbols
+import dev.zacsweers.lattice.compiler.exitProcessing
 import dev.zacsweers.lattice.compiler.ir.ContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
-import dev.zacsweers.lattice.compiler.ir.addCompanionObject
-import dev.zacsweers.lattice.compiler.ir.addOverride
+import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.lattice.compiler.ir.isExternalParent
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
-import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.compiler.ir.rawType
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.singleAbstractFunction
-import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.builders.declarations.addField
-import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
-import org.jetbrains.kotlin.ir.builders.declarations.buildClass
-import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
-import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.Name
 
 internal class AssistedFactoryTransformer(
   context: LatticeTransformerContext,
   private val injectConstructorTransformer: InjectConstructorTransformer,
 ) : LatticeTransformerContext by context {
-
-  companion object {
-    private val DELEGATE_FACTORY_NAME = Name.identifier("delegateFactory")
-  }
 
   private val generatedImpls = mutableMapOf<ClassId, IrClass>()
 
@@ -85,6 +70,36 @@ internal class AssistedFactoryTransformer(
     val classId: ClassId = declaration.classIdOrFail
     generatedImpls[classId]?.let {
       return it
+    }
+
+    val isExternal = declaration.isExternalParent
+
+    val implClass =
+      declaration.nestedClasses.singleOrNull {
+        val isLatticeImpl = it.name == LatticeSymbols.Names.latticeImpl
+        // If not external, double check its origin
+        if (isLatticeImpl && !isExternal) {
+          if (it.origin != LatticeOrigins.AssistedFactoryImplClassDeclaration) {
+            declaration.reportError(
+              "Found a Lattice assisted factory impl declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
+            )
+            exitProcessing()
+          }
+        }
+        isLatticeImpl
+      }
+
+    if (implClass == null) {
+      if (isExternal) {
+        declaration.reportError(
+          "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Lattice compiler over that module too."
+        )
+        exitProcessing()
+      } else {
+        error(
+          "No expected assisted factory impl class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/lattice/issues/new"
+        )
+      }
     }
 
     // TODO generics asMemberOf()?
@@ -109,113 +124,64 @@ internal class AssistedFactoryTransformer(
         injectConstructor.valueParameters[index].toAssistedParameterKey(symbols, parameter.typeKey)
       }
 
-    val implClass =
-      pluginContext.irFactory
-        .buildClass {
-          name = LatticeSymbols.Names.latticeImpl
-          origin = LatticeOrigin
+    val ctor = implClass.primaryConstructor!!
+    implClass.apply {
+      val delegateFactoryField = assignConstructorParamsToFields(ctor, implClass).values.single()
+
+      val creatorFunction =
+        implClass.functions.first {
+          it.origin == LatticeOrigins.AssistedFactoryImplCreatorFunctionDeclaration
         }
-        .apply {
-          declaration.addChild(this)
 
-          copyTypeParametersFrom(declaration)
-          superTypes += declaration.symbol.typeWith()
-
-          createImplicitParameterDeclarationWithWrappedDescriptor()
-          val implClassInstance = thisReceiverOrFail
-          val ctor =
-            addSimpleDelegatingConstructor(
-              if (!declaration.isInterface) {
-                declaration.primaryConstructor!!
-              } else {
-                symbols.anyConstructor
-              },
-              pluginContext.irBuiltIns,
-              isPrimary = true,
-              origin = LatticeOrigin,
-            )
-
-          // Add delegateFactory param and field
-          val param = ctor.addValueParameter(DELEGATE_FACTORY_NAME, generatedFactory.typeWith())
-          val delegateFactoryField =
-            addField(DELEGATE_FACTORY_NAME, generatedFactory.typeWith()).apply {
-              isFinal = true
-              initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(param)) }
-            }
-
-          addOverride(function.originalFunction).apply {
-            this.dispatchReceiverParameter = implClassInstance
-            this.returnType = returnType
-            val functionParams =
-              valueParameters.associateBy { valueParam ->
-                val key = ContextualTypeKey.from(latticeContext, valueParam).typeKey
-                valueParam.toAssistedParameterKey(symbols, key)
-              }
-            body =
-              pluginContext.createIrBuilder(symbol).run {
-                // We call the @Inject constructor. Therefore, find for each assisted
-                // parameter the function parameter where the keys match.
-                val argumentList =
-                  assistedParameterKeys.map { assistedParameterKey ->
-                    irGet(functionParams.getValue(assistedParameterKey))
-                  }
-
-                irExprBodySafe(
-                  symbol,
-                  irInvoke(
-                    dispatchReceiver =
-                      irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
-                    callee =
-                      generatedFactory.requireSimpleFunction(LatticeSymbols.StringNames.invoke),
-                    args = argumentList,
-                  ),
-                )
-              }
+      creatorFunction.apply {
+        val functionParams =
+          valueParameters.associateBy { valueParam ->
+            val key = ContextualTypeKey.from(latticeContext, valueParam).typeKey
+            valueParam.toAssistedParameterKey(symbols, key)
           }
+        body =
+          pluginContext.createIrBuilder(symbol).run {
+            // We call the @Inject constructor. Therefore, find for each assisted
+            // parameter the function parameter where the keys match.
+            val argumentList =
+              assistedParameterKeys.map { assistedParameterKey ->
+                irGet(functionParams.getValue(assistedParameterKey))
+              }
 
-          val companion = pluginContext.irFactory.addCompanionObject(symbols, parent = this)
-          companion.buildCreateFunction(declaration.typeWith(), this, ctor, generatedFactory)
+            irExprBodySafe(
+              symbol,
+              irInvoke(
+                dispatchReceiver =
+                  irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
+                callee = generatedFactory.requireSimpleFunction(LatticeSymbols.StringNames.invoke),
+                args = argumentList,
+              ),
+            )
+          }
+      }
+    }
+
+    val companion = implClass.companionObject()!!
+    companion.requireSimpleFunction(LatticeSymbols.StringNames.create).owner.apply {
+      val factoryParam = valueParameters.single()
+      // InstanceFactory.create(Impl(delegateFactory))
+      body =
+        pluginContext.createIrBuilder(symbol).run {
+          irExprBodySafe(
+            symbol,
+            irInvoke(
+                dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
+                callee = symbols.instanceFactoryCreate,
+                args = listOf(irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam)))),
+              )
+              .apply { putTypeArgument(0, declaration.typeWith()) },
+          )
         }
+    }
 
     implClass.dumpToLatticeLog()
 
     return implClass
-  }
-
-  // TODO for dagger interop - need createFactoryProvider() generated too
-  private fun IrClass.buildCreateFunction(
-    originClassName: IrType,
-    implClass: IrClass,
-    implConstructor: IrConstructor,
-    generatedFactoryType: IrClass,
-  ) {
-    addFunction(
-        LatticeSymbols.StringNames.create,
-        originClassName.wrapInProvider(symbols.latticeProvider),
-      )
-      .apply {
-        this.copyTypeParametersFrom(implClass)
-        this.origin = LatticeOrigin
-        this.visibility = DescriptorVisibilities.PUBLIC
-
-        val factoryParam = addValueParameter(DELEGATE_FACTORY_NAME, generatedFactoryType.typeWith())
-        // InstanceFactory.create(Impl(delegateFactory))
-        body =
-          pluginContext.createIrBuilder(symbol).run {
-            irExprBodySafe(
-              symbol,
-              irInvoke(
-                  dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-                  callee = symbols.instanceFactoryCreate,
-                  args =
-                    listOf(
-                      irInvoke(callee = implConstructor.symbol, args = listOf(irGet(factoryParam)))
-                    ),
-                )
-                .apply { putTypeArgument(0, originClassName) },
-            )
-          }
-      }
   }
 
   /** Represents a parsed function in an `@AssistedFactory`-annotated interface. */

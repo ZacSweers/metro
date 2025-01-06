@@ -38,12 +38,28 @@ internal object LatticeKeys {
     override fun toString() = "AssistedFactoryImplClassDeclaration"
   }
 
+  data object AssistedFactoryImplCompanionDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "AssistedFactoryImplCompanionDeclaration"
+  }
+
+  data object AssistedFactoryImplCreatorFunctionDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "AssistedFactoryImplCreatorFunctionDeclaration"
+  }
+
   data object InjectConstructorFactoryClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "InjectConstructorFactoryClassDeclaration"
   }
 
+  data object InjectConstructorFactoryCompanionDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "InjectConstructorFactoryCompanionDeclaration"
+  }
+
   data object ProviderFactoryClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "ProviderFactoryClassDeclaration"
+  }
+
+  data object ProviderFactoryCompanionDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "ProviderFactoryCompanionDeclaration"
   }
 
   data object FactoryNewInstanceFunction : GeneratedDeclarationKey() {

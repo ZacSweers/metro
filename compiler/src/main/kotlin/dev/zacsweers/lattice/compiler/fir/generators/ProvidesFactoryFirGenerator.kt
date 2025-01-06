@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
+import dev.zacsweers.lattice.compiler.fir.hasOrigin
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
@@ -29,7 +30,6 @@ import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
-import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -78,7 +78,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     context: MemberGenerationContext,
   ): Set<Name> {
     val callable =
-      if (classSymbol.isCompanion) {
+      if (classSymbol.hasOrigin(LatticeKeys.ProviderFactoryCompanionDeclaration)) {
         val owner = classSymbol.getContainingClassSymbol() ?: return emptySet()
         providerFactoryClassIdsToCallables[owner.classId]
       } else {
@@ -170,9 +170,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     context: NestedClassGenerationContext,
   ): Set<Name> {
     return if (
-      classSymbol.isCompanion &&
-        classSymbol.getContainingClassSymbol()?.origin ==
-          LatticeKeys.ProviderFactoryClassDeclaration.origin
+      classSymbol.hasOrigin(LatticeKeys.ProviderFactoryCompanionDeclaration)
     ) {
       // It's a factory's companion object
       emptySet()
@@ -220,7 +218,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
   ): FirClassLikeSymbol<*>? {
     return if (name == SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT) {
       // It's a factory's companion object, just generate the declaration
-      createCompanionObject(owner, LatticeKeys.Default).symbol
+      createCompanionObject(owner, LatticeKeys.ProviderFactoryCompanionDeclaration).symbol
     } else if (owner.classId.createNestedClassId(name) in providerFactoryClassIdsToCallables) {
       // It's a factory class itself
       val classId = owner.classId.createNestedClassId(name)
