@@ -124,8 +124,8 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error0(VISIBILITY_MODIFIER)
 
   // Assisted factory/inject errors
-  // All errors are just passed through this one
-  val ASSISTED_INJECTION by error1<String>(NAME_IDENTIFIER)
+  val ASSISTED_INJECTION_ERROR by error1<String>(NAME_IDENTIFIER)
+  val ASSISTED_INJECTION_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
 
   // Provides errors
   val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE by warning1<String>(VISIBILITY_MODIFIER)
@@ -190,7 +190,8 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
         INJECTED_CLASSES_MUST_BE_VISIBLE,
         "Injected classes must be visible, either `public` or `internal`.",
       )
-      put(ASSISTED_INJECTION, "{0}", STRING)
+      put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
+      put(ASSISTED_INJECTION_TYPE_PARAMETERS_ERROR, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
       put(BINDS_ERROR, "{0}", STRING)
       put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)

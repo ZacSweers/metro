@@ -16,7 +16,7 @@
 package dev.zacsweers.lattice.compiler.fir.checkers
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
-import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors.ASSISTED_INJECTION
+import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.annotationsIn
 import dev.zacsweers.lattice.compiler.fir.checkers.AssistedInjectChecker.FirAssistedParameterKey.Companion.toAssistedParameterKey
@@ -60,6 +60,17 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         return
       }
 
+    // TODO dagger doesn't allow type params on these, but seems like we could?
+    if (function.typeParameters.isNotEmpty()) {
+      reporter.reportOn(
+        function.source,
+        ASSISTED_INJECTION_ERROR,
+        "`@AssistedFactory` functions cannot have type parameters.",
+        context,
+      )
+      return
+    }
+
     // Ensure target type has an inject constructor
     val targetType = function.returnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
@@ -69,7 +80,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     if (injectConstructor == null) {
       reporter.reportOn(
         targetType.source,
-        ASSISTED_INJECTION,
+        ASSISTED_INJECTION_ERROR,
         "`@AssistedFactory` targets must have a single `@Inject`-annotated constructor.",
         context,
       )
@@ -89,7 +100,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     if (functionParams.size != constructorAssistedParams.size) {
       reporter.reportOn(
         targetType.source,
-        ASSISTED_INJECTION,
+        ASSISTED_INJECTION_ERROR,
         "Assisted parameter mismatch. Expected ${functionParams.size} assisted parameters but found ${constructorAssistedParams.size}.",
         context,
       )
@@ -104,7 +115,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     if (dupeFactoryKeys.isNotEmpty()) {
       reporter.reportOn(
         targetType.source,
-        ASSISTED_INJECTION,
+        ASSISTED_INJECTION_ERROR,
         "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
         context,
       )
@@ -119,7 +130,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     if (dupeConstructorKeys.isNotEmpty()) {
       reporter.reportOn(
         targetType.source,
-        ASSISTED_INJECTION,
+        ASSISTED_INJECTION_ERROR,
         "Assisted constructor parameters must be unique. Found duplicates: $dupeConstructorKeys",
         context,
       )
@@ -137,7 +148,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       val missingFromConstructor = constructorKeys.subtract(factoryKeys).joinToString()
       reporter.reportOn(
         targetType.source,
-        ASSISTED_INJECTION,
+        ASSISTED_INJECTION_ERROR,
         buildString {
           appendLine(
             "Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:"

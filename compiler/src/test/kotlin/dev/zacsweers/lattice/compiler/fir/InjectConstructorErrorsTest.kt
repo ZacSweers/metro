@@ -19,6 +19,7 @@ import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertContainsAll
+import dev.zacsweers.lattice.compiler.assertDiagnostics
 import org.junit.Test
 
 class InjectConstructorErrorsTest : LatticeCompilerTest() {
@@ -279,5 +280,26 @@ class InjectConstructorErrorsTest : LatticeCompilerTest() {
       "ExampleClass.kt:8:51 Injected constructors must be public or internal.",
       "ExampleClass.kt:10:53 Injected constructors must be public or internal.",
     )
+  }
+
+  @Test
+  fun `assisted factories cannot have type params`() {
+      compile(
+        source(
+          """
+            @Inject
+            class ExampleClass<T> {
+              @AssistedFactory
+              interface Factory {
+                fun <T> create(): ExampleClass<T>
+              }
+            }
+          """
+            .trimIndent(),
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      ) {
+        assertDiagnostics("e: ExampleClass.kt:10:13 `@AssistedFactory` functions cannot have type parameters.")
+      }
   }
 }
