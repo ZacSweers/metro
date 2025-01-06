@@ -119,7 +119,7 @@ private constructor(
   )
 
   /**
-   * Return a new name using `suggestion` that will not be a Java identifier or clash with other
+   * Return a new name using [suggestion] that will not be a Java identifier or clash with other
    * names. The returned value can be queried multiple times by passing `tag` to
    * [NameAllocator.get].
    */
