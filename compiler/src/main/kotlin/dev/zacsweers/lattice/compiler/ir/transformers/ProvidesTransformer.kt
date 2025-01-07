@@ -188,8 +188,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
           "No expected factory class generated for ${reference.fqName}. Report this bug with a repro case at https://github.com/zacsweers/lattice/issues/new"
         )
 
-    val factoryClassParameterized = factoryCls.typeWith()
-
     val ctor = factoryCls.primaryConstructor!!
 
     val graphType = reference.graphParent.typeWith()
@@ -254,7 +252,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         factoryCls,
         ctor.symbol,
         reference,
-        factoryClassParameterized,
         sourceParameters,
       )
 
@@ -361,10 +358,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
     reference: CallableReference,
-    factoryClassParameterized: IrType,
     factoryParameters: Parameters<ConstructorParameter>,
   ): IrSimpleFunction {
-    val targetTypeParameterized = reference.typeKey.type
     val returnTypeIsNullable = reference.isNullable
 
     // If this is an object, we can generate directly into this object
@@ -381,7 +376,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       context = latticeContext,
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
-      targetClassParameterized = factoryClassParameterized,
       targetConstructor = factoryConstructor,
       parameters = factoryParameters,
       providerFunction = reference.callee.owner,

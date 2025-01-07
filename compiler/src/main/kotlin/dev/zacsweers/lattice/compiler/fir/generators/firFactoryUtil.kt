@@ -112,9 +112,10 @@ internal fun FirExtension.buildFactoryCreateFunction(
   valueParameters: List<LatticeFirValueParameter>,
 ): FirNamedFunctionSymbol {
   return generateMemberFunction(
-      context.owner,
-      returnTypeProvider,
-      CallableId(context.owner.classId, LatticeSymbols.Names.create),
+    owner = context.owner,
+    returnTypeProvider = returnTypeProvider,
+    callableId = CallableId(context.owner.classId, LatticeSymbols.Names.create),
+    origin = LatticeKeys.FactoryCreateFunction.origin,
     ) {
       val thisFunctionSymbol = symbol
 

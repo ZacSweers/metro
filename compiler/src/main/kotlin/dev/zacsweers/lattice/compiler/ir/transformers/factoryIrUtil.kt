@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
+import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -59,43 +60,13 @@ internal fun generateStaticCreateFunction(
   context: LatticeTransformerContext,
   parentClass: IrClass,
   targetClass: IrClass,
-  targetClassParameterized: IrType,
   targetConstructor: IrConstructorSymbol,
   parameters: Parameters<out Parameter>,
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
-  // TODO remove the run block once all factory gen is in FIR
   val function =
-    parentClass.getSimpleFunction(LatticeSymbols.StringNames.create)?.owner.takeIf {
-      it?.origin == LatticeOrigins.Default
-    }
-      ?: run {
-        parentClass.addFunction(LatticeSymbols.StringNames.create, targetClassParameterized).apply {
-          this.copyTypeParameters(targetClass.typeParameters)
-          this.origin = LatticeOrigin
-          this.visibility = DescriptorVisibilities.PUBLIC
-
-          parameters.instance?.let {
-            addValueParameter(it.name, it.providerType, LatticeOrigins.InstanceParameter)
-          }
-          parameters.extensionReceiver?.let {
-            addValueParameter(it.name, it.providerType, LatticeOrigins.ReceiverParameter)
-          }
-          parameters.valueParameters
-            .filterNot { it.isAssisted }
-            .map {
-              addValueParameter(it.name, it.providerType, LatticeOrigins.ValueParameter).also {
-                irParam ->
-                it.typeKey.qualifier?.let {
-                  // Copy any qualifiers over so they're retrievable during dependency graph
-                  // resolution
-                  irParam.annotations += it.ir
-                }
-              }
-            }
-        }
-      }
+    parentClass.functions.first { it.origin == LatticeOrigins.FactoryCreateFunction }
 
   return function.apply {
     if (patchCreationParams) {

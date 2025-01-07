@@ -74,6 +74,10 @@ internal object LatticeKeys {
     override fun toString() = "ProviderFactoryCompanionDeclaration"
   }
 
+  data object FactoryCreateFunction : GeneratedDeclarationKey() {
+    override fun toString() = "FactoryCreateFunction"
+  }
+
   data object FactoryNewInstanceFunction : GeneratedDeclarationKey() {
     override fun toString() = "FactoryNewInstanceFunction"
   }

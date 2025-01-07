@@ -127,12 +127,8 @@ internal class InjectConstructorTransformer(
       return factoryCls
     }
 
-    val targetTypeParameters: List<IrTypeParameter> = declaration.typeParameters
-
     val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
     val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
-
-    val typeParameters = factoryCls.copyTypeParameters(targetTypeParameters)
 
     val constructorParameters =
       targetConstructor.parameters(latticeContext, factoryCls, declaration)
@@ -144,9 +140,6 @@ internal class InjectConstructorTransformer(
         .distinct()
     val allValueParameters = allParameters.flatMap { it.valueParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
-
-    val factoryClassParameterized = factoryCls.symbol.typeWithParameters(typeParameters)
-    val targetTypeParameterized = declaration.symbol.typeWithParameters(typeParameters)
 
     val ctor = factoryCls.primaryConstructor!!
 
@@ -165,8 +158,6 @@ internal class InjectConstructorTransformer(
         factoryCls,
         ctor.symbol,
         targetConstructor.symbol,
-        targetTypeParameterized,
-        factoryClassParameterized,
         constructorParameters,
         allParameters,
       )
@@ -264,8 +255,6 @@ internal class InjectConstructorTransformer(
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
     targetConstructor: IrConstructorSymbol,
-    targetTypeParameterized: IrType,
-    factoryClassParameterized: IrType,
     constructorParameters: Parameters<ConstructorParameter>,
     allParameters: List<Parameters<out Parameter>>,
   ): IrSimpleFunction {
@@ -290,7 +279,6 @@ internal class InjectConstructorTransformer(
       context = latticeContext,
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
-      targetClassParameterized = factoryClassParameterized,
       targetConstructor = factoryConstructor,
       parameters = mergedParameters,
       providerFunction = null,

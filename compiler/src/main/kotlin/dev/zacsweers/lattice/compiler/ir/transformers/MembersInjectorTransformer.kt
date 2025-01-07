@@ -15,15 +15,12 @@
  */
 package dev.zacsweers.lattice.compiler.ir.transformers
 
-import dev.zacsweers.lattice.compiler.LatticeOrigin
 import dev.zacsweers.lattice.compiler.LatticeOrigins
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.NameAllocator
 import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.exitProcessing
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
-import dev.zacsweers.lattice.compiler.ir.addCompanionObject
-import dev.zacsweers.lattice.compiler.ir.addOverride
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
@@ -39,15 +36,9 @@ import dev.zacsweers.lattice.compiler.ir.parameters.memberInjectParameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.compiler.ir.rawTypeOrNull
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
-import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import kotlin.collections.component1
 import kotlin.collections.component2
-import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
-import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
-import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -55,19 +46,12 @@ import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classOrNull
-import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.types.typeWithParameters
-import org.jetbrains.kotlin.ir.util.addChild
-import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.copyTypeParameters
-import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -124,25 +108,29 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     - An implementation of MembersInjector.injectMembers()
     - Static inject* functions for each member of the target class's _declared_ members.
     */
-    val injectorClass = declaration.nestedClasses.singleOrNull {
-      val isLatticeImpl = it.name == LatticeSymbols.Names.latticeMembersInjector
-      // If not external, double check its origin
-      if (isLatticeImpl && !isExternal) {
-        if (it.origin != LatticeOrigins.MembersInjectorClassDeclaration) {
-          declaration.reportError(
-            "Found a Lattice members injector declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
-          )
-          exitProcessing()
+    val injectorClass =
+      declaration.nestedClasses.singleOrNull {
+        val isLatticeImpl = it.name == LatticeSymbols.Names.latticeMembersInjector
+        // If not external, double check its origin
+        if (isLatticeImpl && !isExternal) {
+          if (it.origin != LatticeOrigins.MembersInjectorClassDeclaration) {
+            declaration.reportError(
+              "Found a Lattice members injector declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
+            )
+            exitProcessing()
+          }
         }
+        isLatticeImpl
       }
-      isLatticeImpl
-    }
 
     if (injectorClass == null) {
-      // For now, assume there's no members to inject. Would be nice if we could better check this in the future
+      // For now, assume there's no members to inject. Would be nice if we could better check this
+      // in the future
       generatedInjectors[injectedClassId] = null
       return null
     }
+
+    val ctor = injectorClass.primaryConstructor!!
 
     if (declaration.isExternalParent) {
       //        val params = TODO()
@@ -175,15 +163,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
     val injectedMembersByClass = declaration.memberInjectParameters(this)
 
-    if (injectedMembersByClass.isEmpty() || injectedMembersByClass.values.all { it.isEmpty() }) {
-      return null
-    }
-
-    val typeParameters = injectorClass.typeParameters
-    val injectorClassParameterized = injectorClass.symbol.typeWithParameters(typeParameters)
-
     val allParameters = injectedMembersByClass.values.flatMap { it.flatMap { it.valueParameters } }
-    val ctor = injectorClass.primaryConstructor!!
 
     val constructorParametersToFields = assignConstructorParamsToFields(ctor, injectorClass)
 
@@ -202,7 +182,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       context = latticeContext,
       parentClass = companionObject,
       targetClass = injectorClass,
-      targetClassParameterized = injectorClassParameterized,
       targetConstructor = ctor.symbol,
       parameters =
         injectedMembersByClass.values
@@ -232,7 +211,8 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
             params.callableId.callableName
           }
         val function =
-          companionObject.requireSimpleFunction("inject${name.capitalizeUS().asString()}")
+          companionObject
+            .requireSimpleFunction("inject${name.capitalizeUS().asString()}")
             .owner
             .apply {
               // Params
@@ -276,7 +256,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
           // This is what generates supertypes lazily as needed
           val functions =
-            requireInjector(pluginContext.referenceClass(classId)!!.owner)!!.injectFunctions
+            requireInjector(pluginContext.referenceClass(classId)!!.owner).injectFunctions
 
           putAll(functions)
         }
@@ -285,22 +265,20 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     val injectFunctions = inheritedInjectFunctions + declaredInjectFunctions
 
     // Override injectMembers()
-    injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.injectMembers)
-      .owner
-      .apply {
-        val functionReceiver = dispatchReceiverParameter!!
-        val instanceParam = valueParameters[0]
-        body =
-          pluginContext.createIrBuilder(symbol).irBlockBody {
-            addMemberInjection(
-              context = latticeContext,
-              instanceReceiver = instanceParam,
-              injectorReceiver = functionReceiver,
-              injectFunctions = injectFunctions,
-              parametersToFields = sourceParametersToFields,
-            )
-          }
-      }
+    injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.injectMembers).owner.apply {
+      val functionReceiver = dispatchReceiverParameter!!
+      val instanceParam = valueParameters[0]
+      body =
+        pluginContext.createIrBuilder(symbol).irBlockBody {
+          addMemberInjection(
+            context = latticeContext,
+            instanceReceiver = instanceParam,
+            injectorReceiver = functionReceiver,
+            injectFunctions = injectFunctions,
+            parametersToFields = sourceParametersToFields,
+          )
+        }
+    }
 
     injectorClass.dumpToLatticeLog()
 
