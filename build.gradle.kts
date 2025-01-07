@@ -74,14 +74,14 @@ allprojects {
     }
     kotlin {
       target("src/**/*.kt")
-      ktfmt(libs.versions.ktfmt.get()).googleStyle()
+      ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
     }
     kotlinGradle {
       target("**/*.kts", "*.kts")
-      ktfmt(libs.versions.ktfmt.get()).googleStyle()
+      ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       licenseHeaderFile(
