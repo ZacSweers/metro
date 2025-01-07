@@ -76,6 +76,8 @@ abstract class LatticeCompilerTest {
             when (entry) {
               LatticeOption.DEBUG -> processor.option(entry.raw.cliOption, debug)
               LatticeOption.ENABLED -> processor.option(entry.raw.cliOption, enabled)
+              LatticeOption.GENERATE_GRAPH_CREATORS ->
+                processor.option(entry.raw.cliOption, generateGraphCreators)
               LatticeOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               LatticeOption.LOGGING -> {
