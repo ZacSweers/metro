@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import dev.zacsweers.lattice.compiler.LatticeClassIds
+import dev.zacsweers.lattice.compiler.LatticeLogger
 import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.unsafeLazy
@@ -29,6 +30,14 @@ internal class LatticeFirBuiltIns(session: FirSession, val latticeClassIds: Latt
 
   val errorFunctionSymbol by unsafeLazy {
     session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).single()
+  }
+
+  fun loggerFor(type: LatticeLogger.Type): LatticeLogger {
+    return if (type in options.enabledLoggers) {
+      LatticeLogger(type, System.out::println)
+    } else {
+      LatticeLogger.NONE
+    }
   }
 
   companion object {

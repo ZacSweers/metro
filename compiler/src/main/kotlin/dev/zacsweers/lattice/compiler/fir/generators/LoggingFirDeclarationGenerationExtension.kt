@@ -1,6 +1,7 @@
 package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeLogger
+import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -17,12 +18,11 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal fun ((FirSession) -> FirDeclarationGenerationExtension).withLogging(
-  logger: LatticeLogger
-): FirDeclarationGenerationExtension.Factory {
+internal fun ((FirSession) -> FirDeclarationGenerationExtension).withLogging(): FirDeclarationGenerationExtension.Factory {
   val delegate = this
   return object : FirDeclarationGenerationExtension.Factory {
     override fun create(session: FirSession): FirDeclarationGenerationExtension {
+      val logger = session.latticeFirBuiltIns.loggerFor(LatticeLogger.Type.FirDeclarationGeneration)
       return if (logger == LatticeLogger.NONE) {
         delegate(session)
       } else {
