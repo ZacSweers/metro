@@ -112,9 +112,10 @@ internal fun FirExtension.generateMemberFunction(
 
     dispatchReceiverType = owner.constructType()
 
-    this.returnTypeRef = returnTypeProvider(owner.fir.typeParameters).toFirResolvedTypeRef()
-
     body()
+
+    // Must go after body() because type parameters are added there
+    this.returnTypeRef = returnTypeProvider(typeParameters).toFirResolvedTypeRef()
   }
 }
 

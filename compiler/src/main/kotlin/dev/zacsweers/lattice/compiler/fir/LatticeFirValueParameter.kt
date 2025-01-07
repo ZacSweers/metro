@@ -51,7 +51,22 @@ internal interface LatticeFirValueParameter {
          * Must be lazy because we may create this sooner than the [FirResolvePhase.TYPES] resolve
          * phase.
          */
-        override val contextKey by unsafeLazy { FirContextualTypeKey.from(session, symbol) }
+        private val contextKeyLazy = unsafeLazy { FirContextualTypeKey.from(session, symbol) }
+        override val contextKey get() = contextKeyLazy.value
+
+        override fun toString(): String {
+          return buildString {
+            append(name)
+            if (isAssisted) {
+              append(" (assisted)")
+            }
+            if (contextKeyLazy.isInitialized()) {
+              append(": $contextKey")
+            } else {
+              append(": <uninitialized>")
+            }
+          }
+        }
       }
   }
 }

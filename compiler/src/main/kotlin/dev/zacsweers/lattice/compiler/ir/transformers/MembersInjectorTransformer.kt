@@ -171,8 +171,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       }
     }
 
-    val injectedTypeParameters: List<IrTypeParameter> = declaration.typeParameters
-
     // Loop through _declared_ member inject params. Collect and use to create unique names
 
     val injectedMembersByClass = declaration.memberInjectParameters(this)
@@ -181,8 +179,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       return null
     }
 
-    val typeParameters = injectorClass.copyTypeParameters(injectedTypeParameters)
-
+    val typeParameters = injectorClass.typeParameters
     val injectorClassParameterized = injectorClass.symbol.typeWithParameters(typeParameters)
 
     val allParameters = injectedMembersByClass.values.flatMap { it.flatMap { it.valueParameters } }

@@ -20,7 +20,7 @@ import dev.zacsweers.lattice.compiler.NameAllocator
 import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
-import dev.zacsweers.lattice.compiler.fir.allCallableMembers
+import dev.zacsweers.lattice.compiler.fir.callableDeclarations
 import dev.zacsweers.lattice.compiler.fir.constructType
 import dev.zacsweers.lattice.compiler.fir.hasOrigin
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedInject
@@ -34,6 +34,7 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -44,19 +45,25 @@ import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.resolve.toTypeProjections
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.toTypeProjection
+import org.jetbrains.kotlin.fir.types.type
+import org.jetbrains.kotlin.fir.types.withArguments
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.types.Variance
 
 /** Generates factory and membersinjector declarations for `@Inject`-annotated classes. */
 internal class InjectedClassFirGenerator(session: FirSession) :
@@ -85,8 +92,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     val constructorParameters: List<LatticeFirValueParameter>,
   ) {
     private val parameterNameAllocator = NameAllocator()
-    private val memberNameAllocator = NameAllocator()
-    private var injectedMembersPopulated = false
+    private val memberNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+    private var declaredInjectedMembersPopulated = false
+    private var ancestorInjectedMembersPopulated = false
 
     init {
       // preallocate constructor param names
@@ -99,16 +107,62 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       get() = assistedParameters.isNotEmpty()
 
     val injectedMembersParamsByMemberKey = LinkedHashMap<Name, List<LatticeFirValueParameter>>()
-    val injectedMembersParameters by unsafeLazy {
-      injectedMembersParamsByMemberKey.values.flatten()
+    val injectedMembersParameters: List<LatticeFirValueParameter> get() = injectedMembersParamsByMemberKey.values.flatten()
+
+    // TODO dedupe keys?
+    val allParameters: List<LatticeFirValueParameter>
+      get() = buildList {
+        addAll(constructorParameters)
+        addAll(injectedMembersParameters)
+      }
+
+    override fun toString(): String {
+      return buildString {
+        append(classSymbol.classId)
+        if (constructor != null) {
+          append(" (constructor)")
+          if (constructorParameters.isNotEmpty()) {
+            append(" constructorParams=$constructorParameters")
+          }
+        }
+        if (injectedMembersParamsByMemberKey.isNotEmpty()) {
+          append(" injectedMembers=${injectedMembersParamsByMemberKey.keys}")
+        }
+      }
     }
 
-    @OptIn(SymbolInternals::class)
-    fun populateMemberInjections(session: FirSession) {
-      if (injectedMembersPopulated) return
+    fun populateDeclaredMemberInjections(session: FirSession): Map<Name, List<LatticeFirValueParameter>> {
+      if (declaredInjectedMembersPopulated) return injectedMembersParamsByMemberKey
+      val declared = memberInjections(session, includeSelf = true, includeAncestors = false)
+      injectedMembersParamsByMemberKey.putAll(declared)
+      declaredInjectedMembersPopulated = true
+      return declared
+    }
+
+    fun populateAncestorMemberInjections(session: FirSession) {
+      if (ancestorInjectedMembersPopulated) return
+      val declared = injectedMembersParamsByMemberKey.toMap()
+      injectedMembersParamsByMemberKey.clear()
+      // Put ancestors first
+      injectedMembersParamsByMemberKey.putAll(memberInjections(session, includeSelf = false, includeAncestors = true))
+      injectedMembersParamsByMemberKey.putAll(declared)
+      ancestorInjectedMembersPopulated = true
+    }
+
+    private fun memberInjections(
+      session: FirSession,
+      includeSelf: Boolean,
+      includeAncestors: Boolean,
+    ): Map<Name, List<LatticeFirValueParameter>> {
+      val members = LinkedHashMap<Name, List<LatticeFirValueParameter>>()
       classSymbol
-        .allCallableMembers(session)
+        .callableDeclarations(session, includeSelf = includeSelf, includeAncestors = includeAncestors)
         .filter { callable ->
+          if (callable is FirPropertySymbol) {
+            if (!(callable.isVar || callable.isLateInit)) {
+              return@filter false
+            }
+          }
           if (callable.isAnnotatedInject(session)) {
             true
           } else if (callable is FirPropertySymbol) {
@@ -143,7 +197,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 } else {
                   return@forEach
                 }
-              injectedMembersParamsByMemberKey[param.memberInjectorFunctionName] = listOf(param)
+              members[param.memberInjectorFunctionName] = listOf(param)
             }
             is FirNamedFunctionSymbol -> {
               val functionName = it.name
@@ -158,19 +212,11 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                   )
                 }
               // Guaranteed at least one param if we're generating here
-              injectedMembersParamsByMemberKey[params[0].memberInjectorFunctionName] = params
+              members[params[0].memberInjectorFunctionName] = params
             }
           }
         }
-      injectedMembersPopulated = true
-    }
-
-    // TODO dedupe keys?
-    val allParameters by unsafeLazy {
-      buildList {
-        addAll(constructorParameters)
-        addAll(injectedMembersParameters)
-      }
+      return members
     }
   }
 
@@ -223,7 +269,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           LatticeFirValueParameter(session, it)
         }
       val injectedClass = InjectedClass(classSymbol, injectConstructor, params)
-      injectedClass.populateMemberInjections(session)
+
+      // Ancestors not available at this phase, but we don't need them here anyway
+      val declaredInjectedMembers = injectedClass.populateDeclaredMemberInjections(session)
 
       val classesToGenerate = mutableSetOf<Name>()
       if (injectConstructor != null) {
@@ -231,7 +279,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         injectFactoryClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
-      if (injectedClass.injectedMembersParameters.isNotEmpty()) {
+      if (declaredInjectedMembers.isNotEmpty()) {
         val classId =
           classSymbol.classId.createNestedClassId(LatticeSymbols.Names.latticeMembersInjector)
         membersInjectorClassIdsToInjectedClass[classId] = injectedClass
@@ -341,13 +389,13 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     val names = mutableSetOf<Name>()
     names += SpecialNames.INIT
 
-    val isCompanion = classSymbol.isCompanion
+    val isObject = classSymbol.classKind == ClassKind.OBJECT
 
     // Factory class
     // Factory (companion) object
     val isFactoryClass = classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryClassDeclaration)
     val isFactoryCreatorClass =
-      (isFactoryClass && isCompanion) ||
+      (isFactoryClass && isObject) ||
         classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryCompanionDeclaration)
     if (isFactoryClass) {
       names += LatticeSymbols.Names.invoke
@@ -371,6 +419,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         classSymbol.getContainingClassSymbol()?.classId
           ?: return emptySet()
       val injectedClass = membersInjectorClassIdsToInjectedClass[targetClass] ?: return emptySet()
+      // Only declared members matter here
       for (member in injectedClass.injectedMembersParameters) {
         names += member.memberInjectorFunctionName
       }
@@ -474,7 +523,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     } else if (targetClass.hasOrigin(LatticeKeys.MembersInjectorClassDeclaration)) {
       val injectedClass =
         membersInjectorClassIdsToInjectedClass[targetClassId] ?: return emptyList()
-
+      injectedClass.populateAncestorMemberInjections(session)
       functions +=
         when (callableId.callableName) {
           LatticeSymbols.Names.injectMembers -> {
@@ -497,14 +546,15 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             buildFactoryCreateFunction(
               context,
               {
-                val targetClassType = targetClass.constructType(it.mapToArray { it.toConeType() })
+                val targetClassType = targetClass
+                  .constructType(it.mapToArray { it.toConeType() })
                 LatticeSymbols.ClassIds.membersInjector.constructClassLikeType(
                   arrayOf(targetClassType)
                 )
               },
               null,
               null,
-              injectedClass.allParameters,
+              injectedClass.injectedMembersParameters,
             )
           }
           else -> {
@@ -519,6 +569,15 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 name = callableId.callableName,
                 returnType = session.builtinTypes.unitType.coneType,
               ) {
+                // Add any type args if necessary
+              injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
+                typeParameter(typeParameter.name, typeParameter.variance, key = LatticeKeys.Default) {
+                  if (typeParameter.isBound) {
+                    typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
+                  }
+                }
+              }
+
                 // Add instance param
                 valueParameter(
                   LatticeSymbols.Names.instance,
@@ -529,7 +588,26 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 for (param in parameters) {
                   valueParameter(
                     param.name,
-                    param.symbol.resolvedReturnType,
+                    typeProvider = { typeParameters ->
+                      // TODO this is hacky at best. Look into ConeSubstitutor
+                      val resolvedType = param.symbol.resolvedReturnType
+                      if (typeParameters.isEmpty()) {
+                        resolvedType
+                      } else if (resolvedType.typeArguments.none { it.type is ConeTypeParameterType }) {
+                        resolvedType
+                      } else {
+                        val availableTypes = typeParameters.associateBy { it.symbol.name }
+                        val typeParameters = resolvedType.typeArguments.map { typeArg ->
+                          val typeArgType = typeArg.type?: return@map typeArg
+                          if (typeArgType is ConeTypeParameterType) {
+                            availableTypes[typeArgType.lookupTag.name]?.toConeType() ?: typeArgType
+                          } else {
+                            typeArgType
+                          }
+                        }
+                        resolvedType.withArguments(typeParameters.toTypedArray())
+                      }
+                   },
                     key = LatticeKeys.ValueParameter,
                   )
                 }

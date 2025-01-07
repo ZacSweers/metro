@@ -82,8 +82,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFieldSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -202,26 +200,38 @@ internal fun FirClassSymbol<*>.allFunctions(session: FirSession): Sequence<FirNa
   }
 }
 
-internal fun FirClassSymbol<*>.allCallableMembers(
+internal fun FirClassSymbol<*>.callableDeclarations(
   session: FirSession,
-  /** Member injection wants to yield ancestor members first */
+  includeSelf: Boolean,
+  includeAncestors: Boolean,
   yieldAncestorsFirst: Boolean = true,
 ): Sequence<FirCallableSymbol<*>> {
   return sequence {
-    val declaredMembers =
+    val declaredMembers = if (includeSelf) {
       declarationSymbols.asSequence().filterIsInstance<FirCallableSymbol<*>>().filterNot {
         it is FirConstructorSymbol
       }
+    } else {
+      emptySequence()
+    }
 
-    if (!yieldAncestorsFirst) {
+    if (includeSelf && !yieldAncestorsFirst) {
       yieldAll(declaredMembers)
     }
-    yieldAll(
-      getSuperTypes(session)
-        .mapNotNull { it.toClassSymbol(session) }
-        .flatMap { it.allCallableMembers(session) }
-    )
-    if (yieldAncestorsFirst) {
+    if (includeAncestors) {
+      yieldAll(
+        getSuperTypes(session)
+          .asSequence()
+          .mapNotNull {
+            it.toClassSymbol(session)
+          }
+          .flatMap {
+            // If we're recursing up, we no longer want to include ancestors because we're handling that here
+            it.callableDeclarations(session, true, false, yieldAncestorsFirst)
+          }
+      )
+    }
+    if (includeSelf && yieldAncestorsFirst) {
       yieldAll(declaredMembers)
     }
   }

@@ -24,17 +24,19 @@ import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.wrapInProvider
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
-import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
 import org.jetbrains.kotlin.fir.declarations.origin
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
@@ -92,7 +94,13 @@ internal fun FirExtension.buildFactoryCreateFunction(
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<LatticeFirValueParameter>,
 ): FirNamedFunctionSymbol {
-  return buildFactoryCreateFunction(context, { returnType }, instanceReceiver, extensionReceiver, valueParameters)
+  return buildFactoryCreateFunction(
+    context,
+    { returnType },
+    instanceReceiver,
+    extensionReceiver,
+    valueParameters,
+  )
 }
 
 @OptIn(SymbolInternals::class)
@@ -105,12 +113,23 @@ internal fun FirExtension.buildFactoryCreateFunction(
 ): FirNamedFunctionSymbol {
   return generateMemberFunction(
       context.owner,
-    returnTypeProvider,
+      returnTypeProvider,
       CallableId(context.owner.classId, LatticeSymbols.Names.create),
     ) {
       val thisFunctionSymbol = symbol
-      for (typeParameter in context.owner.typeParameterSymbols) {
-        typeParameters += buildTypeParameterCopy(typeParameter.fir) {}
+
+      val ownerToCopyTypeParametersFrom =
+        if (context.owner.isCompanion) {
+          context.owner.getContainingClassSymbol()!!
+        } else {
+          context.owner
+        }
+      for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
+        typeParameters += buildTypeParameterCopy(typeParameter.fir) {
+          origin = LatticeKeys.Default.origin
+          this.symbol = FirTypeParameterSymbol()
+          containingDeclarationSymbol = thisFunctionSymbol
+        }
       }
 
       instanceReceiver?.let {
@@ -164,8 +183,19 @@ internal fun FirExtension.buildNewInstanceFunction(
       origin = LatticeKeys.FactoryNewInstanceFunction.origin,
     ) {
       val thisFunctionSymbol = symbol
-      for (typeParameter in context.owner.typeParameterSymbols) {
-        typeParameters += buildTypeParameterCopy(typeParameter.fir) {}
+
+      val ownerToCopyTypeParametersFrom =
+        if (context.owner.isCompanion) {
+          context.owner.getContainingClassSymbol()!!
+        } else {
+          context.owner
+        }
+      for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
+        typeParameters += buildTypeParameterCopy(typeParameter.fir) {
+          origin = LatticeKeys.Default.origin
+          this.symbol = FirTypeParameterSymbol()
+          containingDeclarationSymbol = thisFunctionSymbol
+        }
       }
 
       instanceReceiver?.let {
