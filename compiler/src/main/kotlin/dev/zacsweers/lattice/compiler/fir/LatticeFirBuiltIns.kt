@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import dev.zacsweers.lattice.compiler.LatticeClassIds
+import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
@@ -23,7 +24,7 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 
-internal class LatticeFirBuiltIns(session: FirSession, val latticeClassIds: LatticeClassIds) :
+internal class LatticeFirBuiltIns(session: FirSession, val latticeClassIds: LatticeClassIds, val options: LatticeOptions) :
   FirExtensionSessionComponent(session) {
 
   val errorFunctionSymbol by unsafeLazy {
@@ -31,8 +32,8 @@ internal class LatticeFirBuiltIns(session: FirSession, val latticeClassIds: Latt
   }
 
   companion object {
-    fun getFactory(latticeClassIds: LatticeClassIds) = Factory { session ->
-      LatticeFirBuiltIns(session, latticeClassIds)
+    fun getFactory(latticeClassIds: LatticeClassIds, options: LatticeOptions) = Factory { session ->
+      LatticeFirBuiltIns(session, latticeClassIds, options)
     }
   }
 }

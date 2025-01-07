@@ -28,7 +28,7 @@ internal class LatticeFirExtensionRegistrar(
   private val options: LatticeOptions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
-    +LatticeFirBuiltIns.getFactory(latticeClassIds)
+    +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
     // TODO enable once we support metadata propagation
     //    +::FirProvidesStatusTransformer
