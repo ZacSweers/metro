@@ -506,7 +506,6 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             )
           }
           LatticeSymbols.Names.newInstanceFunction -> {
-            // TODO type params
             buildNewInstanceFunction(
               context,
               LatticeSymbols.Names.newInstanceFunction,
