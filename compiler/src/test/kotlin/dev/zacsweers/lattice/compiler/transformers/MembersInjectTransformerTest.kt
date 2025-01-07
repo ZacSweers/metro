@@ -514,7 +514,6 @@ class MembersInjectTransformerTest : LatticeCompilerTest() {
     }
   }
 
-  @Ignore("Won't work until we support multi-module compilation, requires metadata")
   @Test
   fun `a member injector is generated for a class with a super class in another module`() {
     val otherModuleResult =

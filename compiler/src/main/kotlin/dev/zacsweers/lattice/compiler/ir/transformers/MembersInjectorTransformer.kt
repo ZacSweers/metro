@@ -130,38 +130,31 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       return null
     }
 
-    val ctor = injectorClass.primaryConstructor!!
+    val companionObject = injectorClass.companionObject()!!
+
+    // TODO this is expensive can we store it somewhere from FIR via metadata?
+    // Loop through _declared_ member inject params. Collect and use to create unique names
+    val injectedMembersByClass = declaration.memberInjectParameters(this)
+    val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
+    val declaredInjectFunctions: Map<IrSimpleFunction, Parameters<MembersInjectParameter>> =
+      parameterGroupsForClass.associate { params ->
+        val name =
+          if (params.isProperty) {
+            params.irProperty!!.name
+          } else {
+            params.callableId.callableName
+          }
+        val function =
+          companionObject.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
+        function to params
+      }
 
     if (declaration.isExternalParent) {
-      //        val params = TODO()
-      //
-      //        val allParams =
-      //          injectedMembers.flatMap { it.valueParameters }.associateBy { it.name.asString()
-      // }
-      //        val functions =
-      //          declaration
-      //            .companionObject()!!
-      //            .simpleFunctions()
-      //            .mapNotNull { function ->
-      //              val name = function.name.asString()
-      //              // TODO generate a better marker annotation? Or use attributes?
-      //              if (!name.startsWith("inject")) return@mapNotNull null
-      //              val paramName = name.removePrefix("inject").decapitalizeUS()
-      //              val param =
-      //                allParams[paramName]
-      //                  ?: error("Could not find param with name $paramName for
-      // $injectedClassId")
-      //              param to function
-      //            }
-      //            .associate { it.first to it.second }
-      return MemberInjectClass(injectorClass, TODO(), TODO()).also {
-        generatedInjectors[injectedClassId] = it
-      }
+      return MemberInjectClass(injectorClass, injectedMembersByClass, declaredInjectFunctions)
+        .also { generatedInjectors[injectedClassId] = it }
     }
 
-    // Loop through _declared_ member inject params. Collect and use to create unique names
-
-    val injectedMembersByClass = declaration.memberInjectParameters(this)
+    val ctor = injectorClass.primaryConstructor!!
 
     val allParameters = injectedMembersByClass.values.flatMap { it.flatMap { it.valueParameters } }
 
@@ -174,8 +167,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
         val sourceParam = allParameters[index]
         sourceParam to field
       }
-
-    val companionObject = injectorClass.companionObject()!!
 
     // Static create()
     generateStaticCreateFunction(
@@ -201,51 +192,36 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     )
 
     // Implement static inject{name}() for each declared callable in this class
-    val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
-    val declaredInjectFunctions: Map<IrSimpleFunction, Parameters<MembersInjectParameter>> =
-      parameterGroupsForClass.associate { params ->
-        val name =
-          if (params.isProperty) {
-            params.irProperty!!.name
-          } else {
-            params.callableId.callableName
-          }
-        val function =
-          companionObject
-            .requireSimpleFunction("inject${name.capitalizeUS().asString()}")
-            .owner
-            .apply {
-              // Params
-              // Add instance
-              val instanceParam = valueParameters[0]
+    for ((function, params) in declaredInjectFunctions) {
+      function.apply {
+        val instanceParam = valueParameters[0]
 
-              body =
-                pluginContext.createIrBuilder(symbol).run {
-                  val bodyExpression: IrExpression =
-                    if (params.isProperty) {
-                      val value = valueParameters[1]
-                      val irField = params.irProperty!!.backingField
-                      if (irField == null) {
-                        irInvoke(
-                          irGet(instanceParam),
-                          callee = params.ir!!.symbol,
-                          args = listOf(irGet(value)),
-                        )
-                      } else {
-                        irSetField(irGet(instanceParam), irField, irGet(value))
-                      }
-                    } else {
-                      irInvoke(
-                        irGet(instanceParam),
-                        callee = params.ir!!.symbol,
-                        args = valueParameters.drop(1).map { irGet(it) },
-                      )
-                    }
-                  irExprBodySafe(symbol, bodyExpression)
+        body =
+          pluginContext.createIrBuilder(symbol).run {
+            val bodyExpression: IrExpression =
+              if (params.isProperty) {
+                val value = valueParameters[1]
+                val irField = params.irProperty!!.backingField
+                if (irField == null) {
+                  irInvoke(
+                    irGet(instanceParam),
+                    callee = params.ir!!.symbol,
+                    args = listOf(irGet(value)),
+                  )
+                } else {
+                  irSetField(irGet(instanceParam), irField, irGet(value))
                 }
-            }
-        function to params
+              } else {
+                irInvoke(
+                  irGet(instanceParam),
+                  callee = params.ir!!.symbol,
+                  args = valueParameters.drop(1).map { irGet(it) },
+                )
+              }
+            irExprBodySafe(symbol, bodyExpression)
+          }
       }
+    }
 
     val inheritedInjectFunctions: Map<IrSimpleFunction, Parameters<MembersInjectParameter>> =
       buildMap {
