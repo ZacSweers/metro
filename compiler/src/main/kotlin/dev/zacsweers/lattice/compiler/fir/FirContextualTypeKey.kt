@@ -16,18 +16,12 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.lattice.compiler.LatticeAnnotations
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.expectAs
 import dev.zacsweers.lattice.compiler.expectAsOrNull
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.propertyIfAccessor
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
@@ -92,7 +86,8 @@ internal class FirContextualTypeKey(
     ): FirContextualTypeKey {
       return type.asFirContextualTypeKey(
         session = session,
-        qualifierAnnotation = callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
+        qualifierAnnotation =
+          callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
         hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
         isIntoMultibinding = false,
       )

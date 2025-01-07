@@ -52,7 +52,8 @@ internal interface LatticeFirValueParameter {
          * phase.
          */
         private val contextKeyLazy = unsafeLazy { FirContextualTypeKey.from(session, symbol) }
-        override val contextKey get() = contextKeyLazy.value
+        override val contextKey
+          get() = contextKeyLazy.value
 
         override fun toString(): String {
           return buildString {

@@ -34,7 +34,6 @@ import dev.zacsweers.lattice.compiler.invokeNewInstance
 import dev.zacsweers.lattice.compiler.newInstanceStrict
 import dev.zacsweers.lattice.compiler.staticInjectMethod
 import dev.zacsweers.lattice.providerOf
-import org.junit.Ignore
 import org.junit.Test
 
 class MembersInjectTransformerTest : LatticeCompilerTest() {

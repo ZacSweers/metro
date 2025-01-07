@@ -57,7 +57,6 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.callableId
@@ -248,12 +247,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       }
 
     val bytecodeFunction =
-      implementCreatorBodies(
-        factoryCls,
-        ctor.symbol,
-        reference,
-        sourceParameters,
-      )
+      implementCreatorBodies(factoryCls, ctor.symbol, reference, sourceParameters)
 
     // Implement invoke()
     // TODO DRY this up with the constructor injection override

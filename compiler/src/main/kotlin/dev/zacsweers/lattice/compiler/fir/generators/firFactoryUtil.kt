@@ -112,10 +112,10 @@ internal fun FirExtension.buildFactoryCreateFunction(
   valueParameters: List<LatticeFirValueParameter>,
 ): FirNamedFunctionSymbol {
   return generateMemberFunction(
-    owner = context.owner,
-    returnTypeProvider = returnTypeProvider,
-    callableId = CallableId(context.owner.classId, LatticeSymbols.Names.create),
-    origin = LatticeKeys.FactoryCreateFunction.origin,
+      owner = context.owner,
+      returnTypeProvider = returnTypeProvider,
+      callableId = CallableId(context.owner.classId, LatticeSymbols.Names.create),
+      origin = LatticeKeys.FactoryCreateFunction.origin,
     ) {
       val thisFunctionSymbol = symbol
 
@@ -126,11 +126,12 @@ internal fun FirExtension.buildFactoryCreateFunction(
           context.owner
         }
       for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
-        typeParameters += buildTypeParameterCopy(typeParameter.fir) {
-          origin = LatticeKeys.Default.origin
-          this.symbol = FirTypeParameterSymbol()
-          containingDeclarationSymbol = thisFunctionSymbol
-        }
+        typeParameters +=
+          buildTypeParameterCopy(typeParameter.fir) {
+            origin = LatticeKeys.Default.origin
+            this.symbol = FirTypeParameterSymbol()
+            containingDeclarationSymbol = thisFunctionSymbol
+          }
       }
 
       instanceReceiver?.let {
@@ -192,11 +193,12 @@ internal fun FirExtension.buildNewInstanceFunction(
           context.owner
         }
       for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
-        typeParameters += buildTypeParameterCopy(typeParameter.fir) {
-          origin = LatticeKeys.Default.origin
-          this.symbol = FirTypeParameterSymbol()
-          containingDeclarationSymbol = thisFunctionSymbol
-        }
+        typeParameters +=
+          buildTypeParameterCopy(typeParameter.fir) {
+            origin = LatticeKeys.Default.origin
+            this.symbol = FirTypeParameterSymbol()
+            containingDeclarationSymbol = thisFunctionSymbol
+          }
       }
 
       instanceReceiver?.let {

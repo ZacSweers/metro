@@ -207,13 +207,14 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   yieldAncestorsFirst: Boolean = true,
 ): Sequence<FirCallableSymbol<*>> {
   return sequence {
-    val declaredMembers = if (includeSelf) {
-      declarationSymbols.asSequence().filterIsInstance<FirCallableSymbol<*>>().filterNot {
-        it is FirConstructorSymbol
+    val declaredMembers =
+      if (includeSelf) {
+        declarationSymbols.asSequence().filterIsInstance<FirCallableSymbol<*>>().filterNot {
+          it is FirConstructorSymbol
+        }
+      } else {
+        emptySequence()
       }
-    } else {
-      emptySequence()
-    }
 
     if (includeSelf && !yieldAncestorsFirst) {
       yieldAll(declaredMembers)
@@ -222,11 +223,10 @@ internal fun FirClassSymbol<*>.callableDeclarations(
       yieldAll(
         getSuperTypes(session)
           .asSequence()
-          .mapNotNull {
-            it.toClassSymbol(session)
-          }
+          .mapNotNull { it.toClassSymbol(session) }
           .flatMap {
-            // If we're recursing up, we no longer want to include ancestors because we're handling that here
+            // If we're recursing up, we no longer want to include ancestors because we're handling
+            // that here
             it.callableDeclarations(session, true, false, yieldAncestorsFirst)
           }
       )
@@ -655,20 +655,35 @@ internal fun FirBasedSymbol<*>.hasOrigin(o: FirDeclarationOrigin): Boolean {
   return false
 }
 
-/**
- * Properties can store annotations in SO many places
- */
+/** Properties can store annotations in SO many places */
 internal fun FirCallableSymbol<*>.findAnnotation(
   session: FirSession,
   findAnnotation: FirBasedSymbol<*>.(FirSession) -> LatticeFirAnnotation?,
   callingAccessor: FirCallableSymbol<*>? = null,
 ): LatticeFirAnnotation? {
-  findAnnotation(session)?.let { return it }
+  findAnnotation(session)?.let {
+    return it
+  }
   when (this) {
     is FirPropertySymbol -> {
-      getterSymbol?.takeUnless { it == callingAccessor }?.findAnnotation(session)?.let { return it }
-      setterSymbol?.takeUnless { it == callingAccessor }?.findAnnotation(session)?.let { return it }
-      backingFieldSymbol?.takeUnless { it == callingAccessor }?.findAnnotation(session)?.let { return it }
+      getterSymbol
+        ?.takeUnless { it == callingAccessor }
+        ?.findAnnotation(session)
+        ?.let {
+          return it
+        }
+      setterSymbol
+        ?.takeUnless { it == callingAccessor }
+        ?.findAnnotation(session)
+        ?.let {
+          return it
+        }
+      backingFieldSymbol
+        ?.takeUnless { it == callingAccessor }
+        ?.findAnnotation(session)
+        ?.let {
+          return it
+        }
     }
     is FirPropertyAccessorSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
@@ -676,7 +691,7 @@ internal fun FirCallableSymbol<*>.findAnnotation(
     is FirBackingFieldSymbol -> {
       return propertySymbol.findAnnotation(session, findAnnotation, this)
     }
-    // else it's a function, covered by the above
+  // else it's a function, covered by the above
   }
   return null
 }
