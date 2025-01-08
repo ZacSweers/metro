@@ -50,7 +50,7 @@ import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
  * }
  * ```
  */
-internal class GraphFactoryFirSupertypeGenerationExtension(session: FirSession) :
+internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
   private val dependencyGraphAnnotationPredicate by unsafeLazy {
     LookupPredicate.BuilderContext.annotated(
