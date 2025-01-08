@@ -32,14 +32,6 @@ internal class LatticeFirBuiltIns(session: FirSession, val latticeClassIds: Latt
     session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).single()
   }
 
-  fun loggerFor(type: LatticeLogger.Type): LatticeLogger {
-    return if (type in options.enabledLoggers) {
-      LatticeLogger(type, System.out::println)
-    } else {
-      LatticeLogger.NONE
-    }
-  }
-
   companion object {
     fun getFactory(latticeClassIds: LatticeClassIds, options: LatticeOptions) = Factory { session ->
       LatticeFirBuiltIns(session, latticeClassIds, options)

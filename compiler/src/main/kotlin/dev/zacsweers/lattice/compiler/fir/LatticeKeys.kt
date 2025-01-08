@@ -54,6 +54,22 @@ internal object LatticeKeys {
     override fun toString() = "InjectConstructorFactoryCompanionDeclaration"
   }
 
+  data object LatticeGraphDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "LatticeGraphDeclaration"
+  }
+
+  data object LatticeGraphCreatorsObjectDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "LatticeGraphCreatorsObjectDeclaration"
+  }
+
+  data object LatticeGraphCreatorsObjectInvokeDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "LatticeGraphCreatorsObjectInvokeDeclaration"
+  }
+
+  data object LatticeGraphFactoryImplDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "LatticeGraphFactoryImplDeclaration"
+  }
+
   data object MembersInjectorClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "MembersInjectorClassDeclaration"
   }

@@ -81,6 +81,7 @@ internal class LatticeSymbols(
     val create = StringNames.create.asName()
     val delegateFactory = Name.identifier("delegateFactory")
     val factoryClassName = Name.identifier("Factory")
+    val factoryFunctionName = StringNames.factory.asName()
     val instance = Name.identifier("instance")
     val injectMembers = Name.identifier(StringNames.injectMembers)
     val invoke = Name.identifier(StringNames.invoke)

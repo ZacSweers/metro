@@ -95,16 +95,6 @@ internal enum class LatticeOption(val raw: RawLatticeOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  GENERATE_GRAPH_CREATORS(
-    RawLatticeOption.boolean(
-      name = "generate-graph-creators",
-      defaultValue = false,
-      valueDescription = "<true | false>",
-      description = "Enable/disable automatic generation of dependency graph creator functions",
-      required = false,
-      allowMultipleOccurrences = false,
-    )
-  ),
   LOGGING(
     RawLatticeOption<Set<LatticeLogger.Type>>(
       name = "logging",
@@ -127,8 +117,6 @@ public data class LatticeOptions(
   val enabled: Boolean = LatticeOption.ENABLED.raw.defaultValue.expectAs(),
   val generateAssistedFactories: Boolean =
     LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
-  val generateGraphCreators: Boolean =
-    LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<LatticeLogger.Type> = LatticeOption.LOGGING.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
@@ -136,7 +124,6 @@ public data class LatticeOptions(
       var debug = false
       var enabled = true
       var generateAssistedFactories = false
-      var generateGraphCreators = true
       val enabledLoggers = mutableSetOf<LatticeLogger.Type>()
       for (entry in LatticeOption.entries) {
         when (entry) {
@@ -144,8 +131,6 @@ public data class LatticeOptions(
           LatticeOption.ENABLED -> enabled = configuration.getAsBoolean(entry)
           LatticeOption.GENERATE_ASSISTED_FACTORIES ->
             generateAssistedFactories = configuration.getAsBoolean(entry)
-          LatticeOption.GENERATE_GRAPH_CREATORS ->
-            generateGraphCreators = configuration.getAsBoolean(entry)
 
           LatticeOption.LOGGING -> {
             enabledLoggers +=
@@ -162,7 +147,6 @@ public data class LatticeOptions(
         debug = debug,
         enabled = enabled,
         generateAssistedFactories = generateAssistedFactories,
-        generateGraphCreators = generateGraphCreators,
         enabledLoggers = enabledLoggers,
       )
     }
