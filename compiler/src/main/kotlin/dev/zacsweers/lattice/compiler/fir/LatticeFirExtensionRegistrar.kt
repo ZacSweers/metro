@@ -36,6 +36,7 @@ internal class LatticeFirExtensionRegistrar(
   override fun ExtensionRegistrarContext.configurePlugin() {
     +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
+    // TODO this seems to break supertype lookups in some phases
 //    +::GraphFactoryFirSupertypeGenerationExtension
     // TODO enable once we support metadata propagation
     //    +::FirProvidesStatusTransformer
