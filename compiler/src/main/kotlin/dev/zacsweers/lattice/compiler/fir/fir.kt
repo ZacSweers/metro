@@ -80,6 +80,7 @@ import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -105,6 +106,14 @@ import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
 internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
+}
+
+internal fun FirBasedSymbol<*>.isDependencyGraph(session: FirSession): Boolean {
+  return isAnnotatedWithAny(session, session.latticeClassIds.dependencyGraphAnnotations)
+}
+
+internal fun FirBasedSymbol<*>.isGraphFactory(session: FirSession): Boolean {
+  return isAnnotatedWithAny(session, session.latticeClassIds.dependencyGraphFactoryAnnotations)
 }
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
@@ -695,3 +704,5 @@ internal fun FirCallableSymbol<*>.findAnnotation(
   }
   return null
 }
+
+internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> = getContainingClassSymbol() ?: error("No containing class symbol found for $this")
