@@ -18,20 +18,6 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal fun ((FirSession) -> FirDeclarationGenerationExtension).withLogging(): FirDeclarationGenerationExtension.Factory {
-  val delegate = this
-  return object : FirDeclarationGenerationExtension.Factory {
-    override fun create(session: FirSession): FirDeclarationGenerationExtension {
-      val logger = session.latticeFirBuiltIns.loggerFor(LatticeLogger.Type.FirDeclarationGeneration)
-      return if (logger == LatticeLogger.NONE) {
-        delegate(session)
-      } else {
-        LoggingFirDeclarationGenerationExtension(session, logger, delegate(session))
-      }
-    }
-  }
-}
-
 internal class LoggingFirDeclarationGenerationExtension(
   session: FirSession,
   private val logger: LatticeLogger,
