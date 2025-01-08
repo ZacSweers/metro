@@ -253,6 +253,19 @@ fun Class<*>.invokeCreate(vararg args: Any): Any {
   }!!
 }
 
+fun Class<*>.invokeStaticInvokeOperator(vararg args: Any): Any {
+  val invokeFunctions =
+    staticMethods().filter { it.name == LatticeSymbols.StringNames.invoke }.toList()
+
+  return when (invokeFunctions.size) {
+    0 -> error("No invoke functions found in $this")
+    1 -> invokeFunctions.single()(*args)
+    else -> {
+      error("Multiple invoke functions found in $this:\n${invokeFunctions.joinToString("\n")}")
+    }
+  }!!
+}
+
 fun Class<Factory<*>>.invokeProvider(providerName: String, vararg args: Any): Any {
   return staticMethods().single { it.name == providerName }.invoke(*args)!!
 }
@@ -334,12 +347,21 @@ fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
 
 /** Returns a new instance of a graph's factory class by invoking its static "factory" function. */
 fun Class<*>.invokeGraphFactory(): Any {
-  return staticMethods().single { it.name == "factory" }.invoke()!!
+  // TODO update callers to new location
+  val staticMethod = staticMethods().singleOrNull { it.name == "factory" }
+  return if (staticMethod != null) {
+    staticMethod.invoke()!!
+  } else {
+    // We're in $$LatticeGraph right now, so go up one and then find its companion object
+    enclosingClass.companionObjectInstanceFieldOrNull?.get(null) ?: error("No factory found for $this")
+  }
 }
 
 /** Creates a graph instance via its generated no-arg static create() function. */
 fun Class<*>.createGraphWithNoArgs(): Any {
-  return invokeCreate()
+  // TODO update callers to new location
+  // We're in $$LatticeGraph right now, so go up one and then find its companion object
+  return enclosingClass.invokeStaticInvokeOperator()
 }
 
 /**
