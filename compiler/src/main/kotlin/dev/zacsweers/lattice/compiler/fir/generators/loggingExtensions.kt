@@ -1,11 +1,13 @@
 package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeLogger
-import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -13,6 +15,9 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -164,5 +169,30 @@ internal class LoggingFirDeclarationGenerationExtension(
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     val registrar = this
     with(delegate) { registrar.registerPredicates() }
+  }
+}
+
+internal class LoggingFirSupertypeGenerationExtension(
+  session: FirSession,
+  private val logger: LatticeLogger,
+  private val delegate: FirSupertypeGenerationExtension,
+) : FirSupertypeGenerationExtension(session) {
+  override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
+    val needsTransform = delegate.needTransformSupertypes(declaration)
+    logger.log { "needTransformSupertypes: $needsTransform for ${declaration.classId}" }
+    return needsTransform
+  }
+
+  override fun computeAdditionalSupertypes(
+    classLikeDeclaration: FirClassLikeDeclaration,
+    resolvedSupertypes: List<FirResolvedTypeRef>,
+    typeResolver: TypeResolveService,
+  ): List<ConeKotlinType> {
+    val additionalSupertypes =
+      delegate.computeAdditionalSupertypes(classLikeDeclaration, resolvedSupertypes, typeResolver)
+    logger.log {
+      "computeAdditionalSupertypes: ${additionalSupertypes.size} additional supertypes for ${classLikeDeclaration.classId}: ${additionalSupertypes.joinToString() { it.classId!!.asString() }}"
+    }
+    return additionalSupertypes
   }
 }

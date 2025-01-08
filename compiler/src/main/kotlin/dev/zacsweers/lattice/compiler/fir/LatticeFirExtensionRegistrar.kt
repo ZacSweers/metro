@@ -21,13 +21,14 @@ import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryImplFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator
-import dev.zacsweers.lattice.compiler.fir.generators.GraphFactoryFirSupertypeGenerationExtension
 import dev.zacsweers.lattice.compiler.fir.generators.InjectedClassFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirDeclarationGenerationExtension
+import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.lattice.compiler.fir.generators.ProvidesFactoryFirGenerator
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 
 internal class LatticeFirExtensionRegistrar(
   private val latticeClassIds: LatticeClassIds,
@@ -40,13 +41,13 @@ internal class LatticeFirExtensionRegistrar(
 //    +::GraphFactoryFirSupertypeGenerationExtension
     // TODO enable once we support metadata propagation
     //    +::FirProvidesStatusTransformer
-    +generator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)
+    +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)
     if (options.generateAssistedFactories) {
-      +generator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, false)
+      +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, false)
     }
-    +generator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, false)
-    +generator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, false)
-    +generator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
+    +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, false)
+    +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, false)
+    +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
   }
 
   private fun loggerFor(type: LatticeLogger.Type, tag: String): LatticeLogger {
@@ -57,7 +58,7 @@ internal class LatticeFirExtensionRegistrar(
     }
   }
 
-  private fun generator(
+  private fun declarationGenerator(
     tag: String,
     delegate: ((FirSession) -> FirDeclarationGenerationExtension),
     enableLogging: Boolean = false,
@@ -73,6 +74,27 @@ internal class LatticeFirExtensionRegistrar(
           delegate(session)
         } else {
           LoggingFirDeclarationGenerationExtension(session, logger, delegate(session))
+        }
+      }
+    }
+  }
+
+  private fun supertypeGenerator(
+    tag: String,
+    delegate: ((FirSession) -> FirSupertypeGenerationExtension),
+    enableLogging: Boolean = false,
+  ): FirSupertypeGenerationExtension.Factory {
+    return object : FirSupertypeGenerationExtension.Factory {
+      override fun create(session: FirSession): FirSupertypeGenerationExtension {
+        val logger = if (enableLogging) {
+          loggerFor(LatticeLogger.Type.FirDeclarationGeneration, tag)
+        } else {
+          LatticeLogger.NONE
+        }
+        return if (logger == LatticeLogger.NONE) {
+          delegate(session)
+        } else {
+          LoggingFirSupertypeGenerationExtension(session, logger, delegate(session))
         }
       }
     }
