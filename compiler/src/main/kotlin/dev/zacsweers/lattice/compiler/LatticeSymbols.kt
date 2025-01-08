@@ -52,6 +52,7 @@ internal class LatticeSymbols(
     const val injectMembers = "injectMembers"
     const val invoke = "invoke"
     const val latticeFactory = "\$\$LatticeFactory"
+    const val latticeHintsPackage = "lattice.hints"
     const val latticeRuntimeInternalPackage = "dev.zacsweers.lattice.internal"
     const val latticeRuntimePackage = "dev.zacsweers.lattice"
     const val newInstance = "newInstance"
@@ -62,6 +63,7 @@ internal class LatticeSymbols(
     val kotlinCollectionsPackageFqn = FqName("kotlin.collections")
     val latticeRuntimePackage = FqName(StringNames.latticeRuntimePackage)
     val latticeRuntimeInternalPackage = FqName(StringNames.latticeRuntimeInternalPackage)
+    val latticeHintsPackage = FqName(StringNames.latticeHintsPackage)
   }
 
   object ClassIds {
