@@ -67,7 +67,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       }
     }
 
-    val annotations = declaration.latticeAnnotations(session)
+    val annotations = declaration.symbol.latticeAnnotations(session)
     if (!annotations.isProvides && !annotations.isBinds) {
       return
     }

@@ -22,19 +22,14 @@ import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.ir.IrAnnotation
 import dev.zacsweers.lattice.compiler.ir.asIrAnnotation
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
-import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirFunction
-import org.jetbrains.kotlin.fir.declarations.FirProperty
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
-import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
-import org.jetbrains.kotlin.fir.symbols.resolvedAnnotationsWithClassIds
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
@@ -297,23 +292,15 @@ private fun IrAnnotationContainer.latticeAnnotations(
     .reduce(LatticeAnnotations<IrAnnotation>::mergeWith)
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun FirAnnotationContainer.latticeAnnotations(
-  session: FirSession
+internal fun FirBasedSymbol<*>.latticeAnnotations(
+  session: FirSession,
 ): LatticeAnnotations<LatticeFirAnnotation> {
-  val anchorElement =
-    when (this) {
-      is FirDeclaration -> symbol
-      else -> error("Unsupported declaration type: ${this::class.simpleName}")
-    }
-  return latticeAnnotations(session, anchorElement, null)
+  return latticeAnnotations(session, null)
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class, SymbolInternals::class)
-private fun FirAnnotationContainer.latticeAnnotations(
+private fun FirBasedSymbol<*>.latticeAnnotations(
   session: FirSession,
-  anchorElement: FirBasedSymbol<*>,
-  callingContainer: FirAnnotationContainer?,
+  callingContainer: FirBasedSymbol<*>?,
 ): LatticeAnnotations<LatticeFirAnnotation> {
   val ids = session.latticeClassIds
   var isDependencyGraph = false
@@ -332,14 +319,14 @@ private fun FirAnnotationContainer.latticeAnnotations(
   var qualifier: LatticeFirAnnotation? = null
   var mapKeys = mutableSetOf<LatticeFirAnnotation>()
 
-  for (annotation in resolvedAnnotationsWithClassIds(anchorElement)) {
+  for (annotation in resolvedAnnotationsWithArguments) {
     if (annotation !is FirAnnotationCall) continue
     val annotationType = annotation.resolvedType as? ConeClassLikeType ?: continue
     val annotationClass = annotationType.toClassSymbol(session) ?: continue
     val classId = annotationClass.classId
 
     when (this) {
-      is FirValueParameter -> {
+      is FirValueParameterSymbol -> {
         // Only BindsInstance and Assisted go here
         if (classId in ids.bindsInstanceAnnotations) {
           isBindsInstance = true
@@ -350,8 +337,8 @@ private fun FirAnnotationContainer.latticeAnnotations(
         }
       }
 
-      is FirFunction,
-      is FirProperty -> {
+      is FirNamedFunctionSymbol,
+      is FirPropertySymbol -> {
         // Binds, Provides
         if (classId in ids.bindsAnnotations) {
           isBinds = true
@@ -374,7 +361,7 @@ private fun FirAnnotationContainer.latticeAnnotations(
         }
       }
 
-      is FirClass -> {
+      is FirClassSymbol<*> -> {
         // AssistedFactory, DependencyGraph, DependencyGraph.Factory
         if (classId in ids.assistedFactoryAnnotations) {
           isAssistedFactory = true
@@ -433,36 +420,36 @@ private fun FirAnnotationContainer.latticeAnnotations(
       yield(annotations)
 
       // You can fit so many annotations in properties
-      if (thisContainer is FirProperty) {
+      if (thisContainer is FirPropertySymbol) {
         // Retrieve annotations from this property's various accessors
-        getter?.let { getter ->
+        getterSymbol?.let { getter ->
           if (getter != callingContainer) {
             yield(
-              getter.latticeAnnotations(session, getter.symbol, callingContainer = thisContainer)
+              getter.latticeAnnotations(session, callingContainer = thisContainer)
             )
           }
         }
-        setter?.let { setter ->
+        setterSymbol?.let { setter ->
           if (setter != callingContainer) {
             yield(
-              setter.latticeAnnotations(session, setter.symbol, callingContainer = thisContainer)
+              setter.latticeAnnotations(session, callingContainer = thisContainer)
             )
           }
         }
-        backingField?.let { field ->
+        backingFieldSymbol?.let { field ->
           if (field != callingContainer) {
-            yield(field.latticeAnnotations(session, field.symbol, callingContainer = thisContainer))
+            yield(field.latticeAnnotations(session, callingContainer = thisContainer))
           }
         }
-      } else if (thisContainer is FirSimpleFunction) {
+      } else if (thisContainer is FirNamedFunctionSymbol) {
         // TODO?
-        //        correspondingPropertySymbol?.owner?.let { property ->
-        //          if (property != callingContainer) {
-        //            val propertyAnnotations =
-        //              property.latticeAnnotations(ids, callingContainer = thisContainer)
-        //            yield(propertyAnnotations)
-        //          }
-        //        }
+        //  correspondingPropertySymbol?.owner?.let { property ->
+        //    if (property != callingContainer) {
+        //      val propertyAnnotations =
+        //        property.latticeAnnotations(ids, callingContainer = thisContainer)
+        //      yield(propertyAnnotations)
+        //    }
+        //  }
       }
     }
     .reduce(LatticeAnnotations<LatticeFirAnnotation>::mergeWith)
