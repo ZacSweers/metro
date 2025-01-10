@@ -77,6 +77,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   //  generate* functions should be side-effect-free, but honestly
   //  how is this practical without this? Or is it ok if it's just an
   //  internal cache? Unclear what "should not leak" means.
+  //  Or use session.firCachesFactory.createCache?
   private val injectFactoryClassIdsToInjectedClass = mutableMapOf<ClassId, InjectedClass>()
   private val injectFactoryClassIdsToSymbols = mutableMapOf<ClassId, FirClassLikeSymbol<*>>()
   private val membersInjectorClassIdsToInjectedClass = mutableMapOf<ClassId, InjectedClass>()
@@ -471,7 +472,11 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 owner = context.owner,
                 key = LatticeKeys.Default,
                 name = callableId.callableName,
-                returnTypeProvider = { injectedClass.classSymbol.constructType(it) },
+                returnTypeProvider = {
+                  injectedClass.classSymbol.constructType(
+                    context.owner.typeParameterSymbols.mapToArray { it.toConeType() }
+                  )
+                },
               ) {
                 if (!injectedClass.isAssisted) {
                   status { isOverride = true }
