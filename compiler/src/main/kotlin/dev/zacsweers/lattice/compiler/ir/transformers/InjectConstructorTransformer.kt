@@ -214,7 +214,9 @@ internal class InjectConstructorTransformer(
                   receiver = invokeFunction.dispatchReceiverParameter!!,
                   parametersToFields = parametersToFields,
                 ),
-          )
+          ).apply {
+            putTypeArgument(0, invokeFunction.returnType)
+          }
 
         if (injectors.isNotEmpty()) {
           val instance = irTemporary(newInstance)
