@@ -215,7 +215,9 @@ internal class InjectConstructorTransformer(
                   parametersToFields = parametersToFields,
                 ),
           ).apply {
-            putTypeArgument(0, invokeFunction.returnType)
+            if (newInstanceFunction.typeParameters.isNotEmpty()) {
+              putTypeArgument(0, invokeFunction.returnType)
+            }
           }
 
         if (injectors.isNotEmpty()) {
