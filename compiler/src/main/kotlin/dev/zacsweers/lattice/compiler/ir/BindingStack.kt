@@ -24,8 +24,10 @@ import dev.zacsweers.lattice.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -34,6 +36,8 @@ import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.resolveFakeOverride
+import org.jetbrains.kotlin.ir.util.resolveFakeOverrideOrFail
 import org.jetbrains.kotlin.name.FqName
 
 internal interface BindingStack {
@@ -89,9 +93,19 @@ internal interface BindingStack {
        */
       @OptIn(UnsafeDuringIrConstructionAPI::class)
       fun requestedAt(contextKey: ContextualTypeKey, accessor: IrSimpleFunction): Entry {
-        val targetFqName = accessor.parentAsClass.kotlinFqName
-        val declaration: IrDeclarationWithName =
+        val rawDeclaration: IrOverridableDeclaration<*> =
           accessor.correspondingPropertySymbol?.owner ?: accessor
+        // Because we may be looking these up from an FIR-generated override, we want to resolve
+        // the original symbol
+        val declaration = if (
+          rawDeclaration.origin is IrDeclarationOrigin.GeneratedByPlugin &&
+          rawDeclaration.parentAsClass.isLatticeGenerated
+          ) {
+          rawDeclaration.resolveOverriddenTypeIfAny()
+        } else {
+          rawDeclaration
+        }
+        val targetFqName = declaration.parentAsClass.kotlinFqName
         val accessorString =
           if (declaration is IrProperty) {
             declaration.name.asString()
