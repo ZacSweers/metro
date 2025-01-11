@@ -21,6 +21,7 @@ import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryImplFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator
+import dev.zacsweers.lattice.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.InjectedClassFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirDeclarationGenerationExtension
 import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
@@ -38,9 +39,8 @@ internal class LatticeFirExtensionRegistrar(
     +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
     // TODO this seems to break supertype lookups in some phases
-    //  +::GraphFactoryFirSupertypeGenerationExtension
     // TODO remove after testing lifecycles
-    //  +supertypeGenerator("Supertypes - lifecycle", ::EmptyFirSupertypeGenerationExtension, true)
+    +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)
