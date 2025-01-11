@@ -155,7 +155,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val companion = parentDeclaration.companionObject()!!
 
         // If there's no $$Impl class, the companion object is the impl
-        val companionIsTheFactory = companion.implements(pluginContext, rawType.classIdOrFail) &&
+        val companionIsTheFactory =
+          companion.implements(pluginContext, rawType.classIdOrFail) &&
             rawType.nestedClasses.singleOrNull { it.name == LatticeSymbols.Names.latticeImpl } ==
               null
 
@@ -247,7 +248,14 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // TODO check external declarations
 
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
-    val graphContextKey = ContextualTypeKey(graphTypeKey, false, false, false, false)
+    val graphContextKey =
+      ContextualTypeKey(
+        graphTypeKey,
+        isWrappedInProvider = false,
+        isWrappedInLazy = false,
+        isLazyWrappedInProvider = false,
+        hasDefault = false,
+      )
 
     val exposedTypes = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
     val bindsFunctions = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
@@ -555,7 +563,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
     }
 
-    node.exposedTypes.forEach { getter, contextualTypeKey ->
+    node.exposedTypes.forEach { (getter, contextualTypeKey) ->
       val isMultibindingDeclaration = getter.annotations.isMultibinds
 
       if (isMultibindingDeclaration) {
@@ -1033,8 +1041,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                   .owner
                   .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
                 val clazz = type.rawType()
-                val injectors = membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
-                for ((function, parameters) in injectors.injectFunctions) {
+                val generatedInjector =
+                  membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
+                for ((function, parameters) in generatedInjector.injectFunctions) {
                   +irInvoke(
                     dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                     callee = function.symbol,
@@ -1208,7 +1217,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
     visitedBindings += key
 
-    // Scoped, graph, and membersinjector bindings always need (provider) fields
+    // Scoped, graph, and members injector bindings always need (provider) fields
     if (
       bindingScope != null ||
         binding is Binding.GraphDependency ||
@@ -1396,17 +1405,14 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
   private fun IrConstructorCall.shouldUnwrapMapKeyValues(): Boolean {
     val mapKeyMapKeyAnnotation = annotationClass.mapKeyAnnotation()!!.ir
-    // TODO FIR check valid mapkey
+    // TODO FIR check valid MapKey
     //  - single arg
     //  - no generics
     val unwrapValue = mapKeyMapKeyAnnotation.getSingleConstBooleanArgumentOrNull() != false
     return unwrapValue
   }
 
-  private fun IrBuilderWithScope.generateMapKeyLiteral(
-    binding: Binding,
-    keyType: IrType,
-  ): IrExpression {
+  private fun generateMapKeyLiteral(binding: Binding, keyType: IrType): IrExpression {
     // TODO this is iffy
     val mapKey =
       when (binding) {
@@ -1625,7 +1631,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             emptyList(),
             binding.typeKey.type,
             suspend = false,
-          ) { lambdaFunction ->
+          ) {
             +irReturn(
               irInvoke(
                 dispatchReceiver = irGet(graphParameter),
@@ -1825,7 +1831,12 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val keyType: IrType = mapTypeArgs[0].typeOrFail
     val rawValueType = mapTypeArgs[1].typeOrFail
     val rawValueTypeMetadata =
-      rawValueType.typeOrFail.asContextualTypeKey(latticeContext, null, false, false)
+      rawValueType.typeOrFail.asContextualTypeKey(
+        latticeContext,
+        null,
+        hasDefault = false,
+        isIntoMultibinding = false,
+      )
     val useProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
     val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
@@ -1885,8 +1896,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
         val putter =
           if (isMap) {
+            // use putAllFunction
             // .putAll(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
-            putAllFunction
             // TODO is this only for inheriting in GraphExtensions?
             TODO("putAll isn't yet supported")
           } else {
@@ -1928,10 +1939,17 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val bindingCode = generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)
     return typeAsProviderArgument(
       latticeContext,
-      ContextualTypeKey(provider.typeKey, false, false, false, false),
-      bindingCode,
-      false,
-      false,
+      type =
+        ContextualTypeKey(
+          provider.typeKey,
+          isWrappedInProvider = false,
+          isWrappedInLazy = false,
+          isLazyWrappedInProvider = false,
+          hasDefault = false,
+        ),
+      bindingCode = bindingCode,
+      isAssisted = false,
+      isGraphInstance = false,
     )
   }
 }
