@@ -15,27 +15,33 @@
  */
 package dev.zacsweers.lattice.compiler.ir
 
+import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
+import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
-  val generatedGraphId: ClassId,
-  val isAnnotatedWithDependencyGraph: Boolean,
   val dependencies: List<DependencyGraphNode>,
   val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, LatticeSimpleFunction>>,
   // Types accessible via this graph (includes inherited)
   val exposedTypes: Map<LatticeSimpleFunction, ContextualTypeKey>,
+  val bindsFunctions: Map<LatticeSimpleFunction, ContextualTypeKey>,
   val injectors: Map<LatticeSimpleFunction, ContextualTypeKey>,
   val isExternal: Boolean,
   val creator: Creator?,
   val typeKey: TypeKey,
 ) {
+  val generatedGraphId: ClassId by unsafeLazy {
+    sourceGraph.requireNestedClass(LatticeSymbols.Names.latticeGraph).classIdOrFail
+  }
+
   data class Creator(
     val type: IrClass,
     val createFunction: IrSimpleFunction,
