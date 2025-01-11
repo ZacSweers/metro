@@ -196,3 +196,18 @@ internal class LoggingFirSupertypeGenerationExtension(
     return additionalSupertypes
   }
 }
+
+// For testing lifecycles
+internal class EmptyFirSupertypeGenerationExtension(session: FirSession) : FirSupertypeGenerationExtension(session) {
+  override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
+    return true
+  }
+
+  override fun computeAdditionalSupertypes(
+    classLikeDeclaration: FirClassLikeDeclaration,
+    resolvedSupertypes: List<FirResolvedTypeRef>,
+    typeResolver: TypeResolveService
+  ): List<ConeKotlinType> {
+    return emptyList()
+  }
+}
