@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
+import org.jetbrains.kotlin.fir.declarations.utils.isOperator
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -529,6 +530,8 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 !owner.isCompanion ||
                   /* owner.isCompanion && */ session.latticeFirBuiltIns.options
                     .makeExistingCompanionsImplementGraphFactories
+
+              isOperator = function.isOperator
             }
             for (parameter in function.valueParameterSymbols) {
               valueParameter(
