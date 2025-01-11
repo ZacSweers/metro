@@ -18,31 +18,21 @@ package dev.zacsweers.lattice.compiler.fir
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
-import org.jetbrains.kotlin.fir.declarations.FirProperty
-import org.jetbrains.kotlin.fir.declarations.FirPropertyBodyResolveState
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.FirPropertyBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.FirSimpleFunctionBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
-import org.jetbrains.kotlin.fir.declarations.builder.buildProperty
-import org.jetbrains.kotlin.fir.declarations.builder.buildPropertyCopy
-import org.jetbrains.kotlin.fir.declarations.builder.buildReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
-import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyBackingField
-import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyGetter
-import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertySetter
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
@@ -52,15 +42,11 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.moduleData
-import org.jetbrains.kotlin.fir.plugin.PropertyBuildingContext
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
-import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
@@ -208,88 +194,5 @@ internal fun FirExtension.buildSimpleValueParameter(
     this.isNoinline = isNoinline
     this.isVararg = isVararg
     body()
-  }
-}
-
-@OptIn(ExperimentalContracts::class)
-internal fun FirExtension.generateMemberProperty(
-  owner: FirClassSymbol<*>?,
-  returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,
-  callableId: CallableId,
-  key: GeneratedDeclarationKey = LatticeKeys.Default,
-  hasBackingField: Boolean = true,
-  isVal: Boolean = true,
-  visibility: Visibility = Visibilities.Public,
-  modality: Modality = Modality.FINAL,
-  extensionReceiverTypeProvider: ((List<FirTypeParameterRef>) -> ConeKotlinType)? = null,
-  setterVisibility: Visibility? = null,
-  getterBody: FirDefaultPropertyGetter.() -> Unit = {},
-  body: FirPropertyBuilder.() -> Unit = {},
-): FirProperty {
-  contract { callsInPlace(body, InvocationKind.EXACTLY_ONCE) }
-  return buildProperty {
-    resolvePhase = FirResolvePhase.BODY_RESOLVE
-    moduleData = session.moduleData
-    origin = key.origin
-
-    source = owner?.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
-
-    symbol = FirPropertySymbol(callableId)
-    name = callableId.callableName
-
-    // TODO is there a non-impl API for this?
-    val resolvedStatus = FirResolvedDeclarationStatusImpl(
-      visibility,
-      modality,
-      Visibilities.Public.toEffectiveVisibility(owner, forClass = true),
-    )
-    status = resolvedStatus
-
-    dispatchReceiverType = owner?.defaultType()
-
-    // Call the body here, before the return type resolution.
-    // If they have any type variables they can add them there
-    body()
-
-    returnTypeRef = returnTypeProvider.invoke(typeParameters).toFirResolvedTypeRef()
-    extensionReceiverTypeProvider?.invoke(typeParameters)?.let {
-      receiverParameter = buildReceiverParameter {
-        typeRef = it.toFirResolvedTypeRef()
-      }
-    }
-
-    // No context receivers supported here
-
-    isVar = !isVal
-    getter = FirDefaultPropertyGetter(
-      source = null, session.moduleData, key.origin, returnTypeRef, status.visibility, symbol,
-      Modality.FINAL, resolvedStatus.effectiveVisibility,
-      resolvePhase = FirResolvePhase.BODY_RESOLVE,
-    ).also { it.getterBody() }
-    if (isVar) {
-      setter = FirDefaultPropertySetter(
-        source = null, session.moduleData, key.origin, returnTypeRef, setterVisibility ?: status.visibility,
-        symbol, Modality.FINAL, resolvedStatus.effectiveVisibility,
-        resolvePhase = FirResolvePhase.BODY_RESOLVE,
-      )
-    } else {
-      require(setterVisibility == null) { "isVar = false but setterVisibility is specified. Did you forget to set isVar = true?" }
-    }
-
-    if (hasBackingField) {
-      backingField = FirDefaultPropertyBackingField(
-        session.moduleData,
-        key.origin,
-        source = null,
-        mutableListOf(),
-        returnTypeRef,
-        isVar,
-        symbol,
-        status,
-        resolvePhase = FirResolvePhase.BODY_RESOLVE,
-      )
-    }
-    isLocal = false
-    bodyResolveState = FirPropertyBodyResolveState.ALL_BODIES_RESOLVED
   }
 }
