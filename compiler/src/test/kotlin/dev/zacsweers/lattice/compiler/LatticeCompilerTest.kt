@@ -107,7 +107,10 @@ abstract class LatticeCompilerTest {
     vararg extraImports: String,
   ): SourceFile {
     val fileName =
-      fileNameWithoutExtension ?: CLASS_NAME_REGEX.find(source)?.groups?.get(2)?.value ?: "source"
+      fileNameWithoutExtension
+        ?: CLASS_NAME_REGEX.find(source)?.groups?.get("name")?.value
+        ?: FUNCTION_NAME_REGEX.find(source)?.groups?.get("name")?.value?.capitalizeUS()
+        ?: "source"
     return SourceFile.kotlin(
       "${fileName}.kt",
       buildString {
@@ -128,11 +131,16 @@ abstract class LatticeCompilerTest {
 
   protected fun compile(
     vararg sourceFiles: SourceFile,
+    latticeEnabled: Boolean = true,
     debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
     generateAssistedFactories: Boolean =
       LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: LatticeOptions =
-      LatticeOptions(debug = debug, generateAssistedFactories = generateAssistedFactories),
+      LatticeOptions(
+        enabled = latticeEnabled,
+        debug = debug,
+        generateAssistedFactories = generateAssistedFactories,
+      ),
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
     previousCompilationResult: JvmCompilationResult? = null,
     body: JvmCompilationResult.() -> Unit = {},
@@ -169,6 +177,7 @@ abstract class LatticeCompilerTest {
   }
 
   companion object {
-    val CLASS_NAME_REGEX = Regex("(class|object|interface) ([a-zA-Z0-9_]+)")
+    val CLASS_NAME_REGEX = Regex("(class|object|interface) (?<name>[a-zA-Z0-9_]+)")
+    val FUNCTION_NAME_REGEX = Regex("fun( <[a-zA-Z0-9_]+>)? (?<name>[a-zA-Z0-9_]+)")
   }
 }
