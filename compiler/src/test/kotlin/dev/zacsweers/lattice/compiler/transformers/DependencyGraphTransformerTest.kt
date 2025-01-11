@@ -25,6 +25,7 @@ import dev.zacsweers.lattice.compiler.assertContainsAll
 import dev.zacsweers.lattice.compiler.assertDiagnostics
 import dev.zacsweers.lattice.compiler.callFunction
 import dev.zacsweers.lattice.compiler.callProperty
+import dev.zacsweers.lattice.compiler.companionObjectInstance
 import dev.zacsweers.lattice.compiler.createGraphViaFactory
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
@@ -1520,7 +1521,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `testing supertype gen`() {
+  fun `graph factory function is generated onto existing companion objects`() {
     compile(
       source(
         """
@@ -1538,9 +1539,11 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
           .trimIndent()
       ),
-      debug = true
+      debug = true,
     ) {
-      println("Hi")
+      val instance = ExampleGraph.companionObjectInstance.callFunction<Any>("invoke", 3)
+      assertThat(instance).isNotNull()
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
     }
   }
 }

@@ -40,6 +40,7 @@ import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaMethod
 import kotlin.test.assertFailsWith
+import org.jetbrains.kotlin.descriptors.runtime.structure.primitiveByWrapper
 
 fun JvmCompilationResult.assertCallableFactory(value: String) {
   val factory = ExampleClass.generatedFactoryClass()
@@ -214,6 +215,16 @@ val Class<*>.objectInstanceFieldOrNull: Field?
     }
   }
 
+val Class<*>.companionObjectInstance: Any
+  get() {
+    return companionObjectInstanceOrNull ?: error("No companion object instance found on $this")
+  }
+
+val Class<*>.companionObjectInstanceOrNull: Any?
+  get() {
+    return companionObjectInstanceFieldOrNull?.get(null)
+  }
+
 val Class<*>.companionObjectInstanceFieldOrNull: Field?
   get() {
     return fields.find {
@@ -324,10 +335,12 @@ fun Class<*>.graphImpl(): Class<*> {
   return declaredClasses.single { it.simpleName.endsWith("Impl") }
 }
 
-fun <T> Any.callFunction(name: String): T {
+fun <T> Any.callFunction(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
-  return javaClass.getMethod(name).invoke(this) as T
+  return javaClass.getMethod(name, *args.mapToArray { it.javaClass.unboxIfPrimitive }).invoke(this, *args) as T
 }
+
+private val Class<*>.unboxIfPrimitive: Class<*> get() = primitiveByWrapper ?: this
 
 fun <T> Any.callProperty(name: String): T {
   @Suppress("UNCHECKED_CAST")
