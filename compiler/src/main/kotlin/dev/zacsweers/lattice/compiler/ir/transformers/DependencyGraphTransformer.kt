@@ -36,6 +36,7 @@ import dev.zacsweers.lattice.compiler.ir.appendBindingStack
 import dev.zacsweers.lattice.compiler.ir.asContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.buildBlockBody
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
+import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
 import dev.zacsweers.lattice.compiler.ir.doubleCheck
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
 import dev.zacsweers.lattice.compiler.ir.getSingleConstBooleanArgumentOrNull
@@ -245,7 +246,37 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       return it
     }
 
-    // TODO check external declarations
+    if (graphDeclaration.isExternalParent) {
+      // FIR checker ensures this is a valid graph dep
+      val accessors =
+        latticeGraph
+          .declaredCallableMembers(latticeContext)
+          .filterNot { it.annotations.isBinds }
+          .toList()
+
+      val dependentNode =
+        DependencyGraphNode(
+          sourceGraph = graphDeclaration,
+          dependencies = emptyList(),
+          scopes = emptySet(),
+          providerFunctions = emptyList(),
+          exposedTypes =
+            accessors.associateWith {
+              ContextualTypeKey.from(latticeContext, it.ir, it.annotations)
+            },
+          bindsFunctions = emptyMap(),
+          injectors = emptyMap(),
+          isExternal = true,
+          creator = null,
+          typeKey = TypeKey(graphDeclaration.typeWith()),
+        )
+
+      dependencyGraphNodesByClass[graphClassId] = dependentNode
+
+      return dependentNode
+    }
+
+    checkNotNull(latticeGraph) { "Expected latticeGraph for $graphClassId" }
 
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
     val graphContextKey =
@@ -391,7 +422,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     if (dependencyGraphDeclaration.isExternalParent) {
       // Externally compiled, look up its generated class
       latticeDependencyGraphsByClass[graphClassId] = latticeGraph
-      return latticeGraph
     }
 
     val node =

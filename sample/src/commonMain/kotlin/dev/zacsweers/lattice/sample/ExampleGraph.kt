@@ -35,7 +35,7 @@ interface ExampleGraph : FileSystemProviders {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(@BindsInstance text: String): ExampleGraph
+    operator fun invoke(@BindsInstance text: String): ExampleGraph
   }
 }
 

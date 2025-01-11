@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.compiler.companionObjectInstance
 import dev.zacsweers.lattice.compiler.createGraphViaFactory
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
+import dev.zacsweers.lattice.compiler.invokeMain
 import java.util.concurrent.Callable
 import org.junit.Test
 
@@ -1539,11 +1540,91 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           """
           .trimIndent()
       ),
-      debug = true,
     ) {
       val instance = ExampleGraph.companionObjectInstance.callFunction<Any>("invoke", 3)
       assertThat(instance).isNotNull()
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+    }
+  }
+
+  @Test
+  fun `graph impls are visible from other modules`() {
+    val firstResult = compile(
+      source(
+        """
+            @DependencyGraph
+            interface IntGraph {
+              val int: Int
+          
+              @DependencyGraph.Factory
+              fun interface Factory {
+                operator fun invoke(@BindsInstance int: Int): IntGraph
+              }
+            }
+          """
+          .trimIndent()
+      ),
+    )
+
+    compile(
+      source(
+        """
+          fun main(int: Int) = IntGraph(int)
+        """
+          .trimIndent()
+      ),
+      latticeEnabled = false,
+      previousCompilationResult = firstResult,
+    ) {
+      val graph = invokeMain<Any>(3)
+      assertThat(graph).isNotNull()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(3)
+    }
+  }
+
+  @Test
+  fun `graph impls are usable from graphs in other modules`() {
+    val firstResult = compile(
+      source(
+        """
+            @DependencyGraph
+            interface IntGraph {
+              val int: Int
+          
+              @DependencyGraph.Factory
+              fun interface Factory {
+                operator fun invoke(@BindsInstance int: Int): IntGraph
+              }
+            }
+          """
+          .trimIndent()
+      ),
+    )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+        
+            @DependencyGraph.Factory
+            fun interface Factory {
+              operator fun invoke(upstream: IntGraph): ExampleGraph
+            }
+
+            companion object {
+              fun createDefault(int: Int): ExampleGraph = ExampleGraph(IntGraph(int))
+            }
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstResult,
+    ) {
+      val graph = ExampleGraph.companionObjectInstance.callFunction<Any>("createDefault", 3)
+      assertThat(graph).isNotNull()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(3)
     }
   }
 }
