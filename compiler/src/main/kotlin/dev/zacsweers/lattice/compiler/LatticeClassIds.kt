@@ -123,6 +123,27 @@ internal class LatticeClassIds(
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Multibinds")) +
       customMultibindsAnnotations
 
+
+  private val contributesToAnnotation =
+    LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesTo")
+  private val contributesBindingAnnotation =
+    LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesBinding")
+  private val contributesIntoSetAnnotation =
+    LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesIntoSet")
+  private val contributesIntoMapAnnotation =
+    LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesIntoMap")
+
+  val contributesToAnnotations =
+    setOf(contributesToAnnotation) // TODO custom
+  val contributesBindingAnnotations =
+    setOf(contributesBindingAnnotation) // TODO custom
+  val contributesIntoSetAnnotations =
+    setOf(contributesIntoSetAnnotation) // TODO custom
+  val contributesIntoMapAnnotations =
+    setOf(contributesIntoMapAnnotation) // TODO custom
+  val allContributesAnnotations = contributesToAnnotations + contributesBindingAnnotations +
+    contributesIntoSetAnnotations + contributesIntoMapAnnotations
+
   val providerTypes = setOf(LatticeSymbols.ClassIds.latticeProvider)
   val lazyTypes = setOf(kotlinPackageFqn.classIdOf("Lazy"))
 }
