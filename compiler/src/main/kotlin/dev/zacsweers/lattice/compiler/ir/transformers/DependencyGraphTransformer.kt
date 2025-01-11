@@ -950,6 +950,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
   }
 
+  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun implementFirStubs(
     exposedTypes: Map<LatticeSimpleFunction, ContextualTypeKey>,
     bindsFunctions: Map<LatticeSimpleFunction, ContextualTypeKey>,
