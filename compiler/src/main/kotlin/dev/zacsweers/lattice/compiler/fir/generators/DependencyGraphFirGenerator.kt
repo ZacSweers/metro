@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.compiler.fir.isBinds
 import dev.zacsweers.lattice.compiler.fir.isDependencyGraph
 import dev.zacsweers.lattice.compiler.fir.isGraphFactory
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.lattice.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.lattice.compiler.latticeAnnotations
@@ -57,7 +58,6 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -317,30 +317,33 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
+    val names = mutableSetOf<Name>()
     if (classSymbol.isDependencyGraph(session)) {
       val creator =
         classSymbol.declarationSymbols
           .find { it is FirClassSymbol<*> && it.isGraphFactory(session) }
           ?.let { Creator(it as FirClassSymbol<*>) }
       graphObjects[classSymbol.classId] = GraphObject(classSymbol, creator)
-      return buildSet {
-        val classId = classSymbol.classId.createNestedClassId(LatticeSymbols.Names.latticeGraph)
-        add(classId.shortClassName)
+      val classId = classSymbol.classId.createNestedClassId(LatticeSymbols.Names.latticeGraph)
+      names += classId.shortClassName
 
-        val hasCompanion =
-          classSymbol.declarationSymbols.any { it is FirClassSymbol<*> && it.isCompanion }
-        if (!hasCompanion) {
-          // Generate a companion for us to generate these functions on to
-          add(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
-        }
+      val hasCompanion =
+        classSymbol.declarationSymbols.any { it is FirClassSymbol<*> && it.isCompanion }
+      if (!hasCompanion) {
+        // Generate a companion for us to generate these functions on to
+        names += SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
       }
     } else if (classSymbol.isGraphFactory(session)) {
-      if (!classSymbol.isInterface) {
-        return setOf(LatticeSymbols.Names.latticeImpl)
+      val shouldGenerateImpl =
+        !classSymbol.isInterface ||
+          /* classSymbol.isInterface && */ session.latticeFirBuiltIns.options
+            .makeExistingCompanionsImplementGraphFactories
+      if (shouldGenerateImpl) {
+        names += LatticeSymbols.Names.latticeImpl
       }
     }
 
-    return emptySet()
+    return names
   }
 
   override fun generateNestedClassLikeDeclaration(
@@ -433,8 +436,8 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       val graphClass = classSymbol.requireContainingClassSymbol()
       val graphObject = graphObjects.getValue(graphClass.classId)
       graphObject.computeAccessorsAndInjectors(session)
-      names.addAll(graphObject.bindsOrAccessors.keys)
-      names.addAll(graphObject.injectors.keys)
+      names += graphObject.bindsOrAccessors.keys
+      names += graphObject.injectors.keys
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
       // Graph factory impl, generating a constructor and its SAM function
       val creator =
@@ -497,7 +500,6 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     return listOf(constructor.symbol)
   }
 
-  @OptIn(SymbolInternals::class)
   override fun generateFunctions(
     callableId: CallableId,
     context: MemberGenerationContext?,
@@ -517,11 +519,17 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 // this too
                 target.constructType(it.mapToArray { it.toConeType() })
               } catch (e: Exception) {
-                throw AssertionError("Could not resolve return type for ${callableId}", e)
+                throw AssertionError("Could not resolve return type for $callableId", e)
               }
             },
           ) {
-            status { isOverride = true }
+            status {
+              // See docs on makeExistingCompanionsImplementGraphFactories
+              isOverride =
+                !owner.isCompanion ||
+                  /* owner.isCompanion && */ session.latticeFirBuiltIns.options
+                    .makeExistingCompanionsImplementGraphFactories
+            }
             for (parameter in function.valueParameterSymbols) {
               valueParameter(
                 name = parameter.name,
@@ -546,20 +554,6 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       val graphClass = owner.requireContainingClassSymbol()
       val graphObject = graphObjects[graphClass.classId] ?: return emptyList()
       when (callableId.callableName) {
-        LatticeSymbols.Names.invoke -> {
-          // Companion object invoke function, i.e. no creator
-          check(graphObject.creator == null)
-          val generatedFunction =
-            createMemberFunction(
-              owner,
-              LatticeKeys.LatticeGraphCreatorsObjectInvokeDeclaration,
-              callableId.callableName,
-              returnTypeProvider = { graphClass.constructType(it.mapToArray { it.toConeType() }) },
-            ) {
-              status { isOperator = true }
-            }
-          return listOf(generatedFunction.symbol)
-        }
         LatticeSymbols.Names.factoryFunctionName -> {
           // Companion object factory function, i.e. factory()
           val creatorClass = graphObject.creator!!.classSymbol
@@ -573,10 +567,25 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           return listOf(generatedFunction.symbol)
         }
         else -> {
-          // It's an interface creator, generate the SAM function
-          val creator = checkNotNull(graphObject.creator)
-          return creator.function?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
-            ?: emptyList<FirNamedFunctionSymbol>()
+          val creator = graphObject.creator
+          return if (creator == null) {
+            // Companion object invoke function, i.e. no creator
+            check(callableId.callableName == LatticeSymbols.Names.invoke)
+            val generatedFunction =
+              createMemberFunction(
+                owner,
+                LatticeKeys.LatticeGraphCreatorsObjectInvokeDeclaration,
+                callableId.callableName,
+                returnTypeProvider = { graphClass.constructType(it.mapToArray { it.toConeType() }) },
+              ) {
+                status { isOperator = true }
+              }
+            listOf(generatedFunction.symbol)
+          } else {
+            // It's an interface creator, generate the SAM function
+            creator.function?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
+              ?: emptyList()
+          }
         }
       }
     }

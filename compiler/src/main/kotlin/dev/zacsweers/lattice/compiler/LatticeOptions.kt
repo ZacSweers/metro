@@ -16,6 +16,8 @@
 package dev.zacsweers.lattice.compiler
 
 import dev.zacsweers.lattice.compiler.LatticeOption.entries
+import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator
+import dev.zacsweers.lattice.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
@@ -85,6 +87,30 @@ internal enum class LatticeOption(val raw: RawLatticeOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  /**
+   * If true, graph class companion objects will implement graph factory interfaces.
+   *
+   * This is gated at the moment because it seems that enabling [GraphFactoryFirSupertypeGenerator]
+   * causes a bug? in FIR that results in all supertype callables to be unresolved during
+   * [DependencyGraphFirGenerator.getCallableNamesForClass]. This breaks our ability to detect the
+   * SAM function for the factory interface and generate an override declaration.
+   *
+   * When this mode is disabled, the companion object will still have the SAM function generated but
+   * it will _not_ be an override of the factory. Instead, it will just have an identical signature
+   * and call through to the generated [LatticeSymbols.Names.latticeImpl] class for the factory
+   * under the hood.
+   */
+  MAKE_EXISTING_COMPANIONS_IMPLEMENT_GRAPH_FACTORIES(
+    RawLatticeOption.boolean(
+      name = "make-existing-companions-implement-graph-factories",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable making existing graph class companion objects implement their graph factories (if they are interfaces).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   GENERATE_ASSISTED_FACTORIES(
     RawLatticeOption.boolean(
       name = "generate-assisted-factories",
@@ -96,7 +122,7 @@ internal enum class LatticeOption(val raw: RawLatticeOption<*>) {
     )
   ),
   LOGGING(
-    RawLatticeOption<Set<LatticeLogger.Type>>(
+    RawLatticeOption(
       name = "logging",
       defaultValue = emptySet(),
       valueDescription = LatticeLogger.Type.entries.joinToString("|") { it.name },
@@ -118,37 +144,41 @@ public data class LatticeOptions(
   val generateAssistedFactories: Boolean =
     LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<LatticeLogger.Type> = LatticeOption.LOGGING.raw.defaultValue.expectAs(),
+  val makeExistingCompanionsImplementGraphFactories: Boolean =
+    LatticeOption.MAKE_EXISTING_COMPANIONS_IMPLEMENT_GRAPH_FACTORIES.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): LatticeOptions {
-      var debug = false
-      var enabled = true
-      var generateAssistedFactories = false
+      var options = LatticeOptions()
       val enabledLoggers = mutableSetOf<LatticeLogger.Type>()
       for (entry in LatticeOption.entries) {
         when (entry) {
-          LatticeOption.DEBUG -> debug = configuration.getAsBoolean(entry)
-          LatticeOption.ENABLED -> enabled = configuration.getAsBoolean(entry)
+          LatticeOption.DEBUG -> options = options.copy(debug = configuration.getAsBoolean(entry))
+          LatticeOption.ENABLED ->
+            options = options.copy(enabled = configuration.getAsBoolean(entry))
           LatticeOption.GENERATE_ASSISTED_FACTORIES ->
-            generateAssistedFactories = configuration.getAsBoolean(entry)
+            options = options.copy(generateAssistedFactories = configuration.getAsBoolean(entry))
 
           LatticeOption.LOGGING -> {
             enabledLoggers +=
               configuration.get(entry.raw.key)?.expectAs<Set<LatticeLogger.Type>>().orEmpty()
           }
+
+          LatticeOption.MAKE_EXISTING_COMPANIONS_IMPLEMENT_GRAPH_FACTORIES -> {
+            options =
+              options.copy(
+                makeExistingCompanionsImplementGraphFactories = configuration.getAsBoolean(entry)
+              )
+          }
         }
       }
 
-      if (debug) {
+      if (options.debug) {
         enabledLoggers += LatticeLogger.Type.entries
       }
+      options = options.copy(enabledLoggers = enabledLoggers)
 
-      return LatticeOptions(
-        debug = debug,
-        enabled = enabled,
-        generateAssistedFactories = generateAssistedFactories,
-        enabledLoggers = enabledLoggers,
-      )
+      return options
     }
 
     private fun CompilerConfiguration.getAsBoolean(option: LatticeOption): Boolean {

@@ -38,6 +38,8 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
 
+// TODO
+//  - if there's a factory(): Graph in the companion object, error because we'll generate it
 internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return

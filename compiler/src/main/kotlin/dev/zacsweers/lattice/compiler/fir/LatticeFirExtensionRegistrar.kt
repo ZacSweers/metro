@@ -39,8 +39,9 @@ internal class LatticeFirExtensionRegistrar(
     +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
     // TODO this seems to break supertype lookups in some phases
-    // TODO remove after testing lifecycles
-    +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
+    if (options.makeExistingCompanionsImplementGraphFactories) {
+     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
+    }
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)

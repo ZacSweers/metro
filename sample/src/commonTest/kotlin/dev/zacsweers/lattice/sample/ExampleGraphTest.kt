@@ -22,7 +22,7 @@ class ExampleGraphTest {
   @Test
   fun simplePipeline() {
     // TODO eventually call createComponentFactory() here again
-    val component = ExampleGraph.factory().create("Hello, world!")
+    val component = ExampleGraph.create("Hello, world!")
     val example1 = component.example1()
     assertEquals("Hello, world!", example1.text)
   }

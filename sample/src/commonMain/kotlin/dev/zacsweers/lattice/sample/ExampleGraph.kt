@@ -37,11 +37,6 @@ interface ExampleGraph : FileSystemProviders {
   fun interface Factory {
     fun create(@BindsInstance text: String): ExampleGraph
   }
-
-  companion object {
-    // TODO temporary until we can move this back to the test calling this
-    fun factory() = createGraphFactory<Factory>()
-  }
 }
 
 interface FileSystemProviders {

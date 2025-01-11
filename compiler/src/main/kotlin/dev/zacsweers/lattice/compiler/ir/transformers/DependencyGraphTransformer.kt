@@ -39,6 +39,7 @@ import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.doubleCheck
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
 import dev.zacsweers.lattice.compiler.ir.getSingleConstBooleanArgumentOrNull
+import dev.zacsweers.lattice.compiler.ir.implements
 import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irLambda
@@ -154,8 +155,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val companion = parentDeclaration.companionObject()!!
 
         // If there's no $$Impl class, the companion object is the impl
-        val companionIsTheFactory =
-          rawType.nestedClasses.singleOrNull { it.name == LatticeSymbols.Names.latticeImpl } == null
+        val companionIsTheFactory = companion.implements(pluginContext, rawType.classIdOrFail) &&
+            rawType.nestedClasses.singleOrNull { it.name == LatticeSymbols.Names.latticeImpl } ==
+              null
 
         if (companionIsTheFactory) {
           return pluginContext.createIrBuilder(expression.symbol).run {
@@ -164,7 +166,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         } else {
           val factoryFunction =
             companion.functions.single {
-              it.origin == LatticeOrigins.LatticeGraphFactoryCompanionGetter
+              // Note we don't filter on LatticeOrigins.LatticeGraphFactoryCompanionGetter, because
+              // sometimes a user may have already defined one. An FIR checker will validate that
+              // any such function is
+              // valid, so just trust it if one is found
+              it.name == LatticeSymbols.Names.factoryFunctionName
             }
           // Replace it with a call directly to the factory function
           return pluginContext.createIrBuilder(expression.symbol).run {
@@ -667,13 +673,15 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
 
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(LatticeSymbols.StringNames.factory).owner.apply {
-            body =
-              pluginContext.createIrBuilder(symbol).run {
-                irExprBodySafe(
-                  symbol,
-                  irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()),
-                )
-              }
+            if (origin == LatticeOrigins.LatticeGraphFactoryCompanionGetter) {
+              body =
+                pluginContext.createIrBuilder(symbol).run {
+                  irExprBodySafe(
+                    symbol,
+                    irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()),
+                  )
+                }
+            }
           }
         }
       }

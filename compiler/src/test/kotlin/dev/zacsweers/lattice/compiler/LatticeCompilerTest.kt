@@ -82,6 +82,9 @@ abstract class LatticeCompilerTest {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
               }
+
+              LatticeOption.MAKE_EXISTING_COMPANIONS_IMPLEMENT_GRAPH_FACTORIES ->
+                processor.option(entry.raw.cliOption, makeExistingCompanionsImplementGraphFactories)
             }
           yield(option)
         }
