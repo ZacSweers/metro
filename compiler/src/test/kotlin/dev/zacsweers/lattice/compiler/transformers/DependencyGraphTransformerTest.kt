@@ -1518,4 +1518,29 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       "ExampleGraph.kt:12:36 DependencyGraph.Factory abstract function parameters must be unique."
     )
   }
+
+  @Test
+  fun `testing supertype gen`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val int: Int
+          
+              @DependencyGraph.Factory
+              fun interface Factory {
+                operator fun invoke(@BindsInstance int: Int): ExampleGraph
+              }
+              
+              companion object
+            }
+          """
+          .trimIndent()
+      ),
+      debug = true
+    ) {
+      println("Hi")
+    }
+  }
 }
