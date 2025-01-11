@@ -30,6 +30,7 @@ public interface LatticeLogger {
 
   public enum class Type {
     None,
+    FirSupertypeGeneration,
     FirDeclarationGeneration,
     GraphNodeConstruction,
     BindingGraphConstruction,
