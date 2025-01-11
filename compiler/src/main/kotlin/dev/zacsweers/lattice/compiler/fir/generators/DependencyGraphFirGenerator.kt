@@ -405,30 +405,29 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    return if (classSymbol.isCompanion) {
+    val names = mutableSetOf<Name>()
+    if (classSymbol.isCompanion) {
       // Graph class companion objects get creators
       val graphClass = classSymbol.requireContainingClassSymbol()
       val graphObject = graphObjects[graphClass.classId] ?: return emptySet()
-      buildSet {
-        add(SpecialNames.INIT)
-        val creator = graphObject.creator
-        if (creator != null) {
-          if (creator.isInterface) {
-            // We can put the sam factory function on the companion
-            creator.computeSAMFactoryFunction(session)
-            creator.function?.let { add(it.name) }
-          } else {
-            // We will just generate a `factory()` function
-            add(LatticeSymbols.Names.factoryFunctionName)
-          }
+      names.add(SpecialNames.INIT)
+      val creator = graphObject.creator
+      if (creator != null) {
+        if (creator.isInterface) {
+          // We can put the sam factory function on the companion
+          creator.computeSAMFactoryFunction(session)
+          creator.function?.let { names.add(it.name) }
         } else {
-          // We'll generate a default invoke function
-          add(LatticeSymbols.Names.invoke)
+          // We will just generate a `factory()` function
+          names.add(LatticeSymbols.Names.factoryFunctionName)
         }
+      } else {
+        // We'll generate a default invoke function
+        names.add(LatticeSymbols.Names.invoke)
       }
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphDeclaration)) {
       // LatticeGraph, generate a constructor and gather all accessors and injectors
-      val names = mutableSetOf<Name>(SpecialNames.INIT)
+      names += SpecialNames.INIT
 
       // Gather accessors and injectors
       val graphClass = classSymbol.requireContainingClassSymbol()
@@ -444,13 +443,11 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         graphObjects.getValue(classSymbol.requireContainingClassSymbol().classId).creator!!
       // We can put the sam factory function on the companion
       creator.computeSAMFactoryFunction(session)
-      buildSet {
-        add(SpecialNames.INIT)
-        creator.function?.let { add(it.name) }
-      }
-    } else {
-      emptySet()
+      names.add(SpecialNames.INIT)
+      creator.function?.let { names.add(it.name) }
     }
+
+    return names
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
