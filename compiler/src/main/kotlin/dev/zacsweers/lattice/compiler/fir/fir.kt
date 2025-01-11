@@ -108,6 +108,10 @@ internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
 }
 
+internal fun FirBasedSymbol<*>.isBinds(session: FirSession): Boolean {
+  return isAnnotatedWithAny(session, session.latticeClassIds.bindsAnnotations)
+}
+
 internal fun FirBasedSymbol<*>.isDependencyGraph(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.latticeClassIds.dependencyGraphAnnotations)
 }
@@ -556,6 +560,10 @@ internal fun List<FirAnnotation>.scopeAnnotation(session: FirSession): LatticeFi
 
 internal fun Sequence<FirAnnotation>.scopeAnnotation(session: FirSession): LatticeFirAnnotation? =
   annotationAnnotatedWithAny(session, session.latticeClassIds.scopeAnnotations)
+
+internal fun FirBasedSymbol<*>.scopeAnnotation(session: FirSession): LatticeFirAnnotation? {
+  return resolvedAnnotationsWithArguments.scopeAnnotation(session)
+}
 
 // TODO add a single = true|false param? How would we propagate errors
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
