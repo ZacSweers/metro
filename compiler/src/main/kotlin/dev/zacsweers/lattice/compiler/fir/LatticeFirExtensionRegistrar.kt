@@ -38,9 +38,11 @@ internal class LatticeFirExtensionRegistrar(
     +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
     // TODO this seems to break supertype lookups in some phases
-//    +::GraphFactoryFirSupertypeGenerationExtension
+    //  +::GraphFactoryFirSupertypeGenerationExtension
+    // TODO remove after testing lifecycles
+    //  +supertypeGenerator("Supertypes - lifecycle", ::EmptyFirSupertypeGenerationExtension, true)
     // TODO enable once we support metadata propagation
-    //    +::FirProvidesStatusTransformer
+    //  +::FirProvidesStatusTransformer
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, false)
@@ -65,11 +67,12 @@ internal class LatticeFirExtensionRegistrar(
   ): FirDeclarationGenerationExtension.Factory {
     return object : FirDeclarationGenerationExtension.Factory {
       override fun create(session: FirSession): FirDeclarationGenerationExtension {
-        val logger = if (enableLogging) {
-          loggerFor(LatticeLogger.Type.FirDeclarationGeneration, tag)
-        } else {
-          LatticeLogger.NONE
-        }
+        val logger =
+          if (enableLogging) {
+            loggerFor(LatticeLogger.Type.FirDeclarationGeneration, tag)
+          } else {
+            LatticeLogger.NONE
+          }
         return if (logger == LatticeLogger.NONE) {
           delegate(session)
         } else {
@@ -86,11 +89,12 @@ internal class LatticeFirExtensionRegistrar(
   ): FirSupertypeGenerationExtension.Factory {
     return object : FirSupertypeGenerationExtension.Factory {
       override fun create(session: FirSession): FirSupertypeGenerationExtension {
-        val logger = if (enableLogging) {
-          loggerFor(LatticeLogger.Type.FirDeclarationGeneration, tag)
-        } else {
-          LatticeLogger.NONE
-        }
+        val logger =
+          if (enableLogging) {
+            loggerFor(LatticeLogger.Type.FirSupertypeGeneration, tag)
+          } else {
+            LatticeLogger.NONE
+          }
         return if (logger == LatticeLogger.NONE) {
           delegate(session)
         } else {
