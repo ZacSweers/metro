@@ -382,6 +382,7 @@ internal sealed interface Binding {
         } else if (allowAbsent && contextKey.hasDefault) {
           Absent(key)
         } else {
+          // TODO if a key with a different qualifier exists, consider mentioning it?
           val declarationToReport = bindingStack.lastEntryOrGraph
           val message = buildString {
             append(
