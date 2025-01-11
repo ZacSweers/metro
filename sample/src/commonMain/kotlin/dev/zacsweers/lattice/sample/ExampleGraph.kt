@@ -21,7 +21,6 @@ import dev.zacsweers.lattice.Inject
 import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.Singleton
-import dev.zacsweers.lattice.createGraphFactory
 
 @Singleton
 @DependencyGraph

@@ -40,7 +40,7 @@ internal class LatticeFirExtensionRegistrar(
     +::LatticeFirCheckers
     // TODO this seems to break supertype lookups in some phases
     if (options.makeExistingCompanionsImplementGraphFactories) {
-     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
+      +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
     }
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer

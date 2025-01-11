@@ -1529,17 +1529,17 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val int: Int
-          
+
               @DependencyGraph.Factory
               fun interface Factory {
                 operator fun invoke(@BindsInstance int: Int): ExampleGraph
               }
-              
+
               companion object
             }
           """
           .trimIndent()
-      ),
+      )
     ) {
       val instance = ExampleGraph.companionObjectInstance.callFunction<Any>("invoke", 3)
       assertThat(instance).isNotNull()
@@ -1549,22 +1549,23 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun `graph impls are visible from other modules`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
             @DependencyGraph
             interface IntGraph {
               val int: Int
-          
+
               @DependencyGraph.Factory
               fun interface Factory {
                 operator fun invoke(@BindsInstance int: Int): IntGraph
               }
             }
           """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -1584,22 +1585,23 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
 
   @Test
   fun `graph impls are usable from graphs in other modules`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
             @DependencyGraph
             interface IntGraph {
               val int: Int
-          
+
               @DependencyGraph.Factory
               fun interface Factory {
                 operator fun invoke(@BindsInstance int: Int): IntGraph
               }
             }
           """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -1607,7 +1609,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             val int: Int
-        
+
             @DependencyGraph.Factory
             fun interface Factory {
               operator fun invoke(upstream: IntGraph): ExampleGraph
