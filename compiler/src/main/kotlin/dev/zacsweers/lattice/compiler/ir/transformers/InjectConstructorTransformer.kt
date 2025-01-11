@@ -204,21 +204,22 @@ internal class InjectConstructorTransformer(
         val assistedArgs = invokeFunction.valueParameters.map { irGet(it) }
         val newInstance =
           irInvoke(
-            dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
-            callee = newInstanceFunction.symbol,
-            args =
-              assistedArgs +
-                parametersAsProviderArguments(
-                  context = latticeContext,
-                  parameters = constructorParameters,
-                  receiver = invokeFunction.dispatchReceiverParameter!!,
-                  parametersToFields = parametersToFields,
-                ),
-          ).apply {
-            if (newInstanceFunction.typeParameters.isNotEmpty()) {
-              putTypeArgument(0, invokeFunction.returnType)
+              dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
+              callee = newInstanceFunction.symbol,
+              args =
+                assistedArgs +
+                  parametersAsProviderArguments(
+                    context = latticeContext,
+                    parameters = constructorParameters,
+                    receiver = invokeFunction.dispatchReceiverParameter!!,
+                    parametersToFields = parametersToFields,
+                  ),
+            )
+            .apply {
+              if (newInstanceFunction.typeParameters.isNotEmpty()) {
+                putTypeArgument(0, invokeFunction.returnType)
+              }
             }
-          }
 
         if (injectors.isNotEmpty()) {
           val instance = irTemporary(newInstance)

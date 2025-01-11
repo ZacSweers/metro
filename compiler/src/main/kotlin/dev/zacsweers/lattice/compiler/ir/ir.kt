@@ -485,15 +485,17 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
   source: IrSimpleFunction,
   constructor: IrConstructorSymbol,
 ): IrConstructorCall {
-  return irCall(constructor).apply {
-    for (parameter in source.valueParameters) {
-      putValueArgument(parameter.index, irGet(parameter))
+  return irCall(constructor)
+    .apply {
+      for (parameter in source.valueParameters) {
+        putValueArgument(parameter.index, irGet(parameter))
+      }
     }
-  }.apply {
-    for (typeParameter in source.typeParameters) {
-      putTypeArgument(typeParameter.index, typeParameter.defaultType)
+    .apply {
+      for (typeParameter in source.typeParameters) {
+        putTypeArgument(typeParameter.index, typeParameter.defaultType)
+      }
     }
-  }
 }
 
 internal fun IrBuilderWithScope.irCallWithSameParameters(
@@ -877,6 +879,7 @@ internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T
   return overriddenSymbols.singleOrNull()?.owner as? T? ?: this
 }
 
-internal val IrClass.isLatticeGenerated: Boolean get() {
-  return name in LatticeSymbols.Names.latticeNames
-}
+internal val IrClass.isLatticeGenerated: Boolean
+  get() {
+    return name in LatticeSymbols.Names.latticeNames
+  }

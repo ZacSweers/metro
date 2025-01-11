@@ -40,7 +40,11 @@ public interface LatticeLogger {
   }
 
   public companion object {
-    public operator fun invoke(type: Type, output: (String) -> Unit, tag: String? = null): LatticeLogger {
+    public operator fun invoke(
+      type: Type,
+      output: (String) -> Unit,
+      tag: String? = null,
+    ): LatticeLogger {
       return LatticeLoggerImpl(type, output, tag)
     }
 
@@ -64,9 +68,7 @@ internal class LatticeLoggerImpl(
 
   override fun log(message: () -> String) {
     val fullMessage = buildString {
-      tag?.let {
-        append("[$it] ")
-      }
+      tag?.let { append("[$it] ") }
       append("  ".repeat(indent))
       append(message())
     }

@@ -353,7 +353,8 @@ fun Class<*>.invokeGraphFactory(): Any {
     staticMethod.invoke()!!
   } else {
     // We're in $$LatticeGraph right now, so go up one and then find its companion object
-    enclosingClass.companionObjectInstanceFieldOrNull?.get(null) ?: error("No factory found for $this")
+    enclosingClass.companionObjectInstanceFieldOrNull?.get(null)
+      ?: error("No factory found for $this")
   }
 }
 

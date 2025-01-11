@@ -713,4 +713,5 @@ internal fun FirCallableSymbol<*>.findAnnotation(
   return null
 }
 
-internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> = getContainingClassSymbol() ?: error("No containing class symbol found for $this")
+internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
+  getContainingClassSymbol() ?: error("No containing class symbol found for $this")

@@ -293,7 +293,7 @@ private fun IrAnnotationContainer.latticeAnnotations(
 }
 
 internal fun FirBasedSymbol<*>.latticeAnnotations(
-  session: FirSession,
+  session: FirSession
 ): LatticeAnnotations<LatticeFirAnnotation> {
   return latticeAnnotations(session, null)
 }
@@ -424,16 +424,12 @@ private fun FirBasedSymbol<*>.latticeAnnotations(
         // Retrieve annotations from this property's various accessors
         getterSymbol?.let { getter ->
           if (getter != callingContainer) {
-            yield(
-              getter.latticeAnnotations(session, callingContainer = thisContainer)
-            )
+            yield(getter.latticeAnnotations(session, callingContainer = thisContainer))
           }
         }
         setterSymbol?.let { setter ->
           if (setter != callingContainer) {
-            yield(
-              setter.latticeAnnotations(session, callingContainer = thisContainer)
-            )
+            yield(setter.latticeAnnotations(session, callingContainer = thisContainer))
           }
         }
         backingFieldSymbol?.let { field ->
