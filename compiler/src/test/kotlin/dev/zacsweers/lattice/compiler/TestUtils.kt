@@ -54,18 +54,14 @@ fun JvmCompilationResult.assertNoArgCallableFactory(expectedValue: String) {
   assertThat(callable.call()).isEqualTo(expectedValue)
 }
 
-fun <T> JvmCompilationResult.invokeTopLevel(name: String, vararg args: Any?): T {
+fun <T> JvmCompilationResult.invokeTopLevel(name: String, vararg args: Any?, clazz: String): T {
   @Suppress("UNCHECKED_CAST")
-  return classLoader
-    .loadClass("test.ExampleClassKt")!!
-    .staticMethods()
-    .single { it.name == name }
-    .invoke(*args) as T
+  return classLoader.loadClass(clazz)!!.staticMethods().single { it.name == name }.invoke(*args)
+    as T
 }
 
-fun <T> JvmCompilationResult.invokeMain(vararg args: Any?): T {
-  @Suppress("UNCHECKED_CAST")
-  return invokeTopLevel("main", *args) as T
+fun <T> JvmCompilationResult.invokeMain(vararg args: Any?, mainClass: String = "test.MainKt"): T {
+  return invokeTopLevel("main", args = args, clazz = mainClass) as T
 }
 
 val JvmCompilationResult.ExampleClass: Class<*>
@@ -337,10 +333,13 @@ fun Class<*>.graphImpl(): Class<*> {
 
 fun <T> Any.callFunction(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
-  return javaClass.getMethod(name, *args.mapToArray { it.javaClass.unboxIfPrimitive }).invoke(this, *args) as T
+  return javaClass
+    .getMethod(name, *args.mapToArray { it.javaClass.unboxIfPrimitive })
+    .invoke(this, *args) as T
 }
 
-private val Class<*>.unboxIfPrimitive: Class<*> get() = primitiveByWrapper ?: this
+private val Class<*>.unboxIfPrimitive: Class<*>
+  get() = primitiveByWrapper ?: this
 
 fun <T> Any.callProperty(name: String): T {
   @Suppress("UNCHECKED_CAST")
