@@ -37,6 +37,12 @@ internal object LatticeOrigins {
     IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.AssistedFactoryImplCreatorFunctionDeclaration)
   val LatticeGraphCreatorsObjectInvokeDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.LatticeGraphCreatorsObjectInvokeDeclaration)
+  val LatticeGraphAccessorCallableOverride: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.LatticeGraphAccessorCallableOverride)
+  val LatticeGraphInjectorCallableOverride: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.LatticeGraphInjectorCallableOverride)
+  val LatticeGraphFactoryCompanionGetter: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.LatticeGraphFactoryCompanionGetter)
   val InjectConstructorFactoryClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(LatticeKeys.InjectConstructorFactoryClassDeclaration)
   val MembersInjectorClassDeclaration: IrDeclarationOrigin =
