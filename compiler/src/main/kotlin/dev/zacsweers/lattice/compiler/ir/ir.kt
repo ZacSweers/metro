@@ -69,6 +69,7 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -103,6 +104,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isAny
 import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -124,6 +126,7 @@ import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
@@ -485,6 +488,10 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
   return irCall(constructor).apply {
     for (parameter in source.valueParameters) {
       putValueArgument(parameter.index, irGet(parameter))
+    }
+  }.apply {
+    for (typeParameter in source.typeParameters) {
+      putTypeArgument(typeParameter.index, typeParameter.defaultType)
     }
   }
 }
@@ -858,3 +865,18 @@ internal fun IrClass.requireSimpleFunction(name: String) =
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClassSymbol.requireSimpleFunction(name: String) =
   getSimpleFunction(name) ?: error("No function $name in class ${owner.classId}")
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun IrClass.requireNestedClass(name: Name): IrClass {
+  return nestedClasses.first { it.name == name }
+}
+
+@OptIn(UnsafeDuringIrConstructionAPI::class)
+internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T {
+  @Suppress("UNCHECKED_CAST")
+  return overriddenSymbols.singleOrNull()?.owner as? T? ?: this
+}
+
+internal val IrClass.isLatticeGenerated: Boolean get() {
+  return name in LatticeSymbols.Names.latticeNames
+}
