@@ -410,20 +410,20 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       // Graph class companion objects get creators
       val graphClass = classSymbol.requireContainingClassSymbol()
       val graphObject = graphObjects[graphClass.classId] ?: return emptySet()
-      names.add(SpecialNames.INIT)
+      names += SpecialNames.INIT
       val creator = graphObject.creator
       if (creator != null) {
         if (creator.isInterface) {
           // We can put the sam factory function on the companion
           creator.computeSAMFactoryFunction(session)
-          creator.function?.let { names.add(it.name) }
+          creator.function?.let { names += it.name }
         } else {
           // We will just generate a `factory()` function
-          names.add(LatticeSymbols.Names.factoryFunctionName)
+          names += LatticeSymbols.Names.factoryFunctionName
         }
       } else {
         // We'll generate a default invoke function
-        names.add(LatticeSymbols.Names.invoke)
+        names += LatticeSymbols.Names.invoke
       }
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphDeclaration)) {
       // LatticeGraph, generate a constructor and gather all accessors and injectors
@@ -435,16 +435,14 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       graphObject.computeAccessorsAndInjectors(session)
       names.addAll(graphObject.bindsOrAccessors.keys)
       names.addAll(graphObject.injectors.keys)
-
-      names
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
       // Graph factory impl, generating a constructor and its SAM function
       val creator =
         graphObjects.getValue(classSymbol.requireContainingClassSymbol().classId).creator!!
       // We can put the sam factory function on the companion
       creator.computeSAMFactoryFunction(session)
-      names.add(SpecialNames.INIT)
-      creator.function?.let { names.add(it.name) }
+      names += SpecialNames.INIT
+      creator.function?.let { names += it.name }
     }
 
     return names
