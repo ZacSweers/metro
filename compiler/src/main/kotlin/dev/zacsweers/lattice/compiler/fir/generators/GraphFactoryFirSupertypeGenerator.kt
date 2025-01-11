@@ -123,7 +123,7 @@ internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
     typeResolver: TypeResolveService,
   ): List<FirResolvedTypeRef> {
     // TODO is this needed for when we generate a companion object? Think not since we generate it
-    // ourselves directly
+    //  ourselves directly
     println("computeAdditionalSupertypesForGeneratedNestedClass: $klass")
     return super.computeAdditionalSupertypesForGeneratedNestedClass(klass, typeResolver)
   }
