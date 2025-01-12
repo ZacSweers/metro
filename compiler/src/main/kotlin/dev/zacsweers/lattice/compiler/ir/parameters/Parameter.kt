@@ -78,10 +78,10 @@ internal sealed interface Parameter : Comparable<Parameter> {
 
   companion object {
     private val COMPARATOR =
-      compareBy<Parameter> { it.kind }
-        .thenBy { it.name }
-        .thenBy { it.originalName }
-        .thenBy { it.typeKey }
-        .thenBy { it.assistedIdentifier }
+      compareBy(Parameter::kind)
+        .thenBy(Parameter::name)
+        .thenBy(Parameter::originalName)
+        .thenBy(Parameter::typeKey)
+        .thenBy(Parameter::assistedIdentifier)
   }
 }

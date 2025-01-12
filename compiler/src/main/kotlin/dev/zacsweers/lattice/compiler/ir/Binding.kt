@@ -70,7 +70,7 @@ internal sealed interface Binding {
     override val typeKey: TypeKey,
     override val parameters: Parameters<out Parameter>,
     override val dependencies: Map<TypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey },
+      parameters.nonInstanceParameters.associateBy(Parameter::typeKey),
   ) : Binding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val scope: IrAnnotation?
       get() = annotations.scope
@@ -118,7 +118,7 @@ internal sealed interface Binding {
     override val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters<ConstructorParameter>,
     override val dependencies: Map<TypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey },
+      parameters.nonInstanceParameters.associateBy(Parameter::typeKey),
     val aliasedType: ContextualTypeKey?,
     val callableId: CallableId = providerFunction.callableId,
   ) : Binding, BindingWithAnnotations {
@@ -275,10 +275,10 @@ internal sealed interface Binding {
     // Sorted for consistency
     val sourceBindings: MutableSet<Provided> =
       TreeSet(
-        compareBy<Binding> { it.typeKey }
-          .thenBy { it.nameHint }
-          .thenBy { it.scope }
-          .thenBy { it.parameters }
+        compareBy(Binding::typeKey)
+          .thenBy(Binding::nameHint)
+          .thenBy(Binding::scope)
+          .thenBy(Binding::parameters)
       ),
   ) : Binding {
     override val scope: IrAnnotation? = null
@@ -293,8 +293,8 @@ internal sealed interface Binding {
         Parameters.empty()
       } else {
         sourceBindings
-          .map { it.parameters }
-          .reduce { current, next -> current.mergeValueParametersWith(next) }
+          .map(Provided::parameters)
+          .reduce(Parameters<ConstructorParameter>::mergeValueParametersWith)
       }
 
     override val nameHint: String
@@ -335,7 +335,7 @@ internal sealed interface Binding {
     override val typeKey: TypeKey = contextualTypeKey.typeKey
 
     override val dependencies: Map<TypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey }
+      parameters.nonInstanceParameters.associateBy(Parameter::typeKey)
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
@@ -361,7 +361,7 @@ internal sealed interface Binding {
             type = irClass,
             injectedConstructor = injectableConstructor,
             annotations = classAnnotations,
-            isAssisted = parameters.valueParameters.any { it.isAssisted },
+            isAssisted = parameters.valueParameters.any(ConstructorParameter::isAssisted),
             typeKey = key,
             parameters = parameters,
           )

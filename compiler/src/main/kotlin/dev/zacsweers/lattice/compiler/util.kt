@@ -106,7 +106,7 @@ internal val isWordPrefixRegex = "^is([^a-z].*)".toRegex()
 internal fun String.asName(): Name = Name.identifier(this)
 
 internal val String.withoutLineBreaks: String
-  get() = lineSequence().joinToString(" ") { it.trim() }
+  get() = lineSequence().joinToString(" ", transform = String::trim)
 
 internal infix operator fun Name.plus(other: String) = (asString() + other).asName()
 

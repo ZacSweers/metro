@@ -35,7 +35,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
   private val predicate =
     LookupPredicate.create {
-      annotated(session.latticeClassIds.allContributesAnnotations.map { it.asSingleFqName() })
+      annotated(session.latticeClassIds.allContributesAnnotations.map(ClassId::asSingleFqName))
     }
 
   // NOTE this is only in-compilation

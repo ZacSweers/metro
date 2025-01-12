@@ -132,8 +132,8 @@ internal class InjectConstructorTransformer(
           addAll(memberInjectParameters)
         }
         .distinct()
-    val allValueParameters = allParameters.flatMap { it.valueParameters }
-    val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
+    val allValueParameters = allParameters.flatMap(Parameters<out Parameter>::valueParameters)
+    val nonAssistedParameters = allValueParameters.filterNot(Parameter::isAssisted)
 
     val ctor = factoryCls.primaryConstructor!!
 
@@ -199,7 +199,7 @@ internal class InjectConstructorTransformer(
   ) {
     invokeFunction.body =
       pluginContext.createIrBuilder(invokeFunction.symbol).irBlockBody {
-        val assistedArgs = invokeFunction.valueParameters.map { irGet(it) }
+        val assistedArgs = invokeFunction.valueParameters.map(::irGet)
         val newInstance =
           irInvoke(
               dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
@@ -270,7 +270,7 @@ internal class InjectConstructorTransformer(
     //  parameters that don't have default values. For those cases, we would need to keep them
     //  as-is. Something for another day.
     val mergedParameters =
-      allParameters.reduce { current, next -> current.mergeValueParametersWithUntyped(next) }
+      allParameters.reduce(Parameters<out Parameter>::mergeValueParametersWithUntyped)
 
     // Generate create()
     generateStaticCreateFunction(
@@ -286,7 +286,7 @@ internal class InjectConstructorTransformer(
       generateStaticNewInstanceFunction(
         context = latticeContext,
         parentClass = classToGenerateCreatorsIn,
-        sourceParameters = constructorParameters.valueParameters.map { it.ir },
+        sourceParameters = constructorParameters.valueParameters.map(ConstructorParameter::ir),
       ) { function ->
         irCallConstructor(targetConstructor, emptyList()).apply {
           for (index in constructorParameters.allParameters.indices) {

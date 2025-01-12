@@ -124,7 +124,8 @@ internal enum class LatticeOption(val raw: RawLatticeOption<*>) {
     RawLatticeOption(
       name = "logging",
       defaultValue = emptySet(),
-      valueDescription = LatticeLogger.Type.entries.joinToString("|") { it.name },
+      valueDescription =
+        LatticeLogger.Type.entries.joinToString("|", transform = LatticeLogger.Type::name),
       description = "Enabled logging types",
       required = false,
       allowMultipleOccurrences = false,

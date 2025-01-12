@@ -164,12 +164,10 @@ public fun ClassId.generateHintFileName(
       packageFqName,
       FqName.fromSegments(
         listOfNotNull(
-          packageFqName
-            .asString()
-            .takeIf { it.isNotEmpty() }
-            ?.replace('.', '_')
-            ?.let { if (capitalizePackage) it.capitalizeUS() else it },
-          *relativeClassName.pathSegments().map { it.asString() }.toTypedArray(),
+          packageFqName.asString().takeIf(String::isNotEmpty)?.replace('.', '_')?.let {
+            if (capitalizePackage) it.capitalizeUS() else it
+          },
+          *relativeClassName.pathSegments().map(Name::asString).toTypedArray(),
         )
       ),
       isLocal = false,

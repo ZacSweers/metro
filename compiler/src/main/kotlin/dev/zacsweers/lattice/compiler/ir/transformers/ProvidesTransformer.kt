@@ -48,6 +48,7 @@ import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -84,7 +85,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         .asSequence()
         // Skip fake overrides, we care only about the original declaration because those have
         // default values
-        .filterNot { it.isFakeOverride }
+        .filterNot(IrDeclaration::isFakeOverride)
         .toList()
     sourceDeclarations.forEach { nestedDeclaration ->
       when (nestedDeclaration) {
@@ -121,9 +122,8 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
   fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass {
     val reference =
-      binding.providerFunction.correspondingPropertySymbol?.owner?.let {
-        getOrPutCallableReference(it)
-      } ?: getOrPutCallableReference(binding.providerFunction)
+      binding.providerFunction.correspondingPropertySymbol?.owner?.let(::getOrPutCallableReference)
+        ?: getOrPutCallableReference(binding.providerFunction)
 
     // If it's from another module, look up its already-generated factory
     // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
@@ -366,15 +366,15 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
         context = latticeContext,
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee.owner,
-        sourceParameters = reference.parameters.valueParameters.map { it.ir },
+        sourceParameters = reference.parameters.valueParameters.map(ConstructorParameter::ir),
       ) { function ->
         val valueParameters = function.valueParameters
 
         val argumentsWithoutGraph: IrBuilderWithScope.() -> List<IrExpression> = {
-          valueParameters.drop(1).map { irGet(it) }
+          valueParameters.drop(1).map(::irGet)
         }
         val arguments: IrBuilderWithScope.() -> List<IrExpression> = {
-          valueParameters.map { irGet(it) }
+          valueParameters.map(::irGet)
         }
 
         when {

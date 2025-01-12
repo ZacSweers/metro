@@ -258,7 +258,7 @@ internal fun Appendable.appendBindingStackEntries(
   short: Boolean = true,
 ) {
   for (entry in entries) {
-    entry.render(graphName, short).prependIndent(indent).lineSequence().forEach { appendLine(it) }
+    entry.render(graphName, short).prependIndent(indent).lineSequence().forEach(::appendLine)
   }
   if (ellipse) {
     append(indent)
@@ -312,7 +312,7 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
     val reversed = stack.asReversed()
     val index = reversed.indexOfFirst { !it.contextKey.isIntoMultibinding && it.typeKey == key }
     if (index == -1) return emptyList()
-    return reversed.slice(index until reversed.size).filterNot { it.isSynthetic }
+    return reversed.slice(index until reversed.size).filterNot(Entry::isSynthetic)
   }
 
   override fun toString() = renderTable()

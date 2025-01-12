@@ -82,8 +82,8 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
     return declaration
       .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)
       .mapNotNull { it.classOrNull?.owner }
-      .filterNot { it.isInterface }
-      .mapNotNull { getOrGenerateInjector(it) }
+      .filterNot(IrClass::isInterface)
+      .mapNotNull(::getOrGenerateInjector)
       .toList()
       .asReversed() // Base types go first
   }
@@ -175,7 +175,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       parameters =
         injectedMembersByClass.values
           .flatten()
-          .reduce { current, next -> current.mergeValueParametersWith(next) }
+          .reduce(Parameters<MembersInjectParameter>::mergeValueParametersWith)
           .let {
             Parameters(
               Parameters.empty<MembersInjectParameter>().callableId,
@@ -213,7 +213,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
                 irInvoke(
                   irGet(instanceParam),
                   callee = params.ir!!.symbol,
-                  args = valueParameters.drop(1).map { irGet(it) },
+                  args = valueParameters.drop(1).map(::irGet),
                 )
               }
             irExprBodySafe(symbol, bodyExpression)

@@ -104,9 +104,9 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
     @Suppress("UNCHECKED_CAST") fun <T : Parameter> empty(): Parameters<T> = EMPTY as Parameters<T>
 
     val COMPARATOR =
-      compareBy<Parameters<*>> { it.instance }
-        .thenBy { it.extensionReceiver }
-        .thenComparator { a, b -> compareValues(a, b) }
+      compareBy(Parameters<*>::instance)
+        .thenBy(Parameters<*>::extensionReceiver)
+        .thenComparator(::compareValues)
 
     operator fun <T : Parameter> invoke(
       callableId: CallableId,
@@ -162,7 +162,7 @@ private class ParametersImpl<T : Parameter>(
               ir?.name ?: callableId.callableName
             }
           }
-      name?.let { append(it) }
+      name?.let<Name, StringBuilder?>(::append)
       if (!isProperty) {
         append('(')
         valueParameters.joinTo(this)

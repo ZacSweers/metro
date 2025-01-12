@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler.ir
 
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.render
 
@@ -48,7 +49,7 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
     val args =
       if (this is IrSimpleType) {
         arguments
-          .takeUnless { it.isEmpty() }
+          .takeUnless(List<IrTypeArgument>::isEmpty)
           ?.joinToString(", ", prefix = "<", postfix = ">") {
             it.typeOrNull?.renderShort() ?: "<error>"
           }
