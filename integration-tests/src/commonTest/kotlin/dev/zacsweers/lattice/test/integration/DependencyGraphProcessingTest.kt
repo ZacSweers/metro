@@ -196,6 +196,63 @@ class DependencyGraphProcessingTest {
   }
 
   @Test
+  fun `graph dependencies can be non-graphs`() {
+    val graph =
+      createGraphFactory<GraphWithNonGraphDependencies.Factory>()
+        .create(
+          intProvider = { 1 },
+          longProvider =
+            object : GraphWithNonGraphDependencies.LongProvider() {
+              override val long: Long = 2L
+            },
+          doubleProvider = GraphWithNonGraphDependencies.DoubleProvider(3.0),
+          stringProvider = GraphWithNonGraphDependencies.StringProvider("Hello, world!"),
+        )
+
+    assertEquals(1, graph.int)
+    assertEquals(2L, graph.long)
+    assertEquals(3.0, graph.double)
+    assertEquals("Hello, world!", graph.charSequence)
+    assertEquals("Hello, world!", graph.string)
+  }
+
+  @DependencyGraph
+  interface GraphWithNonGraphDependencies {
+
+    val int: Int
+    val long: Long
+    val double: Double
+    val charSequence: CharSequence
+    val string: String
+
+    @DependencyGraph.Factory
+    fun interface Factory {
+      fun create(
+        intProvider: IntProvider,
+        longProvider: LongProvider,
+        doubleProvider: DoubleProvider,
+        stringProvider: StringProvider,
+      ): GraphWithNonGraphDependencies
+    }
+
+    fun interface IntProvider {
+      fun provideInt(): Int
+    }
+
+    abstract class LongProvider {
+      abstract val long: Long
+    }
+
+    class DoubleProvider(val double: Double)
+
+    abstract class CharSequenceProvider(val charSequence: CharSequence)
+
+    class StringProvider(charSequence: CharSequence) : CharSequenceProvider(charSequence) {
+      fun provideString(): String = charSequence.toString()
+    }
+  }
+
+  @Test
   fun `graph factories can inherit abstract functions from base types`() {
     val graph =
       createGraphFactory<GraphWithInheritingAbstractFunction.Factory>().create("Hello, world!")
