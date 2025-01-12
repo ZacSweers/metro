@@ -65,7 +65,7 @@ dokka {
 
 allprojects {
   apply(plugin = "com.diffplug.spotless")
-  val spotlessFormatters: SpotlessExtension.() -> Unit = {
+  configure<SpotlessExtension> {
     format("misc") {
       target("*.gradle", "*.md", ".gitignore")
       trimTrailingWhitespace()
@@ -80,7 +80,7 @@ allprojects {
       targetExclude("**/spotless.kt")
     }
     kotlinGradle {
-      target("**/*.kts", "*.kts")
+      target("*.kts")
       ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
@@ -127,15 +127,6 @@ allprojects {
         "**/cycles/LongCycle.kt",
       )
     }
-  }
-  configure<SpotlessExtension> {
-    spotlessFormatters()
-    if (project.rootProject == project) {
-      predeclareDeps()
-    }
-  }
-  if (project.rootProject == project) {
-    configure<SpotlessExtensionPredeclare> { spotlessFormatters() }
   }
 }
 
