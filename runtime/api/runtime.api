@@ -18,6 +18,38 @@ public abstract interface annotation class dev/zacsweers/lattice/ClassKey : java
 	public abstract fun value ()Ljava/lang/Class;
 }
 
+public abstract interface annotation class dev/zacsweers/lattice/ContributesBinding : java/lang/annotation/Annotation {
+	public abstract fun replaces ()[Ljava/lang/Class;
+	public abstract fun scope ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/ContributesBinding$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/lattice/ContributesBinding;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoMap : java/lang/annotation/Annotation {
+	public abstract fun replaces ()[Ljava/lang/Class;
+	public abstract fun scope ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoMap$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/lattice/ContributesIntoMap;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoSet : java/lang/annotation/Annotation {
+	public abstract fun replaces ()[Ljava/lang/Class;
+	public abstract fun scope ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoSet$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/lattice/ContributesIntoSet;
+}
+
+public abstract interface annotation class dev/zacsweers/lattice/ContributesTo : java/lang/annotation/Annotation {
+	public abstract fun replaces ()[Ljava/lang/Class;
+	public abstract fun scope ()Ljava/lang/Class;
+}
+
 public abstract interface annotation class dev/zacsweers/lattice/DependencyGraph : java/lang/annotation/Annotation {
 }
 

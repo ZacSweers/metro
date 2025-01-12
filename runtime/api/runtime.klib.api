@@ -6,6 +6,33 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.lattice:runtime>
+open annotation class <#A: kotlin/Any?> dev.zacsweers.lattice/ContributesBinding : kotlin/Annotation { // dev.zacsweers.lattice/ContributesBinding|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.lattice/ContributesBinding.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+
+    final val replaces // dev.zacsweers.lattice/ContributesBinding.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesBinding.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.lattice/ContributesBinding.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesBinding.scope.<get-scope>|<get-scope>(){}[0]
+}
+
+open annotation class <#A: kotlin/Any?> dev.zacsweers.lattice/ContributesIntoMap : kotlin/Annotation { // dev.zacsweers.lattice/ContributesIntoMap|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.lattice/ContributesIntoMap.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+
+    final val replaces // dev.zacsweers.lattice/ContributesIntoMap.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesIntoMap.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.lattice/ContributesIntoMap.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesIntoMap.scope.<get-scope>|<get-scope>(){}[0]
+}
+
+open annotation class <#A: kotlin/Any?> dev.zacsweers.lattice/ContributesIntoSet : kotlin/Annotation { // dev.zacsweers.lattice/ContributesIntoSet|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.lattice/ContributesIntoSet.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+
+    final val replaces // dev.zacsweers.lattice/ContributesIntoSet.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesIntoSet.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.lattice/ContributesIntoSet.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesIntoSet.scope.<get-scope>|<get-scope>(){}[0]
+}
+
 open annotation class dev.zacsweers.lattice/Assisted : kotlin/Annotation { // dev.zacsweers.lattice/Assisted|null[0]
     constructor <init>(kotlin/String = ...) // dev.zacsweers.lattice/Assisted.<init>|<init>(kotlin.String){}[0]
 
@@ -30,6 +57,15 @@ open annotation class dev.zacsweers.lattice/ClassKey : kotlin/Annotation { // de
 
     final val value // dev.zacsweers.lattice/ClassKey.value|{}value[0]
         final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ClassKey.value.<get-value>|<get-value>(){}[0]
+}
+
+open annotation class dev.zacsweers.lattice/ContributesTo : kotlin/Annotation { // dev.zacsweers.lattice/ContributesTo|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.lattice/ContributesTo.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+
+    final val replaces // dev.zacsweers.lattice/ContributesTo.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesTo.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.lattice/ContributesTo.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesTo.scope.<get-scope>|<get-scope>(){}[0]
 }
 
 open annotation class dev.zacsweers.lattice/DependencyGraph : kotlin/Annotation { // dev.zacsweers.lattice/DependencyGraph|null[0]
