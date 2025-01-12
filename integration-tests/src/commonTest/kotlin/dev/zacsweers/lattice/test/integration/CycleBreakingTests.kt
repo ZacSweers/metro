@@ -22,9 +22,9 @@ import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.createGraphFactory
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
-import org.junit.Test
 
 class CycleBreakingTests {
   @Test
