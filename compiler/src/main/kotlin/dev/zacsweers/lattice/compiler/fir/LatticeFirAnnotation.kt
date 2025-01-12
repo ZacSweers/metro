@@ -35,12 +35,6 @@ internal class LatticeFirAnnotation(val fir: FirAnnotationCall) {
 
   fun simpleString() = buildString { renderAsAnnotation(fir, simple = true) }
 
-  fun isQualifier(session: FirSession) =
-    fir.isAnnotatedWithAny(session, session.latticeClassIds.qualifierAnnotations)
-
-  fun isScope(session: FirSession) =
-    fir.isAnnotatedWithAny(session, session.latticeClassIds.scopeAnnotations)
-
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false

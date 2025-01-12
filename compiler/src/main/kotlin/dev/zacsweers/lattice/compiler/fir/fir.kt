@@ -127,13 +127,6 @@ internal fun FirAnnotationContainer.isAnnotatedWithAny(
   return names.any { hasAnnotation(it, session) }
 }
 
-internal fun FirBasedSymbol<*>.annotationsIn(
-  session: FirSession,
-  names: Set<ClassId>,
-): Sequence<FirAnnotation> {
-  return resolvedAnnotationsWithClassIds.annotationsIn(session, names)
-}
-
 internal fun FirAnnotationContainer.annotationsIn(
   session: FirSession,
   names: Set<ClassId>,
@@ -191,22 +184,11 @@ internal inline fun Visibility.checkVisibility(
   }
 }
 
-@OptIn(SymbolInternals::class) // TODO is there a non-internal API?
-internal fun FirClass.allSuperTypeConeRefs(session: FirSession): Sequence<ConeClassLikeType> {
-  return sequence {
-    yieldAll(superConeTypes)
-    for (supertype in superConeTypes) {
-      val clazz = supertype.toClassSymbol(session)
-      clazz?.resolvedSuperTypeRefs?.mapNotNull { it.coneTypeSafe() }
-    }
-  }
-}
-
 internal fun FirClassSymbol<*>.allFunctions(session: FirSession): Sequence<FirNamedFunctionSymbol> {
   return sequence {
     yieldAll(declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>())
     yieldAll(
-      lookupSuperTypes(this@allFunctions, true, true, session)
+      lookupSuperTypes(symbol = this@allFunctions, lookupInterfaces = true, deep = true, useSiteSession = session)
         .mapNotNull { it.toClassSymbol(session) }
         .flatMap { it.allFunctions(session) }
     )
@@ -240,7 +222,12 @@ internal fun FirClassSymbol<*>.callableDeclarations(
           .flatMap {
             // If we're recursing up, we no longer want to include ancestors because we're handling
             // that here
-            it.callableDeclarations(session, true, false, yieldAncestorsFirst)
+            it.callableDeclarations(
+              session = session,
+              includeSelf = true,
+              includeAncestors = false,
+              yieldAncestorsFirst = yieldAncestorsFirst
+            )
           }
       )
     }
@@ -560,10 +547,6 @@ internal fun List<FirAnnotation>.scopeAnnotation(session: FirSession): LatticeFi
 
 internal fun Sequence<FirAnnotation>.scopeAnnotation(session: FirSession): LatticeFirAnnotation? =
   annotationAnnotatedWithAny(session, session.latticeClassIds.scopeAnnotations)
-
-internal fun FirBasedSymbol<*>.scopeAnnotation(session: FirSession): LatticeFirAnnotation? {
-  return resolvedAnnotationsWithArguments.scopeAnnotation(session)
-}
 
 // TODO add a single = true|false param? How would we propagate errors
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(

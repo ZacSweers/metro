@@ -66,19 +66,17 @@ internal class LatticeFirExtensionRegistrar(
     delegate: ((FirSession) -> FirDeclarationGenerationExtension),
     enableLogging: Boolean = false,
   ): FirDeclarationGenerationExtension.Factory {
-    return object : FirDeclarationGenerationExtension.Factory {
-      override fun create(session: FirSession): FirDeclarationGenerationExtension {
-        val logger =
-          if (enableLogging) {
-            loggerFor(LatticeLogger.Type.FirDeclarationGeneration, tag)
-          } else {
-            LatticeLogger.NONE
-          }
-        return if (logger == LatticeLogger.NONE) {
-          delegate(session)
+    return FirDeclarationGenerationExtension.Factory { session ->
+      val logger =
+        if (enableLogging) {
+          loggerFor(LatticeLogger.Type.FirDeclarationGeneration, tag)
         } else {
-          LoggingFirDeclarationGenerationExtension(session, logger, delegate(session))
+          LatticeLogger.NONE
         }
+      if (logger == LatticeLogger.NONE) {
+        delegate(session)
+      } else {
+        LoggingFirDeclarationGenerationExtension(session, logger, delegate(session))
       }
     }
   }

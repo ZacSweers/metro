@@ -34,6 +34,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.typeParameterSymbols
 import org.jetbrains.kotlin.fir.copy
+import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -68,7 +69,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   private val assistedFactoryAnnotationPredicate by unsafeLazy {
-    annotated(session.latticeClassIds.assistedFactoryAnnotations.map { it.asSingleFqName() })
+    annotated(session.latticeClassIds.assistedFactoryAnnotations.map(ClassId::asSingleFqName))
   }
 
   private val FirClassSymbol<*>.isAssistedImplClass: Boolean
@@ -167,7 +168,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
               }
             }
 
-            superType { typeParameterRefs -> owner.constructType(typeParameterRefs) }
+            superType(owner::constructType)
           }
           .symbol
       }
@@ -198,7 +199,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
             typeProvider = { typeParameterRefs ->
               implClass.injectedClass.classId
                 .createNestedClassId(LatticeSymbols.Names.latticeFactory)
-                .constructClassLikeType(typeParameterRefs.mapToArray { it.toConeType() })
+                .constructClassLikeType(typeParameterRefs.mapToArray(FirTypeParameterRef::toConeType))
             },
           )
         }
@@ -258,7 +259,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
             typeProvider = {
               implClass.injectedClass.classId
                 .createNestedClassId(LatticeSymbols.Names.latticeFactory)
-                .constructClassLikeType(it.mapToArray { it.toConeType() })
+                .constructClassLikeType(it.mapToArray(FirTypeParameterRef::toConeType))
             },
             key = LatticeKeys.ValueParameter,
           )
@@ -267,7 +268,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
         // declare the function override
         generateMemberFunction(
           nonNullContext.owner,
-          returnTypeProvider = { implClass.injectedClass.constructType(it) },
+          returnTypeProvider = implClass.injectedClass::constructType,
           CallableId(nonNullContext.owner.classId, LatticeSymbols.Names.create),
           LatticeKeys.AssistedFactoryImplCreatorFunctionDeclaration.origin,
         ) {

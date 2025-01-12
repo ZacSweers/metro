@@ -77,7 +77,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     context: MemberGenerationContext,
   ): Set<Name> {
     assistedFactoriesToClasses[classSymbol]?.let { targetClass ->
-      assistedInjectClasses[targetClass]?.let { constructor ->
+      assistedInjectClasses[targetClass]?.let {
         // Need to generate a SAM create() for this
         val id = CallableId(classSymbol.classId, LatticeSymbols.Names.create)
         createIdsToFactories[id] = classSymbol
@@ -111,7 +111,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
                 LatticeFirValueParameter(session, param)
               }
           val createFunction =
-            generateCreateFunction(assistedParams, targetClass, factoryClass, callableId)
+            generateCreateFunction(assistedParams, targetClass, callableId)
           return listOf(createFunction.symbol)
         }
       }
@@ -122,7 +122,6 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
   private fun FirExtension.generateCreateFunction(
     assistedParams: List<LatticeFirValueParameter>,
     targetClass: FirClassLikeSymbol<*>,
-    factoryClass: FirClassSymbol<*>,
     callableId: CallableId,
   ): FirSimpleFunction {
     return generateMemberFunction(

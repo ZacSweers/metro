@@ -115,7 +115,7 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
       valueParameters: List<T>,
       ir: IrFunction?,
     ): Parameters<T> =
-      ParametersImpl<T>(callableId, instance, extensionReceiver, valueParameters).apply {
+      ParametersImpl(callableId, instance, extensionReceiver, valueParameters).apply {
         ir?.let { this.ir = it }
       }
   }

@@ -35,11 +35,7 @@ internal class FirContextualTypeKey(
   val isLazyWrappedInProvider: Boolean = false,
   val hasDefault: Boolean = false,
   val isDeferrable: Boolean = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider,
-  val isIntoMultibinding: Boolean = false,
 ) {
-
-  val requiresProviderInstance: Boolean =
-    isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
 
   val originalType: ConeKotlinType
     get() =
@@ -89,7 +85,6 @@ internal class FirContextualTypeKey(
         qualifierAnnotation =
           callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
         hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
-        isIntoMultibinding = false,
       )
     }
   }
@@ -99,18 +94,16 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
   session: FirSession,
   qualifierAnnotation: LatticeFirAnnotation?,
   hasDefault: Boolean,
-  isIntoMultibinding: Boolean,
 ): FirContextualTypeKey {
   val declaredType = this
-  val rawClass = declaredType
-  val rawClassId = rawClass.classId
+  val rawClassId = declaredType.classId
 
   val isWrappedInProvider = rawClassId in session.latticeClassIds.providerTypes
   val isWrappedInLazy = rawClassId in session.latticeClassIds.lazyTypes
   val isLazyWrappedInProvider =
     isWrappedInProvider &&
       declaredType.typeArguments[0].expectAsOrNull<ConeKotlinTypeProjection>()?.type?.classId in
-        session.latticeClassIds.lazyTypes
+      session.latticeClassIds.lazyTypes
 
   val type =
     when {
@@ -122,8 +115,10 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
           .single()
           .expectAs<ConeKotlinTypeProjection>()
           .type
+
       isWrappedInProvider || isWrappedInLazy ->
         declaredType.typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
+
       else -> declaredType
     }
 
@@ -147,10 +142,9 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
               // TODO could we actually support these?
               qualifierAnnotation = null,
               hasDefault = false,
-              isIntoMultibinding = false,
             )
 
-        valueTypeContextKey.isDeferrable == true
+        valueTypeContextKey.isDeferrable
       }
 
   val typeKey = FirTypeKey(type, qualifierAnnotation)
@@ -161,6 +155,5 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
     isLazyWrappedInProvider = isLazyWrappedInProvider,
     hasDefault = hasDefault,
     isDeferrable = isDeferrable,
-    isIntoMultibinding = isIntoMultibinding,
   )
 }

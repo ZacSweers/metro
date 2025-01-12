@@ -248,7 +248,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     }
   }
 
-  fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
+  private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
     val instanceReceiver = if (owner.isCompanion) null else owner.defaultType()
     val params =
       when (this) {
@@ -270,7 +270,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     val shouldGenerateObject by unsafeLazy {
       instanceReceiver == null && (isProperty || valueParameters.isEmpty())
     }
-    val isProperty
+    private val isProperty
       get() = symbol is FirPropertySymbol
 
     val returnType
