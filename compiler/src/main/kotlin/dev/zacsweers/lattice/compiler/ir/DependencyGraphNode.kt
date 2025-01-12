@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
-  val dependencies: List<DependencyGraphNode>,
+  val dependencies: Map<TypeKey, DependencyGraphNode>,
   val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, LatticeSimpleFunction>>,
   // Types accessible via this graph (includes inherited)
@@ -43,8 +43,8 @@ internal data class DependencyGraphNode(
   // Lazy-wrapped to cache these per-node
   val allDependencies by lazy {
     sequence {
-        yieldAll(dependencies)
-        dependencies.forEach { node -> yieldAll(node.dependencies) }
+        yieldAll(dependencies.values)
+        dependencies.values.forEach { node -> yieldAll(node.dependencies.values) }
       }
       .toSet()
   }
