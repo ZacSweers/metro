@@ -103,7 +103,6 @@ internal class ContextualTypeKey(
   }
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrType.isLatticeProviderType(context: LatticeTransformerContext): Boolean {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
@@ -113,7 +112,6 @@ internal fun IrType.isLatticeProviderType(context: LatticeTransformerContext): B
   return rawTypeClass!!.implementsAny(context.pluginContext, context.symbols.providerTypes)
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrType.asContextualTypeKey(
   context: LatticeTransformerContext,
   qualifierAnnotation: IrAnnotation?,

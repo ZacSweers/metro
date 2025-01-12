@@ -80,7 +80,7 @@ internal fun FirExtension.generateMemberFunction(
   )
 }
 
-@OptIn(ExperimentalContracts::class, SymbolInternals::class)
+@OptIn(ExperimentalContracts::class)
 internal fun FirExtension.generateMemberFunction(
   owner: FirClassLikeSymbol<*>,
   returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,

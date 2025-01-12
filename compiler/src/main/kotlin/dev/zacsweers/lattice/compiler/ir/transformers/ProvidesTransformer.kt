@@ -487,8 +487,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // TODO still necessary in IR?
     val useGetPrefix by unsafeLazy { isProperty && !isWordPrefixRegex.matches(name.asString()) }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class) val packageName = graphParent.packageFqName!!
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
+    val packageName = graphParent.packageFqName!!
     val simpleName by lazy {
       buildString {
         if (useGetPrefix) {

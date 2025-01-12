@@ -120,7 +120,6 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     return super.generateFunctions(callableId, context)
   }
 
-  @OptIn(SymbolInternals::class)
   private fun FirExtension.generateCreateFunction(
     assistedParams: List<LatticeFirValueParameter>,
     targetClass: FirClassLikeSymbol<*>,

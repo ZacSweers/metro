@@ -129,7 +129,6 @@ internal class LatticeAnnotations<T>(
     )
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrAnnotationContainer.latticeAnnotations(
   ids: LatticeClassIds
 ): LatticeAnnotations<IrAnnotation> = latticeAnnotations(ids, null)

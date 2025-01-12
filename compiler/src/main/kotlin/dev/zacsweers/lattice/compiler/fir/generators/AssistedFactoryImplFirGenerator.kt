@@ -225,7 +225,6 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
     }
   }
 
-  @OptIn(SymbolInternals::class)
   override fun generateFunctions(
     callableId: CallableId,
     context: MemberGenerationContext?,
