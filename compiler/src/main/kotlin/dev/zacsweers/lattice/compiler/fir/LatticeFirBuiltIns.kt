@@ -17,12 +17,14 @@ package dev.zacsweers.lattice.compiler.fir
 
 import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeOptions
+import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent.Factory
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 
 internal class LatticeFirBuiltIns(
@@ -33,6 +35,10 @@ internal class LatticeFirBuiltIns(
 
   val errorFunctionSymbol by unsafeLazy {
     session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).single()
+  }
+
+  val originClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.latticeOrigin) as FirRegularClassSymbol
   }
 
   companion object {

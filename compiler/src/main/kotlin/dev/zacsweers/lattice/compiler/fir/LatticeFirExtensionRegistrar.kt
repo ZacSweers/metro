@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.compiler.LatticeLogger
 import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryImplFirGenerator
+import dev.zacsweers.lattice.compiler.fir.generators.ContributionsFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.InjectedClassFirGenerator
@@ -50,6 +51,7 @@ internal class LatticeFirExtensionRegistrar(
     }
     +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, false)
     +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, false)
+    +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
   }
 

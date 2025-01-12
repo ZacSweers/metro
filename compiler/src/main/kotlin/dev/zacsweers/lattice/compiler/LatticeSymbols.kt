@@ -70,6 +70,7 @@ internal class LatticeSymbols(
     val jsExportIgnore = ClassId.fromString("kotlin/js/JsExport.Ignore")
     val latticeFactory = ClassId(FqNames.latticeRuntimeInternalPackage, Names.factoryClassName)
     val latticeProvider = ClassId(FqNames.latticeRuntimePackage, Names.providerClassName)
+    val latticeOrigin = ClassId(FqNames.latticeRuntimeInternalPackage, "Origin".asName())
     val membersInjector = ClassId(FqNames.latticeRuntimePackage, Names.membersInjector)
     val lazy = ClassId(kotlinPackageFqn, Name.identifier("Lazy"))
     val map = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Map"))

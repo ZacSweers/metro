@@ -112,10 +112,10 @@ internal class LatticeClassIds(
   private val contributesIntoMapAnnotation =
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesIntoMap")
 
-  private val contributesToAnnotations = setOf(contributesToAnnotation) // TODO custom
-  private val contributesBindingAnnotations = setOf(contributesBindingAnnotation) // TODO custom
-  private val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) // TODO custom
-  private val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) // TODO custom
+  val contributesToAnnotations = setOf(contributesToAnnotation) // TODO custom
+  val contributesBindingAnnotations = setOf(contributesBindingAnnotation) // TODO custom
+  val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) // TODO custom
+  val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) // TODO custom
   val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +
