@@ -149,7 +149,7 @@ class CyclesTest {
    */
   // TODO I'm not sure what's functionally different about
   //  what lattice generates and what dagger generates, but this infinite loops at runtime
-  @Ignore("Not supported yet, see above")
+  @Ignore
   @Test
   fun providerMapIndirectionCycle() {
     val cycleMapGraph = createGraph<CycleMapGraph>()
