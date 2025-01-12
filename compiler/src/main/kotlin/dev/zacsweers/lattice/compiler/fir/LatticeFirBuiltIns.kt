@@ -21,6 +21,7 @@ import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
+import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent.Factory
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 

@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.ir.expressions.IrGetValue
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
-import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.deepCopyWithoutPatchingParents
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -98,7 +97,7 @@ internal fun LatticeTransformerContext.copyParameterDefaultValues(
                 valueParameters = emptyList(),
                 returnType = parameter.type,
                 receiverParameter = null,
-              ) { function ->
+              ) {
                 +irReturn(
                   defaultValue.expression
                     .deepCopyWithoutPatchingParents()

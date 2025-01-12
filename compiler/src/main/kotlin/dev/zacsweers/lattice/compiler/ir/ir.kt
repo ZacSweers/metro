@@ -15,8 +15,6 @@
  */
 package dev.zacsweers.lattice.compiler.ir
 
-import dev.zacsweers.lattice.compiler.LatticeOrigin
-import dev.zacsweers.lattice.compiler.LatticeOrigins
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -28,26 +26,20 @@ import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
-import org.jetbrains.kotlin.backend.jvm.ir.erasedUpperBound
 import org.jetbrains.kotlin.backend.jvm.ir.parentClassId
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
-import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.IrGeneratorContext
 import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
-import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
-import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
@@ -64,40 +56,30 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrExternalPackageFragment
-import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
-import org.jetbrains.kotlin.ir.declarations.addMember
-import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
-import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
-import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.symbols.impl.IrSimpleFunctionSymbolImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
 import org.jetbrains.kotlin.ir.types.classOrNull
@@ -105,19 +87,11 @@ import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.isAny
-import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
-import org.jetbrains.kotlin.ir.util.addSimpleDelegatingConstructor
-import org.jetbrains.kotlin.ir.util.allOverridden
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.copyTo
-import org.jetbrains.kotlin.ir.util.copyValueParametersFrom
-import org.jetbrains.kotlin.ir.util.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -125,14 +99,10 @@ import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
-import org.jetbrains.kotlin.ir.util.toIrConst
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /** Finds the line and column of [this] within its file. */
@@ -207,24 +177,6 @@ internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIr
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
 }
 
-internal fun IrPluginContext.buildBlockBody(
-  blockBody: DeclarationIrBuilder.(MutableList<IrStatement>) -> Unit = {}
-): IrBlockBody {
-  val startOffset = UNDEFINED_OFFSET
-  val endOffset = UNDEFINED_OFFSET
-  val builder =
-    DeclarationIrBuilder(
-      generatorContext = this,
-      symbol = IrSimpleFunctionSymbolImpl(),
-      startOffset = startOffset,
-      endOffset = endOffset,
-    )
-  val body =
-    irFactory.createBlockBody(startOffset = startOffset, endOffset = endOffset).apply {
-      builder.blockBody(statements)
-    }
-  return body
-}
 
 @OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrBuilderWithScope.irInvoke(
@@ -241,55 +193,6 @@ internal fun IrBuilderWithScope.irInvoke(
   call.dispatchReceiver = dispatchReceiver
   args.forEachIndexed(call::putValueArgument)
   return call
-}
-
-internal fun IrClass.addOverride(
-  baseFunction: IrSimpleFunction,
-  modality: Modality = Modality.FINAL,
-  overriddenSymbols: List<IrSimpleFunctionSymbol> = listOf(baseFunction.symbol),
-): IrSimpleFunction =
-  addOverride(
-      baseFunction.kotlinFqName,
-      baseFunction.name,
-      baseFunction.returnType,
-      modality,
-      overriddenSymbols,
-    )
-    .apply {
-      dispatchReceiverParameter = this@addOverride.thisReceiver?.copyTo(this)
-      copyValueParametersFrom(baseFunction)
-    }
-
-internal fun IrClass.addOverride(
-  baseFqName: FqName,
-  simpleName: Name,
-  returnType: IrType,
-  modality: Modality = Modality.FINAL,
-  overriddenSymbols: List<IrSimpleFunctionSymbol> = findOverridesOf(simpleName, baseFqName),
-): IrSimpleFunction =
-  addFunction(simpleName.asString(), returnType, modality).apply {
-    this.overriddenSymbols = overriddenSymbols
-  }
-
-@OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun IrClass.findOverridesOf(
-  simpleName: Name,
-  baseFqName: FqName,
-): List<IrSimpleFunctionSymbol> {
-  return superTypes
-    .mapNotNull { superType ->
-      superType.classOrNull?.owner?.takeIf { superClass ->
-        superClass.isSubclassOfFqName(baseFqName)
-      }
-    }
-    .flatMap { superClass ->
-      superClass.functions
-        .filter { function ->
-          function.name == simpleName && function.overridesFunctionIn(baseFqName)
-        }
-        .map { it.symbol }
-        .toList()
-    }
 }
 
 internal fun IrStatementsBuilder<*>.irTemporary(
@@ -312,21 +215,6 @@ internal fun IrStatementsBuilder<*>.irTemporary(
   +temporary
   return temporary
 }
-
-internal fun IrMutableAnnotationContainer.addAnnotation(
-  type: IrType,
-  constructorSymbol: IrConstructorSymbol,
-  body: IrConstructorCall.() -> Unit = {},
-) {
-  annotations += IrConstructorCallImpl.fromSymbolOwner(type, constructorSymbol).apply(body)
-}
-
-internal fun IrClass.isSubclassOfFqName(fqName: FqName): Boolean =
-  fqNameWhenAvailable == fqName || superTypes.any { it.erasedUpperBound.isSubclassOfFqName(fqName) }
-
-internal fun IrSimpleFunction.overridesFunctionIn(fqName: FqName): Boolean =
-  parentClassOrNull?.fqNameWhenAvailable == fqName ||
-    allOverridden().any { it.parentClassOrNull?.fqNameWhenAvailable == fqName }
 
 /**
  * Computes a hash key for this annotation instance composed of its underlying type and value
@@ -451,33 +339,6 @@ internal fun irLambda(
   )
 }
 
-internal fun IrFactory.addCompanionObject(
-  symbols: LatticeSymbols,
-  parent: IrClass,
-  name: Name = LatticeSymbols.Names.companionObject,
-  body: IrClass.() -> Unit = {},
-): IrClass {
-  return buildClass {
-      this.name = name
-      this.modality = Modality.FINAL
-      this.kind = ClassKind.OBJECT
-      this.isCompanion = true
-    }
-    .apply {
-      this.parent = parent
-      parent.addMember(this)
-      this.origin = LatticeOrigin
-      this.createImplicitParameterDeclarationWithWrappedDescriptor()
-      this.addSimpleDelegatingConstructor(
-        symbols.anyConstructor,
-        symbols.pluginContext.irBuiltIns,
-        isPrimary = true,
-        origin = LatticeOrigin,
-      )
-      body()
-    }
-}
-
 internal val IrClass.isCompanionObject: Boolean
   get() = isObject && isCompanion
 
@@ -496,17 +357,6 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
         putTypeArgument(typeParameter.index, typeParameter.defaultType)
       }
     }
-}
-
-internal fun IrBuilderWithScope.irCallWithSameParameters(
-  source: IrSimpleFunction,
-  function: IrFunctionSymbol,
-): IrFunctionAccessExpression {
-  return irCall(function).apply {
-    for (parameter in source.valueParameters) {
-      putValueArgument(parameter.index, irGet(parameter))
-    }
-  }
 }
 
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
@@ -559,73 +409,49 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     // Not a provider, nothing else to do here!
     return bindingCode
   }
-  val providerInstance = bindingCode
   return when {
     type.isLazyWrappedInProvider -> {
       // ProviderOfLazy.create(provider)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
         callee = symbols.providerOfLazyCreate,
-        args = listOf(providerInstance),
+        args = listOf(bindingCode),
         typeHint = type.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
       )
     }
-    type.isWrappedInProvider -> providerInstance
+
+    type.isWrappedInProvider -> bindingCode
     // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
     // (usually the container is a joined type), therefore we use
     // `.lazy(..)` to convert the Provider to a Lazy. Assisted
     // parameters behave differently and the Lazy type is not changed
     // to a Provider and we can simply use the parameter name in the
     // argument list.
-    type.isWrappedInLazy && isAssisted -> providerInstance
+    type.isWrappedInLazy && isAssisted -> bindingCode
     type.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
         callee = symbols.doubleCheckLazy,
-        args = listOf(providerInstance),
+        args = listOf(bindingCode),
         typeHint = type.typeKey.type.wrapInLazy(symbols),
       )
     }
+
     isAssisted || isGraphInstance -> {
       // provider
-      providerInstance
+      bindingCode
     }
+
     else -> {
       // provider.invoke()
       irInvoke(
-        dispatchReceiver = providerInstance,
+        dispatchReceiver = bindingCode,
         callee = symbols.providerInvoke,
         typeHint = type.typeKey.type,
       )
     }
   }
-}
-
-internal fun LatticeTransformerContext.assignConstructorParamsToFields(
-  constructor: IrConstructor,
-  clazz: IrClass,
-  parameters: List<Parameter>,
-): Map<Parameter, IrField> {
-  // Add a constructor parameter + field for every parameter.
-  // This should be the provider type unless it's a special instance component type
-  val parametersToFields = mutableMapOf<Parameter, IrField>()
-  for (parameter in parameters) {
-    if (parameter.isAssisted) continue
-    val irParameter =
-      constructor.addValueParameter(
-        parameter.name,
-        parameter.providerType,
-        LatticeOrigins.ValueParameter,
-      )
-    val irField =
-      clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
-        isFinal = true
-        initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
-      }
-    parametersToFields[parameter] = irField
-  }
-  return parametersToFields
 }
 
 // TODO eventually just return a Map<TypeKey, IrField>
@@ -781,38 +607,11 @@ internal fun IrClass.implementsAny(
   }
 }
 
-internal fun IrConstructorCall.getSingleConstStringArgumentOrNull(): String? =
-  (getValueArgument(0) as IrConst?)?.value as String?
-
 internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? =
   (getValueArgument(0) as IrConst?)?.value as Boolean?
 
-internal fun IrBuilderWithScope.irFloat(value: Float) =
-  value.toIrConst(this.context.irBuiltIns.floatType)
-
-internal fun IrBuilderWithScope.irDouble(value: Double) =
-  value.toIrConst(this.context.irBuiltIns.doubleType)
-
-internal fun IrBuilderWithScope.kClassReference(classType: IrType) =
-  IrClassReferenceImpl(
-    startOffset,
-    endOffset,
-    context.irBuiltIns.kClassClass.starProjectedType,
-    context.irBuiltIns.kClassClass,
-    classType,
-  )
-
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
   return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
-}
-
-@OptIn(UnsafeDuringIrConstructionAPI::class)
-internal fun IrClass.getSuperClassNotAny(): IrClass? {
-  val parentClass =
-    superTypes
-      .mapNotNull { it.classOrNull?.owner }
-      .singleOrNull { it.kind == ClassKind.CLASS || it.kind == ClassKind.ENUM_CLASS } ?: return null
-  return if (parentClass.defaultType.isAny()) null else parentClass
 }
 
 internal val IrDeclarationParent.isExternalParent: Boolean

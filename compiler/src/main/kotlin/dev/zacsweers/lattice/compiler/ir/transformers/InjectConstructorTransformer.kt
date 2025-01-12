@@ -176,7 +176,7 @@ internal class InjectConstructorTransformer(
     // Provider<Lazy<T>>
     override fun invoke(): Example<T> = newInstance(ProviderOfLazy.create(valueProvider))
     */
-    val invoke = factoryCls.requireSimpleFunction(LatticeSymbols.StringNames.invoke)
+    val invoke = factoryCls.requireSimpleFunction(LatticeSymbols.StringNames.INVOKE)
 
     implementInvokeOrGetBody(
       invoke.owner,

@@ -34,24 +34,16 @@ internal class LatticeClassIds(
   customIntoSetAnnotations: Set<ClassId> = emptySet(),
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
   customMapKeyAnnotations: Set<ClassId> = emptySet(),
-  customClassKeyAnnotations: Set<ClassId> = emptySet(),
-  customIntKeyAnnotations: Set<ClassId> = emptySet(),
-  customLongKeyAnnotations: Set<ClassId> = emptySet(),
-  customStringKeyAnnotations: Set<ClassId> = emptySet(),
   customLazyClassKeyAnnotations: Set<ClassId> = emptySet(),
   customIntoMapAnnotations: Set<ClassId> = emptySet(),
   customMultibindsAnnotations: Set<ClassId> = emptySet(),
 ) {
-  fun FqName.classIdOf(simpleName: String): ClassId {
+  private fun FqName.classIdOf(simpleName: String): ClassId {
     return classIdOf(Name.identifier(simpleName))
   }
 
-  fun FqName.classIdOf(simpleName: Name): ClassId {
+  private fun FqName.classIdOf(simpleName: Name): ClassId {
     return ClassId(this, simpleName)
-  }
-
-  fun FqName.classIdOf(relativeClassName: FqName): ClassId {
-    return ClassId(this, relativeClassName, isLocal = false)
   }
 
   // Graphs
@@ -63,7 +55,7 @@ internal class LatticeClassIds(
     setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory")))
 
   // Assisted inject
-  val latticeAssisted = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Assisted")
+  private val latticeAssisted = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Assisted")
   val assistedAnnotations = setOf(latticeAssisted) + customAssistedAnnotations
   val latticeAssistedFactory =
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("AssistedFactory")
@@ -101,18 +93,6 @@ internal class LatticeClassIds(
   val mapKeyAnnotations =
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("MapKey")) +
       customMapKeyAnnotations
-  val classKeyAnnotations =
-    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ClassKey")) +
-      customClassKeyAnnotations
-  val intKeyAnnotations =
-    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("IntKey")) +
-      customIntKeyAnnotations
-  val longKeyAnnotations =
-    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("LongKey")) +
-      customLongKeyAnnotations
-  val stringKeyAnnotations =
-    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("StringKey")) +
-      customStringKeyAnnotations
   val lazyClassKeyAnnotations =
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("LazyClassKey")) +
       customLazyClassKeyAnnotations
@@ -132,10 +112,10 @@ internal class LatticeClassIds(
   private val contributesIntoMapAnnotation =
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesIntoMap")
 
-  val contributesToAnnotations = setOf(contributesToAnnotation) // TODO custom
-  val contributesBindingAnnotations = setOf(contributesBindingAnnotation) // TODO custom
-  val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) // TODO custom
-  val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) // TODO custom
+  private val contributesToAnnotations = setOf(contributesToAnnotation) // TODO custom
+  private val contributesBindingAnnotations = setOf(contributesBindingAnnotation) // TODO custom
+  private val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) // TODO custom
+  private val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) // TODO custom
   val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +

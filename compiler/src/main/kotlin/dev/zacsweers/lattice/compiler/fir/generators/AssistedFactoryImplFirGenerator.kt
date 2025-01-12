@@ -229,23 +229,23 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
     callableId: CallableId,
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
-    val context = context ?: return emptyList()
-    if (!context.owner.isAssistedImplClass) return emptyList()
+    val nonNullContext = context ?: return emptyList()
+    if (!nonNullContext.owner.isAssistedImplClass) return emptyList()
 
     // implement creator, create function
     val implClassSymbol =
-      if (context.owner.isCompanion) {
-        context.owner.getContainingClassSymbol() ?: return emptyList()
+      if (nonNullContext.owner.isCompanion) {
+        nonNullContext.owner.getContainingClassSymbol() ?: return emptyList()
       } else {
-        context.owner
+        nonNullContext.owner
       }
     val implClassId = implClassSymbol.classId
     val implClass = implClasses[implClassId] ?: return emptyList()
 
     val creator =
-      if (context.owner.classKind == ClassKind.OBJECT) {
+      if (nonNullContext.owner.classKind == ClassKind.OBJECT) {
         // companion object, declare creator
-        val owner = context.owner
+        val owner = nonNullContext.owner
         createMemberFunction(
           owner,
           LatticeKeys.Default,
@@ -266,9 +266,9 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
       } else {
         // declare the function override
         generateMemberFunction(
-          context.owner,
+          nonNullContext.owner,
           returnTypeProvider = { implClass.injectedClass.constructType(it) },
-          CallableId(context.owner.classId, LatticeSymbols.Names.create),
+          CallableId(nonNullContext.owner.classId, LatticeSymbols.Names.create),
           LatticeKeys.AssistedFactoryImplCreatorFunctionDeclaration.origin,
         ) {
           status = status.copy(isOverride = true)

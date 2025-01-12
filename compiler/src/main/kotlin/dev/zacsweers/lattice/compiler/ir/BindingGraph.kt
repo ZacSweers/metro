@@ -124,7 +124,12 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
     bindings[key]
       ?: run {
         stack.push(
-          BindingStack.Entry.simpleTypeRef(ContextualTypeKey(key, false, false, false, false))
+          BindingStack.Entry.simpleTypeRef(ContextualTypeKey(key,
+            isWrappedInProvider = false,
+            isWrappedInLazy = false,
+            isLazyWrappedInProvider = false,
+            hasDefault = false
+          ))
         )
         val message = buildString {
           appendLine("No binding found for $key")
@@ -285,7 +290,7 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
       stackLogger.log("End traversing from root: ${key.typeKey}")
     }
     stackLogger.log(
-      "End validation of ${node.sourceGraph.kotlinFqName.asString()}. Deferred types are ${deferredTypes}"
+      "End validation of ${node.sourceGraph.kotlinFqName.asString()}. Deferred types are $deferredTypes"
     )
     return deferredTypes
   }

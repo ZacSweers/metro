@@ -249,7 +249,7 @@ fun Class<*>.staticMethods(
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
 fun Class<*>.invokeCreate(vararg args: Any): Any {
   val createFunctions =
-    staticMethods().filter { it.name == LatticeSymbols.StringNames.create }.toList()
+    staticMethods().filter { it.name == LatticeSymbols.StringNames.CREATE }.toList()
 
   return when (createFunctions.size) {
     0 -> error("No create functions found in $this")
@@ -262,7 +262,7 @@ fun Class<*>.invokeCreate(vararg args: Any): Any {
 
 fun Class<*>.invokeStaticInvokeOperator(vararg args: Any): Any {
   val invokeFunctions =
-    staticMethods().filter { it.name == LatticeSymbols.StringNames.invoke }.toList()
+    staticMethods().filter { it.name == LatticeSymbols.StringNames.INVOKE }.toList()
 
   return when (invokeFunctions.size) {
     0 -> error("No invoke functions found in $this")
@@ -347,7 +347,7 @@ fun <T> Any.callProperty(name: String): T {
 }
 
 fun <T> Any.callFactoryInvoke(vararg args: Any): T {
-  return invokeInstanceMethod(LatticeSymbols.StringNames.invoke, *args) as T
+  return invokeInstanceMethod(LatticeSymbols.StringNames.INVOKE, *args) as T
 }
 
 fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
@@ -380,12 +380,12 @@ fun Class<*>.createGraphWithNoArgs(): Any {
 /**
  * Invokes a generated Graph Factory class's create() function with the supplied [args].
  *
- * Note the function must be called [LatticeSymbols.StringNames.create].
+ * Note the function must be called [LatticeSymbols.StringNames.CREATE].
  */
 fun Class<*>.createGraphViaFactory(vararg args: Any): Any {
   val factoryInstance = invokeGraphFactory()
   return factoryInstance.javaClass.declaredMethods
-    .single { it.name == LatticeSymbols.StringNames.create }
+    .single { it.name == LatticeSymbols.StringNames.CREATE }
     .invoke(factoryInstance, *args)
 }
 

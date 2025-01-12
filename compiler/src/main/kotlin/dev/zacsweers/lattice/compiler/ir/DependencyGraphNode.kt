@@ -15,14 +15,10 @@
  */
 package dev.zacsweers.lattice.compiler.ir
 
-import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
-import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
@@ -38,36 +34,11 @@ internal data class DependencyGraphNode(
   val creator: Creator?,
   val typeKey: TypeKey,
 ) {
-  val generatedGraphId: ClassId by unsafeLazy {
-    sourceGraph.requireNestedClass(LatticeSymbols.Names.latticeGraph).classIdOrFail
-  }
-
   data class Creator(
     val type: IrClass,
     val createFunction: IrSimpleFunction,
     val parameters: Parameters<ConstructorParameter>,
   )
-
-  // Build a full type map including inherited providers
-  fun getAllProviders(context: LatticeTransformerContext): Map<TypeKey, LatticeSimpleFunction> {
-    return sourceGraph.getAllProviders(context)
-  }
-
-  private fun IrClass.getAllProviders(
-    context: LatticeTransformerContext
-  ): Map<TypeKey, LatticeSimpleFunction> {
-    val result = mutableMapOf<TypeKey, LatticeSimpleFunction>()
-
-    // Add supertype providers first (can be overridden)
-    // TODO cache these recursive lookups
-    // TODO what about generic types?
-    superTypes.forEach { superType -> result.putAll(superType.rawType().getAllProviders(context)) }
-
-    // Add our providers (overriding inherited ones if needed)
-    providerFunctions.forEach { (typeKey, function) -> result[typeKey] = function }
-
-    return result
-  }
 
   // Lazy-wrapped to cache these per-node
   val allDependencies by lazy {

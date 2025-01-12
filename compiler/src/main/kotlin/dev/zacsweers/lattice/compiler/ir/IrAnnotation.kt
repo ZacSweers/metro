@@ -36,10 +36,6 @@ internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation
     }
   }
 
-  fun LatticeTransformerContext.isQualifier() = ir.type.rawType().isQualifierAnnotation
-
-  fun LatticeTransformerContext.isScope() = ir.type.rawType().isScopeAnnotation
-
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false

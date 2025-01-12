@@ -78,7 +78,12 @@ internal sealed interface Binding {
 
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(typeKey, false, false, false, false)
+      ContextualTypeKey(typeKey,
+        isWrappedInProvider = false,
+        isWrappedInLazy = false,
+        isLazyWrappedInProvider = false,
+        hasDefault = false
+      )
 
     override val reportableLocation: CompilerMessageSourceLocation
       get() = type.location()

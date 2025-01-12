@@ -450,13 +450,13 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     callableId: CallableId,
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
-    val context = context ?: return emptyList()
+    val nonNullContext = context ?: return emptyList()
 
     val targetClass =
-      if (context.owner.isCompanion) {
-        context.owner.getContainingClassSymbol() ?: return emptyList()
+      if (nonNullContext.owner.isCompanion) {
+        nonNullContext.owner.getContainingClassSymbol() ?: return emptyList()
       } else {
-        context.owner
+        nonNullContext.owner
       }
     val targetClassId = targetClass.classId
 
@@ -469,12 +469,12 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         when (callableId.callableName) {
           LatticeSymbols.Names.invoke -> {
             createMemberFunction(
-                owner = context.owner,
+                owner = nonNullContext.owner,
                 key = LatticeKeys.Default,
                 name = callableId.callableName,
                 returnTypeProvider = {
                   injectedClass.classSymbol.constructType(
-                    context.owner.typeParameterSymbols.mapToArray { it.toConeType() }
+                    nonNullContext.owner.typeParameterSymbols.mapToArray { it.toConeType() }
                   )
                 },
               ) {
@@ -493,7 +493,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           }
           LatticeSymbols.Names.create -> {
             buildFactoryCreateFunction(
-              context,
+              nonNullContext,
               {
                 if (injectedClass.isAssisted) {
                   targetClass.constructType(it.mapToArray { it.toConeType() })
@@ -512,7 +512,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           }
           LatticeSymbols.Names.newInstanceFunction -> {
             buildNewInstanceFunction(
-              context,
+              nonNullContext,
               LatticeSymbols.Names.newInstanceFunction,
               returnType,
               null,
@@ -533,7 +533,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         when (callableId.callableName) {
           LatticeSymbols.Names.injectMembers -> {
             createMemberFunction(
-                owner = context.owner,
+                owner = nonNullContext.owner,
                 key = LatticeKeys.Default,
                 name = callableId.callableName,
                 returnType = session.builtinTypes.unitType.coneType,
@@ -549,7 +549,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           }
           LatticeSymbols.Names.create -> {
             buildFactoryCreateFunction(
-              context,
+              nonNullContext,
               {
                 val targetClassType = targetClass.constructType(it.mapToArray { it.toConeType() })
                 LatticeSymbols.ClassIds.membersInjector.constructClassLikeType(
@@ -568,7 +568,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
             // It's a member injector name
             createMemberFunction(
-                owner = context.owner,
+                owner = nonNullContext.owner,
                 key = LatticeKeys.MembersInjectorStaticInjectFunction,
                 name = callableId.callableName,
                 returnType = session.builtinTypes.unitType.coneType,
@@ -607,7 +607,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                         resolvedType
                       } else {
                         val availableTypes = typeParameters.associateBy { it.symbol.name }
-                        val typeParameters =
+                        val finalTypeParameters =
                           resolvedType.typeArguments.map { typeArg ->
                             val typeArgType = typeArg.type ?: return@map typeArg
                             if (typeArgType is ConeTypeParameterType) {
@@ -617,7 +617,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                               typeArgType
                             }
                           }
-                        resolvedType.withArguments(typeParameters.toTypedArray())
+                        resolvedType.withArguments(finalTypeParameters.toTypedArray())
                       }
                     },
                     key = LatticeKeys.ValueParameter,

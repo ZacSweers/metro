@@ -19,7 +19,6 @@ import com.google.auto.service.AutoService
 import dev.zacsweers.lattice.compiler.fir.LatticeFirExtensionRegistrar
 import dev.zacsweers.lattice.compiler.ir.LatticeIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -48,7 +47,3 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
 internal val CompilerConfiguration.messageCollector: MessageCollector
   get() = get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
-
-internal fun MessageCollector.asFunctionOutput(): (String) -> Unit {
-  return { report(CompilerMessageSeverity.OUTPUT, it) }
-}

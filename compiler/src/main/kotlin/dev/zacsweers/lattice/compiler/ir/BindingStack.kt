@@ -208,7 +208,7 @@ internal interface BindingStack {
           get() = throw UnsupportedOperationException()
 
         override val entries: List<Entry>
-          get() = emptyList<Entry>()
+          get() = emptyList()
 
         override fun push(entry: Entry) {
           // Do nothing
@@ -319,7 +319,7 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
 
   override fun toString() = renderTable()
 
-  fun renderTable(): String {
+  private fun renderTable(): String {
     return table {
         cellStyle {
           border = true

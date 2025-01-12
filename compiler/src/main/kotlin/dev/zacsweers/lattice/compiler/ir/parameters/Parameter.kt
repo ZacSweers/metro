@@ -21,7 +21,6 @@ import dev.zacsweers.lattice.compiler.ir.TypeKey
 import dev.zacsweers.lattice.compiler.ir.annotationsIn
 import dev.zacsweers.lattice.compiler.ir.constArgumentOfTypeAt
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
-import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
@@ -49,9 +48,6 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val location: CompilerMessageSourceLocation?
   val ir: IrValueParameter
 
-  val irFunction: IrFunction
-    get() = ir.parent as IrFunction
-
   override fun compareTo(other: Parameter): Int = COMPARATOR.compare(this, other)
 
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
@@ -72,15 +68,6 @@ internal sealed interface Parameter : Comparable<Parameter> {
       }
     }
   }
-
-  val originalType: IrType
-    get() =
-      when {
-        isLazyWrappedInProvider -> lazyType.wrapInProvider(symbols.latticeProvider)
-        isWrappedInProvider -> providerType
-        isWrappedInLazy -> lazyType
-        else -> type
-      }
 
   enum class Kind {
     INSTANCE,

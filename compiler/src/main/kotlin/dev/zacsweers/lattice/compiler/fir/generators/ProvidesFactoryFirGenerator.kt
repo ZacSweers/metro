@@ -114,19 +114,19 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     callableId: CallableId,
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
-    val context = context ?: return emptyList()
+    val nonNullContext = context ?: return emptyList()
     val factoryClassId =
-      if (context.owner.isCompanion) {
-        context.owner.getContainingClassSymbol()?.classId ?: return emptyList()
+      if (nonNullContext.owner.isCompanion) {
+        nonNullContext.owner.getContainingClassSymbol()?.classId ?: return emptyList()
       } else {
-        context.owner.classId
+        nonNullContext.owner.classId
       }
     val callable = providerFactoryClassIdsToCallables[factoryClassId] ?: return emptyList()
     val function =
       when (callableId.callableName) {
         LatticeSymbols.Names.invoke -> {
           createMemberFunction(
-              context.owner,
+              nonNullContext.owner,
               LatticeKeys.Default,
               callableId.callableName,
               callable.returnType,
@@ -137,7 +137,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         }
         LatticeSymbols.Names.create -> {
           buildFactoryCreateFunction(
-            context,
+            nonNullContext,
             LatticeSymbols.ClassIds.latticeFactory.constructClassLikeType(
               arrayOf(callable.returnType)
             ),
@@ -148,7 +148,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         }
         callable.bytecodeName -> {
           buildNewInstanceFunction(
-            context,
+            nonNullContext,
             callable.bytecodeName,
             callable.returnType,
             callable.instanceReceiver,

@@ -88,19 +88,17 @@ internal class LatticeFirExtensionRegistrar(
     delegate: ((FirSession) -> FirSupertypeGenerationExtension),
     enableLogging: Boolean = false,
   ): FirSupertypeGenerationExtension.Factory {
-    return object : FirSupertypeGenerationExtension.Factory {
-      override fun create(session: FirSession): FirSupertypeGenerationExtension {
-        val logger =
-          if (enableLogging) {
-            loggerFor(LatticeLogger.Type.FirSupertypeGeneration, tag)
-          } else {
-            LatticeLogger.NONE
-          }
-        return if (logger == LatticeLogger.NONE) {
-          delegate(session)
+    return FirSupertypeGenerationExtension.Factory { session ->
+      val logger =
+        if (enableLogging) {
+          loggerFor(LatticeLogger.Type.FirSupertypeGeneration, tag)
         } else {
-          LoggingFirSupertypeGenerationExtension(session, logger, delegate(session))
+          LatticeLogger.NONE
         }
+      if (logger == LatticeLogger.NONE) {
+        delegate(session)
+      } else {
+        LoggingFirSupertypeGenerationExtension(session, logger, delegate(session))
       }
     }
   }

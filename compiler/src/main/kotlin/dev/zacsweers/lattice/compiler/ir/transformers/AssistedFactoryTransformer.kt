@@ -153,7 +153,7 @@ internal class AssistedFactoryTransformer(
               irInvoke(
                 dispatchReceiver =
                   irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
-                callee = generatedFactory.requireSimpleFunction(LatticeSymbols.StringNames.invoke),
+                callee = generatedFactory.requireSimpleFunction(LatticeSymbols.StringNames.INVOKE),
                 args = argumentList,
               ),
             )
@@ -162,7 +162,7 @@ internal class AssistedFactoryTransformer(
     }
 
     val companion = implClass.companionObject()!!
-    companion.requireSimpleFunction(LatticeSymbols.StringNames.create).owner.apply {
+    companion.requireSimpleFunction(LatticeSymbols.StringNames.CREATE).owner.apply {
       val factoryParam = valueParameters.single()
       // InstanceFactory.create(Impl(delegateFactory))
       body =

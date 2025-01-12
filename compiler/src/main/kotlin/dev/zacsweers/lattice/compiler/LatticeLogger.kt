@@ -55,7 +55,7 @@ public interface LatticeLogger {
 internal class LatticeLoggerImpl(
   override val type: LatticeLogger.Type,
   val output: (String) -> Unit,
-  val tag: String? = null,
+  private val tag: String? = null,
 ) : LatticeLogger {
   private var indent = 0
 

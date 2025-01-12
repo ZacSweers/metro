@@ -276,8 +276,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       return dependentNode
     }
 
-    checkNotNull(latticeGraph) { "Expected latticeGraph for $graphClassId" }
-
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
     val graphContextKey =
       ContextualTypeKey(
@@ -710,7 +708,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               .apply(implementFactoryFunction)
 
           // Implement a factory() function that returns the factory impl instance
-          requireSimpleFunction(LatticeSymbols.StringNames.factory).owner.apply {
+          requireSimpleFunction(LatticeSymbols.StringNames.FACTORY).owner.apply {
             if (origin == LatticeOrigins.LatticeGraphFactoryCompanionGetter) {
               body =
                 pluginContext.createIrBuilder(symbol).run {
@@ -726,7 +724,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     } else {
       // Generate a no-arg invoke() function
       companionObject.apply {
-        requireSimpleFunction(LatticeSymbols.StringNames.invoke).owner.apply {
+        requireSimpleFunction(LatticeSymbols.StringNames.INVOKE).owner.apply {
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(
@@ -1524,7 +1522,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           } else {
             factoryClass.companionObject()!!
           }
-        val createFunction = creatorClass.requireSimpleFunction(LatticeSymbols.StringNames.create)
+        val createFunction = creatorClass.requireSimpleFunction(LatticeSymbols.StringNames.CREATE)
         val args =
           generateBindingArguments(
             createFunction.owner.parameters(latticeContext),
@@ -1557,7 +1555,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           } else {
             factoryClass.companionObject()!!
           }
-        val createFunction = creatorClass.requireSimpleFunction(LatticeSymbols.StringNames.create)
+        val createFunction = creatorClass.requireSimpleFunction(LatticeSymbols.StringNames.CREATE)
         // Must use the provider's params for TypeKey as that has qualifier
         // annotations
         val args =
@@ -1578,7 +1576,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         val implClass = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
         val implClassCompanion = implClass.companionObject()!!
         val createFunction =
-          implClassCompanion.requireSimpleFunction(LatticeSymbols.StringNames.create)
+          implClassCompanion.requireSimpleFunction(LatticeSymbols.StringNames.CREATE)
         val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)
         irInvoke(
           dispatchReceiver = irGetObject(implClassCompanion.symbol),
@@ -1603,7 +1601,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             .apply { putTypeArgument(0, injectedType) }
         } else {
           val createFunction =
-            injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.create)
+            injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.CREATE)
           val args =
             generateBindingArguments(
               binding.parameters,

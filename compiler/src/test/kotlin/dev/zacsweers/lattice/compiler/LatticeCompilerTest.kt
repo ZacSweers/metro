@@ -35,7 +35,7 @@ abstract class LatticeCompilerTest {
 
   val defaultImports =
     listOf(
-      "${LatticeSymbols.StringNames.latticeRuntimePackage}.*",
+      "${LatticeSymbols.StringNames.LATTICE_RUNTIME_PACKAGE}.*",
       // For Callable access
       "java.util.concurrent.*",
     )

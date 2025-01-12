@@ -32,7 +32,6 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.callableId
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
@@ -263,19 +262,17 @@ internal fun IrFunction.memberInjectParameters(
       val property = propertyIfAccessor as IrProperty
       listOf(
         property.toMemberInjectParameter(
-          context,
-          parentClass.classIdOrFail,
+          context = context,
           uniqueName = nameAllocator.newName(property.name.asString()).asName(),
-          Kind.VALUE,
+          kind = Kind.VALUE,
           typeParameterRemapper = mapper,
         )
       )
     } else {
       valueParameters.mapToMemberInjectParameters(
-        context,
-        nameAllocator,
-        parentClass.classIdOrFail,
-        mapper,
+        context = context,
+        nameAllocator = nameAllocator,
+        typeParameterRemapper = mapper,
       )
     }
 

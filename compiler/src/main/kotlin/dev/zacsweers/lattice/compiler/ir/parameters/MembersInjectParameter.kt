@@ -19,7 +19,6 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.NameAllocator
 import dev.zacsweers.lattice.compiler.asName
-import dev.zacsweers.lattice.compiler.ir.BindingStack
 import dev.zacsweers.lattice.compiler.ir.ContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.TypeKey
@@ -28,12 +27,9 @@ import dev.zacsweers.lattice.compiler.ir.locationOrNull
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter.Kind
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
-import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.util.isPropertyAccessor
-import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 @Poko
@@ -42,14 +38,11 @@ internal class MembersInjectParameter(
   override val name: Name,
   override val contextualTypeKey: ContextualTypeKey,
   override val hasDefault: Boolean,
-  val memberInjectorClassId: ClassId,
   @Poko.Skip override val originalName: Name,
   @Poko.Skip override val providerType: IrType,
   @Poko.Skip override val lazyType: IrType,
   @Poko.Skip override val symbols: LatticeSymbols,
   @Poko.Skip override val location: CompilerMessageSourceLocation?,
-  @Poko.Skip val bindingStackEntry: BindingStack.Entry,
-  @Poko.Skip val isProperty: Boolean,
   @Poko.Skip override val ir: IrValueParameter,
 ) : Parameter {
   override val typeKey: TypeKey = contextualTypeKey.typeKey
@@ -83,13 +76,11 @@ internal class MembersInjectParameter(
 internal fun List<IrValueParameter>.mapToMemberInjectParameters(
   context: LatticeTransformerContext,
   nameAllocator: NameAllocator,
-  declaringClass: ClassId,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): List<MembersInjectParameter> {
   return map { valueParameter ->
     valueParameter.toMemberInjectParameter(
       context = context,
-      declaringClass = declaringClass,
       uniqueName = nameAllocator.newName(valueParameter.name.asString()).asName(),
       kind = Kind.VALUE,
       typeParameterRemapper = typeParameterRemapper,
@@ -99,7 +90,6 @@ internal fun List<IrValueParameter>.mapToMemberInjectParameters(
 
 internal fun IrProperty.toMemberInjectParameter(
   context: LatticeTransformerContext,
-  declaringClass: ClassId,
   uniqueName: Name,
   kind: Kind = Kind.VALUE,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
@@ -123,9 +113,6 @@ internal fun IrProperty.toMemberInjectParameter(
       false,
     )
 
-  val memberInjectorClass =
-    declaringClass.createNestedClassId(LatticeSymbols.Names.latticeMembersInjector)
-
   return MembersInjectParameter(
     kind = kind,
     name = uniqueName,
@@ -134,18 +121,14 @@ internal fun IrProperty.toMemberInjectParameter(
     providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
     lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
     symbols = context.symbols,
-    bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, setter!!, null, this),
     hasDefault = defaultValue != null,
     location = locationOrNull(),
-    memberInjectorClassId = memberInjectorClass,
-    isProperty = true,
     ir = setterParam!!,
   )
 }
 
 internal fun IrValueParameter.toMemberInjectParameter(
   context: LatticeTransformerContext,
-  declaringClass: ClassId,
   uniqueName: Name,
   kind: Kind = Kind.VALUE,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
@@ -164,12 +147,6 @@ internal fun IrValueParameter.toMemberInjectParameter(
       false,
     )
 
-  val ownerFunction = this.parent as IrFunction // TODO is this safe
-  val isPropertyAccessor = ownerFunction.isPropertyAccessor
-
-  val memberInjectorClass =
-    declaringClass.createNestedClassId(LatticeSymbols.Names.latticeMembersInjector)
-
   return MembersInjectParameter(
     kind = kind,
     name = uniqueName,
@@ -178,11 +155,8 @@ internal fun IrValueParameter.toMemberInjectParameter(
     providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.latticeProvider),
     lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
     symbols = context.symbols,
-    bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
     hasDefault = defaultValue != null,
     location = locationOrNull(),
-    memberInjectorClassId = memberInjectorClass,
-    isProperty = isPropertyAccessor,
     ir = this,
   )
 }
