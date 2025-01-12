@@ -139,7 +139,6 @@ internal fun IrType.rawType(): IrClass {
 }
 
 /** Returns the raw [IrClass] of this [IrType] or null. */
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrType.rawTypeOrNull(): IrClass? {
   return when (val classifier = classifierOrNull) {
     is IrClassSymbol -> classifier.owner
@@ -152,7 +151,6 @@ internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>
   return names.any { hasAnnotation(it) }
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
   return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
 }
@@ -172,13 +170,11 @@ internal fun IrPluginContext.irType(
   arguments: List<IrTypeArgument> = emptyList(),
 ): IrType = referenceClass(classId)!!.createType(hasQuestionMark = nullable, arguments = arguments)
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBuilder {
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
 }
 
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrBuilderWithScope.irInvoke(
   dispatchReceiver: IrExpression? = null,
   extensionReceiver: IrExpression? = null,
@@ -220,7 +216,6 @@ internal fun IrStatementsBuilder<*>.irTemporary(
  * Computes a hash key for this annotation instance composed of its underlying type and value
  * arguments.
  */
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrConstructorCall.computeAnnotationHash(): Int {
   return Objects.hash(
     type.rawType().classIdOrFail,
@@ -256,7 +251,6 @@ internal fun IrClass.declaredCallableMembers(
   )
 
 // TODO create an instance of this that caches lookups?
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.allCallableMembers(
   context: LatticeTransformerContext,
   excludeAnyFunctions: Boolean = true,
@@ -508,7 +502,6 @@ internal fun IrBuilderWithScope.checkNotNullCall(
     )
     .apply { putTypeArgument(0, firstArg.type) }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.getAllSuperTypes(
   pluginContext: IrPluginContext,
   excludeSelf: Boolean = true,
@@ -547,7 +540,6 @@ internal fun IrExpression.doubleCheck(
     )
   }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.allFunctions(pluginContext: IrPluginContext): Sequence<IrSimpleFunction> {
   return sequence {
     yieldAll(functions)
@@ -632,7 +624,6 @@ internal fun IrFunction.buildBlockBody(
   body = context.createIrBuilder(symbol).irBlockBody(body = blockBody)
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal val IrType.simpleName: String
   get() =
     when (val classifier = classifierOrNull) {
@@ -663,16 +654,13 @@ internal fun LatticeTransformerContext.latticeAnnotationsOf(ir: IrAnnotationCont
 internal fun IrClass.requireSimpleFunction(name: String) =
   getSimpleFunction(name) ?: error("No function $name in class $classId")
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClassSymbol.requireSimpleFunction(name: String) =
   getSimpleFunction(name) ?: error("No function $name in class ${owner.classId}")
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
   return nestedClasses.first { it.name == name }
 }
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T {
   @Suppress("UNCHECKED_CAST")
   return overriddenSymbols.singleOrNull()?.owner as? T? ?: this

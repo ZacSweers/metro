@@ -39,7 +39,6 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal class LatticeSymbols(
   private val moduleFragment: IrModuleFragment,
   val pluginContext: IrPluginContext,

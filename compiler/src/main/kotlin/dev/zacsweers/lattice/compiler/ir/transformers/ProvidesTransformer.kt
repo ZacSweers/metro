@@ -78,7 +78,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
   private val references = mutableMapOf<FqName, CallableReference>()
   private val generatedFactories = mutableMapOf<FqName, IrClass>()
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun visitClass(declaration: IrClass) {
     // Defensive copy because we add to this class in some factories!
     val sourceDeclarations =
@@ -121,7 +120,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
 
   // TODO what about inherited/overridden providers?
   //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass {
     val reference =
       binding.providerFunction.correspondingPropertySymbol?.owner?.let {
@@ -149,7 +147,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     return getOrGenerateFactoryClass(reference)
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateFactoryClass(reference: CallableReference): IrClass {
     generatedFactories[reference.fqName]?.let {
       return it
@@ -337,7 +334,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun implementCreatorBodies(
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
@@ -478,7 +474,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       }
     }
 
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     val generatedClassId by lazy {
       parent.owner.classIdOrFail.createNestedClassId(Name.identifier(simpleName))
     }

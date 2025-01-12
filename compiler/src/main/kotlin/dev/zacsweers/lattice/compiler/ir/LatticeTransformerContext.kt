@@ -130,7 +130,6 @@ internal interface LatticeTransformerContext {
     return annotations.annotationsAnnotatedWith(annotationsToLookFor)
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
     annotationsToLookFor: Collection<ClassId>
   ): Set<IrConstructorCall> {
@@ -140,7 +139,6 @@ internal interface LatticeTransformerContext {
     }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
     return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(symbols.injectAnnotations)) {
       primaryConstructor

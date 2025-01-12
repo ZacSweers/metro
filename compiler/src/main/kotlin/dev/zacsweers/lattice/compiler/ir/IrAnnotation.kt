@@ -54,7 +54,6 @@ internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation
 
 internal fun IrConstructorCall.asIrAnnotation() = IrAnnotation(this)
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall) {
   val annotationClassName =
     irAnnotation.symbol.takeIf { it.isBound }?.owner?.parentAsClass?.name?.asString() ?: "<unbound>"

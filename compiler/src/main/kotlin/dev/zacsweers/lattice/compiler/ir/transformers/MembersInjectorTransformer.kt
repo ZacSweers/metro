@@ -79,7 +79,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       ?: error("No members injector found for ${declaration.kotlinFqName}.")
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {
     return declaration
       .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)
@@ -90,7 +89,6 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
       .asReversed() // Base types go first
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateInjector(declaration: IrClass): MemberInjectClass? {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist

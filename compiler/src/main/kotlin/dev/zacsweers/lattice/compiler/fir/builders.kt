@@ -58,7 +58,6 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
 
-@OptIn(ExperimentalContracts::class)
 internal fun FirExtension.generateMemberFunction(
   owner: FirClassLikeSymbol<*>,
   returnTypeRef: FirTypeRef,
@@ -80,7 +79,6 @@ internal fun FirExtension.generateMemberFunction(
   )
 }
 
-@OptIn(ExperimentalContracts::class)
 internal fun FirExtension.generateMemberFunction(
   owner: FirClassLikeSymbol<*>,
   returnTypeProvider: (List<FirTypeParameterRef>) -> ConeKotlinType,

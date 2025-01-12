@@ -72,7 +72,6 @@ internal class ContextualTypeKey(
 
   // TODO cache these in DependencyGraphTransformer or shared transformer data
   companion object {
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     fun from(
       context: LatticeTransformerContext,
       function: IrSimpleFunction,

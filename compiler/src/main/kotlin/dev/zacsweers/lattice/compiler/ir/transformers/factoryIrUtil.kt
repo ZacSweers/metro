@@ -46,7 +46,6 @@ import org.jetbrains.kotlin.ir.util.isObject
  * fun <T> create(valueProvider: Provider<T>): Example_Factory<T> = Example_Factory<T>(valueProvider)
  * ```
  */
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun generateStaticCreateFunction(
   context: LatticeTransformerContext,
   parentClass: IrClass,
@@ -99,7 +98,6 @@ internal fun generateStaticCreateFunction(
  * fun newInstance(value: Provider<String>): Example = Example(value)
  * ```
  */
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 internal fun generateStaticNewInstanceFunction(
   context: LatticeTransformerContext,
   parentClass: IrClass,

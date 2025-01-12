@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 
-@OptIn(ExperimentalCompilerApi::class)
 @AutoService(CommandLineProcessor::class)
 public class LatticeCommandLineProcessor : CommandLineProcessor {
 

@@ -67,7 +67,6 @@ internal class InjectConstructorTransformer(
     }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   fun getOrGenerateFactoryClass(declaration: IrClass, targetConstructor: IrConstructor): IrClass {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
@@ -251,7 +250,6 @@ internal class InjectConstructorTransformer(
       }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun generateCreators(
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,

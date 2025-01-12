@@ -88,7 +88,6 @@ internal interface BindingStack {
       com.slack.circuit.star.Example1 is requested at
              [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.ExampleGraph.example1()
        */
-      @OptIn(UnsafeDuringIrConstructionAPI::class)
       fun requestedAt(contextKey: ContextualTypeKey, accessor: IrSimpleFunction): Entry {
         val rawDeclaration: IrOverridableDeclaration<*> =
           accessor.correspondingPropertySymbol?.owner ?: accessor

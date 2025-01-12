@@ -63,7 +63,6 @@ internal class AssistedFactoryTransformer(
     }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   internal fun getOrGenerateImplClass(declaration: IrClass): IrClass {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist

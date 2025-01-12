@@ -134,7 +134,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   // Keyed by the source declaration
   private val latticeDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   override fun visitCall(expression: IrCall, data: DependencyGraphData): IrElement {
     // Covers replacing createGraphFactory() compiler intrinsics with calls to the real
     // graph factory
@@ -235,7 +234,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     return super.visitClass(declaration, data)
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun getOrComputeDependencyGraphNode(
     graphDeclaration: IrClass,
     bindingStack: BindingStack,
@@ -405,7 +403,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     return dependencyGraphNode
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun getOrBuildDependencyGraph(dependencyGraphDeclaration: IrClass): IrClass {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
     latticeDependencyGraphsByClass[graphClassId]?.let {
@@ -496,7 +493,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun createBindingGraph(node: DependencyGraphNode): BindingGraph {
     val graph = BindingGraph(this)
 
@@ -671,7 +667,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     return graph
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun implementCreatorFunctions(
     sourceGraph: IrClass,
     creator: DependencyGraphNode.Creator?,
@@ -739,7 +734,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     companionObject.dumpToLatticeLog()
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun generateLatticeGraph(
     node: DependencyGraphNode,
     graphClass: IrClass,
@@ -994,7 +988,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   private fun implementFirStubs(
     exposedTypes: Map<LatticeSimpleFunction, ContextualTypeKey>,
     bindsFunctions: Map<LatticeSimpleFunction, ContextualTypeKey>,
@@ -1475,7 +1468,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     return expression
   }
 
-  @OptIn(UnsafeDuringIrConstructionAPI::class)
   internal fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
     generationContext: GraphGenerationContext,

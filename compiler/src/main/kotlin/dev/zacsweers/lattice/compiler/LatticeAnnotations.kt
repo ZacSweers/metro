@@ -133,7 +133,6 @@ internal fun IrAnnotationContainer.latticeAnnotations(
   ids: LatticeClassIds
 ): LatticeAnnotations<IrAnnotation> = latticeAnnotations(ids, null)
 
-@OptIn(UnsafeDuringIrConstructionAPI::class)
 private fun IrAnnotationContainer.latticeAnnotations(
   ids: LatticeClassIds,
   callingContainer: IrAnnotationContainer?,

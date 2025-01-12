@@ -239,7 +239,6 @@ internal sealed interface Binding {
     override val typeKey: TypeKey,
   ) : Binding {
     override val scope: IrAnnotation? = null
-    @OptIn(UnsafeDuringIrConstructionAPI::class)
     override val nameHint: String = buildString {
       append(graph.name.asString())
       val property = getter.correspondingPropertySymbol
@@ -306,7 +305,6 @@ internal sealed interface Binding {
     override val reportableLocation: CompilerMessageSourceLocation? = null
 
     companion object {
-      @OptIn(UnsafeDuringIrConstructionAPI::class)
       fun create(
         latticeContext: LatticeTransformerContext,
         typeKey: TypeKey,
