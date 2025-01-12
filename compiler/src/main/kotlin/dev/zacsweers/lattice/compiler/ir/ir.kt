@@ -656,7 +656,7 @@ internal fun IrClassSymbol.requireSimpleFunction(name: String) =
   getSimpleFunction(name) ?: error("No function $name in class ${owner.classId}")
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
-  return nestedClasses.first { it.name == name }
+  return nestedClasses.firstOrNull { it.name == name } ?: error("No nested class $name in $classId. Found ${nestedClasses.map { it.name }}")
 }
 
 internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T {
