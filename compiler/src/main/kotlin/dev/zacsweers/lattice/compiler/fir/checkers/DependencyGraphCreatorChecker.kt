@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.compiler.fir.checkers
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.annotationsIn
-import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.singleAbstractFunction
 import dev.zacsweers.lattice.compiler.fir.validateApiDeclaration
@@ -28,7 +27,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.resolve.firClassLike
 
 internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
@@ -53,19 +51,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     val paramTypes = mutableSetOf<FirTypeKey>()
 
     for (param in createFunction.valueParameterSymbols) {
-      val clazz = param.resolvedReturnTypeRef.firClassLike(session)!!
-      val isValid =
-        param.isAnnotatedWithAny(session, latticeClassIds.bindsInstanceAnnotations) ||
-          clazz.isAnnotatedWithAny(session, latticeClassIds.dependencyGraphAnnotations)
-      if (!isValid) {
-        reporter.reportOn(
-          param.source,
-          FirLatticeErrors.GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_BINDSINSTANCE_OR_GRAPHS,
-          context,
-        )
-        return
-      }
-
       val typeKey = FirTypeKey.from(session, param)
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
