@@ -241,14 +241,12 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
     // Override injectMembers()
     injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.INJECT_MEMBERS).owner.apply {
-      val functionReceiver = dispatchReceiverParameter!!
-      val instanceParam = valueParameters[0]
       body =
         pluginContext.createIrBuilder(symbol).irBlockBody {
           addMemberInjection(
             context = latticeContext,
-            instanceReceiver = instanceParam,
-            injectorReceiver = functionReceiver,
+            instanceReceiver = valueParameters[0],
+            injectorReceiver = dispatchReceiverParameter!!,
             injectFunctions = injectFunctions,
             parametersToFields = sourceParametersToFields,
           )

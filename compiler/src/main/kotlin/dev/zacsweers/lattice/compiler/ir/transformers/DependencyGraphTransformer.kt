@@ -984,7 +984,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                     pluginContext.createIrBuilder(symbol).run {
                       generateBindingCode(
                           binding,
-                          baseGenerationContext, // .withReceiver(this@with.dispatchReceiverParameter!!),
+                          baseGenerationContext,
                           fieldInitKey = deferredTypeKey,
                         )
                         .letIf(binding.scope != null) {
@@ -2007,6 +2007,8 @@ internal class GraphGenerationContext(
 ) {
   // Each declaration in FIR is actually generated with a different "this" receiver, so we
   // need to be able to specify this per-context.
+  // TODO not sure if this is really the best way to do this? Only necessary when implementing
+  //  accessors/injectors
   fun withReceiver(receiver: IrValueParameter): GraphGenerationContext =
     GraphGenerationContext(
       graph,
