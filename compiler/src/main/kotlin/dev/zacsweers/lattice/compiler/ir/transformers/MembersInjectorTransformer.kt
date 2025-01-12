@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.isInterface
@@ -91,7 +92,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
   fun getOrGenerateInjector(declaration: IrClass): MemberInjectClass? {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
-    val injectedClassId: ClassId = declaration.classIdOrFail
+    val injectedClassId: ClassId = declaration.classId ?: return null
     generatedInjectors[injectedClassId]?.let {
       return it
     }
