@@ -240,7 +240,7 @@ internal sealed interface Binding {
   ) : Binding {
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
-      append(graph.name.asString())
+      append(graph.name)
       val property = getter.correspondingPropertySymbol
       if (property != null) {
         val propName = property.owner.name.asString()
@@ -249,7 +249,7 @@ internal sealed interface Binding {
         }
         append(propName.capitalizeUS())
       } else {
-        append(getter.name.asString())
+        append(getter.name.capitalizeUS())
       }
     }
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
