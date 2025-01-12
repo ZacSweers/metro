@@ -55,7 +55,6 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.callableId
@@ -462,7 +461,9 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // omit the `get-` prefix for property names starting with the *word* `is`, like `isProperty`,
     // but not for names which just start with those letters, like `issues`.
     // TODO still necessary in IR?
-    private val useGetPrefix by unsafeLazy { isProperty && !isWordPrefixRegex.matches(name.asString()) }
+    private val useGetPrefix by unsafeLazy {
+      isProperty && !isWordPrefixRegex.matches(name.asString())
+    }
 
     private val simpleName by lazy {
       buildString {

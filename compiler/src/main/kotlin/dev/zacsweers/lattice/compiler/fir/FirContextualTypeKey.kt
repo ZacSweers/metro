@@ -103,7 +103,7 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
   val isLazyWrappedInProvider =
     isWrappedInProvider &&
       declaredType.typeArguments[0].expectAsOrNull<ConeKotlinTypeProjection>()?.type?.classId in
-      session.latticeClassIds.lazyTypes
+        session.latticeClassIds.lazyTypes
 
   val type =
     when {

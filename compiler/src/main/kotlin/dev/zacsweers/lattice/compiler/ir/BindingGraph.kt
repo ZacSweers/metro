@@ -124,12 +124,15 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
     bindings[key]
       ?: run {
         stack.push(
-          BindingStack.Entry.simpleTypeRef(ContextualTypeKey(key,
-            isWrappedInProvider = false,
-            isWrappedInLazy = false,
-            isLazyWrappedInProvider = false,
-            hasDefault = false
-          ))
+          BindingStack.Entry.simpleTypeRef(
+            ContextualTypeKey(
+              key,
+              isWrappedInProvider = false,
+              isWrappedInLazy = false,
+              isLazyWrappedInProvider = false,
+              hasDefault = false,
+            )
+          )
         )
         val message = buildString {
           appendLine("No binding found for $key")

@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -78,11 +77,12 @@ internal sealed interface Binding {
 
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(typeKey,
+      ContextualTypeKey(
+        typeKey,
         isWrappedInProvider = false,
         isWrappedInLazy = false,
         isLazyWrappedInProvider = false,
-        hasDefault = false
+        hasDefault = false,
       )
 
     override val reportableLocation: CompilerMessageSourceLocation

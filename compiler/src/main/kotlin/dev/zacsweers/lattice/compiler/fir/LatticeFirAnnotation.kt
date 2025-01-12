@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.compiler.fir
 
 import dev.zacsweers.lattice.compiler.appendIterableWith
 import dev.zacsweers.lattice.compiler.unsafeLazy
-import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression

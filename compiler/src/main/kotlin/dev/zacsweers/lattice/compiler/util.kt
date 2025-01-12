@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.compiler
 
 import java.util.Locale
-import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 import org.jetbrains.kotlin.name.Name
 

@@ -110,8 +110,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
                 }
                 LatticeFirValueParameter(session, param)
               }
-          val createFunction =
-            generateCreateFunction(assistedParams, targetClass, callableId)
+          val createFunction = generateCreateFunction(assistedParams, targetClass, callableId)
           return listOf(createFunction.symbol)
         }
       }

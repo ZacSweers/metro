@@ -49,7 +49,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.modality
-import org.jetbrains.kotlin.fir.declarations.utils.superConeTypes
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -93,7 +92,6 @@ import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
-import org.jetbrains.kotlin.fir.types.coneTypeSafe
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.resolvedType
@@ -188,7 +186,12 @@ internal fun FirClassSymbol<*>.allFunctions(session: FirSession): Sequence<FirNa
   return sequence {
     yieldAll(declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>())
     yieldAll(
-      lookupSuperTypes(symbol = this@allFunctions, lookupInterfaces = true, deep = true, useSiteSession = session)
+      lookupSuperTypes(
+          symbol = this@allFunctions,
+          lookupInterfaces = true,
+          deep = true,
+          useSiteSession = session,
+        )
         .mapNotNull { it.toClassSymbol(session) }
         .flatMap { it.allFunctions(session) }
     )
@@ -226,7 +229,7 @@ internal fun FirClassSymbol<*>.callableDeclarations(
               session = session,
               includeSelf = true,
               includeAncestors = false,
-              yieldAncestorsFirst = yieldAncestorsFirst
+              yieldAncestorsFirst = yieldAncestorsFirst,
             )
           }
       )

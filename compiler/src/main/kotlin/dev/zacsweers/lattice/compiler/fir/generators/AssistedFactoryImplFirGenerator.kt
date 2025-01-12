@@ -199,7 +199,9 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
             typeProvider = { typeParameterRefs ->
               implClass.injectedClass.classId
                 .createNestedClassId(LatticeSymbols.Names.latticeFactory)
-                .constructClassLikeType(typeParameterRefs.mapToArray(FirTypeParameterRef::toConeType))
+                .constructClassLikeType(
+                  typeParameterRefs.mapToArray(FirTypeParameterRef::toConeType)
+                )
             },
           )
         }

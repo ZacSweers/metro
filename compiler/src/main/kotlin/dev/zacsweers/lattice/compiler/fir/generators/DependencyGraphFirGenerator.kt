@@ -285,8 +285,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       putAll(
         copy
           .sortedWith(
-            compareBy(Map.Entry<Name, V>::key)
-              .thenComparator { (_, v1), (_, v2) -> comparator.compare(v1, v2) }
+            compareBy(Map.Entry<Name, V>::key).thenComparator { (_, v1), (_, v2) ->
+              comparator.compare(v1, v2)
+            }
           )
           .associate { it.key to it.value }
       )
@@ -540,7 +541,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 name = parameter.name,
                 key = LatticeKeys.ValueParameter,
                 typeProvider = {
-                  parameter.resolvedReturnType.withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+                  parameter.resolvedReturnType.withArguments(
+                    it.mapToArray(FirTypeParameterRef::toConeType)
+                  )
                 },
               )
             }
@@ -567,7 +570,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
               owner,
               LatticeKeys.LatticeGraphFactoryCompanionGetter,
               callableId.callableName,
-              returnTypeProvider = { creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType)) },
+              returnTypeProvider = {
+                creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
+              },
             )
           return listOf(generatedFunction.symbol)
         }
@@ -581,7 +586,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 owner,
                 LatticeKeys.LatticeGraphCreatorsObjectInvokeDeclaration,
                 callableId.callableName,
-                returnTypeProvider = { graphClass.constructType(it.mapToArray(FirTypeParameter::toConeType)) },
+                returnTypeProvider = {
+                  graphClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
+                },
               ) {
                 status { isOperator = true }
               }
@@ -631,7 +638,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                   name = parameter.name,
                   key = LatticeKeys.ValueParameter,
                   typeProvider = {
-                    parameter.resolvedReturnType.withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+                    parameter.resolvedReturnType.withArguments(
+                      it.mapToArray(FirTypeParameterRef::toConeType)
+                    )
                   },
                 )
               }
@@ -664,7 +673,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
               val paramsToCopy =
                 function.valueParameterSymbols.map { LatticeFirValueParameter(session, it) }
               copyParameters(this, paramsToCopy, false) {}
-          }
+            }
             .symbol
       }
 

@@ -100,7 +100,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       constructorParameters.forEach { parameterNameAllocator.newName(it.name.asString()) }
     }
 
-    val assistedParameters by unsafeLazy { constructorParameters.filter(LatticeFirValueParameter::isAssisted) }
+    val assistedParameters by unsafeLazy {
+      constructorParameters.filter(LatticeFirValueParameter::isAssisted)
+    }
 
     val isAssisted
       get() = assistedParameters.isNotEmpty()
@@ -476,7 +478,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 name = callableId.callableName,
                 returnTypeProvider = {
                   injectedClass.classSymbol.constructType(
-                    nonNullContext.owner.typeParameterSymbols.mapToArray(FirTypeParameterSymbol::toConeType)
+                    nonNullContext.owner.typeParameterSymbols.mapToArray(
+                      FirTypeParameterSymbol::toConeType
+                    )
                   )
                 },
               ) {
@@ -502,7 +506,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 } else {
                   LatticeSymbols.ClassIds.latticeFactory.constructClassLikeType(
                     arrayOf(
-                      injectedClass.classSymbol.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
+                      injectedClass.classSymbol.constructType(
+                        it.mapToArray(FirTypeParameterRef::toConeType)
+                      )
                     )
                   )
                 }
@@ -553,7 +559,8 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             buildFactoryCreateFunction(
               nonNullContext,
               {
-                val targetClassType = targetClass.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
+                val targetClassType =
+                  targetClass.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
                 LatticeSymbols.ClassIds.membersInjector.constructClassLikeType(
                   arrayOf(targetClassType)
                 )

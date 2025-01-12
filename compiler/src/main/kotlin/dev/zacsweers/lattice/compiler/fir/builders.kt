@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.lattice.compiler.fir
 
-import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import org.jetbrains.kotlin.KtFakeSourceElementKind

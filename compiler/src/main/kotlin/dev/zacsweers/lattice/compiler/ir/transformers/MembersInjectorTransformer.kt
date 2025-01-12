@@ -48,7 +48,6 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -142,7 +141,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
           } else {
             params.callableId.callableName
           }
-          companionObject.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
+        companionObject.requireSimpleFunction("inject${name.capitalizeUS().asString()}").owner
       }
 
     if (declaration.isExternalParent) {
@@ -152,7 +151,10 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
     val ctor = injectorClass.primaryConstructor!!
 
-    val allParameters = injectedMembersByClass.values.flatMap { it.flatMap(Parameters<MembersInjectParameter>::valueParameters) }
+    val allParameters =
+      injectedMembersByClass.values.flatMap {
+        it.flatMap(Parameters<MembersInjectParameter>::valueParameters)
+      }
 
     val constructorParametersToFields = assignConstructorParamsToFields(ctor, injectorClass)
 
