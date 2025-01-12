@@ -31,10 +31,9 @@ internal class LatticeFirBuiltIns(
   val options: LatticeOptions,
 ) : FirExtensionSessionComponent(session) {
 
-  val errorFunctionSymbol by
-    unsafeLazy(
-      session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName())::single
-    )
+  val errorFunctionSymbol by unsafeLazy {
+    session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).single()
+  }
 
   companion object {
     fun getFactory(latticeClassIds: LatticeClassIds, options: LatticeOptions) = Factory { session ->

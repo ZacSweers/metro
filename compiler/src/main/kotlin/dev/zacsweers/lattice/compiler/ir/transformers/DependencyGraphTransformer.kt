@@ -49,7 +49,6 @@ import dev.zacsweers.lattice.compiler.ir.isExternalParent
 import dev.zacsweers.lattice.compiler.ir.latticeFunctionOf
 import dev.zacsweers.lattice.compiler.ir.location
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
-import dev.zacsweers.lattice.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
@@ -631,7 +630,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           when (allParams.size) {
             0 -> Parameters.empty()
             1 -> allParams.first()
-            else -> allParams.reduce(Parameters<MembersInjectParameter>::mergeValueParametersWith)
+            else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
           }
 
         val membersInjectorKey =
@@ -856,7 +855,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
               else -> a.compareTo(b)
             }
           }
-          .map(bindingDependencies::getValue)
+          .map { bindingDependencies.getValue(it) }
           .distinct()
 
       val baseGenerationContext =
@@ -1323,22 +1322,21 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       ) {
         targetParams.instance?.let(::add)
       }
-      addAll(targetParams.valueParameters.filterNot(Parameter::isAssisted))
+      addAll(targetParams.valueParameters.filterNot { it.isAssisted })
     }
     if (
       binding is Binding.Provided && binding.providerFunction.correspondingPropertySymbol == null
     ) {
-      check(
-        params.valueParameters.size == paramsToMap.size,
+      check(params.valueParameters.size == paramsToMap.size) {
         """
-                Inconsistent parameter types for type ${binding.typeKey}!
-                Input type keys:
-                  - ${paramsToMap.map (Parameter::typeKey).joinToString()}
-                Binding parameters (${function.kotlinFqName}):
-                  - ${function.valueParameters.map { ContextualTypeKey.from(latticeContext, it).typeKey }.joinToString()}
-              """::
-          trimIndent,
-      )
+          Inconsistent parameter types for type ${binding.typeKey}!
+          Input type keys:
+            - ${paramsToMap.map { it.typeKey }.joinToString()}
+          Binding parameters (${function.kotlinFqName}):
+            - ${function.valueParameters.map { ContextualTypeKey.from(latticeContext, it).typeKey }.joinToString()}
+        """
+          .trimIndent()
+      }
     }
 
     return params.valueParameters.mapIndexed { i, param ->
@@ -1693,7 +1691,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   ): IrExpression {
     val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
     val (collectionProviders, individualProviders) =
-      binding.sourceBindings.partition(Binding.Provided::elementsIntoSet)
+      binding.sourceBindings.partition { it.elementsIntoSet }
     // If we have any @ElementsIntoSet, we need to use SetFactory
     return if (collectionProviders.isNotEmpty() || contextualTypeKey.requiresProviderInstance) {
       generateSetFactoryExpression(

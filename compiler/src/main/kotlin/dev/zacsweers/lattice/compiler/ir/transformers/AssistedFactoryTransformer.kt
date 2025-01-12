@@ -26,7 +26,6 @@ import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
-import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
@@ -117,7 +116,7 @@ internal class AssistedFactoryTransformer(
 
     val constructorParams = injectConstructor.parameters(this)
     val assistedParameters =
-      constructorParams.valueParameters.filter(ConstructorParameter::isAssisted)
+      constructorParams.valueParameters.filter { parameter -> parameter.isAssisted }
     val assistedParameterKeys =
       assistedParameters.mapIndexed { index, parameter ->
         injectConstructor.valueParameters[index].toAssistedParameterKey(symbols, parameter.typeKey)

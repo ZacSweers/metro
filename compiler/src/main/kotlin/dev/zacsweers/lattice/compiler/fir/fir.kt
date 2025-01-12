@@ -517,8 +517,13 @@ internal inline fun FirClass.validateApiDeclaration(
     onError()
   }
   if (isAbstract && classKind == ClassKind.CLASS) {
-    primaryConstructorIfAny(context.session)
-      ?.validateVisibility(context, reporter, "$type classes' primary constructor", onError)
+    primaryConstructorIfAny(context.session)?.validateVisibility(
+      context,
+      reporter,
+      "$type classes' primary constructor",
+    ) {
+      onError()
+    }
   }
 }
 
@@ -553,7 +558,7 @@ internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
 ): LatticeFirAnnotation? {
   return filterIsInstance<FirAnnotationCall>()
     .firstOrNull { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
-    ?.let(::LatticeFirAnnotation)
+    ?.let { LatticeFirAnnotation(it) }
 }
 
 internal fun FirAnnotationCall.isAnnotatedWithAny(

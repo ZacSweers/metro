@@ -59,7 +59,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   private val providesAnnotationPredicate by unsafeLazy {
-    annotated(session.latticeClassIds.providesAnnotations.map(ClassId::asSingleFqName))
+    annotated(session.latticeClassIds.providesAnnotations.map { it.asSingleFqName() })
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
@@ -278,18 +278,17 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
 
     val useGetPrefix by unsafeLazy { isProperty && !isWordPrefixRegex.matches(name.asString()) }
 
-    val bytecodeName: Name by
-      unsafeLazy(
-        buildString {
+    val bytecodeName: Name by unsafeLazy {
+      buildString {
           when {
             useGetPrefix -> {
               append("get")
               append(name.asString().capitalizeUS())
             }
-
             else -> append(name.asString())
           }
-        }::asName
-      )
+        }
+        .asName()
+    }
   }
 }

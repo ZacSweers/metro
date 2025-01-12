@@ -23,12 +23,11 @@ import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrVararg
-import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation> {
-  private val cachedHashKey by unsafeLazy(ir::computeAnnotationHash)
+  private val cachedHashKey by unsafeLazy { ir.computeAnnotationHash() }
   private val cachedToString by unsafeLazy {
     buildString {
       append('@')
@@ -56,8 +55,7 @@ internal fun IrConstructorCall.asIrAnnotation() = IrAnnotation(this)
 
 private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall) {
   val annotationClassName =
-    irAnnotation.symbol.takeIf(IrConstructorSymbol::isBound)?.owner?.parentAsClass?.name?.asString()
-      ?: "<unbound>"
+    irAnnotation.symbol.takeIf { it.isBound }?.owner?.parentAsClass?.name?.asString() ?: "<unbound>"
   append(annotationClassName)
 
   // TODO type args not supported
@@ -82,13 +80,9 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?) {
       renderIrConstAsAnnotationArgument(irElement)
     }
     is IrVararg -> {
-      appendIterableWith(
-        irElement.elements,
-        prefix = "[",
-        postfix = "]",
-        separator = ", ",
-        renderItem = StringBuilder::renderAsAnnotationArgument,
-      )
+      appendIterableWith(irElement.elements, prefix = "[", postfix = "]", separator = ", ") {
+        renderAsAnnotationArgument(it)
+      }
     }
     is IrClassReference -> {
       append(irElement.classType.rawType().classId?.shortClassName?.asString() ?: "<error>")

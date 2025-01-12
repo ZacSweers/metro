@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.compiler.ir
 import dev.zacsweers.lattice.compiler.LatticeLogger
 import dev.zacsweers.lattice.compiler.exitProcessing
 import dev.zacsweers.lattice.compiler.ir.Binding.Companion.createInjectedClassBindingOrFail
-import dev.zacsweers.lattice.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.lattice.compiler.mapToSet
 import java.util.concurrent.ConcurrentHashMap
@@ -111,7 +110,7 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
           }
         }
         is Binding.MembersInjected -> {
-          binding.parameters.valueParameters.mapToSet(MembersInjectParameter::contextualTypeKey)
+          binding.parameters.valueParameters.mapToSet { it.contextualTypeKey }
         }
         is Binding.BoundInstance -> emptySet()
         is Binding.GraphDependency -> emptySet()
@@ -300,11 +299,7 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
   }
 
   private fun checkMissingDependencies(onError: (String) -> Nothing) {
-    val allDeps =
-      dependencies.values
-        .map(Lazy<Set<ContextualTypeKey>>::value)
-        .flatten()
-        .mapToSet(ContextualTypeKey::typeKey)
+    val allDeps = dependencies.values.map { it.value }.flatten().mapToSet { it.typeKey }
     val missing = allDeps - bindings.keys
     if (missing.isNotEmpty()) {
       onError("Missing bindings for: $missing")

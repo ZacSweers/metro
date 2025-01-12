@@ -110,26 +110,26 @@ internal class LatticeSymbols(
     createPackage(kotlinCollectionsPackageFqn.asString())
   }
 
-  val latticeCreateGraph: IrSimpleFunctionSymbol by
-    lazy(
-      pluginContext.referenceFunctions(
-        CallableId(latticeRuntime.packageFqName, Name.identifier("createGraph"))
-      )::single
-    )
+  val latticeCreateGraph: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(latticeRuntime.packageFqName, Name.identifier("createGraph")))
+      .single()
+  }
 
-  val latticeCreateGraphFactory: IrSimpleFunctionSymbol by
-    lazy(
-      pluginContext.referenceFunctions(
+  val latticeCreateGraphFactory: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(
         CallableId(latticeRuntime.packageFqName, Name.identifier("createGraphFactory"))
-      )::single
-    )
+      )
+      .single()
+  }
 
   private val doubleCheck: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("DoubleCheck"))
     )!!
   }
-  val doubleCheckCompanionObject by lazy(doubleCheck.owner.companionObject()!!::symbol)
+  val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
   val doubleCheckProvider by lazy { doubleCheckCompanionObject.requireSimpleFunction("provider") }
   val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
 
@@ -138,7 +138,7 @@ internal class LatticeSymbols(
       ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("ProviderOfLazy"))
     )!!
   }
-  val providerOfLazyCompanionObject by lazy(providerOfLazy.owner.companionObject()!!::symbol)
+  val providerOfLazyCompanionObject by lazy { providerOfLazy.owner.companionObject()!!.symbol }
   val providerOfLazyCreate: IrFunctionSymbol by lazy {
     providerOfLazyCompanionObject.requireSimpleFunction(StringNames.CREATE)
   }
@@ -148,7 +148,7 @@ internal class LatticeSymbols(
       ClassId(latticeRuntimeInternal.packageFqName, Name.identifier("InstanceFactory"))
     )!!
   }
-  val instanceFactoryCompanionObject by lazy(instanceFactory.owner.companionObject()!!::symbol)
+  val instanceFactoryCompanionObject by lazy { instanceFactory.owner.companionObject()!!.symbol }
   val instanceFactoryCreate: IrFunctionSymbol by lazy {
     instanceFactoryCompanionObject.requireSimpleFunction(StringNames.CREATE)
   }
@@ -159,12 +159,11 @@ internal class LatticeSymbols(
     )!!
   }
 
-  val latticeProviderFunction: IrSimpleFunctionSymbol by
-    lazy(
-      pluginContext.referenceFunctions(
-        CallableId(latticeRuntime.packageFqName, Name.identifier("provider"))
-      )::single
-    )
+  val latticeProviderFunction: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(latticeRuntime.packageFqName, Name.identifier("provider")))
+      .single()
+  }
 
   val providerInvoke: IrSimpleFunctionSymbol by lazy {
     latticeProvider.requireSimpleFunction("invoke")
@@ -176,11 +175,13 @@ internal class LatticeSymbols(
     )!!
   }
 
-  val latticeDelegateFactoryConstructor: IrConstructorSymbol by
-    lazy(latticeDelegateFactory.constructors::single)
+  val latticeDelegateFactoryConstructor: IrConstructorSymbol by lazy {
+    latticeDelegateFactory.constructors.single()
+  }
 
-  val latticeDelegateFactoryCompanion: IrClassSymbol by
-    lazy(latticeDelegateFactory.owner.companionObject()!!::symbol)
+  val latticeDelegateFactoryCompanion: IrClassSymbol by lazy {
+    latticeDelegateFactory.owner.companionObject()!!.symbol
+  }
 
   val latticeDelegateFactorySetDelegate: IrFunctionSymbol by lazy {
     latticeDelegateFactoryCompanion.requireSimpleFunction("setDelegate")
@@ -214,10 +215,13 @@ internal class LatticeSymbols(
     )!!
   }
 
-  val setFactoryBuilder: IrClassSymbol by
-    lazy(setFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }::symbol)
+  val setFactoryBuilder: IrClassSymbol by lazy {
+    setFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
 
-  val setFactoryCompanionObject: IrClassSymbol by lazy(setFactory.owner.companionObject()!!::symbol)
+  val setFactoryCompanionObject: IrClassSymbol by lazy {
+    setFactory.owner.companionObject()!!.symbol
+  }
 
   val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     setFactoryCompanionObject.requireSimpleFunction("builder")
@@ -241,10 +245,13 @@ internal class LatticeSymbols(
     )!!
   }
 
-  val mapFactoryBuilder: IrClassSymbol by
-    lazy(mapFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }::symbol)
+  val mapFactoryBuilder: IrClassSymbol by lazy {
+    mapFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
 
-  val mapFactoryCompanionObject: IrClassSymbol by lazy(mapFactory.owner.companionObject()!!::symbol)
+  val mapFactoryCompanionObject: IrClassSymbol by lazy {
+    mapFactory.owner.companionObject()!!.symbol
+  }
 
   val mapFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     mapFactoryCompanionObject.requireSimpleFunction("builder")
@@ -268,11 +275,13 @@ internal class LatticeSymbols(
     )!!
   }
 
-  val mapProviderFactoryBuilder: IrClassSymbol by
-    lazy(mapProviderFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }::symbol)
+  val mapProviderFactoryBuilder: IrClassSymbol by lazy {
+    mapProviderFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
 
-  val mapProviderFactoryCompanionObject: IrClassSymbol by
-    lazy(mapProviderFactory.owner.companionObject()!!::symbol)
+  val mapProviderFactoryCompanionObject: IrClassSymbol by lazy {
+    mapProviderFactory.owner.companionObject()!!.symbol
+  }
 
   val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderFactoryCompanionObject.requireSimpleFunction("builder")
@@ -294,11 +303,11 @@ internal class LatticeSymbols(
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
   }
 
-  val stdlibErrorFunction: IrFunctionSymbol by
-    lazy(
-      pluginContext.referenceFunctions(CallableId(stdlib.packageFqName, Name.identifier("error")))::
-        first
-    )
+  val stdlibErrorFunction: IrFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(stdlib.packageFqName, Name.identifier("error")))
+      .first()
+  }
 
   val stdlibCheckNotNull: IrFunctionSymbol by lazy {
     pluginContext
@@ -306,12 +315,11 @@ internal class LatticeSymbols(
       .single { it.owner.explicitParametersCount == 2 }
   }
 
-  val emptySet by
-    lazy(
-      pluginContext.referenceFunctions(
-        CallableId(stdlibCollections.packageFqName, Name.identifier("emptySet"))
-      )::first
-    )
+  val emptySet by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(stdlibCollections.packageFqName, Name.identifier("emptySet")))
+      .first()
+  }
 
   val setOfSingleton by lazy {
     pluginContext

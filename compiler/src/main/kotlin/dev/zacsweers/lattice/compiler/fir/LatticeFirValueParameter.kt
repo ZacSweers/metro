@@ -40,8 +40,9 @@ internal interface LatticeFirValueParameter {
       object : LatticeFirValueParameter {
         override val symbol = symbol
         override val name = name
-        override val memberInjectorFunctionName: Name by
-          unsafeLazy("inject${memberKey.capitalizeUS().asString()}"::asName)
+        override val memberInjectorFunctionName: Name by unsafeLazy {
+          "inject${memberKey.capitalizeUS().asString()}".asName()
+        }
         override val isAssisted: Boolean by unsafeLazy {
           symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
         }

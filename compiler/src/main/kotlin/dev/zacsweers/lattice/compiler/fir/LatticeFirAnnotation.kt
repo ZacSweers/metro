@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 internal class LatticeFirAnnotation(val fir: FirAnnotationCall) {
-  private val cachedHashKey by unsafeLazy(fir::computeAnnotationHash)
+  private val cachedHashKey by unsafeLazy { fir.computeAnnotationHash() }
   private val cachedToString by unsafeLazy {
     buildString { renderAsAnnotation(fir, simple = false) }
   }

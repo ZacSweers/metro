@@ -32,7 +32,6 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getContainingDeclaration
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
-import org.jetbrains.kotlin.name.ClassId
 
 /**
  * Generates factory supertypes onto companion objects of `@DependencyGraph` types IFF the graph has
@@ -72,7 +71,7 @@ internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
     LookupPredicate.BuilderContext.annotated(
       (session.latticeClassIds.dependencyGraphAnnotations +
           session.latticeClassIds.dependencyGraphFactoryAnnotations)
-        .map(ClassId::asSingleFqName)
+        .map { it.asSingleFqName() }
     )
   }
 

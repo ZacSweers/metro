@@ -147,7 +147,7 @@ internal fun IrType.rawTypeOrNull(): IrClass? {
 }
 
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
-  return names.any(::hasAnnotation)
+  return names.any { hasAnnotation(it) }
 }
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
@@ -268,10 +268,10 @@ internal fun IrClass.allCallableMembers(
       }
     }
     .filter(functionFilter)
-    .plus(properties.filter(propertyFilter).mapNotNull(IrProperty::getter))
-    .letIf(excludeInheritedMembers) { it.filterNot(IrSimpleFunction::isFakeOverride) }
+    .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
+    .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
     .let { parentClassCallables ->
-      val asFunctions = parentClassCallables.map(context::latticeFunctionOf)
+      val asFunctions = parentClassCallables.map { context.latticeFunctionOf(it) }
       if (excludeCompanionObjectMembers) {
         asFunctions
       } else {
@@ -312,7 +312,7 @@ internal fun irLambda(
       }
       .apply {
         this.parent = parent
-        receiverParameter?.let(::addExtensionReceiver)
+        receiverParameter?.let { addExtensionReceiver(it) }
         valueParameters.forEachIndexed { index, type -> addValueParameter("arg$index", type) }
         body = context.createIrBuilder(this.symbol).irBlockBody { content(this@apply) }
       }
@@ -360,9 +360,11 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
 ): List<IrExpression?> {
   return buildList {
     addAll(
-      parameters.allParameters.filterNot(Parameter::isAssisted).map { parameter ->
-        parameterAsProviderArgument(context, parameter, receiver, parametersToFields)
-      }
+      parameters.allParameters
+        .filterNot { it.isAssisted }
+        .map { parameter ->
+          parameterAsProviderArgument(context, parameter, receiver, parametersToFields)
+        }
     )
   }
 }
@@ -566,7 +568,7 @@ internal fun IrClass.abstractFunctions(context: LatticeTransformerContext): List
       it.computeJvmDescriptorIsh(context, includeReturnType = false)
     }
     .mapValues { (_, functions) ->
-      val (abstract, implemented) = functions.partition(IrSimpleFunction::isAbstractAndVisible)
+      val (abstract, implemented) = functions.partition { it.isAbstractAndVisible() }
       if (abstract.isEmpty()) {
         // All implemented, nothing to do
         null

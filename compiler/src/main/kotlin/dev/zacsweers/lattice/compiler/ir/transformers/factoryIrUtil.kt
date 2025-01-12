@@ -62,8 +62,7 @@ internal fun generateStaticCreateFunction(
       val valueParamsToPatch = valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }
       context.copyParameterDefaultValues(
         providerFunction = providerFunction,
-        sourceParameters =
-          parameters.valueParameters.filterNot(Parameter::isAssisted).map(Parameter::ir),
+        sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
         targetParameters = valueParamsToPatch,
         targetGraphParameter = instanceParam,
         wrapInProvider = true,
