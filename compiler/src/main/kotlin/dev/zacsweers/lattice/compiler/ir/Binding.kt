@@ -141,7 +141,7 @@ internal sealed interface Binding {
     override val reportableLocation: CompilerMessageSourceLocation
       get() = providerFunction.location()
 
-    fun parameterFor(typeKey: TypeKey): IrValueParameter? {
+    fun parameterFor(typeKey: TypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
         ?: error(
           "No value parameter found for key $typeKey in ${providerFunction.kotlinFqName.asString()}."

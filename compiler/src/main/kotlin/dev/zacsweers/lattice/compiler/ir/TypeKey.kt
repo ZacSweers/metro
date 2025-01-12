@@ -43,7 +43,7 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
     append(typeString)
   }
 
-  private fun IrType.renderShort(): String? {
+  private fun IrType.renderShort(): String {
     val simpleName = simpleName
     val args =
       if (this is IrSimpleType) {

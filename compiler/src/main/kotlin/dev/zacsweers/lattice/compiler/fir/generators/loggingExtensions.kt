@@ -206,7 +206,7 @@ internal class LoggingFirSupertypeGenerationExtension(
     val additionalSupertypes =
       delegate.computeAdditionalSupertypes(classLikeDeclaration, resolvedSupertypes, typeResolver)
     logger.log {
-      "computeAdditionalSupertypes: ${additionalSupertypes.size} additional supertypes for ${classLikeDeclaration.classId}: ${additionalSupertypes.joinToString() { it.classId!!.asString() }}"
+      "computeAdditionalSupertypes: ${additionalSupertypes.size} additional supertypes for ${classLikeDeclaration.classId}: ${additionalSupertypes.joinToString { it.classId!!.asString() }}"
     }
     return additionalSupertypes
   }
