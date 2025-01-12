@@ -236,25 +236,44 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
   private fun getOrComputeDependencyGraphNode(
     graphDeclaration: IrClass,
     bindingStack: BindingStack,
-    latticeGraph: IrClass = graphDeclaration.requireNestedClass(LatticeSymbols.Names.latticeGraph),
+    latticeGraph: IrClass? = null,
   ): DependencyGraphNode {
     val graphClassId = graphDeclaration.classIdOrFail
     dependencyGraphNodesByClass[graphClassId]?.let {
       return it
     }
 
-    if (graphDeclaration.isExternalParent) {
-      // FIR checker ensures this is a valid graph dep
+    val isGraph = graphDeclaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
+    if (graphDeclaration.isExternalParent || !isGraph) {
+      val accessorsToCheck =
+        if (isGraph) {
+          // It's just an external graph, just read the declared types from it
+          graphDeclaration
+            .requireNestedClass(LatticeSymbols.Names.latticeGraph)
+            .declaredCallableMembers(latticeContext)
+        } else {
+          graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false).flatMap {
+            it
+              .rawType()
+              .allCallableMembers(
+                latticeContext,
+                excludeInheritedMembers = true,
+                excludeCompanionObjectMembers = true,
+              )
+          }
+        }
+
       val accessors =
-        latticeGraph
-          .declaredCallableMembers(latticeContext)
-          .filterNot { it.annotations.isBinds }
+        accessorsToCheck
+          .filterNot {
+            it.annotations.isBinds || it.annotations.isProvides || it.annotations.isMultibinds
+          }
           .toList()
 
       val dependentNode =
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
-          dependencies = emptyList(),
+          dependencies = emptyMap(),
           scopes = emptySet(),
           providerFunctions = emptyList(),
           exposedTypes =
@@ -273,6 +292,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       return dependentNode
     }
 
+    val nonNullLatticeGraph =
+      latticeGraph ?: graphDeclaration.requireNestedClass(LatticeSymbols.Names.latticeGraph)
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
     val graphContextKey =
       ContextualTypeKey(
@@ -287,7 +308,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val bindsFunctions = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
     val injectors = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
 
-    for (declaration in latticeGraph.declarations) {
+    for (declaration in nonNullLatticeGraph.declarations) {
       when (declaration) {
         is IrSimpleFunction ->
           // Could be an injector or accessor
@@ -365,7 +386,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     try {
       checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
     } catch (e: ExitProcessingException) {
-      implementCreatorFunctions(graphDeclaration, creator, latticeGraph)
+      implementCreatorFunctions(graphDeclaration, creator, nonNullLatticeGraph)
       implementFirStubs(exposedTypes, bindsFunctions, injectors, context = null)
       throw e
     }
@@ -376,13 +397,15 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         ?.valueParameters
         .orEmpty()
         .filter { !it.isBindsInstance }
-        .map {
+        .associate {
           val type = it.typeKey.type.rawType()
-          bindingStack.withEntry(
-            BindingStack.Entry.requestedAt(graphContextKey, creator!!.createFunction)
-          ) {
-            getOrComputeDependencyGraphNode(type, bindingStack)
-          }
+          val node =
+            bindingStack.withEntry(
+              BindingStack.Entry.requestedAt(graphContextKey, creator!!.createFunction)
+            ) {
+              getOrComputeDependencyGraphNode(type, bindingStack)
+            }
+          it.typeKey to node
         }
 
     val dependencyGraphNode =
@@ -604,7 +627,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
 
     // Add bindings from graph dependencies
-    node.dependencies.forEach { depNode ->
+    node.dependencies.forEach { (_, depNode) ->
       depNode.exposedTypes.forEach { (getter, contextualTypeKey) ->
         graph.addBinding(
           contextualTypeKey.typeKey,
@@ -774,10 +797,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           } else {
             // It's a graph dep. Add all its exposed types as available keys and point them at
             // this constructor parameter for provider field initialization
-            for (graphDep in node.allDependencies) {
-              for ((_, contextualTypeKey) in graphDep.exposedTypes) {
-                graphTypesToCtorParams[contextualTypeKey.typeKey] = irParam
-              }
+            val graphDep = node.dependencies.getValue(param.typeKey)
+            for ((_, contextualTypeKey) in graphDep.exposedTypes) {
+              graphTypesToCtorParams[contextualTypeKey.typeKey] = irParam
             }
           }
         }
@@ -1467,7 +1489,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     return expression
   }
 
-  internal fun IrBuilderWithScope.generateBindingCode(
+  private fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
     generationContext: GraphGenerationContext,
     contextualTypeKey: ContextualTypeKey = binding.contextualTypeKey,
@@ -1660,11 +1682,12 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             )
           }
         irInvoke(
-          dispatchReceiver = null,
-          callee = symbols.latticeProviderFunction,
-          typeHint = binding.typeKey.type.wrapInProvider(symbols.latticeProvider),
-          args = listOf(lambda),
-        )
+            dispatchReceiver = null,
+            callee = symbols.latticeProviderFunction,
+            typeHint = binding.typeKey.type.wrapInProvider(symbols.latticeProvider),
+            args = listOf(lambda),
+          )
+          .apply { putTypeArgument(0, binding.typeKey.type) }
       }
     }
   }
