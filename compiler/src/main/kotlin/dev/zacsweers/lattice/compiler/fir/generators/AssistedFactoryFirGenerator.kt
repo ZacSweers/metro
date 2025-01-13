@@ -182,6 +182,8 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
     // This assumes that all callbacks are for assisted. If we ever make this broader in scope then
     // need to track their combos somewhere to check here
     return createNestedClass(owner, name, LatticeKeys.Default, classKind = ClassKind.INTERFACE) {
+        // annoyingly not implicit from the class kind
+        modality = Modality.ABSTRACT
         status { isFun = true }
       }
       .apply {
