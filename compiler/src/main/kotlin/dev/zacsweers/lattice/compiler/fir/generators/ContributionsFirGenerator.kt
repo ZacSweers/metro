@@ -1,11 +1,13 @@
 package dev.zacsweers.lattice.compiler.fir.generators
 
+import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.hintClassId
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -31,6 +33,7 @@ import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 
@@ -93,6 +96,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
         key = LatticeKeys.Default,
         classKind = ClassKind.INTERFACE,
       ) {
+        // annoyingly not implicit from the class kind
+        modality = Modality.ABSTRACT
         if (contribution is Contribution.ContributesTo) {
           superType(contribution.origin.defaultType(emptyList()))
         }
@@ -128,9 +133,17 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
   override fun getCallableNamesForClass(
     classSymbol: FirClassSymbol<*>,
-    context: MemberGenerationContext
+    context: MemberGenerationContext,
   ): Set<Name> {
     // TODO contributed bindings go into here
     return super.getCallableNamesForClass(classSymbol, context)
+  }
+
+  override fun hasPackage(packageFqName: FqName): Boolean {
+    return if (packageFqName == LatticeSymbols.FqNames.latticeHintsPackage) {
+      true
+    } else {
+      super.hasPackage(packageFqName)
+    }
   }
 }
