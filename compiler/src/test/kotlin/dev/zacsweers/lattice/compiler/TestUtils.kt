@@ -521,3 +521,49 @@ fun <T> Sequence<T>.chunkedBy(predicate: (T) -> Boolean): Sequence<List<T>> = se
     yield(current)
   }
 }
+
+fun Class<*>.allSupertypes(
+  includeInterfaces: Boolean = true,
+  includeSuperclasses: Boolean = true,
+  includeSelf: Boolean = false,
+): Set<Class<*>> {
+  val supertypes = mutableSetOf<Class<*>>()
+  allSupertypes(
+    includeInterfaces = includeInterfaces,
+    includeSuperclasses = includeSuperclasses,
+    includeSelf = includeSelf,
+    supertypes = supertypes
+  )
+  return supertypes
+}
+
+private fun Class<*>.allSupertypes(
+  includeInterfaces: Boolean,
+  includeSuperclasses: Boolean,
+  includeSelf: Boolean,
+  supertypes: MutableSet<Class<*>>
+) {
+  if (includeSelf) {
+    supertypes += this
+  }
+
+  if (includeSuperclasses) {
+    supertypes.addAll(
+      generateSequence(superclass) { it.superclass }
+    )
+  }
+
+  if (includeInterfaces) {
+    for (superinterface in interfaces) {
+      val added = supertypes.add(superinterface)
+      if (added) {
+        superinterface.allSupertypes(
+          includeInterfaces = true,
+          includeSuperclasses = false,
+          includeSelf = false,
+          supertypes = supertypes
+        )
+      }
+    }
+  }
+}

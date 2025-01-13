@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.compiler.LatticeLogger
 import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryImplFirGenerator
+import dev.zacsweers.lattice.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.ContributionsFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
@@ -43,6 +44,7 @@ internal class LatticeFirExtensionRegistrar(
     if (options.makeExistingCompanionsImplementGraphFactories) {
       +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
     }
+    +supertypeGenerator("Supertypes - contributed interfaces", ContributedInterfaceSupertypeGenerator.Factory(latticeClassIds)::create, true)
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)

@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.compiler.LatticeSymbols.StringNames.LATTICE_RUNTIME
 import dev.zacsweers.lattice.compiler.LatticeSymbols.StringNames.LATTICE_RUNTIME_PACKAGE
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -36,7 +37,9 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.JsStandardClassIds
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.StandardClassIds
 
 internal class LatticeSymbols(
   private val moduleFragment: IrModuleFragment,
@@ -65,16 +68,17 @@ internal class LatticeSymbols(
     val latticeHintsPackage = FqName(StringNames.LATTICE_HINTS_PACKAGE)
   }
 
+  // TODO replace with StandardClassIds
   object ClassIds {
-    val anyClass = ClassId(kotlinPackageFqn, Name.identifier("Any"))
-    val jsExportIgnore = ClassId.fromString("kotlin/js/JsExport.Ignore")
+    val anyClass = StandardClassIds.Any
+    val jsExportIgnore = JsStandardClassIds.Annotations.JsExportIgnore
     val latticeFactory = ClassId(FqNames.latticeRuntimeInternalPackage, Names.factoryClassName)
     val latticeProvider = ClassId(FqNames.latticeRuntimePackage, Names.providerClassName)
     val latticeOrigin = ClassId(FqNames.latticeRuntimeInternalPackage, "Origin".asName())
     val membersInjector = ClassId(FqNames.latticeRuntimePackage, Names.membersInjector)
-    val lazy = ClassId(kotlinPackageFqn, Name.identifier("Lazy"))
-    val map = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Map"))
-    val set = ClassId(kotlinCollectionsPackageFqn, Name.identifier("Set"))
+    val lazy = StandardClassIds.byName("Lazy")
+    val map = StandardClassIds.Map
+    val set = StandardClassIds.Set
   }
 
   object Names {
@@ -95,7 +99,7 @@ internal class LatticeSymbols(
     val providerFunction = Name.identifier(StringNames.PROVIDER)
     val receiver = Name.identifier("receiver")
     // Used in @Assisted.value
-    val value = Name.identifier("value")
+    val value = StandardNames.DEFAULT_VALUE_PARAMETER
 
     val latticeNames = setOf(latticeFactory, latticeGraph, latticeImpl, latticeMembersInjector)
   }
