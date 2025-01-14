@@ -18,7 +18,9 @@ package dev.zacsweers.lattice.compiler.fir.generators
 import dev.zacsweers.lattice.compiler.LatticeLogger
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -207,6 +209,19 @@ internal class LoggingFirSupertypeGenerationExtension(
       delegate.computeAdditionalSupertypes(classLikeDeclaration, resolvedSupertypes, typeResolver)
     logger.log {
       "computeAdditionalSupertypes: ${additionalSupertypes.size} additional supertypes for ${classLikeDeclaration.classId}: ${additionalSupertypes.joinToString { it.classId!!.asString() }}"
+    }
+    return additionalSupertypes
+  }
+
+  @ExperimentalSupertypesGenerationApi
+  override fun computeAdditionalSupertypesForGeneratedNestedClass(
+    klass: FirRegularClass,
+    typeResolver: TypeResolveService
+  ): List<FirResolvedTypeRef> {
+    val additionalSupertypes =
+      delegate.computeAdditionalSupertypesForGeneratedNestedClass(klass, typeResolver)
+    logger.log {
+      "computeAdditionalSupertypesForGeneratedNestedClass: ${additionalSupertypes.size} additional supertypes for nested ${klass.classId}: ${additionalSupertypes.joinToString { it.coneType.classId!!.asString() }}"
     }
     return additionalSupertypes
   }
