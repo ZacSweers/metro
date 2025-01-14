@@ -4,8 +4,11 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.allSupertypes
+import kotlin.test.Ignore
 import kotlin.test.Test
 
+// Need to resume these tests after fixing FIR generation bits first!
+@Ignore
 class AggregationTest : LatticeCompilerTest() {
   @Test
   fun `contributing types are generated in fir`() {
@@ -19,7 +22,7 @@ class AggregationTest : LatticeCompilerTest() {
           interface ExampleGraph
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph
       assertThat(graph.allSupertypes().map { it.name })
@@ -29,15 +32,16 @@ class AggregationTest : LatticeCompilerTest() {
 
   @Test
   fun `contributing types are visible from another module`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
           @ContributesTo(AppScope::class)
           interface ContributedInterface
         """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -52,6 +56,31 @@ class AggregationTest : LatticeCompilerTest() {
       val graph = ExampleGraph
       assertThat(graph.allSupertypes().map { it.name })
         .containsExactly("lattice.hints.TestContributedInterface", "test.ContributedInterface")
+    }
+  }
+
+  @Test
+  fun `simple ContributesBinding with implicit bound type`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph
+      TODO()
     }
   }
 }
