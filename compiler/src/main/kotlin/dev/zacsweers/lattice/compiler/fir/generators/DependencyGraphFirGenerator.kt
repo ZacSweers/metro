@@ -295,7 +295,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
 
     class Creator(val classSymbol: FirClassSymbol<*>) {
       private var samComputed = false
-      val isInterface = classSymbol.classKind == ClassKind.INTERFACE
+      val isInterface = classSymbol.isInterface
 
       var function: FirFunctionSymbol<*>? = null
 
