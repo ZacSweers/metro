@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -54,7 +55,9 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirEmptyArgumentList
+import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
@@ -65,8 +68,11 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMappi
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
+import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
+import org.jetbrains.kotlin.fir.extensions.buildUserTypeFromQualifierParts
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
+import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
@@ -89,12 +95,14 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -144,7 +152,9 @@ internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): Boolean {
-  return annotations.any { it.toAnnotationClassIdSafe(session) in names }
+  return resolvedAnnotationsWithClassIds.any {
+    it.toAnnotationClassIdSafe(session) in names
+  }
 }
 
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
@@ -723,3 +733,51 @@ internal val ClassId.hintClassId: ClassId
         .asName()
     return ClassId(LatticeSymbols.FqNames.latticeHintsPackage, simpleName)
   }
+
+private val FirPropertyAccessExpression.qualifierName: Name?
+  get() = (calleeReference as? FirSimpleNamedReference)?.name
+
+internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), index = 0)
+
+internal fun FirAnnotation.resolvedScopeClass(typeResolver: TypeResolveService) =
+  resolvedClassArgumentTarget("scope".asName(), index = 0, typeResolver)
+
+internal fun FirAnnotation.resolvedClassArgumentTarget(
+  name: Name,
+  index: Int,
+  typeResolver: TypeResolveService,
+): ConeKotlinType? {
+  // TODO if the annotation is resolved we can skip ahead
+  val classArgument = argumentAsOrNull<FirGetClassCall>(name, index) ?: return null
+
+  if (classArgument.isResolved) {
+    return (classArgument.argument as FirClassReferenceExpression).classTypeRef.coneTypeOrNull
+  }
+
+  val typeToResolve =
+    buildUserTypeFromQualifierParts(isMarkedNullable = false) {
+      fun visitQualifiers(expression: FirExpression) {
+        if (expression !is FirPropertyAccessExpression) return
+        expression.explicitReceiver?.let { visitQualifiers(it) }
+        expression.qualifierName?.let { part(it) }
+      }
+      visitQualifiers(classArgument.argument)
+    }
+
+  val resolvedArgument = typeResolver.resolveUserType(typeToResolve).coneType
+  return resolvedArgument
+}
+
+internal fun FirAnnotation.classArgument(name: Name, index: Int) =
+  argumentAsOrNull<FirGetClassCall>(name, index)
+
+internal fun <T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
+  findArgumentByName(name)?.let {
+    @Suppress("UNCHECKED_CAST")
+    return it as T
+  }
+  if (this !is FirAnnotationCall) return null
+  // Fall back to the index if necessary
+  @Suppress("UNCHECKED_CAST")
+  return arguments.getOrNull(index) as T?
+}
