@@ -24,7 +24,6 @@ import dev.zacsweers.lattice.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -90,13 +89,8 @@ internal interface BindingStack {
       fun requestedAt(contextKey: ContextualTypeKey, accessor: IrSimpleFunction): Entry {
         val rawDeclaration: IrOverridableDeclaration<*> =
           accessor.correspondingPropertySymbol?.owner ?: accessor
-        // Because we may be looking these up from an FIR-generated override, we want to resolve
-        // the original symbol
         val declaration =
-          if (
-            rawDeclaration.origin is IrDeclarationOrigin.GeneratedByPlugin &&
-              rawDeclaration.parentAsClass.isLatticeGenerated
-          ) {
+          if (rawDeclaration.isFakeOverride) {
             rawDeclaration.resolveOverriddenTypeIfAny()
           } else {
             rawDeclaration

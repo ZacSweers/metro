@@ -16,33 +16,23 @@
 package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
-import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.abstractFunctions
-import dev.zacsweers.lattice.compiler.fir.callableDeclarations
 import dev.zacsweers.lattice.compiler.fir.constructType
-import dev.zacsweers.lattice.compiler.fir.copyParameters
-import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator.GraphObject.Creator
 import dev.zacsweers.lattice.compiler.fir.hasOrigin
-import dev.zacsweers.lattice.compiler.fir.isBinds
 import dev.zacsweers.lattice.compiler.fir.isDependencyGraph
 import dev.zacsweers.lattice.compiler.fir.isGraphFactory
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.lattice.compiler.fir.requireContainingClassSymbol
-import dev.zacsweers.lattice.compiler.latticeAnnotations
 import dev.zacsweers.lattice.compiler.mapToArray
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
-import org.jetbrains.kotlin.fir.declarations.builder.buildReceiverParameter
-import org.jetbrains.kotlin.fir.declarations.origin
-import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isOperator
@@ -55,22 +45,14 @@ import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction
-import org.jetbrains.kotlin.fir.plugin.createMemberProperty
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
-import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.resolve.getSuperTypes
-import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
-import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
-import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructType
-import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.withArguments
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -215,84 +197,6 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
   }
 
   class GraphObject(val classSymbol: FirClassSymbol<*>, val creator: Creator?) {
-    private var overridesComputed = false
-
-    val bindsOrAccessors = mutableMapOf<Name, FirCallableSymbol<*>>()
-    val injectors = mutableMapOf<Name, FirNamedFunctionSymbol>()
-
-    fun computeAccessorsAndInjectors(session: FirSession) {
-      if (overridesComputed) return
-      val types = sequenceOf(classSymbol.defaultType()).plus(classSymbol.getSuperTypes(session))
-      for (type in types) {
-        val clazz = type.toClassSymbol(session) ?: continue
-        if (clazz.classId == LatticeSymbols.ClassIds.anyClass) continue
-
-        for (callable in
-          clazz.callableDeclarations(session, includeSelf = true, includeAncestors = false)) {
-
-          val annotations = callable.latticeAnnotations(session)
-          if (annotations.isProvides) {
-            // Provider function, skip (for now?)
-            continue
-          }
-
-          // Abstract check is important. We leave alone any non-providers/injectors
-          if (callable.isAbstract) {
-            when (callable) {
-              is FirNamedFunctionSymbol -> {
-                if (callable.valueParameterSymbols.isEmpty() || callable.isBinds(session)) {
-                  bindsOrAccessors[callable.name] = callable
-                } else {
-                  // FIR checker will ensure only one parameter
-                  injectors[callable.name] = callable
-                }
-              }
-              is FirPropertySymbol -> {
-                bindsOrAccessors[callable.name] = callable
-              }
-            }
-          }
-        }
-      }
-      bindsOrAccessors.stableSort { c1, c2 ->
-        if (c1 is FirPropertySymbol && c2 is FirPropertySymbol) {
-          c1.resolvedReturnType.renderReadable().compareTo(c2.resolvedReturnType.renderReadable())
-        } else if (c1 is FirNamedFunctionSymbol && c2 is FirNamedFunctionSymbol) {
-          if (c1.valueParameterSymbols.size != c2.valueParameterSymbols.size) {
-            c1.valueParameterSymbols.size.compareTo(c2.valueParameterSymbols.size)
-          } else {
-            c1.resolvedReturnType.renderReadable().compareTo(c2.resolvedReturnType.renderReadable())
-          }
-        } else if (c1 is FirPropertySymbol) {
-          -1
-        } else {
-          1
-        }
-      }
-      injectors.stableSort { c1, c2 ->
-        if (c1.valueParameterSymbols.size != c2.valueParameterSymbols.size) {
-          c1.valueParameterSymbols.size.compareTo(c2.valueParameterSymbols.size)
-        } else {
-          c1.resolvedReturnType.renderReadable().compareTo(c2.resolvedReturnType.renderReadable())
-        }
-      }
-      overridesComputed = true
-    }
-
-    private fun <V> MutableMap<Name, V>.stableSort(comparator: Comparator<V>) {
-      val copy = entries.toSet()
-      clear()
-      putAll(
-        copy
-          .sortedWith(
-            compareBy(Map.Entry<Name, V>::key).thenComparator { (_, v1), (_, v2) ->
-              comparator.compare(v1, v2)
-            }
-          )
-          .associate { it.key to it.value }
-      )
-    }
-
     class Creator(val classSymbol: FirClassSymbol<*>) {
       private var samComputed = false
       val isInterface = classSymbol.isInterface
@@ -433,15 +337,8 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         names += LatticeSymbols.Names.invoke
       }
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphDeclaration)) {
-      // LatticeGraph, generate a constructor and gather all accessors and injectors
+      // LatticeGraph, generate a constructor
       names += SpecialNames.INIT
-
-      // Gather accessors and injectors
-      val graphClass = classSymbol.requireContainingClassSymbol()
-      val graphObject = graphObjects.getValue(graphClass.classId)
-      graphObject.computeAccessorsAndInjectors(session)
-      names += graphObject.bindsOrAccessors.keys
-      names += graphObject.injectors.keys
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
       // Graph factory impl, generating a constructor and its SAM function
       val creator =
@@ -608,112 +505,6 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       val creator = graphObject.creator!!
       return creator.function?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
         ?: emptyList()
-    }
-
-    // LatticeGraph class, implement injectors and accessors
-    if (owner.hasOrigin(LatticeKeys.LatticeGraphDeclaration)) {
-      val graphObject = graphObjects.getValue(owner.requireContainingClassSymbol().classId)
-      val functions = mutableListOf<FirNamedFunctionSymbol>()
-      if (callableId.callableName in graphObject.bindsOrAccessors) {
-        val function = graphObject.bindsOrAccessors[callableId.callableName]
-        if (function !is FirNamedFunctionSymbol) return emptyList()
-        // Simple accessor function
-        // Need to copy over any qualifiers or @Binds!
-        functions +=
-          createMemberFunction(
-              owner,
-              key = LatticeKeys.LatticeGraphAccessorCallableOverride,
-              returnTypeProvider = { function.resolvedReturnType },
-              name = callableId.callableName,
-            ) {
-              status { isOverride = true }
-
-              function.receiverParameter?.let { receiver ->
-                extensionReceiverType(receiver.typeRef.coneType)
-              }
-
-              // Will only have parameters if it's binds. FIR checker will enforce this
-              for (parameter in function.valueParameterSymbols) {
-                valueParameter(
-                  name = parameter.name,
-                  key = LatticeKeys.ValueParameter,
-                  typeProvider = {
-                    parameter.resolvedReturnType.withArguments(
-                      it.mapToArray(FirTypeParameterRef::toConeType)
-                    )
-                  },
-                )
-              }
-            }
-            .apply { replaceAnnotations(function.annotations) }
-            .symbol
-      }
-
-      // Note we don't do else-if because in theory you could have both
-      //  fun inject(): Inject
-      //  fun inject(somethingElse: SomethingElse)
-      if (callableId.callableName in graphObject.injectors) {
-        // Injector function
-        val function = graphObject.injectors.getValue(callableId.callableName)
-        // Simple accessor function
-        // TODO switch back to createMemberFunction
-        functions +=
-          generateMemberFunction(
-              owner = owner,
-              returnTypeRef = session.builtinTypes.unitType,
-              origin = LatticeKeys.LatticeGraphInjectorCallableOverride.origin,
-              callableId = callableId,
-            ) {
-              status = status.copy(isOverride = true)
-
-              function.receiverParameter?.let { receiver ->
-                receiverParameter = buildReceiverParameter { typeRef = receiver.typeRef }
-              }
-
-              val paramsToCopy =
-                function.valueParameterSymbols.map { LatticeFirValueParameter(session, it) }
-              copyParameters(this, paramsToCopy, false) {}
-            }
-            .symbol
-      }
-
-      return functions
-    }
-
-    return emptyList()
-  }
-
-  override fun generateProperties(
-    callableId: CallableId,
-    context: MemberGenerationContext?,
-  ): List<FirPropertySymbol> {
-    val owner = context?.owner ?: return emptyList()
-    if (owner.hasOrigin(LatticeKeys.LatticeGraphDeclaration)) {
-      val graphObject = graphObjects.getValue(owner.requireContainingClassSymbol().classId)
-      val properties = mutableListOf<FirPropertySymbol>()
-      if (callableId.callableName in graphObject.bindsOrAccessors) {
-        val property = graphObject.bindsOrAccessors.getValue(callableId.callableName)
-        if (property !is FirPropertySymbol) return emptyList()
-        // Simple accessor property
-        properties +=
-          createMemberProperty(
-              owner,
-              key = LatticeKeys.LatticeGraphAccessorCallableOverride,
-              name = callableId.callableName,
-              returnTypeProvider = { property.resolvedReturnType },
-            ) {
-              status { isOverride = true }
-              property.receiverParameter?.let { extensionReceiverType(it.typeRef.coneType) }
-            }
-            .apply {
-              replaceAnnotations(property.annotations)
-              getter?.replaceAnnotations(property.getterSymbol?.annotations.orEmpty())
-              setter?.replaceAnnotations(property.setterSymbol?.annotations.orEmpty())
-              backingField?.replaceAnnotations(property.backingFieldSymbol?.annotations.orEmpty())
-            }
-            .symbol
-      }
-      return properties
     }
 
     return emptyList()

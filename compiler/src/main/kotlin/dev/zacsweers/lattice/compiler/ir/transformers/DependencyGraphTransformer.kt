@@ -36,8 +36,8 @@ import dev.zacsweers.lattice.compiler.ir.appendBindingStack
 import dev.zacsweers.lattice.compiler.ir.asContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.buildBlockBody
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
-import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
 import dev.zacsweers.lattice.compiler.ir.doubleCheck
+import dev.zacsweers.lattice.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
 import dev.zacsweers.lattice.compiler.ir.getSingleConstBooleanArgumentOrNull
 import dev.zacsweers.lattice.compiler.ir.implements
@@ -46,6 +46,7 @@ import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irLambda
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
+import dev.zacsweers.lattice.compiler.ir.latticeAnnotationsOf
 import dev.zacsweers.lattice.compiler.ir.latticeFunctionOf
 import dev.zacsweers.lattice.compiler.ir.location
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
@@ -104,6 +105,8 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -250,7 +253,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           // It's just an external graph, just read the declared types from it
           graphDeclaration
             .requireNestedClass(LatticeSymbols.Names.latticeGraph)
-            .declaredCallableMembers(latticeContext)
+            .allCallableMembers(
+              latticeContext,
+              excludeInheritedMembers = false,
+              excludeCompanionObjectMembers = true,
+            )
         } else {
           graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false).flatMap {
             it
@@ -266,7 +273,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       val accessors =
         accessorsToCheck
           .filterNot {
-            it.annotations.isBinds || it.annotations.isProvides || it.annotations.isMultibinds
+            it.ir.valueParameters.isNotEmpty() ||
+              it.annotations.isBinds ||
+              it.annotations.isProvides ||
+              it.annotations.isMultibinds
           }
           .toList()
 
@@ -309,45 +319,43 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val injectors = mutableMapOf<LatticeSimpleFunction, ContextualTypeKey>()
 
     for (declaration in nonNullLatticeGraph.declarations) {
+      if (!declaration.isFakeOverride) continue
+      if (declaration is IrFunction && declaration.isFakeOverriddenFromAny()) continue
+      val annotations = latticeAnnotationsOf(declaration)
+      if (annotations.isProvides) continue
       when (declaration) {
-        is IrSimpleFunction ->
+        is IrSimpleFunction -> {
           // Could be an injector or accessor
-          when (declaration.origin) {
-            LatticeOrigins.LatticeGraphAccessorCallableOverride -> {
-              val latticeFunction = latticeFunctionOf(declaration)
-              val contextKey =
-                ContextualTypeKey.from(this, declaration, latticeFunction.annotations)
-              val collection =
-                if (latticeFunction.annotations.isBinds) {
-                  bindsFunctions
-                } else {
-                  exposedTypes
-                }
-              collection[latticeFunction] = contextKey
-            }
-            LatticeOrigins.LatticeGraphInjectorCallableOverride -> {
-              val latticeFunction = latticeFunctionOf(declaration)
-              val contextKey =
-                ContextualTypeKey.from(this, declaration, latticeFunction.annotations)
-              injectors[latticeFunction] = contextKey
-            }
+          if (declaration.valueParameters.isNotEmpty()) {
+            // It's an injector
+            val latticeFunction = latticeFunctionOf(declaration, annotations)
+            val contextKey = ContextualTypeKey.from(this, declaration, latticeFunction.annotations)
+            injectors[latticeFunction] = contextKey
+          } else {
+            // Accessor or binds
+            val latticeFunction = latticeFunctionOf(declaration, annotations)
+            val contextKey = ContextualTypeKey.from(this, declaration, latticeFunction.annotations)
+            val collection =
+              if (latticeFunction.annotations.isBinds) {
+                bindsFunctions
+              } else {
+                exposedTypes
+              }
+            collection[latticeFunction] = contextKey
           }
-
+        }
         is IrProperty -> {
-          when (declaration.origin) {
-            LatticeOrigins.LatticeGraphAccessorCallableOverride -> {
-              val getter = declaration.getter!!
-              val latticeFunction = latticeFunctionOf(getter)
-              val contextKey = ContextualTypeKey.from(this, getter, latticeFunction.annotations)
-              val collection =
-                if (latticeFunction.annotations.isBinds) {
-                  bindsFunctions
-                } else {
-                  exposedTypes
-                }
-              collection[latticeFunction] = contextKey
+          // Can only be an accessor or binds
+          val getter = declaration.getter!!
+          val latticeFunction = latticeFunctionOf(getter, annotations)
+          val contextKey = ContextualTypeKey.from(this, getter, latticeFunction.annotations)
+          val collection =
+            if (latticeFunction.annotations.isBinds) {
+              bindsFunctions
+            } else {
+              exposedTypes
             }
-          }
+          collection[latticeFunction] = contextKey
         }
       }
     }
@@ -387,7 +395,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
     } catch (e: ExitProcessingException) {
       implementCreatorFunctions(graphDeclaration, creator, nonNullLatticeGraph)
-      implementFirStubs(exposedTypes, bindsFunctions, injectors, context = null)
       throw e
     }
 
@@ -468,15 +475,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       generateLatticeGraph(node, latticeGraph, bindingGraph, deferredTypes)
     } catch (e: Exception) {
       if (e is ExitProcessingException) {
-        // Annoyingly, if we leave any unimplemented bodies then the compilation failure
-        // will be an INTERNAL_ERROR with a bunch of noisy logs. So, we need to run through
-        // and still implement the bodies with stubs to keep things clean.
-        implementFirStubs(
-          exposedTypes = node.exposedTypes,
-          bindsFunctions = node.bindsFunctions,
-          injectors = node.injectors,
-          context = null,
-        )
         throw e
       }
       throw AssertionError(
@@ -1000,7 +998,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         }
       }
 
-      implementFirStubs(
+      implementOverrides(
         node.exposedTypes,
         node.bindsFunctions,
         node.injectors,
@@ -1009,125 +1007,120 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     }
   }
 
-  private fun implementFirStubs(
+  private fun implementOverrides(
     exposedTypes: Map<LatticeSimpleFunction, ContextualTypeKey>,
     bindsFunctions: Map<LatticeSimpleFunction, ContextualTypeKey>,
     injectors: Map<LatticeSimpleFunction, ContextualTypeKey>,
-    // If this is null, then this is a stub-only generation
-    context: GraphGenerationContext?,
+    context: GraphGenerationContext,
   ) {
     // Implement abstract getters for exposed types
     exposedTypes.entries.forEach { (function, contextualTypeKey) ->
-      if (context == null) {
-        with(function.ir) { body = stubExpressionBody() }
-      } else {
-        function.ir.apply {
-          val irFunction = this
-          val binding = context.graph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
-          context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
-          body =
-            pluginContext.createIrBuilder(symbol).run {
-              if (binding is Binding.Multibinding) {
-                // TODO if we have multiple exposed types pointing at the same type, implement
-                //  one and make the rest call that one. Not multibinding specific. Maybe
-                //  groupBy { typekey }?
-              }
-              irExprBodySafe(
-                symbol,
-                typeAsProviderArgument(
-                  latticeContext,
-                  contextualTypeKey,
-                  generateBindingCode(
-                    binding,
-                    context.withReceiver(irFunction.dispatchReceiverParameter!!),
-                    contextualTypeKey,
-                  ),
-                  isAssisted = false,
-                  isGraphInstance = false,
-                ),
-              )
+      function.ir.apply {
+        finalizeFakeOverride(context.thisReceiver)
+        val irFunction = this
+        val binding = context.graph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
+        context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
+        body =
+          pluginContext.createIrBuilder(symbol).run {
+            if (binding is Binding.Multibinding) {
+              // TODO if we have multiple exposed types pointing at the same type, implement
+              //  one and make the rest call that one. Not multibinding specific. Maybe
+              //  groupBy { typekey }?
             }
-        }
-        context.bindingStack.pop()
+            irExprBodySafe(
+              symbol,
+              typeAsProviderArgument(
+                latticeContext,
+                contextualTypeKey,
+                generateBindingCode(
+                  binding,
+                  context.withReceiver(irFunction.dispatchReceiverParameter!!),
+                  contextualTypeKey,
+                ),
+                isAssisted = false,
+                isGraphInstance = false,
+              ),
+            )
+          }
       }
+      context.bindingStack.pop()
     }
 
     // Implement abstract injectors
     injectors.entries.forEach { (overriddenFunction, contextualTypeKey) ->
-      if (context == null) {
-        with(overriddenFunction.ir) { body = stubExpressionBody() }
-      } else {
-        overriddenFunction.ir.apply {
-          val targetParam = valueParameters[0]
-          val membersInjectorKey =
-            TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type))
-          val binding =
-            context.graph.requireBinding(membersInjectorKey, context.bindingStack)
-              as Binding.MembersInjected
-          context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, this))
+      overriddenFunction.ir.apply {
+        finalizeFakeOverride(context.thisReceiver)
+        val targetParam = valueParameters[0]
+        val membersInjectorKey =
+          TypeKey(symbols.latticeMembersInjector.typeWith(contextualTypeKey.typeKey.type))
+        val binding =
+          context.graph.requireBinding(membersInjectorKey, context.bindingStack)
+            as Binding.MembersInjected
+        context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, this))
 
-          // We don't get a MembersInjector instance/provider from the graph. Instead, we call
-          // all the target inject functions directly
-          body =
-            pluginContext.createIrBuilder(symbol).irBlockBody {
-              // TODO reuse, consolidate calling code with how we implement this in
-              //  constructor inject code gen
-              // val injectors =
-              // membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
-              // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
-              // }
+        // We don't get a MembersInjector instance/provider from the graph. Instead, we call
+        // all the target inject functions directly
+        body =
+          pluginContext.createIrBuilder(symbol).irBlockBody {
+            // TODO reuse, consolidate calling code with how we implement this in
+            //  constructor inject code gen
+            // val injectors =
+            // membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
+            // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
+            // }
 
-              for (type in
-                pluginContext
-                  .referenceClass(binding.targetClassId)!!
-                  .owner
-                  .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
-                val clazz = type.rawType()
-                val generatedInjector =
-                  membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
-                for ((function, parameters) in generatedInjector.injectFunctions) {
-                  +irInvoke(
-                    dispatchReceiver = irGetObject(function.parentAsClass.symbol),
-                    callee = function.symbol,
-                    args =
-                      buildList {
-                        add(irGet(targetParam))
-                        for (parameter in parameters.valueParameters) {
-                          val paramBinding =
-                            context.graph.getOrCreateBinding(
-                              parameter.contextualTypeKey,
-                              context.bindingStack,
-                            )
-                          add(
-                            typeAsProviderArgument(
-                              latticeContext,
-                              parameter.contextualTypeKey,
-                              generateBindingCode(
-                                paramBinding,
-                                context.withReceiver(
-                                  overriddenFunction.ir.dispatchReceiverParameter!!
-                                ),
-                                parameter.contextualTypeKey,
-                              ),
-                              isAssisted = false,
-                              isGraphInstance = false,
-                            )
+            for (type in
+              pluginContext
+                .referenceClass(binding.targetClassId)!!
+                .owner
+                .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
+              val clazz = type.rawType()
+              val generatedInjector =
+                membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
+              for ((function, parameters) in generatedInjector.injectFunctions) {
+                +irInvoke(
+                  dispatchReceiver = irGetObject(function.parentAsClass.symbol),
+                  callee = function.symbol,
+                  args =
+                    buildList {
+                      add(irGet(targetParam))
+                      for (parameter in parameters.valueParameters) {
+                        val paramBinding =
+                          context.graph.getOrCreateBinding(
+                            parameter.contextualTypeKey,
+                            context.bindingStack,
                           )
-                        }
-                      },
-                  )
-                }
+                        add(
+                          typeAsProviderArgument(
+                            latticeContext,
+                            parameter.contextualTypeKey,
+                            generateBindingCode(
+                              paramBinding,
+                              context.withReceiver(
+                                overriddenFunction.ir.dispatchReceiverParameter!!
+                              ),
+                              parameter.contextualTypeKey,
+                            ),
+                            isAssisted = false,
+                            isGraphInstance = false,
+                          )
+                        )
+                      }
+                    },
+                )
               }
             }
-        }
-        context.bindingStack.pop()
+          }
       }
+      context.bindingStack.pop()
     }
 
     // Implement no-op bodies for Binds providers
     bindsFunctions.forEach { (function, _) ->
-      // TODO dedupe with accessors gen?
-      function.ir.apply { body = stubExpressionBody() }
+      function.ir.apply {
+        finalizeFakeOverride(context.thisReceiver)
+        body = stubExpressionBody()
+      }
     }
   }
 
