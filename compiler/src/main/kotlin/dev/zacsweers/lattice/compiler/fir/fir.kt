@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.lattice.compiler.fir
 
-import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
@@ -32,6 +31,7 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.primaryConstructorSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
@@ -41,7 +41,6 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
-import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
@@ -361,28 +360,23 @@ internal fun FirAnnotationCall.computeAnnotationHash(): Int {
   )
 }
 
-internal inline fun FirClassLikeDeclaration.findInjectConstructor(
+internal inline fun FirClassSymbol<*>.findInjectConstructor(
   session: FirSession,
-  latticeClassIds: LatticeClassIds,
   context: CheckerContext,
   reporter: DiagnosticReporter,
   onError: () -> Nothing,
 ): FirConstructorSymbol? {
-  if (this !is FirClass) return null
-  val constructorInjections =
-    constructors(session).filter {
-      it.annotations.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations)
-    }
+  val constructorInjections = findInjectConstructors(session, checkClass = false)
   return when (constructorInjections.size) {
     0 -> null
     1 -> {
       constructorInjections[0].also {
         val isAssisted =
-          it.annotations.isAnnotatedWithAny(session, latticeClassIds.assistedAnnotations)
+          it.annotations.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
         if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
           reporter.reportOn(
             it.annotations
-              .annotationsIn(session, latticeClassIds.injectAnnotations)
+              .annotationsIn(session, session.latticeClassIds.injectAnnotations)
               .single()
               .source,
             FirLatticeErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
@@ -395,13 +389,27 @@ internal inline fun FirClassLikeDeclaration.findInjectConstructor(
       reporter.reportOn(
         constructorInjections[0]
           .annotations
-          .annotationsIn(session, latticeClassIds.injectAnnotations)
+          .annotationsIn(session, session.latticeClassIds.injectAnnotations)
           .single()
           .source,
         FirLatticeErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
         context,
       )
       onError()
+    }
+  }
+}
+
+internal fun FirClassLikeSymbol<*>.findInjectConstructors(
+  session: FirSession,
+  checkClass: Boolean = true,
+): List<FirConstructorSymbol> {
+  if (this !is FirClassSymbol<*>) return emptyList()
+  return if (checkClass && isAnnotatedInject(session)) {
+    primaryConstructorSymbol(session)?.let { listOf(it) } ?: emptyList()
+  } else {
+    declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter {
+      it.annotations.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
     }
   }
 }

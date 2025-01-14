@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
+import dev.zacsweers.lattice.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irTemporary
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
@@ -31,7 +32,9 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -42,6 +45,7 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -178,6 +182,7 @@ internal class InjectConstructorTransformer(
 
     implementInvokeOrGetBody(
       invoke.owner,
+      factoryCls.thisReceiverOrFail,
       newInstanceFunction,
       constructorParameters,
       injectors,
@@ -191,12 +196,16 @@ internal class InjectConstructorTransformer(
   }
 
   private fun implementInvokeOrGetBody(
-    invokeFunction: IrFunction,
+    invokeFunction: IrSimpleFunction,
+    thisReceiver: IrValueParameter,
     newInstanceFunction: IrSimpleFunction,
     constructorParameters: Parameters<ConstructorParameter>,
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     parametersToFields: Map<Parameter, IrField>,
   ) {
+    if (invokeFunction.isFakeOverride) {
+      invokeFunction.finalizeFakeOverride(thisReceiver)
+    }
     invokeFunction.body =
       pluginContext.createIrBuilder(invokeFunction.symbol).irBlockBody {
         val assistedArgs = invokeFunction.valueParameters.map { irGet(it) }

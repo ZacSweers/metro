@@ -97,6 +97,7 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -259,12 +260,8 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<LatticeSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
-      // TODO optimize this?
-      // TODO does this even work
       it.filterNot { function ->
-        function.overriddenSymbols.any { symbol ->
-          symbol.owner.parentClassId == LatticeSymbols.ClassIds.anyClass
-        }
+        function.isFakeOverriddenFromAny()
       }
     }
     .filter(functionFilter)
@@ -669,3 +666,17 @@ internal val IrClass.isLatticeGenerated: Boolean
   get() {
     return name in LatticeSymbols.Names.latticeNames
   }
+
+internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(dispatchReceiverParameter: IrValueParameter) {
+  check(isFakeOverride) {
+    "Function $name is not a fake override!"
+  }
+  isFakeOverride = false
+  modality = Modality.FINAL
+  if (this is IrSimpleFunction) {
+    this.dispatchReceiverParameter = dispatchReceiverParameter
+  } else if (this is IrProperty) {
+    this.getter?.finalizeFakeOverride(dispatchReceiverParameter)
+    this.setter?.finalizeFakeOverride(dispatchReceiverParameter)
+  }
+}

@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir.checkers
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.allAnnotations
 import dev.zacsweers.lattice.compiler.fir.findInjectConstructor
+import dev.zacsweers.lattice.compiler.fir.findInjectConstructors
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.scopeAnnotation
@@ -155,11 +156,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           1 -> {
             val parameter = callable.valueParameters[0]
             val clazz = parameter.returnTypeRef.firClassLike(session) ?: continue
-            val isInjected =
-              clazz.isAnnotatedWithAny(session, latticeClassIds.injectAnnotations) ||
-                clazz.findInjectConstructor(session, latticeClassIds, context, reporter) {
-                  return
-                } != null
+            val isInjected = clazz.symbol.findInjectConstructors(session).isNotEmpty()
 
             if (isInjected) {
               reporter.reportOn(

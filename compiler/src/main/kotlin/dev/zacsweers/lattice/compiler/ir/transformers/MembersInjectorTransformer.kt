@@ -24,6 +24,7 @@ import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.declaredCallableMembers
+import dev.zacsweers.lattice.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.lattice.compiler.ir.getAllSuperTypes
 import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
@@ -36,6 +37,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.memberInjectParameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.compiler.ir.rawTypeOrNull
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import kotlin.collections.component1
 import kotlin.collections.component2
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -241,6 +243,7 @@ internal class MembersInjectorTransformer(context: LatticeTransformerContext) :
 
     // Override injectMembers()
     injectorClass.requireSimpleFunction(LatticeSymbols.StringNames.INJECT_MEMBERS).owner.apply {
+      finalizeFakeOverride(injectorClass.thisReceiverOrFail)
       body =
         pluginContext.createIrBuilder(symbol).irBlockBody {
           addMemberInjection(

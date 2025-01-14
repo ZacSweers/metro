@@ -74,7 +74,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // Ensure target type has an inject constructor
     val targetType = function.resolvedReturnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
-      targetType.findInjectConstructor(session, latticeClassIds, context, reporter) {
+      targetType.symbol.findInjectConstructor(session, context, reporter) {
         return
       }
     if (injectConstructor == null) {

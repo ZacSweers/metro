@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.callableDeclarations
 import dev.zacsweers.lattice.compiler.fir.constructType
+import dev.zacsweers.lattice.compiler.fir.findInjectConstructors
 import dev.zacsweers.lattice.compiler.fir.hasOrigin
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedInject
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
@@ -404,7 +405,18 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       (isFactoryClass && isObject) ||
         classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryCompanionDeclaration)
     if (isFactoryClass) {
-      names += LatticeSymbols.Names.invoke
+      // Only generate an invoke() function if it has assisted parameters, as it won't be inherited
+      // from Factory<T> in this case
+      val target = injectFactoryClassIdsToInjectedClass[classSymbol.classId]?.classSymbol
+      val injectConstructor = target?.findInjectConstructors(session).orEmpty().singleOrNull()
+      if (
+        injectConstructor != null &&
+          injectConstructor.valueParameterSymbols.any {
+            it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+          }
+      ) {
+        names += LatticeSymbols.Names.invoke
+      }
     }
     if (isFactoryCreatorClass) {
       names += LatticeSymbols.Names.create
@@ -413,12 +425,8 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
     // MembersInjector class
     // MembersInjector companion object
-    val isInjectorClass = classSymbol.hasOrigin(LatticeKeys.MembersInjectorClassDeclaration)
     val isInjectorCreatorClass =
       classSymbol.hasOrigin(LatticeKeys.MembersInjectorCompanionDeclaration)
-    if (isInjectorClass) {
-      names += LatticeSymbols.Names.injectMembers
-    }
     if (isInjectorCreatorClass) {
       names += LatticeSymbols.Names.create
       val targetClass = classSymbol.getContainingClassSymbol()?.classId ?: return emptySet()
@@ -443,6 +451,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       } else if (context.owner.hasOrigin(LatticeKeys.MembersInjectorClassDeclaration)) {
         val injectedClass =
           membersInjectorClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
+        injectedClass.populateAncestorMemberInjections(session)
         buildFactoryConstructor(context, null, null, injectedClass.injectedMembersParameters)
       } else {
         return emptyList()
@@ -472,6 +481,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       functions +=
         when (callableId.callableName) {
           LatticeSymbols.Names.invoke -> {
+            // Assisted types do not inherit from Factory<T>, so we need to generate invoke here
             createMemberFunction(
                 owner = nonNullContext.owner,
                 key = LatticeKeys.Default,
@@ -484,9 +494,6 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                   )
                 },
               ) {
-                if (!injectedClass.isAssisted) {
-                  status { isOverride = true }
-                }
                 injectedClass.assistedParameters.forEach { assistedParameter ->
                   valueParameter(
                     assistedParameter.name,
@@ -539,22 +546,6 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       injectedClass.populateAncestorMemberInjections(session)
       functions +=
         when (callableId.callableName) {
-          LatticeSymbols.Names.injectMembers -> {
-            createMemberFunction(
-                owner = nonNullContext.owner,
-                key = LatticeKeys.Default,
-                name = callableId.callableName,
-                returnType = session.builtinTypes.unitType.coneType,
-              ) {
-                status { isOverride = true }
-                valueParameter(
-                  LatticeSymbols.Names.instance,
-                  typeProvider = injectedClass.classSymbol::constructType,
-                  key = LatticeKeys.ValueParameter,
-                )
-              }
-              .symbol
-          }
           LatticeSymbols.Names.create -> {
             buildFactoryCreateFunction(
               nonNullContext,
