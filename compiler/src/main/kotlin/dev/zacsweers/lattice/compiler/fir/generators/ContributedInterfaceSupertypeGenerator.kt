@@ -19,10 +19,10 @@ import dev.zacsweers.lattice.compiler.LatticeClassIds
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.fir.annotationsIn
+import dev.zacsweers.lattice.compiler.fir.hintClassId
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.analysis.checkers.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
@@ -99,7 +99,7 @@ internal class ContributedInterfaceSupertypeGenerator(
             .forEach { scopeClass ->
               scopesToContributingClass
                 .getOrPut(scopeClass.classId!!, ::mutableSetOf)
-                .add(clazz.classId)
+                .add(clazz.classId.hintClassId)
             }
         }
       scopesToContributingClass
