@@ -284,7 +284,6 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
     }
 
     for ((key, entry) in exposedTypes) {
-      //      visited.clear()
       stackLogger.log("Traversing from root: ${key.typeKey}")
       stack.withEntry(entry) {
         val binding = getOrCreateBinding(key, stack)

@@ -103,8 +103,7 @@ internal class LatticeClassIds(
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Multibinds")) +
       customMultibindsAnnotations
 
-  val originAnnotation =
-    LatticeSymbols.FqNames.latticeRuntimeInternalPackage.classIdOf("Origin")
+  val originAnnotation = LatticeSymbols.FqNames.latticeRuntimeInternalPackage.classIdOf("Origin")
   private val contributesToAnnotation =
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesTo")
   private val contributesBindingAnnotation =

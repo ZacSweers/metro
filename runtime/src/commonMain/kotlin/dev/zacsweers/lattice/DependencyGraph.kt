@@ -20,7 +20,7 @@ import kotlin.reflect.KClass
 @Target(AnnotationTarget.CLASS)
 public annotation class DependencyGraph(
   val scope: KClass<*> = Nothing::class,
-  val additionalScopes: Array<KClass<*>> = []
+  val additionalScopes: Array<KClass<*>> = [],
 ) {
   @Target(AnnotationTarget.CLASS) public annotation class Factory
 }

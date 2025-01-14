@@ -21,6 +21,7 @@ package dev.zacsweers.lattice
   AnnotationTarget.PROPERTY,
   AnnotationTarget.PROPERTY_GETTER,
   AnnotationTarget.VALUE_PARAMETER,
+  AnnotationTarget.TYPE,
 )
 @Qualifier
 public annotation class Named(val name: String)

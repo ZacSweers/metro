@@ -704,13 +704,14 @@ internal fun FirCallableSymbol<*>.findAnnotation(
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
   getContainingClassSymbol() ?: error("No containing class symbol found for $this")
 
-internal val ClassId.hintClassId: ClassId get() {
-  val simpleName =
-    sequence {
-      yieldAll(packageFqName.pathSegments())
-      yieldAll(relativeClassName.pathSegments())
-    }
-      .joinToString(separator = "") { it.asString().capitalizeUS() }
-      .asName()
-  return ClassId(LatticeSymbols.FqNames.latticeHintsPackage, simpleName)
-}
+internal val ClassId.hintClassId: ClassId
+  get() {
+    val simpleName =
+      sequence {
+          yieldAll(packageFqName.pathSegments())
+          yieldAll(relativeClassName.pathSegments())
+        }
+        .joinToString(separator = "") { it.asString().capitalizeUS() }
+        .asName()
+    return ClassId(LatticeSymbols.FqNames.latticeHintsPackage, simpleName)
+  }

@@ -51,6 +51,8 @@ public abstract interface annotation class dev/zacsweers/lattice/ContributesTo :
 }
 
 public abstract interface annotation class dev/zacsweers/lattice/DependencyGraph : java/lang/annotation/Annotation {
+	public abstract fun additionalScopes ()[Ljava/lang/Class;
+	public abstract fun scope ()Ljava/lang/Class;
 }
 
 public abstract interface annotation class dev/zacsweers/lattice/DependencyGraph$Factory : java/lang/annotation/Annotation {

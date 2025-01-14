@@ -532,7 +532,7 @@ fun Class<*>.allSupertypes(
     includeInterfaces = includeInterfaces,
     includeSuperclasses = includeSuperclasses,
     includeSelf = includeSelf,
-    supertypes = supertypes
+    supertypes = supertypes,
   )
   return supertypes
 }
@@ -541,16 +541,14 @@ private fun Class<*>.allSupertypes(
   includeInterfaces: Boolean,
   includeSuperclasses: Boolean,
   includeSelf: Boolean,
-  supertypes: MutableSet<Class<*>>
+  supertypes: MutableSet<Class<*>>,
 ) {
   if (includeSelf) {
     supertypes += this
   }
 
   if (includeSuperclasses) {
-    supertypes.addAll(
-      generateSequence(superclass) { it.superclass }
-    )
+    supertypes.addAll(generateSequence(superclass) { it.superclass })
   }
 
   if (includeInterfaces) {
@@ -561,7 +559,7 @@ private fun Class<*>.allSupertypes(
           includeInterfaces = true,
           includeSuperclasses = false,
           includeSelf = false,
-          supertypes = supertypes
+          supertypes = supertypes,
         )
       }
     }

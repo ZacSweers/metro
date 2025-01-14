@@ -38,7 +38,8 @@ internal class LatticeFirBuiltIns(
   }
 
   val originClassSymbol by unsafeLazy {
-    session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.latticeOrigin) as FirRegularClassSymbol
+    session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.latticeOrigin)
+      as FirRegularClassSymbol
   }
 
   companion object {
