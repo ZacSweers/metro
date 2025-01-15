@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.compiler.ir.ContextualTypeKey
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
+import dev.zacsweers.lattice.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isAnnotatedWithAny
@@ -31,7 +32,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameter.AssistedParameterK
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.rawType
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
-import dev.zacsweers.lattice.compiler.ir.singleAbstractFunction
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -43,6 +44,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -100,13 +102,12 @@ internal class AssistedFactoryTransformer(
       }
     }
 
-    // TODO generics asMemberOf()?
-    val function =
-      declaration.singleAbstractFunction(this).let { function ->
-        function.toAssistedFactoryFunction(this, function)
-      }
+    val creatorFunction =
+      implClass.functions
+        .single { it.isFakeOverride && !it.isFakeOverriddenFromAny() }
+        .let { function -> function.toAssistedFactoryFunction(this, function) }
 
-    val returnType = function.returnType
+    val returnType = creatorFunction.returnType
     val targetType = returnType.rawType()
     val injectConstructor =
       targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
@@ -126,12 +127,8 @@ internal class AssistedFactoryTransformer(
     implClass.apply {
       val delegateFactoryField = assignConstructorParamsToFields(ctor, implClass).values.single()
 
-      val creatorFunction =
-        implClass.functions.first {
-          it.origin == LatticeOrigins.AssistedFactoryImplCreatorFunctionDeclaration
-        }
-
-      creatorFunction.apply {
+      creatorFunction.originalFunction.apply {
+        finalizeFakeOverride(implClass.thisReceiverOrFail)
         val functionParams =
           valueParameters.associateBy { valueParam ->
             val key = ContextualTypeKey.from(latticeContext, valueParam).typeKey
