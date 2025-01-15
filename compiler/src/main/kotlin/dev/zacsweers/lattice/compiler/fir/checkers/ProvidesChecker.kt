@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.latticeAnnotations
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
@@ -79,6 +81,16 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         source,
         FirLatticeErrors.LATTICE_TYPE_PARAMETERS_ERROR,
         "`@$type` declarations may not have type parameters.",
+        context,
+      )
+      return
+    }
+
+    if (declaration.returnTypeRef.source?.kind is KtFakeSourceElementKind.ImplicitTypeRef) {
+      reporter.reportOn(
+        source,
+        FirLatticeErrors.PROVIDES_ERROR,
+        "Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.",
         context,
       )
       return

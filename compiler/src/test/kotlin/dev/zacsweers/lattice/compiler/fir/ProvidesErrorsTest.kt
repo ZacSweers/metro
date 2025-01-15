@@ -449,4 +449,34 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
         .trimIndent()
     )
   }
+
+  @Test
+  fun `provides must have explicit return types`() {
+    val result =
+      compile(
+        source(
+          """
+            abstract class ExampleGraph {
+              @Provides
+              fun provideString() = "Hello"
+
+              companion object {
+                @Provides
+                fun provideInt() = 0
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:8:7 Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.
+        e: ExampleGraph.kt:12:9 Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.
+      """
+        .trimIndent()
+    )
+  }
 }
