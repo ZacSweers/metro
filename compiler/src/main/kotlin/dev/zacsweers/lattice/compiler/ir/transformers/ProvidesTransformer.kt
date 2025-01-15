@@ -30,6 +30,7 @@ import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.checkNotNullCall
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
+import dev.zacsweers.lattice.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.isCompanionObject
@@ -41,6 +42,7 @@ import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
+import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.isWordPrefixRegex
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -244,6 +246,7 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     // Implement invoke()
     // TODO DRY this up with the constructor injection override
     val invokeFunction = factoryCls.requireSimpleFunction(LatticeSymbols.StringNames.INVOKE)
+    invokeFunction.owner.finalizeFakeOverride(factoryCls.thisReceiverOrFail)
     invokeFunction.owner.body =
       pluginContext.createIrBuilder(invokeFunction).run {
         irExprBodySafe(

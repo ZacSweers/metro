@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir.generators
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
+import dev.zacsweers.lattice.compiler.decapitalizeUS
 import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.hasOrigin
@@ -27,28 +28,41 @@ import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.lattice.compiler.isWordPrefixRegex
 import dev.zacsweers.lattice.compiler.mapNotNullToSet
 import dev.zacsweers.lattice.compiler.unsafeLazy
+import kotlin.collections.set
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
-import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.typeResolver
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
+import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -87,9 +101,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
 
     return buildSet {
       add(SpecialNames.INIT)
-      if (!classSymbol.isCompanion) {
-        add(LatticeSymbols.Names.invoke)
-      }
       if (classSymbol.classKind == ClassKind.OBJECT) {
         // Generate create() and newInstance headers
         add(LatticeSymbols.Names.create)
@@ -124,17 +135,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     val callable = providerFactoryClassIdsToCallables[factoryClassId] ?: return emptyList()
     val function =
       when (callableId.callableName) {
-        LatticeSymbols.Names.invoke -> {
-          createMemberFunction(
-              nonNullContext.owner,
-              LatticeKeys.Default,
-              callableId.callableName,
-              callable.returnType,
-            ) {
-              status { isOverride = true }
-            }
-            .symbol
-        }
         LatticeSymbols.Names.create -> {
           buildFactoryCreateFunction(
             nonNullContext,
@@ -228,18 +228,13 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         } else {
           ClassKind.CLASS
         }
-      val returnType = sourceCallable.returnType
 
       createNestedClass(
           owner,
           name.capitalizeUS(),
           LatticeKeys.ProviderFactoryClassDeclaration,
           classKind = classKind,
-        ) {
-          superType(
-            LatticeSymbols.ClassIds.latticeFactory.constructClassLikeType(arrayOf(returnType))
-          )
-        }
+        )
         .apply { markAsDeprecatedHidden(session) }
         .symbol
         .also { providerFactoryClassIdsToSymbols[it.classId] = it }
@@ -266,6 +261,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     val instanceReceiver: ConeClassLikeType?,
     val valueParameters: List<LatticeFirValueParameter>,
   ) {
+    val callableId = CallableId(owner.classId, symbol.name)
     val name = symbol.name
     val shouldGenerateObject by unsafeLazy {
       instanceReceiver == null && (isProperty || valueParameters.isEmpty())
@@ -290,5 +286,58 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         }
         .asName()
     }
+  }
+}
+
+internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
+  FirSupertypeGenerationExtension(session) {
+
+  override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
+    return declaration.symbol.hasOrigin(LatticeKeys.ProviderFactoryClassDeclaration)
+  }
+
+  override fun computeAdditionalSupertypes(
+    classLikeDeclaration: FirClassLikeDeclaration,
+    resolvedSupertypes: List<FirResolvedTypeRef>,
+    typeResolver: TypeResolveService,
+  ): List<ConeKotlinType> = emptyList()
+
+  @OptIn(SymbolInternals::class)
+  @ExperimentalSupertypesGenerationApi
+  override fun computeAdditionalSupertypesForGeneratedNestedClass(
+    klass: FirRegularClass,
+    typeResolver: TypeResolveService,
+  ): List<FirResolvedTypeRef> {
+    val originClassSymbol =
+      klass.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
+    val callableName =
+      klass.name
+        .asString()
+        .removeSuffix(LatticeSymbols.Names.latticeFactory.asString())
+        .decapitalizeUS()
+    val callable =
+      originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
+        it.name.asString() == callableName ||
+          (it is FirPropertySymbol && it.name.asString() == callableName.removePrefix("get").decapitalizeUS())
+      } ?: return emptyList()
+
+    val returnType =
+      when (val type = callable.fir.returnTypeRef) {
+        is FirUserTypeRef -> {
+          typeResolver.resolveUserType(type)
+        }
+        is FirResolvedTypeRef -> type
+        is FirImplicitTypeRef -> {
+          // Ignore, will report in FIR checker
+          return emptyList()
+        }
+        else -> return emptyList()
+      }
+
+    val factoryType =
+      session.symbolProvider
+        .getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.latticeFactory)!!
+        .constructType(arrayOf(returnType.coneType))
+    return listOf(factoryType.toFirResolvedTypeRef())
   }
 }
