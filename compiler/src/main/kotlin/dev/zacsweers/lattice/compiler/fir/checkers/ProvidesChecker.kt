@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
 // TODO
+//  Disallow implicit return types
 //  What about future Kotlin versions where you can have different get signatures
 //  Make visibility error configurable? ERROR/WARN/NONE
 internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
