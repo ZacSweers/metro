@@ -647,10 +647,10 @@ internal fun LatticeTransformerContext.latticeAnnotationsOf(ir: IrAnnotationCont
   ir.latticeAnnotations(symbols.latticeClassIds)
 
 internal fun IrClass.requireSimpleFunction(name: String) =
-  getSimpleFunction(name) ?: error("No function $name in class $classId")
+  getSimpleFunction(name) ?: error("No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}")
 
 internal fun IrClassSymbol.requireSimpleFunction(name: String) =
-  getSimpleFunction(name) ?: error("No function $name in class ${owner.classId}")
+  getSimpleFunction(name) ?: error("No function $name in class ${owner.classId}. Available: ${functions.joinToString { it.owner.name.asString() }}")
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
   return nestedClasses.firstOrNull { it.name == name }
