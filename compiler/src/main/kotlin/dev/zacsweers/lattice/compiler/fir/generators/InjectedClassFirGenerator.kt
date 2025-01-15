@@ -69,7 +69,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   private val injectAnnotationPredicate by unsafeLazy {
-    annotated(session.latticeClassIds.injectAnnotations.map(ClassId::asSingleFqName))
+    annotated(
+      session.latticeClassIds.injectAnnotations
+        .plus(session.latticeClassIds.assistedAnnotations)
+      .map(ClassId::asSingleFqName))
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
@@ -101,8 +104,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       constructorParameters.forEach { parameterNameAllocator.newName(it.name.asString()) }
     }
 
-    val assistedParameters by unsafeLazy {
-      constructorParameters.filter(LatticeFirValueParameter::isAssisted)
+    val assistedParameters: List<LatticeFirValueParameter> by unsafeLazy {
+      constructorParameters.filter {
+        it.isAssisted
+      }
     }
 
     val isAssisted
@@ -260,21 +265,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       if (classSymbol.classKind != ClassKind.CLASS) return emptySet()
 
       // If the class is annotated with @Inject, look for its primary constructor
-      val isClassAnnotated =
-        classSymbol.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
-      val injectConstructor =
-        if (isClassAnnotated) {
-          classSymbol.declarationSymbols
-            .asSequence()
-            .filterIsInstance<FirConstructorSymbol>()
-            .firstOrNull(FirConstructorSymbol::isPrimary)
-        } else {
-          // If the class is not annotated with @Inject, look for an @Inject-annotated constructor
-          classSymbol.declarationSymbols
-            .asSequence()
-            .filterIsInstance<FirConstructorSymbol>()
-            .find { it.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations) }
-        }
+      val injectConstructor = classSymbol.findInjectConstructors(session).singleOrNull()
       val params =
         injectConstructor?.valueParameterSymbols.orEmpty().map {
           LatticeFirValueParameter(session, it)
