@@ -102,6 +102,11 @@ internal class AssistedFactoryTransformer(
       }
     }
 
+    if (isExternal) {
+      generatedImpls[classId] = implClass
+      return implClass
+    }
+
     val creatorFunction =
       implClass.functions
         .single { it.isFakeOverride && !it.isFakeOverriddenFromAny() }
@@ -175,6 +180,8 @@ internal class AssistedFactoryTransformer(
     }
 
     implClass.dumpToLatticeLog()
+
+    generatedImpls[classId] = implClass
 
     return implClass
   }
