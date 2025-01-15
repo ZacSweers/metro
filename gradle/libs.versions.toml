@@ -20,7 +20,7 @@ kotlinx-coroutines = "1.10.1"
 jdk = "23"
 jvmTarget = "11"
 ksp = "2.1.0-1.0.29"
-ktfmt = "0.53"
+ktfmt = "0.54"
 okio = "3.10.2"
 pluginId = "dev.zacsweers.lattice.compiler"
 
