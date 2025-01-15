@@ -416,7 +416,8 @@ internal fun FirClassLikeSymbol<*>.findInjectConstructors(
 ): List<FirConstructorSymbol> {
   if (this !is FirClassSymbol<*>) return emptyList()
   return if (checkClass && isAnnotatedInject(session)) {
-    primaryConstructorSymbol(session)?.let { listOf(it) } ?: emptyList()
+    declarationSymbols.filterIsInstance<FirConstructorSymbol>()
+      .filter { it.isPrimary }
   } else {
     declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter {
       it.annotations.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)
