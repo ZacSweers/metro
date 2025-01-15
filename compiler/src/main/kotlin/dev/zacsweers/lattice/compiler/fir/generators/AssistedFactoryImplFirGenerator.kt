@@ -83,7 +83,6 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
 
   class AssistedFactoryImpl(val source: FirClassSymbol<*>) {
     private var computed = false
-    lateinit var function: FirNamedFunctionSymbol
     lateinit var injectedClass: FirClassSymbol<*>
 
     @OptIn(SymbolInternals::class)
@@ -120,7 +119,6 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
         }
       }
 
-      function = createFunction
       computed = true
     }
   }
@@ -219,7 +217,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
       // Override create function
       val implClass = implClasses[classSymbol.classId] ?: return emptySet()
       implClass.computeTargetType(session)
-      setOf(SpecialNames.INIT, implClass.function.name)
+      setOf(SpecialNames.INIT)
     } else if (classSymbol.hasOrigin(LatticeKeys.AssistedFactoryImplCompanionDeclaration)) {
       // Add create function
       setOf(SpecialNames.INIT, LatticeSymbols.Names.create)
@@ -267,23 +265,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
           )
         }
       } else {
-        // declare the function override
-        generateMemberFunction(
-          nonNullContext.owner,
-          returnTypeProvider = implClass.injectedClass::constructType,
-          CallableId(nonNullContext.owner.classId, LatticeSymbols.Names.create),
-          LatticeKeys.AssistedFactoryImplCreatorFunctionDeclaration.origin,
-        ) {
-          status = status.copy(isOverride = true)
-          copyParameters(
-            functionBuilder = this,
-            sourceParameters =
-              implClass.function.valueParameterSymbols.map {
-                LatticeFirValueParameter(session, it)
-              },
-            copyParameterDefaults = false,
-          )
-        }
+        return emptyList()
       }
 
     return listOf(creator.symbol)
