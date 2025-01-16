@@ -42,6 +42,11 @@ internal class LatticeFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val bindsClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.latticeBinds)
+      as FirRegularClassSymbol
+  }
+
   companion object {
     fun getFactory(latticeClassIds: LatticeClassIds, options: LatticeOptions) = Factory { session ->
       LatticeFirBuiltIns(session, latticeClassIds, options)

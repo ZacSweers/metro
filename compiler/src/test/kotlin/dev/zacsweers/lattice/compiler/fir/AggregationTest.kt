@@ -19,11 +19,13 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.allSupertypes
+import dev.zacsweers.lattice.compiler.callProperty
+import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
+import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import kotlin.test.Ignore
 import kotlin.test.Test
 
 // Need to resume these tests after fixing FIR generation bits first!
-@Ignore
 class AggregationTest : LatticeCompilerTest() {
   @Test
   fun `contributing types are generated in fir`() {
@@ -94,8 +96,10 @@ class AggregationTest : LatticeCompilerTest() {
       ),
       debug = true,
     ) {
-      val graph = ExampleGraph
-      TODO()
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
     }
   }
 }

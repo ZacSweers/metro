@@ -148,6 +148,15 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .symbol
   }
 
+  private fun buildBindsAnnotation(): FirAnnotation {
+    return buildAnnotation {
+      annotationTypeRef =
+        session.latticeFirBuiltIns.bindsClassSymbol.defaultType().toFirResolvedTypeRef()
+
+      argumentMapping = buildAnnotationArgumentMapping()
+    }
+  }
+
   private fun buildOriginAnnotation(origin: ClassId): FirAnnotation {
     return buildAnnotation {
       val originAnno = session.latticeFirBuiltIns.originClassSymbol
@@ -214,10 +223,12 @@ internal class ContributionsFirGenerator(session: FirSession) :
                   LatticeKeys.Default,
                   "bind".asName(),
                   returnType = boundType.constructType(),
+                  hasBackingField = false,
                 ) {
+                  modality = Modality.ABSTRACT
                   extensionReceiverType(contribution.origin.defaultType(emptyList()))
                 }
-                .apply { replaceAnnotations(contribution.annotatedType.annotations) }
+                .apply { replaceAnnotations(listOf(buildBindsAnnotation())) }
                 .symbol
           }
         }

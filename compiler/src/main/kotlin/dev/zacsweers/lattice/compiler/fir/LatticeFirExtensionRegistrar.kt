@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.compiler.LatticeLogger
 import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.AssistedFactoryImplFirGenerator
+import dev.zacsweers.lattice.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.ContributionsFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
@@ -41,12 +42,11 @@ internal class LatticeFirExtensionRegistrar(
     +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
-    // TODO reenable once FIR fixes are done
-    //    +supertypeGenerator(
-    //      "Supertypes - contributed interfaces",
-    //      ContributedInterfaceSupertypeGenerator.Factory(latticeClassIds)::create,
-    //      true,
-    //    )
+    +supertypeGenerator(
+      "Supertypes - contributed interfaces",
+      ContributedInterfaceSupertypeGenerator.Factory(latticeClassIds)::create,
+      true,
+    )
     +supertypeGenerator(
       "Supertypes - provider factories",
       ::ProvidesFactorySupertypeGenerator,

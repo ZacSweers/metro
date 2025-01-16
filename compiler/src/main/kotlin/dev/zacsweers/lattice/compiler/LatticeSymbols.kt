@@ -72,6 +72,7 @@ internal class LatticeSymbols(
   object ClassIds {
     val anyClass = StandardClassIds.Any
     val jsExportIgnore = JsStandardClassIds.Annotations.JsExportIgnore
+    val latticeBinds = ClassId(FqNames.latticeRuntimePackage, Names.bindsClassName)
     val latticeFactory = ClassId(FqNames.latticeRuntimeInternalPackage, Names.factoryClassName)
     val latticeProvider = ClassId(FqNames.latticeRuntimePackage, Names.providerClassName)
     val latticeOrigin = ClassId(FqNames.latticeRuntimeInternalPackage, "Origin".asName())
@@ -82,6 +83,7 @@ internal class LatticeSymbols(
   }
 
   object Names {
+    val bindsClassName = Name.identifier("Binds")
     val create = StringNames.CREATE.asName()
     val delegateFactory = Name.identifier("delegateFactory")
     val factoryClassName = Name.identifier("Factory")
