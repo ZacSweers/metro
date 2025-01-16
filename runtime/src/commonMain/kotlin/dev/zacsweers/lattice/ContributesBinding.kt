@@ -26,7 +26,3 @@ public annotation class ContributesBinding(
   val scope: KClass<*>,
   val replaces: Array<KClass<*>> = [],
 )
-
-internal interface Example<T>
-
-internal class Impl : @Named("foo") @ContributesBinding(AppScope::class) Example<String>
