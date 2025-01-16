@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderCont
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.typeResolver
@@ -58,6 +59,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirErrorTypeRef
 import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
@@ -318,13 +320,27 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     val callable =
       originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
         it.name.asString() == callableName ||
-          (it is FirPropertySymbol && it.name.asString() == callableName.removePrefix("get").decapitalizeUS())
+          (it is FirPropertySymbol &&
+            it.name.asString() == callableName.removePrefix("get").decapitalizeUS())
       } ?: return emptyList()
 
     val returnType =
       when (val type = callable.fir.returnTypeRef) {
         is FirUserTypeRef -> {
-          typeResolver.resolveUserType(type)
+          typeResolver.resolveUserType(type).also {
+            if (it is FirErrorTypeRef) {
+              val message = buildString {
+                appendLine(
+                  "Could not resolve provider return type for provider: ${callable.callableId}"
+                )
+                appendLine(
+                  "This can happen if the provider references a class that is nested within the same parent class and has cyclical references to other classes."
+                )
+                appendLine(callable.fir.render())
+              }
+              error(message)
+            }
+          }
         }
         is FirResolvedTypeRef -> type
         is FirImplicitTypeRef -> {

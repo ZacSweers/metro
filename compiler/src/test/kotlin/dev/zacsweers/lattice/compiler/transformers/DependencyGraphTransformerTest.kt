@@ -40,19 +40,8 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
   fun simple() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.lattice.BindsInstance
-            import dev.zacsweers.lattice.DependencyGraph
-            import dev.zacsweers.lattice.Inject
-            import dev.zacsweers.lattice.Provides
-            import dev.zacsweers.lattice.Singleton
-            import dev.zacsweers.lattice.createGraphFactory
-            import java.util.concurrent.Callable
-
             @Singleton
             @DependencyGraph
             interface ExampleGraph {
@@ -77,8 +66,9 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        )
+            .trimIndent()
+        ),
+        debug = true,
       )
     val graph =
       result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")

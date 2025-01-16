@@ -802,9 +802,9 @@ class DependencyGraphProcessingTest {
   interface MultibindingGraphWithKClassMap {
     val ints: Map<KClass<*>, Int>
 
-    @Provides @IntoMap @ClassKey(Int::class) private fun provideMapInt1() = 1
+    @Provides @IntoMap @ClassKey(Int::class) private fun provideMapInt1(): Int = 1
 
-    @Provides @IntoMap @Singleton @ClassKey(Float::class) private fun provideMapInt2() = 2
+    @Provides @IntoMap @Singleton @ClassKey(Float::class) private fun provideMapInt2(): Int = 2
   }
 
   @Test
@@ -826,35 +826,35 @@ class DependencyGraphProcessingTest {
   interface MultibindingGraphWithMultipleOtherMapKeyTypes {
     val seasoningAmounts: Map<Seasoning, Int>
 
-    @Provides @IntoMap @SeasoningKey(Seasoning.SPICY) private fun provideSpicySeasoning() = 1
+    @Provides @IntoMap @SeasoningKey(Seasoning.SPICY) private fun provideSpicySeasoning(): Int = 1
 
-    @Provides @IntoMap @SeasoningKey(Seasoning.REGULAR) private fun provideRegularSeasoning() = 2
+    @Provides @IntoMap @SeasoningKey(Seasoning.REGULAR) private fun provideRegularSeasoning(): Int = 2
 
     @MapKey annotation class SeasoningKey(val value: Seasoning)
 
     val longs: Map<Long, Int>
 
-    @Provides @IntoMap @LongKey(1) private fun provideLongKey1() = 1
+    @Provides @IntoMap @LongKey(1) private fun provideLongKey1(): Int = 1
 
-    @Provides @IntoMap @LongKey(2) private fun provideLongKey2() = 2
+    @Provides @IntoMap @LongKey(2) private fun provideLongKey2(): Int = 2
 
     val strings: Map<String, Int>
 
-    @Provides @IntoMap @StringKey("1") private fun provideStringKey1() = 1
+    @Provides @IntoMap @StringKey("1") private fun provideStringKey1(): Int = 1
 
-    @Provides @IntoMap @StringKey("2") private fun provideStringKey2() = 2
+    @Provides @IntoMap @StringKey("2") private fun provideStringKey2(): Int = 2
 
     val wrappedSeasoningAmounts: Map<WrappedSeasoningKey, Int>
 
     @Provides
     @IntoMap
     @WrappedSeasoningKey(Seasoning.SPICY)
-    private fun provideWrappedSpicySeasoning() = 1
+    private fun provideWrappedSpicySeasoning(): Int = 1
 
     @Provides
     @IntoMap
     @WrappedSeasoningKey(Seasoning.REGULAR)
-    private fun provideWrappedRegularSeasoning() = 2
+    private fun provideWrappedRegularSeasoning(): Int = 2
 
     @MapKey(unwrapValue = false) annotation class WrappedSeasoningKey(val value: Seasoning)
   }

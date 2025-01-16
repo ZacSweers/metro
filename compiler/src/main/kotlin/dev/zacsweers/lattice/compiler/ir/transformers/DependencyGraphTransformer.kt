@@ -49,6 +49,7 @@ import dev.zacsweers.lattice.compiler.ir.isExternalParent
 import dev.zacsweers.lattice.compiler.ir.latticeAnnotationsOf
 import dev.zacsweers.lattice.compiler.ir.latticeFunctionOf
 import dev.zacsweers.lattice.compiler.ir.location
+import dev.zacsweers.lattice.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -326,7 +327,18 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       when (declaration) {
         is IrSimpleFunction -> {
           // Could be an injector or accessor
-          if (declaration.valueParameters.isNotEmpty()) {
+
+          // If the overridden symbol has a default getter/value then skip
+          var hasDefaultImplementation = false
+          for (overridden in declaration.overriddenSymbolsSequence()) {
+            if (overridden.owner.body != null) {
+              hasDefaultImplementation = true
+              break
+            }
+          }
+          if (hasDefaultImplementation) continue
+
+          if (declaration.valueParameters.isNotEmpty() && !annotations.isBinds) {
             // It's an injector
             val latticeFunction = latticeFunctionOf(declaration, annotations)
             val contextKey = ContextualTypeKey.from(this, declaration, latticeFunction.annotations)
@@ -346,6 +358,17 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         }
         is IrProperty -> {
           // Can only be an accessor or binds
+
+          // If the overridden symbol has a default getter/value then skip
+          var hasDefaultImplementation = false
+          for (overridden in declaration.overriddenSymbolsSequence()) {
+            if (overridden.owner.getter?.body != null) {
+              hasDefaultImplementation = true
+              break
+            }
+          }
+          if (hasDefaultImplementation) continue
+
           val getter = declaration.getter!!
           val latticeFunction = latticeFunctionOf(getter, annotations)
           val contextKey = ContextualTypeKey.from(this, getter, latticeFunction.annotations)
@@ -696,6 +719,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     if (creator != null) {
       val implementFactoryFunction: IrClass.() -> Unit = {
         requireSimpleFunction(creator.createFunction.name.asString()).owner.apply {
+          finalizeFakeOverride(latticeGraph.thisReceiverOrFail)
           val createFunction = this
           body =
             pluginContext.createIrBuilder(symbol).run {
@@ -725,6 +749,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(LatticeSymbols.StringNames.FACTORY).owner.apply {
             if (origin == LatticeOrigins.LatticeGraphFactoryCompanionGetter) {
+              finalizeFakeOverride(latticeGraph.thisReceiverOrFail)
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
@@ -740,6 +765,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       // Generate a no-arg invoke() function
       companionObject.apply {
         requireSimpleFunction(LatticeSymbols.StringNames.INVOKE).owner.apply {
+          if (isFakeOverride) {
+            finalizeFakeOverride(latticeGraph.thisReceiverOrFail)
+          }
           body =
             pluginContext.createIrBuilder(symbol).run {
               irExprBodySafe(

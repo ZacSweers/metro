@@ -24,7 +24,6 @@ import dev.zacsweers.lattice.compiler.fir.hasOrigin
 import dev.zacsweers.lattice.compiler.fir.isDependencyGraph
 import dev.zacsweers.lattice.compiler.fir.isGraphFactory
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
-import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.lattice.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.lattice.compiler.mapToArray
@@ -244,10 +243,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         names += SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
       }
     } else if (classSymbol.isGraphFactory(session)) {
-      val shouldGenerateImpl =
-        !classSymbol.isInterface ||
-          /* classSymbol.isInterface && */ session.latticeFirBuiltIns.options
-            .makeExistingCompanionsImplementGraphFactories
+      val shouldGenerateImpl = !classSymbol.isInterface
       if (shouldGenerateImpl) {
         names += LatticeSymbols.Names.latticeImpl
       }
@@ -272,14 +268,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           } else {
             LatticeKeys.Default
           }
-        createCompanionObject(owner, key) {
-            val creator = graphObject?.creator ?: return@createCompanionObject
-            // If we have an interface creator, we'll implement it here
-            if (creator.isInterface) {
-              superType(creator.classSymbol::constructType)
-            }
-          }
-          .symbol
+        createCompanionObject(owner, key).symbol
       }
       LatticeSymbols.Names.latticeGraph -> {
         createNestedClass(owner, name, LatticeKeys.LatticeGraphDeclaration) {
@@ -328,8 +317,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       if (creator != null) {
         if (creator.isInterface) {
           // We can put the sam factory function on the companion
-          creator.computeSAMFactoryFunction(session)
-          creator.function?.let { names += it.name }
+          // TODO this isn't safe with supertype gen, but for existing companions it also fails?
+          //  creator.computeSAMFactoryFunction(session)
+          //  creator.function?.let { names += it.name }
         } else {
           // We will just generate a `factory()` function
           names += LatticeSymbols.Names.factoryFunctionName
@@ -427,12 +417,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             },
           ) {
             status {
-              // See docs on makeExistingCompanionsImplementGraphFactories
-              isOverride =
-                !owner.isCompanion ||
-                  /* owner.isCompanion && */ session.latticeFirBuiltIns.options
-                    .makeExistingCompanionsImplementGraphFactories
-
+              isOverride = !owner.isCompanion
               isOperator = function.isOperator
             }
             for (parameter in function.valueParameterSymbols) {

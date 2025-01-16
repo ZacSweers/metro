@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.ir
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
+import dev.zacsweers.lattice.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInLazy
@@ -103,6 +104,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /** Finds the line and column of [this] within its file. */
@@ -678,5 +680,25 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(dispatchReceiverPa
   } else if (this is IrProperty) {
     this.getter?.finalizeFakeOverride(dispatchReceiverParameter)
     this.setter?.finalizeFakeOverride(dispatchReceiverParameter)
+  }
+}
+
+// TODO is there a faster way to do this use case?
+internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequence<S> where S : IrSymbol {
+  return overriddenSymbolsSequence(mutableSetOf())
+}
+
+private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(visited: MutableSet<S>): Sequence<S> where S : IrSymbol {
+  return sequence {
+    for (overridden in overriddenSymbols) {
+      if (overridden in visited) continue
+      yield(overridden)
+      visited += overridden
+      val owner = overridden.owner
+      if (owner is IrOverridableDeclaration<*>) {
+        @Suppress("UNCHECKED_CAST")
+        yieldAll((owner as IrOverridableDeclaration<S>).overriddenSymbolsSequence())
+      }
+    }
   }
 }
