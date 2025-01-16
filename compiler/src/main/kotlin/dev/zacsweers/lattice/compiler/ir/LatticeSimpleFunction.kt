@@ -34,7 +34,7 @@ internal class LatticeSimpleFunction(
 
 internal fun LatticeTransformerContext.latticeFunctionOf(
   ir: IrSimpleFunction,
-  annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(ir)
+  annotations: LatticeAnnotations<IrAnnotation> = latticeAnnotationsOf(ir),
 ): LatticeSimpleFunction {
   return LatticeSimpleFunction(ir, annotations)
 }

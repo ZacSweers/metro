@@ -15,8 +15,6 @@
  */
 package dev.zacsweers.lattice.compiler
 
-import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator
-import dev.zacsweers.lattice.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey

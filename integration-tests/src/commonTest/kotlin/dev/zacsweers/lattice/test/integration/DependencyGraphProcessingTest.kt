@@ -828,7 +828,10 @@ class DependencyGraphProcessingTest {
 
     @Provides @IntoMap @SeasoningKey(Seasoning.SPICY) private fun provideSpicySeasoning(): Int = 1
 
-    @Provides @IntoMap @SeasoningKey(Seasoning.REGULAR) private fun provideRegularSeasoning(): Int = 2
+    @Provides
+    @IntoMap
+    @SeasoningKey(Seasoning.REGULAR)
+    private fun provideRegularSeasoning(): Int = 2
 
     @MapKey annotation class SeasoningKey(val value: Seasoning)
 

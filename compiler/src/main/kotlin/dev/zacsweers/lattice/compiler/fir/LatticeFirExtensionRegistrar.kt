@@ -47,7 +47,11 @@ internal class LatticeFirExtensionRegistrar(
     //      ContributedInterfaceSupertypeGenerator.Factory(latticeClassIds)::create,
     //      true,
     //    )
-    +supertypeGenerator("Supertypes - provider factories", ::ProvidesFactorySupertypeGenerator, true)
+    +supertypeGenerator(
+      "Supertypes - provider factories",
+      ::ProvidesFactorySupertypeGenerator,
+      true,
+    )
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)

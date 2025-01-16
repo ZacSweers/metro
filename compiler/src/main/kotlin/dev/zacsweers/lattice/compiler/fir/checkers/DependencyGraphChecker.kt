@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.compiler.fir.checkers
 
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.allAnnotations
-import dev.zacsweers.lattice.compiler.fir.findInjectConstructor
 import dev.zacsweers.lattice.compiler.fir.findInjectConstructors
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds

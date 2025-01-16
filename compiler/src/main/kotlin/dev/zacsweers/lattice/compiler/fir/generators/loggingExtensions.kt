@@ -216,7 +216,7 @@ internal class LoggingFirSupertypeGenerationExtension(
   @ExperimentalSupertypesGenerationApi
   override fun computeAdditionalSupertypesForGeneratedNestedClass(
     klass: FirRegularClass,
-    typeResolver: TypeResolveService
+    typeResolver: TypeResolveService,
   ): List<FirResolvedTypeRef> {
     val additionalSupertypes =
       delegate.computeAdditionalSupertypesForGeneratedNestedClass(klass, typeResolver)

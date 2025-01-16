@@ -72,7 +72,8 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     annotated(
       session.latticeClassIds.injectAnnotations
         .plus(session.latticeClassIds.assistedAnnotations)
-      .map(ClassId::asSingleFqName))
+        .map(ClassId::asSingleFqName)
+    )
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
@@ -105,9 +106,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     }
 
     val assistedParameters: List<LatticeFirValueParameter> by unsafeLazy {
-      constructorParameters.filter {
-        it.isAssisted
-      }
+      constructorParameters.filter { it.isAssisted }
     }
 
     val isAssisted

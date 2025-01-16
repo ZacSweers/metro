@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.primaryConstructorSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
@@ -152,9 +151,7 @@ internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): Boolean {
-  return resolvedAnnotationsWithClassIds.any {
-    it.toAnnotationClassIdSafe(session) in names
-  }
+  return resolvedAnnotationsWithClassIds.any { it.toAnnotationClassIdSafe(session) in names }
 }
 
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
@@ -416,8 +413,7 @@ internal fun FirClassLikeSymbol<*>.findInjectConstructors(
 ): List<FirConstructorSymbol> {
   if (this !is FirClassSymbol<*>) return emptyList()
   return if (checkClass && isAnnotatedInject(session)) {
-    declarationSymbols.filterIsInstance<FirConstructorSymbol>()
-      .filter { it.isPrimary }
+    declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter { it.isPrimary }
   } else {
     declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter {
       it.annotations.isAnnotatedWithAny(session, session.latticeClassIds.injectAnnotations)

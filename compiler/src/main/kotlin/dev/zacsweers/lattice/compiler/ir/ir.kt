@@ -16,7 +16,6 @@
 package dev.zacsweers.lattice.compiler.ir
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
-import dev.zacsweers.lattice.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
 import dev.zacsweers.lattice.compiler.ir.parameters.wrapInLazy
@@ -27,7 +26,6 @@ import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
-import org.jetbrains.kotlin.backend.jvm.ir.parentClassId
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -104,7 +102,6 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /** Finds the line and column of [this] within its file. */
@@ -261,11 +258,7 @@ internal fun IrClass.allCallableMembers(
   propertyFilter: (IrProperty) -> Boolean = { true },
 ): Sequence<LatticeSimpleFunction> {
   return functions
-    .letIf(excludeAnyFunctions) {
-      it.filterNot { function ->
-        function.isFakeOverriddenFromAny()
-      }
-    }
+    .letIf(excludeAnyFunctions) { it.filterNot { function -> function.isFakeOverriddenFromAny() } }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
     .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
@@ -649,10 +642,16 @@ internal fun LatticeTransformerContext.latticeAnnotationsOf(ir: IrAnnotationCont
   ir.latticeAnnotations(symbols.latticeClassIds)
 
 internal fun IrClass.requireSimpleFunction(name: String) =
-  getSimpleFunction(name) ?: error("No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}")
+  getSimpleFunction(name)
+    ?: error(
+      "No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}"
+    )
 
 internal fun IrClassSymbol.requireSimpleFunction(name: String) =
-  getSimpleFunction(name) ?: error("No function $name in class ${owner.classId}. Available: ${functions.joinToString { it.owner.name.asString() }}")
+  getSimpleFunction(name)
+    ?: error(
+      "No function $name in class ${owner.classId}. Available: ${functions.joinToString { it.owner.name.asString() }}"
+    )
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
   return nestedClasses.firstOrNull { it.name == name }
@@ -669,10 +668,10 @@ internal val IrClass.isLatticeGenerated: Boolean
     return name in LatticeSymbols.Names.latticeNames
   }
 
-internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(dispatchReceiverParameter: IrValueParameter) {
-  check(isFakeOverride) {
-    "Function $name is not a fake override!"
-  }
+internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
+  dispatchReceiverParameter: IrValueParameter
+) {
+  check(isFakeOverride) { "Function $name is not a fake override!" }
   isFakeOverride = false
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
@@ -684,11 +683,14 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(dispatchReceiverPa
 }
 
 // TODO is there a faster way to do this use case?
-internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequence<S> where S : IrSymbol {
+internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequence<S> where
+S : IrSymbol {
   return overriddenSymbolsSequence(mutableSetOf())
 }
 
-private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(visited: MutableSet<S>): Sequence<S> where S : IrSymbol {
+private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
+  visited: MutableSet<S>
+): Sequence<S> where S : IrSymbol {
   return sequence {
     for (overridden in overriddenSymbols) {
       if (overridden in visited) continue
