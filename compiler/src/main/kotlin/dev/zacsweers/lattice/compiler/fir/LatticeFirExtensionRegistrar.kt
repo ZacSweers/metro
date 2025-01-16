@@ -40,10 +40,7 @@ internal class LatticeFirExtensionRegistrar(
   override fun ExtensionRegistrarContext.configurePlugin() {
     +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
-    // TODO this seems to break supertype lookups in some phases
-    if (options.makeExistingCompanionsImplementGraphFactories) {
-      +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
-    }
+    +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
     // TODO reenable once FIR fixes are done
     //    +supertypeGenerator(
     //      "Supertypes - contributed interfaces",
