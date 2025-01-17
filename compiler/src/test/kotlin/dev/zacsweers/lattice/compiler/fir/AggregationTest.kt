@@ -565,10 +565,10 @@ class AggregationTest : LatticeCompilerTest() {
     }
   }
 
-  // TODO FIR check for single bound type
+  // TODO
+  //  FIR check for single bound type
   //  FIR duplicate contributes
   //  FIR redundant explicit bound type contributes
   //  FIR explicit bound type to Nothing
   //  FIR validate boundType is assignable
-  //  repeated annotations
 }
