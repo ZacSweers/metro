@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.NameAllocator
 import dev.zacsweers.lattice.compiler.decapitalizeUS
 import dev.zacsweers.lattice.compiler.exitProcessing
+import dev.zacsweers.lattice.compiler.expectAs
 import dev.zacsweers.lattice.compiler.ir.Binding
 import dev.zacsweers.lattice.compiler.ir.BindingGraph
 import dev.zacsweers.lattice.compiler.ir.BindingStack
@@ -64,8 +65,6 @@ import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.withEntry
 import dev.zacsweers.lattice.compiler.letIf
-import kotlin.collections.component1
-import kotlin.collections.component2
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrElement
@@ -86,6 +85,7 @@ import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -114,6 +114,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.ClassId
@@ -1044,7 +1045,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // Implement abstract getters for exposed types
     exposedTypes.entries.forEach { (function, contextualTypeKey) ->
       function.ir.apply {
-        finalizeFakeOverride(context.thisReceiver)
+        val declarationToFinalize = function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+        if (declarationToFinalize.isFakeOverride) {
+          declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
+        }
         val irFunction = this
         val binding = context.graph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
         context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
@@ -1146,7 +1150,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // Implement no-op bodies for Binds providers
     bindsFunctions.forEach { (function, _) ->
       function.ir.apply {
-        finalizeFakeOverride(context.thisReceiver)
+        val declarationToFinalize = function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+        if (declarationToFinalize.isFakeOverride) {
+          declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
+        }
         body = stubExpressionBody()
       }
     }

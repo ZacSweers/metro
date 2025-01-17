@@ -17,16 +17,20 @@ package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
+import dev.zacsweers.lattice.compiler.expectAsOrNull
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
+import dev.zacsweers.lattice.compiler.fir.argumentAsOrNull
 import dev.zacsweers.lattice.compiler.fir.hintClassId
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
+import dev.zacsweers.lattice.compiler.fir.qualifierAnnotation
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.buildUnaryArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
@@ -41,14 +45,15 @@ import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.plugin.createMemberProperty
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.toLookupTag
@@ -82,21 +87,24 @@ internal class ContributionsFirGenerator(session: FirSession) :
     data class ContributesTo(override val origin: ClassId) : Contribution
 
     data class ContributesBinding(
-      override val origin: ClassId,
-      val annotatedType: FirBasedSymbol<*>,
-    ) : Contribution
+      val annotatedType: FirClassSymbol<*>,
+      val annotation: FirAnnotation,
+    ) : Contribution {
+      override val origin: ClassId = annotatedType.classId
+    }
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
     val contributesToAnnotations = session.latticeClassIds.contributesToAnnotations
+    val contributesBindingAnnotations = session.latticeClassIds.contributesBindingAnnotations
 
     // TODO the others!
-    val contributesBindingAnnotations = session.latticeClassIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = session.latticeClassIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = session.latticeClassIds.contributesIntoMapAnnotations
 
     val ids = mutableSetOf<ClassId>()
+
 
     for (contributingSymbol in contributingSymbols) {
       when (contributingSymbol) {
@@ -113,7 +121,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
               in contributesBindingAnnotations -> {
                 val newId = contributingSymbol.classId.hintClassId
                 classIdsToContributions.getOrPut(newId, ::mutableSetOf) +=
-                  Contribution.ContributesBinding(contributingSymbol.classId, contributingSymbol)
+                  Contribution.ContributesBinding(contributingSymbol, annotation)
                 ids += newId
               }
             }
@@ -199,6 +207,15 @@ internal class ContributionsFirGenerator(session: FirSession) :
     return names
   }
 
+  private fun FirAnnotation.boundTypeOrNull(): FirTypeRef? {
+    return argumentAsOrNull<FirFunctionCall>("boundType".asName(), 1)
+      ?.typeArguments
+      ?.getOrNull(0)
+      ?.expectAsOrNull<FirTypeProjectionWithVariance>()
+      ?.typeRef
+      ?.takeUnless { it == session.builtinTypes.nothingType }
+  }
+
   override fun generateProperties(
     callableId: CallableId,
     context: MemberGenerationContext?,
@@ -209,29 +226,42 @@ internal class ContributionsFirGenerator(session: FirSession) :
     val properties = mutableListOf<FirPropertySymbol>()
     for (contribution in contributions) {
       if (contribution is Contribution.ContributesBinding) {
-        when (contribution.annotatedType) {
-          is FirClassSymbol<*> -> {
-            // Standard annotation on the class itself, look for a single bound type
-            val boundType =
-              contribution.annotatedType.resolvedSuperTypeRefs
-                .single()
-                .coneType
-                .toRegularClassSymbol(session) ?: continue
-            properties +=
-              createMemberProperty(
-                  owner,
-                  LatticeKeys.Default,
-                  "bind".asName(),
-                  returnType = boundType.constructType(),
-                  hasBackingField = false,
-                ) {
-                  modality = Modality.ABSTRACT
-                  extensionReceiverType(contribution.origin.defaultType(emptyList()))
-                }
-                .apply { replaceAnnotations(listOf(buildBindsAnnotation())) }
-                .symbol
-          }
+        val boundTypeRef = contribution.annotation.boundTypeOrNull()
+        // Standard annotation on the class itself, look for a single bound type
+        val boundType =
+          (boundTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
+
+        val classQualifierAnnotation = if (boundTypeRef == null) {
+          contribution.annotatedType
+            .qualifierAnnotation(session)
+            ?.fir
+        } else {
+          null
         }
+
+        properties +=
+          createMemberProperty(
+              owner,
+              LatticeKeys.Default,
+              "bind".asName(),
+              returnType = boundType,
+              hasBackingField = false,
+            ) {
+              modality = Modality.ABSTRACT
+              extensionReceiverType(contribution.origin.defaultType(emptyList()))
+            }
+            .apply {
+              replaceAnnotations(
+                buildList {
+                  add(buildBindsAnnotation())
+                  // If we came from a BoundType value, copy over its annotations
+                  // TODO check in FIR that these are only qualifiers
+                  boundTypeRef?.annotations?.let(::addAll)
+                  classQualifierAnnotation?.let(::add)
+                }
+              )
+            }
+            .symbol
       }
     }
     return properties

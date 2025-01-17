@@ -25,4 +25,5 @@ import kotlin.reflect.KClass
 public annotation class ContributesBinding(
   val scope: KClass<*>,
   val replaces: Array<KClass<*>> = [],
+  val boundType: BoundType<*> = BoundType<Nothing>(),
 )

@@ -14,11 +14,15 @@ public abstract interface annotation class dev/zacsweers/lattice/Binds : java/la
 public abstract interface annotation class dev/zacsweers/lattice/BindsInstance : java/lang/annotation/Annotation {
 }
 
+public abstract interface annotation class dev/zacsweers/lattice/BoundType : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/lattice/ClassKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/Class;
 }
 
 public abstract interface annotation class dev/zacsweers/lattice/ContributesBinding : java/lang/annotation/Annotation {
+	public abstract fun boundType ()Ldev/zacsweers/lattice/BoundType;
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
