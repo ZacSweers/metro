@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.plugin.createMemberProperty
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -66,11 +67,6 @@ import org.jetbrains.kotlin.name.StandardClassIds
 internal class ContributionsFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
-  // Symbols for classes which have contributing annotations.
-  private val contributingSymbols by lazy {
-    session.predicateBasedProvider.getSymbolsByPredicate(contributesAnnotationPredicate).toSet()
-  }
-
   private val contributesAnnotationPredicate by unsafeLazy {
     annotated(session.latticeClassIds.allContributesAnnotations.map { it.asSingleFqName() })
   }
@@ -84,29 +80,47 @@ internal class ContributionsFirGenerator(session: FirSession) :
   sealed interface Contribution {
     val origin: ClassId
 
+    sealed interface BindingContribution : Contribution {
+      val callableName: Name
+      val annotatedType: FirClassSymbol<*>
+      val annotation: FirAnnotation
+      val buildAnnotations: () -> List<FirAnnotation>
+    }
+
     data class ContributesTo(override val origin: ClassId) : Contribution
 
     data class ContributesBinding(
-      val annotatedType: FirClassSymbol<*>,
-      val annotation: FirAnnotation,
-    ) : Contribution {
+      override val annotatedType: FirClassSymbol<*>,
+      override val annotation: FirAnnotation,
+      override val buildAnnotations: () -> List<FirAnnotation>,
+    ) : Contribution, BindingContribution {
       override val origin: ClassId = annotatedType.classId
+      override val callableName: Name = "bind".asName()
+    }
+
+    data class ContributesIntoSetBinding(
+      override val annotatedType: FirClassSymbol<*>,
+      override val annotation: FirAnnotation,
+      override val buildAnnotations: () -> List<FirAnnotation>,
+    ) : Contribution, BindingContribution {
+      override val origin: ClassId = annotatedType.classId
+      override val callableName: Name = "bindIntoSet".asName()
     }
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
+    classIdsToContributions.clear()
     val contributesToAnnotations = session.latticeClassIds.contributesToAnnotations
     val contributesBindingAnnotations = session.latticeClassIds.contributesBindingAnnotations
+    val contributesIntoSetAnnotations = session.latticeClassIds.contributesIntoSetAnnotations
 
     // TODO the others!
-    val contributesIntoSetAnnotations = session.latticeClassIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = session.latticeClassIds.contributesIntoMapAnnotations
 
     val ids = mutableSetOf<ClassId>()
 
-
-    for (contributingSymbol in contributingSymbols) {
+    for (contributingSymbol in session.predicateBasedProvider.getSymbolsByPredicate(contributesAnnotationPredicate).toSet()) {
       when (contributingSymbol) {
         is FirRegularClassSymbol -> {
           for (annotation in contributingSymbol.resolvedAnnotationsWithClassIds) {
@@ -121,7 +135,21 @@ internal class ContributionsFirGenerator(session: FirSession) :
               in contributesBindingAnnotations -> {
                 val newId = contributingSymbol.classId.hintClassId
                 classIdsToContributions.getOrPut(newId, ::mutableSetOf) +=
-                  Contribution.ContributesBinding(contributingSymbol, annotation)
+                  Contribution.ContributesBinding(
+                    contributingSymbol,
+                    annotation,
+                    { listOf(buildBindsAnnotation()) },
+                  )
+                ids += newId
+              }
+              in contributesIntoSetAnnotations -> {
+                val newId = contributingSymbol.classId.hintClassId
+                classIdsToContributions.getOrPut(newId, ::mutableSetOf) +=
+                  Contribution.ContributesIntoSetBinding(
+                    contributingSymbol,
+                    annotation,
+                    { listOf(buildIntoSetAnnotation(), buildBindsAnnotation()) },
+                  )
                 ids += newId
               }
             }
@@ -157,9 +185,24 @@ internal class ContributionsFirGenerator(session: FirSession) :
   }
 
   private fun buildBindsAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.bindsClassSymbol }
+  }
+
+  private fun buildProvidesAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.providesClassSymbol }
+  }
+
+  private fun buildIntoSetAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.intoSetClassSymbol }
+  }
+
+  private fun buildIntoMapAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.intoMapClassSymbol }
+  }
+
+  private fun buildSimpleAnnotation(symbol: () -> FirRegularClassSymbol): FirAnnotation {
     return buildAnnotation {
-      annotationTypeRef =
-        session.latticeFirBuiltIns.bindsClassSymbol.defaultType().toFirResolvedTypeRef()
+      annotationTypeRef = symbol().defaultType().toFirResolvedTypeRef()
 
       argumentMapping = buildAnnotationArgumentMapping()
     }
@@ -198,17 +241,21 @@ internal class ContributionsFirGenerator(session: FirSession) :
     val contributions = classIdsToContributions[classId] ?: return emptySet()
     val names = mutableSetOf<Name>()
     for (contribution in contributions) {
-      if (contribution is Contribution.ContributesBinding) {
-        if (contribution.annotatedType is FirClassSymbol) {
-          names += "bind".asName()
+      names +=
+        when (contribution) {
+          is Contribution.ContributesBinding,
+          is Contribution.ContributesIntoSetBinding -> {
+            contribution.callableName
+          }
+
+          is Contribution.ContributesTo -> continue
         }
-      }
     }
     return names
   }
 
   private fun FirAnnotation.boundTypeOrNull(): FirTypeRef? {
-    return argumentAsOrNull<FirFunctionCall>("boundType".asName(), 1)
+    return argumentAsOrNull<FirFunctionCall>("boundType".asName(), 2)
       ?.typeArguments
       ?.getOrNull(0)
       ?.expectAsOrNull<FirTypeProjectionWithVariance>()
@@ -221,50 +268,58 @@ internal class ContributionsFirGenerator(session: FirSession) :
     context: MemberGenerationContext?,
   ): List<FirPropertySymbol> {
     val owner = context?.owner ?: return emptyList()
-    if (callableId.callableName != "bind".asName()) return emptyList()
     val contributions = classIdsToContributions[callableId.classId] ?: return emptyList()
-    val properties = mutableListOf<FirPropertySymbol>()
-    for (contribution in contributions) {
-      if (contribution is Contribution.ContributesBinding) {
-        val boundTypeRef = contribution.annotation.boundTypeOrNull()
-        // Standard annotation on the class itself, look for a single bound type
-        val boundType =
-          (boundTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
-
-        val classQualifierAnnotation = if (boundTypeRef == null) {
-          contribution.annotatedType
-            .qualifierAnnotation(session)
-            ?.fir
-        } else {
-          null
+    val properties = contributions
+      .mapNotNull { contribution ->
+        when (contribution) {
+          is Contribution.ContributesBinding,
+          is Contribution.ContributesIntoSetBinding -> {
+            buildBindingProperty(owner, contribution)
+          }
+          is Contribution.ContributesTo -> null
         }
-
-        properties +=
-          createMemberProperty(
-              owner,
-              LatticeKeys.Default,
-              "bind".asName(),
-              returnType = boundType,
-              hasBackingField = false,
-            ) {
-              modality = Modality.ABSTRACT
-              extensionReceiverType(contribution.origin.defaultType(emptyList()))
-            }
-            .apply {
-              replaceAnnotations(
-                buildList {
-                  add(buildBindsAnnotation())
-                  // If we came from a BoundType value, copy over its annotations
-                  // TODO check in FIR that these are only qualifiers
-                  boundTypeRef?.annotations?.let(::addAll)
-                  classQualifierAnnotation?.let(::add)
-                }
-              )
-            }
-            .symbol
       }
-    }
     return properties
+  }
+
+  private fun buildBindingProperty(
+    owner: FirClassSymbol<*>,
+    contribution: Contribution.BindingContribution,
+  ): FirPropertySymbol {
+    val boundTypeRef = contribution.annotation.boundTypeOrNull()
+    // Standard annotation on the class itself, look for a single bound type
+    val boundType =
+      (boundTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
+
+    val classQualifierAnnotation =
+      if (boundTypeRef == null) {
+        contribution.annotatedType.qualifierAnnotation(session)?.fir
+      } else {
+        null
+      }
+
+    return createMemberProperty(
+        owner,
+        LatticeKeys.Default,
+        contribution.callableName,
+        returnType = boundType,
+        hasBackingField = false,
+      ) {
+        modality = Modality.ABSTRACT
+        extensionReceiverType(contribution.origin.defaultType(emptyList()))
+      }
+      .apply {
+        replaceAnnotations(
+          buildList {
+            addAll(contribution.buildAnnotations())
+            // If we came from a BoundType value, copy over its annotations
+            // TODO check in FIR that these are only qualifiers
+            boundTypeRef?.annotations?.let(::addAll)
+            classQualifierAnnotation?.let(::add)
+          }
+        )
+      }
+      .symbol
   }
 
   override fun hasPackage(packageFqName: FqName): Boolean {

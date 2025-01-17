@@ -18,14 +18,11 @@ package dev.zacsweers.lattice
 import kotlin.annotation.AnnotationTarget.CLASS
 import kotlin.reflect.KClass
 
-/**
- * TODO doc
- *
- * @param BoundType TODO doc. Emphasize qualifiers
- */
+/** TODO doc */
 @Target(CLASS)
 @Repeatable
-public annotation class ContributesIntoSet<BoundType>(
+public annotation class ContributesIntoSet(
   val scope: KClass<*>,
   val replaces: Array<KClass<*>> = [],
+  val boundType: BoundType<*> = BoundType<Nothing>(),
 )

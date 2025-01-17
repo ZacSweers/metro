@@ -223,6 +223,163 @@ class AggregationTest : LatticeCompilerTest() {
     }
   }
 
-  // TODO FIR check for single bound type, duplicate contributes, FIR validate boundType is
-  //  assignable
+  @Test
+  fun `ContributesIntoSet with implicit bound type`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesIntoSet(AppScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).isNotEmpty()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesIntoSet with implicit qualified bound type`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Named("named")
+          @ContributesIntoSet(AppScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("named") val contributedInterfaces: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesIntoSet with specific bound type`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          interface AnotherInterface
+
+          @ContributesIntoSet(
+            AppScope::class,
+            boundType = BoundType<ContributedInterface>()
+          )
+          @Inject
+          class Impl : ContributedInterface, AnotherInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesIntoSet with specific qualified bound type`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          interface AnotherInterface
+
+          @ContributesIntoSet(
+            AppScope::class,
+            boundType = BoundType<@Named("hello") ContributedInterface>()
+          )
+          @Inject
+          class Impl : ContributedInterface, AnotherInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("hello")
+            val contributedInterfaces: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesIntoSet with generic bound type`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface<T>
+
+          @ContributesIntoSet(
+            AppScope::class,
+            boundType = BoundType<ContributedInterface<String>>()
+          )
+          @Inject
+          class Impl : ContributedInterface<String>
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Set<ContributedInterface<String>>
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  // TODO FIR check for single bound type
+  //  duplicate contributes
+  //  FIR validate boundType is assignable
+  //  multi module bindings
+  //  repeated annotations
 }
