@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
+import dev.zacsweers.lattice.compiler.expectAsOrNull
 import dev.zacsweers.lattice.compiler.mapToArray
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
@@ -57,6 +58,7 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirEmptyArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
@@ -96,6 +98,8 @@ import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
+import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -777,4 +781,13 @@ internal fun <T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
   // Fall back to the index if necessary
   @Suppress("UNCHECKED_CAST")
   return arguments.getOrNull(index) as T?
+}
+
+internal fun FirAnnotation.boundTypeOrNull(nothingType: FirTypeRef): FirTypeRef? {
+  return argumentAsOrNull<FirFunctionCall>("boundType".asName(), 2)
+    ?.typeArguments
+    ?.getOrNull(0)
+    ?.expectAsOrNull<FirTypeProjectionWithVariance>()
+    ?.typeRef
+    ?.takeUnless { it == nothingType }
 }

@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
+import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.expectAsOrNull
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.argumentAsOrNull
@@ -24,6 +25,7 @@ import dev.zacsweers.lattice.compiler.fir.hintClassId
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.fir.qualifierAnnotation
+import dev.zacsweers.lattice.compiler.joinSimpleNames
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -45,7 +47,6 @@ import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.plugin.createMemberProperty
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
@@ -54,7 +55,9 @@ import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.toLookupTag
@@ -81,7 +84,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     val origin: ClassId
 
     sealed interface BindingContribution : Contribution {
-      val callableName: Name
+      val callableName: String
       val annotatedType: FirClassSymbol<*>
       val annotation: FirAnnotation
       val buildAnnotations: () -> List<FirAnnotation>
@@ -95,7 +98,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
       override val buildAnnotations: () -> List<FirAnnotation>,
     ) : Contribution, BindingContribution {
       override val origin: ClassId = annotatedType.classId
-      override val callableName: Name = "bind".asName()
+      override val callableName: String = "bind"
     }
 
     data class ContributesIntoSetBinding(
@@ -104,7 +107,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
       override val buildAnnotations: () -> List<FirAnnotation>,
     ) : Contribution, BindingContribution {
       override val origin: ClassId = annotatedType.classId
-      override val callableName: Name = "bindIntoSet".asName()
+      override val callableName: String = "bindIntoSet"
     }
   }
 
@@ -120,7 +123,10 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
     val ids = mutableSetOf<ClassId>()
 
-    for (contributingSymbol in session.predicateBasedProvider.getSymbolsByPredicate(contributesAnnotationPredicate).toSet()) {
+    for (contributingSymbol in
+      session.predicateBasedProvider
+        .getSymbolsByPredicate(contributesAnnotationPredicate)
+        .toSet()) {
       when (contributingSymbol) {
         is FirRegularClassSymbol -> {
           for (annotation in contributingSymbol.resolvedAnnotationsWithClassIds) {
@@ -239,19 +245,12 @@ internal class ContributionsFirGenerator(session: FirSession) :
   ): Set<Name> {
     val classId = classSymbol.classId
     val contributions = classIdsToContributions[classId] ?: return emptySet()
-    val names = mutableSetOf<Name>()
-    for (contribution in contributions) {
-      names +=
-        when (contribution) {
-          is Contribution.ContributesBinding,
-          is Contribution.ContributesIntoSetBinding -> {
-            contribution.callableName
-          }
-
-          is Contribution.ContributesTo -> continue
-        }
-    }
-    return names
+    // Note the names we supply here are not final, we just need to know if we're going to generate
+    // _any_ names for this type. We will return n >= 1 properties in generateProperties later.
+    return contributions
+      .filterIsInstance<Contribution.BindingContribution>()
+      .groupBy { it.callableName.asName() }
+      .keys
   }
 
   private fun FirAnnotation.boundTypeOrNull(): FirTypeRef? {
@@ -269,8 +268,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
   ): List<FirPropertySymbol> {
     val owner = context?.owner ?: return emptyList()
     val contributions = classIdsToContributions[callableId.classId] ?: return emptyList()
-    val properties = contributions
-      .mapNotNull { contribution ->
+    val properties =
+      contributions.mapNotNull { contribution ->
         when (contribution) {
           is Contribution.ContributesBinding,
           is Contribution.ContributesIntoSetBinding -> {
@@ -298,10 +297,25 @@ internal class ContributionsFirGenerator(session: FirSession) :
         null
       }
 
+    val suffix = buildString {
+      classQualifierAnnotation
+        ?.annotationTypeRef
+        ?.coneTypeOrNull
+        ?.classId
+        ?.joinSimpleNames("", camelCase = true)
+        ?.shortClassName
+        ?.let(::append)
+      boundType.classId
+        ?.joinSimpleNames("", camelCase = true)
+        ?.shortClassName
+        ?.capitalizeUS()
+        ?.let(::append)
+    }
+
     return createMemberProperty(
         owner,
         LatticeKeys.Default,
-        contribution.callableName,
+        (contribution.callableName + "As" + suffix).asName(),
         returnType = boundType,
         hasBackingField = false,
       ) {

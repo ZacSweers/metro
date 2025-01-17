@@ -76,7 +76,7 @@ class AggregationTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `simple ContributesBinding with implicit bound type`() {
+  fun `ContributesBinding with implicit bound type`() {
     compile(
       source(
         """
@@ -103,7 +103,43 @@ class AggregationTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `simple ContributesBinding with implicit qualified bound type`() {
+  fun `ContributesBinding with implicit bound type - from another module`() {
+    val firstResult = compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstResult,
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesBinding with implicit qualified bound type`() {
     compile(
       source(
         """
@@ -131,7 +167,7 @@ class AggregationTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `simple ContributesBinding with specific bound type`() {
+  fun `ContributesBinding with specific bound type`() {
     compile(
       source(
         """
@@ -158,6 +194,45 @@ class AggregationTest : LatticeCompilerTest() {
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesBinding with multiple bound types`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          interface AnotherInterface
+
+          @ContributesBinding(
+            AppScope::class,
+            boundType = BoundType<ContributedInterface>()
+          )
+          @ContributesBinding(
+            AppScope::class,
+            boundType = BoundType<AnotherInterface>()
+          )
+          @Inject
+          class Impl : ContributedInterface, AnotherInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+            val anotherInterface: AnotherInterface
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+      val anotherInterface = graph.callProperty<Any>("anotherInterface")
+      assertThat(anotherInterface).isNotNull()
+      assertThat(anotherInterface.javaClass.name).isEqualTo("test.Impl")
     }
   }
 
@@ -224,6 +299,44 @@ class AggregationTest : LatticeCompilerTest() {
   }
 
   @Test
+  fun `ContributesBinding with generic qualified bound type from another module`() {
+    val firstResult = compile(
+      source(
+        """
+          interface ContributedInterface<T>
+
+          @ContributesBinding(
+            AppScope::class,
+            boundType = BoundType<@Named("named") ContributedInterface<String>>()
+          )
+          @Inject
+          class Impl : ContributedInterface<String>
+        """
+          .trimIndent()
+      ),
+    )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("named") val contributedInterface: ContributedInterface<String>
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstResult,
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
   fun `ContributesIntoSet with implicit bound type`() {
     compile(
       source(
@@ -241,6 +354,43 @@ class AggregationTest : LatticeCompilerTest() {
         """
           .trimIndent()
       ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).isNotEmpty()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesIntoSet with implicit bound type - from another compilation`() {
+    val firstResult = compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesIntoSet(AppScope::class)
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+    )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstResult,
       debug = true,
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
@@ -377,9 +527,48 @@ class AggregationTest : LatticeCompilerTest() {
     }
   }
 
+  @Test
+  fun `ContributesIntoSet with generic qualified bound type from another module`() {
+    val firstResult = compile(
+      source(
+        """
+          interface ContributedInterface<T>
+
+          @ContributesIntoSet(
+            AppScope::class,
+            boundType = BoundType<@Named("named") ContributedInterface<String>>()
+          )
+          @Inject
+          class Impl : ContributedInterface<String>
+        """
+          .trimIndent()
+      ),
+    )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("named") val contributedInterfaces: Set<ContributedInterface<String>>
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstResult
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
   // TODO FIR check for single bound type
-  //  duplicate contributes
+  //  FIR duplicate contributes
+  //  FIR redundant explicit bound type contributes
+  //  FIR explicit bound type to Nothing
   //  FIR validate boundType is assignable
-  //  multi module bindings
   //  repeated annotations
 }

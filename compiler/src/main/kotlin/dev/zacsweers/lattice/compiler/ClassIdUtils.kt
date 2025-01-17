@@ -38,14 +38,20 @@ private const val MAX_FILE_NAME_LENGTH =
  *
  * @throws IllegalArgumentException if the resulting class name is too long to be a valid file name.
  */
-public fun ClassId.joinSimpleNames(separator: String = "_", suffix: String = ""): ClassId =
-  joinSimpleNamesPrivate(separator = separator, suffix = suffix).checkFileLength()
+public fun ClassId.joinSimpleNames(separator: String = "_", suffix: String = "", camelCase: Boolean = false): ClassId =
+  joinSimpleNamesPrivate(separator = separator, suffix = suffix, camelCase = camelCase).checkFileLength()
 
-private fun ClassId.joinSimpleNamesPrivate(separator: String = "_", suffix: String = ""): ClassId =
+private fun ClassId.joinSimpleNamesPrivate(separator: String = "_", suffix: String = "", camelCase: Boolean = false): ClassId =
   ClassId(
     packageFqName,
     Name.identifier(
-      relativeClassName.pathSegments().joinToString(separator = separator, postfix = suffix)
+      relativeClassName.pathSegments().joinToString(separator = separator, postfix = suffix) {
+        if (camelCase) {
+          it.asString().capitalizeUS()
+        } else {
+          it.asString()
+        }
+      }
     ),
   )
 
