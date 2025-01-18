@@ -97,6 +97,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -602,7 +603,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                 // MapKey is the key type
                 keyType,
                 // Return type is the value type
-                provider.typeKey.type,
+                provider.typeKey.type.removeAnnotations(),
               )
             }
             else -> error("Not possible")

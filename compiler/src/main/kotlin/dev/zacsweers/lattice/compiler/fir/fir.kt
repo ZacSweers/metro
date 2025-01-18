@@ -18,10 +18,11 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
-import dev.zacsweers.lattice.compiler.expectAsOrNull
+import dev.zacsweers.lattice.compiler.fir.copy
 import dev.zacsweers.lattice.compiler.mapToArray
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
+import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -29,6 +30,7 @@ import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -41,6 +43,7 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
@@ -55,20 +58,24 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirEmptyArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirExpression
-import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
+import org.jetbrains.kotlin.fir.expressions.UnresolvedExpressionTypeAccess
 import org.jetbrains.kotlin.fir.expressions.arguments
+import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCallCopy
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.impl.FirResolvedArgumentList
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.buildUserTypeFromQualifierParts
 import org.jetbrains.kotlin.fir.moduleData
@@ -98,8 +105,6 @@ import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
-import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
-import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -107,6 +112,8 @@ import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.visitors.FirTransformer
+import org.jetbrains.kotlin.fir.visitors.FirVisitor
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -566,6 +573,12 @@ internal fun FirBasedSymbol<*>.qualifierAnnotation(session: FirSession): Lattice
 internal fun List<FirAnnotation>.qualifierAnnotation(session: FirSession): LatticeFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.latticeClassIds.qualifierAnnotations)
 
+internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): LatticeFirAnnotation? =
+  annotations.mapKeyAnnotation(session)
+
+internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): LatticeFirAnnotation? =
+  asSequence().annotationAnnotatedWithAny(session, session.latticeClassIds.mapKeyAnnotations)
+
 internal fun List<FirAnnotation>.scopeAnnotation(session: FirSession): LatticeFirAnnotation? =
   asSequence().scopeAnnotation(session)
 
@@ -783,11 +796,45 @@ internal fun <T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
   return arguments.getOrNull(index) as T?
 }
 
-internal fun FirAnnotation.boundTypeOrNull(nothingType: FirTypeRef): FirTypeRef? {
-  return argumentAsOrNull<FirFunctionCall>("boundType".asName(), 2)
-    ?.typeArguments
-    ?.getOrNull(0)
-    ?.expectAsOrNull<FirTypeProjectionWithVariance>()
-    ?.typeRef
-    ?.takeUnless { it == nothingType }
+internal fun List<FirAnnotation>.copy(newParent: FirBasedSymbol<*>): List<FirAnnotation> {
+  return map { it.copy(newParent) }
+}
+
+@OptIn(UnresolvedExpressionTypeAccess::class)
+internal fun FirAnnotation.copy(newParent: FirBasedSymbol<*>): FirAnnotation {
+  if (this !is FirAnnotationCall) return this
+  return buildAnnotationCallCopy(this) {
+    this.source = this@copy.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+    this.containingDeclarationSymbol = newParent
+    this.argumentList = buildNonVisitableFirResolvedArgumentList(
+      this@copy.argumentList,
+      (this@copy.argumentList as FirResolvedArgumentList).mapping
+    )
+  }
+}
+
+private fun buildNonVisitableFirResolvedArgumentList(
+  original: FirArgumentList?,
+  mapping: LinkedHashMap<FirExpression, FirValueParameter>
+): FirResolvedArgumentList {
+  val resolvedImpl = buildResolvedArgumentList(
+    original,
+    mapping
+  )
+  return object : FirResolvedArgumentList() {
+    override val originalArgumentList: FirArgumentList?
+      get() = resolvedImpl.originalArgumentList
+    override val mapping: LinkedHashMap<FirExpression, FirValueParameter>
+      get() = resolvedImpl.mapping
+
+    override fun <D> transformArguments(
+      transformer: FirTransformer<D>,
+      data: D
+    ) = resolvedImpl.transformArguments(transformer, data)
+
+    override fun <R, D> acceptChildren(visitor: FirVisitor<R, D>, data: D) {
+      // Do nothing because GeneratedDeclarationValidation validates father than it should?
+      // https://kotlinlang.slack.com/archives/C7L3JB43G/p1737173850965089
+    }
+  }
 }

@@ -38,6 +38,8 @@ abstract class LatticeCompilerTest {
       "${LatticeSymbols.StringNames.LATTICE_RUNTIME_PACKAGE}.*",
       // For Callable access
       "java.util.concurrent.*",
+      // For KClass access
+      "kotlin.reflect.*",
     )
 
   protected fun prepareCompilation(

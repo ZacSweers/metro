@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent.Factory
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
+import org.jetbrains.kotlin.name.StandardClassIds
 
 internal class LatticeFirBuiltIns(
   session: FirSession,
@@ -39,6 +40,11 @@ internal class LatticeFirBuiltIns(
 
   val originClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.latticeOrigin)
+      as FirRegularClassSymbol
+  }
+
+  val kClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(StandardClassIds.KClass)
       as FirRegularClassSymbol
   }
 

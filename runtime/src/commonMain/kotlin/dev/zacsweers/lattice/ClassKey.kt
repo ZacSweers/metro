@@ -32,6 +32,7 @@ import kotlin.reflect.KClass
   AnnotationTarget.PROPERTY,
   AnnotationTarget.PROPERTY_GETTER,
   AnnotationTarget.CLASS,
+  AnnotationTarget.TYPE,
 )
 @Retention(AnnotationRetention.RUNTIME)
 @MapKey

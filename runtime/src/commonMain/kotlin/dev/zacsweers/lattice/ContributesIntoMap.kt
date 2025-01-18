@@ -25,7 +25,8 @@ import kotlin.reflect.KClass
  */
 @Target(CLASS)
 @Repeatable
-public annotation class ContributesIntoMap<BoundType>(
+public annotation class ContributesIntoMap(
   val scope: KClass<*>,
   val replaces: Array<KClass<*>> = [],
+  val boundType: BoundType<*> = BoundType<Nothing>(),
 )
