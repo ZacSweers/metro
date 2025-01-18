@@ -33,13 +33,13 @@ abstract class LatticeCompilerTest {
 
   @Rule @JvmField val temporaryFolder: TemporaryFolder = TemporaryFolder()
 
+  // TODO every time we update this a ton of tests fail because their line numbers change
+  //  would be nice to make this more flexible
   val defaultImports =
     listOf(
       "${LatticeSymbols.StringNames.LATTICE_RUNTIME_PACKAGE}.*",
       // For Callable access
       "java.util.concurrent.*",
-      // For KClass access
-      "kotlin.reflect.*",
     )
 
   protected fun prepareCompilation(

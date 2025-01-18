@@ -556,6 +556,8 @@ class AggregationTest : LatticeCompilerTest() {
     compile(
       source(
         """
+          import kotlin.reflect.KClass
+
           interface ContributedInterface
 
           @ClassKey(Impl::class)
@@ -600,6 +602,8 @@ class AggregationTest : LatticeCompilerTest() {
     compile(
       source(
         """
+          import kotlin.reflect.KClass
+
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val contributedInterfaces: Map<KClass<*>, ContributedInterface>
@@ -624,6 +628,8 @@ class AggregationTest : LatticeCompilerTest() {
     compile(
       source(
         """
+          import kotlin.reflect.KClass
+
           interface ContributedInterface
 
           @ClassKey(Impl::class)
@@ -654,6 +660,8 @@ class AggregationTest : LatticeCompilerTest() {
     compile(
       source(
         """
+          import kotlin.reflect.KClass
+
           interface ContributedInterface
           interface AnotherInterface
 
@@ -686,6 +694,8 @@ class AggregationTest : LatticeCompilerTest() {
     compile(
       source(
         """
+          import kotlin.reflect.KClass
+
           interface ContributedInterface
           interface AnotherInterface
 
@@ -719,6 +729,8 @@ class AggregationTest : LatticeCompilerTest() {
     compile(
       source(
         """
+          import kotlin.reflect.KClass
+
           interface ContributedInterface<T>
 
           @ContributesIntoMap(
@@ -767,6 +779,8 @@ class AggregationTest : LatticeCompilerTest() {
     compile(
       source(
         """
+          import kotlin.reflect.KClass
+
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             @Named("named") val contributedInterfaces: Map<KClass<*>, ContributedInterface<String>>
