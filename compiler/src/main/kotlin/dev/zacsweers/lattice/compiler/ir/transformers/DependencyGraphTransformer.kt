@@ -1046,7 +1046,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // Implement abstract getters for exposed types
     exposedTypes.entries.forEach { (function, contextualTypeKey) ->
       function.ir.apply {
-        val declarationToFinalize = function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+        val declarationToFinalize =
+          function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
@@ -1151,7 +1152,8 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     // Implement no-op bodies for Binds providers
     bindsFunctions.forEach { (function, _) ->
       function.ir.apply {
-        val declarationToFinalize = function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+        val declarationToFinalize =
+          function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }

@@ -18,7 +18,6 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
-import dev.zacsweers.lattice.compiler.fir.copy
 import dev.zacsweers.lattice.compiler.mapToArray
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
@@ -162,7 +161,7 @@ internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): Boolean {
-  return resolvedAnnotationsWithClassIds.any { it.toAnnotationClassIdSafe(session) in names }
+  return annotations.filter { it.isResolved }.any { it.toAnnotationClassIdSafe(session) in names }
 }
 
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
@@ -806,31 +805,28 @@ internal fun FirAnnotation.copy(newParent: FirBasedSymbol<*>): FirAnnotation {
   return buildAnnotationCallCopy(this) {
     this.source = this@copy.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
     this.containingDeclarationSymbol = newParent
-    this.argumentList = buildNonVisitableFirResolvedArgumentList(
-      this@copy.argumentList,
-      (this@copy.argumentList as FirResolvedArgumentList).mapping
-    )
+    this.argumentList =
+      buildNonVisitableFirResolvedArgumentList(
+        this@copy.argumentList,
+        (this@copy.argumentList as FirResolvedArgumentList).mapping,
+      )
   }
 }
 
 private fun buildNonVisitableFirResolvedArgumentList(
   original: FirArgumentList?,
-  mapping: LinkedHashMap<FirExpression, FirValueParameter>
+  mapping: LinkedHashMap<FirExpression, FirValueParameter>,
 ): FirResolvedArgumentList {
-  val resolvedImpl = buildResolvedArgumentList(
-    original,
-    mapping
-  )
+  val resolvedImpl = buildResolvedArgumentList(original, mapping)
   return object : FirResolvedArgumentList() {
     override val originalArgumentList: FirArgumentList?
       get() = resolvedImpl.originalArgumentList
+
     override val mapping: LinkedHashMap<FirExpression, FirValueParameter>
       get() = resolvedImpl.mapping
 
-    override fun <D> transformArguments(
-      transformer: FirTransformer<D>,
-      data: D
-    ) = resolvedImpl.transformArguments(transformer, data)
+    override fun <D> transformArguments(transformer: FirTransformer<D>, data: D) =
+      resolvedImpl.transformArguments(transformer, data)
 
     override fun <R, D> acceptChildren(visitor: FirVisitor<R, D>, data: D) {
       // Do nothing because GeneratedDeclarationValidation validates father than it should?

@@ -93,7 +93,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -104,18 +104,19 @@ class AggregationTest : LatticeCompilerTest() {
 
   @Test
   fun `ContributesBinding with implicit bound type - from another module`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
           interface ContributedInterface
 
           @ContributesBinding(AppScope::class)
           @Inject
           class Impl : ContributedInterface
         """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -154,7 +155,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -184,7 +185,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -219,7 +220,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -253,7 +254,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -282,7 +283,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -293,9 +294,10 @@ class AggregationTest : LatticeCompilerTest() {
 
   @Test
   fun `ContributesBinding with generic qualified bound type from another module`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
           interface ContributedInterface<T>
 
           @ContributesBinding(
@@ -305,9 +307,9 @@ class AggregationTest : LatticeCompilerTest() {
           @Inject
           class Impl : ContributedInterface<String>
         """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -345,7 +347,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -358,18 +360,19 @@ class AggregationTest : LatticeCompilerTest() {
 
   @Test
   fun `ContributesIntoSet with implicit bound type - from another compilation`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
           interface ContributedInterface
 
           @ContributesIntoSet(AppScope::class)
           @Inject
           class Impl : ContributedInterface
         """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -410,7 +413,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -441,7 +444,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -473,7 +476,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -503,7 +506,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -515,9 +518,10 @@ class AggregationTest : LatticeCompilerTest() {
 
   @Test
   fun `ContributesIntoSet with generic qualified bound type from another module`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
           interface ContributedInterface<T>
 
           @ContributesIntoSet(
@@ -527,9 +531,9 @@ class AggregationTest : LatticeCompilerTest() {
           @Inject
           class Impl : ContributedInterface<String>
         """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -541,7 +545,7 @@ class AggregationTest : LatticeCompilerTest() {
         """
           .trimIndent()
       ),
-      previousCompilationResult = firstResult
+      previousCompilationResult = firstResult,
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
@@ -571,7 +575,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -585,9 +589,10 @@ class AggregationTest : LatticeCompilerTest() {
 
   @Test
   fun `ContributesIntoMap with implicit bound type - from another compilation`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
           interface ContributedInterface
 
           @ClassKey(Impl::class)
@@ -595,9 +600,9 @@ class AggregationTest : LatticeCompilerTest() {
           @Inject
           class Impl : ContributedInterface
         """
-          .trimIndent()
-      ),
-    )
+            .trimIndent()
+        )
+      )
 
     compile(
       source(
@@ -644,7 +649,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -678,7 +683,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -713,7 +718,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -746,7 +751,7 @@ class AggregationTest : LatticeCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -759,9 +764,10 @@ class AggregationTest : LatticeCompilerTest() {
 
   @Test
   fun `ContributesIntoMap with generic qualified bound type from another module`() {
-    val firstResult = compile(
-      source(
-        """
+    val firstResult =
+      compile(
+        source(
+          """
           interface ContributedInterface<T>
 
           @ContributesIntoMap(
@@ -771,10 +777,10 @@ class AggregationTest : LatticeCompilerTest() {
           @Inject
           class Impl : ContributedInterface<String>
         """
-          .trimIndent()
-      ),
-      debug = true
-    )
+            .trimIndent()
+        ),
+        debug = true,
+      )
 
     compile(
       source(
@@ -788,7 +794,7 @@ class AggregationTest : LatticeCompilerTest() {
         """
           .trimIndent()
       ),
-      previousCompilationResult = firstResult
+      previousCompilationResult = firstResult,
     ) {
       val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
