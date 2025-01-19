@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir.checkers
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
+import dev.zacsweers.lattice.compiler.fir.LatticeFirAnnotation
 import dev.zacsweers.lattice.compiler.fir.findInjectConstructors
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.qualifierAnnotation
@@ -25,6 +26,7 @@ import dev.zacsweers.lattice.compiler.fir.resolvedBoundType
 import dev.zacsweers.lattice.compiler.fir.resolvedScopeClassId
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
@@ -43,7 +45,6 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.name.ClassId
 
 internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
-  @OptIn(UnexpandedTypeCheck::class)
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
     val session = context.session
@@ -79,116 +80,149 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             }
           }
           in latticeClassIds.contributesBindingAnnotations -> {
-            // Ensure the class is injected
-            val injectConstructor =
-              declaration.symbol.findInjectConstructors(session).singleOrNull()
-            if (injectConstructor == null) {
-              reporter.reportOn(
-                annotation.source,
-                FirLatticeErrors.AGGREGATION_ERROR,
-                "`@ContributesBinding` is only applicable to constructor-injected classes. Did you forget to inject ${declaration.symbol.classId.asSingleFqName()}?",
+            val valid =
+              checkBindingContribution(
+                session,
+                "ContributesBinding",
+                declaration,
+                classQualifier,
+                annotation,
+                scope,
+                classId,
                 context,
-              )
-              return
-            }
-
-            val hasSupertypes = declaration.superTypeRefs.isNotEmpty()
-
-            val explicitBoundType = annotation.resolvedBoundType()
-
-            val typeKey =
-              if (explicitBoundType != null) {
-                // No need to check for nullable Nothing because it's enforced with the <T : Any>
-                // bound
-                if (explicitBoundType.isNothing) {
-                  reporter.reportOn(
-                    explicitBoundType.source,
-                    FirLatticeErrors.AGGREGATION_ERROR,
-                    "Explicit bound types should not be `Nothing` or `Nothing?`.",
-                    context,
-                  )
-                  return
-                }
-
-                if (!hasSupertypes && !explicitBoundType.isAny) {
-                  reporter.reportOn(
-                    annotation.source,
-                    FirLatticeErrors.AGGREGATION_ERROR,
-                    "`@ContributesBinding`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
-                    context,
-                  )
-                  return
-                }
-
-                val coneType = explicitBoundType.coneTypeOrNull ?: continue
-                val refClassId = coneType.fullyExpandedClassId(session) ?: continue
-
-                if (refClassId == declaration.symbol.classId) {
-                  reporter.reportOn(
-                    explicitBoundType.source,
-                    FirLatticeErrors.AGGREGATION_ERROR,
-                    "Redundant explicit bound type ${refClassId.asSingleFqName()} is the same as the annotated class ${refClassId.asSingleFqName()}.",
-                    context,
-                  )
-                  return
-                }
-
-                val implementsBoundType =
-                  lookupSuperTypes(klass = declaration, true, true, session, true).any {
-                    it.classId?.let { it == refClassId } == true
-                  }
-                if (!implementsBoundType) {
-                  reporter.reportOn(
-                    explicitBoundType.source,
-                    FirLatticeErrors.AGGREGATION_ERROR,
-                    "Class ${classId.asSingleFqName()} does not implement explicit bound type ${refClassId.asSingleFqName()}",
-                    context,
-                  )
-                  return
-                }
-
-                FirTypeKey(
-                  coneType,
-                  (explicitBoundType.annotations.qualifierAnnotation(session) ?: classQualifier),
-                )
-              } else {
-                if (!hasSupertypes) {
-                  reporter.reportOn(
-                    annotation.source,
-                    FirLatticeErrors.AGGREGATION_ERROR,
-                    "`@ContributesBinding`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
-                    context,
-                  )
-                  return
-                } else if (declaration.superTypeRefs.size != 1) {
-                  reporter.reportOn(
-                    annotation.source,
-                    FirLatticeErrors.AGGREGATION_ERROR,
-                    "`@ContributesBinding`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `boundType` but has multiple supertypes. You must define an explicit bound type in this scenario.",
-                    context,
-                  )
-                  return
-                }
-                val implicitBoundType = declaration.superTypeRefs[0]
-                FirTypeKey(implicitBoundType.coneType, classQualifier)
+                reporter,
+                contributesBindingAnnotations,
+              ) {
+                Contribution.ContributesBinding(declaration, annotation, scope, replaces, it)
               }
-
-            val contribution =
-              Contribution.ContributesBinding(declaration, annotation, scope, replaces, typeKey)
-            addContributionAndCheckForDuplicate(
-              contribution,
-              contributesBindingAnnotations,
-              annotation,
-              scope,
-              reporter,
-              context,
-            ) {
+            if (!valid) {
               return
             }
           }
         }
       }
     }
+  }
+
+  @OptIn(UnexpandedTypeCheck::class)
+  private fun <T : Contribution> checkBindingContribution(
+    session: FirSession,
+    kind: String,
+    declaration: FirClass,
+    classQualifier: LatticeFirAnnotation?,
+    annotation: FirAnnotation,
+    scope: ClassId,
+    classId: ClassId,
+    context: CheckerContext,
+    reporter: DiagnosticReporter,
+    collection: MutableSet<T>,
+    createBinding: (FirTypeKey) -> T,
+  ): Boolean {
+    // Ensure the class is injected
+    val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
+    if (injectConstructor == null) {
+      reporter.reportOn(
+        annotation.source,
+        FirLatticeErrors.AGGREGATION_ERROR,
+        "`@$kind` is only applicable to constructor-injected classes. Did you forget to inject ${declaration.symbol.classId.asSingleFqName()}?",
+        context,
+      )
+      return false
+    }
+
+    val hasSupertypes = declaration.superTypeRefs.isNotEmpty()
+
+    val explicitBoundType = annotation.resolvedBoundType()
+
+    val typeKey =
+      if (explicitBoundType != null) {
+        // No need to check for nullable Nothing because it's enforced with the <T : Any>
+        // bound
+        if (explicitBoundType.isNothing) {
+          reporter.reportOn(
+            explicitBoundType.source,
+            FirLatticeErrors.AGGREGATION_ERROR,
+            "Explicit bound types should not be `Nothing` or `Nothing?`.",
+            context,
+          )
+          return false
+        }
+
+        if (!hasSupertypes && !explicitBoundType.isAny) {
+          reporter.reportOn(
+            annotation.source,
+            FirLatticeErrors.AGGREGATION_ERROR,
+            "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
+            context,
+          )
+          return false
+        }
+
+        val coneType = explicitBoundType.coneTypeOrNull ?: return true
+        val refClassId = coneType.fullyExpandedClassId(session) ?: return true
+
+        if (refClassId == declaration.symbol.classId) {
+          reporter.reportOn(
+            explicitBoundType.source,
+            FirLatticeErrors.AGGREGATION_ERROR,
+            "Redundant explicit bound type ${refClassId.asSingleFqName()} is the same as the annotated class ${refClassId.asSingleFqName()}.",
+            context,
+          )
+          return false
+        }
+
+        val implementsBoundType =
+          lookupSuperTypes(klass = declaration, true, true, session, true).any {
+            it.classId?.let { it == refClassId } == true
+          }
+        if (!implementsBoundType) {
+          reporter.reportOn(
+            explicitBoundType.source,
+            FirLatticeErrors.AGGREGATION_ERROR,
+            "Class ${classId.asSingleFqName()} does not implement explicit bound type ${refClassId.asSingleFqName()}",
+            context,
+          )
+          return false
+        }
+
+        FirTypeKey(
+          coneType,
+          (explicitBoundType.annotations.qualifierAnnotation(session) ?: classQualifier),
+        )
+      } else {
+        if (!hasSupertypes) {
+          reporter.reportOn(
+            annotation.source,
+            FirLatticeErrors.AGGREGATION_ERROR,
+            "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
+            context,
+          )
+          return false
+        } else if (declaration.superTypeRefs.size != 1) {
+          reporter.reportOn(
+            annotation.source,
+            FirLatticeErrors.AGGREGATION_ERROR,
+            "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `boundType` but has multiple supertypes. You must define an explicit bound type in this scenario.",
+            context,
+          )
+          return false
+        }
+        val implicitBoundType = declaration.superTypeRefs[0]
+        FirTypeKey(implicitBoundType.coneType, classQualifier)
+      }
+
+    val contribution = createBinding(typeKey)
+    addContributionAndCheckForDuplicate(
+      contribution,
+      collection,
+      annotation,
+      scope,
+      reporter,
+      context,
+    ) {
+      return false
+    }
+    return true
   }
 
   private inline fun <T : Contribution> addContributionAndCheckForDuplicate(
