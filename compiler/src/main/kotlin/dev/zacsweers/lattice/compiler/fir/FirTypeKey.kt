@@ -24,28 +24,19 @@ import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.renderer.ConeIdFullRenderer
-import org.jetbrains.kotlin.fir.renderer.ConeTypeRenderer
+import org.jetbrains.kotlin.fir.renderer.ConeIdRendererForDiagnostics
+import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
+import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.renderReadable
-import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.type
 
 // TODO cache these?
 internal class FirTypeKey(val type: ConeKotlinType, val qualifier: LatticeFirAnnotation? = null) :
   Comparable<FirTypeKey> {
-  private val cachedToString by unsafeLazy {
-    buildString {
-      qualifier?.let {
-        append(it)
-        append(" ")
-      }
-      renderType()
-    }
-  }
+  private val cachedToString by unsafeLazy { render(short = false, includeQualifier = true) }
 
   override fun equals(other: Any?) = cachedToString.hashCode() == other.hashCode()
 
@@ -63,14 +54,7 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: LatticeFirAnn
         append(" ")
       }
     }
-    val typeString =
-      if (short) {
-        // TODO reimpl renderShort from IR?
-        type.renderReadable()
-      } else {
-        type.renderReadableWithFqNames()
-      }
-    append(typeString)
+    renderType(short)
   }
 
   companion object {
@@ -121,15 +105,18 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: LatticeFirAnn
   }
 
   // Custom renderer that excludes annotations
-  private fun StringBuilder.renderType() {
+  private fun StringBuilder.renderType(short: Boolean) {
     val renderer =
-      object : ConeTypeRenderer() {
+      object :
+        ConeTypeRendererForReadability(
+          this,
+          null,
+          { if (short) ConeIdShortRenderer() else ConeIdRendererForDiagnostics() },
+        ) {
         override fun ConeKotlinType.renderAttributes() {
           // Do nothing, we don't want annotations
         }
       }
-    renderer.builder = this@renderType
-    renderer.idRenderer = ConeIdFullRenderer().also { it.builder = this@renderType }
     renderer.render(type)
   }
 }
