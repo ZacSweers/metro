@@ -160,7 +160,7 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
               .typeOrNull!!
               .wrapInProvider(this@BindingGraph.latticeContext.symbols.latticeProvider)
           val providerTypeKey =
-            TypeKey(pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+            typeKey.copy(pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
           addBinding(providerTypeKey, it, BindingStack.empty())
         }
       }
