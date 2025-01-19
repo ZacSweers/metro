@@ -1208,4 +1208,368 @@ class AggregationTest : LatticeCompilerTest() {
       assertDiagnostics("e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.")
     }
   }
+
+  @Test
+  fun `duplicate ContributesIntoSet annotations are an error - scope only - implicit`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class)
+          @ContributesIntoSet(AppScope::class)
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+          e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate ContributesIntoSet annotations are an error - scope only - explicit`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+          e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate ContributesIntoSet annotations are an error - with qualifiers - explicit`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+          e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate ContributesIntoSet annotations with different qualifiers are ok - explicit`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("1") val contributedInterfaces1: Set<ContributedInterface>
+            @Named("2") val contributedInterfaces2: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
+      assertThat(contributedInterfaces1).isNotNull()
+      assertThat(contributedInterfaces1).hasSize(1)
+      assertThat(contributedInterfaces1.first().javaClass.name).isEqualTo("test.Impl")
+      val contributedInterfaces2 = graph.callProperty<Set<Any>>("contributedInterfaces2")
+      assertThat(contributedInterfaces2).isNotNull()
+      assertThat(contributedInterfaces2).hasSize(1)
+      assertThat(contributedInterfaces2.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `duplicate ContributesIntoSet annotations with different qualifiers are ok - mixed`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class)
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @Named("1")
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("1") val contributedInterfaces1: Set<ContributedInterface>
+            @Named("2") val contributedInterfaces2: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
+      assertThat(contributedInterfaces1).isNotNull()
+      assertThat(contributedInterfaces1).hasSize(1)
+      assertThat(contributedInterfaces1.first().javaClass.name).isEqualTo("test.Impl")
+      val contributedInterfaces2 = graph.callProperty<Set<Any>>("contributedInterfaces2")
+      assertThat(contributedInterfaces2).isNotNull()
+      assertThat(contributedInterfaces2).hasSize(1)
+      assertThat(contributedInterfaces2.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `implicit bound types use class qualifier - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class)
+          @Named("1")
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("1") val contributedInterfaces1: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces1 = graph.callProperty<Set<Any>>("contributedInterfaces1")
+      assertThat(contributedInterfaces1).isNotNull()
+      assertThat(contributedInterfaces1).hasSize(1)
+      assertThat(contributedInterfaces1.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `explicit bound types don't use class qualifier - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @Named("1")
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            @Named("1") val contributedInterfaces1: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ContributedInterface.kt:16:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") kotlin.collections.Set<test.ContributedInterface>
+          
+              @Named("1") kotlin.collections.Set<test.ContributedInterface> is requested at
+                  [test.ExampleGraph] test.ExampleGraph.contributedInterfaces1
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate ContributesIntoSet annotations are an error - scope only - mix of explicit and implicit`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class)
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ContributedInterface.kt:9:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+          e: ContributedInterface.kt:10:1 Duplicate `@ContributesIntoSet` annotations contributing to scope `AppScope`.
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `boundType as Nothing is an error - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<Nothing>())
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics("e: ContributedInterface.kt:9:60 Explicit bound types should not be `Nothing` or `Nothing?`.")
+    }
+  }
+
+  @Test
+  fun `boundType can be Any - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<Any>())
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+    )
+  }
+
+  @Test
+  fun `boundType is not assignable - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<Unit>())
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics("e: ContributedInterface.kt:9:60 Class dev.zacsweers.lattice.ContributesIntoSet does not implement explicit bound type kotlin.Unit")
+    }
+  }
+
+  @Test
+  fun `boundType can be ancestor - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface BaseContributedInterface
+
+          interface ContributedInterface : BaseContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<BaseContributedInterface>())
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val bases: Set<BaseContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val bases = graph.callProperty<Set<Any>>("bases")
+      assertThat(bases).isNotNull()
+      assertThat(bases).hasSize(1)
+      assertThat(bases.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `binding class must be injected - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class)
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics("e: ContributedInterface.kt:9:1 `@ContributesIntoSet` is only applicable to constructor-injected classes. Did you forget to inject test.Impl?")
+    }
+  }
+
+  @Test
+  fun `binding must not be the same as the class - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<Impl>())
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics("e: ContributedInterface.kt:9:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.")
+    }
+  }
+
+  @Test
+  fun `binding with no supertypes and not Any is an error - ContributesIntoSet`() {
+    compile(
+      source(
+        """
+          @ContributesIntoSet(AppScope::class, boundType = BoundType<Impl>())
+          @Inject
+          class Impl
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics("e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl.")
+    }
+  }
 }

@@ -54,8 +54,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val contributesToAnnotations = mutableSetOf<Contribution.ContributesTo>()
     val contributesBindingAnnotations = mutableSetOf<Contribution.ContributesBinding>()
-    val contributesIntoSetAnnotations = mutableSetOf<FirAnnotation>()
-    val contributesIntoMapAnnotations = mutableSetOf<FirAnnotation>()
+    val contributesIntoSetAnnotations = mutableSetOf<Contribution.ContributesIntoSet>()
+    val contributesIntoMapAnnotations = mutableSetOf<Contribution.ContributesIntoMap>()
 
     val classQualifier = declaration.annotations.qualifierAnnotation(session)
 
@@ -70,6 +70,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val contribution = Contribution.ContributesTo(declaration, annotation, scope, replaces)
             addContributionAndCheckForDuplicate(
               contribution,
+              "ContributesTo",
               contributesToAnnotations,
               annotation,
               scope,
@@ -94,6 +95,26 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 contributesBindingAnnotations,
               ) {
                 Contribution.ContributesBinding(declaration, annotation, scope, replaces, it)
+              }
+            if (!valid) {
+              return
+            }
+          }
+          in latticeClassIds.contributesIntoSetAnnotations -> {
+            val valid =
+              checkBindingContribution(
+                session,
+                "ContributesIntoSet",
+                declaration,
+                classQualifier,
+                annotation,
+                scope,
+                classId,
+                context,
+                reporter,
+                contributesIntoSetAnnotations,
+              ) {
+                Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, it)
               }
             if (!valid) {
               return
@@ -214,6 +235,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val contribution = createBinding(typeKey)
     addContributionAndCheckForDuplicate(
       contribution,
+      kind,
       collection,
       annotation,
       scope,
@@ -227,6 +249,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
   private inline fun <T : Contribution> addContributionAndCheckForDuplicate(
     contribution: T,
+    kind: String,
     collection: MutableSet<T>,
     annotation: FirAnnotation,
     scope: ClassId,
@@ -239,7 +262,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       reporter.reportOn(
         annotation.source,
         FirLatticeErrors.AGGREGATION_ERROR,
-        "Duplicate `@${contribution.name}` annotations contributing to scope `${scope.shortClassName}`.",
+        "Duplicate `@${kind}` annotations contributing to scope `${scope.shortClassName}`.",
         context,
       )
 
@@ -247,7 +270,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       reporter.reportOn(
         existing.annotation.source,
         FirLatticeErrors.AGGREGATION_ERROR,
-        "Duplicate `@${contribution.name}` annotations contributing to scope `${scope.shortClassName}`.",
+        "Duplicate `@${kind}` annotations contributing to scope `${scope.shortClassName}`.",
         context,
       )
 
@@ -260,7 +283,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val annotation: FirAnnotation
     val scope: ClassId
     val replaces: Set<ClassId>
-    val name: String
 
     sealed interface BindingContribution : Contribution {
       val boundType: FirTypeKey
@@ -272,9 +294,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
       override val replaces: Set<ClassId>,
-    ) : Contribution {
-      override val name: String = "ContributesTo"
-    }
+    ) : Contribution
 
     @Poko
     class ContributesBinding(
@@ -283,24 +303,25 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       override val scope: ClassId,
       override val replaces: Set<ClassId>,
       override val boundType: FirTypeKey,
-    ) : Contribution, BindingContribution {
-      override val name: String = "ContributesBinding"
-    }
+    ) : Contribution, BindingContribution
 
-    //    data class ContributesIntoSetBinding(
-    //      override val annotatedType: FirClassSymbol<*>,
-    //      override val annotation: FirAnnotation,
-    //    ) : Contribution, BindingContribution {
-    //      override val origin: ClassId = annotatedType.classId
-    //      override val callableName: String = "bindIntoSet"
-    //    }
-    //
-    //    data class ContributesIntoMapBinding(
-    //      override val annotatedType: FirClassSymbol<*>,
-    //      override val annotation: FirAnnotation,
-    //    ) : Contribution, BindingContribution {
-    //      override val origin: ClassId = annotatedType.classId
-    //      override val callableName: String = "bindIntoMap"
-    //    }
+    @Poko
+    class ContributesIntoSet(
+      override val declaration: FirClass,
+      @Poko.Skip override val annotation: FirAnnotation,
+      override val scope: ClassId,
+      override val replaces: Set<ClassId>,
+      override val boundType: FirTypeKey,
+    ) : Contribution, BindingContribution
+
+    @Poko
+    class ContributesIntoMap(
+      override val declaration: FirClass,
+      @Poko.Skip override val annotation: FirAnnotation,
+      override val scope: ClassId,
+      override val replaces: Set<ClassId>,
+      override val boundType: FirTypeKey,
+      val mapKey: LatticeFirAnnotation,
+    ) : Contribution, BindingContribution
   }
 }
