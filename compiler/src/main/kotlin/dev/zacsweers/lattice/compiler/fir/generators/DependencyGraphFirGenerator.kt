@@ -333,8 +333,12 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       names += SpecialNames.INIT
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
       // Graph factory impl, generating a constructor and its SAM function
+      // Get the enclosing graph ID
+      val graphClassId =
+        classSymbol.requireContainingClassSymbol().requireContainingClassSymbol().classId
       val creator =
-        graphObjects.getValue(classSymbol.requireContainingClassSymbol().classId).creator!!
+        graphObjects[graphClassId]?.creator
+          ?: error("Could not find graph class ID $graphClassId in objects $graphObjects")
       // We can put the sam factory function on the companion
       creator.computeSAMFactoryFunction(session)
       names += SpecialNames.INIT
@@ -488,7 +492,10 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
 
     // Graph factory $$Impl class, just generate the SAM function
     if (owner.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
-      val graphObject = graphObjects.getValue(owner.requireContainingClassSymbol().classId)
+      val graphClassId = owner.requireContainingClassSymbol().requireContainingClassSymbol().classId
+      val graphObject =
+        graphObjects[graphClassId]
+          ?: error("Could not find graph class id $graphClassId in objects $graphObjects")
       val creator = graphObject.creator!!
       return creator.function?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
         ?: emptyList()

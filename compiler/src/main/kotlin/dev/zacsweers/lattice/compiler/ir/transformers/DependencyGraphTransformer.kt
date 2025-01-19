@@ -721,7 +721,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     if (creator != null) {
       val implementFactoryFunction: IrClass.() -> Unit = {
         requireSimpleFunction(creator.createFunction.name.asString()).owner.apply {
-          finalizeFakeOverride(latticeGraph.thisReceiverOrFail)
+          if (isFakeOverride) {
+            finalizeFakeOverride(latticeGraph.thisReceiverOrFail)
+          }
           val createFunction = this
           body =
             pluginContext.createIrBuilder(symbol).run {
@@ -751,7 +753,9 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(LatticeSymbols.StringNames.FACTORY).owner.apply {
             if (origin == LatticeOrigins.LatticeGraphFactoryCompanionGetter) {
-              finalizeFakeOverride(latticeGraph.thisReceiverOrFail)
+              if (isFakeOverride) {
+                finalizeFakeOverride(latticeGraph.thisReceiverOrFail)
+              }
               body =
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
