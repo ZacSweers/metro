@@ -24,12 +24,17 @@ import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.renderer.ConeIdFullRenderer
+import org.jetbrains.kotlin.fir.renderer.ConeIdRenderer
+import org.jetbrains.kotlin.fir.renderer.ConeTypeRenderer
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
+import org.jetbrains.kotlin.fir.types.type
 
 // TODO cache these?
 internal class FirTypeKey(val type: ConeKotlinType, val qualifier: LatticeFirAnnotation? = null) :
@@ -40,7 +45,7 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: LatticeFirAnn
         append(it)
         append(" ")
       }
-      append(type.renderReadableWithFqNames())
+      renderType()
     }
   }
 
@@ -115,5 +120,17 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: LatticeFirAnn
       val qualifier = annotations.qualifierAnnotation(session)
       return FirTypeKey(typeRef.coneType, qualifier)
     }
+  }
+
+  // Custom renderer that excludes annotations
+  private fun StringBuilder.renderType() {
+    val renderer = object : ConeTypeRenderer() {
+      override fun ConeKotlinType.renderAttributes() {
+        // Do nothing, we don't want annotations
+      }
+    }
+    renderer.builder = this@renderType
+    renderer.idRenderer = ConeIdFullRenderer().also { it.builder = this@renderType }
+    renderer.render(type)
   }
 }

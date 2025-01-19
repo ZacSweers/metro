@@ -21,6 +21,7 @@ import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.LatticeFirAnnotation
 import dev.zacsweers.lattice.compiler.fir.findInjectConstructors
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.lattice.compiler.fir.qualifierAnnotation
 import dev.zacsweers.lattice.compiler.fir.resolvedBoundType
 import dev.zacsweers.lattice.compiler.fir.resolvedScopeClassId
@@ -93,8 +94,9 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 context,
                 reporter,
                 contributesBindingAnnotations,
-              ) {
-                Contribution.ContributesBinding(declaration, annotation, scope, replaces, it)
+                isMapBinding = false
+              ) { boundType, _ ->
+                Contribution.ContributesBinding(declaration, annotation, scope, replaces, boundType)
               }
             if (!valid) {
               return
@@ -113,8 +115,30 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 context,
                 reporter,
                 contributesIntoSetAnnotations,
-              ) {
-                Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, it)
+                isMapBinding = false
+              ) { boundType, _ ->
+                Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, boundType)
+              }
+            if (!valid) {
+              return
+            }
+          }
+          in latticeClassIds.contributesIntoMapAnnotations -> {
+            val valid =
+              checkBindingContribution(
+                session,
+                "ContributesIntoMap",
+                declaration,
+                classQualifier,
+                annotation,
+                scope,
+                classId,
+                context,
+                reporter,
+                contributesIntoMapAnnotations,
+                isMapBinding = true
+              ) { boundType, mapKey ->
+                Contribution.ContributesIntoMap(declaration, annotation, scope, replaces, boundType, mapKey!!)
               }
             if (!valid) {
               return
@@ -137,7 +161,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     context: CheckerContext,
     reporter: DiagnosticReporter,
     collection: MutableSet<T>,
-    createBinding: (FirTypeKey) -> T,
+    isMapBinding: Boolean,
+    createBinding: (FirTypeKey, mapKey: LatticeFirAnnotation?) -> T,
   ): Boolean {
     // Ensure the class is injected
     val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
@@ -196,6 +221,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           lookupSuperTypes(klass = declaration, true, true, session, true).any {
             it.classId?.let { it == refClassId } == true
           }
+
         if (!implementsBoundType) {
           reporter.reportOn(
             explicitBoundType.source,
@@ -208,7 +234,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
         FirTypeKey(
           coneType,
-          (explicitBoundType.annotations.qualifierAnnotation(session) ?: classQualifier),
+          (explicitBoundType.annotations.qualifierAnnotation(session)),
         )
       } else {
         if (!hasSupertypes) {
@@ -232,7 +258,36 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         FirTypeKey(implicitBoundType.coneType, classQualifier)
       }
 
-    val contribution = createBinding(typeKey)
+    val mapKey = if (isMapBinding) {
+      val resolvedKey = if (explicitBoundType == null) {
+        declaration.annotations.mapKeyAnnotation(session).also {
+          if (it == null) {
+            reporter.reportOn(
+              annotation.source,
+              FirLatticeErrors.AGGREGATION_ERROR,
+              "`@$kind`-annotated class @${classId.asSingleFqName()} must declare a map key on the class or an explicit bound type but doesn't.",
+              context,
+            )
+          }
+        }
+      } else {
+        explicitBoundType.annotations.mapKeyAnnotation(session).also {
+          if (it == null) {
+            reporter.reportOn(
+              explicitBoundType.source,
+              FirLatticeErrors.AGGREGATION_ERROR,
+              "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key on the explicit bound type but doesn't.",
+              context,
+            )
+          }
+        }
+      }
+      resolvedKey ?: return false
+    } else {
+      null
+    }
+
+    val contribution = createBinding(typeKey, mapKey)
     addContributionAndCheckForDuplicate(
       contribution,
       kind,
