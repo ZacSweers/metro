@@ -94,7 +94,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 context,
                 reporter,
                 contributesBindingAnnotations,
-                isMapBinding = false
+                isMapBinding = false,
               ) { boundType, _ ->
                 Contribution.ContributesBinding(declaration, annotation, scope, replaces, boundType)
               }
@@ -115,7 +115,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 context,
                 reporter,
                 contributesIntoSetAnnotations,
-                isMapBinding = false
+                isMapBinding = false,
               ) { boundType, _ ->
                 Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, boundType)
               }
@@ -136,9 +136,16 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 context,
                 reporter,
                 contributesIntoMapAnnotations,
-                isMapBinding = true
+                isMapBinding = true,
               ) { boundType, mapKey ->
-                Contribution.ContributesIntoMap(declaration, annotation, scope, replaces, boundType, mapKey!!)
+                Contribution.ContributesIntoMap(
+                  declaration,
+                  annotation,
+                  scope,
+                  replaces,
+                  boundType,
+                  mapKey!!,
+                )
               }
             if (!valid) {
               return
@@ -232,10 +239,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        FirTypeKey(
-          coneType,
-          (explicitBoundType.annotations.qualifierAnnotation(session)),
-        )
+        FirTypeKey(coneType, (explicitBoundType.annotations.qualifierAnnotation(session)))
       } else {
         if (!hasSupertypes) {
           reporter.reportOn(
@@ -258,34 +262,36 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         FirTypeKey(implicitBoundType.coneType, classQualifier)
       }
 
-    val mapKey = if (isMapBinding) {
-      val resolvedKey = if (explicitBoundType == null) {
-        declaration.annotations.mapKeyAnnotation(session).also {
-          if (it == null) {
-            reporter.reportOn(
-              annotation.source,
-              FirLatticeErrors.AGGREGATION_ERROR,
-              "`@$kind`-annotated class @${classId.asSingleFqName()} must declare a map key on the class or an explicit bound type but doesn't.",
-              context,
-            )
+    val mapKey =
+      if (isMapBinding) {
+        val resolvedKey =
+          if (explicitBoundType == null) {
+            declaration.annotations.mapKeyAnnotation(session).also {
+              if (it == null) {
+                reporter.reportOn(
+                  annotation.source,
+                  FirLatticeErrors.AGGREGATION_ERROR,
+                  "`@$kind`-annotated class @${classId.asSingleFqName()} must declare a map key on the class or an explicit bound type but doesn't.",
+                  context,
+                )
+              }
+            }
+          } else {
+            explicitBoundType.annotations.mapKeyAnnotation(session).also {
+              if (it == null) {
+                reporter.reportOn(
+                  explicitBoundType.source,
+                  FirLatticeErrors.AGGREGATION_ERROR,
+                  "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key on the explicit bound type but doesn't.",
+                  context,
+                )
+              }
+            }
           }
-        }
+        resolvedKey ?: return false
       } else {
-        explicitBoundType.annotations.mapKeyAnnotation(session).also {
-          if (it == null) {
-            reporter.reportOn(
-              explicitBoundType.source,
-              FirLatticeErrors.AGGREGATION_ERROR,
-              "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key on the explicit bound type but doesn't.",
-              context,
-            )
-          }
-        }
+        null
       }
-      resolvedKey ?: return false
-    } else {
-      null
-    }
 
     val contribution = createBinding(typeKey, mapKey)
     addContributionAndCheckForDuplicate(

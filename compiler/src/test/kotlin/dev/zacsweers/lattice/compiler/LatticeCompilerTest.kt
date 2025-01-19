@@ -35,13 +35,16 @@ abstract class LatticeCompilerTest {
 
   // TODO every time we update this a ton of tests fail because their line numbers change
   //  would be nice to make this more flexible
-  val defaultImports get() = listOf(
-    "${LatticeSymbols.StringNames.LATTICE_RUNTIME_PACKAGE}.*",
-    // For Callable access
-    "java.util.concurrent.*",
-  ) + extraImports
+  val defaultImports
+    get() =
+      listOf(
+        "${LatticeSymbols.StringNames.LATTICE_RUNTIME_PACKAGE}.*",
+        // For Callable access
+        "java.util.concurrent.*",
+      ) + extraImports
 
-  protected open val extraImports: List<String> get() = emptyList()
+  protected open val extraImports: List<String>
+    get() = emptyList()
 
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,

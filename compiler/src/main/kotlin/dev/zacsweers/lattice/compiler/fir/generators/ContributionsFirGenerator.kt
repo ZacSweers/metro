@@ -307,21 +307,22 @@ internal class ContributionsFirGenerator(session: FirSession) :
     val boundType =
       (boundTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
 
-    val qualifier = if (boundTypeRef == null) {
-      contribution.annotatedType.qualifierAnnotation(session)
-    } else {
-      boundTypeRef.annotations.qualifierAnnotation(session)
-    }
+    val qualifier =
+      if (boundTypeRef == null) {
+        contribution.annotatedType.qualifierAnnotation(session)
+      } else {
+        boundTypeRef.annotations.qualifierAnnotation(session)
+      }
 
-    val mapKey = if (boundTypeRef == null) {
-      contribution.annotatedType.mapKeyAnnotation(session)
-    } else {
-      boundTypeRef.annotations.mapKeyAnnotation(session)
-    }
+    val mapKey =
+      if (boundTypeRef == null) {
+        contribution.annotatedType.mapKeyAnnotation(session)
+      } else {
+        boundTypeRef.annotations.mapKeyAnnotation(session)
+      }
 
     val suffix = buildString {
-      qualifier?.hashString()
-        ?.let(::append)
+      qualifier?.hashString()?.let(::append)
 
       boundType.classId
         ?.joinSimpleNames("", camelCase = true)

@@ -828,7 +828,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class)
           @ContributesBinding(AppScope::class)
           @Inject
@@ -857,7 +857,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
           @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
           @Inject
@@ -886,7 +886,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
           @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
           @Inject
@@ -915,7 +915,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
           @ContributesBinding(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
           @Inject
@@ -946,7 +946,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class)
           @ContributesBinding(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
           @Named("1")
@@ -978,7 +978,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class)
           @Named("1")
           @Inject
@@ -1005,7 +1005,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
           @Named("1")
           @Inject
@@ -1023,7 +1023,7 @@ class AggregationTest : LatticeCompilerTest() {
       assertDiagnostics(
         """
           e: ContributedInterface.kt:16:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") test.ContributedInterface
-          
+
               @Named("1") test.ContributedInterface is requested at
                   [test.ExampleGraph] test.ExampleGraph.contributedInterface1
         """
@@ -1038,7 +1038,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
           @ContributesBinding(AppScope::class)
           @Inject
@@ -1067,7 +1067,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<Nothing>())
           @Inject
           class Impl : ContributedInterface
@@ -1091,7 +1091,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<Any>())
           @Inject
           class Impl : ContributedInterface
@@ -1110,7 +1110,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<Unit>())
           @Inject
           class Impl : ContributedInterface
@@ -1136,7 +1136,7 @@ class AggregationTest : LatticeCompilerTest() {
           interface BaseContributedInterface
 
           interface ContributedInterface : BaseContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
@@ -1162,7 +1162,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class)
           class Impl : ContributedInterface
 
@@ -1185,7 +1185,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesBinding(AppScope::class, boundType = BoundType<Impl>())
           @Inject
           class Impl : ContributedInterface
@@ -1231,7 +1231,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class)
           @ContributesIntoSet(AppScope::class)
           @Inject
@@ -1257,7 +1257,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
           @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
           @Inject
@@ -1283,7 +1283,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
           @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
           @Inject
@@ -1309,7 +1309,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
           @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
           @Inject
@@ -1342,7 +1342,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class)
           @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
           @Named("1")
@@ -1376,7 +1376,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class)
           @Named("1")
           @Inject
@@ -1404,7 +1404,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
           @Named("1")
           @Inject
@@ -1422,7 +1422,7 @@ class AggregationTest : LatticeCompilerTest() {
       assertDiagnostics(
         """
           e: ContributedInterface.kt:16:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") kotlin.collections.Set<test.ContributedInterface>
-          
+
               @Named("1") kotlin.collections.Set<test.ContributedInterface> is requested at
                   [test.ExampleGraph] test.ExampleGraph.contributedInterfaces1
         """
@@ -1437,7 +1437,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
           @ContributesIntoSet(AppScope::class)
           @Inject
@@ -1463,7 +1463,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<Nothing>())
           @Inject
           class Impl : ContributedInterface
@@ -1484,7 +1484,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<Any>())
           @Inject
           class Impl : ContributedInterface
@@ -1500,7 +1500,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<Unit>())
           @Inject
           class Impl : ContributedInterface
@@ -1523,7 +1523,7 @@ class AggregationTest : LatticeCompilerTest() {
           interface BaseContributedInterface
 
           interface ContributedInterface : BaseContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
@@ -1550,7 +1550,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class)
           class Impl : ContributedInterface
         """
@@ -1570,7 +1570,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoSet(AppScope::class, boundType = BoundType<Impl>())
           @Inject
           class Impl : ContributedInterface
@@ -1610,7 +1610,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class)
           @ContributesIntoMap(AppScope::class)
           @ClassKey(Impl::class)
@@ -1637,7 +1637,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
           @Inject
@@ -1663,7 +1663,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
           @Inject
@@ -1689,7 +1689,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
           @Inject
@@ -1724,7 +1724,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class)
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
           @Named("1")
@@ -1761,7 +1761,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class)
           @Named("1")
           @ClassKey(Impl::class)
@@ -1791,7 +1791,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
           @Named("1")
           @Inject
@@ -1809,7 +1809,7 @@ class AggregationTest : LatticeCompilerTest() {
       assertDiagnostics(
         """
           e: ContributedInterface.kt:16:3 [Lattice/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") kotlin.collections.Map<kotlin.reflect.KClass<*>, test.ContributedInterface>
-          
+
               @Named("1") kotlin.collections.Map<kotlin.reflect.KClass<*>, test.ContributedInterface> is requested at
                   [test.ExampleGraph] test.ExampleGraph.contributedInterfaces1
         """
@@ -1824,7 +1824,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<ContributedInterface>())
           @ClassKey(Impl::class) // Class key is ignored if bound is explicit
           @Inject
@@ -1846,7 +1846,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class)
           @Inject
           class Impl : ContributedInterface
@@ -1867,7 +1867,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
           @ContributesIntoMap(AppScope::class)
           @ClassKey(Impl::class)
@@ -1894,7 +1894,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<Nothing>())
           @ClassKey(Impl::class)
           @Inject
@@ -1916,7 +1916,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) Any>())
           @ClassKey(Impl::class)
           @Inject
@@ -1933,7 +1933,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<Unit>())
           @ClassKey(Impl::class)
           @Inject
@@ -1957,7 +1957,7 @@ class AggregationTest : LatticeCompilerTest() {
           interface BaseContributedInterface
 
           interface ContributedInterface : BaseContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
@@ -1985,7 +1985,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class)
           class Impl : ContributedInterface
         """
@@ -2005,7 +2005,7 @@ class AggregationTest : LatticeCompilerTest() {
       source(
         """
           interface ContributedInterface
-          
+
           @ContributesIntoMap(AppScope::class, boundType = BoundType<Impl>())
           @ClassKey(Impl::class)
           @Inject
