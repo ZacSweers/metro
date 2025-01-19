@@ -307,21 +307,22 @@ internal class ContributionsFirGenerator(session: FirSession) :
     val boundType =
       (boundTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
 
-    val classQualifierAnnotation =
-      if (boundTypeRef == null) {
-        contribution.annotatedType.qualifierAnnotation(session)?.fir
-      } else {
-        null
-      }
+    val qualifier = if (boundTypeRef == null) {
+      contribution.annotatedType.qualifierAnnotation(session)
+    } else {
+      boundTypeRef.annotations.qualifierAnnotation(session)
+    }
+
+    val mapKey = if (boundTypeRef == null) {
+      contribution.annotatedType.mapKeyAnnotation(session)
+    } else {
+      boundTypeRef.annotations.mapKeyAnnotation(session)
+    }
 
     val suffix = buildString {
-      classQualifierAnnotation
-        ?.annotationTypeRef
-        ?.coneTypeOrNull
-        ?.classId
-        ?.joinSimpleNames("", camelCase = true)
-        ?.shortClassName
+      qualifier?.hashString()
         ?.let(::append)
+
       boundType.classId
         ?.joinSimpleNames("", camelCase = true)
         ?.shortClassName
@@ -342,21 +343,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .also { property ->
         val newAnnotations = mutableListOf<FirAnnotation>()
         newAnnotations.addAll(contribution.buildAnnotations())
-        // If we came from a BoundType value, copy over its annotations
-        // TODO check in FIR that these are only qualifiers or map keys
-        boundTypeRef?.annotations?.copy(property.symbol)?.let(newAnnotations::addAll)
-        classQualifierAnnotation?.copy(property.symbol)?.let(newAnnotations::add)
-
-        if (contribution is Contribution.ContributesIntoMapBinding) {
-          // Extract the map key from the class if needed too
-          val mapKeyAnnotation =
-            if (boundTypeRef == null) {
-              contribution.annotatedType.mapKeyAnnotation(session)?.fir
-            } else {
-              null
-            }
-          mapKeyAnnotation?.copy(property.symbol)?.let(newAnnotations::add)
-        }
+        qualifier?.fir?.copy(property.symbol)?.let(newAnnotations::add)
+        mapKey?.fir?.copy(property.symbol)?.let(newAnnotations::add)
         property.replaceAnnotations(newAnnotations)
       }
       .symbol

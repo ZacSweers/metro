@@ -15,6 +15,7 @@
  */
 package dev.zacsweers.lattice.compiler.fir
 
+import dev.zacsweers.lattice.compiler.fir.checkers.AggregationChecker
 import dev.zacsweers.lattice.compiler.fir.checkers.AssistedInjectChecker
 import dev.zacsweers.lattice.compiler.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.lattice.compiler.fir.checkers.DependencyGraphCreatorChecker
@@ -34,6 +35,7 @@ internal class LatticeFirCheckers(session: FirSession) : FirAdditionalCheckersEx
           setOf(
             InjectConstructorChecker,
             AssistedInjectChecker,
+            AggregationChecker,
             DependencyGraphCreatorChecker,
             DependencyGraphChecker,
           )

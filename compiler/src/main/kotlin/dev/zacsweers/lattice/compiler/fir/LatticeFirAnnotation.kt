@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import dev.zacsweers.lattice.compiler.appendIterableWith
+import dev.zacsweers.lattice.compiler.md5Hash
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -33,6 +34,8 @@ internal class LatticeFirAnnotation(val fir: FirAnnotationCall) {
   }
 
   fun simpleString() = buildString { renderAsAnnotation(fir, simple = true) }
+
+  fun hashString(): String = md5Hash(listOf(cachedToString))
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

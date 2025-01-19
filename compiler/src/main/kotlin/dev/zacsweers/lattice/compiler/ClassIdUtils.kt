@@ -156,7 +156,7 @@ public fun ClassId.truncate(
   return ClassId(packageFqName, Name.identifier(className)).checkFileLength()
 }
 
-private fun md5Hash(params: List<Any>): String {
+internal fun md5Hash(params: List<Any>): String {
   return MessageDigest.getInstance("MD5")
     .apply { params.forEach { update(it.toString().toByteArray()) } }
     .digest()

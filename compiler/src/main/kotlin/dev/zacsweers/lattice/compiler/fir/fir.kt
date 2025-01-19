@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
+import dev.zacsweers.lattice.compiler.expectAsOrNull
 import dev.zacsweers.lattice.compiler.mapToArray
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
@@ -61,6 +62,7 @@ import org.jetbrains.kotlin.fir.expressions.FirArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirEmptyArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
@@ -104,6 +106,7 @@ import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
+import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -589,9 +592,18 @@ internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): LatticeFirAnnotation? {
-  return filterIsInstance<FirAnnotationCall>()
+  return filter { it.isResolved }
+    .filterIsInstance<FirAnnotationCall>()
     .firstOrNull { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
     ?.let { LatticeFirAnnotation(it) }
+}
+
+internal fun FirAnnotationCall.isQualifier(session: FirSession): Boolean {
+  return isAnnotatedWithAny(session, session.latticeClassIds.qualifierAnnotations)
+}
+
+internal fun FirAnnotationCall.isMapKey(session: FirSession): Boolean {
+  return isAnnotatedWithAny(session, session.latticeClassIds.mapKeyAnnotations)
 }
 
 internal fun FirAnnotationCall.isAnnotatedWithAny(
@@ -752,6 +764,14 @@ private val FirPropertyAccessExpression.qualifierName: Name?
 
 internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), index = 0)
 
+internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
+
+internal fun FirAnnotation.resolvedScopeClassId() =
+  (scopeArgument()?.argument as? FirResolvedQualifier)?.classId
+
+internal fun FirAnnotation.resolvedBoundType() =
+  boundTypeArgument()?.typeArguments[0]?.expectAsOrNull<FirTypeProjectionWithVariance>()?.typeRef
+
 internal fun FirAnnotation.resolvedScopeClass(typeResolver: TypeResolveService) =
   resolvedClassArgumentTarget("scope".asName(), index = 0, typeResolver)
 
@@ -783,6 +803,9 @@ internal fun FirAnnotation.resolvedClassArgumentTarget(
 
 internal fun FirAnnotation.classArgument(name: Name, index: Int) =
   argumentAsOrNull<FirGetClassCall>(name, index)
+
+internal fun FirAnnotation.annotationArgument(name: Name, index: Int) =
+  argumentAsOrNull<FirFunctionCall>(name, index)
 
 internal fun <T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
   findArgumentByName(name)?.let {

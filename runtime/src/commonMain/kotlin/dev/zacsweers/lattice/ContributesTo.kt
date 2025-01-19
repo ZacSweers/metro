@@ -20,4 +20,5 @@ import kotlin.reflect.KClass
 
 /** TODO doc */
 @Target(CLASS)
+@Repeatable
 public annotation class ContributesTo(val scope: KClass<*>, val replaces: Array<KClass<*>> = [])

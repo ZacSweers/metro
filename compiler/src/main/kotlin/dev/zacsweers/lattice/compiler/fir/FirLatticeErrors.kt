@@ -132,6 +132,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val PROVIDER_OVERRIDES by error0(MODALITY_MODIFIER)
   val PROVIDES_ERROR by error1<String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<String>(NAME_IDENTIFIER)
+  val AGGREGATION_ERROR by error1<String>(NAME_IDENTIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("Lattice").apply {
@@ -186,6 +187,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       )
       put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
+      put(AGGREGATION_ERROR, "{0}", STRING)
       put(BINDS_ERROR, "{0}", STRING)
       put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
       put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE, "{0}", STRING)
