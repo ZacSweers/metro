@@ -42,6 +42,7 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
+import org.jetbrains.kotlin.fir.java.FirCliSession
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
@@ -338,7 +339,14 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
                 )
                 appendLine(callable.fir.render())
               }
-              error(message)
+              if (session is FirCliSession) {
+                error(message)
+              } else {
+                // TODO TypeResolveService appears to be unimplemented in the IDE
+                //  https://youtrack.jetbrains.com/issue/KT-74553/
+                System.err.println(message)
+                return emptyList()
+              }
             }
           }
         }
