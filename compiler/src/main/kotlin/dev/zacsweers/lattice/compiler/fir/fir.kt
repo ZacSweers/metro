@@ -63,13 +63,13 @@ import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
-import org.jetbrains.kotlin.fir.expressions.UnresolvedExpressionTypeAccess
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.buildUserTypeFromQualifierParts
 import org.jetbrains.kotlin.fir.moduleData
@@ -808,4 +808,14 @@ internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index
   // Fall back to the index if necessary
   @Suppress("UNCHECKED_CAST")
   return arguments.getOrNull(index) as? T?
+}
+
+internal fun List<FirAnnotation>.joinToRender(separator: String = ", "): String {
+  return joinToString(separator) {
+    buildString {
+      append(it.render())
+      append(" resolved=${it.isResolved}")
+      append(" unexpandedClassId=${it.unexpandedClassId}")
+    }
+  }
 }
