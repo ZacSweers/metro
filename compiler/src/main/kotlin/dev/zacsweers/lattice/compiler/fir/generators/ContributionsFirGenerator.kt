@@ -59,9 +59,9 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -81,6 +81,13 @@ internal class ContributionsFirGenerator(session: FirSession) :
   }
 
   private val classIdsToContributions = mutableMapOf<ClassId, MutableSet<Contribution>>()
+
+  /**
+   * [getTopLevelClassIds] will be called multiple times if we resolve any annotation's class ID,
+   * which is annoying. To avoid infinite looping we track this reentrant behavior with this
+   * boolean.
+   */
+  private var reentrant = false
 
   sealed interface Contribution {
     val origin: ClassId
@@ -125,7 +132,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
-    classIdsToContributions.clear()
+    if (reentrant) return emptySet()
+    reentrant = true
     val contributesToAnnotations = session.latticeClassIds.contributesToAnnotations
     val contributesBindingAnnotations = session.latticeClassIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = session.latticeClassIds.contributesIntoSetAnnotations
@@ -139,7 +147,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
         .toSet()) {
       when (contributingSymbol) {
         is FirRegularClassSymbol -> {
-          for (annotation in contributingSymbol.resolvedAnnotationsWithClassIds) {
+          for (annotation in contributingSymbol.annotations.filter { it.isResolved }) {
             val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
             when (annotationClassId) {
               in contributesToAnnotations -> {
@@ -187,6 +195,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
       }
     }
 
+    reentrant = false
     return ids
   }
 
