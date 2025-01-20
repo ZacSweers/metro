@@ -134,6 +134,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
   override fun getTopLevelClassIds(): Set<ClassId> {
     if (reentrant) return emptySet()
     reentrant = true
+    // TODO can we do this without the cache? This gets recalled many times
+    classIdsToContributions.clear()
     val contributesToAnnotations = session.latticeClassIds.contributesToAnnotations
     val contributesBindingAnnotations = session.latticeClassIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = session.latticeClassIds.contributesIntoSetAnnotations
