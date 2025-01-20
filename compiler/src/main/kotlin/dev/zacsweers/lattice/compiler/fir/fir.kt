@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -810,12 +811,14 @@ internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index
   return arguments.getOrNull(index) as? T?
 }
 
-internal fun List<FirAnnotation>.joinToRender(separator: String = ", "): String {
+internal fun List<FirElement>.joinToRender(separator: String = ", "): String {
   return joinToString(separator) {
     buildString {
       append(it.render())
-      append(" resolved=${it.isResolved}")
-      append(" unexpandedClassId=${it.unexpandedClassId}")
+      if (it is FirAnnotation) {
+        append(" resolved=${it.isResolved}")
+        append(" unexpandedClassId=${it.unexpandedClassId}")
+      }
     }
   }
 }
