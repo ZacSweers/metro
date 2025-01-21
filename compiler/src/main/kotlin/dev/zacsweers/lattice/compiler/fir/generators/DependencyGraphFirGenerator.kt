@@ -16,15 +16,18 @@
 package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
+import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.abstractFunctions
 import dev.zacsweers.lattice.compiler.fir.constructType
-import dev.zacsweers.lattice.compiler.fir.generators.DependencyGraphFirGenerator.GraphObject.Creator
 import dev.zacsweers.lattice.compiler.fir.hasOrigin
 import dev.zacsweers.lattice.compiler.fir.isDependencyGraph
 import dev.zacsweers.lattice.compiler.fir.isGraphFactory
+import dev.zacsweers.lattice.compiler.fir.joinToRender
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.lattice.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.lattice.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.lattice.compiler.mapToArray
 import dev.zacsweers.lattice.compiler.unsafeLazy
@@ -184,6 +187,10 @@ import org.jetbrains.kotlin.name.SpecialNames
 internal class DependencyGraphFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
+  companion object {
+    private val PLACEHOLDER_SAM_FUNCTION = "$\$PLACEHOLDER_FOR_SAM".asName()
+  }
+
   private val dependencyGraphAnnotationPredicate by unsafeLazy {
     annotated(
       (session.latticeClassIds.dependencyGraphAnnotations +
@@ -196,31 +203,6 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     register(dependencyGraphAnnotationPredicate)
   }
 
-  class GraphObject(val classSymbol: FirClassSymbol<*>, val creator: Creator?) {
-    class Creator(val classSymbol: FirClassSymbol<*>) {
-      private var samComputed = false
-      val isInterface = classSymbol.isInterface
-
-      var function: FirFunctionSymbol<*>? = null
-
-      fun computeSAMFactoryFunction(session: FirSession) {
-        if (samComputed) return
-        function =
-          classSymbol.abstractFunctions(session).let {
-            if (it.size == 1) {
-              it.single()
-            } else {
-              // This is an invalid factory, let the checker notify this diagnostic layer
-              null
-            }
-          }
-        samComputed = true
-      }
-    }
-  }
-
-  private val graphObjects = mutableMapOf<ClassId, GraphObject>()
-
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
@@ -228,11 +210,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     if (classSymbol.isLocal) return emptySet()
     val names = mutableSetOf<Name>()
     if (classSymbol.isDependencyGraph(session)) {
-      val creator =
-        classSymbol.declarationSymbols
-          .find { it is FirClassSymbol<*> && it.isGraphFactory(session) }
-          ?.let { Creator(it as FirClassSymbol<*>) }
-      graphObjects[classSymbol.classId] = GraphObject(classSymbol, creator)
+      log("Found graph ${classSymbol.classId}")
       val classId = classSymbol.classId.createNestedClassId(LatticeSymbols.Names.latticeGraph)
       names += classId.shortClassName
 
@@ -243,13 +221,25 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         names += SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
       }
     } else if (classSymbol.isGraphFactory(session)) {
+      log("Found graph factory ${classSymbol.classId}")
       val shouldGenerateImpl = !classSymbol.isInterface
       if (shouldGenerateImpl) {
         names += LatticeSymbols.Names.latticeImpl
       }
     }
 
+    if (names.isNotEmpty()) {
+      log("Will generate classifiers into ${classSymbol.classId}: $names")
+    }
     return names
+  }
+
+  private fun log(message: String) {
+    if (session.latticeFirBuiltIns.options.debug) {
+      //    if (true) {
+      // TODO what's the better way to log?
+      println("[LATTICE] $message")
+    }
   }
 
   override fun generateNestedClassLikeDeclaration(
@@ -257,20 +247,24 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     name: Name,
     context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
+    log("Generating nested class $name into ${owner.classId}")
     // Impl class or companion
     return when (name) {
       SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT -> {
         // It's a companion object, just generate the declaration
-        val graphObject = graphObjects[owner.classId]
+        val isGraph = owner.isDependencyGraph(session)
         val key =
-          if (graphObject != null) {
+          if (isGraph) {
             LatticeKeys.LatticeGraphCreatorsObjectDeclaration
           } else {
             LatticeKeys.Default
           }
+
+        log("Generating companion object for ${owner.classId}")
         createCompanionObject(owner, key).symbol
       }
       LatticeSymbols.Names.latticeGraph -> {
+        log("Generating graph class")
         createNestedClass(owner, name, LatticeKeys.LatticeGraphDeclaration) {
             superType(owner::constructType)
             for (typeParam in owner.typeParameterSymbols) {
@@ -285,16 +279,15 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           .symbol
       }
       LatticeSymbols.Names.latticeImpl -> {
-        // TODO if there's no parameters to the function, we could just make this an object
-        val graphObject = graphObjects[owner.requireContainingClassSymbol().classId] ?: return null
-        val creator = graphObject.creator?.classSymbol ?: return null
+        log("Generating factory impl")
         createNestedClass(
             owner,
             name,
             LatticeKeys.LatticeGraphFactoryImplDeclaration,
             classKind = ClassKind.OBJECT,
           ) {
-            superType(creator::constructType)
+            // Owner is always the factory class
+            superType(owner::constructType)
           }
           .apply { markAsDeprecatedHidden(session) }
           .symbol
@@ -311,51 +304,65 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     if (classSymbol.isCompanion) {
       // Graph class companion objects get creators
       val graphClass = classSymbol.requireContainingClassSymbol()
-      val graphObject = graphObjects[graphClass.classId] ?: return emptySet()
+      val graphObject = graphObject(graphClass) ?: return emptySet()
       names += SpecialNames.INIT
-      val creator = graphObject.creator
-      if (creator != null) {
-        if (creator.isInterface) {
-          // We can put the sam factory function on the companion
-          // TODO this isn't safe with supertype gen, but for existing companions it also fails?
-          //  creator.computeSAMFactoryFunction(session)
-          //  creator.function?.let { names += it.name }
+
+      // TODO remove creator check here and defer to generateFunctions
+      val creator =
+        graphObject.findCreator(session, "getCallableNamesFor ${context.owner.classId}", ::log)
+      names +=
+        if (creator != null) {
+          if (creator.isInterface) {
+            // We can put the sam factory function on the companion
+            // TODO this isn't safe with supertype gen, but for existing companions it also fails?
+            PLACEHOLDER_SAM_FUNCTION
+          } else {
+            // We will just generate a `factory()` function
+            LatticeSymbols.Names.factoryFunctionName
+          }
         } else {
-          // We will just generate a `factory()` function
-          names += LatticeSymbols.Names.factoryFunctionName
+          // We'll generate a default invoke function
+          LatticeSymbols.Names.invoke
         }
-      } else {
-        // We'll generate a default invoke function
-        names += LatticeSymbols.Names.invoke
-      }
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphDeclaration)) {
       // LatticeGraph, generate a constructor
       names += SpecialNames.INIT
     } else if (classSymbol.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
+      // TODO what if the factory isn't an interface? Or is that safe here?
       // Graph factory impl, generating a constructor and its SAM function
       // Get the enclosing graph ID
-      val graphClassId =
-        classSymbol.requireContainingClassSymbol().requireContainingClassSymbol().classId
-      val creator =
-        graphObjects[graphClassId]?.creator
-          ?: error("Could not find graph class ID $graphClassId in objects $graphObjects")
       // We can put the sam factory function on the companion
-      creator.computeSAMFactoryFunction(session)
       names += SpecialNames.INIT
-      creator.function?.let { names += it.name }
+      names += PLACEHOLDER_SAM_FUNCTION
     }
 
+    if (names.isNotEmpty()) {
+      log("Will generate callables into ${classSymbol.classId}: $names")
+    }
     return names
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
     val constructor =
       if (context.owner.classKind == ClassKind.OBJECT) {
-        createDefaultPrivateConstructor(context.owner, LatticeKeys.Default)
+        log("Generating companion object constructor for ${context.owner.classId}")
+        try {
+          createDefaultPrivateConstructor(context.owner, LatticeKeys.Default)
+        } catch (e: IllegalArgumentException) {
+          // TODO why does this happen in the IDE?
+          throw RuntimeException(
+            "Could not create private constructor for object ${context.owner.classId}",
+            e,
+          )
+        }
       } else if (context.owner.hasOrigin(LatticeKeys.LatticeGraphDeclaration)) {
+        log("Generating graph constructor")
         // Create a constructor with parameters copied from the creator
         val creator =
-          graphObjects.getValue(context.owner.requireContainingClassSymbol().classId).creator
+          graphObject(context.owner.requireContainingClassSymbol())
+            ?.findCreator(session, "generateConstructors for ${context.owner.classId}", ::log)
+        log("Generating graph has creator? $creator")
+        val samFunction = creator?.findSamFunction(session)
         createConstructor(
             context.owner,
             LatticeKeys.Default,
@@ -363,8 +370,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             generateDelegatedNoArgConstructorCall = true,
           ) {
             if (creator != null) {
-              creator.computeSAMFactoryFunction(session)
-              creator.function?.valueParameterSymbols?.forEach { valueParameterSymbol ->
+              log("Generating graph SAM - ${samFunction?.callableId}")
+              samFunction?.valueParameterSymbols?.forEach { valueParameterSymbol ->
+                log("Generating SAM param ${valueParameterSymbol.name}")
                 valueParameter(
                   name = valueParameterSymbol.name,
                   key = LatticeKeys.ValueParameter,
@@ -379,9 +387,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           }
           .apply {
             // Copy annotations over. Workaround for https://youtrack.jetbrains.com/issue/KT-74361/
-            for ((i, parameter) in creator?.function?.valueParameterSymbols.orEmpty().withIndex()) {
+            for ((i, parameter) in samFunction?.valueParameterSymbols.orEmpty().withIndex()) {
               val parameterToUpdate = valueParameters[i]
-              parameterToUpdate.replaceAnnotations(parameter.annotations)
+              parameterToUpdate.replaceAnnotationsSafe(parameter.annotations)
             }
           }
       } else if (context.owner.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
@@ -401,19 +409,21 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     callableId: CallableId,
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
+    log("Generating function $callableId")
     val owner = context?.owner ?: return emptyList()
 
     val generateSAMFunction: (FirClassSymbol<*>, FirFunctionSymbol<*>) -> FirNamedFunctionSymbol =
       { target, function ->
+        log("Generating creator SAM ${function.callableId} in ${target.classId}")
         createMemberFunction(
             owner,
             LatticeKeys.LatticeGraphCreatorsObjectInvokeDeclaration,
-            callableId.callableName,
+            function.name,
             returnTypeProvider = {
               try {
                 // TODO would be nice to resolve this appropriately with the correct type arguments,
                 //  but for now we always know this returns the graph type. FIR checker will check
-                // this too
+                //  this too
                 target.constructType(it.mapToArray(FirTypeParameter::toConeType))
               } catch (e: Exception) {
                 throw AssertionError("Could not resolve return type for $callableId", e)
@@ -424,7 +434,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
               isOverride = !owner.isCompanion
               isOperator = function.isOperator
             }
+            log("Generating ${function.valueParameterSymbols.size} parameters?")
             for (parameter in function.valueParameterSymbols) {
+              log("Generating parameter ${parameter.name}")
               valueParameter(
                 name = parameter.name,
                 key = LatticeKeys.ValueParameter,
@@ -440,19 +452,23 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             // Copy annotations over. Workaround for https://youtrack.jetbrains.com/issue/KT-74361/
             for ((i, parameter) in function.valueParameterSymbols.withIndex()) {
               val parameterToUpdate = valueParameters[i]
-              parameterToUpdate.replaceAnnotations(parameter.annotations)
+              parameterToUpdate.replaceAnnotationsSafe(parameter.annotations)
             }
           }
           .symbol
       }
 
     if (owner.isCompanion) {
+      log("... into companion")
       val graphClass = owner.requireContainingClassSymbol()
-      val graphObject = graphObjects[graphClass.classId] ?: return emptyList()
+      val graphObject = graphObject(graphClass) ?: return emptyList()
       when (callableId.callableName) {
         LatticeSymbols.Names.factoryFunctionName -> {
           // Companion object factory function, i.e. factory()
-          val creatorClass = graphObject.creator!!.classSymbol
+          val creatorClass =
+            graphObject
+              .findCreator(session, "generateFunctions ${context.owner.classId}", ::log)!!
+              .classSymbol
           val generatedFunction =
             createMemberFunction(
               owner,
@@ -465,8 +481,11 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           return listOf(generatedFunction.symbol)
         }
         else -> {
-          val creator = graphObject.creator
+          log("...... creator into companion")
+          val creator =
+            graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)
           return if (creator == null) {
+            log("Creator was null, generating a default invoke. ")
             // Companion object invoke function, i.e. no creator
             check(callableId.callableName == LatticeSymbols.Names.invoke)
             val generatedFunction =
@@ -483,7 +502,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             listOf(generatedFunction.symbol)
           } else {
             // It's an interface creator, generate the SAM function
-            creator.function?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
+            val samFunction = creator.findSamFunction(session)
+            log("Generating graph creator function ${samFunction}")
+            samFunction?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
               ?: emptyList()
           }
         }
@@ -492,15 +513,64 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
 
     // Graph factory $$Impl class, just generate the SAM function
     if (owner.hasOrigin(LatticeKeys.LatticeGraphFactoryImplDeclaration)) {
-      val graphClassId = owner.requireContainingClassSymbol().requireContainingClassSymbol().classId
-      val graphObject =
-        graphObjects[graphClassId]
-          ?: error("Could not find graph class id $graphClassId in objects $graphObjects")
-      val creator = graphObject.creator!!
-      return creator.function?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
+      log("Generating factory impl into ${owner.classId}")
+      val graphClass = owner.requireContainingClassSymbol().requireContainingClassSymbol()
+      val graphObject = graphObject(graphClass)!!
+      val creator =
+        graphObject.findCreator(session, "generateFunctions ${context.owner.classId}", ::log)!!
+      val samFunction = creator.findSamFunction(session)
+      return samFunction?.let { listOf(generateSAMFunction(graphObject.classSymbol, it)) }
         ?: emptyList()
     }
 
+    log("unrecognized callable ID $callableId")
+
     return emptyList()
+  }
+
+  fun graphObject(classLikeSymbol: FirClassLikeSymbol<*>) =
+    graphObject(classLikeSymbol as FirClassSymbol<*>)
+
+  fun graphObject(classSymbol: FirClassSymbol<*>): GraphObject? {
+    return if (classSymbol.isDependencyGraph(session)) {
+      GraphObject(classSymbol)
+    } else {
+      null
+    }
+  }
+
+  @JvmInline
+  value class GraphObject(val classSymbol: FirClassSymbol<*>) {
+    fun findCreator(session: FirSession, context: String, log: (String) -> Unit): Creator? {
+      val creator =
+        classSymbol.declarationSymbols
+          .filterIsInstance<FirClassSymbol<*>>()
+          .onEach {
+            log(
+              "Declaration factory candidate ${it.name}. Annotations are ${it.annotations.joinToRender()}"
+            )
+          }
+          .find { it.isGraphFactory(session) }
+          ?.let(::Creator)
+      log("Creator found from $context? $creator.")
+      return creator
+    }
+
+    @JvmInline
+    value class Creator(val classSymbol: FirClassSymbol<*>) {
+      val isInterface
+        get() = classSymbol.isInterface
+
+      fun findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
+        return classSymbol.abstractFunctions(session).let {
+          if (it.size == 1) {
+            it[0]
+          } else {
+            // This is an invalid factory, let the checker notify this diagnostic layer
+            null
+          }
+        }
+      }
+    }
   }
 }
