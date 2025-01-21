@@ -21,12 +21,12 @@ import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.expectAsOrNull
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.argumentAsOrNull
-import dev.zacsweers.lattice.compiler.fir.copy
 import dev.zacsweers.lattice.compiler.fir.hintClassId
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.lattice.compiler.fir.qualifierAnnotation
+import dev.zacsweers.lattice.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.lattice.compiler.joinSimpleNames
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -355,9 +355,9 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .also { property ->
         val newAnnotations = mutableListOf<FirAnnotation>()
         newAnnotations.addAll(contribution.buildAnnotations())
-        qualifier?.fir?.copy(property.symbol)?.let(newAnnotations::add)
-        mapKey?.fir?.copy(property.symbol)?.let(newAnnotations::add)
-        property.replaceAnnotations(newAnnotations)
+        qualifier?.fir?.let(newAnnotations::add)
+        mapKey?.fir?.let(newAnnotations::add)
+        property.replaceAnnotationsSafe(newAnnotations)
       }
       .symbol
   }
