@@ -809,7 +809,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           val isBindsInstance = param.isBindsInstance
 
           // TODO if we copy the annotations over in FIR we can skip this creator lookup all
-          // together
+          //  together
           val irParam = ctor.valueParameters[i]
 
           if (isBindsInstance) {
