@@ -15,9 +15,11 @@
  */
 package dev.zacsweers.lattice.compiler.fir.generators
 
+import dev.zacsweers.lattice.compiler.fir.isDependencyGraph
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
@@ -79,8 +81,12 @@ internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
     register(dependencyGraphCompanionPredicate)
   }
 
-  override fun needTransformSupertypes(declaration: FirClassLikeDeclaration) =
-    declaration.symbol.isCompanion
+  override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
+    return declaration.symbol.isCompanion &&
+      declaration.getContainingClassSymbol()?.isDependencyGraph(session) == true
+    // TODO why does the above work but not the predicate matcher?
+    //  session.predicateBasedProvider.matches(dependencyGraphCompanionPredicate, declaration)
+  }
 
   override fun computeAdditionalSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
