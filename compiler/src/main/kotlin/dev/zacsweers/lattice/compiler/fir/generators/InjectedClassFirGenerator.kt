@@ -383,17 +383,24 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    val names = mutableSetOf<Name>()
-    names += SpecialNames.INIT
-
-    val isObject = classSymbol.classKind == ClassKind.OBJECT
-
-    // Factory class
-    // Factory (companion) object
     val isFactoryClass = classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryClassDeclaration)
+    val isObject = classSymbol.classKind == ClassKind.OBJECT
     val isFactoryCreatorClass =
       (isFactoryClass && isObject) ||
         classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryCompanionDeclaration)
+    val isInjectorClass = classSymbol.hasOrigin(LatticeKeys.MembersInjectorClassDeclaration)
+    val isInjectorCreatorClass =
+      classSymbol.hasOrigin(LatticeKeys.MembersInjectorCompanionDeclaration)
+
+    if (!isFactoryClass && !isFactoryCreatorClass && !isInjectorCreatorClass && !isInjectorClass) {
+      return emptySet()
+    }
+
+    val names = mutableSetOf<Name>()
+    names += SpecialNames.INIT
+
+    // Factory class
+    // Factory (companion) object
     if (isFactoryClass) {
       // Only generate an invoke() function if it has assisted parameters, as it won't be inherited
       // from Factory<T> in this case
@@ -415,8 +422,6 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
     // MembersInjector class
     // MembersInjector companion object
-    val isInjectorCreatorClass =
-      classSymbol.hasOrigin(LatticeKeys.MembersInjectorCompanionDeclaration)
     if (isInjectorCreatorClass) {
       names += LatticeSymbols.Names.create
       val targetClass = classSymbol.getContainingClassSymbol()?.classId ?: return emptySet()
@@ -437,6 +442,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       } else if (context.owner.hasOrigin(LatticeKeys.InjectConstructorFactoryClassDeclaration)) {
         val injectedClass =
           injectFactoryClassIdsToInjectedClass[context.owner.classId] ?: return emptyList()
+        injectedClass.populateAncestorMemberInjections(session)
         buildFactoryConstructor(context, null, null, injectedClass.allParameters)
       } else if (context.owner.hasOrigin(LatticeKeys.MembersInjectorClassDeclaration)) {
         val injectedClass =
@@ -526,8 +532,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             )
           }
           else -> {
-            println("Unrecognized function $callableId")
-            return emptyList()
+            error("Unrecognized function $callableId")
           }
         }
     } else if (targetClass.hasOrigin(LatticeKeys.MembersInjectorClassDeclaration)) {
