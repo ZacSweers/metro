@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fakeElement
+import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
@@ -18,13 +19,15 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.visitors.FirTransformer
 import org.jetbrains.kotlin.fir.visitors.FirVisitor
 
-internal fun List<FirAnnotation>.copy(newParent: FirBasedSymbol<*>): List<FirAnnotation> {
+internal fun FirDeclaration.replaceAnnotationsSafe(newAnnotations: List<FirAnnotation>) {
+  return replaceAnnotations(newAnnotations.copy(symbol))
+}
+
+private fun List<FirAnnotation>.copy(newParent: FirBasedSymbol<*>): List<FirAnnotation> {
   return map { it.copy(newParent) }
 }
 
-// TODO
-@OptIn(UnresolvedExpressionTypeAccess::class)
-internal fun FirAnnotation.copy(newParent: FirBasedSymbol<*>): FirAnnotation {
+private fun FirAnnotation.copy(newParent: FirBasedSymbol<*>): FirAnnotation {
   if (this !is FirAnnotationCall) return this
   return NonAcceptingFirAnnotationCall(this, newParent)
 }
