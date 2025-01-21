@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertDiagnostics
+import org.junit.Ignore
 import org.junit.Test
 
 class DependencyGraphErrorsTest : LatticeCompilerTest() {
@@ -386,5 +387,74 @@ class DependencyGraphErrorsTest : LatticeCompilerTest() {
       """
         .trimIndent()
     )
+  }
+
+  @Test
+  fun `graph creators must return graphs - no return type`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create()
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:9:17 DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Unit."
+    )
+  }
+
+  @Test
+  fun `graph creators must return graphs - invalid return type`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(): Nothing
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:19 DependencyGraph.Factory abstract function 'create' must return a dependency graph but found kotlin.Nothing."
+    )
+  }
+
+  @Ignore("This isn't captured yet")
+  @Test
+  fun `graph creators must return graphs - inherited invalid return type`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              interface BaseFactory<T> {
+                fun create(): T
+              }
+              @DependencyGraph.Factory
+              interface Factory : BaseFactory<Nothing>
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics("sdaf")
   }
 }

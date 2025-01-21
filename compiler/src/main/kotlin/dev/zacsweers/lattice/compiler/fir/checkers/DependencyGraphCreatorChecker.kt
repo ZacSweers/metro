@@ -18,6 +18,7 @@ package dev.zacsweers.lattice.compiler.fir.checkers
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.annotationsIn
+import dev.zacsweers.lattice.compiler.fir.isDependencyGraph
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.singleAbstractFunction
 import dev.zacsweers.lattice.compiler.fir.validateApiDeclaration
@@ -27,6 +28,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 
 internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
@@ -48,6 +50,18 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         return
       }
 
+    createFunction.resolvedReturnType.toClassSymbol(session)?.let {
+      if (!it.isDependencyGraph(session)) {
+        reporter.reportOn(
+          createFunction.resolvedReturnTypeRef.source ?: declaration.source,
+          FirLatticeErrors.GRAPH_CREATORS_ERROR,
+          "DependencyGraph.Factory abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
+          context,
+        )
+        return
+      }
+    }
+
     val paramTypes = mutableSetOf<FirTypeKey>()
 
     for (param in createFunction.valueParameterSymbols) {
@@ -55,7 +69,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
           param.source,
-          FirLatticeErrors.GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
+          FirLatticeErrors.GRAPH_CREATORS_ERROR,
+          "DependencyGraph.Factory abstract function parameters must be unique.",
           context,
         )
         return

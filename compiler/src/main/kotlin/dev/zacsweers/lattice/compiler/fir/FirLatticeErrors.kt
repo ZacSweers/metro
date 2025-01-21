@@ -106,7 +106,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val LATTICE_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
 
   // DependencyGraph factory errors
-  val GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE by error0(NAME_IDENTIFIER)
+  val GRAPH_CREATORS_ERROR by error1<String>(NAME_IDENTIFIER)
 
   // DependencyGraph errors
   val DEPENDENCY_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)
@@ -152,10 +152,7 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(LATTICE_TYPE_PARAMETERS_ERROR, "{0}", STRING)
 
       // DependencyGraph creator errors
-      put(
-        GRAPH_CREATORS_FACTORY_PARAMS_MUST_BE_UNIQUE,
-        "DependencyGraph.Factory abstract function parameters must be unique.",
-      )
+      put(GRAPH_CREATORS_ERROR, "{0}", STRING)
 
       // DependencyGraph errors
       put(DEPENDENCY_GRAPH_ERROR, "{0}", STRING)
