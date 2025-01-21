@@ -67,8 +67,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
 
           """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
     val graph =
       result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")

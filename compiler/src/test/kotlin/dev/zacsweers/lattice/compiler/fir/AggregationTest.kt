@@ -771,8 +771,7 @@ class AggregationTest : LatticeCompilerTest() {
           class Impl : ContributedInterface<String>
         """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
 
     compile(
