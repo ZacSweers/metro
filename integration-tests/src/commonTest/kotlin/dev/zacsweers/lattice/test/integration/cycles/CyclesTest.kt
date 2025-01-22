@@ -180,6 +180,7 @@ class CyclesTest {
 
   @Inject class B(val c: C)
 
+  @Suppress("MEMBERS_INJECT_WARNING")
   @Inject
   class C(val aProvider: Provider<A>) {
     @Inject lateinit var aLazy: Lazy<A>
@@ -190,6 +191,7 @@ class CyclesTest {
 
   @Inject class E(val d: D)
 
+  @Suppress("MEMBERS_INJECT_WARNING")
   @Inject
   class S(val sProvider: Provider<S>) {
     @Inject lateinit var sLazy: Lazy<S>

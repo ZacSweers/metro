@@ -111,3 +111,5 @@ internal val String.withoutLineBreaks: String
 internal infix operator fun Name.plus(other: String) = (asString() + other).asName()
 
 internal infix operator fun Name.plus(other: Name) = (asString() + other.asString()).asName()
+
+internal fun Boolean?.orElse(ifNull: Boolean): Boolean = this ?: ifNull

@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticRenderers.TO_STRING
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies
+import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLARATION_RETURN_TYPE
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.TYPE_PARAMETERS_LIST
@@ -133,6 +134,10 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val PROVIDES_ERROR by error1<String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<String>(NAME_IDENTIFIER)
+  val MEMBERS_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
+  val MEMBERS_INJECT_STATUS_ERROR by error1<String>(MODALITY_MODIFIER)
+  val MEMBERS_INJECT_WARNING by warning1<String>(NAME_IDENTIFIER)
+  val MEMBERS_INJECT_RETURN_TYPE_WARNING by warning1<String>(DECLARATION_RETURN_TYPE)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("Lattice").apply {
@@ -185,6 +190,10 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
       put(AGGREGATION_ERROR, "{0}", STRING)
+      put(MEMBERS_INJECT_ERROR, "{0}", STRING)
+      put(MEMBERS_INJECT_STATUS_ERROR, "{0}", STRING)
+      put(MEMBERS_INJECT_WARNING, "{0}", STRING)
+      put(MEMBERS_INJECT_RETURN_TYPE_WARNING, "{0}", STRING)
       put(BINDS_ERROR, "{0}", STRING)
       put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
       put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE, "{0}", STRING)

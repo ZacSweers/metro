@@ -417,6 +417,8 @@ internal fun FirClassLikeSymbol<*>.findInjectConstructors(
   checkClass: Boolean = true,
 ): List<FirConstructorSymbol> {
   if (this !is FirClassSymbol<*>) return emptyList()
+  if (classKind != ClassKind.CLASS) return emptyList()
+  rawStatus.modality?.let { if (it.ordinal > 0) return emptyList() }
   return if (checkClass && isAnnotatedInject(session)) {
     declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter { it.isPrimary }
   } else {

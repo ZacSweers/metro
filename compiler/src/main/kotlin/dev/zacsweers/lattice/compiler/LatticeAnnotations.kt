@@ -55,6 +55,7 @@ internal class LatticeAnnotations<T>(
   val isIntoMap: Boolean,
   val isMultibinds: Boolean,
   val isAssistedFactory: Boolean,
+  val isComposable: Boolean,
   val assisted: T?,
   val scope: T?,
   val qualifier: T?,
@@ -84,6 +85,7 @@ internal class LatticeAnnotations<T>(
     isIntoMap: Boolean = this.isIntoMap,
     isMultibinds: Boolean = this.isMultibinds,
     isAssistedFactory: Boolean = this.isAssistedFactory,
+    isComposable: Boolean = this.isComposable,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
     qualifier: T? = this.qualifier,
@@ -101,6 +103,7 @@ internal class LatticeAnnotations<T>(
       isIntoMap,
       isMultibinds,
       isAssistedFactory,
+      isComposable,
       assisted,
       scope,
       qualifier,
@@ -147,6 +150,7 @@ private fun IrAnnotationContainer.latticeAnnotations(
   var isIntoMap = false
   var isMultibinds = false
   var isAssistedFactory = false
+  var isComposable = false
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
   var qualifier: IrAnnotation? = null
@@ -159,50 +163,68 @@ private fun IrAnnotationContainer.latticeAnnotations(
     when (this) {
       is IrValueParameter -> {
         // Only BindsInstance and Assisted go here
-        if (classId in ids.bindsInstanceAnnotations) {
-          isBindsInstance = true
-          continue
-        } else if (classId in ids.assistedAnnotations) {
-          assisted = expectNullAndSet("assisted", assisted, annotation.asIrAnnotation())
-          continue
+        when (classId) {
+          in ids.bindsInstanceAnnotations -> {
+            isBindsInstance = true
+            continue
+          }
+          in ids.assistedAnnotations -> {
+            assisted = expectNullAndSet("assisted", assisted, annotation.asIrAnnotation())
+            continue
+          }
         }
       }
 
       is IrFunction,
       is IrProperty -> {
         // Binds, Provides
-        if (classId in ids.bindsAnnotations) {
-          isBinds = true
-          continue
-        } else if (classId in ids.providesAnnotations) {
-          isProvides = true
-          continue
-        } else if (classId in ids.intoSetAnnotations) {
-          isIntoSet = true
-          continue
-        } else if (classId in ids.elementsIntoSetAnnotations) {
-          isElementsIntoSet = true
-          continue
-        } else if (classId in ids.intoMapAnnotations) {
-          isIntoMap = true
-          continue
-        } else if (classId in ids.multibindsAnnotations) {
-          isMultibinds = true
-          continue
+        when (classId) {
+          in ids.bindsAnnotations -> {
+            isBinds = true
+            continue
+          }
+          in ids.providesAnnotations -> {
+            isProvides = true
+            continue
+          }
+          in ids.intoSetAnnotations -> {
+            isIntoSet = true
+            continue
+          }
+          in ids.elementsIntoSetAnnotations -> {
+            isElementsIntoSet = true
+            continue
+          }
+          in ids.intoMapAnnotations -> {
+            isIntoMap = true
+            continue
+          }
+          in ids.multibindsAnnotations -> {
+            isMultibinds = true
+            continue
+          }
+          LatticeSymbols.ClassIds.composable -> {
+            isComposable = true
+            continue
+          }
         }
       }
 
       is IrClass -> {
         // AssistedFactory, DependencyGraph, DependencyGraph.Factory
-        if (classId in ids.assistedFactoryAnnotations) {
-          isAssistedFactory = true
-          continue
-        } else if (classId in ids.dependencyGraphAnnotations) {
-          isDependencyGraph = true
-          continue
-        } else if (classId in ids.dependencyGraphFactoryAnnotations) {
-          isDependencyGraphFactory = true
-          continue
+        when (classId) {
+          in ids.assistedFactoryAnnotations -> {
+            isAssistedFactory = true
+            continue
+          }
+          in ids.dependencyGraphAnnotations -> {
+            isDependencyGraph = true
+            continue
+          }
+          in ids.dependencyGraphFactoryAnnotations -> {
+            isDependencyGraphFactory = true
+            continue
+          }
         }
       }
     }
@@ -239,6 +261,7 @@ private fun IrAnnotationContainer.latticeAnnotations(
       isIntoMap = isIntoMap,
       isMultibinds = isMultibinds,
       isAssistedFactory = isAssistedFactory,
+      isComposable = isComposable,
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
@@ -311,6 +334,7 @@ private fun FirBasedSymbol<*>.latticeAnnotations(
   var isIntoMap = false
   var isMultibinds = false
   var isAssistedFactory = false
+  var isComposable = false
   var assisted: LatticeFirAnnotation? = null
   var scope: LatticeFirAnnotation? = null
   var qualifier: LatticeFirAnnotation? = null
@@ -325,36 +349,50 @@ private fun FirBasedSymbol<*>.latticeAnnotations(
     when (this) {
       is FirValueParameterSymbol -> {
         // Only BindsInstance and Assisted go here
-        if (classId in ids.bindsInstanceAnnotations) {
-          isBindsInstance = true
-          continue
-        } else if (classId in ids.assistedAnnotations) {
-          assisted = expectNullAndSet("assisted", assisted, LatticeFirAnnotation(annotation))
-          continue
+        when (classId) {
+          in ids.bindsInstanceAnnotations -> {
+            isBindsInstance = true
+            continue
+          }
+          in ids.assistedAnnotations -> {
+            assisted = expectNullAndSet("assisted", assisted, LatticeFirAnnotation(annotation))
+            continue
+          }
         }
       }
 
       is FirNamedFunctionSymbol,
       is FirPropertySymbol -> {
         // Binds, Provides
-        if (classId in ids.bindsAnnotations) {
-          isBinds = true
-          continue
-        } else if (classId in ids.providesAnnotations) {
-          isProvides = true
-          continue
-        } else if (classId in ids.intoSetAnnotations) {
-          isIntoSet = true
-          continue
-        } else if (classId in ids.elementsIntoSetAnnotations) {
-          isElementsIntoSet = true
-          continue
-        } else if (classId in ids.intoMapAnnotations) {
-          isIntoMap = true
-          continue
-        } else if (classId in ids.multibindsAnnotations) {
-          isMultibinds = true
-          continue
+        when (classId) {
+          in ids.bindsAnnotations -> {
+            isBinds = true
+            continue
+          }
+          in ids.providesAnnotations -> {
+            isProvides = true
+            continue
+          }
+          in ids.intoSetAnnotations -> {
+            isIntoSet = true
+            continue
+          }
+          in ids.elementsIntoSetAnnotations -> {
+            isElementsIntoSet = true
+            continue
+          }
+          in ids.intoMapAnnotations -> {
+            isIntoMap = true
+            continue
+          }
+          in ids.multibindsAnnotations -> {
+            isMultibinds = true
+            continue
+          }
+          LatticeSymbols.ClassIds.composable -> {
+            isComposable = true
+            continue
+          }
         }
       }
 
@@ -405,6 +443,7 @@ private fun FirBasedSymbol<*>.latticeAnnotations(
       isIntoMap = isIntoMap,
       isMultibinds = isMultibinds,
       isAssistedFactory = isAssistedFactory,
+      isComposable = isComposable,
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,

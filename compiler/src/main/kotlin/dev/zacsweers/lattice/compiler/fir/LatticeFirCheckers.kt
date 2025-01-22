@@ -20,6 +20,7 @@ import dev.zacsweers.lattice.compiler.fir.checkers.AssistedInjectChecker
 import dev.zacsweers.lattice.compiler.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.lattice.compiler.fir.checkers.DependencyGraphCreatorChecker
 import dev.zacsweers.lattice.compiler.fir.checkers.InjectConstructorChecker
+import dev.zacsweers.lattice.compiler.fir.checkers.MembersInjectChecker
 import dev.zacsweers.lattice.compiler.fir.checkers.ProvidesChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
@@ -34,6 +35,7 @@ internal class LatticeFirCheckers(session: FirSession) : FirAdditionalCheckersEx
         get() =
           setOf(
             InjectConstructorChecker,
+            MembersInjectChecker,
             AssistedInjectChecker,
             AggregationChecker,
             DependencyGraphCreatorChecker,

@@ -63,6 +63,7 @@ internal class LatticeSymbols(
 
   object FqNames {
     val kotlinCollectionsPackageFqn = FqName("kotlin.collections")
+    val composeRuntime = FqName("androidx.compose.runtime")
     val latticeRuntimePackage = FqName(LATTICE_RUNTIME_PACKAGE)
     val latticeRuntimeInternalPackage = FqName(LATTICE_RUNTIME_INTERNAL_PACKAGE)
     val latticeHintsPackage = FqName(StringNames.LATTICE_HINTS_PACKAGE)
@@ -72,6 +73,7 @@ internal class LatticeSymbols(
   object ClassIds {
     val anyClass = StandardClassIds.Any
     val jsExportIgnore = JsStandardClassIds.Annotations.JsExportIgnore
+    val composable = ClassId(FqNames.composeRuntime, "Composable".asName())
     val latticeBinds = ClassId(FqNames.latticeRuntimePackage, Names.bindsClassName)
     val latticeIntoSet = ClassId(FqNames.latticeRuntimePackage, "IntoSet".asName())
     val latticeIntoMap = ClassId(FqNames.latticeRuntimePackage, "IntoMap".asName())

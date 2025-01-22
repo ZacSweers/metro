@@ -450,7 +450,8 @@ fun CompilationResult.assertDiagnostics(warnings: List<String>, errors: List<Str
 }
 
 fun CompilationResult.assertDiagnostics(diagnostics: Map<DiagnosticSeverity, List<String>>) {
-  assertThat(cleanedDiagnostics).containsExactlyEntriesIn(diagnostics)
+  assertThat(cleanedDiagnostics.filterValues { it.isNotEmpty() })
+    .containsExactlyEntriesIn(diagnostics.filterValues { it.isNotEmpty() })
 }
 
 val CompilationResult.cleanedDiagnostics: Map<DiagnosticSeverity, List<String>>
@@ -478,6 +479,12 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     .groupBy { it.severity }
     .mapValues { (_, messages) ->
       messages.map { it.message.cleanOutputLine(includeSeverity = false) }
+    }
+    .let { parsed ->
+      buildMap {
+        putAll(parsed)
+        DiagnosticSeverity.entries.forEach { severity -> getOrPut(severity, ::emptyList) }
+      }
     }
 }
 
