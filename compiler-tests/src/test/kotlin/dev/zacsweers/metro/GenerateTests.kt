@@ -24,6 +24,7 @@ fun main() {
       testsRoot = "compiler-tests/src/test/java",
     ) {
       testClass<AbstractDiagnosticTest> { model("diagnostic") }
+      testClass<AbstractFirDumpTest> { model("dump/fir") }
     }
   }
 }

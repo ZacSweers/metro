@@ -1,0 +1,26 @@
+FILE: ContributingTypes.kt
+    @R|dev/zacsweers/metro/ContributesTo|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface ContributedInterface : R|kotlin/Any| {
+    }
+    @R|dev/zacsweers/metro/DependencyGraph|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface ExampleGraph : R|kotlin/Any|, R|metro/hints/ContributedInterface| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class $$MetroGraph : R|ExampleGraph| {
+            public constructor(): R|ExampleGraph.$$MetroGraph| {
+                super<R|kotlin/Any|>()
+            }
+
+        }
+
+        public final companion object Companion : R|kotlin/Any| {
+            public final operator fun invoke(): R|ExampleGraph|
+
+            private constructor(): R|ExampleGraph.Companion| {
+                super<R|kotlin/Any|>()
+            }
+
+        }
+
+    }
+FILE: __GENERATED DECLARATIONS__.kt
+    package metro.hints
+
+    @R|dev/zacsweers/metro/internal/Origin|(value = <getClass>(<getClass>(R|ContributedInterface|))) public abstract interface ContributedInterface : R|ContributedInterface| {
+    }
