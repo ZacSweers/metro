@@ -17,6 +17,10 @@ package dev.zacsweers.lattice.compiler.fir.checkers
 
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.findInjectConstructors
+import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.lattice.compiler.fir.isDependencyGraph
+import dev.zacsweers.lattice.compiler.fir.isGraphFactory
+import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.latticeAnnotations
 import dev.zacsweers.lattice.compiler.orElse
 import dev.zacsweers.lattice.compiler.unsafeLazy
@@ -45,6 +49,11 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
     val session = context.session
+
+    // TODO put all these into a set to check?
+    if (declaration.symbol.isDependencyGraph(session)) return
+    if (declaration.symbol.isGraphFactory(session)) return
+    if (declaration.symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedFactoryAnnotations)) return
 
     val isConstructorInjected by unsafeLazy {
       declaration.symbol.findInjectConstructors(session, checkClass = true).firstOrNull() != null
