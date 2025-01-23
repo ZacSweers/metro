@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Zac Sweers
+ * Copyright (C) 2025 Zac Sweers
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,27 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-pluginManagement {
-  repositories {
-    google()
-    mavenCentral()
-    gradlePluginPortal()
-  }
-}
+package dev.zacsweers.metro
 
-dependencyResolutionManagement {
-  repositories {
-    google()
-    mavenCentral()
-  }
-}
+import dev.zacsweers.metro.compiler.MetroOptions
+import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
-rootProject.name = "metro"
-
-include(":compiler", ":compiler-tests", "integration-tests", ":runtime")
-
-includeBuild("gradle-plugin") {
-  dependencySubstitution {
-    substitute(module("dev.zacsweers.metro:gradle-plugin")).using(project(":"))
-  }
+object MetroDirectives : SimpleDirectivesContainer() {
+  val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
+  val PUBLIC_PROVIDER_SEVERITY by enumDirective<MetroOptions.DiagnosticSeverity>("Enable assisted factories generation.")
 }

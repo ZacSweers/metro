@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Zac Sweers
+ * Copyright (C) 2025 Zac Sweers
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,27 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-pluginManagement {
-  repositories {
-    google()
-    mavenCentral()
-    gradlePluginPortal()
-  }
-}
+package dev.zacsweers.metro
 
-dependencyResolutionManagement {
-  repositories {
-    google()
-    mavenCentral()
-  }
-}
+import org.jetbrains.kotlin.generators.generateTestGroupSuiteWithJUnit5
 
-rootProject.name = "metro"
-
-include(":compiler", ":compiler-tests", "integration-tests", ":runtime")
-
-includeBuild("gradle-plugin") {
-  dependencySubstitution {
-    substitute(module("dev.zacsweers.metro:gradle-plugin")).using(project(":"))
-  }
+fun main() {
+  generateTestGroupSuiteWithJUnit5 {}
 }
