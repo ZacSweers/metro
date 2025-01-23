@@ -109,4 +109,12 @@ internal object LatticeKeys {
   data object FactoryNewInstanceFunction : GeneratedDeclarationKey() {
     override fun toString() = "FactoryNewInstanceFunction"
   }
+
+  data object TopLevelInjectFunctionClass : GeneratedDeclarationKey() {
+    override fun toString() = "TopLevelInjectFunctionClass"
+  }
+
+  data object TopLevelInjectFunctionClassFunction : GeneratedDeclarationKey() {
+    override fun toString() = "TopLevelInjectFunctionClassFunction"
+  }
 }
