@@ -90,6 +90,7 @@ import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -703,9 +704,10 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
 ) {
   check(isFakeOverride) { "Function $name is not a fake override!" }
   isFakeOverride = false
+  origin = IrDeclarationOrigin.DEFINED
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
-    this.dispatchReceiverParameter = dispatchReceiverParameter
+    this.dispatchReceiverParameter = dispatchReceiverParameter.deepCopyWithSymbols(this)
   } else if (this is IrProperty) {
     this.getter?.finalizeFakeOverride(dispatchReceiverParameter)
     this.setter?.finalizeFakeOverride(dispatchReceiverParameter)
