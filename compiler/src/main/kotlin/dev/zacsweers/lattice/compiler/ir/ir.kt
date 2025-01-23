@@ -704,3 +704,11 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
     }
   }
 }
+
+internal fun IrFunction.stubExpressionBody(context: LatticeTransformerContext) =
+  context.pluginContext.createIrBuilder(symbol).run {
+    irExprBodySafe(
+      symbol,
+      irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called"))),
+    )
+  }

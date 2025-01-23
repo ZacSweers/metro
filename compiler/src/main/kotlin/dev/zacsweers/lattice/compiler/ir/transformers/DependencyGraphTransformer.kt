@@ -61,6 +61,7 @@ import dev.zacsweers.lattice.compiler.ir.rawTypeOrNull
 import dev.zacsweers.lattice.compiler.ir.requireNestedClass
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.singleAbstractFunction
+import dev.zacsweers.lattice.compiler.ir.stubExpressionBody
 import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.withEntry
@@ -1161,18 +1162,10 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
-        body = stubExpressionBody()
+        body = stubExpressionBody(latticeContext)
       }
     }
   }
-
-  private fun IrFunction.stubExpressionBody() =
-    pluginContext.createIrBuilder(symbol).run {
-      irExprBodySafe(
-        symbol,
-        irInvoke(callee = symbols.stdlibErrorFunction, args = listOf(irString("Never called"))),
-      )
-    }
 
   private fun collectBindings(
     node: DependencyGraphNode,

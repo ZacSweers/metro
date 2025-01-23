@@ -824,3 +824,11 @@ internal fun List<FirElement>.joinToRender(separator: String = ", "): String {
     }
   }
 }
+
+internal fun buildSimpleAnnotation(symbol: () -> FirRegularClassSymbol): FirAnnotation {
+  return buildAnnotation {
+    annotationTypeRef = symbol().defaultType().toFirResolvedTypeRef()
+
+    argumentMapping = buildAnnotationArgumentMapping()
+  }
+}

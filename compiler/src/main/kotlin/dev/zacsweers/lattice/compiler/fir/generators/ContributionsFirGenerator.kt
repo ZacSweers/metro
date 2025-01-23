@@ -21,6 +21,7 @@ import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.expectAsOrNull
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
 import dev.zacsweers.lattice.compiler.fir.argumentAsOrNull
+import dev.zacsweers.lattice.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.lattice.compiler.fir.hintClassId
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
@@ -231,14 +232,6 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
   private fun buildIntoMapAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.latticeFirBuiltIns.intoMapClassSymbol }
-  }
-
-  private fun buildSimpleAnnotation(symbol: () -> FirRegularClassSymbol): FirAnnotation {
-    return buildAnnotation {
-      annotationTypeRef = symbol().defaultType().toFirResolvedTypeRef()
-
-      argumentMapping = buildAnnotationArgumentMapping()
-    }
   }
 
   private fun buildOriginAnnotation(origin: ClassId): FirAnnotation {
