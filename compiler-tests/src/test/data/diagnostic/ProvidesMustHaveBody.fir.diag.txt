@@ -1,0 +1,3 @@
+/ProvidesMustHaveBody.kt:(103,113): error: `@Provides` declarations must have bodies.
+
+/ProvidesMustHaveBody.kt:(135,148): error: `@Provides` declarations must have bodies.

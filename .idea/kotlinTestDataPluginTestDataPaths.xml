@@ -3,6 +3,7 @@
     <component name="TestDataPluginSettings">
         <option name="testDataFiles">
             <array>
+                <option value="$PROJECT_DIR$/compiler-tests/src/test/data/diagnostic"/>
             </array>
         </option>
     </component>

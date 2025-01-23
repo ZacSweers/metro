@@ -18,5 +18,12 @@ package dev.zacsweers.metro
 import org.jetbrains.kotlin.generators.generateTestGroupSuiteWithJUnit5
 
 fun main() {
-  generateTestGroupSuiteWithJUnit5 {}
+  generateTestGroupSuiteWithJUnit5 {
+    testGroup(
+      testDataRoot = "compiler-tests/src/test/data",
+      testsRoot = "compiler-tests/src/test/java",
+    ) {
+      testClass<AbstractDiagnosticTest> { model("diagnostic") }
+    }
+  }
 }

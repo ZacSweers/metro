@@ -20,5 +20,6 @@ import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
 object MetroDirectives : SimpleDirectivesContainer() {
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
-  val PUBLIC_PROVIDER_SEVERITY by enumDirective<MetroOptions.DiagnosticSeverity>("Enable assisted factories generation.")
+  val PUBLIC_PROVIDER_SEVERITY by
+    enumDirective<MetroOptions.DiagnosticSeverity>("Enable assisted factories generation.")
 }
