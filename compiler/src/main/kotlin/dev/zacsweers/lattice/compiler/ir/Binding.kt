@@ -256,8 +256,8 @@ internal sealed interface Binding {
     override val parameters: Parameters<out Parameter> = Parameters.empty()
     override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = getter.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = getter.locationOrNull()
   }
 
   // TODO sets
