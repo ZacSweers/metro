@@ -48,82 +48,100 @@ public class LatticeGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
     return project.provider {
       buildList {
-        SubpluginOption(key = "enabled", value = extension.enabled.get().toString())
-        SubpluginOption(key = "debug", value = extension.debug.get().toString())
+        add(SubpluginOption(key = "enabled", value = extension.enabled.get().toString()))
+        add(SubpluginOption(key = "debug", value = extension.debug.get().toString()))
 
         with(extension.customAnnotations) {
           assisted
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted", value = it.joinToString(":")) }
+            ?.let(::add)
           assistedFactory
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted-factory", value = it.joinToString(":")) }
+            ?.let(::add)
           assistedInject
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-assisted-inject", value = it.joinToString(":")) }
+            ?.let(::add)
           binds
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-binds", value = it.joinToString(":")) }
+            ?.let(::add)
           bindsInstance
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-binds-instance", value = it.joinToString(":")) }
+            ?.let(::add)
           contributesTo
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-to", value = it.joinToString(":")) }
+            ?.let(::add)
           contributesBinding
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-contributes-binding", value = it.joinToString(":")) }
+            ?.let(::add)
           elementsIntoSet
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-elements-into-set", value = it.joinToString(":")) }
+            ?.let(::add)
           graph
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-graph", value = it.joinToString(":")) }
+            ?.let(::add)
           graphFactory
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-graph-factory", value = it.joinToString(":")) }
+            ?.let(::add)
           inject
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-inject", value = it.joinToString(":")) }
+            ?.let(::add)
           intoMap
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-into-map", value = it.joinToString(":")) }
+            ?.let(::add)
           intoSet
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-into-set", value = it.joinToString(":")) }
+            ?.let(::add)
           mapKey
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-map-key", value = it.joinToString(":")) }
+            ?.let(::add)
           multibinds
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-multibinds", value = it.joinToString(":")) }
+            ?.let(::add)
           provides
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-provides", value = it.joinToString(":")) }
+            ?.let(::add)
           qualifier
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-qualifier", value = it.joinToString(":")) }
+            ?.let(::add)
           scope
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
+            ?.let(::add)
         }
       }
     }
