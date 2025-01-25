@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+case "$1" in
+   "publish")
+       version=""
+       local=false
+
+       while [[ $# -gt 1 ]]; do
+           case "$2" in
+               --version)
+                   version="$3"
+                   shift 2
+                   ;;
+               --local)
+                   local=true
+                   shift
+                   ;;
+               *)
+                   echo "Unknown publish argument: $2"
+                   exit 1
+                   ;;
+           esac
+       done
+
+       if [[ -z "$version" ]]; then
+           echo "Version required for non-local publish"
+           exit 1
+       fi
+
+       if [[ "$local" = true ]]; then
+           echo "Publishing version $version locally..."
+           ./gradlew -p gradle-plugin publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}"
+           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}"
+       else
+           echo "Publishing version $version..."
+       fi
+       ;;
+
+   "check")
+       echo "Running checks..."
+       ./gradlew check
+       ./gradlew -p gradle-plugin check
+       ./gradlew -p samples check
+       ;;
+
+   "regen")
+       echo "Applying formatting and API gen..."
+       ./gradlew spotlessApply apiDump
+       # TODO apiDump here too
+       ./gradlew -p gradle-plugin spotlessApply
+       ./gradlew -p samples spotlessApply
+       ;;
+
+   *)
+       echo "Usage: latticew (publish|check|regen)"
+       echo "publish options:"
+       echo "  --version <version>  Specify version for publishing"
+       echo "  --local             Publish locally"
+       exit 1
+       ;;
+esac
