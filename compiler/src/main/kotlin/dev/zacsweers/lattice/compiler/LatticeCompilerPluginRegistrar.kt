@@ -62,7 +62,7 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
     if (options.debug) {
       configuration.messageCollector.report(
         CompilerMessageSeverity.STRONG_WARNING,
-        "Lattice options:\n$options"
+        "Lattice options:\n$options",
       )
     }
 

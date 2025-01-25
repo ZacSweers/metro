@@ -29,11 +29,7 @@ kotlin {
         implementation(libs.kotlinInject.anvil.runtime)
       }
     }
-    commonTest {
-      dependencies {
-        implementation(libs.kotlin.test)
-      }
-    }
+    commonTest { dependencies { implementation(libs.kotlin.test) } }
   }
 }
 

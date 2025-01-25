@@ -16,7 +16,7 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.atomicfu)
-//  alias(libs.plugins.kotlin.kapt)
+  //  alias(libs.plugins.kotlin.kapt)
   alias(libs.plugins.ksp)
   id("dev.zacsweers.lattice")
 }
