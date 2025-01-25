@@ -22,6 +22,7 @@ import dev.zacsweers.lattice.compiler.fir.copyParameters
 import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -187,7 +188,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
         status { isFun = true }
       }
       .apply {
-        replaceAnnotations(
+        replaceAnnotationsSafe(
           annotations +
             buildAnnotation {
               val assistedFactoryClass =

@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.fir.types.isUnit
 
 // TODO
 //  - if there's a factory(): Graph in the companion object, error because we'll generate it
+//  - if graph is scoped, check that accessors have matching scopes
 internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return

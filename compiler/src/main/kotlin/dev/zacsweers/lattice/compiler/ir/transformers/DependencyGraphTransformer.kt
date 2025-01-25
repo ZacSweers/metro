@@ -81,7 +81,6 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irReturn
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -2009,7 +2008,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
     val bindingCode = generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)
     return typeAsProviderArgument(
       latticeContext,
-      type =
+      contextKey =
         ContextualTypeKey(
           provider.typeKey,
           isWrappedInProvider = false,

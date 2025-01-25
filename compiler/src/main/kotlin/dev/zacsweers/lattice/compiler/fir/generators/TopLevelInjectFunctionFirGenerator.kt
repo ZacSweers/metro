@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
+import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.plugin.createConstructor
@@ -84,6 +85,7 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
   // TODO
   //  private works
   //  visibility of params and return type
+  //  no extension receivers
 
   private val injectAnnotationPredicate by unsafeLazy {
     annotated(session.latticeClassIds.injectAnnotations.map { it.asSingleFqName() })
@@ -134,6 +136,22 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
     return buildSimpleAnnotation { session.latticeFirBuiltIns.composableClassSymbol }
   }
 
+  override fun generateNestedClassLikeDeclaration(
+    owner: FirClassSymbol<*>,
+    name: Name,
+    context: NestedClassGenerationContext
+  ): FirClassLikeSymbol<*>? {
+    // TODO Generate companion if >0 args, object for 0 args
+    return super.generateNestedClassLikeDeclaration(owner, name, context)
+  }
+
+  override fun getNestedClassifiersNames(
+    classSymbol: FirClassSymbol<*>,
+    context: NestedClassGenerationContext
+  ): Set<Name> {
+    return super.getNestedClassifiersNames(classSymbol, context)
+  }
+
   override fun getCallableNamesForClass(
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
@@ -145,14 +163,16 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
     }
   }
 
+  private fun functionFor(classId: ClassId) = symbols.getValue(Unit, null).getValue(classId)
+
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
-    if (!context.owner.hasOrigin(LatticeKeys.TopLevelInjectFunctionClass)) return emptyList()
-    val function = symbols.getValue(Unit, null).getValue(context.owner.classId)
-    val nonAssistedParams =
-      function.valueParameterSymbols.filterNot {
-        it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
-      }
-    return createConstructor(
+    if (context.owner.hasOrigin(LatticeKeys.TopLevelInjectFunctionClass)) {
+      val function = functionFor(context.owner.classId)
+      val nonAssistedParams =
+        function.valueParameterSymbols.filterNot {
+          it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+        }
+      return createConstructor(
         context.owner,
         LatticeKeys.Default,
         isPrimary = true,
@@ -168,8 +188,10 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
           )
         }
       }
-      .symbol
-      .let(::listOf)
+        .symbol
+        .let(::listOf)
+    }
+    return emptyList()
   }
 
   override fun generateFunctions(

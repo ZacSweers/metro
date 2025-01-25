@@ -150,7 +150,7 @@ internal fun FirExtension.copyParameters(
                         source = null,
                         kind = ConstantValueKind.String,
                         value = "Replaced in IR",
-                        setType = false,
+                        setType = true,
                       )
                   },
                   LinkedHashMap(),

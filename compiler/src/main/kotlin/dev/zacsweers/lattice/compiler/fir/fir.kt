@@ -108,6 +108,7 @@ import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -667,11 +668,29 @@ internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession)
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }
 
-internal fun ConeTypeProjection.wrapInProvider() =
-  LatticeSymbols.ClassIds.latticeProvider.constructClassLikeType(arrayOf(this))
+internal fun ConeTypeProjection.wrapInProviderIfNecessary(session: FirSession): ConeClassLikeType {
+  val type = this.type
+  if (type is ConeClassLikeType) {
+    val classId = type.lookupTag.classId
+    if (classId in session.latticeClassIds.providerTypes) {
+      // Already a provider
+      return type
+    }
+  }
+  return LatticeSymbols.ClassIds.latticeProvider.constructClassLikeType(arrayOf(this))
+}
 
-internal fun ConeTypeProjection.wrapInLazy() =
-  LatticeSymbols.ClassIds.lazy.constructClassLikeType(arrayOf(this))
+internal fun ConeTypeProjection.wrapInLazyIfNecessary(session: FirSession): ConeClassLikeType {
+  val type = this.type
+  if (type is ConeClassLikeType) {
+    val classId = type.lookupTag.classId
+    if (classId in session.latticeClassIds.lazyTypes) {
+      // Already a lazy
+      return type
+    }
+  }
+  return LatticeSymbols.ClassIds.lazy.constructClassLikeType(arrayOf(this))
+}
 
 internal fun FirClassSymbol<*>.constructType(
   typeParameterRefs: List<FirTypeParameterRef>

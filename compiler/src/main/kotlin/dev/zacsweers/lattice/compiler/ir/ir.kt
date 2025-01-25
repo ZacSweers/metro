@@ -383,7 +383,7 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
 
 internal fun IrBuilderWithScope.typeAsProviderArgument(
   context: LatticeTransformerContext,
-  type: ContextualTypeKey,
+  contextKey: ContextualTypeKey,
   bindingCode: IrExpression,
   isAssisted: Boolean,
   isGraphInstance: Boolean,
@@ -394,31 +394,32 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     return bindingCode
   }
   return when {
-    type.isLazyWrappedInProvider -> {
+    contextKey.isLazyWrappedInProvider -> {
       // ProviderOfLazy.create(provider)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
         callee = symbols.providerOfLazyCreate,
         args = listOf(bindingCode),
-        typeHint = type.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
+        typeHint =
+          contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.latticeProvider),
       )
     }
 
-    type.isWrappedInProvider -> bindingCode
+    contextKey.isWrappedInProvider -> bindingCode
     // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
     // (usually the container is a joined type), therefore we use
     // `.lazy(..)` to convert the Provider to a Lazy. Assisted
     // parameters behave differently and the Lazy type is not changed
     // to a Provider and we can simply use the parameter name in the
     // argument list.
-    type.isWrappedInLazy && isAssisted -> bindingCode
-    type.isWrappedInLazy -> {
+    contextKey.isWrappedInLazy && isAssisted -> bindingCode
+    contextKey.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
         callee = symbols.doubleCheckLazy,
         args = listOf(bindingCode),
-        typeHint = type.typeKey.type.wrapInLazy(symbols),
+        typeHint = contextKey.typeKey.type.wrapInLazy(symbols),
       )
     }
 
@@ -432,7 +433,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
       irInvoke(
         dispatchReceiver = bindingCode,
         callee = symbols.providerInvoke,
-        typeHint = type.typeKey.type,
+        typeHint = contextKey.typeKey.type,
       )
     }
   }
@@ -450,6 +451,29 @@ internal fun LatticeTransformerContext.assignConstructorParamsToFields(
           isFinal = true
           initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
         }
+      put(irParameter, irField)
+    }
+  }
+}
+
+internal fun LatticeTransformerContext.assignConstructorParamsToFields(
+  parameters: Parameters<out Parameter>,
+  clazz: IrClass,
+): Map<Parameter, IrField> {
+  return buildMap {
+    for (irParameter in parameters.valueParameters) {
+      val irField =
+        clazz
+          .addField(
+            irParameter.name,
+            irParameter.contextualTypeKey.toIrType(this@assignConstructorParamsToFields),
+            DescriptorVisibilities.PRIVATE,
+          )
+          .apply {
+            isFinal = true
+            initializer =
+              pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter.ir)) }
+          }
       put(irParameter, irField)
     }
   }
@@ -709,6 +733,9 @@ internal fun IrFunction.stubExpressionBody(context: LatticeTransformerContext) =
   context.pluginContext.createIrBuilder(symbol).run {
     irExprBodySafe(
       symbol,
-      irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called"))),
+      irInvoke(
+        callee = context.symbols.stdlibErrorFunction,
+        args = listOf(irString("Never called")),
+      ),
     )
   }

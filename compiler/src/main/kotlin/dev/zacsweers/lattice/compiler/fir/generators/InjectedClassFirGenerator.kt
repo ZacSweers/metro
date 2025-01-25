@@ -17,9 +17,11 @@ package dev.zacsweers.lattice.compiler.fir.generators
 
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.NameAllocator
+import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.capitalizeUS
 import dev.zacsweers.lattice.compiler.fir.LatticeFirValueParameter
 import dev.zacsweers.lattice.compiler.fir.LatticeKeys
+import dev.zacsweers.lattice.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.lattice.compiler.fir.callableDeclarations
 import dev.zacsweers.lattice.compiler.fir.constructType
 import dev.zacsweers.lattice.compiler.fir.findInjectConstructors
@@ -27,25 +29,43 @@ import dev.zacsweers.lattice.compiler.fir.hasOrigin
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedInject
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.lattice.compiler.fir.replaceAnnotationsSafe
+import dev.zacsweers.lattice.compiler.fir.wrapInProviderIfNecessary
+import dev.zacsweers.lattice.compiler.latticeAnnotations
 import dev.zacsweers.lattice.compiler.mapToArray
 import dev.zacsweers.lattice.compiler.newName
 import dev.zacsweers.lattice.compiler.unsafeLazy
+import kotlin.collections.set
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.caches.FirCache
+import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
+import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
+import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
+import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -54,6 +74,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
+import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
@@ -63,6 +84,7 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.types.ConstantValueKind
 
 /** Generates factory and membersinjector declarations for `@Inject`-annotated classes. */
 internal class InjectedClassFirGenerator(session: FirSession) :
@@ -80,6 +102,43 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     register(injectAnnotationPredicate)
   }
 
+  private val symbols: FirCache<Unit, Map<ClassId, FirNamedFunctionSymbol>, TypeResolveService?> =
+    session.firCachesFactory.createCache { _, _ ->
+      session.predicateBasedProvider
+        .getSymbolsByPredicate(injectAnnotationPredicate)
+        .filterIsInstance<FirNamedFunctionSymbol>()
+        .filter { it.callableId.classId == null }
+        .associateBy {
+          ClassId(
+            it.callableId.packageName,
+            "${it.callableId.callableName.capitalizeUS()}Class".asName(),
+          )
+        }
+    }
+
+  @ExperimentalTopLevelDeclarationsGenerationApi
+  override fun getTopLevelClassIds(): Set<ClassId> {
+    return symbols.getValue(Unit, null).keys
+  }
+
+  @ExperimentalTopLevelDeclarationsGenerationApi
+  override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
+    val function = symbols.getValue(Unit, null).getValue(classId)
+    val annotations = function.latticeAnnotations(session)
+    return createTopLevelClass(classId, LatticeKeys.TopLevelInjectFunctionClass)
+      .apply {
+        replaceAnnotationsSafe(
+          buildList {
+            add(buildInjectAnnotation())
+            add(buildInjectedFunctionClassAnnotation(function.callableId))
+            annotations.qualifier?.fir?.let(::add)
+            annotations.scope?.fir?.let(::add)
+          }
+        )
+      }
+      .symbol
+  }
+
   // TODO apparently writing these types of caches is bad and
   //  generate* functions should be side-effect-free, but honestly
   //  how is this practical without this? Or is it ok if it's just an
@@ -92,7 +151,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
   class InjectedClass(
     val classSymbol: FirClassSymbol<*>,
-    val constructor: FirConstructorSymbol?,
+    var isConstructorInjected: Boolean,
     val constructorParameters: List<LatticeFirValueParameter>,
   ) {
     private val parameterNameAllocator = NameAllocator()
@@ -126,7 +185,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     override fun toString(): String {
       return buildString {
         append(classSymbol.classId)
-        if (constructor != null) {
+        if (isConstructorInjected) {
           append(" (constructor)")
           if (constructorParameters.isNotEmpty()) {
             append(" constructorParams=$constructorParameters")
@@ -263,19 +322,31 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       // Checkers don't run first so we need to do superficial ones here before proceeding
       if (classSymbol.classKind != ClassKind.CLASS) return emptySet()
 
-      // If the class is annotated with @Inject, look for its primary constructor
-      val injectConstructor = classSymbol.findInjectConstructors(session).singleOrNull()
-      val params =
-        injectConstructor?.valueParameterSymbols.orEmpty().map {
-          LatticeFirValueParameter(session, it)
+      val injectedClass =
+        if (classSymbol.hasOrigin(LatticeKeys.TopLevelInjectFunctionClass)) {
+          val function = functionFor(classSymbol.classId)
+          val params =
+            function.valueParameterSymbols
+              .filterNot {
+                it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
+              }
+              .map { LatticeFirValueParameter(session, it, wrapInProvider = true) }
+          InjectedClass(classSymbol, true, params)
+        } else {
+          // If the class is annotated with @Inject, look for its primary constructor
+          val injectConstructor = classSymbol.findInjectConstructors(session).singleOrNull()
+          val params =
+            injectConstructor?.valueParameterSymbols.orEmpty().map {
+              LatticeFirValueParameter(session, it)
+            }
+          InjectedClass(classSymbol, injectConstructor != null, params)
         }
-      val injectedClass = InjectedClass(classSymbol, injectConstructor, params)
 
       // Ancestors not available at this phase, but we don't need them here anyway
       val declaredInjectedMembers = injectedClass.populateDeclaredMemberInjections(session)
 
       val classesToGenerate = mutableSetOf<Name>()
-      if (injectConstructor != null) {
+      if (injectedClass.isConstructorInjected) {
         val classId = classSymbol.classId.createNestedClassId(LatticeSymbols.Names.latticeFactory)
         injectFactoryClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
@@ -383,6 +454,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
+    if (classSymbol.hasOrigin(LatticeKeys.TopLevelInjectFunctionClass)) {
+      return setOf(SpecialNames.INIT, LatticeSymbols.Names.invoke)
+    }
+
     val isFactoryClass = classSymbol.hasOrigin(LatticeKeys.InjectConstructorFactoryClassDeclaration)
     val isObject = classSymbol.classKind == ClassKind.OBJECT
     val isFactoryCreatorClass =
@@ -436,6 +511,46 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
+    if (context.owner.hasOrigin(LatticeKeys.TopLevelInjectFunctionClass)) {
+      val function = functionFor(context.owner.classId)
+      val nonAssistedParams =
+        function.valueParameterSymbols
+          .filterNot { it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations) }
+          .map { LatticeFirValueParameter(session, it) }
+      return createConstructor(
+          context.owner,
+          LatticeKeys.Default,
+          isPrimary = true,
+          generateDelegatedNoArgConstructorCall = true,
+        ) {
+          for (param in nonAssistedParams) {
+            valueParameter(
+              param.name,
+              typeProvider = {
+                param.contextKey.typeKey.type
+                  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+                  .wrapInProviderIfNecessary(session)
+              },
+              key = LatticeKeys.ValueParameter,
+            )
+          }
+        }.apply {
+          for ((i, param) in valueParameters.withIndex()) {
+            val latticeParam = nonAssistedParams[i]
+            param.replaceAnnotationsSafe(
+              buildList {
+                addAll(param.annotations)
+                latticeParam.contextKey.typeKey.qualifier?.let {
+                  add(it.fir)
+                }
+              }
+            )
+          }
+      }
+        .symbol
+        .let(::listOf)
+    }
+
     val constructor =
       if (context.owner.classKind == ClassKind.OBJECT) {
         createDefaultPrivateConstructor(context.owner, LatticeKeys.Default)
@@ -460,6 +575,50 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     context: MemberGenerationContext?,
   ): List<FirNamedFunctionSymbol> {
     val nonNullContext = context ?: return emptyList()
+
+    if (nonNullContext.owner.hasOrigin(LatticeKeys.TopLevelInjectFunctionClass)) {
+      check(callableId.callableName == LatticeSymbols.Names.invoke)
+      val function = symbols.getValue(Unit, null).getValue(context.owner.classId)
+      // TODO default param values probably require generateMemberFunction
+      return createMemberFunction(
+          nonNullContext.owner,
+          LatticeKeys.TopLevelInjectFunctionClassFunction,
+          callableId.callableName,
+          returnTypeProvider = {
+            function.resolvedReturnType.withArguments(
+              it.mapToArray(FirTypeParameterRef::toConeType)
+            )
+          },
+        ) {
+          status {
+            isOperator = true
+            isSuspend = function.isSuspend
+            // TODO others?
+          }
+
+          for (param in function.valueParameterSymbols) {
+            if (!param.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)) {
+              continue
+            }
+            valueParameter(
+              param.name,
+              typeProvider = {
+                param.resolvedReturnType.withArguments(
+                  it.mapToArray(FirTypeParameterRef::toConeType)
+                )
+              },
+              key = LatticeKeys.ValueParameter,
+            )
+          }
+        }
+        .apply {
+          if (function.hasAnnotation(LatticeSymbols.ClassIds.composable, session)) {
+            replaceAnnotationsSafe(listOf(buildComposableAnnotation()))
+          }
+        }
+        .symbol
+        .let(::listOf)
+    }
 
     val targetClass =
       if (nonNullContext.owner.isCompanion) {
@@ -624,5 +783,38 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         }
     }
     return functions
+  }
+
+  private fun functionFor(classId: ClassId) =
+    functionForOrNullable(classId) ?: error("No injected function for $classId")
+
+  private fun functionForOrNullable(classId: ClassId) = symbols.getValue(Unit, null)[classId]
+
+  private fun buildInjectAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.injectClassSymbol }
+  }
+
+  private fun buildComposableAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.composableClassSymbol }
+  }
+
+  private fun buildInjectedFunctionClassAnnotation(callableId: CallableId): FirAnnotation {
+    return buildAnnotation {
+      val anno = session.latticeFirBuiltIns.injectedFunctionClassClassSymbol
+
+      annotationTypeRef = anno.defaultType().toFirResolvedTypeRef()
+
+      argumentMapping = buildAnnotationArgumentMapping {
+        mapping[Name.identifier("callableName")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.String,
+            value = callableId.callableName.asString(),
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+      }
+    }
   }
 }

@@ -218,7 +218,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
           }
         }
       }
-      .apply { replaceAnnotations(listOf(buildOriginAnnotation(contributions.first().origin))) }
+      .apply { replaceAnnotationsSafe(listOf(buildOriginAnnotation(contributions.first().origin))) }
       .symbol
   }
 

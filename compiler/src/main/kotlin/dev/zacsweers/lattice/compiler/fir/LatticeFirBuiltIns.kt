@@ -43,6 +43,11 @@ internal class LatticeFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val injectedFunctionClassClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.latticeInjectedFunctionClass)
+      as FirRegularClassSymbol
+  }
+
   val composableClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(LatticeSymbols.ClassIds.composable)
       as FirRegularClassSymbol

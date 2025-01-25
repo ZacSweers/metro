@@ -23,7 +23,7 @@ import dev.zacsweers.lattice.compiler.fir.copyParameters
 import dev.zacsweers.lattice.compiler.fir.generateMemberFunction
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
-import dev.zacsweers.lattice.compiler.fir.wrapInProvider
+import dev.zacsweers.lattice.compiler.fir.wrapInProviderIfNecessary
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
@@ -62,7 +62,7 @@ internal fun FirExtension.buildFactoryConstructor(
       extensionReceiver?.let {
         valueParameter(
           LatticeSymbols.Names.receiver,
-          it.wrapInProvider(),
+          it.wrapInProviderIfNecessary(session),
           key = LatticeKeys.ReceiverParameter,
         )
       }
@@ -79,7 +79,7 @@ internal fun FirExtension.buildFactoryConstructor(
         }
         valueParameter(
           valueParameter.name,
-          valueParameter.contextKey.typeKey.type.wrapInProvider(),
+          valueParameter.contextKey.typeKey.type.wrapInProviderIfNecessary(session),
           key = LatticeKeys.ValueParameter,
         )
       }
@@ -147,7 +147,7 @@ internal fun FirExtension.buildFactoryCreateFunction(
         this.valueParameters +=
           buildSimpleValueParameter(
             name = LatticeSymbols.Names.receiver,
-            type = it.wrapInProvider().toFirResolvedTypeRef(),
+            type = it.wrapInProviderIfNecessary(session).toFirResolvedTypeRef(),
             containingFunctionSymbol = thisFunctionSymbol,
             origin = LatticeKeys.ReceiverParameter.origin,
           )
@@ -163,7 +163,7 @@ internal fun FirExtension.buildFactoryCreateFunction(
         copyParameterDefaults = false,
       ) { original ->
         this.returnTypeRef =
-          original.contextKey.typeKey.type.wrapInProvider().toFirResolvedTypeRef()
+          original.contextKey.typeKey.type.wrapInProviderIfNecessary(session).toFirResolvedTypeRef()
       }
     }
     .symbol
@@ -226,7 +226,7 @@ internal fun FirExtension.buildNewInstanceFunction(
         // Will be copied in IR
         copyParameterDefaults = false,
       ) { original ->
-        this.returnTypeRef = original.contextKey.originalType.toFirResolvedTypeRef()
+        this.returnTypeRef = original.contextKey.originalType(session).toFirResolvedTypeRef()
       }
     }
     .symbol

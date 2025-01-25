@@ -29,6 +29,7 @@ import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirDeclarationGenera
 import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.lattice.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.ProvidesFactorySupertypeGenerator
+import dev.zacsweers.lattice.compiler.fir.generators.TopLevelInjectFunctionFirGenerator
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
@@ -41,25 +42,26 @@ internal class LatticeFirExtensionRegistrar(
   override fun ExtensionRegistrarContext.configurePlugin() {
     +LatticeFirBuiltIns.getFactory(latticeClassIds, options)
     +::LatticeFirCheckers
-    +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, true)
+    +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",
       ContributedInterfaceSupertypeGenerator.Factory(latticeClassIds)::create,
-      true,
+      false,
     )
     +supertypeGenerator(
       "Supertypes - provider factories",
       ::ProvidesFactorySupertypeGenerator,
-      true,
+      false,
     )
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer
-    +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, false)
+//    +declarationGenerator("FirGen - TopLevelInjectFunction", ::TopLevelInjectFunctionFirGenerator, true)
+    +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     if (options.generateAssistedFactories) {
-      +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, false)
+      +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
     }
-    +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, false)
-    +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, false)
+    +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, true)
+    +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, true)
     +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
   }

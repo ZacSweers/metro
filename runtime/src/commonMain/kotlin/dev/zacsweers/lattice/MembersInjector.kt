@@ -27,7 +27,7 @@ public interface MembersInjector<T : Any> {
    * absence of an injectable constructor.
    *
    * Whenever a [DependencyGraph] creates an instance, it performs this injection automatically
-   * (after first performing constructor injection), so if you're able to let the component create
+   * (after first performing constructor injection), so if you're able to let the graph create
    * all your objects for you, you'll never need to use this function.
    *
    * @param instance into which members are to be injected

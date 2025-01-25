@@ -17,15 +17,18 @@ package dev.zacsweers.lattice.compiler.ir.transformers
 
 import dev.zacsweers.lattice.compiler.LatticeOrigins
 import dev.zacsweers.lattice.compiler.LatticeSymbols
+import dev.zacsweers.lattice.compiler.asName
 import dev.zacsweers.lattice.compiler.exitProcessing
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.lattice.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irTemporary
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
+import dev.zacsweers.lattice.compiler.ir.parameterAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -33,10 +36,15 @@ import dev.zacsweers.lattice.compiler.ir.parameters.parameters
 import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.lattice.compiler.mapToSet
+import kotlin.collections.component1
+import kotlin.collections.component2
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -47,10 +55,15 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getAnnotation
+import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
 internal class InjectConstructorTransformer(
@@ -178,7 +191,7 @@ internal class InjectConstructorTransformer(
     */
     val invoke = factoryCls.requireSimpleFunction(LatticeSymbols.StringNames.INVOKE)
 
-    implementInvokeOrGetBody(
+    implementFactoryInvokeOrGetBody(
       invoke.owner,
       factoryCls.thisReceiverOrFail,
       newInstanceFunction,
@@ -187,13 +200,15 @@ internal class InjectConstructorTransformer(
       sourceParametersToFields,
     )
 
+    possiblyImplementInvoke(declaration, constructorParameters)
+
     factoryCls.dumpToLatticeLog()
 
     generatedFactories[injectedClassId] = factoryCls
     return factoryCls
   }
 
-  private fun implementInvokeOrGetBody(
+  private fun implementFactoryInvokeOrGetBody(
     invokeFunction: IrSimpleFunction,
     thisReceiver: IrValueParameter,
     newInstanceFunction: IrSimpleFunction,
@@ -254,6 +269,88 @@ internal class InjectConstructorTransformer(
           +irReturn(newInstance)
         }
       }
+  }
+
+  private fun possiblyImplementInvoke(
+    declaration: IrClass,
+    constructorParameters: Parameters<ConstructorParameter>,
+  ) {
+    val injectedFunctionClass =
+      declaration.getAnnotation(
+        LatticeSymbols.ClassIds.latticeInjectedFunctionClass.asSingleFqName()
+      )
+    if (injectedFunctionClass != null) {
+      val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
+      val callableId = CallableId(declaration.packageFqName!!, callableName)
+      val targetCallable = pluginContext.referenceFunctions(callableId).single()
+
+      // Assign fields
+      val constructorParametersToFields =
+        assignConstructorParamsToFields(constructorParameters, declaration)
+
+      val invokeFunction =
+        declaration.functions.first {
+          it.origin == LatticeOrigins.TopLevelInjectFunctionClassFunction
+        }
+
+      // TODO
+      //  copy default values
+      invokeFunction.apply {
+        val functionReceiver = dispatchReceiverParameter!!
+        body =
+          pluginContext.createIrBuilder(symbol).run {
+            val constructorParameterNames = constructorParameters
+              .valueParameters
+              .associate {
+                it.originalName to it
+              }
+
+            val functionParamsByName = invokeFunction.valueParameters.associate {
+              it.name to irGet(it)
+            }
+
+            val args =  targetCallable.owner
+              .parameters(latticeContext)
+              .valueParameters
+              .map { targetParam ->
+                when (val parameterName = targetParam.originalName) {
+                  in constructorParameterNames -> {
+                    val constructorParam = constructorParameterNames.getValue(parameterName)
+                    val providerInstance = irGetField(irGet(functionReceiver), constructorParametersToFields.getValue(constructorParam))
+                    val contextKey = targetParam.contextualTypeKey
+                    typeAsProviderArgument(
+                      context = latticeContext,
+                      contextKey = contextKey,
+                      bindingCode = providerInstance,
+                      isAssisted = false,
+                      isGraphInstance = constructorParam.isGraphInstance,
+                    )
+                  }
+                  in functionParamsByName -> {
+                    functionParamsByName.getValue(targetParam.originalName)
+                  }
+                  else -> error("Unmatched top level injected function param: $targetParam")
+                }
+              }
+
+            val invokeExpression =
+              irInvoke(
+                  callee = targetCallable,
+                  dispatchReceiver = null,
+                  extensionReceiver = null,
+                  typeHint = targetCallable.owner.returnType,
+                  args = args,
+                )
+                .apply {
+                  // TODO type params
+                }
+
+            irExprBodySafe(symbol, invokeExpression)
+          }
+      }
+
+      declaration.dumpToLatticeLog()
+    }
   }
 
   private fun generateCreators(

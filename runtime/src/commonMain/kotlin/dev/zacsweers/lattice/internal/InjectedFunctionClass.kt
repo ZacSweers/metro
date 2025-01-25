@@ -17,7 +17,6 @@ package dev.zacsweers.lattice.internal
 
 import kotlin.annotation.AnnotationTarget.CLASS
 import kotlin.annotation.AnnotationTarget.PROPERTY
-import kotlin.reflect.KClass
 
-/** Marker for generated graph interface to link their origin. */
-@Target(CLASS, PROPERTY) public annotation class Origin(val value: KClass<*>)
+/** Marker for generated class wrappers for injected top level functions. */
+@Target(CLASS, PROPERTY) public annotation class InjectedFunctionClass(val callableName: String)

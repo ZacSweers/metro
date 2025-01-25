@@ -36,6 +36,7 @@ internal interface LatticeFirValueParameter {
       symbol: FirCallableSymbol<*>,
       name: Name = symbol.name,
       memberKey: Name = name,
+      wrapInProvider: Boolean = false
     ): LatticeFirValueParameter =
       object : LatticeFirValueParameter {
         override val symbol = symbol
@@ -51,7 +52,9 @@ internal interface LatticeFirValueParameter {
          * Must be lazy because we may create this sooner than the [FirResolvePhase.TYPES] resolve
          * phase.
          */
-        private val contextKeyLazy = unsafeLazy { FirContextualTypeKey.from(session, symbol) }
+        private val contextKeyLazy = unsafeLazy {
+          FirContextualTypeKey.from(session, symbol, wrapInProvider = wrapInProvider)
+        }
         override val contextKey
           get() = contextKeyLazy.value
 

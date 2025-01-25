@@ -23,7 +23,7 @@ import dev.zacsweers.lattice.compiler.fir.constructType
 import dev.zacsweers.lattice.compiler.fir.hasOrigin
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
-import dev.zacsweers.lattice.compiler.fir.wrapInProvider
+import dev.zacsweers.lattice.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.lattice.compiler.mapToArray
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -246,7 +246,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
           owner,
           LatticeKeys.Default,
           LatticeSymbols.Names.create,
-          returnTypeProvider = { implClass.source.constructType(it).wrapInProvider() },
+          returnTypeProvider = { implClass.source.constructType(it).wrapInProviderIfNecessary(session) },
         ) {
           // Delegate factory
           valueParameter(
