@@ -433,6 +433,28 @@ public data class LatticeOptions(
       }
       options = options.copy(enabledLoggers = enabledLoggers)
 
+      options =
+        options.copy(
+          customAssistedAnnotations = customAssistedAnnotations,
+          customAssistedFactoryAnnotations = customAssistedFactoryAnnotations,
+          customAssistedInjectAnnotations = customAssistedInjectAnnotations,
+          customBindsAnnotations = customBindsAnnotations,
+          customBindsInstanceAnnotations = customBindsInstanceAnnotations,
+          customContributesToAnnotations = customContributesToAnnotations,
+          customContributesBindingAnnotations = customContributesBindingAnnotations,
+          customElementsIntoSetAnnotations = customElementsIntoSetAnnotations,
+          customGraphAnnotations = customGraphAnnotations,
+          customGraphFactoryAnnotations = customGraphFactoryAnnotations,
+          customInjectAnnotations = customInjectAnnotations,
+          customIntoMapAnnotations = customIntoMapAnnotations,
+          customIntoSetAnnotations = customIntoSetAnnotations,
+          customMapKeyAnnotations = customMapKeyAnnotations,
+          customMultibindsAnnotations = customMultibindsAnnotations,
+          customProvidesAnnotations = customProvidesAnnotations,
+          customQualifierAnnotations = customQualifierAnnotations,
+          customScopeAnnotations = customScopeAnnotations,
+        )
+
       return options
     }
 
