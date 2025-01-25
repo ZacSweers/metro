@@ -38,8 +38,8 @@ import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.StringKey
 import dev.zacsweers.lattice.createGraph
 import dev.zacsweers.lattice.createGraphFactory
-import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.GraphWithInheritedScopes.AppScopeBase
-import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.GraphWithInheritedScopes.SingletonBase
+import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.AppScopeBase
+import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.SingletonBase
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1144,11 +1144,12 @@ class DependencyGraphProcessingTest {
     assertEquals(0L, graph.longValue)
   }
 
+  @Singleton interface SingletonBase
+
+  @SingleIn(AppScope::class) interface AppScopeBase
+
   @DependencyGraph
   abstract class GraphWithInheritedScopes : SingletonBase, AppScopeBase {
-    @Singleton interface SingletonBase
-
-    @SingleIn(AppScope::class) interface AppScopeBase
 
     private var intCounter = 0
     private var longCounter = 0L
