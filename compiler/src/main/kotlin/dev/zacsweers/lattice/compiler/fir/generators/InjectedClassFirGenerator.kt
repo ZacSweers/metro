@@ -116,6 +116,32 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         }
     }
 
+  /**
+   * For top-level `@Inject`-annotated functions we generate synthetic classes.
+   *
+   * ```
+   * @Inject
+   * fun App(message: String) {
+   *   // ...
+   * }
+   * ```
+   *
+   * Will generate
+   *
+   * ```
+   * class AppClass @Inject constructor(private val message: String) {
+   *   operator fun invoke() {
+   *     App(message)
+   *   }
+   * }
+   * ```
+   *
+   * Annotations and `suspend` modifiers will be copied over as well.
+   */
+  // TODO
+  //  private works
+  //  visibility of params and return type
+  //  no extension receivers
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
     return symbols.getValue(Unit, null).keys
