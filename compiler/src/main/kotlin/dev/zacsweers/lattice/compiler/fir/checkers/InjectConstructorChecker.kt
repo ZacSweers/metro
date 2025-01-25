@@ -39,7 +39,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       declaration.annotationsIn(session, latticeClassIds.injectAnnotations).toList()
 
     val injectedConstructor =
-      declaration.symbol.findInjectConstructor(session, context, reporter) {
+      declaration.symbol.findInjectConstructor(session, context, reporter, checkClass = false) {
         return
       }
 

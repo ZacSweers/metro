@@ -377,9 +377,10 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
   session: FirSession,
   context: CheckerContext,
   reporter: DiagnosticReporter,
+  checkClass: Boolean,
   onError: () -> Nothing,
 ): FirConstructorSymbol? {
-  val constructorInjections = findInjectConstructors(session, checkClass = false)
+  val constructorInjections = findInjectConstructors(session, checkClass = checkClass)
   return when (constructorInjections.size) {
     0 -> null
     1 -> {

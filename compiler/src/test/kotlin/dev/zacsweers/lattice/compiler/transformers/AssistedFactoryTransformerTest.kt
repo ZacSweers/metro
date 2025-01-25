@@ -248,7 +248,7 @@ class AssistedFactoryTransformerTest : LatticeCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:6:7 `@AssistedFactory` targets must have a single `@Inject`-annotated constructor."
+        "e: ExampleClass.kt:6:7 `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
       )
     }
   }

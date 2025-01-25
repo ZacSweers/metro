@@ -74,14 +74,14 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // Ensure target type has an inject constructor
     val targetType = function.resolvedReturnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
-      targetType.symbol.findInjectConstructor(session, context, reporter) {
+      targetType.symbol.findInjectConstructor(session, context, reporter, checkClass = true) {
         return
       }
     if (injectConstructor == null) {
       reporter.reportOn(
         targetType.source,
         ASSISTED_INJECTION_ERROR,
-        "`@AssistedFactory` targets must have a single `@Inject`-annotated constructor.",
+        "`@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
         context,
       )
       return
