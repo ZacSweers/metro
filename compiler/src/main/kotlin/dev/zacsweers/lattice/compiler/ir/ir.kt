@@ -155,6 +155,7 @@ internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<
 }
 
 internal fun <T> IrConstructorCall.constArgumentOfTypeAt(position: Int): T? {
+  if (valueArgumentsCount == 0) return null
   return (getValueArgument(position) as? IrConst?)?.valueAs()
 }
 
