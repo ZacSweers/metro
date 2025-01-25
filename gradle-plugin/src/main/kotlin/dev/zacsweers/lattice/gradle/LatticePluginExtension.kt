@@ -24,13 +24,13 @@ import org.gradle.api.provider.SetProperty
 public abstract class LatticePluginExtension @Inject constructor(objects: ObjectFactory) {
 
   public val customAnnotations: CustomAnnotations =
-    objects.newInstance<CustomAnnotations>(CustomAnnotations::class.java)
+      objects.newInstance<CustomAnnotations>(CustomAnnotations::class.java)
 
   public val enabled: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+      objects.property(Boolean::class.javaObjectType).convention(true)
 
   public val debug: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+      objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * Configures custom annotations to support in generated code, usually from another DI framework.
@@ -104,8 +104,8 @@ public abstract class LatticePluginExtension @Inject constructor(objects: Object
 
     @JvmOverloads
     public fun includeAnvil(
-      includeDaggerAnvil: Boolean = true,
-      includeKotlinInjectAnvil: Boolean = true,
+        includeDaggerAnvil: Boolean = true,
+        includeKotlinInjectAnvil: Boolean = true,
     ) {
       if (includeDaggerAnvil) {
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
