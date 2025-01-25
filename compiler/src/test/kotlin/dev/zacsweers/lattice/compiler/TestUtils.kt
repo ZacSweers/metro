@@ -27,7 +27,9 @@ import dev.zacsweers.lattice.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.internal.Factory
 import dev.zacsweers.lattice.provider
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.PrintStream
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -570,5 +572,24 @@ private fun Class<*>.allSupertypes(
         )
       }
     }
+  }
+}
+
+fun captureStandardOut(block: () -> Unit): String {
+  val originalOut = System.out
+  val outputStream = ByteArrayOutputStream()
+  val printStream = PrintStream(outputStream)
+
+  return try {
+    printStream.use {
+      System.setOut(it)
+      block()
+      outputStream.toString().trim()
+        .ifBlank {
+          throw AssertionError("No output was written to System.out")
+        }
+    }
+  } finally {
+    System.setOut(originalOut)
   }
 }
