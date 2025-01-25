@@ -13,28 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-pluginManagement {
-  repositories {
-    google()
-    mavenCentral()
-    gradlePluginPortal()
+plugins {
+  alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.atomicfu)
+  id("dev.zacsweers.lattice")
+}
+
+kotlin {
+  jvm()
+
+  sourceSets {
+    commonMain {
+      dependencies {
+        implementation(libs.kotlinInject.runtime)
+      }
+    }
+    commonTest {
+      dependencies {
+        implementation(libs.kotlin.test)
+      }
+    }
   }
 }
 
-dependencyResolutionManagement {
-  versionCatalogs { maybeCreate("libs").apply { from(files("../gradle/libs.versions.toml")) } }
-  repositories {
-    google()
-    mavenCentral()
+lattice {
+  customAnnotations {
+    includeKotlinInject()
   }
 }
-
-rootProject.name = "lattice-samples"
-
-include(
-  ":basic",
-  ":interop:customAnnotations-dagger",
-  ":interop:customAnnotations-kotlinInject",
-)
-
-includeBuild("..")
