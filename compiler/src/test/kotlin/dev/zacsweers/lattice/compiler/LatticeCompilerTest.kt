@@ -89,6 +89,99 @@ abstract class LatticeCompilerTest {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
               }
+              LatticeOption.CUSTOM_ASSISTED -> {
+                if (customAssistedAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customAssistedAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_ASSISTED_FACTORY -> {
+                if (customAssistedFactoryAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customAssistedFactoryAnnotations.joinToString(":"),
+                )
+              }
+              LatticeOption.CUSTOM_ASSISTED_INJECT -> {
+                if (customAssistedInjectAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customAssistedInjectAnnotations.joinToString(":"),
+                )
+              }
+              LatticeOption.CUSTOM_BINDS -> {
+                if (customBindsAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customBindsAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_BINDS_INSTANCE -> {
+                if (customBindsInstanceAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customBindsInstanceAnnotations.joinToString(":"),
+                )
+              }
+              LatticeOption.CUSTOM_CONTRIBUTES_TO -> {
+                if (customContributesToAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customContributesToAnnotations.joinToString(":"),
+                )
+              }
+              LatticeOption.CUSTOM_CONTRIBUTES_BINDING -> {
+                if (customContributesBindingAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customContributesBindingAnnotations.joinToString(":"),
+                )
+              }
+              LatticeOption.CUSTOM_ELEMENTS_INTO_SET -> {
+                if (customElementsIntoSetAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customElementsIntoSetAnnotations.joinToString(":"),
+                )
+              }
+              LatticeOption.CUSTOM_GRAPH -> {
+                if (customGraphAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customGraphAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_GRAPH_FACTORY -> {
+                if (customGraphFactoryAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customGraphFactoryAnnotations.joinToString(":"),
+                )
+              }
+              LatticeOption.CUSTOM_INJECT -> {
+                if (customInjectAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customInjectAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_INTO_MAP -> {
+                if (customIntoMapAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customIntoMapAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_INTO_SET -> {
+                if (customIntoSetAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customIntoSetAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_MAP_KEY -> {
+                if (customMapKeyAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customMapKeyAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_MULTIBINDS -> {
+                if (customMultibindsAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customMultibindsAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_PROVIDES -> {
+                if (customProvidesAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customProvidesAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_QUALIFIER -> {
+                if (customQualifierAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customQualifierAnnotations.joinToString(":"))
+              }
+              LatticeOption.CUSTOM_SCOPE -> {
+                if (customScopeAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
+              }
             }
           yield(option)
         }
