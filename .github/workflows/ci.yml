@@ -66,8 +66,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-konan-
 
-      - name: Test
+      - name: Check root project
         run: ./gradlew check --quiet
+
+      - name: Check gradle plugin
+        run: ./gradlew -p gradle-plugin check --quiet
+
+      - name: Check samples
+        run: ./gradlew -p samples check --quiet
 
 #  publish:
 #    runs-on: macos-14

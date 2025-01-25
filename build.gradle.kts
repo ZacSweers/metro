@@ -45,7 +45,7 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "sample", "integration-tests")
+  ignoredProjects += listOf("compiler", "integration-tests")
   ignoredPackages += listOf("dev.zacsweers.lattice.internal")
   @OptIn(ExperimentalBCVApi::class)
   klib {

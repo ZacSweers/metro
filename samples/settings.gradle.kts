@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Zac Sweers
+ * Copyright (C) 2025 Zac Sweers
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,15 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
+  versionCatalogs { maybeCreate("libs").apply { from(files("../gradle/libs.versions.toml")) } }
   repositories {
     google()
     mavenCentral()
   }
 }
 
-rootProject.name = "lattice"
+rootProject.name = "lattice-samples"
 
-include(":compiler", "integration-tests", ":runtime")
+include(":basic")
 
-includeBuild("gradle-plugin") {
-  dependencySubstitution {
-    substitute(module("dev.zacsweers.lattice:gradle-plugin")).using(project(":"))
-  }
-}
+includeBuild("..")
