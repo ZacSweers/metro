@@ -184,7 +184,6 @@ abstract class LatticeCompilerTest {
     val CLASS_NAME_REGEX = Regex("(class|object|interface) (?<name>[a-zA-Z0-9_]+)")
     val FUNCTION_NAME_REGEX = Regex("fun( <[a-zA-Z0-9_]+>)? (?<name>[a-zA-Z0-9_]+)")
 
-
     val COMPOSABLE =
       kotlin(
         "Composable.kt",

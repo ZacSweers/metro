@@ -397,16 +397,17 @@ class TopLevelInjectTest : LatticeCompilerTest() {
   fun `composable annotations are copied`() {
     val result =
       compile(
-        sourceFiles = arrayOf(
-          COMPOSABLE,
-          source(
-          """
+        sourceFiles =
+          arrayOf(
+            COMPOSABLE,
+            source(
+              """
             import androidx.compose.runtime.Composable
 
             @Composable
             @Inject
             fun App() {
-              
+
             }
 
             @DependencyGraph
@@ -414,8 +415,9 @@ class TopLevelInjectTest : LatticeCompilerTest() {
               val app: AppClass
             }
           """
-            .trimIndent()
-        )),
+                .trimIndent()
+            ),
+          ),
         debug = true,
       )
 
@@ -444,7 +446,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @Provides private fun provideDeferred(): Deferred<String> {
                 return CompletableDeferred("Hello, world!")
               }
