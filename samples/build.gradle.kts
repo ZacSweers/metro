@@ -16,13 +16,14 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
-import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
+  alias(libs.plugins.kotlin.kapt) apply false
+  alias(libs.plugins.ksp) apply false
   alias(libs.plugins.atomicfu) apply false
   id("dev.zacsweers.lattice") apply false
   alias(libs.plugins.spotless)
