@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -340,7 +341,7 @@ private fun FirBasedSymbol<*>.latticeAnnotations(
   var qualifier: LatticeFirAnnotation? = null
   val mapKeys = mutableSetOf<LatticeFirAnnotation>()
 
-  for (annotation in resolvedAnnotationsWithArguments) {
+  for (annotation in annotations.filter { it.isResolved }) {
     if (annotation !is FirAnnotationCall) continue
     val annotationType = annotation.resolvedType as? ConeClassLikeType ?: continue
     val annotationClass = annotationType.toClassSymbol(session) ?: continue
