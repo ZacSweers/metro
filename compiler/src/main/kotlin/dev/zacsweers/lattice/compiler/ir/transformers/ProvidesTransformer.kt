@@ -27,7 +27,6 @@ import dev.zacsweers.lattice.compiler.ir.IrAnnotation
 import dev.zacsweers.lattice.compiler.ir.LatticeTransformerContext
 import dev.zacsweers.lattice.compiler.ir.TypeKey
 import dev.zacsweers.lattice.compiler.ir.assignConstructorParamsToFields
-import dev.zacsweers.lattice.compiler.ir.checkNotNullCall
 import dev.zacsweers.lattice.compiler.ir.createIrBuilder
 import dev.zacsweers.lattice.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.lattice.compiler.ir.finalizeFakeOverride
@@ -46,14 +45,12 @@ import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.isWordPrefixRegex
 import dev.zacsweers.lattice.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -62,6 +59,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
@@ -229,13 +227,28 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
 
     // TODO This is ugly
+    var parameterIndexOffset = 0
+    if (!reference.isInObject) {
+      // These will always have an instance parameter
+      parameterIndexOffset++
+    }
+    if (reference.callee.owner.extensionReceiverParameter != null) {
+      parameterIndexOffset++
+    }
     val sourceParametersToFields: Map<Parameter, IrField> =
       constructorParametersToFields.entries.associate { (irParam, field) ->
         val sourceParam =
           if (irParam.origin == LatticeOrigins.InstanceParameter) {
             sourceParameters.instance!!
+          } else if (irParam.index == -1) {
+            error(
+              "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
+            )
           } else {
-            sourceParameters.valueParameters[irParam.index - 1]
+            sourceParameters.valueParameters.getOrNull(irParam.index - parameterIndexOffset)
+              ?: error(
+                "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
+              )
           }
         sourceParam to field
       }
@@ -342,8 +355,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     reference: CallableReference,
     factoryParameters: Parameters<ConstructorParameter>,
   ): IrSimpleFunction {
-    val returnTypeIsNullable = reference.isNullable
-
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
     val classToGenerateCreatorsIn =
@@ -373,68 +384,26 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
       ) { function ->
         val valueParameters = function.valueParameters
 
-        val argumentsWithoutGraph: IrBuilderWithScope.() -> List<IrExpression> = {
-          valueParameters.drop(1).map { irGet(it) }
-        }
-        val arguments: IrBuilderWithScope.() -> List<IrExpression> = {
-          valueParameters.map { irGet(it) }
-        }
+        val args =
+          valueParameters.filter { it.origin == LatticeOrigins.ValueParameter }.map { irGet(it) }
 
-        when {
-          isObject && returnTypeIsNullable -> {
-            // Static graph call, allows nullable returns
+        val dispatchReceiver =
+          if (reference.isInObject) {
+            // Static graph call
             // ExampleGraph.$callableName$arguments
-            irInvoke(
-              dispatchReceiver = irGetObject(reference.parent),
-              extensionReceiver = null, // TODO unimplemented
-              callee = reference.callee,
-              args = arguments(),
-            )
-          }
-          isObject && !returnTypeIsNullable -> {
-            // Static graph call that doesn't allow nullable
-            // checkNotNull(ExampleGraph.$callableName$arguments) {
-            //   "Cannot return null from a non-@Nullable @Provides method"
-            // }
-            checkNotNullCall(
-              latticeContext,
-              function,
-              irInvoke(
-                dispatchReceiver = irGetObject(reference.parent),
-                extensionReceiver = null, // TODO unimplemented
-                callee = reference.callee,
-                args = arguments(),
-              ),
-              "Cannot return null from a non-@Nullable @Provides method",
-            )
-          }
-          !isObject && returnTypeIsNullable -> {
-            // Instance graph call, allows nullable returns
+            irGetObject(reference.parent)
+          } else {
+            // Instance graph call
             // exampleGraph.$callableName$arguments
-            irInvoke(
-              dispatchReceiver = irGet(valueParameters[0]),
-              extensionReceiver = null, // TODO unimplemented
-              reference.callee,
-              args = argumentsWithoutGraph(),
-            )
+            irGet(valueParameters[0])
           }
-          // !isObject && !returnTypeIsNullable
-          else -> {
-            // Instance graph call, does not allow nullable returns
-            // exampleGraph.$callableName$arguments
-            checkNotNullCall(
-              latticeContext,
-              function,
-              irInvoke(
-                dispatchReceiver = irGet(valueParameters[0]),
-                extensionReceiver = null, // TODO unimplemented
-                callee = reference.callee,
-                args = argumentsWithoutGraph(),
-              ),
-              "Cannot return null from a non-@Nullable @Provides method",
-            )
-          }
-        }
+
+        irInvoke(
+          dispatchReceiver = dispatchReceiver,
+          extensionReceiver = null,
+          callee = reference.callee,
+          args = args,
+        )
       }
 
     return newInstanceFunction
