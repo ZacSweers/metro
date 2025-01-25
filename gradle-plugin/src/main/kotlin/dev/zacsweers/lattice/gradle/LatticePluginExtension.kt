@@ -65,6 +65,10 @@ public abstract class LatticePluginExtension @Inject constructor(objects: Object
     /** Includes Dagger annotations support. */
     @JvmOverloads
     public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
+      if (!includeJavax && !includeJakarta) {
+        System.err.println(
+            "At least one of lattice.customAnnotations.includeDagger.includeJavax or lattice.customAnnotations.includeDagger.includeJakarta should be true")
+      }
       assisted.add("dagger/assisted/Assisted")
       assistedFactory.add("dagger/assisted/AssistedFactory")
       assistedInject.add("dagger/assisted/AssistedInject")
@@ -107,11 +111,17 @@ public abstract class LatticePluginExtension @Inject constructor(objects: Object
         includeDaggerAnvil: Boolean = true,
         includeKotlinInjectAnvil: Boolean = true,
     ) {
+      check(includeDaggerAnvil || includeKotlinInjectAnvil) {
+        "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
+      }
       if (includeDaggerAnvil) {
+        graph.add("com/squareup/anvil/annotations/MergeComponent")
+        graphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
         contributesBinding.add("com/squareup/anvil/annotations/ContributesBinding")
       }
       if (includeKotlinInjectAnvil) {
+        graph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")
         contributesTo.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesTo")
         contributesBinding.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesBinding")
       }
