@@ -828,7 +828,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   }
 
   private fun buildStableAnnotation(): FirAnnotation {
-    return buildSimpleAnnotation { session.latticeFirBuiltIns.composableClassSymbol }
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.stableClassSymbol }
   }
 
   private fun buildInjectedFunctionClassAnnotation(callableId: CallableId): FirAnnotation {
