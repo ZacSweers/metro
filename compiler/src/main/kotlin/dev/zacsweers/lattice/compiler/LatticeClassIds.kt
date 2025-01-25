@@ -21,22 +21,24 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 internal class LatticeClassIds(
-  customInjectAnnotations: Set<ClassId> = emptySet(),
-  customProvidesAnnotations: Set<ClassId> = emptySet(),
-  customBindsAnnotations: Set<ClassId> = emptySet(),
-  customDependencyGraphAnnotations: Set<ClassId> = emptySet(),
-  customScopeAnnotations: Set<ClassId> = emptySet(),
-  customQualifierAnnotations: Set<ClassId> = emptySet(),
-  customBindsInstanceAnnotations: Set<ClassId> = emptySet(),
   customAssistedAnnotations: Set<ClassId> = emptySet(),
-  customAssistedInjectAnnotations: Set<ClassId> = emptySet(),
   customAssistedFactoryAnnotations: Set<ClassId> = emptySet(),
-  customIntoSetAnnotations: Set<ClassId> = emptySet(),
+  customAssistedInjectAnnotations: Set<ClassId> = emptySet(),
+  customBindsAnnotations: Set<ClassId> = emptySet(),
+  customBindsInstanceAnnotations: Set<ClassId> = emptySet(),
+  customContributesToAnnotations: Set<ClassId> = emptySet(),
+  customContributesBindingAnnotations: Set<ClassId> = emptySet(),
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
-  customMapKeyAnnotations: Set<ClassId> = emptySet(),
-  customLazyClassKeyAnnotations: Set<ClassId> = emptySet(),
+  customGraphAnnotations: Set<ClassId> = emptySet(),
+  customGraphFactoryAnnotations: Set<ClassId> = emptySet(),
+  customInjectAnnotations: Set<ClassId> = emptySet(),
   customIntoMapAnnotations: Set<ClassId> = emptySet(),
+  customIntoSetAnnotations: Set<ClassId> = emptySet(),
+  customMapKeyAnnotations: Set<ClassId> = emptySet(),
   customMultibindsAnnotations: Set<ClassId> = emptySet(),
+  customProvidesAnnotations: Set<ClassId> = emptySet(),
+  customQualifierAnnotations: Set<ClassId> = emptySet(),
+  customScopeAnnotations: Set<ClassId> = emptySet(),
 ) {
   private fun FqName.classIdOf(simpleName: String): ClassId {
     return classIdOf(Name.identifier(simpleName))
@@ -50,9 +52,9 @@ internal class LatticeClassIds(
   private val dependencyGraphAnnotation =
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("DependencyGraph")
   val dependencyGraphAnnotations =
-    setOf(dependencyGraphAnnotation) + customDependencyGraphAnnotations
+    setOf(dependencyGraphAnnotation) + customGraphAnnotations
   val dependencyGraphFactoryAnnotations =
-    setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory")))
+    setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory"))) + customGraphFactoryAnnotations
 
   // Assisted inject
   private val latticeAssisted = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Assisted")
@@ -93,9 +95,6 @@ internal class LatticeClassIds(
   val mapKeyAnnotations =
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("MapKey")) +
       customMapKeyAnnotations
-  val lazyClassKeyAnnotations =
-    setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("LazyClassKey")) +
-      customLazyClassKeyAnnotations
   val intoMapAnnotations =
     setOf(LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("IntoMap")) +
       customIntoMapAnnotations
@@ -113,8 +112,8 @@ internal class LatticeClassIds(
   private val contributesIntoMapAnnotation =
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesIntoMap")
 
-  val contributesToAnnotations = setOf(contributesToAnnotation) // TODO custom
-  val contributesBindingAnnotations = setOf(contributesBindingAnnotation) // TODO custom
+  val contributesToAnnotations = setOf(contributesToAnnotation) + customContributesToAnnotations
+  val contributesBindingAnnotations = setOf(contributesBindingAnnotation) + customContributesBindingAnnotations
   val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) // TODO custom
   val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) // TODO custom
   val allContributesAnnotations =

@@ -35,7 +35,27 @@ public class LatticeCompilerPluginRegistrar : CompilerPluginRegistrar() {
     val options = LatticeOptions.load(configuration)
     if (!options.enabled) return
 
-    val classIds = LatticeClassIds()
+    val classIds =
+      LatticeClassIds(
+        customAssistedAnnotations = options.customAssistedAnnotations,
+        customAssistedFactoryAnnotations = options.customAssistedFactoryAnnotations,
+        customAssistedInjectAnnotations = options.customAssistedInjectAnnotations,
+        customBindsAnnotations = options.customBindsAnnotations,
+        customBindsInstanceAnnotations = options.customBindsInstanceAnnotations,
+        customContributesToAnnotations = options.customContributesToAnnotations,
+        customContributesBindingAnnotations = options.customContributesBindingAnnotations,
+        customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
+        customGraphAnnotations = options.customGraphAnnotations,
+        customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
+        customInjectAnnotations = options.customInjectAnnotations,
+        customIntoMapAnnotations = options.customIntoMapAnnotations,
+        customIntoSetAnnotations = options.customIntoSetAnnotations,
+        customMapKeyAnnotations = options.customMapKeyAnnotations,
+        customMultibindsAnnotations = options.customMultibindsAnnotations,
+        customProvidesAnnotations = options.customProvidesAnnotations,
+        customQualifierAnnotations = options.customQualifierAnnotations,
+        customScopeAnnotations = options.customScopeAnnotations,
+      )
     FirExtensionRegistrarAdapter.registerExtension(LatticeFirExtensionRegistrar(classIds, options))
     IrGenerationExtension.registerExtension(
       LatticeIrGenerationExtension(configuration.messageCollector, classIds, options)
