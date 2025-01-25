@@ -19,6 +19,7 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.lattice.compiler.LatticeAnnotations
 import dev.zacsweers.lattice.compiler.LatticeSymbols
 import dev.zacsweers.lattice.compiler.expectAs
+import dev.zacsweers.lattice.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -66,6 +67,19 @@ internal class ContextualTypeKey(
     }
     if (hasDefault) {
       append(" = ...")
+    }
+  }
+
+  fun toIrType(latticeContext: LatticeTransformerContext): IrType {
+    val rawType = typeKey.type
+    return when {
+      isWrappedInProvider -> rawType.wrapInProvider(latticeContext.symbols.latticeProvider)
+      isWrappedInLazy -> rawType.wrapInProvider(latticeContext.symbols.stdlibLazy)
+      isLazyWrappedInProvider -> {
+        rawType.wrapInProvider(latticeContext.symbols.stdlibLazy)
+          .wrapInProvider(latticeContext.symbols.latticeProvider)
+      }
+      else -> rawType
     }
   }
 
