@@ -26,6 +26,7 @@ kotlin {
     commonMain {
       dependencies {
         implementation(libs.kotlinInject.runtime)
+        implementation(libs.kotlinInject.anvil.runtime)
       }
     }
     commonTest {
@@ -39,5 +40,6 @@ kotlin {
 lattice {
   customAnnotations {
     includeKotlinInject()
+    includeAnvil()
   }
 }

@@ -22,10 +22,12 @@ plugins {
 lattice {
   customAnnotations {
     includeDagger()
+    includeAnvil()
   }
 }
 
 dependencies {
+  implementation(libs.anvil.annotations)
   implementation(libs.dagger.runtime)
   testImplementation(libs.kotlin.test)
 }
