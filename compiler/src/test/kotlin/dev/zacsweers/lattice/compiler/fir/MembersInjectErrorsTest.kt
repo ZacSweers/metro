@@ -16,46 +16,12 @@
 package dev.zacsweers.lattice.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
-import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertDiagnostics
 import dev.zacsweers.lattice.compiler.assertNoWarningsOrErrors
 import org.junit.Test
 
 class MembersInjectErrorsTest : LatticeCompilerTest() {
-
-  private val composable =
-    kotlin(
-      "Composable.kt",
-      """
-    package androidx.compose.runtime
-
-    @Target(
-      // function declarations
-      // @Composable fun Foo() { ... }
-      // lambda expressions
-      // val foo = @Composable { ... }
-      AnnotationTarget.FUNCTION,
-
-      // type declarations
-      // var foo: @Composable () -> Unit = { ... }
-      // parameter types
-      // foo: @Composable () -> Unit
-      AnnotationTarget.TYPE,
-
-      // composable types inside of type signatures
-      // foo: (@Composable () -> Unit) -> Unit
-      AnnotationTarget.TYPE_PARAMETER,
-
-      // composable property getters and setters
-      // val foo: Int @Composable get() { ... }
-      // var bar: Int
-      //   @Composable get() { ... }
-      AnnotationTarget.PROPERTY_GETTER
-    )
-    annotation class Composable
-    """,
-    )
 
   @Test
   fun `suspend functions are unsupported`() {
@@ -81,7 +47,7 @@ class MembersInjectErrorsTest : LatticeCompilerTest() {
     compile(
       sourceFiles =
         arrayOf(
-          composable,
+          COMPOSABLE,
           source(
             """
             import androidx.compose.runtime.Composable
@@ -106,7 +72,7 @@ class MembersInjectErrorsTest : LatticeCompilerTest() {
     compile(
       sourceFiles =
         arrayOf(
-          composable,
+          COMPOSABLE,
           source(
             """
             import androidx.compose.runtime.Composable
@@ -127,7 +93,7 @@ class MembersInjectErrorsTest : LatticeCompilerTest() {
     compile(
       sourceFiles =
         arrayOf(
-          composable,
+          COMPOSABLE,
           source(
             """
             import androidx.compose.runtime.Composable

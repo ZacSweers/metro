@@ -36,7 +36,9 @@ import java.lang.reflect.Modifier
 import java.util.concurrent.Callable
 import kotlin.reflect.KCallable
 import kotlin.reflect.KProperty
+import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.companionObject
+import kotlin.reflect.full.declaredFunctions
 import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.memberProperties
@@ -354,9 +356,30 @@ fun <T> Any.callFactoryInvoke(vararg args: Any): T {
 
 fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
+  return getInstanceMethod(name)
+    .invoke(this, *args) as T
+}
+
+fun Any.getInstanceMethod(name: String): Method {
+  @Suppress("UNCHECKED_CAST")
   return javaClass.methods
     .single { it.name == name && !Modifier.isStatic(it.modifiers) }
-    .invoke(this, *args) as T
+}
+
+suspend fun <T> Any.invokeSuspendInstanceFunction(name: String, vararg args: Any): T {
+  // Add the instance receiver as the first argument
+  val mergedArgs = Array(1 + args.size) {
+    when (it) {
+      0 -> this
+      else -> args[it - 1]
+    }
+  }
+  @Suppress("UNCHECKED_CAST")
+  return javaClass
+    .kotlin
+    .declaredFunctions
+    .single { it.name == name }
+    .callSuspend(*mergedArgs) as T
 }
 
 /** Returns a new instance of a graph's factory class by invoking its static "factory" function. */

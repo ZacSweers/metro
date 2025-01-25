@@ -70,4 +70,6 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation(libs.truth)
+  testImplementation(libs.coroutines)
+  testImplementation(libs.coroutines.test)
 }

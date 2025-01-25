@@ -528,7 +528,8 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               param.name,
               typeProvider = {
                 param.contextKey.typeKey.type
-                  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
+                  // TODO need to remap these
+                  //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
                   .wrapInProviderIfNecessary(session)
               },
               key = LatticeKeys.ValueParameter,
@@ -584,9 +585,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           LatticeKeys.TopLevelInjectFunctionClassFunction,
           callableId.callableName,
           returnTypeProvider = {
-            function.resolvedReturnType.withArguments(
-              it.mapToArray(FirTypeParameterRef::toConeType)
-            )
+            function.resolvedReturnType
+            // TODO need to remap these
+            //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
           },
         ) {
           status {
@@ -602,9 +603,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             valueParameter(
               param.name,
               typeProvider = {
-                param.resolvedReturnType.withArguments(
-                  it.mapToArray(FirTypeParameterRef::toConeType)
-                )
+                param.resolvedReturnType
+                // TODO need to remap these
+                //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
               },
               key = LatticeKeys.ValueParameter,
             )

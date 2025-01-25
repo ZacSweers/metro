@@ -23,7 +23,10 @@ import dev.zacsweers.lattice.compiler.captureStandardOut
 import dev.zacsweers.lattice.compiler.createGraphViaFactory
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
+import dev.zacsweers.lattice.compiler.getInstanceMethod
 import dev.zacsweers.lattice.compiler.invokeInstanceMethod
+import dev.zacsweers.lattice.compiler.invokeSuspendInstanceFunction
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class TopLevelInjectTest : LatticeCompilerTest() {
@@ -388,5 +391,73 @@ class TopLevelInjectTest : LatticeCompilerTest() {
     val app = graph.callProperty<Any>("app")
     val output = app.invokeInstanceMethod<String>("invoke", "Hello, world!")
     assertThat(output).isEqualTo("Hello, world!23")
+  }
+
+  @Test
+  fun `composable annotations are copied`() {
+    val result =
+      compile(
+        sourceFiles = arrayOf(
+          COMPOSABLE,
+          source(
+          """
+            import androidx.compose.runtime.Composable
+
+            @Composable
+            @Inject
+            fun App() {
+              
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val app: AppClass
+            }
+          """
+            .trimIndent()
+        )),
+        debug = true,
+      )
+
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val app = graph.callProperty<Any>("app")
+    val method = app.getInstanceMethod("invoke")
+    assertThat(method.annotations.map { it.annotationClass.qualifiedName })
+      .contains("androidx.compose.runtime.Composable")
+  }
+
+  @Test
+  fun `suspend keywords are propagated`() = runTest {
+    val result =
+      compile(
+        source(
+          """
+            import kotlinx.coroutines.Deferred
+            import kotlinx.coroutines.CompletableDeferred
+
+            @Inject
+            suspend fun App(deferred: Deferred<String>): String {
+              return deferred.await()
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val app: AppClass
+              
+              @Provides private fun provideDeferred(): Deferred<String> {
+                return CompletableDeferred("Hello, world!")
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        debug = true,
+      )
+
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+    val app = graph.callProperty<Any>("app")
+    val output = app.invokeSuspendInstanceFunction<String>("invoke")
+    assertThat(output).isEqualTo("Hello, world!")
   }
 }
