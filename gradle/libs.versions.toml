@@ -14,8 +14,12 @@
 
 [versions]
 autoService = "1.1.1"
+anvil = "0.4.1"
+dagger = "2.55"
 kotlinCompileTesting = "0.7.0"
 kotlin = "2.1.0"
+kotlinInject = "0.7.2"
+kotlinInject-anvil = "0.1.2"
 kotlinx-coroutines = "1.10.1"
 jdk = "23"
 jvmTarget = "11"
@@ -25,6 +29,7 @@ okio = "3.10.2"
 pluginId = "dev.zacsweers.lattice.compiler"
 
 [plugins]
+anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version = "0.27.0" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -37,11 +42,23 @@ poko = { id = "dev.drewhamilton.poko", version = "0.18.2" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.2" }
 
 [libraries]
+anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
+anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
+
 autoService = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
 autoService-ksp = { module = "dev.zacsweers.autoservice:auto-service-ksp", version = "1.2.0" }
 
 coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+
+dagger-runtime = { module = "com.google.dagger:dagger", version.ref = "dagger" }
+dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
+
+kotlinInject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlinInject" }
+kotlinInject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime", version.ref = "kotlinInject" }
+kotlinInject-anvil-compiler = { module = "software.amazon.lastmile.kotlin.inject.anvil:compiler", version.ref = "kotlinInject-anvil" }
+kotlinInject-anvil-runtime = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime", version.ref = "kotlinInject-anvil" }
+kotlinInject-anvil-runtime-optional = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime-optional", version.ref = "kotlinInject-anvil" }
 
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
 kotlin-compilerEmbeddable = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin" }
