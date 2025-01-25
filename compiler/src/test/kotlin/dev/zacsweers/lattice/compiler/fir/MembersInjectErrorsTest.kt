@@ -47,7 +47,7 @@ class MembersInjectErrorsTest : LatticeCompilerTest() {
     compile(
       sourceFiles =
         arrayOf(
-          COMPOSABLE,
+          COMPOSE_ANNOTATIONS,
           source(
             """
             import androidx.compose.runtime.Composable
@@ -72,7 +72,7 @@ class MembersInjectErrorsTest : LatticeCompilerTest() {
     compile(
       sourceFiles =
         arrayOf(
-          COMPOSABLE,
+          COMPOSE_ANNOTATIONS,
           source(
             """
             import androidx.compose.runtime.Composable
@@ -93,7 +93,7 @@ class MembersInjectErrorsTest : LatticeCompilerTest() {
     compile(
       sourceFiles =
         arrayOf(
-          COMPOSABLE,
+          COMPOSE_ANNOTATIONS,
           source(
             """
             import androidx.compose.runtime.Composable

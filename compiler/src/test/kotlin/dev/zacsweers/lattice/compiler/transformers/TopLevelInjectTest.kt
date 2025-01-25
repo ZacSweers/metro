@@ -399,7 +399,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
       compile(
         sourceFiles =
           arrayOf(
-            COMPOSABLE,
+            COMPOSE_ANNOTATIONS,
             source(
               """
             import androidx.compose.runtime.Composable
