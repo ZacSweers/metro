@@ -28,7 +28,6 @@ import dev.zacsweers.lattice.compiler.ir.irExprBodySafe
 import dev.zacsweers.lattice.compiler.ir.irInvoke
 import dev.zacsweers.lattice.compiler.ir.irTemporary
 import dev.zacsweers.lattice.compiler.ir.isExternalParent
-import dev.zacsweers.lattice.compiler.ir.parameterAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameter
 import dev.zacsweers.lattice.compiler.ir.parameters.Parameters
@@ -37,7 +36,6 @@ import dev.zacsweers.lattice.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.lattice.compiler.ir.requireSimpleFunction
 import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.lattice.compiler.mapToSet
 import kotlin.collections.component1
 import kotlin.collections.component2
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -299,24 +297,22 @@ internal class InjectConstructorTransformer(
         val functionReceiver = dispatchReceiverParameter!!
         body =
           pluginContext.createIrBuilder(symbol).run {
-            val constructorParameterNames = constructorParameters
-              .valueParameters
-              .associate {
-                it.originalName to it
-              }
+            val constructorParameterNames =
+              constructorParameters.valueParameters.associate { it.originalName to it }
 
-            val functionParamsByName = invokeFunction.valueParameters.associate {
-              it.name to irGet(it)
-            }
+            val functionParamsByName =
+              invokeFunction.valueParameters.associate { it.name to irGet(it) }
 
-            val args =  targetCallable.owner
-              .parameters(latticeContext)
-              .valueParameters
-              .map { targetParam ->
+            val args =
+              targetCallable.owner.parameters(latticeContext).valueParameters.map { targetParam ->
                 when (val parameterName = targetParam.originalName) {
                   in constructorParameterNames -> {
                     val constructorParam = constructorParameterNames.getValue(parameterName)
-                    val providerInstance = irGetField(irGet(functionReceiver), constructorParametersToFields.getValue(constructorParam))
+                    val providerInstance =
+                      irGetField(
+                        irGet(functionReceiver),
+                        constructorParametersToFields.getValue(constructorParam),
+                      )
                     val contextKey = targetParam.contextualTypeKey
                     typeAsProviderArgument(
                       context = latticeContext,

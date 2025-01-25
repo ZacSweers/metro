@@ -584,10 +584,9 @@ fun captureStandardOut(block: () -> Unit): String {
     printStream.use {
       System.setOut(it)
       block()
-      outputStream.toString().trim()
-        .ifBlank {
-          throw AssertionError("No output was written to System.out")
-        }
+      outputStream.toString().trim().ifBlank {
+        throw AssertionError("No output was written to System.out")
+      }
     }
   } finally {
     System.setOut(originalOut)

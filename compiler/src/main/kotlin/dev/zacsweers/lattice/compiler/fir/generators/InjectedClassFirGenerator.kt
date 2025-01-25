@@ -534,19 +534,18 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               key = LatticeKeys.ValueParameter,
             )
           }
-        }.apply {
+        }
+        .apply {
           for ((i, param) in valueParameters.withIndex()) {
             val latticeParam = nonAssistedParams[i]
             param.replaceAnnotationsSafe(
               buildList {
                 addAll(param.annotations)
-                latticeParam.contextKey.typeKey.qualifier?.let {
-                  add(it.fir)
-                }
+                latticeParam.contextKey.typeKey.qualifier?.let { add(it.fir) }
               }
             )
           }
-      }
+        }
         .symbol
         .let(::listOf)
     }

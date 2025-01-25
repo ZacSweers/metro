@@ -53,7 +53,13 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // TODO put all these into a set to check?
     if (declaration.symbol.isDependencyGraph(session)) return
     if (declaration.symbol.isGraphFactory(session)) return
-    if (declaration.symbol.isAnnotatedWithAny(session, session.latticeClassIds.assistedFactoryAnnotations)) return
+    if (
+      declaration.symbol.isAnnotatedWithAny(
+        session,
+        session.latticeClassIds.assistedFactoryAnnotations,
+      )
+    )
+      return
 
     val isConstructorInjected by unsafeLazy {
       declaration.symbol.findInjectConstructors(session, checkClass = true).firstOrNull() != null

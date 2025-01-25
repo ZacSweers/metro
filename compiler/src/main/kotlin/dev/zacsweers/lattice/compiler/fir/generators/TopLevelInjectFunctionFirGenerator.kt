@@ -102,7 +102,10 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
         .filterIsInstance<FirNamedFunctionSymbol>()
         .filter { it.callableId.classId == null }
         .associateBy {
-          ClassId(it.callableId.packageName, "${it.callableId.callableName.capitalizeUS()}Class".asName())
+          ClassId(
+            it.callableId.packageName,
+            "${it.callableId.callableName.capitalizeUS()}Class".asName(),
+          )
         }
     }
 
@@ -139,7 +142,7 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
   override fun generateNestedClassLikeDeclaration(
     owner: FirClassSymbol<*>,
     name: Name,
-    context: NestedClassGenerationContext
+    context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
     // TODO Generate companion if >0 args, object for 0 args
     return super.generateNestedClassLikeDeclaration(owner, name, context)
@@ -147,7 +150,7 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
 
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
-    context: NestedClassGenerationContext
+    context: NestedClassGenerationContext,
   ): Set<Name> {
     return super.getNestedClassifiersNames(classSymbol, context)
   }
@@ -173,21 +176,23 @@ internal class TopLevelInjectFunctionFirGenerator(session: FirSession) :
           it.isAnnotatedWithAny(session, session.latticeClassIds.assistedAnnotations)
         }
       return createConstructor(
-        context.owner,
-        LatticeKeys.Default,
-        isPrimary = true,
-        generateDelegatedNoArgConstructorCall = true,
-      ) {
-        for (param in nonAssistedParams) {
-          valueParameter(
-            param.name,
-            typeProvider = {
-              param.resolvedReturnType.withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
-            },
-            key = LatticeKeys.ValueParameter,
-          )
+          context.owner,
+          LatticeKeys.Default,
+          isPrimary = true,
+          generateDelegatedNoArgConstructorCall = true,
+        ) {
+          for (param in nonAssistedParams) {
+            valueParameter(
+              param.name,
+              typeProvider = {
+                param.resolvedReturnType.withArguments(
+                  it.mapToArray(FirTypeParameterRef::toConeType)
+                )
+              },
+              key = LatticeKeys.ValueParameter,
+            )
+          }
         }
-      }
         .symbol
         .let(::listOf)
     }

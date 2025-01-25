@@ -44,16 +44,14 @@ class TopLevelInjectTest : LatticeCompilerTest() {
               val app: AppClass
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val output = captureStandardOut {
-      app.invokeInstanceMethod<Any>("invoke")
-    }
+    val output = captureStandardOut { app.invokeInstanceMethod<Any>("invoke") }
     assertThat(output).isEqualTo("Hello, world!")
   }
 
@@ -73,16 +71,14 @@ class TopLevelInjectTest : LatticeCompilerTest() {
               val app: AppClass
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val output = captureStandardOut {
-      app.invokeInstanceMethod<Any>("invoke", "Hello, world!")
-    }
+    val output = captureStandardOut { app.invokeInstanceMethod<Any>("invoke", "Hello, world!") }
     assertThat(output).isEqualTo("Hello, world!")
   }
 
@@ -100,23 +96,22 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@BindsInstance message: String): ExampleGraph
               }
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
-    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")
 
     val app = graph.callProperty<Any>("app")
-    val output = captureStandardOut {
-      app.invokeInstanceMethod<Any>("invoke")
-    }
+    val output = captureStandardOut { app.invokeInstanceMethod<Any>("invoke") }
     assertThat(output).isEqualTo("Hello, world!")
   }
 
@@ -134,18 +129,19 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@BindsInstance message: String): ExampleGraph
               }
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
-    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")
+    val graph =
+      result.ExampleGraph.generatedLatticeGraphClass().createGraphViaFactory("Hello, world!")
 
     val app = graph.callProperty<Any>("app")
     val returnString = app.invokeInstanceMethod<String>("invoke", 2)
@@ -166,7 +162,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             abstract class ExampleGraph {
               abstract val app: AppClass
-              
+
               private var count: Int = 0
 
               @Provides private fun provideInt(): Int {
@@ -174,14 +170,14 @@ class TopLevelInjectTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val invoker = { app.invokeInstanceMethod<Int>("invoke")}
+    val invoker = { app.invokeInstanceMethod<Int>("invoke") }
     assertThat(invoker()).isEqualTo(0)
     assertThat(invoker()).isEqualTo(1)
     assertThat(invoker()).isEqualTo(2)
@@ -201,7 +197,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             abstract class ExampleGraph {
               abstract val app: AppClass
-              
+
               private var count: Int = 0
 
               @Provides private fun provideInt(): Int {
@@ -209,15 +205,15 @@ class TopLevelInjectTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
-        debug = true
+        debug = true,
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val invoker = { app.invokeInstanceMethod<Int>("invoke")}
+    val invoker = { app.invokeInstanceMethod<Int>("invoke") }
     assertThat(invoker()).isEqualTo(0)
     assertThat(invoker()).isEqualTo(1)
     assertThat(invoker()).isEqualTo(2)
@@ -241,7 +237,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             abstract class ExampleGraph {
               abstract val app: AppClass
-              
+
               private var count: Int = 0
 
               @Provides private fun provideInt(): Int {
@@ -249,17 +245,18 @@ class TopLevelInjectTest : LatticeCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
-        debug = true
+        debug = true,
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
-    // Lazy is scoped to the function, so while it's lazy in the function it's not lazy to multiple function calls
+    // Lazy is scoped to the function, so while it's lazy in the function it's not lazy to multiple
+    // function calls
     // The sample snippet adds some inner lazy calls though to ensure it's lazy within the function
     val app = graph.callProperty<Any>("app")
-    val invoker = { app.invokeInstanceMethod<Int>("invoke")}
+    val invoker = { app.invokeInstanceMethod<Int>("invoke") }
     assertThat(invoker()).isEqualTo(0)
     assertThat(invoker()).isEqualTo(1)
     assertThat(invoker()).isEqualTo(2)
@@ -279,20 +276,20 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @Named("int") @Provides private fun provideInt(): Int {
                 return 0
               }
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val invoker = { app.invokeInstanceMethod<Int>("invoke")}
+    val invoker = { app.invokeInstanceMethod<Int>("invoke") }
     assertThat(invoker()).isEqualTo(0)
   }
 
@@ -311,20 +308,20 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               @Named("app") val app: AppClass
-              
+
               @Provides private fun provideInt(): Int {
                 return 0
               }
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
-    val invoker = { app.invokeInstanceMethod<Int>("invoke")}
+    val invoker = { app.invokeInstanceMethod<Int>("invoke") }
     assertThat(invoker()).isEqualTo(0)
   }
 
@@ -344,21 +341,21 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @Provides private fun provideInt(): Int {
                 return 0
               }
             }
           """
-            .trimIndent(),
-        ),
+            .trimIndent()
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val app = graph.callProperty<Any>("app")
     assertThat(app).isSameInstanceAs(graph.callProperty<Any>("app"))
-    val invoker = { app.invokeInstanceMethod<Int>("invoke")}
+    val invoker = { app.invokeInstanceMethod<Int>("invoke") }
     assertThat(invoker()).isEqualTo(0)
   }
 
@@ -376,14 +373,14 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass
-              
+
               @Provides private val provideInt: Int get() = 2
               @Provides private val provideLong: Long get() = 3
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
-        debug = true
+        debug = true,
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()

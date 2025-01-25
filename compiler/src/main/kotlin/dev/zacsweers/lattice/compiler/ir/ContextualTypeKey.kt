@@ -76,7 +76,8 @@ internal class ContextualTypeKey(
       isWrappedInProvider -> rawType.wrapInProvider(latticeContext.symbols.latticeProvider)
       isWrappedInLazy -> rawType.wrapInProvider(latticeContext.symbols.stdlibLazy)
       isLazyWrappedInProvider -> {
-        rawType.wrapInProvider(latticeContext.symbols.stdlibLazy)
+        rawType
+          .wrapInProvider(latticeContext.symbols.stdlibLazy)
           .wrapInProvider(latticeContext.symbols.latticeProvider)
       }
       else -> rawType

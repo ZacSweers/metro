@@ -39,12 +39,13 @@ internal class FirContextualTypeKey(
 ) {
 
   fun originalType(session: FirSession): ConeKotlinType =
-      when {
-        isLazyWrappedInProvider -> typeKey.type.wrapInLazyIfNecessary(session).wrapInProviderIfNecessary(session)
-        isWrappedInProvider -> typeKey.type.wrapInProviderIfNecessary(session)
-        isWrappedInLazy -> typeKey.type.wrapInLazyIfNecessary(session)
-        else -> typeKey.type
-      }
+    when {
+      isLazyWrappedInProvider ->
+        typeKey.type.wrapInLazyIfNecessary(session).wrapInProviderIfNecessary(session)
+      isWrappedInProvider -> typeKey.type.wrapInProviderIfNecessary(session)
+      isWrappedInLazy -> typeKey.type.wrapInLazyIfNecessary(session)
+      else -> typeKey.type
+    }
 
   override fun toString(): String = render(short = true)
 
@@ -81,12 +82,14 @@ internal class FirContextualTypeKey(
       type: ConeKotlinType = callable.resolvedReturnTypeRef.coneType,
       wrapInProvider: Boolean = false,
     ): FirContextualTypeKey {
-      return type.letIf(wrapInProvider) { it.wrapInProviderIfNecessary(session) }.asFirContextualTypeKey(
-        session = session,
-        qualifierAnnotation =
-          callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
-        hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
-      )
+      return type
+        .letIf(wrapInProvider) { it.wrapInProviderIfNecessary(session) }
+        .asFirContextualTypeKey(
+          session = session,
+          qualifierAnnotation =
+            callable.findAnnotation(session, FirBasedSymbol<*>::qualifierAnnotation),
+          hasDefault = callable is FirValueParameterSymbol && callable.hasDefaultValue,
+        )
     }
   }
 }

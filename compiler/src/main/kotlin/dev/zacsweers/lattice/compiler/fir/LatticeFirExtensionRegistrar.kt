@@ -29,7 +29,6 @@ import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirDeclarationGenera
 import dev.zacsweers.lattice.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.lattice.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.lattice.compiler.fir.generators.ProvidesFactorySupertypeGenerator
-import dev.zacsweers.lattice.compiler.fir.generators.TopLevelInjectFunctionFirGenerator
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
@@ -55,7 +54,8 @@ internal class LatticeFirExtensionRegistrar(
     )
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer
-//    +declarationGenerator("FirGen - TopLevelInjectFunction", ::TopLevelInjectFunctionFirGenerator, true)
+    //    +declarationGenerator("FirGen - TopLevelInjectFunction",
+    // ::TopLevelInjectFunctionFirGenerator, true)
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)

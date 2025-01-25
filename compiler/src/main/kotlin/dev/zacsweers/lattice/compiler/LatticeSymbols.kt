@@ -82,7 +82,8 @@ internal class LatticeSymbols(
     val latticeProvider = ClassId(FqNames.latticeRuntimePackage, Names.providerClassName)
     val latticeProvides = ClassId(FqNames.latticeRuntimePackage, "Provides".asName())
     val latticeOrigin = ClassId(FqNames.latticeRuntimeInternalPackage, "Origin".asName())
-    val latticeInjectedFunctionClass = ClassId(FqNames.latticeRuntimeInternalPackage, "InjectedFunctionClass".asName())
+    val latticeInjectedFunctionClass =
+      ClassId(FqNames.latticeRuntimeInternalPackage, "InjectedFunctionClass".asName())
     val membersInjector = ClassId(FqNames.latticeRuntimePackage, Names.membersInjector)
     val lazy = StandardClassIds.byName("Lazy")
     val map = StandardClassIds.Map

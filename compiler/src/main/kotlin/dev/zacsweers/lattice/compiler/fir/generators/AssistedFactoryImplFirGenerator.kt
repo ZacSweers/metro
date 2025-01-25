@@ -246,7 +246,9 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
           owner,
           LatticeKeys.Default,
           LatticeSymbols.Names.create,
-          returnTypeProvider = { implClass.source.constructType(it).wrapInProviderIfNecessary(session) },
+          returnTypeProvider = {
+            implClass.source.constructType(it).wrapInProviderIfNecessary(session)
+          },
         ) {
           // Delegate factory
           valueParameter(

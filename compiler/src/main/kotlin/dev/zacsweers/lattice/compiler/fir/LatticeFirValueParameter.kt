@@ -36,7 +36,7 @@ internal interface LatticeFirValueParameter {
       symbol: FirCallableSymbol<*>,
       name: Name = symbol.name,
       memberKey: Name = name,
-      wrapInProvider: Boolean = false
+      wrapInProvider: Boolean = false,
     ): LatticeFirValueParameter =
       object : LatticeFirValueParameter {
         override val symbol = symbol
