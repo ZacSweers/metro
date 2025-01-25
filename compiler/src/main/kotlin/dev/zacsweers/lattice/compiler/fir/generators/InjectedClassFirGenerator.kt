@@ -159,6 +159,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             add(buildInjectedFunctionClassAnnotation(function.callableId))
             annotations.qualifier?.fir?.let(::add)
             annotations.scope?.fir?.let(::add)
+            if (annotations.isComposable) {
+              add(buildStableAnnotation())
+            }
           }
         )
       }
@@ -821,6 +824,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   }
 
   private fun buildComposableAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.latticeFirBuiltIns.composableClassSymbol }
+  }
+
+  private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.latticeFirBuiltIns.composableClassSymbol }
   }
 

@@ -74,6 +74,7 @@ internal class LatticeSymbols(
     val anyClass = StandardClassIds.Any
     val jsExportIgnore = JsStandardClassIds.Annotations.JsExportIgnore
     val composable = ClassId(FqNames.composeRuntime, "Composable".asName())
+    val stable = ClassId(FqNames.composeRuntime, "Stable".asName())
     val latticeBinds = ClassId(FqNames.latticeRuntimePackage, Names.bindsClassName)
     val latticeInject = ClassId(FqNames.latticeRuntimePackage, "Inject".asName())
     val latticeIntoSet = ClassId(FqNames.latticeRuntimePackage, "IntoSet".asName())
