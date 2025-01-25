@@ -17,11 +17,11 @@ package dev.zacsweers.lattice.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
-import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.lattice.compiler.ExampleGraph
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
 import dev.zacsweers.lattice.compiler.assertDiagnostics
 import dev.zacsweers.lattice.compiler.callProperty
+import dev.zacsweers.lattice.compiler.companionObjectClass
 import dev.zacsweers.lattice.compiler.createGraphWithNoArgs
 import dev.zacsweers.lattice.compiler.generatedLatticeGraphClass
 import dev.zacsweers.lattice.compiler.invokeCreateAs
@@ -46,7 +46,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               fun provideValue(): String = "Hello, world!"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -73,7 +73,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               val value: String get() = "Hello, world!"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -165,7 +165,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               fun provideStringValue(intValue: Int): String = "Hello, ${'$'}intValue!"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -179,6 +179,35 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
     // Exercise calling the create + invoke() functions
     val providesFactory =
       providesFactoryClass.invokeCreateAs<Factory<String>>(graph, provider { 2 })
+    assertThat(providesFactory()).isEqualTo("Hello, 2!")
+  }
+
+  @Test
+  fun `simple function provider in companion object with arguments`() {
+    val result =
+      compile(
+        source(
+          """
+            interface ExampleGraph {
+              companion object {
+                @Provides
+                fun provideStringValue(intValue: Int): String = "Hello, ${'$'}intValue!"
+              }
+            }
+          """
+            .trimIndent()
+        )
+      )
+
+    val providesFactoryClass =
+      result.ExampleGraph.companionObjectClass.providesFactoryClass("provideStringValue")
+
+    // Exercise calling the static provideValue function directly
+    val providedValue = providesFactoryClass.provideValueAs<String>("provideStringValue", 2)
+    assertThat(providedValue).isEqualTo("Hello, 2!")
+
+    // Exercise calling the create + invoke() functions
+    val providesFactory = providesFactoryClass.invokeCreateAs<Factory<String>>(provider { 2 })
     assertThat(providesFactory()).isEqualTo("Hello, 2!")
   }
 
@@ -200,7 +229,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, ${'$'}intValue! ${'$'}booleanValue"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -236,7 +265,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -276,7 +305,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
               ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
             }
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -444,4 +473,7 @@ class ProvidesTransformerTest : LatticeCompilerTest() {
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
   }
+
+  // TODO
+  //  companion object with value params (missing receiver)
 }
