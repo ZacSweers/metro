@@ -51,10 +51,10 @@ internal class LatticeClassIds(
   // Graphs
   private val dependencyGraphAnnotation =
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("DependencyGraph")
-  val dependencyGraphAnnotations =
-    setOf(dependencyGraphAnnotation) + customGraphAnnotations
+  val dependencyGraphAnnotations = setOf(dependencyGraphAnnotation) + customGraphAnnotations
   val dependencyGraphFactoryAnnotations =
-    setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory"))) + customGraphFactoryAnnotations
+    setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory"))) +
+      customGraphFactoryAnnotations
 
   // Assisted inject
   private val latticeAssisted = LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("Assisted")
@@ -113,7 +113,8 @@ internal class LatticeClassIds(
     LatticeSymbols.FqNames.latticeRuntimePackage.classIdOf("ContributesIntoMap")
 
   val contributesToAnnotations = setOf(contributesToAnnotation) + customContributesToAnnotations
-  val contributesBindingAnnotations = setOf(contributesBindingAnnotation) + customContributesBindingAnnotations
+  val contributesBindingAnnotations =
+    setOf(contributesBindingAnnotation) + customContributesBindingAnnotations
   val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) // TODO custom
   val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) // TODO custom
   val allContributesAnnotations =
