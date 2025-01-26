@@ -545,14 +545,20 @@ internal fun IrClass.getAllSuperTypes(
 internal fun IrExpression.doubleCheck(
   irBuilder: IrBuilderWithScope,
   symbols: LatticeSymbols,
+  typeKey: TypeKey,
 ): IrExpression =
   with(irBuilder) {
+    val providerType = typeKey.type.wrapInProvider(symbols.latticeProvider)
     irInvoke(
-      dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-      callee = symbols.doubleCheckProvider,
-      typeHint = null,
-      args = listOf(this@doubleCheck),
-    )
+        dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+        callee = symbols.doubleCheckProvider,
+        typeHint = providerType,
+        args = listOf(this@doubleCheck),
+      )
+      .apply {
+        putTypeArgument(0, providerType)
+        putTypeArgument(1, typeKey.type)
+      }
   }
 
 internal fun IrClass.allFunctions(pluginContext: IrPluginContext): Sequence<IrSimpleFunction> {
