@@ -15,19 +15,21 @@
  */
 package dev.zacsweers.lattice.compiler
 
+import java.nio.file.Path
+import java.nio.file.Paths
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.name.ClassId
 
-internal data class RawLatticeOption<T : Any>(
+internal data class RawLatticeOption<T>(
   val name: String,
   val defaultValue: T,
   val description: String,
   val valueDescription: String,
   val required: Boolean = false,
   val allowMultipleOccurrences: Boolean = false,
-  val valueMapper: (String) -> T,
+  val valueMapper: (String) -> T & Any,
 ) {
   val key: CompilerConfigurationKey<T> = CompilerConfigurationKey(name)
   val cliOption =
@@ -83,6 +85,17 @@ internal enum class LatticeOption(val raw: RawLatticeOption<*>) {
       description = "Enable/disable Lattice's plugin on the given compilation",
       required = false,
       allowMultipleOccurrences = false,
+    )
+  ),
+  REPORTS_DESTINATION(
+    RawLatticeOption<String?>(
+      name = "reports-destination",
+      defaultValue = null,
+      valueDescription = "Path to a directory to dump Lattice reports information",
+      description = "Path to a directory to dump Lattice reports information",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it }
     )
   ),
   GENERATE_ASSISTED_FACTORIES(
@@ -311,45 +324,46 @@ internal enum class LatticeOption(val raw: RawLatticeOption<*>) {
 }
 
 public data class LatticeOptions(
-  val debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
-  val enabled: Boolean = LatticeOption.ENABLED.raw.defaultValue.expectAs(),
+  val debug: Boolean = LatticeOption.DEBUG.raw.defaultValue!!.expectAs(),
+  val enabled: Boolean = LatticeOption.ENABLED.raw.defaultValue!!.expectAs(),
+  val reportsDestination: Path? = LatticeOption.REPORTS_DESTINATION.raw.defaultValue?.expectAs<String>()?.takeUnless(String::isBlank)?.let(Paths::get),
   val generateAssistedFactories: Boolean =
-    LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
-  val enabledLoggers: Set<LatticeLogger.Type> = LatticeOption.LOGGING.raw.defaultValue.expectAs(),
+    LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue!!.expectAs(),
+  val enabledLoggers: Set<LatticeLogger.Type> = LatticeOption.LOGGING.raw.defaultValue!!.expectAs(),
   // Custom annotations
   val customAssistedAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_ASSISTED.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_ASSISTED.raw.defaultValue!!.expectAs(),
   val customAssistedFactoryAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_ASSISTED_FACTORY.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_ASSISTED_FACTORY.raw.defaultValue!!.expectAs(),
   val customAssistedInjectAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_ASSISTED_INJECT.raw.defaultValue.expectAs(),
-  val customBindsAnnotations: Set<ClassId> = LatticeOption.CUSTOM_BINDS.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_ASSISTED_INJECT.raw.defaultValue!!.expectAs(),
+  val customBindsAnnotations: Set<ClassId> = LatticeOption.CUSTOM_BINDS.raw.defaultValue!!.expectAs(),
   val customBindsInstanceAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_BINDS_INSTANCE.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_BINDS_INSTANCE.raw.defaultValue!!.expectAs(),
   val customContributesToAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_CONTRIBUTES_TO.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_CONTRIBUTES_TO.raw.defaultValue!!.expectAs(),
   val customContributesBindingAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_CONTRIBUTES_BINDING.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_CONTRIBUTES_BINDING.raw.defaultValue!!.expectAs(),
   val customElementsIntoSetAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue.expectAs(),
-  val customGraphAnnotations: Set<ClassId> = LatticeOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue!!.expectAs(),
+  val customGraphAnnotations: Set<ClassId> = LatticeOption.CUSTOM_GRAPH.raw.defaultValue!!.expectAs(),
   val customGraphFactoryAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_GRAPH_FACTORY.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_GRAPH_FACTORY.raw.defaultValue!!.expectAs(),
   val customInjectAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_INJECT.raw.defaultValue!!.expectAs(),
   val customIntoMapAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_INTO_MAP.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_INTO_MAP.raw.defaultValue!!.expectAs(),
   val customIntoSetAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_INTO_SET.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_INTO_SET.raw.defaultValue!!.expectAs(),
   val customMapKeyAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_MAP_KEY.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_MAP_KEY.raw.defaultValue!!.expectAs(),
   val customMultibindsAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_MULTIBINDS.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_MULTIBINDS.raw.defaultValue!!.expectAs(),
   val customProvidesAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_PROVIDES.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_PROVIDES.raw.defaultValue!!.expectAs(),
   val customQualifierAnnotations: Set<ClassId> =
-    LatticeOption.CUSTOM_QUALIFIER.raw.defaultValue.expectAs(),
-  val customScopeAnnotations: Set<ClassId> = LatticeOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
+    LatticeOption.CUSTOM_QUALIFIER.raw.defaultValue!!.expectAs(),
+  val customScopeAnnotations: Set<ClassId> = LatticeOption.CUSTOM_SCOPE.raw.defaultValue!!.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): LatticeOptions {
@@ -381,6 +395,10 @@ public data class LatticeOptions(
           LatticeOption.DEBUG -> options = options.copy(debug = configuration.getAsBoolean(entry))
           LatticeOption.ENABLED ->
             options = options.copy(enabled = configuration.getAsBoolean(entry))
+          LatticeOption.REPORTS_DESTINATION -> {
+            @Suppress("UNCHECKED_CAST")
+            options = options.copy(reportsDestination = configuration.get<String>(entry.raw.key as CompilerConfigurationKey<String>, "").takeUnless(String::isBlank)?.let(Paths::get))
+          }
           LatticeOption.GENERATE_ASSISTED_FACTORIES ->
             options = options.copy(generateAssistedFactories = configuration.getAsBoolean(entry))
           LatticeOption.LOGGING -> {

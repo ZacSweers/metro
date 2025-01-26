@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.gradle
 
 import javax.inject.Inject
 import org.gradle.api.Action
+import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
@@ -31,6 +32,8 @@ public abstract class LatticePluginExtension @Inject constructor(objects: Object
 
   public val debug: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(false)
+
+  public abstract val reportsDestination: DirectoryProperty
 
   /**
    * Configures custom annotations to support in generated code, usually from another DI framework.

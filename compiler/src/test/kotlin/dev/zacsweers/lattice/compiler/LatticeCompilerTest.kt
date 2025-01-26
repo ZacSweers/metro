@@ -23,6 +23,7 @@ import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
+import kotlin.io.path.absolutePathString
 import okio.Buffer
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.compiler.plugin.CliOption
@@ -49,9 +50,9 @@ abstract class LatticeCompilerTest {
 
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
-    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
+    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue!!.expectAs(),
     generateAssistedFactories: Boolean =
-      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
+      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue!!.expectAs(),
     options: LatticeOptions =
       LatticeOptions(debug = debug, generateAssistedFactories = generateAssistedFactories),
     previousCompilationResult: JvmCompilationResult? = null,
@@ -83,6 +84,7 @@ abstract class LatticeCompilerTest {
             when (entry) {
               LatticeOption.DEBUG -> processor.option(entry.raw.cliOption, debug)
               LatticeOption.ENABLED -> processor.option(entry.raw.cliOption, enabled)
+              LatticeOption.REPORTS_DESTINATION -> processor.option(entry.raw.cliOption, reportsDestination?.absolutePathString().orEmpty())
               LatticeOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               LatticeOption.LOGGING -> {
@@ -229,9 +231,9 @@ abstract class LatticeCompilerTest {
   protected fun compile(
     vararg sourceFiles: SourceFile,
     latticeEnabled: Boolean = true,
-    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
+    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue!!.expectAs(),
     generateAssistedFactories: Boolean =
-      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
+      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue!!.expectAs(),
     options: LatticeOptions =
       LatticeOptions(
         enabled = latticeEnabled,

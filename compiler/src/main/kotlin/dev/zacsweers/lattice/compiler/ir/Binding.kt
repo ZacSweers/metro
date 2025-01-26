@@ -395,7 +395,7 @@ internal sealed interface Binding {
             appendLine()
             appendBindingStack(bindingStack, short = false)
             if (latticeContext.debug) {
-              appendLine(bindingGraph.dumpGraph(short = false))
+              appendLine(bindingGraph.dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
             }
           }
 

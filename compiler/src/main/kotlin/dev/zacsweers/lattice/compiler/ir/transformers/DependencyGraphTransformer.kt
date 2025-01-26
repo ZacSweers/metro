@@ -66,6 +66,10 @@ import dev.zacsweers.lattice.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.lattice.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.lattice.compiler.ir.withEntry
 import dev.zacsweers.lattice.compiler.letIf
+import kotlin.io.path.createDirectories
+import kotlin.io.path.createDirectory
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.writeText
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrElement
@@ -496,6 +500,12 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           dependencyGraphDeclaration.reportError(message)
           exitProcessing()
         }
+
+      options.reportsDestination
+        ?.createDirectories()
+        ?.resolve("graph-dump-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt")
+        ?.apply { deleteIfExists() }
+        ?.writeText(bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false))
 
       generateLatticeGraph(node, latticeGraph, bindingGraph, deferredTypes)
     } catch (e: Exception) {

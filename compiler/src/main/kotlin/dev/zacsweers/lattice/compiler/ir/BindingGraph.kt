@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.render
 
 // TODO would be great if this was standalone to more easily test.
 internal class BindingGraph(private val latticeContext: LatticeTransformerContext) {
@@ -132,7 +133,7 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
           appendLine("No binding found for $key")
           appendBindingStack(stack)
           if (latticeContext.debug) {
-            appendLine(dumpGraph(short = false))
+            appendLine(dumpGraph(stack.graph.kotlinFqName.asString(), short = false))
           }
         }
         latticeContext.reportError(message, stack.lastEntryOrGraph.location())
@@ -340,39 +341,53 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
   }
 
   // TODO iterate on this more!
-  internal fun dumpGraph(short: Boolean): String {
+  internal fun dumpGraph(name: String, short: Boolean): String {
     if (bindings.isEmpty()) return "Empty binding graph"
 
     return buildString {
-      appendLine("Binding Graph:")
+      appendLine("Binding Graph: $name")
       // Sort by type key for consistent output
       bindings.entries
         .sortedBy { it.key.toString() }
-        .forEach { (typeKey, binding) ->
+        .forEach { (_, binding) ->
           appendLine("─".repeat(50))
-          appendLine("Type: ${typeKey.render(short)}")
-          appendLine("├─ Binding: ${binding::class.simpleName}")
-          appendLine("├─ Contextual Type: ${binding.contextualTypeKey.render(short)}")
-
-          binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
-
-          if (binding.dependencies.isNotEmpty()) {
-            appendLine("├─ Dependencies:")
-            binding.dependencies.forEach { (depKey, param) ->
-              appendLine("│  ├─ ${depKey.render(short)}")
-              appendLine("│  │  └─ Parameter: ${param.name} (${param.type})")
-            }
-          }
-
-          if (binding.parameters.allParameters.isNotEmpty()) {
-            appendLine("├─ Parameters:")
-            binding.parameters.allParameters.forEach { param ->
-              appendLine("│  └─ ${param.name}: ${param.contextualTypeKey.render(short)}")
-            }
-          }
-
-          binding.reportableLocation?.let { location -> appendLine("└─ Location: $location") }
+          appendBinding(binding, short, isNested = false)
         }
     }
+  }
+
+  private fun Appendable.appendBinding(binding: Binding, short: Boolean, isNested: Boolean) {
+    appendLine("Type: ${binding.typeKey.render(short)}")
+    appendLine("├─ Binding: ${binding::class.simpleName}")
+    appendLine("├─ Contextual Type: ${binding.contextualTypeKey.render(short)}")
+
+    binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
+
+    if (binding.dependencies.isNotEmpty()) {
+      appendLine("├─ Dependencies:")
+      binding.dependencies.forEach { (depKey, param) ->
+        appendLine("│  ├─ ${depKey.render(short)}")
+        appendLine("│  │  └─ Parameter: ${param.name} (${param.contextualTypeKey.render(short)})")
+      }
+    }
+
+    if (binding.parameters.allParameters.isNotEmpty()) {
+      appendLine("├─ Parameters:")
+      binding.parameters.allParameters.forEach { param ->
+        appendLine("│  └─ ${param.name}: ${param.contextualTypeKey.render(short)}")
+      }
+    }
+
+    if (!isNested && binding is Binding.Multibinding && binding.sourceBindings.isNotEmpty()) {
+      appendLine("├─ Source bindings:")
+      binding.sourceBindings.forEach { sourceBinding ->
+        val nested = buildString { appendBinding(sourceBinding, short, isNested = true) }
+        append("│  ├─ ")
+        appendLine(nested.lines().first())
+        appendLine(nested.lines().drop(1).joinToString("\n").prependIndent("│  │  "))
+      }
+    }
+
+    binding.reportableLocation?.let { location -> appendLine("└─ Location: $location") }
   }
 }
