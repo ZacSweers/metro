@@ -17,7 +17,9 @@ package dev.zacsweers.lattice.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.lattice.compiler.LatticeCompilerTest
+import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.assertDiagnostics
+import dev.zacsweers.lattice.compiler.assertNoWarningsOrErrors
 import org.junit.Test
 
 class ProvidesErrorsTest : LatticeCompilerTest() {
@@ -34,12 +36,56 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        )
+        ),
+        options = LatticeOptions(publicProviderSeverity = LatticeOptions.DiagnosticSeverity.WARN),
       )
     result.assertDiagnostics(
       """
         w: ExampleGraph.kt:7:17 `@Provides` declarations should be private.
         w: ExampleGraph.kt:8:17 `@Provides` declarations should be private.
+      """
+        .trimIndent()
+    )
+  }
+
+  @Test
+  fun `private provider option - none`() {
+    val result =
+      compile(
+        source(
+          """
+            interface ExampleGraph {
+              @Provides val provideCharSequence: String get() = "Hello"
+              @Provides fun provideString(): String = "Hello"
+            }
+          """
+            .trimIndent()
+        ),
+        options = LatticeOptions(publicProviderSeverity = LatticeOptions.DiagnosticSeverity.NONE),
+      )
+    result.assertNoWarningsOrErrors()
+  }
+
+  @Test
+  fun `private provider option - error`() {
+    val result =
+      compile(
+        source(
+          """
+            interface ExampleGraph {
+              @Provides val provideCharSequence: String get() = "Hello"
+              @Provides fun provideString(): String = "Hello"
+            }
+          """
+            .trimIndent()
+        ),
+        options = LatticeOptions(publicProviderSeverity = LatticeOptions.DiagnosticSeverity.ERROR),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:7:17 `@Provides` declarations should be private.
+        e: ExampleGraph.kt:8:17 `@Provides` declarations should be private.
       """
         .trimIndent()
     )
@@ -58,7 +104,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        )
+        ),
+        options = LatticeOptions(publicProviderSeverity = LatticeOptions.DiagnosticSeverity.WARN),
       )
     result.assertDiagnostics(
       """
@@ -82,7 +129,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        )
+        ),
+        options = LatticeOptions(publicProviderSeverity = LatticeOptions.DiagnosticSeverity.WARN),
       )
     result.assertDiagnostics(
       """
@@ -105,7 +153,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        )
+        ),
+        options = LatticeOptions(publicProviderSeverity = LatticeOptions.DiagnosticSeverity.WARN),
       )
     result.assertDiagnostics(
       """
@@ -313,7 +362,8 @@ class ProvidesErrorsTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        )
+        ),
+        options = LatticeOptions(publicProviderSeverity = LatticeOptions.DiagnosticSeverity.WARN),
       )
 
     result.assertDiagnostics(
