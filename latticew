@@ -46,8 +46,7 @@ case "$1" in
    "regen")
        echo "Applying formatting and API gen..."
        ./gradlew spotlessApply apiDump
-       # TODO apiDump here too
-       ./gradlew -p gradle-plugin spotlessApply
+       ./gradlew -p gradle-plugin spotlessApply apiDump
        ./gradlew -p samples spotlessApply
        ;;
 

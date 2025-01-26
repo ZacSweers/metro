@@ -26,6 +26,7 @@ plugins {
   alias(libs.plugins.mavenPublish)
   alias(libs.plugins.spotless)
   alias(libs.plugins.buildConfig)
+  alias(libs.plugins.binaryCompatibilityValidator)
 }
 
 java { toolchain { languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of)) } }

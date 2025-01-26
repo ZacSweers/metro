@@ -1,0 +1,62 @@
+public final class dev/zacsweers/lattice/gradle/DiagnosticSeverity : java/lang/Enum {
+	public static final field ERROR Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
+	public static final field NONE Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
+	public static final field WARN Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
+	public static fun values ()[Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
+}
+
+public final class dev/zacsweers/lattice/gradle/LatticeGradleSubplugin : org/jetbrains/kotlin/gradle/plugin/KotlinCompilerPluginSupportPlugin {
+	public fun <init> ()V
+	public synthetic fun apply (Ljava/lang/Object;)V
+	public fun apply (Lorg/gradle/api/Project;)V
+	public fun applyToCompilation (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;)Lorg/gradle/api/provider/Provider;
+	public fun getCompilerPluginId ()Ljava/lang/String;
+	public fun getPluginArtifact ()Lorg/jetbrains/kotlin/gradle/plugin/SubpluginArtifact;
+	public fun getPluginArtifactForNative ()Lorg/jetbrains/kotlin/gradle/plugin/SubpluginArtifact;
+	public fun isApplicable (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;)Z
+}
+
+public abstract class dev/zacsweers/lattice/gradle/LatticePluginExtension {
+	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
+	public final fun customAnnotations (Lorg/gradle/api/Action;)V
+	public final fun getCustomAnnotations ()Ldev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations;
+	public final fun getDebug ()Lorg/gradle/api/provider/Property;
+	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
+	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
+	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
+	public abstract fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
+}
+
+public abstract class dev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations {
+	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
+	public final fun getAssisted ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getAssistedFactory ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getAssistedInject ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getBinds ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getBindsInstance ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getContributesBinding ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getContributesTo ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getElementsIntoSet ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraph ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getGraphFactory ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getInject ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getIntoMap ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getIntoSet ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getMapKey ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getMultibinds ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getProvides ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getQualifier ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getScope ()Lorg/gradle/api/provider/SetProperty;
+	public final fun includeAnvil ()V
+	public final fun includeAnvil (Z)V
+	public final fun includeAnvil (ZZ)V
+	public static synthetic fun includeAnvil$default (Ldev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
+	public final fun includeDagger ()V
+	public final fun includeDagger (Z)V
+	public final fun includeDagger (ZZ)V
+	public static synthetic fun includeDagger$default (Ldev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
+	public final fun includeKotlinInject ()V
+}
+
