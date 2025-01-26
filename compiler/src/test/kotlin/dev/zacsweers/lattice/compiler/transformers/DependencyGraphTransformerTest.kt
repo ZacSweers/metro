@@ -1780,4 +1780,55 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
     val strings = graph.callProperty<Callable<Set<String>>>("exampleClass")
     assertThat(strings.call()).containsExactly("Hello, world!")
   }
+
+  /**
+   * We used to track binds providers in a map, which would fail on cases where the same callable ID
+   * was used. This ensures we support that case.
+   */
+  @Test
+  fun `multiple multibinding contributors with matching callable ids`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph : ContributingInterface1, ContributingInterface2 {
+              val strings: Set<String>
+              
+              @Provides
+              val provideInt: Int get() = 1
+
+              @Binds
+              val Int.provideString: Number
+              
+              @Provides
+              @IntoSet
+              val provideString: String get() = "0"
+
+            }
+
+            interface ContributingInterface1 {
+              @Provides
+              @IntoSet
+              fun provideString(int: Int): String = int.toString()
+            }
+
+            interface ContributingInterface2 {
+              @Provides
+              @IntoSet
+              fun provideString(number: Number): String {
+                // Resolves to 1 + 2 = 3
+                return (number.toInt() + 2).toString()
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        debug = true,
+      )
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val strings = graph.callProperty<Set<String>>("strings")
+    assertThat(strings).containsExactly("0", "1", "3")
+  }
 }
