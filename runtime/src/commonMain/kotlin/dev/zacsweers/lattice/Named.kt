@@ -17,6 +17,7 @@ package dev.zacsweers.lattice
 
 @Target(
   AnnotationTarget.CLASS,
+  AnnotationTarget.FIELD,
   AnnotationTarget.FUNCTION,
   AnnotationTarget.PROPERTY,
   AnnotationTarget.PROPERTY_GETTER,

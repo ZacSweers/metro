@@ -23,6 +23,12 @@ package dev.zacsweers.lattice
  * @see <a href="https://dagger.dev/multibindings.set-multibindings">Set multibinding</a>
  */
 @MustBeDocumented
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Target(
+  AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+  AnnotationTarget.CLASS,
+)
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class IntoSet
