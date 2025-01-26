@@ -780,15 +780,20 @@ internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), ind
 
 internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
 
-internal fun FirAnnotation.resolvedScopeClassId() =
-  (scopeArgument()?.argument as? FirResolvedQualifier)?.classId
-
 internal fun FirAnnotation.resolvedBoundType() =
   boundTypeArgument()?.typeArguments[0]?.expectAsOrNull<FirTypeProjectionWithVariance>()?.typeRef
 
-internal fun FirAnnotation.resolvedScopeClass(typeResolver: TypeResolveService): ConeKotlinType? {
-  return resolvedClassArgumentTarget("scope".asName(), index = 0, typeResolver)
+internal fun FirAnnotation.resolvedScopeClassId() = scopeArgument()?.resolvedClassId()
+
+internal fun FirAnnotation.resolvedScopeClassId(typeResolver: TypeResolveService): ClassId? {
+  val scopeArgument = scopeArgument() ?: return null
+  // Try to resolve it normally first. If this fails,
+  // try to resolve within the enclosing scope
+  return scopeArgument.resolvedClassId()
+    ?: scopeArgument.resolvedClassArgumentTarget(typeResolver)?.classId
 }
+
+internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
 
 internal fun FirAnnotation.resolvedClassArgumentTarget(
   name: Name,
@@ -796,10 +801,15 @@ internal fun FirAnnotation.resolvedClassArgumentTarget(
   typeResolver: TypeResolveService,
 ): ConeKotlinType? {
   // TODO if the annotation is resolved we can skip ahead
-  val classArgument = argumentAsOrNull<FirGetClassCall>(name, index) ?: return null
+  val getClassCall = argumentAsOrNull<FirGetClassCall>(name, index) ?: return null
+  return getClassCall.resolvedClassArgumentTarget(typeResolver)
+}
 
-  if (classArgument.isResolved) {
-    return (classArgument.argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
+internal fun FirGetClassCall.resolvedClassArgumentTarget(
+  typeResolver: TypeResolveService
+): ConeKotlinType? {
+  if (isResolved) {
+    return (argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
   }
 
   val typeToResolve =
@@ -809,7 +819,7 @@ internal fun FirAnnotation.resolvedClassArgumentTarget(
         expression.explicitReceiver?.let { visitQualifiers(it) }
         expression.qualifierName?.let { part(it) }
       }
-      visitQualifiers(classArgument.argument)
+      visitQualifiers(argument)
     }
 
   val resolvedArgument = typeResolver.resolveUserType(typeToResolve).coneType

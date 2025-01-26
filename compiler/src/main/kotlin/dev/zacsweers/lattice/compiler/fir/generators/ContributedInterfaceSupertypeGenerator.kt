@@ -21,7 +21,7 @@ import dev.zacsweers.lattice.compiler.fir.annotationsIn
 import dev.zacsweers.lattice.compiler.fir.hintClassId
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.resolvedClassArgumentTarget
-import dev.zacsweers.lattice.compiler.fir.resolvedScopeClass
+import dev.zacsweers.lattice.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.lattice.compiler.fir.scopeArgument
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
@@ -38,7 +38,6 @@ import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -85,10 +84,10 @@ internal class ContributedInterfaceSupertypeGenerator(
         .forEach { clazz ->
           clazz.annotations
             .annotationsIn(session, session.latticeClassIds.allContributesAnnotations)
-            .mapNotNull { it.resolvedScopeClass(typeResolver) }
-            .forEach { scopeClass ->
+            .mapNotNull { it.resolvedScopeClassId(typeResolver) }
+            .forEach { scopeClassId ->
               scopesToContributingClass
-                .getOrPut(scopeClass.classId!!, ::mutableSetOf)
+                .getOrPut(scopeClassId, ::mutableSetOf)
                 .add(clazz.classId.hintClassId)
             }
         }
@@ -119,7 +118,7 @@ internal class ContributedInterfaceSupertypeGenerator(
 
           originClass.annotations
             .annotationsIn(session, session.latticeClassIds.allContributesAnnotations)
-            .mapNotNull { it.resolvedScopeClass(typeResolver)?.classId }
+            .mapNotNull { it.resolvedScopeClassId(typeResolver) }
             .distinct()
             .forEach { scopeClassId ->
               getOrPut(scopeClassId, ::mutableSetOf).add(contribution.classId)
@@ -154,21 +153,19 @@ internal class ContributedInterfaceSupertypeGenerator(
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    // TODO compute additional scopes here too
     val graphAnnotation = classLikeDeclaration.graphAnnotation()!!
 
     val scopes =
       buildSet {
-          graphAnnotation.resolvedScopeClass(typeResolver)?.let { add(it) }
+          graphAnnotation.resolvedScopeClassId(typeResolver)?.let { add(it) }
           // TODO additionalScopes
         }
-        .filterNotTo(mutableSetOf()) { it.classId == StandardClassIds.Nothing }
+        .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
     val contributions =
-      scopes.flatMap { scope ->
+      scopes.flatMap { scopeClassId ->
         // TODO these may include some from this compilation unit. Maybe we don't need to look
         //  separately?
-        val scopeClassId = scope.classId
         val classPathContributions =
           generatedScopesToContributions
             .getValue(LatticeSymbols.FqNames.latticeHintsPackage, typeResolver)[scopeClassId]
