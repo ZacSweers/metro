@@ -84,7 +84,11 @@ abstract class LatticeCompilerTest {
             when (entry) {
               LatticeOption.DEBUG -> processor.option(entry.raw.cliOption, debug)
               LatticeOption.ENABLED -> processor.option(entry.raw.cliOption, enabled)
-              LatticeOption.REPORTS_DESTINATION -> processor.option(entry.raw.cliOption, reportsDestination?.absolutePathString().orEmpty())
+              LatticeOption.REPORTS_DESTINATION ->
+                processor.option(
+                  entry.raw.cliOption,
+                  reportsDestination?.absolutePathString().orEmpty(),
+                )
               LatticeOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               LatticeOption.PUBLIC_PROVIDER_SEVERITY ->

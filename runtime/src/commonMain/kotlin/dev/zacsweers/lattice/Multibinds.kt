@@ -44,10 +44,6 @@ package dev.zacsweers.lattice
  * @see <a href="https://dagger.dev/multibindings">Multibindings</a>
  */
 @MustBeDocumented
-@Target(
-  AnnotationTarget.FUNCTION,
-  AnnotationTarget.PROPERTY,
-  AnnotationTarget.PROPERTY_GETTER,
-)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class Multibinds

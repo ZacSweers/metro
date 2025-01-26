@@ -1635,7 +1635,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               @Multibinds val strings: Set<String>
-              
+
               @Provides
               @IntoSet
               fun provideString(): String = "Hello, world!"
@@ -1665,7 +1665,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
               @Provides
               @IntoSet
               fun provideString(): String = "Hello, world!"
-              
+
               @Multibinds val strings: Set<String>
             }
           """
@@ -1687,7 +1687,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val strings: Set<String>
-              
+
               @Provides
               @IntoSet
               fun provideString(): String = "Hello, world!"
@@ -1731,7 +1731,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Provides
               @IntoSet
               fun provideString(): String = "Hello, world!"
@@ -1760,7 +1760,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Provides
               @IntoSet
               fun provideString(): String = "Hello, world!"
@@ -1794,13 +1794,13 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             interface ExampleGraph : ContributingInterface1, ContributingInterface2 {
               val strings: Set<String>
-              
+
               @Provides
               val provideInt: Int get() = 1
 
               @Binds
               val Int.provideString: Number
-              
+
               @Provides
               @IntoSet
               val provideString: String get() = "0"
