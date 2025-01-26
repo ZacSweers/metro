@@ -322,7 +322,6 @@ internal class ProvidesTransformer(context: LatticeTransformerContext) :
     return references.getOrPut(fqName) {
       // TODO FIR error if it has a receiver param
       // TODO FIR check property is not var
-      // TODO FIR check property is visible
       // TODO enforce get:? enforce no site target?
       // TODO FIR error if it is top-level/not in graph
 
