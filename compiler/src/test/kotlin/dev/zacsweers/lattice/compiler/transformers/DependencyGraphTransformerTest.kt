@@ -1625,4 +1625,129 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
       assertThat(graph.callProperty<Int>("int")).isEqualTo(3)
     }
   }
+
+  @Test
+  fun `simple multibinds accessed from accessor`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Set<String>
+              
+              @Provides
+              @IntoSet
+              fun provideString(): String = "Hello, world!"
+            }
+          """
+            .trimIndent()
+        )
+      )
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val strings = graph.callProperty<Set<String>>("strings")
+    assertThat(strings).containsExactly("Hello, world!")
+  }
+
+  /**
+   * This tests that an implicit multibinding with an explicit one do not conflict as duplicate
+   * bindings
+   */
+  @Test
+  fun `simple multibinds accessed from accessor - different order declaration`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Provides
+              @IntoSet
+              fun provideString(): String = "Hello, world!"
+              
+              @Multibinds val strings: Set<String>
+            }
+          """
+            .trimIndent()
+        )
+      )
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val strings = graph.callProperty<Set<String>>("strings")
+    assertThat(strings).containsExactly("Hello, world!")
+  }
+
+  @Test
+  fun `simple implicit multibindings from accessor`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              val strings: Set<String>
+              
+              @Provides
+              @IntoSet
+              fun provideString(): String = "Hello, world!"
+            }
+          """
+            .trimIndent()
+        )
+      )
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val strings = graph.callProperty<Set<String>>("strings")
+    assertThat(strings).containsExactly("Hello, world!")
+  }
+
+  @Test
+  fun `simple explicit multibindings with no contributors is empty`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Set<String>
+            }
+          """
+            .trimIndent()
+        )
+      )
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val strings = graph.callProperty<Set<String>>("strings")
+    assertThat(strings).isEmpty()
+  }
+
+  @Test
+  fun `simple multibindings from accessor`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Provides
+              @IntoSet
+              fun provideString(): String = "Hello, world!"
+            }
+
+            @Inject
+            class ExampleClass(val strings: Set<String>) : Callable<Set<String>> {
+              override fun call(): Set<String> = strings
+            }
+          """
+            .trimIndent()
+        )
+      )
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val strings = graph.callProperty<Callable<Set<String>>>("exampleClass")
+    assertThat(strings.call()).containsExactly("Hello, world!")
+  }
 }
