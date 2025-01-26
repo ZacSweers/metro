@@ -26,9 +26,9 @@ import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
 import dev.zacsweers.lattice.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.lattice.compiler.isWordPrefixRegex
+import dev.zacsweers.lattice.compiler.latticeAnnotations
 import dev.zacsweers.lattice.compiler.mapNotNullToSet
 import dev.zacsweers.lattice.compiler.unsafeLazy
-import kotlin.collections.set
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -49,7 +49,6 @@ import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
-import org.jetbrains.kotlin.fir.resolve.typeResolver
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -320,9 +319,18 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
         .decapitalizeUS()
     val callable =
       originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
-        it.name.asString() == callableName ||
-          (it is FirPropertySymbol &&
-            it.name.asString() == callableName.removePrefix("get").decapitalizeUS())
+        val nameMatches =
+          it.name.asString() == callableName ||
+            (it is FirPropertySymbol &&
+              it.name.asString() == callableName.removePrefix("get").decapitalizeUS())
+        if (nameMatches) {
+          // Secondary check to ensure it's a @Provides-annotated callable. Otherwise we may
+          // match against overloaded non-Provides declarations
+          val latticeAnnotations = it.latticeAnnotations(session)
+          latticeAnnotations.isProvides
+        } else {
+          false
+        }
       } ?: return emptyList()
 
     val returnType =
