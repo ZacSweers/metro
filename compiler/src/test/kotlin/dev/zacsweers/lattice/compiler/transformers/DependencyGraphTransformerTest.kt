@@ -1723,7 +1723,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
   }
 
   @Test
-  fun `simple multibindings from accessor`() {
+  fun `simple multibindings from class injection`() {
     val result =
       compile(
         source(
@@ -1738,6 +1738,36 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             }
 
             @Inject
+            class ExampleClass(val strings: Set<String>) : Callable<Set<String>> {
+              override fun call(): Set<String> = strings
+            }
+          """
+            .trimIndent()
+        )
+      )
+    val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+
+    val strings = graph.callProperty<Callable<Set<String>>>("exampleClass")
+    assertThat(strings.call()).containsExactly("Hello, world!")
+  }
+
+  @Test
+  fun `simple multibindings from provided class`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Provides
+              @IntoSet
+              fun provideString(): String = "Hello, world!"
+
+              @Provides fun provideExampleClass(strings: Set<String>): ExampleClass = ExampleClass(strings)
+            }
+
             class ExampleClass(val strings: Set<String>) : Callable<Set<String>> {
               override fun call(): Set<String> = strings
             }

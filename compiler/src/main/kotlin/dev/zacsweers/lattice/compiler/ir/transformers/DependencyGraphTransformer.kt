@@ -1467,7 +1467,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
           generateBindingCode(
             paramBinding,
             generationContext,
-            contextualTypeKey = contextualTypeKey,
+            contextualTypeKey = param.contextualTypeKey,
           )
         }
 
