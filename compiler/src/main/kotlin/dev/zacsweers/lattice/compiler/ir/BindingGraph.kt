@@ -49,19 +49,13 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
     }
     if (bindings.containsKey(key)) {
       val message = buildString {
-        appendLine("Duplicate binding for $key")
-        if (binding is Binding.Provided) {
-          appendLine(
-            "Double check the provider's inferred return type or making its return type explicit."
-          )
-        }
+        appendLine("Duplicate binding for ${key.render(short = false, includeQualifier = true)}")
         appendBindingStack(bindingStack)
       }
       val location = binding.reportableLocation ?: bindingStack.graph.location()
       latticeContext.reportError(message, location)
       exitProcessing()
     }
-    require(!bindings.containsKey(key)) { "Duplicate binding for $key" }
     bindings[key] = binding
 
     if (binding is Binding.BoundInstance) {
@@ -184,7 +178,7 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
     }
   }
 
-  fun findBinding(key: TypeKey): Binding? = bindings[key]
+  operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
 
   fun validate(node: DependencyGraphNode, onError: (String) -> Nothing): Set<TypeKey> {
     val deferredTypes = checkCycles(node, onError)

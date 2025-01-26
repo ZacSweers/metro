@@ -636,11 +636,17 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       val isMultibindingDeclaration = getter.annotations.isMultibinds
 
       if (isMultibindingDeclaration) {
-        graph.addBinding(
-          contextualTypeKey.typeKey,
-          Binding.Multibinding.create(latticeContext, contextualTypeKey.typeKey, getter.ir),
-          bindingStack,
-        )
+        // TODO test this case
+        // Special case! Multibindings may be created under two conditions
+        // 1. Explicitly via `@Multibinds`
+        // 2. Implicitly via a `@Provides` callable that contributes into a multibinding
+        // Because these may both happen, if the key already exists in the graph we won't try to add
+        // it again
+        val multibinding =
+          Binding.Multibinding.create(latticeContext, contextualTypeKey.typeKey, getter.ir)
+        if (multibinding.typeKey !in graph) {
+          graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
+        }
       } else {
         graph.addExposedType(
           contextualTypeKey,
