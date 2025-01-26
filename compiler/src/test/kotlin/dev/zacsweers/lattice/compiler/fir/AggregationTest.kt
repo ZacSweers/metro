@@ -2039,4 +2039,36 @@ class AggregationTest : LatticeCompilerTest() {
       )
     }
   }
+
+  /**
+   * This is a regression test to ensure that scope keys in the same package (i.e. no explicit
+   * import) are resolvable. Essentially it ensures the supertype generation attempts to resolve the
+   * scope key class in both regular resolution ("hey is this class resolved?") and using
+   * `TypeResolverService` ("hey can you resolve this in the context of this class?").
+   */
+  @Test
+  fun `scope keys in the same package work`() {
+    compile(
+      source(
+        """
+          abstract class UserScope private constructor()
+        """
+          .trimIndent()
+      ),
+      source(
+        """
+          @ContributesTo(UserScope::class)
+          interface ContributedInterface
+
+          @DependencyGraph(scope = UserScope::class)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph
+      assertThat(graph.allSupertypes().map { it.name })
+        .containsExactly("lattice.hints.TestContributedInterface", "test.ContributedInterface")
+    }
+  }
 }
