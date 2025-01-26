@@ -87,6 +87,8 @@ abstract class LatticeCompilerTest {
               LatticeOption.REPORTS_DESTINATION -> processor.option(entry.raw.cliOption, reportsDestination?.absolutePathString().orEmpty())
               LatticeOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
+              LatticeOption.PUBLIC_PROVIDER_SEVERITY ->
+                processor.option(entry.raw.cliOption, publicProviderSeverity)
               LatticeOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })

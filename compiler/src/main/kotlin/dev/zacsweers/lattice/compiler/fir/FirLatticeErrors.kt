@@ -127,7 +127,8 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
   val ASSISTED_INJECTION_ERROR by error1<String>(NAME_IDENTIFIER)
 
   // Provides errors
-  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE by warning1<String>(VISIBILITY_MODIFIER)
+  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR by error1<String>(VISIBILITY_MODIFIER)
+  val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING by warning1<String>(VISIBILITY_MODIFIER)
   // TODO make this severity configurable
   val PROVIDES_COULD_BE_BINDS by warning1<String>(NAME_IDENTIFIER)
   val PROVIDER_OVERRIDES by error0(MODALITY_MODIFIER)
@@ -196,7 +197,8 @@ internal object FirLatticeErrors : BaseDiagnosticRendererFactory() {
       put(MEMBERS_INJECT_RETURN_TYPE_WARNING, "{0}", STRING)
       put(BINDS_ERROR, "{0}", STRING)
       put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
-      put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE, "{0}", STRING)
+      put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
+      put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)
       put(
         PROVIDER_OVERRIDES,
         "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",

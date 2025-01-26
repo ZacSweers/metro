@@ -17,6 +17,7 @@ package dev.zacsweers.lattice.compiler
 
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.Locale
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
@@ -106,6 +107,17 @@ internal enum class LatticeOption(val raw: RawLatticeOption<*>) {
       description = "Enable/disable automatic generation of assisted factories",
       required = false,
       allowMultipleOccurrences = false,
+    )
+  ),
+  PUBLIC_PROVIDER_SEVERITY(
+    RawLatticeOption<String>(
+      name = "public-provider-severity",
+      defaultValue = LatticeOptions.DiagnosticSeverity.NONE.name,
+      valueDescription = "NONE|WARN|ERROR",
+      description = "Control diagnostic severity reporting of public providers",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it }
     )
   ),
   LOGGING(
@@ -329,6 +341,8 @@ public data class LatticeOptions(
   val reportsDestination: Path? = LatticeOption.REPORTS_DESTINATION.raw.defaultValue?.expectAs<String>()?.takeUnless(String::isBlank)?.let(Paths::get),
   val generateAssistedFactories: Boolean =
     LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue!!.expectAs(),
+  val publicProviderSeverity: DiagnosticSeverity =
+    LatticeOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue!!.expectAs<String>().let { DiagnosticSeverity.valueOf(it) },
   val enabledLoggers: Set<LatticeLogger.Type> = LatticeOption.LOGGING.raw.defaultValue!!.expectAs(),
   // Custom annotations
   val customAssistedAnnotations: Set<ClassId> =
@@ -396,11 +410,13 @@ public data class LatticeOptions(
           LatticeOption.ENABLED ->
             options = options.copy(enabled = configuration.getAsBoolean(entry))
           LatticeOption.REPORTS_DESTINATION -> {
-            @Suppress("UNCHECKED_CAST")
-            options = options.copy(reportsDestination = configuration.get<String>(entry.raw.key as CompilerConfigurationKey<String>, "").takeUnless(String::isBlank)?.let(Paths::get))
+            options = options.copy(reportsDestination = configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get))
           }
           LatticeOption.GENERATE_ASSISTED_FACTORIES ->
             options = options.copy(generateAssistedFactories = configuration.getAsBoolean(entry))
+
+          LatticeOption.PUBLIC_PROVIDER_SEVERITY ->
+            options = options.copy(publicProviderSeverity = configuration.getAsString(entry).let { DiagnosticSeverity.valueOf(it.uppercase(Locale.US)) })
           LatticeOption.LOGGING -> {
             enabledLoggers +=
               configuration.get(entry.raw.key)?.expectAs<Set<LatticeLogger.Type>>().orEmpty()
@@ -476,6 +492,11 @@ public data class LatticeOptions(
       return options
     }
 
+    private fun CompilerConfiguration.getAsString(option: LatticeOption): String {
+      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawLatticeOption<String>
+      return get(typed.key, typed.defaultValue)
+    }
+
     private fun CompilerConfiguration.getAsBoolean(option: LatticeOption): Boolean {
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawLatticeOption<Boolean>
       return get(typed.key, typed.defaultValue)
@@ -485,5 +506,11 @@ public data class LatticeOptions(
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawLatticeOption<Set<E>>
       return get(typed.key, typed.defaultValue)
     }
+  }
+
+  public enum class DiagnosticSeverity {
+    NONE,
+    WARN,
+    ERROR
   }
 }

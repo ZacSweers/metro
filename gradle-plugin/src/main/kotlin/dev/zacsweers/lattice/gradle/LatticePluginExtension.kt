@@ -33,6 +33,12 @@ public abstract class LatticePluginExtension @Inject constructor(objects: Object
   public val debug: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(false)
 
+  public val publicProviderSeverity: Property<DiagnosticSeverity> =
+      objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+
+  public val generateAssistedFactories: Property<Boolean> =
+      objects.property(Boolean::class.javaObjectType).convention(false)
+
   public abstract val reportsDestination: DirectoryProperty
 
   /**

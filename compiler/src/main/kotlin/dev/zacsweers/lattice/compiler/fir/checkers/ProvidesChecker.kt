@@ -15,10 +15,12 @@
  */
 package dev.zacsweers.lattice.compiler.fir.checkers
 
+import dev.zacsweers.lattice.compiler.LatticeOptions
 import dev.zacsweers.lattice.compiler.fir.FirLatticeErrors
 import dev.zacsweers.lattice.compiler.fir.FirTypeKey
 import dev.zacsweers.lattice.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.lattice.compiler.fir.latticeClassIds
+import dev.zacsweers.lattice.compiler.fir.latticeFirBuiltIns
 import dev.zacsweers.lattice.compiler.latticeAnnotations
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -43,7 +45,6 @@ import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
-//  Make visibility error configurable? ERROR/WARN/NONE
 internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
 
   override fun check(
@@ -103,20 +104,28 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         else -> return
       }
 
-    val isPrivate = declaration.visibility == Visibilities.Private
-    if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
-      val message =
-        if (annotations.isBinds) {
-          "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
-        } else {
-          "`@Provides` declarations should be private."
-        }
-      reporter.reportOn(
-        source,
-        FirLatticeErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE,
-        message,
-        context,
-      )
+    if (
+      session.latticeFirBuiltIns.options.publicProviderSeverity !=
+        LatticeOptions.DiagnosticSeverity.NONE
+    ) {
+      val isPrivate = declaration.visibility == Visibilities.Private
+      if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
+        val message =
+          if (annotations.isBinds) {
+            "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
+          } else {
+            "`@Provides` declarations should be private."
+          }
+        val diagnosticFactory =
+          when (session.latticeFirBuiltIns.options.publicProviderSeverity) {
+            LatticeOptions.DiagnosticSeverity.NONE -> error("Not possible")
+            LatticeOptions.DiagnosticSeverity.WARN ->
+              FirLatticeErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
+            LatticeOptions.DiagnosticSeverity.ERROR ->
+              FirLatticeErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
+          }
+        reporter.reportOn(source, diagnosticFactory, message, context)
+      }
     }
 
     // TODO support first, non-receiver parameter
