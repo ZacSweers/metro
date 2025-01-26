@@ -50,9 +50,9 @@ abstract class LatticeCompilerTest {
 
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
-    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue!!.expectAs(),
+    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
     generateAssistedFactories: Boolean =
-      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue!!.expectAs(),
+      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: LatticeOptions =
       LatticeOptions(debug = debug, generateAssistedFactories = generateAssistedFactories),
     previousCompilationResult: JvmCompilationResult? = null,
@@ -233,9 +233,9 @@ abstract class LatticeCompilerTest {
   protected fun compile(
     vararg sourceFiles: SourceFile,
     latticeEnabled: Boolean = true,
-    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue!!.expectAs(),
+    debug: Boolean = LatticeOption.DEBUG.raw.defaultValue.expectAs(),
     generateAssistedFactories: Boolean =
-      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue!!.expectAs(),
+      LatticeOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: LatticeOptions =
       LatticeOptions(
         enabled = latticeEnabled,
