@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.render
 
 // TODO would be great if this was standalone to more easily test.
 internal class BindingGraph(private val latticeContext: LatticeTransformerContext) {
@@ -37,10 +36,10 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
   private val bindings = ConcurrentHashMap<TypeKey, Binding>()
   private val dependencies = ConcurrentHashMap<TypeKey, Lazy<Set<ContextualTypeKey>>>()
   // TODO eventually add inject() targets too from member injection
-  private val exposedTypes = mutableMapOf<ContextualTypeKey, BindingStack.Entry>()
+  private val accessors = mutableMapOf<ContextualTypeKey, BindingStack.Entry>()
 
-  fun addExposedType(key: ContextualTypeKey, entry: BindingStack.Entry) {
-    exposedTypes[key] = entry
+  fun addAccessor(key: ContextualTypeKey, entry: BindingStack.Entry) {
+    accessors[key] = entry
   }
 
   fun addBinding(key: TypeKey, binding: Binding, bindingStack: BindingStack) {
@@ -278,7 +277,7 @@ internal class BindingGraph(private val latticeContext: LatticeTransformerContex
       }
     }
 
-    for ((key, entry) in exposedTypes) {
+    for ((key, entry) in accessors) {
       stackLogger.log("Traversing from root: ${key.typeKey}")
       stack.withEntry(entry) {
         val binding = getOrCreateBinding(key, stack)

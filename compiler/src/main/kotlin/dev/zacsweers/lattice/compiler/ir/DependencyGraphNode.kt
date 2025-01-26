@@ -27,9 +27,10 @@ internal data class DependencyGraphNode(
   val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, LatticeSimpleFunction>>,
   // Types accessible via this graph (includes inherited)
-  val exposedTypes: Map<LatticeSimpleFunction, ContextualTypeKey>,
-  val bindsFunctions: Map<LatticeSimpleFunction, ContextualTypeKey>,
-  val injectors: Map<LatticeSimpleFunction, ContextualTypeKey>,
+  // Dagger calls these "provision methods", but that's a bit vague IMO
+  val accessors: List<Pair<LatticeSimpleFunction, ContextualTypeKey>>,
+  val bindsFunctions: List<Pair<LatticeSimpleFunction, ContextualTypeKey>>,
+  val injectors: List<Pair<LatticeSimpleFunction, ContextualTypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
   val typeKey: TypeKey,
