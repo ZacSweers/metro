@@ -16,6 +16,7 @@
 package dev.zacsweers.lattice.compiler
 
 import java.security.MessageDigest
+import java.util.Base64
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -144,24 +145,28 @@ public fun ClassId.truncate(
       // so the lengths of those names must be subtracted from the max length.
       .minus(relativeClassName.pathSegments().dropLast(1).sumOf { it.asString().length + 1 })
 
-  val md5Hash = md5Hash(hashParams)
+  val hash = md5base64(hashParams)
 
   val className =
     relativeClassName
       .asString()
       .take(maxLength)
       // The hash is appended after truncating so that it's always present.
-      .plus("$separator$md5Hash")
+      .plus("$separator$hash")
 
   return ClassId(packageFqName, Name.identifier(className)).checkFileLength()
 }
 
-internal fun md5Hash(params: List<Any>): String {
-  return MessageDigest.getInstance("MD5")
-    .apply { params.forEach { update(it.toString().toByteArray()) } }
-    .digest()
-    .take(HASH_STRING_LENGTH / 2)
-    .joinToString("") { "%02x".format(it) }
+internal fun md5base64(params: List<Any>): String {
+  val md5 =
+    MessageDigest.getInstance("MD5")
+      .apply { params.forEach { update(it.toString().toByteArray()) } }
+      .digest()
+      .copyOfRange(0, 5)
+
+  // base64 URL encoder without padding uses exactly the characters allowed in both JVM bytecode and
+  // Dalvik bytecode names
+  return Base64.getUrlEncoder().withoutPadding().encodeToString(md5)
 }
 
 /**
