@@ -636,7 +636,6 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
       val isMultibindingDeclaration = getter.annotations.isMultibinds
 
       if (isMultibindingDeclaration) {
-        // TODO test this case
         // Special case! Multibindings may be created under two conditions
         // 1. Explicitly via `@Multibinds`
         // 2. Implicitly via a `@Provides` callable that contributes into a multibinding
@@ -991,7 +990,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                       ) {
                         // If it's scoped, wrap it in double-check
                         // DoubleCheck.provider(<provider>)
-                        it.doubleCheck(this@run, symbols)
+                        it.doubleCheck(this@run, symbols, binding.typeKey)
                       }
                     irExprBody(provider)
                   }
@@ -1028,7 +1027,7 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
                         .letIf(binding.scope != null) {
                           // If it's scoped, wrap it in double-check
                           // DoubleCheck.provider(<provider>)
-                          it.doubleCheck(this@run, symbols)
+                          it.doubleCheck(this@run, symbols, binding.typeKey)
                         }
                     },
                   ),
@@ -1465,7 +1464,11 @@ internal class DependencyGraphTransformer(context: LatticeTransformerContext) :
             return@mapIndexed null
           }
 
-          generateBindingCode(paramBinding, generationContext)
+          generateBindingCode(
+            paramBinding,
+            generationContext,
+            contextualTypeKey = contextualTypeKey,
+          )
         }
 
       typeAsProviderArgument(
