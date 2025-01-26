@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
+//  Check for no conflicting names, requires class-level
 internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
 
   override fun check(
@@ -56,7 +57,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
     val session = context.session
     val latticeClassIds = session.latticeClassIds
 
-    // Check if this is overridding a provider parent here and error if so. Otherwise people could
+    // Check if this is overriding a provider parent here and error if so. Otherwise people could
     // sneak these by!
     // If we ever wanted to allow providers in the future, this is the check to remove
     if (declaration.isOverride) {
