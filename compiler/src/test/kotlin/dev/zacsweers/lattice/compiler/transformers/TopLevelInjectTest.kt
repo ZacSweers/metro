@@ -209,8 +209,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
@@ -249,8 +248,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
@@ -382,8 +380,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
@@ -417,8 +414,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
           """
                 .trimIndent()
             ),
-          ),
-        debug = true,
+          )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
@@ -453,8 +449,7 @@ class TopLevelInjectTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
 
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()

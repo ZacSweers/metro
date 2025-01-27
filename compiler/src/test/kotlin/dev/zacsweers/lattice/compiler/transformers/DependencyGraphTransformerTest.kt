@@ -1823,12 +1823,34 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             }
           """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
     val graph = result.ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
 
     val strings = graph.callProperty<Set<String>>("strings")
     assertThat(strings).containsExactly("0", "1", "3")
+  }
+
+  // The annotation is stored on the FirPropertyAccessorSymbol, this test ensures
+  // we check there too
+  @Test
+  fun `private provider with get-annotated Provides`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            abstract class ExampleGraph {
+              abstract val count: Int
+          
+              @get:Provides private val countProvider: Int = 3
+            }
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedLatticeGraphClass().createGraphWithNoArgs()
+      val count = graph.callProperty<Int>("count")
+      assertThat(count).isEqualTo(3)
+    }
   }
 }
