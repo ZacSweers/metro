@@ -50,7 +50,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance text: String): ExampleGraph
+                fun create(@Provides text: String): ExampleGraph
               }
             }
 
@@ -1022,7 +1022,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance text: String): ExampleGraph
+                fun create(@Provides text: String): ExampleGraph
               }
             }
 
@@ -1442,21 +1442,15 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `graph factories params must be unique - check bindsinstance`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.BindsInstance
-
             @DependencyGraph
             interface ExampleGraph {
               val value: Int
 
               @DependencyGraph.Factory
               interface Factory {
-                fun create(@BindsInstance value: Int, @BindsInstance value2: Int): ExampleGraph
+                fun create(@Provides value: Int, @Provides value2: Int): ExampleGraph
               }
             }
           """
@@ -1465,9 +1459,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
-      "ExampleGraph.kt:12:58 DependencyGraph.Factory abstract function parameters must be unique."
-    )
+    result.assertDiagnostics("e: ExampleGraph.kt:12:48 DependencyGraph.Factory abstract function parameters must be unique.")
   }
 
   @Test
@@ -1480,7 +1472,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             package test
 
             import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.BindsInstance
+            import dev.zacsweers.metro.Provides
 
             @DependencyGraph
             interface ExampleGraph {
@@ -1497,7 +1489,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               interface Factory {
-                fun create(@BindsInstance value: Int): IntGraph
+                fun create(@Provides value: Int): IntGraph
               }
             }
           """
@@ -1525,7 +1517,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                operator fun invoke(@BindsInstance int: Int): ExampleGraph
+                operator fun invoke(@Provides int: Int): ExampleGraph
               }
 
               companion object
@@ -1552,7 +1544,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                operator fun invoke(@BindsInstance int: Int): IntGraph
+                operator fun invoke(@Provides int: Int): IntGraph
               }
             }
           """
@@ -1591,7 +1583,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                operator fun invoke(@BindsInstance int: Int): IntGraph
+                operator fun invoke(@Provides int: Int): IntGraph
               }
             }
           """

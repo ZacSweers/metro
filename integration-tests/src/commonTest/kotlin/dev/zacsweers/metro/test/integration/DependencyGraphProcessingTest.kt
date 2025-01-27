@@ -19,7 +19,6 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.Binds
-import dev.zacsweers.metro.BindsInstance
 import dev.zacsweers.metro.ClassKey
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.ElementsIntoSet
@@ -259,7 +258,7 @@ class DependencyGraphProcessingTest {
   }
 
   interface BaseFactory<T> {
-    fun create(@BindsInstance value: String): T
+    fun create(@Provides value: String): T
   }
 
   @DependencyGraph
@@ -281,11 +280,11 @@ class DependencyGraphProcessingTest {
     val value: Int
 
     interface BaseFactory1<T> {
-      fun create(@BindsInstance value: Int): T
+      fun create(@Provides value: Int): T
     }
 
     interface BaseFactory2<T> {
-      fun create(@BindsInstance value: Int): T
+      fun create(@Provides value: Int): T
     }
 
     @DependencyGraph.Factory
@@ -324,7 +323,7 @@ class DependencyGraphProcessingTest {
       BaseFactory1<GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance>,
       BaseFactory2<GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance> {
       override fun create(
-        @BindsInstance value: Int
+        @Provides value: Int
       ): GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance
     }
   }
@@ -353,7 +352,7 @@ class DependencyGraphProcessingTest {
     interface BaseFactory2<T> : BaseFactory1<T> {
       override fun create1(): T = create2(0)
 
-      fun create2(@BindsInstance value: Int): T
+      fun create2(@Provides value: Int): T
     }
 
     @DependencyGraph.Factory
@@ -380,9 +379,9 @@ class DependencyGraphProcessingTest {
     @DependencyGraph.Factory
     fun interface Factory {
       fun create(
-        @BindsInstance value1: Int,
-        @BindsInstance @Named("value2") value2: Int,
-        @BindsInstance @Named("value3") value3: Int,
+        @Provides value1: Int,
+        @Provides @Named("value2") value2: Int,
+        @Provides @Named("value3") value3: Int,
       ): GraphWithDifferentBindsInstanceTypeQualifiers
     }
   }
@@ -408,7 +407,7 @@ class DependencyGraphProcessingTest {
 
     @DependencyGraph.Factory
     interface Factory {
-      fun create(@BindsInstance message: String): AssistedInjectGraph
+      fun create(@Provides message: String): AssistedInjectGraph
     }
 
     class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {
@@ -1246,7 +1245,7 @@ class DependencyGraphProcessingTest {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(@BindsInstance string: String): StringGraph
+      fun create(@Provides string: String): StringGraph
     }
   }
 }

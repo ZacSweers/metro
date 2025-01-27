@@ -42,9 +42,9 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
       super.put(key, providerOfValue)
     }
 
-    public override fun putAll(mapProviderFactory: Provider<Map<K, Provider<V>>>): Builder<K, V> =
+    public override fun putAll(mapOfProviders: Provider<Map<K, Provider<V>>>): Builder<K, V> =
       apply {
-        super.putAll(mapProviderFactory)
+        super.putAll(mapOfProviders)
       }
 
     /** Returns a new [MapProviderFactory]. */

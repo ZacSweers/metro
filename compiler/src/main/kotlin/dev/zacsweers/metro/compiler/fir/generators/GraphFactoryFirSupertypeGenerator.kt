@@ -49,7 +49,7 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
  * interface AppGraph {
  *   @DependencyGraph.Factory
  *   fun interface Factory {
- *     operator fun invoke(@BindsInstance int: Int, analyticsGraph: AnalyticsGraph): AppGraph
+ *     operator fun invoke(@Provides int: Int, analyticsGraph: AnalyticsGraph): AppGraph
  *   }
  * }
  * ```

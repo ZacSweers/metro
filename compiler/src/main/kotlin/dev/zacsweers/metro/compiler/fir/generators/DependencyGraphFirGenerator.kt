@@ -111,7 +111,7 @@ import org.jetbrains.kotlin.name.SpecialNames
  * interface AppGraph {
  *   @DependencyGraph.Factory
  *   fun interface Factory {
- *     operator fun invoke(@BindsInstance int: Int, analyticsGraph: AnalyticsGraph): AppGraph
+ *     operator fun invoke(@Provides int: Int, analyticsGraph: AnalyticsGraph): AppGraph
  *   }
  * }
  * ```
@@ -121,12 +121,12 @@ import org.jetbrains.kotlin.name.SpecialNames
  * @DependencyGraph
  * interface AppGraph {
  *   class $$Metro : AppGraph {
- *     constructor(@BindsInstance int: Int, analyticsGraph: AnalyticsGraph)
+ *     constructor(@Provides int: Int, analyticsGraph: AnalyticsGraph)
  *   }
  *
  *   @DependencyGraph.Factory
  *   fun interface Factory {
- *     operator fun invoke(@BindsInstance int: Int, analyticsGraph: AnalyticsGraph): AppGraph
+ *     operator fun invoke(@Provides int: Int, analyticsGraph: AnalyticsGraph): AppGraph
  *   }
  *
  *   companion object : AppGraph.Factory {
@@ -151,7 +151,7 @@ import org.jetbrains.kotlin.name.SpecialNames
  * interface AppGraph {
  *   @DependencyGraph.Factory
  *   abstract class Factory {
- *     fun create(@BindsInstance int: Int, analyticsGraph: AnalyticsGraph): AppGraph
+ *     fun create(@Provides int: Int, analyticsGraph: AnalyticsGraph): AppGraph
  *   }
  * }
  * ```
@@ -161,12 +161,12 @@ import org.jetbrains.kotlin.name.SpecialNames
  * @DependencyGraph
  * interface AppGraph {
  *   class $$Metro : AppGraph {
- *     constructor(@BindsInstance int: Int, analyticsGraph: AnalyticsGraph)
+ *     constructor(@Provides int: Int, analyticsGraph: AnalyticsGraph)
  *   }
  *
  *   @DependencyGraph.Factory
  *   abstract class Factory {
- *     fun create(@BindsInstance int: Int, analyticsGraph: AnalyticsGraph): AppGraph
+ *     fun create(@Provides int: Int, analyticsGraph: AnalyticsGraph): AppGraph
  *
  *     object $$Impl : Factory() {
  *       override fun create(int: Int, analyticsGraph: AnalyticsGraph): AppGraph

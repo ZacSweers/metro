@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.metro.test.integration
 
-import dev.zacsweers.metro.BindsInstance
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
@@ -47,7 +46,7 @@ class CycleBreakingTests {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(@BindsInstance message: String): CyclicalGraphWithClassesBrokenWithProvider
+      fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProvider
     }
 
     @Inject
@@ -86,7 +85,7 @@ class CycleBreakingTests {
     @DependencyGraph.Factory
     fun interface Factory {
       fun create(
-        @BindsInstance message: String
+        @Provides message: String
       ): CyclicalGraphWithClassesBrokenWithProviderBarExposed
     }
 
@@ -125,7 +124,7 @@ class CycleBreakingTests {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(@BindsInstance message: String): CyclicalGraphWithClassesBrokenWithLazy
+      fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithLazy
     }
 
     @Inject
@@ -165,7 +164,7 @@ class CycleBreakingTests {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(@BindsInstance message: String): CyclicalGraphWithClassesBrokenWithProviderOfLazy
+      fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProviderOfLazy
     }
 
     @Inject
@@ -205,7 +204,7 @@ class CycleBreakingTests {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(@BindsInstance message: String): CyclicalGraphWithClassesBrokenWithProviderScoped
+      fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProviderScoped
     }
 
     @Singleton
@@ -248,7 +247,7 @@ class CycleBreakingTests {
 
       @DependencyGraph.Factory
       fun interface Factory {
-        fun create(@BindsInstance message: String): Graph
+        fun create(@Provides message: String): Graph
       }
 
       @Provides private fun provideFoo(barProvider: Provider<Bar>): Foo = Foo(barProvider)
@@ -293,7 +292,7 @@ class CycleBreakingTests {
 
       @DependencyGraph.Factory
       fun interface Factory {
-        fun create(@BindsInstance message: String): Graph
+        fun create(@Provides message: String): Graph
       }
 
       @Provides private fun provideFoo(barLazy: Lazy<Bar>): Foo = Foo(barLazy)
@@ -340,7 +339,7 @@ class CycleBreakingTests {
 
       @DependencyGraph.Factory
       fun interface Factory {
-        fun create(@BindsInstance message: String): Graph
+        fun create(@Provides message: String): Graph
       }
 
       @Provides
@@ -388,7 +387,7 @@ class CycleBreakingTests {
 
       @DependencyGraph.Factory
       fun interface Factory {
-        fun create(@BindsInstance message: String): Graph
+        fun create(@Provides message: String): Graph
       }
 
       @Singleton

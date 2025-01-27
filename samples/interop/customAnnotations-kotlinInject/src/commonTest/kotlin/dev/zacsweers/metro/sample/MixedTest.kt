@@ -17,7 +17,6 @@ package dev.zacsweers.metro.sample
 
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
-import dev.zacsweers.metro.BindsInstance
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.createGraph
@@ -47,8 +46,8 @@ class MixedTest {
     @DependencyGraph.Factory
     interface Factory {
       fun create(
-        @BindsInstance message: String,
-        @Named("qualified") @BindsInstance qualifiedMessage: String,
+        @dev.zacsweers.metro.Provides message: String,
+        @dev.zacsweers.metro.Provides @Named("qualified") qualifiedMessage: String,
       ): SimpleComponent
     }
   }

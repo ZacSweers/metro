@@ -78,11 +78,6 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               .takeUnless { it.isEmpty() }
               ?.let { SubpluginOption("custom-binds", value = it.joinToString(":")) }
               ?.let(::add)
-          bindsInstance
-              .getOrElse(emptySet())
-              .takeUnless { it.isEmpty() }
-              ?.let { SubpluginOption("custom-binds-instance", value = it.joinToString(":")) }
-              ?.let(::add)
           contributesTo
               .getOrElse(emptySet())
               .takeUnless { it.isEmpty() }

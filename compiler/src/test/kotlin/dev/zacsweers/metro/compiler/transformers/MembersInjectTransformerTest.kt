@@ -609,7 +609,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance value: Int): ExampleGraph
+                fun create(@Provides value: Int): ExampleGraph
               }
             }
 
@@ -638,7 +638,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
               }
             }
 
@@ -668,7 +668,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance int: Int, @BindsInstance long: Long): ExampleGraph
+                fun create(@Provides int: Int, @Provides long: Long): ExampleGraph
               }
             }
 
@@ -703,7 +703,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
               }
             }
 
@@ -739,7 +739,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
               }
             }
             @Inject
@@ -774,7 +774,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance @Named("int") value: Int, @BindsInstance value2: Long): ExampleGraph
+                fun create(@Provides @Named("int") value: Int, @Provides value2: Long): ExampleGraph
               }
             }
             @Inject
@@ -809,7 +809,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance value: Int, @BindsInstance value2: Long): ExampleGraph
+                fun create(@Provides value: Int, @Provides value2: Long): ExampleGraph
               }
             }
 
@@ -845,7 +845,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance @Named("int") value: Int, @BindsInstance value2: Long): ExampleGraph
+                fun create(@Provides @Named("int") value: Int, @Provides value2: Long): ExampleGraph
               }
             }
 

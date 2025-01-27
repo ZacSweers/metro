@@ -15,7 +15,6 @@
  */
 package dev.zacsweers.metro.sample
 
-import dev.zacsweers.metro.BindsInstance
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
@@ -34,7 +33,7 @@ interface ExampleGraph : FileSystemProviders {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    operator fun invoke(@BindsInstance text: String): ExampleGraph
+    operator fun invoke(@Provides text: String): ExampleGraph
   }
 }
 

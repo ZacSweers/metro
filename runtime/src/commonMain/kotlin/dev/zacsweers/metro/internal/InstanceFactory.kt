@@ -35,7 +35,7 @@ public class InstanceFactory<T : Any> private constructor(instance: T) : Factory
 
   public companion object {
     public fun <T : Any> create(instance: T): Factory<T> {
-      return InstanceFactory<T>(instance)
+      return InstanceFactory(instance)
     }
   }
 }

@@ -175,17 +175,6 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
-  CUSTOM_BINDS_INSTANCE(
-    RawMetroOption(
-      name = "custom-binds-instance",
-      defaultValue = emptySet(),
-      valueDescription = "BindsInstance annotations",
-      description = "BindsInstance annotations",
-      required = false,
-      allowMultipleOccurrences = false,
-      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
-    )
-  ),
   CUSTOM_CONTRIBUTES_TO(
     RawMetroOption(
       name = "custom-contributes-to",
@@ -358,8 +347,6 @@ public data class MetroOptions(
   val customAssistedInjectAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ASSISTED_INJECT.raw.defaultValue.expectAs(),
   val customBindsAnnotations: Set<ClassId> = MetroOption.CUSTOM_BINDS.raw.defaultValue.expectAs(),
-  val customBindsInstanceAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_BINDS_INSTANCE.raw.defaultValue.expectAs(),
   val customContributesToAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_CONTRIBUTES_TO.raw.defaultValue.expectAs(),
   val customContributesBindingAnnotations: Set<ClassId> =
@@ -394,7 +381,6 @@ public data class MetroOptions(
       val customAssistedFactoryAnnotations = mutableSetOf<ClassId>()
       val customAssistedInjectAnnotations = mutableSetOf<ClassId>()
       val customBindsAnnotations = mutableSetOf<ClassId>()
-      val customBindsInstanceAnnotations = mutableSetOf<ClassId>()
       val customContributesToAnnotations = mutableSetOf<ClassId>()
       val customContributesBindingAnnotations = mutableSetOf<ClassId>()
       val customElementsIntoSetAnnotations = mutableSetOf<ClassId>()
@@ -444,8 +430,6 @@ public data class MetroOptions(
           MetroOption.CUSTOM_ASSISTED_INJECT ->
             customAssistedInjectAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_BINDS -> customBindsAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_BINDS_INSTANCE ->
-            customBindsInstanceAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_TO ->
             customContributesToAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_BINDING ->
@@ -483,7 +467,6 @@ public data class MetroOptions(
           customAssistedFactoryAnnotations = customAssistedFactoryAnnotations,
           customAssistedInjectAnnotations = customAssistedInjectAnnotations,
           customBindsAnnotations = customBindsAnnotations,
-          customBindsInstanceAnnotations = customBindsInstanceAnnotations,
           customContributesToAnnotations = customContributesToAnnotations,
           customContributesBindingAnnotations = customContributesBindingAnnotations,
           customElementsIntoSetAnnotations = customElementsIntoSetAnnotations,
@@ -503,7 +486,7 @@ public data class MetroOptions(
     }
 
     private fun CompilerConfiguration.getAsString(option: MetroOption): String {
-      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<String?>
+      @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<String>
       return get(typed.key, typed.defaultValue.orEmpty())
     }
 

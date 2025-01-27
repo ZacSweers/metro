@@ -112,7 +112,7 @@ internal fun IrValueParameter.toConstructorParameter(
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
   val isBindsInstance =
-    annotationsIn(context.symbols.bindsInstanceAnnotations).singleOrNull() != null
+    annotationsIn(context.symbols.classIds.providesAnnotations).singleOrNull() != null
 
   val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
 

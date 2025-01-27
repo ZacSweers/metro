@@ -18,7 +18,7 @@ package dev.zacsweers.metro.sample
 import dagger.Component
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
-import dev.zacsweers.metro.BindsInstance
+import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Singleton
 import dev.zacsweers.metro.createGraphFactory
 import jakarta.inject.Inject
@@ -43,8 +43,8 @@ class MixedTest {
     @Component.Factory
     interface Factory {
       fun create(
-        @BindsInstance message: String,
-        @Named("qualified") @BindsInstance qualifiedMessage: String,
+        @Provides message: String,
+        @Provides @Named("qualified") qualifiedMessage: String,
       ): SimpleComponent
     }
   }

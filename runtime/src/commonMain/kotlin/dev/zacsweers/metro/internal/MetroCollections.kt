@@ -28,7 +28,7 @@ public fun <T : Any> presizedList(size: Int): MutableList<T> =
     // runtime
     mutableListOf()
   } else {
-    ArrayList<T>(size)
+    ArrayList(size)
   }
 
 /** Returns true if at least one pair of items in [this] are equal. */
@@ -42,7 +42,7 @@ public fun List<*>.hasDuplicates(): Boolean =
 internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> {
   return if (isEmpty()) {
     // This actually uses a singleton instance
-    emptyMap<K, V>()
+    emptyMap()
   } else {
     buildMap(size) { putAll(this@toUnmodifiableMap) }
   }
@@ -53,7 +53,7 @@ internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> {
  * hold {@code expectedSize} elements without growth.
  */
 internal fun <T> newHashSetWithExpectedSize(expectedSize: Int): HashSet<T> {
-  return HashSet<T>(calculateInitialCapacity(expectedSize))
+  return HashSet(calculateInitialCapacity(expectedSize))
 }
 
 /**
@@ -61,7 +61,7 @@ internal fun <T> newHashSetWithExpectedSize(expectedSize: Int): HashSet<T> {
  * <em>should</em> hold {@code expectedSize} elements without growth.
  */
 public fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHashMap<K, V> {
-  return LinkedHashMap<K, V>(calculateInitialCapacity(expectedSize))
+  return LinkedHashMap(calculateInitialCapacity(expectedSize))
 }
 
 /**

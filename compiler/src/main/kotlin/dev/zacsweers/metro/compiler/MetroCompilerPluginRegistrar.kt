@@ -43,7 +43,6 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         customAssistedFactoryAnnotations = options.customAssistedFactoryAnnotations,
         customAssistedInjectAnnotations = options.customAssistedInjectAnnotations,
         customBindsAnnotations = options.customBindsAnnotations,
-        customBindsInstanceAnnotations = options.customBindsInstanceAnnotations,
         customContributesToAnnotations = options.customContributesToAnnotations,
         customContributesBindingAnnotations = options.customContributesBindingAnnotations,
         customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,

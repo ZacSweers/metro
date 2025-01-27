@@ -15,8 +15,8 @@
  */
 package dev.zacsweers.metro.sample
 
-import dev.zacsweers.metro.BindsInstance
 import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.Provides
 
 @DependencyGraph
 interface StringGraph {
@@ -24,6 +24,6 @@ interface StringGraph {
 
   @DependencyGraph.Factory
   interface Factory {
-    fun create(@BindsInstance message: String): StringGraph
+    fun create(@Provides message: String): StringGraph
   }
 }

@@ -25,7 +25,6 @@ internal class ClassIds(
   customAssistedFactoryAnnotations: Set<ClassId> = emptySet(),
   customAssistedInjectAnnotations: Set<ClassId> = emptySet(),
   customBindsAnnotations: Set<ClassId> = emptySet(),
-  customBindsInstanceAnnotations: Set<ClassId> = emptySet(),
   customContributesToAnnotations: Set<ClassId> = emptySet(),
   customContributesBindingAnnotations: Set<ClassId> = emptySet(),
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
@@ -77,10 +76,6 @@ internal class ClassIds(
 
   val providesAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Provides")) + customProvidesAnnotations
-
-  val bindsInstanceAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindsInstance")) +
-      customBindsInstanceAnnotations
 
   // Multibindings
   val intoSetAnnotations =

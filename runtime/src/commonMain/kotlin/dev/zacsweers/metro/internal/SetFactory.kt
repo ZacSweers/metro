@@ -57,7 +57,7 @@ private constructor(
         "Codegen error? Duplicates in the provider list"
       }
 
-      return SetFactory<T>(individualProviders, collectionProviders)
+      return SetFactory(individualProviders, collectionProviders)
     }
   }
 
@@ -94,7 +94,7 @@ private constructor(
       individualProviderSize: Int,
       collectionProviderSize: Int,
     ): Builder<T> {
-      return Builder<T>(individualProviderSize, collectionProviderSize)
+      return Builder(individualProviderSize, collectionProviderSize)
     }
   }
 }

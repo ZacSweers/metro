@@ -40,14 +40,14 @@ public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
 
   override val value: T
     get() {
-      var result1 = _value
+      val result1 = _value
       if (result1 !== UNINITIALIZED) {
         @Suppress("UNCHECKED_CAST")
         return result1 as T
       }
 
       return synchronized(this) {
-        var result2 = _value
+        val result2 = _value
         if (result2 !== UNINITIALIZED) {
           @Suppress("UNCHECKED_CAST") (result2 as T)
         } else {

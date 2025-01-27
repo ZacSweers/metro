@@ -16,7 +16,6 @@
 package dev.zacsweers.metro.sample
 
 import dev.zacsweers.metro.AssistedFactory
-import dev.zacsweers.metro.BindsInstance
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.createGraphFactory
@@ -47,8 +46,8 @@ class KotlinInjectTest {
     @DependencyGraph.Factory
     interface Factory {
       fun create(
-        @BindsInstance message: String,
-        @Named("qualified") @BindsInstance qualifiedMessage: String,
+        @dev.zacsweers.metro.Provides message: String,
+        @dev.zacsweers.metro.Provides @Named("qualified") qualifiedMessage: String,
       ): SimpleComponent
     }
   }

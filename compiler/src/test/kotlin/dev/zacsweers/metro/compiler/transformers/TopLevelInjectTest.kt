@@ -102,7 +102,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance message: String): ExampleGraph
+                fun create(@Provides message: String): ExampleGraph
               }
             }
           """
@@ -135,7 +135,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(@BindsInstance message: String): ExampleGraph
+                fun create(@Provides message: String): ExampleGraph
               }
             }
           """

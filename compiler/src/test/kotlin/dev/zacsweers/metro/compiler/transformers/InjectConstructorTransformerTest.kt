@@ -221,7 +221,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
 
             @DependencyGraph.Factory
             fun interface Factory {
-              fun create(@BindsInstance int: Int): ExampleGraph
+              fun create(@Provides int: Int): ExampleGraph
             }
           }
         """
@@ -259,7 +259,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
 
             @DependencyGraph.Factory
             fun interface Factory {
-              fun create(@BindsInstance int: Int): ExampleGraph
+              fun create(@Provides int: Int): ExampleGraph
             }
           }
         """

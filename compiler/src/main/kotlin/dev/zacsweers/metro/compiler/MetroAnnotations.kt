@@ -165,7 +165,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       is IrValueParameter -> {
         // Only BindsInstance and Assisted go here
         when (classId) {
-          in ids.bindsInstanceAnnotations -> {
+          in ids.providesAnnotations -> {
             isBindsInstance = true
             continue
           }
@@ -351,7 +351,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       is FirValueParameterSymbol -> {
         // Only BindsInstance and Assisted go here
         when (classId) {
-          in ids.bindsInstanceAnnotations -> {
+          in ids.providesAnnotations -> {
             isBindsInstance = true
             continue
           }

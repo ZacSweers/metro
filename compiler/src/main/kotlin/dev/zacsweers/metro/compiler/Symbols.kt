@@ -373,9 +373,6 @@ internal class Symbols(
   val mapKeyAnnotations
     get() = classIds.mapKeyAnnotations
 
-  val bindsInstanceAnnotations
-    get() = classIds.bindsInstanceAnnotations
-
   val assistedAnnotations
     get() = classIds.assistedAnnotations
 
