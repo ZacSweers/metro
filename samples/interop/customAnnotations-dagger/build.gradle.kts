@@ -16,10 +16,10 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.atomicfu)
-  id("dev.zacsweers.lattice")
+  id("dev.zacsweers.metro")
 }
 
-lattice {
+metro {
   customAnnotations {
     includeDagger()
     includeAnvil()

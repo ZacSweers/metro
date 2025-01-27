@@ -18,7 +18,7 @@ plugins {
   alias(libs.plugins.atomicfu)
   //  alias(libs.plugins.kotlin.kapt)
   alias(libs.plugins.ksp)
-  id("dev.zacsweers.lattice")
+  id("dev.zacsweers.metro")
 }
 
 // TODO add KSP/KAPT dual mode?

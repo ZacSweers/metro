@@ -13,23 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
+import dagger.BindsInstance
 import dagger.Component
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
-import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.Singleton
+import dagger.assisted.AssistedInject
 import dev.zacsweers.lattice.createGraphFactory
-import jakarta.inject.Inject
+import javax.inject.Inject
 import javax.inject.Named
+import javax.inject.Singleton
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 
-/** Basic tests for mixed custom annotations. */
-class MixedTest {
+/** Basic tests for javax custom annotations. */
+class JavaxTest {
   @Singleton
   @Component
   interface SimpleComponent {
@@ -58,7 +59,9 @@ class MixedTest {
   @Inject
   constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
 
-  class AssistedClass @Inject constructor(@Assisted val assisted: String, val message: String) {
+  class AssistedClass
+  @AssistedInject
+  constructor(@Assisted val assisted: String, val message: String) {
     @AssistedFactory
     interface Factory {
       fun create(assisted: String): AssistedClass

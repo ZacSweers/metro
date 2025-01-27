@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
 import dagger.Component
 import dev.zacsweers.lattice.DependencyGraph
 import kotlin.test.Test
 
-/** Basic tests having dagger components and lattice graphs depend on each other. */
+/** Basic tests having dagger components and metro graphs depend on each other. */
 class DaggerDependenciesTest {
 
   @DependencyGraph

@@ -13,17 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
-import dagger.BindsInstance
-import dagger.Component
+import me.tatarka.inject.annotations.Component
+import me.tatarka.inject.annotations.Provides
 
-@Component
-interface StringComponent {
-  val message: String
-
-  @Component.Factory
-  interface Factory {
-    fun create(@BindsInstance message: String): StringComponent
-  }
-}
+@Component abstract class StringComponent(@get:Provides val message: String)

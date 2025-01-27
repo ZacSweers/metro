@@ -16,7 +16,7 @@
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
   alias(libs.plugins.atomicfu)
-  id("dev.zacsweers.lattice")
+  id("dev.zacsweers.metro")
 }
 
 kotlin {
@@ -33,7 +33,7 @@ kotlin {
   }
 }
 
-lattice {
+metro {
   customAnnotations {
     includeKotlinInject()
     includeAnvil()

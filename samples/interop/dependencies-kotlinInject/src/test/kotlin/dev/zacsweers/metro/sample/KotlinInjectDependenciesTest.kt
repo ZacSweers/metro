@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
 import dev.zacsweers.lattice.DependencyGraph
 import dev.zacsweers.lattice.createGraphFactory
@@ -21,7 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import me.tatarka.inject.annotations.Component
 
-/** Basic tests having kotlin-inject components and lattice graphs depend on each other. */
+/** Basic tests having kotlin-inject components and metro graphs depend on each other. */
 class KotlinInjectDependenciesTest {
 
   @DependencyGraph

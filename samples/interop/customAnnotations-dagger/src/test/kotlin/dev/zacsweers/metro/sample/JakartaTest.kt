@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
 import dagger.BindsInstance
 import dagger.Component
@@ -21,16 +21,16 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dev.zacsweers.lattice.createGraphFactory
-import javax.inject.Inject
-import javax.inject.Named
-import javax.inject.Singleton
+import jakarta.inject.Inject
+import jakarta.inject.Named
+import jakarta.inject.Singleton
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 
-/** Basic tests for javax custom annotations. */
-class JavaxTest {
+/** Basic tests for jakarta custom annotations. */
+class JakartaTest {
   @Singleton
   @Component
   interface SimpleComponent {

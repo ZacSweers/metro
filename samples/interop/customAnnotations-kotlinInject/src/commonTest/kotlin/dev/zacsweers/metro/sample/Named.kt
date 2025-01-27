@@ -13,17 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
-import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.DependencyGraph
+import me.tatarka.inject.annotations.Qualifier
 
-@DependencyGraph
-interface StringGraph {
-  val message: String
-
-  @DependencyGraph.Factory
-  interface Factory {
-    fun create(@BindsInstance message: String): StringGraph
-  }
-}
+@Qualifier annotation class Named(val value: String)

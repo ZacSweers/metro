@@ -13,38 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
-import dev.zacsweers.lattice.Assisted
-import dev.zacsweers.lattice.AssistedFactory
+import dagger.Component
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
 import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.Inject
-import dev.zacsweers.lattice.createGraph
+import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.createGraphFactory
+import jakarta.inject.Inject
+import javax.inject.Named
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
-import me.tatarka.inject.annotations.Component
-import me.tatarka.inject.annotations.Provides
 
-/** Basic tests for kotlin-inject custom annotations. */
+/** Basic tests for mixed custom annotations. */
 class MixedTest {
   @Singleton
-  @DependencyGraph
+  @Component
   interface SimpleComponent {
     val message: String
     @Named("qualified") val qualifiedMessage: String
-    val int: Int
 
     val injectedClass: InjectedClass
     val scopedInjectedClass: ScopedInjectedClass
     val assistedClassFactory: AssistedClass.Factory
 
-    @Provides fun provideInt(): Int = 42
-
-    @DependencyGraph.Factory
+    @Component.Factory
     interface Factory {
       fun create(
         @BindsInstance message: String,
@@ -62,8 +58,7 @@ class MixedTest {
   @Inject
   constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
 
-  @Inject
-  class AssistedClass(@Assisted val assisted: String, val message: String) {
+  class AssistedClass @Inject constructor(@Assisted val assisted: String, val message: String) {
     @AssistedFactory
     interface Factory {
       fun create(assisted: String): AssistedClass
@@ -75,7 +70,6 @@ class MixedTest {
     val component =
       createGraphFactory<SimpleComponent.Factory>()
         .create("Hello, world!", "Hello, qualified world!")
-    assertEquals(42, component.int)
     assertEquals("Hello, world!", component.message)
     assertEquals("Hello, qualified world!", component.qualifiedMessage)
 
@@ -95,19 +89,5 @@ class MixedTest {
     val assistedClass = assistedClassFactory.create("assisted")
     assertEquals("Hello, world!", assistedClass.message)
     assertEquals("assisted", assistedClass.assisted)
-  }
-
-  @Singleton
-  @Component
-  interface NoArgComponent {
-    val int: Int
-
-    @Provides fun provideInt(): Int = 42
-  }
-
-  @Test
-  fun testNoArg() {
-    val component = createGraph<NoArgComponent>()
-    assertEquals(42, component.int)
   }
 }

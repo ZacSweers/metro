@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.sample
+package dev.zacsweers.metro.sample
 
-import com.squareup.anvil.annotations.ContributesBinding
-import com.squareup.anvil.annotations.ContributesTo
-import com.squareup.anvil.annotations.MergeComponent
-import dagger.BindsInstance
-import dev.zacsweers.lattice.createGraphFactory
-import javax.inject.Inject
-import javax.inject.Singleton
+import dev.zacsweers.lattice.createGraph
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import me.tatarka.inject.annotations.Inject
+import me.tatarka.inject.annotations.Provides
+import software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding
+import software.amazon.lastmile.kotlin.inject.anvil.ContributesTo
+import software.amazon.lastmile.kotlin.inject.anvil.MergeComponent
 
 class AnvilTest {
   abstract class AppScope private constructor()
@@ -36,10 +35,7 @@ class AnvilTest {
     val message: String
     val baseClass: BaseClass
 
-    @MergeComponent.Factory
-    interface Factory {
-      fun create(@BindsInstance message: String): MergedComponent
-    }
+    @Provides fun provideMessage(): String = "Hello, world!"
   }
 
   interface BaseClass {
@@ -53,7 +49,7 @@ class AnvilTest {
 
   @Test
   fun testMergedComponent() {
-    val component = createGraphFactory<MergedComponent.Factory>().create("Hello, world!")
+    val component = createGraph<MergedComponent>()
     assertEquals("Hello, world!", component.message)
 
     assertTrue(component is ContributedInterface)
