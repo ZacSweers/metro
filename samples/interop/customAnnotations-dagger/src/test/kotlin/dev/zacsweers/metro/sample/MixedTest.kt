@@ -18,9 +18,9 @@ package dev.zacsweers.metro.sample
 import dagger.Component
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
-import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.Singleton
-import dev.zacsweers.lattice.createGraphFactory
+import dev.zacsweers.metro.BindsInstance
+import dev.zacsweers.metro.Singleton
+import dev.zacsweers.metro.createGraphFactory
 import jakarta.inject.Inject
 import javax.inject.Named
 import kotlin.test.Test

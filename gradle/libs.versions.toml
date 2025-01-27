@@ -26,7 +26,7 @@ jvmTarget = "11"
 ksp = "2.1.0-1.0.29"
 ktfmt = "0.54"
 okio = "3.10.2"
-pluginId = "dev.zacsweers.lattice.compiler"
+pluginId = "dev.zacsweers.metro.compiler"
 
 [plugins]
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }

@@ -15,11 +15,11 @@
  */
 package dev.zacsweers.metro.sample
 
-import dev.zacsweers.lattice.AssistedFactory
-import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.createGraph
-import dev.zacsweers.lattice.createGraphFactory
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.BindsInstance
+import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.createGraph
+import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame

@@ -15,12 +15,12 @@
  */
 package dev.zacsweers.metro.sample
 
-import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.DependencyGraph
+import dev.zacsweers.metro.BindsInstance
+import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
-import dev.zacsweers.lattice.Provides
-import dev.zacsweers.lattice.Singleton
+import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.Singleton
 
 @Singleton
 @DependencyGraph

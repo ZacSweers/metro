@@ -15,7 +15,7 @@
  */
 package dev.zacsweers.metro.test.integration.cycles
 
-import dev.zacsweers.lattice.createGraph
+import dev.zacsweers.metro.createGraph
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 

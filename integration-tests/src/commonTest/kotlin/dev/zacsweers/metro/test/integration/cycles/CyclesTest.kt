@@ -16,14 +16,14 @@
 
 package dev.zacsweers.metro.test.integration.cycles
 
-import dev.zacsweers.lattice.Binds
-import dev.zacsweers.lattice.DependencyGraph
+import dev.zacsweers.metro.Binds
+import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
-import dev.zacsweers.lattice.IntoMap
+import dev.zacsweers.metro.IntoMap
 import dev.zacsweers.metro.Provider
-import dev.zacsweers.lattice.Provides
-import dev.zacsweers.lattice.StringKey
-import dev.zacsweers.lattice.createGraph
+import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.StringKey
+import dev.zacsweers.metro.createGraph
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContains

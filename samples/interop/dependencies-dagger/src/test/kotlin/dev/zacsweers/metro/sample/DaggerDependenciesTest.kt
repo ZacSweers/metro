@@ -16,7 +16,7 @@
 package dev.zacsweers.metro.sample
 
 import dagger.Component
-import dev.zacsweers.lattice.DependencyGraph
+import dev.zacsweers.metro.DependencyGraph
 import kotlin.test.Test
 
 /** Basic tests having dagger components and metro graphs depend on each other. */

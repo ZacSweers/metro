@@ -15,8 +15,8 @@
  */
 package dev.zacsweers.metro.sample
 
-import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.createGraphFactory
+import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import me.tatarka.inject.annotations.Component

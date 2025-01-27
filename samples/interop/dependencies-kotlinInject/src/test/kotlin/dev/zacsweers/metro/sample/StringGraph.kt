@@ -15,8 +15,8 @@
  */
 package dev.zacsweers.metro.sample
 
-import dev.zacsweers.lattice.BindsInstance
-import dev.zacsweers.lattice.DependencyGraph
+import dev.zacsweers.metro.BindsInstance
+import dev.zacsweers.metro.DependencyGraph
 
 @DependencyGraph
 interface StringGraph {

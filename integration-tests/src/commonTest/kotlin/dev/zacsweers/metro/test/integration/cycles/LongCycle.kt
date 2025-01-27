@@ -15,7 +15,7 @@
  */
 package dev.zacsweers.metro.test.integration.cycles
 
-import dev.zacsweers.lattice.DependencyGraph
+import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
 

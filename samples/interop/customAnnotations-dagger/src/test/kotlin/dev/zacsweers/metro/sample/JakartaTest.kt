@@ -20,7 +20,7 @@ import dagger.Component
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
-import dev.zacsweers.lattice.createGraphFactory
+import dev.zacsweers.metro.createGraphFactory
 import jakarta.inject.Inject
 import jakarta.inject.Named
 import jakarta.inject.Singleton

@@ -1,5 +1,5 @@
-Lattice
-=======
+Metro
+=====
 
 A prototype dependency injection compiler plugin.
 
@@ -13,17 +13,17 @@ Apply the gradle plugin.
 
 ```gradle
 plugins {
-  id("dev.zacsweers.lattice") version <version>
+  id("dev.zacsweers.metro") version <version>
 }
 ```
 
 And that's it! The default configuration will add the multiplatform `runtime` artifact (which has annotations
 you can use) and wire it all automatically.
 
-You can configure custom behavior with properties on the `lattice` extension.
+You can configure custom behavior with properties on the `metro` extension.
 
 ```kotlin
-lattice {
+metro {
   // Define whether or not this is enabled. Useful if you want to gate this behind a dynamic
   // build configuration.
   enabled = true // Default

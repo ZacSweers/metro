@@ -19,7 +19,7 @@ import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesTo
 import com.squareup.anvil.annotations.MergeComponent
 import dagger.BindsInstance
-import dev.zacsweers.lattice.createGraphFactory
+import dev.zacsweers.metro.createGraphFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.test.Test

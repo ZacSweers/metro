@@ -15,7 +15,7 @@
  */
 package dev.zacsweers.metro.sample
 
-import dev.zacsweers.lattice.createGraph
+import dev.zacsweers.metro.createGraph
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
