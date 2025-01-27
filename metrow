@@ -51,7 +51,7 @@ case "$1" in
        ;;
 
    *)
-       echo "Usage: latticew (publish|check|regen)"
+       echo "Usage: metrow (publish|check|regen)"
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
        echo "  --local             Publish locally"
