@@ -13,8 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.test.integration
+package dev.zacsweers.metro.test.integration.cycles
 
-fun interface Callable<T> {
-  fun call(): T
+import dev.zacsweers.lattice.createGraph
+import kotlin.test.Test
+import kotlin.test.assertNotNull
+
+class LongCycleTest {
+  @Test
+  fun testLongCycle() {
+    val graph = createGraph<LongCycle.LongCycleGraph>()
+    assertNotNull(graph.class1)
+  }
 }

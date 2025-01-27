@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.test.integration.cycles
+package dev.zacsweers.metro.test.integration.cycles
 
 import dev.zacsweers.lattice.DependencyGraph
 import dev.zacsweers.lattice.Inject
@@ -26,7 +26,7 @@ import dev.zacsweers.lattice.Provider
 // Each nested class's constructor has an intentionally unused parameter.
 // Ported from
 // https://github.com/google/dagger/blob/master/javatests/dagger/functional/cycle/LongCycle.java
-@Suppress("unused")
+@Suppress("unused", "UNUSED_PARAMETER")
 object LongCycle {
   @Inject class Class1(class2: Class2)
 

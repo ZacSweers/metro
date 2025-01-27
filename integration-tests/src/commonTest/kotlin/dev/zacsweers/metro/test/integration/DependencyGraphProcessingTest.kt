@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.test.integration
+package dev.zacsweers.metro.test.integration
 
 import dev.zacsweers.lattice.AppScope
 import dev.zacsweers.lattice.Assisted
@@ -38,8 +38,6 @@ import dev.zacsweers.lattice.Singleton
 import dev.zacsweers.lattice.StringKey
 import dev.zacsweers.lattice.createGraph
 import dev.zacsweers.lattice.createGraphFactory
-import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.AppScopeBase
-import dev.zacsweers.lattice.test.integration.DependencyGraphProcessingTest.SingletonBase
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -300,7 +298,7 @@ class DependencyGraphProcessingTest {
   fun `graph factories should merge overlapping interfaces where only the abstract override has the bindsinstance`() {
     val value =
       createGraphFactory<
-          GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance.Factory
+        GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance.Factory
         >()
         .create(3)
         .value

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.zacsweers.lattice.test.integration.cycles
+package dev.zacsweers.metro.test.integration.cycles
 
 import dev.zacsweers.lattice.Binds
 import dev.zacsweers.lattice.DependencyGraph
@@ -109,7 +109,7 @@ class CyclesTest {
     }
   }
 
-  ## Lattice generates
+  ## Metro generates
   public class ExampleGraphImpl : ExampleGraph {
     private val yProvider: Provider<Y> = DelegateFactory<Y>()
     private val val xProvider: Provider<X> = X_Factory.create(y = <this>.#yProvider)
@@ -148,7 +148,7 @@ class CyclesTest {
   }
    */
   // TODO I'm not sure what's functionally different about
-  //  what lattice generates and what dagger generates, but this infinite loops at runtime
+  //  what metro generates and what dagger generates, but this infinite loops at runtime
   @Ignore
   @Test
   fun providerMapIndirectionCycle() {
