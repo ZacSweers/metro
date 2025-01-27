@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -363,6 +364,7 @@ private fun FirBasedSymbol<*>.latticeAnnotations(
       }
 
       is FirNamedFunctionSymbol,
+      is FirPropertyAccessorSymbol,
       is FirPropertySymbol -> {
         // Binds, Provides
         when (classId) {
