@@ -23,7 +23,7 @@ import dev.zacsweers.lattice.BindsInstance
 import dev.zacsweers.lattice.ClassKey
 import dev.zacsweers.lattice.DependencyGraph
 import dev.zacsweers.lattice.ElementsIntoSet
-import dev.zacsweers.lattice.Inject
+import dev.zacsweers.metro.Inject
 import dev.zacsweers.lattice.IntKey
 import dev.zacsweers.lattice.IntoMap
 import dev.zacsweers.lattice.IntoSet
@@ -31,7 +31,7 @@ import dev.zacsweers.lattice.LongKey
 import dev.zacsweers.lattice.MapKey
 import dev.zacsweers.lattice.Multibinds
 import dev.zacsweers.lattice.Named
-import dev.zacsweers.lattice.Provider
+import dev.zacsweers.metro.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.SingleIn
 import dev.zacsweers.lattice.Singleton

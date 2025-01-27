@@ -19,7 +19,7 @@ import dev.zacsweers.lattice.Assisted
 import dev.zacsweers.lattice.AssistedFactory
 import dev.zacsweers.lattice.BindsInstance
 import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.Inject
+import dev.zacsweers.metro.Inject
 import dev.zacsweers.lattice.createGraph
 import dev.zacsweers.lattice.createGraphFactory
 import kotlin.test.Test

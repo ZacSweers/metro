@@ -16,8 +16,8 @@
 package dev.zacsweers.metro.test.integration.cycles
 
 import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.Inject
-import dev.zacsweers.lattice.Provider
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.Provider
 
 /**
  * Component with a long enough cycle such that the initialization of a provider happens in a

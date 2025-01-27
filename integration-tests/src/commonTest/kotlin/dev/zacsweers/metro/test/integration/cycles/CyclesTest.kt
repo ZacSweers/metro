@@ -18,9 +18,9 @@ package dev.zacsweers.metro.test.integration.cycles
 
 import dev.zacsweers.lattice.Binds
 import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.Inject
+import dev.zacsweers.metro.Inject
 import dev.zacsweers.lattice.IntoMap
-import dev.zacsweers.lattice.Provider
+import dev.zacsweers.metro.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.StringKey
 import dev.zacsweers.lattice.createGraph

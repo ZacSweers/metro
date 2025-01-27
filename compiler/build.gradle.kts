@@ -35,7 +35,7 @@ kotlin {
 
 buildConfig {
   generateAtSync = true
-  packageName("dev.zacsweers.lattice.compiler")
+  packageName("dev.zacsweers.metro.compiler")
   kotlin {
     useKotlinOutput {
       internalVisibility = true

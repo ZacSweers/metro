@@ -17,8 +17,8 @@ package dev.zacsweers.metro.sample
 
 import dev.zacsweers.lattice.BindsInstance
 import dev.zacsweers.lattice.DependencyGraph
-import dev.zacsweers.lattice.Inject
-import dev.zacsweers.lattice.Provider
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.Provider
 import dev.zacsweers.lattice.Provides
 import dev.zacsweers.lattice.Singleton
 
