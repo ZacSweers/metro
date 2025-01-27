@@ -25,7 +25,7 @@ plugins {
   alias(libs.plugins.kotlin.kapt) apply false
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.atomicfu) apply false
-  id("dev.zacsweers.lattice") apply false
+  id("dev.zacsweers.metro") apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.mavenPublish) apply false // wat
 }

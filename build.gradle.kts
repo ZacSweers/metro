@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 buildscript {
   dependencies {
     // Include our included build
-    classpath("dev.zacsweers.lattice:gradle-plugin")
+    classpath("dev.zacsweers.metro:gradle-plugin")
   }
 }
 
@@ -46,7 +46,7 @@ plugins {
 
 apiValidation {
   ignoredProjects += listOf("compiler", "integration-tests")
-  ignoredPackages += listOf("dev.zacsweers.lattice.internal")
+  ignoredPackages += listOf("dev.zacsweers.metro.internal")
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
