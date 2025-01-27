@@ -16,11 +16,11 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
-import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.orElse
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -53,12 +53,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // TODO put all these into a set to check?
     if (declaration.symbol.isDependencyGraph(session)) return
     if (declaration.symbol.isGraphFactory(session)) return
-    if (
-      declaration.symbol.isAnnotatedWithAny(
-        session,
-        session.classIds.assistedFactoryAnnotations,
-      )
-    )
+    if (declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations))
       return
 
     val isConstructorInjected by unsafeLazy {

@@ -19,15 +19,15 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
@@ -140,9 +140,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         Symbols.Names.create -> {
           buildFactoryCreateFunction(
             nonNullContext,
-            Symbols.ClassIds.metroFactory.constructClassLikeType(
-              arrayOf(callable.returnType)
-            ),
+            Symbols.ClassIds.metroFactory.constructClassLikeType(arrayOf(callable.returnType)),
             callable.instanceReceiver,
             null,
             callable.valueParameters,
@@ -313,10 +311,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     val originClassSymbol =
       klass.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val callableName =
-      klass.name
-        .asString()
-        .removeSuffix(Symbols.Names.metroFactory.asString())
-        .decapitalizeUS()
+      klass.name.asString().removeSuffix(Symbols.Names.metroFactory.asString()).decapitalizeUS()
     val callable =
       originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
         val nameMatches =

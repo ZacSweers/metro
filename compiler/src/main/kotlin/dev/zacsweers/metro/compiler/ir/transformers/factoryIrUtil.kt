@@ -104,8 +104,7 @@ internal fun generateStaticNewInstanceFunction(
   targetFunction: IrFunction? = null,
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
-  val function =
-    parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction }
+  val function = parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction }
 
   return function.apply {
     val instanceParam = valueParameters.find { it.origin == Origins.InstanceParameter }

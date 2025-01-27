@@ -161,7 +161,7 @@ private constructor(
     return dev.zacsweers.metro.compiler.NameAllocator(
       allocatedNames.toMutableSet(),
       tagToName.toMutableMap(),
-      mode = mode
+      mode = mode,
     )
   }
 
@@ -194,6 +194,9 @@ private fun toJavaIdentifier(suggestion: String) = buildString {
   }
 }
 
-internal fun dev.zacsweers.metro.compiler.NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
+internal fun dev.zacsweers.metro.compiler.NameAllocator.newName(
+  suggestion: Name,
+  tag: Any = Uuid.random().toString(),
+): Name {
   return newName(suggestion.asString(), tag).asName()
 }

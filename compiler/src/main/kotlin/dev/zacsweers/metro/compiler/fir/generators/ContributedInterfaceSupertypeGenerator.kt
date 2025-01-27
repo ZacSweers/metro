@@ -18,8 +18,8 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.hintClassId
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.hintClassId
 import dev.zacsweers.metro.compiler.fir.resolvedClassArgumentTarget
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
@@ -49,8 +49,7 @@ internal class ContributedInterfaceSupertypeGenerator(
   private val classIds: ClassIds,
 ) : FirSupertypeGenerationExtension(session) {
 
-  class Factory(private val classIds: ClassIds) :
-    FirSupertypeGenerationExtension.Factory {
+  class Factory(private val classIds: ClassIds) : FirSupertypeGenerationExtension.Factory {
     override fun create(session: FirSession) =
       ContributedInterfaceSupertypeGenerator(session, classIds)
   }
@@ -108,8 +107,7 @@ internal class ContributedInterfaceSupertypeGenerator(
 
       buildMap<ClassId, MutableSet<ClassId>> {
         for (contribution in classesInPackage) {
-          val origin =
-            contribution.getAnnotationByClassId(Symbols.ClassIds.metroOrigin, session)!!
+          val origin = contribution.getAnnotationByClassId(Symbols.ClassIds.metroOrigin, session)!!
 
           val originClass =
             origin
@@ -128,9 +126,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
-    return annotations
-      .annotationsIn(session, classIds.dependencyGraphAnnotations)
-      .firstOrNull()
+    return annotations.annotationsIn(session, classIds.dependencyGraphAnnotations).firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {

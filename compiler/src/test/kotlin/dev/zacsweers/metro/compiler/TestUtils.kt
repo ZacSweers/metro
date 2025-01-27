@@ -252,8 +252,7 @@ fun Class<*>.staticMethods(
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
 fun Class<*>.invokeCreate(vararg args: Any): Any {
-  val createFunctions =
-    staticMethods().filter { it.name == Symbols.StringNames.CREATE }.toList()
+  val createFunctions = staticMethods().filter { it.name == Symbols.StringNames.CREATE }.toList()
 
   return when (createFunctions.size) {
     0 -> error("No create functions found in $this")
@@ -265,8 +264,7 @@ fun Class<*>.invokeCreate(vararg args: Any): Any {
 }
 
 fun Class<*>.invokeStaticInvokeOperator(vararg args: Any): Any {
-  val invokeFunctions =
-    staticMethods().filter { it.name == Symbols.StringNames.INVOKE }.toList()
+  val invokeFunctions = staticMethods().filter { it.name == Symbols.StringNames.INVOKE }.toList()
 
   return when (invokeFunctions.size) {
     0 -> error("No invoke functions found in $this")

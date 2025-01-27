@@ -22,10 +22,10 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
-import dev.zacsweers.metro.compiler.fir.hintClassId
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.hintClassId
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.joinSimpleNames
@@ -205,11 +205,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
     val contributions = classIdsToContributions[classId] ?: return null
-    return createTopLevelClass(
-        classId,
-        key = Keys.Default,
-        classKind = ClassKind.INTERFACE,
-      ) {
+    return createTopLevelClass(classId, key = Keys.Default, classKind = ClassKind.INTERFACE) {
         // annoyingly not implicit from the class kind
         modality = Modality.ABSTRACT
         for (contribution in contributions) {

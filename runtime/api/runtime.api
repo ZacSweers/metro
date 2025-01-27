@@ -1,142 +1,142 @@
-public abstract class dev/zacsweers/lattice/AppScope {
+public abstract class dev/zacsweers/metro/AppScope {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Assisted : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Assisted : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/String;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/AssistedFactory : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/AssistedFactory : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Binds : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Binds : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/BindsInstance : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/BindsInstance : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/BoundType : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/BoundType : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ClassKey : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/ClassKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesBinding : java/lang/annotation/Annotation {
-	public abstract fun boundType ()Ldev/zacsweers/lattice/BoundType;
+public abstract interface annotation class dev/zacsweers/metro/ContributesBinding : java/lang/annotation/Annotation {
+	public abstract fun boundType ()Ldev/zacsweers/metro/BoundType;
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesBinding$Container : java/lang/annotation/Annotation {
-	public abstract fun value ()[Ldev/zacsweers/lattice/ContributesBinding;
+public abstract interface annotation class dev/zacsweers/metro/ContributesBinding$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/metro/ContributesBinding;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoMap : java/lang/annotation/Annotation {
-	public abstract fun boundType ()Ldev/zacsweers/lattice/BoundType;
+public abstract interface annotation class dev/zacsweers/metro/ContributesIntoMap : java/lang/annotation/Annotation {
+	public abstract fun boundType ()Ldev/zacsweers/metro/BoundType;
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoMap$Container : java/lang/annotation/Annotation {
-	public abstract fun value ()[Ldev/zacsweers/lattice/ContributesIntoMap;
+public abstract interface annotation class dev/zacsweers/metro/ContributesIntoMap$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/metro/ContributesIntoMap;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoSet : java/lang/annotation/Annotation {
-	public abstract fun boundType ()Ldev/zacsweers/lattice/BoundType;
+public abstract interface annotation class dev/zacsweers/metro/ContributesIntoSet : java/lang/annotation/Annotation {
+	public abstract fun boundType ()Ldev/zacsweers/metro/BoundType;
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesIntoSet$Container : java/lang/annotation/Annotation {
-	public abstract fun value ()[Ldev/zacsweers/lattice/ContributesIntoSet;
+public abstract interface annotation class dev/zacsweers/metro/ContributesIntoSet$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/metro/ContributesIntoSet;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesTo : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/ContributesTo : java/lang/annotation/Annotation {
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ContributesTo$Container : java/lang/annotation/Annotation {
-	public abstract fun value ()[Ldev/zacsweers/lattice/ContributesTo;
+public abstract interface annotation class dev/zacsweers/metro/ContributesTo$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/metro/ContributesTo;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/DependencyGraph : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/DependencyGraph : java/lang/annotation/Annotation {
 	public abstract fun additionalScopes ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/DependencyGraph$Factory : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/DependencyGraph$Factory : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ElementsIntoSet : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/ElementsIntoSet : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/ForScope : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/ForScope : java/lang/annotation/Annotation {
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Inject : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Inject : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/IntKey : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/IntKey : java/lang/annotation/Annotation {
 	public abstract fun value ()I
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/IntoMap : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/IntoMap : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/IntoSet : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/IntoSet : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/LazyClassKey : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/LazyClassKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/LongKey : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/LongKey : java/lang/annotation/Annotation {
 	public abstract fun value ()J
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/MapKey : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/MapKey : java/lang/annotation/Annotation {
 	public abstract fun unwrapValue ()Z
 }
 
-public abstract interface class dev/zacsweers/lattice/MembersInjector {
+public abstract interface class dev/zacsweers/metro/MembersInjector {
 	public abstract fun injectMembers (Ljava/lang/Object;)V
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Multibinds : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Multibinds : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Named : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Named : java/lang/annotation/Annotation {
 	public abstract fun name ()Ljava/lang/String;
 }
 
-public abstract interface class dev/zacsweers/lattice/Provider {
+public abstract interface class dev/zacsweers/metro/Provider {
 	public abstract fun invoke ()Ljava/lang/Object;
 }
 
-public final class dev/zacsweers/lattice/ProviderKt {
-	public static final fun provider (Lkotlin/jvm/functions/Function0;)Ldev/zacsweers/lattice/Provider;
-	public static final fun providerOf (Ljava/lang/Object;)Ldev/zacsweers/lattice/Provider;
+public final class dev/zacsweers/metro/ProviderKt {
+	public static final fun provider (Lkotlin/jvm/functions/Function0;)Ldev/zacsweers/metro/Provider;
+	public static final fun providerOf (Ljava/lang/Object;)Ldev/zacsweers/metro/Provider;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Provides : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Provides : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Qualifier : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Qualifier : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Scope : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Scope : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/SingleIn : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/SingleIn : java/lang/annotation/Annotation {
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/Singleton : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/Singleton : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/lattice/StringKey : java/lang/annotation/Annotation {
+public abstract interface annotation class dev/zacsweers/metro/StringKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/String;
 }
 

@@ -369,8 +369,7 @@ public data class MetroOptions(
   val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
   val customGraphFactoryAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_GRAPH_FACTORY.raw.defaultValue.expectAs(),
-  val customInjectAnnotations: Set<ClassId> =
-    MetroOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
+  val customInjectAnnotations: Set<ClassId> = MetroOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
   val customIntoMapAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_INTO_MAP.raw.defaultValue.expectAs(),
   val customIntoSetAnnotations: Set<ClassId> =
@@ -413,8 +412,7 @@ public data class MetroOptions(
       for (entry in MetroOption.entries) {
         when (entry) {
           MetroOption.DEBUG -> options = options.copy(debug = configuration.getAsBoolean(entry))
-          MetroOption.ENABLED ->
-            options = options.copy(enabled = configuration.getAsBoolean(entry))
+          MetroOption.ENABLED -> options = options.copy(enabled = configuration.getAsBoolean(entry))
           MetroOption.REPORTS_DESTINATION -> {
             options =
               options.copy(
@@ -445,8 +443,7 @@ public data class MetroOptions(
             customAssistedFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_ASSISTED_INJECT ->
             customAssistedInjectAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_BINDS ->
-            customBindsAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_BINDS -> customBindsAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_BINDS_INSTANCE ->
             customBindsInstanceAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_TO ->
@@ -455,12 +452,10 @@ public data class MetroOptions(
             customContributesBindingAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_ELEMENTS_INTO_SET ->
             customElementsIntoSetAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_GRAPH ->
-            customGraphAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_GRAPH_FACTORY ->
             customGraphFactoryAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_INJECT ->
-            customInjectAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_INJECT -> customInjectAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INTO_MAP ->
             customIntoMapAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INTO_SET ->
@@ -473,8 +468,7 @@ public data class MetroOptions(
             customProvidesAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_QUALIFIER ->
             customQualifierAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_SCOPE ->
-            customScopeAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
         }
       }
 

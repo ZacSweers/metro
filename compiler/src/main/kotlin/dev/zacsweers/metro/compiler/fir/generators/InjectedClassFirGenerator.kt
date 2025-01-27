@@ -18,22 +18,22 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
+import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.unsafeLazy
 import kotlin.collections.set
@@ -184,7 +184,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   ) {
     private val parameterNameAllocator = dev.zacsweers.metro.compiler.NameAllocator()
     private val memberNameAllocator =
-      dev.zacsweers.metro.compiler.NameAllocator(mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT)
+      dev.zacsweers.metro.compiler.NameAllocator(
+        mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT
+      )
     private var declaredInjectedMembersPopulated = false
     private var ancestorInjectedMembersPopulated = false
 
@@ -356,9 +358,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           val function = functionFor(classSymbol.classId)
           val params =
             function.valueParameterSymbols
-              .filterNot {
-                it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-              }
+              .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
               .map { MetroFirValueParameter(session, it, wrapInProvider = true) }
           InjectedClass(classSymbol, true, params)
         } else {
@@ -381,8 +381,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         classesToGenerate += classId.shortClassName
       }
       if (declaredInjectedMembers.isNotEmpty()) {
-        val classId =
-          classSymbol.classId.createNestedClassId(Symbols.Names.metroMembersInjector)
+        val classId = classSymbol.classId.createNestedClassId(Symbols.Names.metroMembersInjector)
         membersInjectorClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
@@ -493,8 +492,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
       (isFactoryClass && isObject) ||
         classSymbol.hasOrigin(Keys.InjectConstructorFactoryCompanionDeclaration)
     val isInjectorClass = classSymbol.hasOrigin(Keys.MembersInjectorClassDeclaration)
-    val isInjectorCreatorClass =
-      classSymbol.hasOrigin(Keys.MembersInjectorCompanionDeclaration)
+    val isInjectorCreatorClass = classSymbol.hasOrigin(Keys.MembersInjectorCompanionDeclaration)
 
     if (!isFactoryClass && !isFactoryCreatorClass && !isInjectorCreatorClass && !isInjectorClass) {
       return emptySet()
@@ -735,9 +733,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               {
                 val targetClassType =
                   targetClass.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
-                Symbols.ClassIds.membersInjector.constructClassLikeType(
-                  arrayOf(targetClassType)
-                )
+                Symbols.ClassIds.membersInjector.constructClassLikeType(arrayOf(targetClassType))
               },
               null,
               null,
@@ -758,11 +754,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               ) {
                 // Add any type args if necessary
                 injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
-                  typeParameter(
-                    typeParameter.name,
-                    typeParameter.variance,
-                    key = Keys.Default,
-                  ) {
+                  typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
                     if (typeParameter.isBound) {
                       typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
                     }

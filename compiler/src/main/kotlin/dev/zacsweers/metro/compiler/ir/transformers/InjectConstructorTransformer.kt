@@ -137,8 +137,7 @@ internal class InjectConstructorTransformer(
     val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
     val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
 
-    val constructorParameters =
-      targetConstructor.parameters(metroContext, factoryCls, declaration)
+    val constructorParameters = targetConstructor.parameters(metroContext, factoryCls, declaration)
     val allParameters =
       buildList {
           add(constructorParameters)
@@ -274,9 +273,7 @@ internal class InjectConstructorTransformer(
     constructorParameters: Parameters<ConstructorParameter>,
   ) {
     val injectedFunctionClass =
-      declaration.getAnnotation(
-        Symbols.ClassIds.metroInjectedFunctionClass.asSingleFqName()
-      )
+      declaration.getAnnotation(Symbols.ClassIds.metroInjectedFunctionClass.asSingleFqName())
     if (injectedFunctionClass != null) {
       val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
       val callableId = CallableId(declaration.packageFqName!!, callableName)
@@ -287,9 +284,7 @@ internal class InjectConstructorTransformer(
         assignConstructorParamsToFields(constructorParameters, declaration)
 
       val invokeFunction =
-        declaration.functions.first {
-          it.origin == Origins.TopLevelInjectFunctionClassFunction
-        }
+        declaration.functions.first { it.origin == Origins.TopLevelInjectFunctionClassFunction }
 
       // TODO
       //  copy default values

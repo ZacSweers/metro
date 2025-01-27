@@ -28,8 +28,8 @@ import dev.zacsweers.metro.compiler.ir.BindingStack
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
-import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.TypeKey
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
@@ -46,9 +46,9 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
-import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -164,8 +164,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         // If there's no $$Impl class, the companion object is the impl
         val companionIsTheFactory =
           companion.implements(pluginContext, rawType.classIdOrFail) &&
-            rawType.nestedClasses.singleOrNull { it.name == Symbols.Names.metroImpl } ==
-              null
+            rawType.nestedClasses.singleOrNull { it.name == Symbols.Names.metroImpl } == null
 
         if (companionIsTheFactory) {
           return pluginContext.createIrBuilder(expression.symbol).run {
@@ -464,9 +463,8 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     }
 
     val metroGraph =
-      dependencyGraphDeclaration.nestedClasses.singleOrNull {
-        it.name == Symbols.Names.metroGraph
-      } ?: error("Expected generated dependency graph for $graphClassId")
+      dependencyGraphDeclaration.nestedClasses.singleOrNull { it.name == Symbols.Names.metroGraph }
+        ?: error("Expected generated dependency graph for $graphClassId")
 
     if (dependencyGraphDeclaration.isExternalParent) {
       // Externally compiled, look up its generated class
@@ -757,9 +755,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         } else {
           // Implement the factory's $$Impl class
           val factoryClass =
-            creator.type
-              .requireNestedClass(Symbols.Names.metroImpl)
-              .apply(implementFactoryFunction)
+            creator.type.requireNestedClass(Symbols.Names.metroImpl).apply(implementFactoryFunction)
 
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
@@ -897,10 +893,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
 
       // Track a stack for bindings
       val bindingStack =
-        BindingStack(
-          node.sourceGraph,
-          metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen),
-        )
+        BindingStack(node.sourceGraph, metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen))
 
       // First pass: collect bindings and their dependencies for provider field ordering
       // Note we do this in two passes rather than keep a TreeMap because otherwise we'd be doing
@@ -1625,8 +1618,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         // Example9_Factory_Impl.create(example9Provider);
         val implClass = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
         val implClassCompanion = implClass.companionObject()!!
-        val createFunction =
-          implClassCompanion.requireSimpleFunction(Symbols.StringNames.CREATE)
+        val createFunction = implClassCompanion.requireSimpleFunction(Symbols.StringNames.CREATE)
         val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)
         irInvoke(
           dispatchReceiver = irGetObject(implClassCompanion.symbol),
@@ -1650,8 +1642,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
             )
             .apply { putTypeArgument(0, injectedType) }
         } else {
-          val createFunction =
-            injectorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
+          val createFunction = injectorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
           val args =
             generateBindingArguments(
               binding.parameters,

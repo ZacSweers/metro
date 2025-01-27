@@ -1,13 +1,13 @@
-public final class dev/zacsweers/lattice/gradle/DiagnosticSeverity : java/lang/Enum {
-	public static final field ERROR Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
-	public static final field NONE Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
-	public static final field WARN Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
+public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enum {
+	public static final field ERROR Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
+	public static final field NONE Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
+	public static final field WARN Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
-	public static fun values ()[Ldev/zacsweers/lattice/gradle/DiagnosticSeverity;
+	public static fun valueOf (Ljava/lang/String;)Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
+	public static fun values ()[Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 }
 
-public final class dev/zacsweers/lattice/gradle/LatticeGradleSubplugin : org/jetbrains/kotlin/gradle/plugin/KotlinCompilerPluginSupportPlugin {
+public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrains/kotlin/gradle/plugin/KotlinCompilerPluginSupportPlugin {
 	public fun <init> ()V
 	public synthetic fun apply (Ljava/lang/Object;)V
 	public fun apply (Lorg/gradle/api/Project;)V
@@ -18,10 +18,10 @@ public final class dev/zacsweers/lattice/gradle/LatticeGradleSubplugin : org/jet
 	public fun isApplicable (Lorg/jetbrains/kotlin/gradle/plugin/KotlinCompilation;)Z
 }
 
-public abstract class dev/zacsweers/lattice/gradle/LatticePluginExtension {
+public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
 	public final fun customAnnotations (Lorg/gradle/api/Action;)V
-	public final fun getCustomAnnotations ()Ldev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations;
+	public final fun getCustomAnnotations ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
@@ -29,7 +29,7 @@ public abstract class dev/zacsweers/lattice/gradle/LatticePluginExtension {
 	public abstract fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
 }
 
-public abstract class dev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations {
+public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations {
 	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
 	public final fun getAssisted ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getAssistedFactory ()Lorg/gradle/api/provider/SetProperty;
@@ -52,11 +52,11 @@ public abstract class dev/zacsweers/lattice/gradle/LatticePluginExtension$Custom
 	public final fun includeAnvil ()V
 	public final fun includeAnvil (Z)V
 	public final fun includeAnvil (ZZ)V
-	public static synthetic fun includeAnvil$default (Ldev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
+	public static synthetic fun includeAnvil$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
 	public final fun includeDagger ()V
 	public final fun includeDagger (Z)V
 	public final fun includeDagger (ZZ)V
-	public static synthetic fun includeDagger$default (Ldev/zacsweers/lattice/gradle/LatticePluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
+	public static synthetic fun includeDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
 	public final fun includeKotlinInject ()V
 }
 

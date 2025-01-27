@@ -170,9 +170,7 @@ internal class Symbols(
   }
 
   val metroProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntime.packageFqName, Name.identifier("Provider"))
-    )!!
+    pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, Name.identifier("Provider")))!!
   }
 
   val metroProviderFunction: IrSimpleFunctionSymbol by lazy {

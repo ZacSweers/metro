@@ -298,7 +298,7 @@ class DependencyGraphProcessingTest {
   fun `graph factories should merge overlapping interfaces where only the abstract override has the bindsinstance`() {
     val value =
       createGraphFactory<
-        GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance.Factory
+          GraphCreatorWithMergeableInterfacesWhereOnlyTheOverrideHasTheBindsInstance.Factory
         >()
         .create(3)
         .value

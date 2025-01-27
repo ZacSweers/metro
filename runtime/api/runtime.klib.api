@@ -5,195 +5,195 @@
 // - Show manifest properties: true
 // - Show declarations: true
 
-// Library unique name: <dev.zacsweers.lattice:runtime>
-open annotation class <#A: kotlin/Any> dev.zacsweers.lattice/BoundType : kotlin/Annotation { // dev.zacsweers.lattice/BoundType|null[0]
-    constructor <init>() // dev.zacsweers.lattice/BoundType.<init>|<init>(){}[0]
+// Library unique name: <dev.zacsweers.metro:runtime>
+open annotation class <#A: kotlin/Any> dev.zacsweers.metro/BoundType : kotlin/Annotation { // dev.zacsweers.metro/BoundType|null[0]
+    constructor <init>() // dev.zacsweers.metro/BoundType.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Assisted : kotlin/Annotation { // dev.zacsweers.lattice/Assisted|null[0]
-    constructor <init>(kotlin/String = ...) // dev.zacsweers.lattice/Assisted.<init>|<init>(kotlin.String){}[0]
+open annotation class dev.zacsweers.metro/Assisted : kotlin/Annotation { // dev.zacsweers.metro/Assisted|null[0]
+    constructor <init>(kotlin/String = ...) // dev.zacsweers.metro/Assisted.<init>|<init>(kotlin.String){}[0]
 
-    final val value // dev.zacsweers.lattice/Assisted.value|{}value[0]
-        final fun <get-value>(): kotlin/String // dev.zacsweers.lattice/Assisted.value.<get-value>|<get-value>(){}[0]
+    final val value // dev.zacsweers.metro/Assisted.value|{}value[0]
+        final fun <get-value>(): kotlin/String // dev.zacsweers.metro/Assisted.value.<get-value>|<get-value>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/AssistedFactory : kotlin/Annotation { // dev.zacsweers.lattice/AssistedFactory|null[0]
-    constructor <init>() // dev.zacsweers.lattice/AssistedFactory.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/AssistedFactory : kotlin/Annotation { // dev.zacsweers.metro/AssistedFactory|null[0]
+    constructor <init>() // dev.zacsweers.metro/AssistedFactory.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Binds : kotlin/Annotation { // dev.zacsweers.lattice/Binds|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Binds.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/Binds : kotlin/Annotation { // dev.zacsweers.metro/Binds|null[0]
+    constructor <init>() // dev.zacsweers.metro/Binds.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/BindsInstance : kotlin/Annotation { // dev.zacsweers.lattice/BindsInstance|null[0]
-    constructor <init>() // dev.zacsweers.lattice/BindsInstance.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/BindsInstance : kotlin/Annotation { // dev.zacsweers.metro/BindsInstance|null[0]
+    constructor <init>() // dev.zacsweers.metro/BindsInstance.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/ClassKey : kotlin/Annotation { // dev.zacsweers.lattice/ClassKey|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.lattice/ClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+open annotation class dev.zacsweers.metro/ClassKey : kotlin/Annotation { // dev.zacsweers.metro/ClassKey|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
-    final val value // dev.zacsweers.lattice/ClassKey.value|{}value[0]
-        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ClassKey.value.<get-value>|<get-value>(){}[0]
+    final val value // dev.zacsweers.metro/ClassKey.value|{}value[0]
+        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ClassKey.value.<get-value>|<get-value>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/ContributesBinding : kotlin/Annotation { // dev.zacsweers.lattice/ContributesBinding|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.lattice/BoundType<*> = ...) // dev.zacsweers.lattice/ContributesBinding.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.lattice.BoundType<*>){}[0]
+open annotation class dev.zacsweers.metro/ContributesBinding : kotlin/Annotation { // dev.zacsweers.metro/ContributesBinding|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.metro/BoundType<*> = ...) // dev.zacsweers.metro/ContributesBinding.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.metro.BoundType<*>){}[0]
 
-    final val boundType // dev.zacsweers.lattice/ContributesBinding.boundType|{}boundType[0]
-        final fun <get-boundType>(): dev.zacsweers.lattice/BoundType<*> // dev.zacsweers.lattice/ContributesBinding.boundType.<get-boundType>|<get-boundType>(){}[0]
-    final val replaces // dev.zacsweers.lattice/ContributesBinding.replaces|{}replaces[0]
-        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesBinding.replaces.<get-replaces>|<get-replaces>(){}[0]
-    final val scope // dev.zacsweers.lattice/ContributesBinding.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesBinding.scope.<get-scope>|<get-scope>(){}[0]
+    final val boundType // dev.zacsweers.metro/ContributesBinding.boundType|{}boundType[0]
+        final fun <get-boundType>(): dev.zacsweers.metro/BoundType<*> // dev.zacsweers.metro/ContributesBinding.boundType.<get-boundType>|<get-boundType>(){}[0]
+    final val replaces // dev.zacsweers.metro/ContributesBinding.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesBinding.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.metro/ContributesBinding.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesBinding.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/ContributesIntoMap : kotlin/Annotation { // dev.zacsweers.lattice/ContributesIntoMap|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.lattice/BoundType<*> = ...) // dev.zacsweers.lattice/ContributesIntoMap.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.lattice.BoundType<*>){}[0]
+open annotation class dev.zacsweers.metro/ContributesIntoMap : kotlin/Annotation { // dev.zacsweers.metro/ContributesIntoMap|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.metro/BoundType<*> = ...) // dev.zacsweers.metro/ContributesIntoMap.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.metro.BoundType<*>){}[0]
 
-    final val boundType // dev.zacsweers.lattice/ContributesIntoMap.boundType|{}boundType[0]
-        final fun <get-boundType>(): dev.zacsweers.lattice/BoundType<*> // dev.zacsweers.lattice/ContributesIntoMap.boundType.<get-boundType>|<get-boundType>(){}[0]
-    final val replaces // dev.zacsweers.lattice/ContributesIntoMap.replaces|{}replaces[0]
-        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesIntoMap.replaces.<get-replaces>|<get-replaces>(){}[0]
-    final val scope // dev.zacsweers.lattice/ContributesIntoMap.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesIntoMap.scope.<get-scope>|<get-scope>(){}[0]
+    final val boundType // dev.zacsweers.metro/ContributesIntoMap.boundType|{}boundType[0]
+        final fun <get-boundType>(): dev.zacsweers.metro/BoundType<*> // dev.zacsweers.metro/ContributesIntoMap.boundType.<get-boundType>|<get-boundType>(){}[0]
+    final val replaces // dev.zacsweers.metro/ContributesIntoMap.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesIntoMap.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.metro/ContributesIntoMap.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesIntoMap.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/ContributesIntoSet : kotlin/Annotation { // dev.zacsweers.lattice/ContributesIntoSet|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.lattice/BoundType<*> = ...) // dev.zacsweers.lattice/ContributesIntoSet.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.lattice.BoundType<*>){}[0]
+open annotation class dev.zacsweers.metro/ContributesIntoSet : kotlin/Annotation { // dev.zacsweers.metro/ContributesIntoSet|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.metro/BoundType<*> = ...) // dev.zacsweers.metro/ContributesIntoSet.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.metro.BoundType<*>){}[0]
 
-    final val boundType // dev.zacsweers.lattice/ContributesIntoSet.boundType|{}boundType[0]
-        final fun <get-boundType>(): dev.zacsweers.lattice/BoundType<*> // dev.zacsweers.lattice/ContributesIntoSet.boundType.<get-boundType>|<get-boundType>(){}[0]
-    final val replaces // dev.zacsweers.lattice/ContributesIntoSet.replaces|{}replaces[0]
-        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesIntoSet.replaces.<get-replaces>|<get-replaces>(){}[0]
-    final val scope // dev.zacsweers.lattice/ContributesIntoSet.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesIntoSet.scope.<get-scope>|<get-scope>(){}[0]
+    final val boundType // dev.zacsweers.metro/ContributesIntoSet.boundType|{}boundType[0]
+        final fun <get-boundType>(): dev.zacsweers.metro/BoundType<*> // dev.zacsweers.metro/ContributesIntoSet.boundType.<get-boundType>|<get-boundType>(){}[0]
+    final val replaces // dev.zacsweers.metro/ContributesIntoSet.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesIntoSet.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.metro/ContributesIntoSet.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesIntoSet.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/ContributesTo : kotlin/Annotation { // dev.zacsweers.lattice/ContributesTo|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.lattice/ContributesTo.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+open annotation class dev.zacsweers.metro/ContributesTo : kotlin/Annotation { // dev.zacsweers.metro/ContributesTo|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesTo.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
-    final val replaces // dev.zacsweers.lattice/ContributesTo.replaces|{}replaces[0]
-        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/ContributesTo.replaces.<get-replaces>|<get-replaces>(){}[0]
-    final val scope // dev.zacsweers.lattice/ContributesTo.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ContributesTo.scope.<get-scope>|<get-scope>(){}[0]
+    final val replaces // dev.zacsweers.metro/ContributesTo.replaces|{}replaces[0]
+        final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesTo.replaces.<get-replaces>|<get-replaces>(){}[0]
+    final val scope // dev.zacsweers.metro/ContributesTo.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesTo.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/DependencyGraph : kotlin/Annotation { // dev.zacsweers.lattice/DependencyGraph|null[0]
-    constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.lattice/DependencyGraph.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+open annotation class dev.zacsweers.metro/DependencyGraph : kotlin/Annotation { // dev.zacsweers.metro/DependencyGraph|null[0]
+    constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/DependencyGraph.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
-    final val additionalScopes // dev.zacsweers.lattice/DependencyGraph.additionalScopes|{}additionalScopes[0]
-        final fun <get-additionalScopes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.lattice/DependencyGraph.additionalScopes.<get-additionalScopes>|<get-additionalScopes>(){}[0]
-    final val scope // dev.zacsweers.lattice/DependencyGraph.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/DependencyGraph.scope.<get-scope>|<get-scope>(){}[0]
+    final val additionalScopes // dev.zacsweers.metro/DependencyGraph.additionalScopes|{}additionalScopes[0]
+        final fun <get-additionalScopes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.additionalScopes.<get-additionalScopes>|<get-additionalScopes>(){}[0]
+    final val scope // dev.zacsweers.metro/DependencyGraph.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/DependencyGraph.scope.<get-scope>|<get-scope>(){}[0]
 
-    open annotation class Factory : kotlin/Annotation { // dev.zacsweers.lattice/DependencyGraph.Factory|null[0]
-        constructor <init>() // dev.zacsweers.lattice/DependencyGraph.Factory.<init>|<init>(){}[0]
+    open annotation class Factory : kotlin/Annotation { // dev.zacsweers.metro/DependencyGraph.Factory|null[0]
+        constructor <init>() // dev.zacsweers.metro/DependencyGraph.Factory.<init>|<init>(){}[0]
     }
 }
 
-open annotation class dev.zacsweers.lattice/ElementsIntoSet : kotlin/Annotation { // dev.zacsweers.lattice/ElementsIntoSet|null[0]
-    constructor <init>() // dev.zacsweers.lattice/ElementsIntoSet.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/ElementsIntoSet : kotlin/Annotation { // dev.zacsweers.metro/ElementsIntoSet|null[0]
+    constructor <init>() // dev.zacsweers.metro/ElementsIntoSet.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/ForScope : kotlin/Annotation { // dev.zacsweers.lattice/ForScope|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.lattice/ForScope.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+open annotation class dev.zacsweers.metro/ForScope : kotlin/Annotation { // dev.zacsweers.metro/ForScope|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ForScope.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
-    final val scope // dev.zacsweers.lattice/ForScope.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/ForScope.scope.<get-scope>|<get-scope>(){}[0]
+    final val scope // dev.zacsweers.metro/ForScope.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ForScope.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Inject : kotlin/Annotation { // dev.zacsweers.lattice/Inject|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Inject.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/Inject : kotlin/Annotation { // dev.zacsweers.metro/Inject|null[0]
+    constructor <init>() // dev.zacsweers.metro/Inject.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/IntKey : kotlin/Annotation { // dev.zacsweers.lattice/IntKey|null[0]
-    constructor <init>(kotlin/Int) // dev.zacsweers.lattice/IntKey.<init>|<init>(kotlin.Int){}[0]
+open annotation class dev.zacsweers.metro/IntKey : kotlin/Annotation { // dev.zacsweers.metro/IntKey|null[0]
+    constructor <init>(kotlin/Int) // dev.zacsweers.metro/IntKey.<init>|<init>(kotlin.Int){}[0]
 
-    final val value // dev.zacsweers.lattice/IntKey.value|{}value[0]
-        final fun <get-value>(): kotlin/Int // dev.zacsweers.lattice/IntKey.value.<get-value>|<get-value>(){}[0]
+    final val value // dev.zacsweers.metro/IntKey.value|{}value[0]
+        final fun <get-value>(): kotlin/Int // dev.zacsweers.metro/IntKey.value.<get-value>|<get-value>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/IntoMap : kotlin/Annotation { // dev.zacsweers.lattice/IntoMap|null[0]
-    constructor <init>() // dev.zacsweers.lattice/IntoMap.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/IntoMap : kotlin/Annotation { // dev.zacsweers.metro/IntoMap|null[0]
+    constructor <init>() // dev.zacsweers.metro/IntoMap.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/IntoSet : kotlin/Annotation { // dev.zacsweers.lattice/IntoSet|null[0]
-    constructor <init>() // dev.zacsweers.lattice/IntoSet.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/IntoSet : kotlin/Annotation { // dev.zacsweers.metro/IntoSet|null[0]
+    constructor <init>() // dev.zacsweers.metro/IntoSet.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/LazyClassKey : kotlin/Annotation { // dev.zacsweers.lattice/LazyClassKey|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.lattice/LazyClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+open annotation class dev.zacsweers.metro/LazyClassKey : kotlin/Annotation { // dev.zacsweers.metro/LazyClassKey|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/LazyClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
-    final val value // dev.zacsweers.lattice/LazyClassKey.value|{}value[0]
-        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/LazyClassKey.value.<get-value>|<get-value>(){}[0]
+    final val value // dev.zacsweers.metro/LazyClassKey.value|{}value[0]
+        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/LazyClassKey.value.<get-value>|<get-value>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/LongKey : kotlin/Annotation { // dev.zacsweers.lattice/LongKey|null[0]
-    constructor <init>(kotlin/Long) // dev.zacsweers.lattice/LongKey.<init>|<init>(kotlin.Long){}[0]
+open annotation class dev.zacsweers.metro/LongKey : kotlin/Annotation { // dev.zacsweers.metro/LongKey|null[0]
+    constructor <init>(kotlin/Long) // dev.zacsweers.metro/LongKey.<init>|<init>(kotlin.Long){}[0]
 
-    final val value // dev.zacsweers.lattice/LongKey.value|{}value[0]
-        final fun <get-value>(): kotlin/Long // dev.zacsweers.lattice/LongKey.value.<get-value>|<get-value>(){}[0]
+    final val value // dev.zacsweers.metro/LongKey.value|{}value[0]
+        final fun <get-value>(): kotlin/Long // dev.zacsweers.metro/LongKey.value.<get-value>|<get-value>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/MapKey : kotlin/Annotation { // dev.zacsweers.lattice/MapKey|null[0]
-    constructor <init>(kotlin/Boolean = ...) // dev.zacsweers.lattice/MapKey.<init>|<init>(kotlin.Boolean){}[0]
+open annotation class dev.zacsweers.metro/MapKey : kotlin/Annotation { // dev.zacsweers.metro/MapKey|null[0]
+    constructor <init>(kotlin/Boolean = ...) // dev.zacsweers.metro/MapKey.<init>|<init>(kotlin.Boolean){}[0]
 
-    final val unwrapValue // dev.zacsweers.lattice/MapKey.unwrapValue|{}unwrapValue[0]
-        final fun <get-unwrapValue>(): kotlin/Boolean // dev.zacsweers.lattice/MapKey.unwrapValue.<get-unwrapValue>|<get-unwrapValue>(){}[0]
+    final val unwrapValue // dev.zacsweers.metro/MapKey.unwrapValue|{}unwrapValue[0]
+        final fun <get-unwrapValue>(): kotlin/Boolean // dev.zacsweers.metro/MapKey.unwrapValue.<get-unwrapValue>|<get-unwrapValue>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Multibinds : kotlin/Annotation { // dev.zacsweers.lattice/Multibinds|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Multibinds.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/Multibinds : kotlin/Annotation { // dev.zacsweers.metro/Multibinds|null[0]
+    constructor <init>() // dev.zacsweers.metro/Multibinds.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Named : kotlin/Annotation { // dev.zacsweers.lattice/Named|null[0]
-    constructor <init>(kotlin/String) // dev.zacsweers.lattice/Named.<init>|<init>(kotlin.String){}[0]
+open annotation class dev.zacsweers.metro/Named : kotlin/Annotation { // dev.zacsweers.metro/Named|null[0]
+    constructor <init>(kotlin/String) // dev.zacsweers.metro/Named.<init>|<init>(kotlin.String){}[0]
 
-    final val name // dev.zacsweers.lattice/Named.name|{}name[0]
-        final fun <get-name>(): kotlin/String // dev.zacsweers.lattice/Named.name.<get-name>|<get-name>(){}[0]
+    final val name // dev.zacsweers.metro/Named.name|{}name[0]
+        final fun <get-name>(): kotlin/String // dev.zacsweers.metro/Named.name.<get-name>|<get-name>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Provides : kotlin/Annotation { // dev.zacsweers.lattice/Provides|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Provides.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/Provides : kotlin/Annotation { // dev.zacsweers.metro/Provides|null[0]
+    constructor <init>() // dev.zacsweers.metro/Provides.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Qualifier : kotlin/Annotation { // dev.zacsweers.lattice/Qualifier|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Qualifier.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/Qualifier : kotlin/Annotation { // dev.zacsweers.metro/Qualifier|null[0]
+    constructor <init>() // dev.zacsweers.metro/Qualifier.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Scope : kotlin/Annotation { // dev.zacsweers.lattice/Scope|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Scope.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/Scope : kotlin/Annotation { // dev.zacsweers.metro/Scope|null[0]
+    constructor <init>() // dev.zacsweers.metro/Scope.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/SingleIn : kotlin/Annotation { // dev.zacsweers.lattice/SingleIn|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.lattice/SingleIn.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+open annotation class dev.zacsweers.metro/SingleIn : kotlin/Annotation { // dev.zacsweers.metro/SingleIn|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/SingleIn.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
-    final val scope // dev.zacsweers.lattice/SingleIn.scope|{}scope[0]
-        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.lattice/SingleIn.scope.<get-scope>|<get-scope>(){}[0]
+    final val scope // dev.zacsweers.metro/SingleIn.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/SingleIn.scope.<get-scope>|<get-scope>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/Singleton : kotlin/Annotation { // dev.zacsweers.lattice/Singleton|null[0]
-    constructor <init>() // dev.zacsweers.lattice/Singleton.<init>|<init>(){}[0]
+open annotation class dev.zacsweers.metro/Singleton : kotlin/Annotation { // dev.zacsweers.metro/Singleton|null[0]
+    constructor <init>() // dev.zacsweers.metro/Singleton.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.lattice/StringKey : kotlin/Annotation { // dev.zacsweers.lattice/StringKey|null[0]
-    constructor <init>(kotlin/String) // dev.zacsweers.lattice/StringKey.<init>|<init>(kotlin.String){}[0]
+open annotation class dev.zacsweers.metro/StringKey : kotlin/Annotation { // dev.zacsweers.metro/StringKey|null[0]
+    constructor <init>(kotlin/String) // dev.zacsweers.metro/StringKey.<init>|<init>(kotlin.String){}[0]
 
-    final val value // dev.zacsweers.lattice/StringKey.value|{}value[0]
-        final fun <get-value>(): kotlin/String // dev.zacsweers.lattice/StringKey.value.<get-value>|<get-value>(){}[0]
+    final val value // dev.zacsweers.metro/StringKey.value|{}value[0]
+        final fun <get-value>(): kotlin/String // dev.zacsweers.metro/StringKey.value.<get-value>|<get-value>(){}[0]
 }
 
-abstract fun interface <#A: kotlin/Any> dev.zacsweers.lattice/Provider { // dev.zacsweers.lattice/Provider|null[0]
-    abstract fun invoke(): #A // dev.zacsweers.lattice/Provider.invoke|invoke(){}[0]
+abstract fun interface <#A: kotlin/Any> dev.zacsweers.metro/Provider { // dev.zacsweers.metro/Provider|null[0]
+    abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
 }
 
-abstract interface <#A: kotlin/Any> dev.zacsweers.lattice/MembersInjector { // dev.zacsweers.lattice/MembersInjector|null[0]
-    abstract fun injectMembers(#A) // dev.zacsweers.lattice/MembersInjector.injectMembers|injectMembers(1:0){}[0]
+abstract interface <#A: kotlin/Any> dev.zacsweers.metro/MembersInjector { // dev.zacsweers.metro/MembersInjector|null[0]
+    abstract fun injectMembers(#A) // dev.zacsweers.metro/MembersInjector.injectMembers|injectMembers(1:0){}[0]
 }
 
-abstract class dev.zacsweers.lattice/AppScope // dev.zacsweers.lattice/AppScope|null[0]
+abstract class dev.zacsweers.metro/AppScope // dev.zacsweers.metro/AppScope|null[0]
 
-final fun <#A: kotlin/Any> dev.zacsweers.lattice/providerOf(#A): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/providerOf|providerOf(0:0){0§<kotlin.Any>}[0]
-final inline fun <#A: kotlin/Any> dev.zacsweers.lattice/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.lattice/Provider<#A> // dev.zacsweers.lattice/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]
-final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createGraph(): #A // dev.zacsweers.lattice/createGraph|createGraph(){0§<kotlin.Any>}[0]
-final inline fun <#A: reified kotlin/Any> dev.zacsweers.lattice/createGraphFactory(): #A // dev.zacsweers.lattice/createGraphFactory|createGraphFactory(){0§<kotlin.Any>}[0]
+final fun <#A: kotlin/Any> dev.zacsweers.metro/providerOf(#A): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/providerOf|providerOf(0:0){0§<kotlin.Any>}[0]
+final inline fun <#A: kotlin/Any> dev.zacsweers.metro/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any>}[0]
+final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraph(): #A // dev.zacsweers.metro/createGraph|createGraph(){0§<kotlin.Any>}[0]
+final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraphFactory(): #A // dev.zacsweers.metro/createGraphFactory|createGraphFactory(){0§<kotlin.Any>}[0]

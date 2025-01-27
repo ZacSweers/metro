@@ -16,13 +16,13 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
+import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
@@ -70,10 +70,7 @@ internal fun FirExtension.buildFactoryConstructor(
         val valueParameter = valueParameters[i]
         // TODO toe-hold for later factory gen
         if (
-          valueParameter.symbol.isAnnotatedWithAny(
-            session,
-            session.classIds.assistedAnnotations,
-          )
+          valueParameter.symbol.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
         ) {
           continue
         }

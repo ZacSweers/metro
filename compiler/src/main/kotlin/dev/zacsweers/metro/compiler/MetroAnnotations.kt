@@ -17,8 +17,8 @@ package dev.zacsweers.metro.compiler
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
-import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.asIrAnnotation
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -133,9 +133,8 @@ internal class MetroAnnotations<T>(
     )
 }
 
-internal fun IrAnnotationContainer.metroAnnotations(
-  ids: ClassIds
-): MetroAnnotations<IrAnnotation> = metroAnnotations(ids, null)
+internal fun IrAnnotationContainer.metroAnnotations(ids: ClassIds): MetroAnnotations<IrAnnotation> =
+  metroAnnotations(ids, null)
 
 private fun IrAnnotationContainer.metroAnnotations(
   ids: ClassIds,

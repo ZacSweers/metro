@@ -16,12 +16,12 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -104,9 +104,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
             constructor.valueParameterSymbols
               // TODO need a predicate?
               .mapNotNull { param ->
-                if (
-                  !param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-                ) {
+                if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
                   return@mapNotNull null
                 }
                 MetroFirValueParameter(session, param)

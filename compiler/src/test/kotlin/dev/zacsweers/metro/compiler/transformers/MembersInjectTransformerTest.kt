@@ -27,8 +27,8 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedFactoryClass
-import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.generatedMembersInjector
+import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeCreate
 import dev.zacsweers.metro.compiler.invokeNewInstance
 import dev.zacsweers.metro.compiler.newInstanceStrict

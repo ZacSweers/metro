@@ -44,9 +44,8 @@ internal class MetroFirBuiltIns(
   }
 
   val injectedFunctionClassClassSymbol by unsafeLazy {
-    session.symbolProvider.getClassLikeSymbolByClassId(
-      Symbols.ClassIds.metroInjectedFunctionClass
-    ) as FirRegularClassSymbol
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroInjectedFunctionClass)
+      as FirRegularClassSymbol
   }
 
   val composableClassSymbol by unsafeLazy {
@@ -96,8 +95,7 @@ internal class MetroFirBuiltIns(
   }
 }
 
-internal val FirSession.metroFirBuiltIns: MetroFirBuiltIns by
-  FirSession.sessionComponentAccessor()
+internal val FirSession.metroFirBuiltIns: MetroFirBuiltIns by FirSession.sessionComponentAccessor()
 
 internal val FirSession.classIds: ClassIds
   get() = metroFirBuiltIns.classIds

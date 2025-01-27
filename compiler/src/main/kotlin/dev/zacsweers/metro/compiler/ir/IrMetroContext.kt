@@ -165,8 +165,7 @@ internal interface IrMetroContext {
       messageCollector: MessageCollector,
       symbols: Symbols,
       options: MetroOptions,
-    ): IrMetroContext =
-      SimpleIrMetroContext(pluginContext, messageCollector, symbols, options)
+    ): IrMetroContext = SimpleIrMetroContext(pluginContext, messageCollector, symbols, options)
 
     private class SimpleIrMetroContext(
       override val pluginContext: IrPluginContext,

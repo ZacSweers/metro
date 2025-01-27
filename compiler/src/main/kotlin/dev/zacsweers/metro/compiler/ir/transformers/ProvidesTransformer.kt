@@ -71,8 +71,7 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.synthetic.isVisibleOutside
 
-internal class ProvidesTransformer(context: IrMetroContext) :
-  IrMetroContext by context {
+internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by context {
 
   private val references = mutableMapOf<FqName, CallableReference>()
   private val generatedFactories = mutableMapOf<FqName, IrClass>()
@@ -172,8 +171,7 @@ internal class ProvidesTransformer(context: IrMetroContext) :
 
     val factoryCls =
       reference.parent.owner.nestedClasses.singleOrNull {
-        it.origin == Origins.ProviderFactoryClassDeclaration &&
-          it.classIdOrFail == generatedClassId
+        it.origin == Origins.ProviderFactoryClassDeclaration && it.classIdOrFail == generatedClassId
       }
         ?: error(
           "No expected factory class generated for ${reference.fqName}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
@@ -383,8 +381,7 @@ internal class ProvidesTransformer(context: IrMetroContext) :
       ) { function ->
         val valueParameters = function.valueParameters
 
-        val args =
-          valueParameters.filter { it.origin == Origins.ValueParameter }.map { irGet(it) }
+        val args = valueParameters.filter { it.origin == Origins.ValueParameter }.map { irGet(it) }
 
         val dispatchReceiver =
           if (reference.isInObject) {

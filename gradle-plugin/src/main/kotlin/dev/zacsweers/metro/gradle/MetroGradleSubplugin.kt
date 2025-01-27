@@ -32,9 +32,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   override fun getCompilerPluginId(): String = PLUGIN_ID
 
   override fun getPluginArtifact(): SubpluginArtifact =
-      SubpluginArtifact(
-          groupId = "dev.zacsweers.metro", artifactId = "compiler", version = VERSION
-      )
+      SubpluginArtifact(groupId = "dev.zacsweers.metro", artifactId = "compiler", version = VERSION)
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
 

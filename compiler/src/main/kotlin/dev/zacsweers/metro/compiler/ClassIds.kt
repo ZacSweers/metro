@@ -59,8 +59,7 @@ internal class ClassIds(
   // Assisted inject
   private val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
   val assistedAnnotations = setOf(metroAssisted) + customAssistedAnnotations
-  val metroAssistedFactory =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedFactory")
+  val metroAssistedFactory = Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedFactory")
   val assistedFactoryAnnotations = setOf(metroAssistedFactory) + customAssistedFactoryAnnotations
 
   val injectAnnotations =
@@ -69,8 +68,7 @@ internal class ClassIds(
       customAssistedInjectAnnotations
 
   val qualifierAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Qualifier")) +
-      customQualifierAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Qualifier")) + customQualifierAnnotations
   val scopeAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Scope")) + customScopeAnnotations
 
@@ -78,8 +76,7 @@ internal class ClassIds(
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Binds")) + customBindsAnnotations
 
   val providesAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Provides")) +
-      customProvidesAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Provides")) + customProvidesAnnotations
 
   val bindsInstanceAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindsInstance")) +
@@ -87,20 +84,16 @@ internal class ClassIds(
 
   // Multibindings
   val intoSetAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("IntoSet")) +
-      customIntoSetAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("IntoSet")) + customIntoSetAnnotations
   val elementsIntoSetAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("ElementsIntoSet")) +
       customElementsIntoSetAnnotations
   val mapKeyAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("MapKey")) +
-      customMapKeyAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("MapKey")) + customMapKeyAnnotations
   val intoMapAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("IntoMap")) +
-      customIntoMapAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("IntoMap")) + customIntoMapAnnotations
   val multibindsAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Multibinds")) +
-      customMultibindsAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Multibinds")) + customMultibindsAnnotations
 
   val originAnnotation = Symbols.FqNames.metroRuntimeInternalPackage.classIdOf("Origin")
   private val contributesToAnnotation =

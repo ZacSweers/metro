@@ -60,8 +60,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 
-internal class MembersInjectorTransformer(context: IrMetroContext) :
-  IrMetroContext by context {
+internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroContext by context {
 
   data class MemberInjectClass(
     val ir: IrClass,
@@ -290,7 +289,9 @@ internal fun IrClass.memberInjectParameters(
 ): Map<ClassId, List<Parameters<MembersInjectParameter>>> {
   return buildList {
       val nameAllocator =
-        dev.zacsweers.metro.compiler.NameAllocator(mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT)
+        dev.zacsweers.metro.compiler.NameAllocator(
+          mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT
+        )
       for (type in
         getAllSuperTypes(context.pluginContext, excludeSelf = false, excludeAny = true)) {
         val clazz = type.rawTypeOrNull() ?: continue
