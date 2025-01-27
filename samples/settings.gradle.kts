@@ -29,7 +29,7 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "lattice-samples"
+rootProject.name = "metro-samples"
 
 include(
   ":basic",

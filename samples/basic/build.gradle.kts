@@ -16,7 +16,7 @@
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
   alias(libs.plugins.atomicfu)
-  id("dev.zacsweers.lattice")
+  id("dev.zacsweers.metro")
 }
 
 kotlin {
@@ -24,7 +24,7 @@ kotlin {
   /*
    TODO non-jvm targets fail with "IrValueParameterSymbolImpl is already bound" exceptions
     e: java.lang.IllegalStateException: IrValueParameterSymbolImpl is already bound. Signature: null.
-    Owner: VALUE_PARAMETER INSTANCE_RECEIVER name:<this> type:<uninitialized parent>.$$LatticeGraph
+    Owner: VALUE_PARAMETER INSTANCE_RECEIVER name:<this> type:<uninitialized parent>.$$MetroGraph
         at org.jetbrains.kotlin.ir.symbols.impl.IrSymbolBase.bind(IrSymbolImpl.kt:67)
         at org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl.<init>(IrValueParameterImpl.kt:48)
         at org.jetbrains.kotlin.ir.declarations.IrFactory.createValueParameter(IrFactory.kt:407)
@@ -42,4 +42,4 @@ kotlin {
   }
 }
 
-lattice { debug.set(false) }
+metro { debug.set(false) }
