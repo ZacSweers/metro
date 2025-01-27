@@ -36,7 +36,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 buildConfig {
-  packageName("dev.zacsweers.lattice.gradle")
+  packageName("dev.zacsweers.metro.gradle")
   useKotlinOutput {
     topLevelConstants = true
     internalVisibility = true
@@ -57,9 +57,9 @@ tasks.withType<KotlinCompile>().configureEach {
 
 gradlePlugin {
   plugins {
-    create("latticePlugin") {
-      id = "dev.zacsweers.lattice"
-      implementationClass = "dev.zacsweers.lattice.gradle.LatticeGradleSubplugin"
+    create("metroPlugin") {
+      id = "dev.zacsweers.metro"
+      implementationClass = "dev.zacsweers.metro.gradle.MetroGradleSubplugin"
     }
   }
 }

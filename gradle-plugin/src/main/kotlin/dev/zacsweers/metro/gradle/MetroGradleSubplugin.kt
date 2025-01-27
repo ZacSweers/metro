@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.gradle
+package dev.zacsweers.metro.gradle
 
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
@@ -23,17 +23,18 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 
-public class LatticeGradleSubplugin : KotlinCompilerPluginSupportPlugin {
+public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun apply(target: Project) {
-    target.extensions.create("lattice", LatticePluginExtension::class.java)
+    target.extensions.create("metro", MetroPluginExtension::class.java)
   }
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
 
   override fun getPluginArtifact(): SubpluginArtifact =
       SubpluginArtifact(
-          groupId = "dev.zacsweers.lattice", artifactId = "compiler", version = VERSION)
+          groupId = "dev.zacsweers.metro", artifactId = "compiler", version = VERSION
+      )
 
   override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
 
@@ -41,11 +42,11 @@ public class LatticeGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       kotlinCompilation: KotlinCompilation<*>
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
-    val extension = project.extensions.getByType(LatticePluginExtension::class.java)
+    val extension = project.extensions.getByType(MetroPluginExtension::class.java)
 
     project.dependencies.add(
         kotlinCompilation.implementationConfigurationName,
-        "dev.zacsweers.lattice:runtime:${VERSION}",
+        "dev.zacsweers.metro:runtime:$VERSION",
     )
 
     return project.provider {

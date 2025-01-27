@@ -28,12 +28,12 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "lattice"
+rootProject.name = "metro"
 
 include(":compiler", "integration-tests", ":runtime")
 
 includeBuild("gradle-plugin") {
   dependencySubstitution {
-    substitute(module("dev.zacsweers.lattice:gradle-plugin")).using(project(":"))
+    substitute(module("dev.zacsweers.metro:gradle-plugin")).using(project(":"))
   }
 }

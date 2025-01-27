@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.lattice.gradle
+package dev.zacsweers.metro.gradle
 
 import javax.inject.Inject
 import org.gradle.api.Action
@@ -22,10 +22,10 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 
-public abstract class LatticePluginExtension @Inject constructor(objects: ObjectFactory) {
+public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFactory) {
 
   public val customAnnotations: CustomAnnotations =
-      objects.newInstance<CustomAnnotations>(CustomAnnotations::class.java)
+      objects.newInstance(CustomAnnotations::class.java)
 
   public val enabled: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(true)
@@ -76,7 +76,7 @@ public abstract class LatticePluginExtension @Inject constructor(objects: Object
     public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
       if (!includeJavax && !includeJakarta) {
         System.err.println(
-            "At least one of lattice.customAnnotations.includeDagger.includeJavax or lattice.customAnnotations.includeDagger.includeJakarta should be true")
+            "At least one of metro.customAnnotations.includeDagger.includeJavax or metro.customAnnotations.includeDagger.includeJakarta should be true")
       }
       assisted.add("dagger/assisted/Assisted")
       assistedFactory.add("dagger/assisted/AssistedFactory")
