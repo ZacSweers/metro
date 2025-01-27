@@ -1841,7 +1841,7 @@ class DependencyGraphTransformerTest : LatticeCompilerTest() {
             @DependencyGraph
             abstract class ExampleGraph {
               abstract val count: Int
-          
+
               @get:Provides private val countProvider: Int = 3
             }
           """
