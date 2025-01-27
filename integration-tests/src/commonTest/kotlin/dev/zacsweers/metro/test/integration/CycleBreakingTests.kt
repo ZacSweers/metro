@@ -84,9 +84,7 @@ class CycleBreakingTests {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(
-        @Provides message: String
-      ): CyclicalGraphWithClassesBrokenWithProviderBarExposed
+      fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProviderBarExposed
     }
 
     @Inject

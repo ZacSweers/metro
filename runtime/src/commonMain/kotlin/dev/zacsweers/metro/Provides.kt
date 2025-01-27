@@ -20,8 +20,8 @@ package dev.zacsweers.metro
  *
  * ## DependencyGraph.Factory
  *
- * If a parameter on an [dependency graph factory][DependencyGraph.Factory] is annotated with this, that
- * instance is added as an instance binding to the graph.
+ * If a parameter on an [dependency graph factory][DependencyGraph.Factory] is annotated with this,
+ * that instance is added as an instance binding to the graph.
  *
  * For example:
  * ```kotlin

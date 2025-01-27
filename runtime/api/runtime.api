@@ -11,9 +11,6 @@ public abstract interface annotation class dev/zacsweers/metro/AssistedFactory :
 public abstract interface annotation class dev/zacsweers/metro/Binds : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/metro/BindsInstance : java/lang/annotation/Annotation {
-}
-
 public abstract interface annotation class dev/zacsweers/metro/BoundType : java/lang/annotation/Annotation {
 }
 

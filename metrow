@@ -43,6 +43,13 @@ case "$1" in
        ./gradlew -p samples check
        ;;
 
+   "clean")
+       echo "Cleaning..."
+       ./gradlew clean
+       ./gradlew -p gradle-plugin clean
+       ./gradlew -p samples clean
+       ;;
+
    "regen")
        echo "Applying formatting and API gen..."
        ./gradlew spotlessApply apiDump
@@ -51,7 +58,7 @@ case "$1" in
        ;;
 
    *)
-       echo "Usage: metrow (publish|check|regen)"
+       echo "Usage: metrow (publish|check|clean|regen)"
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
        echo "  --local             Publish locally"

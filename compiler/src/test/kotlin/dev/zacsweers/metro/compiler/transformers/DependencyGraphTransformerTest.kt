@@ -1454,12 +1454,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertDiagnostics("e: ExampleGraph.kt:12:48 DependencyGraph.Factory abstract function parameters must be unique.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:12:48 DependencyGraph.Factory abstract function parameters must be unique."
+    )
   }
 
   @Test
