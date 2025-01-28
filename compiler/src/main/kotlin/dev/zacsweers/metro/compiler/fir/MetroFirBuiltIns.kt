@@ -38,11 +38,6 @@ internal class MetroFirBuiltIns(
     session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).single()
   }
 
-  val originClassSymbol by unsafeLazy {
-    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroOrigin)
-      as FirRegularClassSymbol
-  }
-
   val injectedFunctionClassClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroInjectedFunctionClass)
       as FirRegularClassSymbol

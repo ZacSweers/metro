@@ -23,7 +23,16 @@ import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
+import org.jetbrains.kotlin.ir.IrFileEntry
+import org.jetbrains.kotlin.ir.LineAndColumn
+import org.jetbrains.kotlin.ir.SourceRangeInfo
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
+import org.jetbrains.kotlin.ir.util.addFile
 
 internal class MetroIrGenerationExtension(
   private val messageCollector: MessageCollector,
@@ -34,7 +43,7 @@ internal class MetroIrGenerationExtension(
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = Symbols(moduleFragment, pluginContext, classIds)
     val context = IrMetroContext(pluginContext, messageCollector, symbols, options)
-    val dependencyGraphTransformer = DependencyGraphTransformer(context)
+    val dependencyGraphTransformer = DependencyGraphTransformer(context, moduleFragment)
     // TODO is this really necessary?
     val dependencyGraphData = DependencyGraphData()
     moduleFragment.transform(dependencyGraphTransformer, dependencyGraphData)

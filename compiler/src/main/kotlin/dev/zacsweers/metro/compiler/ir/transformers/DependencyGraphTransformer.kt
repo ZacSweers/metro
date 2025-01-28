@@ -86,7 +86,9 @@ import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -126,7 +128,7 @@ internal class DependencyGraphData {
   val graphs = mutableMapOf<ClassId, DependencyGraphNode>()
 }
 
-internal class DependencyGraphTransformer(context: IrMetroContext) :
+internal class DependencyGraphTransformer(context: IrMetroContext, moduleFragment: IrModuleFragment) :
   IrElementTransformer<DependencyGraphData>, IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -135,6 +137,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
+  private val contributionHintIrTransformer = ContributionHintIrTransformer(context, moduleFragment)
 
   // Keyed by the source declaration
   private val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
@@ -221,6 +224,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
+    contributionHintIrTransformer.visitClass(declaration)
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)

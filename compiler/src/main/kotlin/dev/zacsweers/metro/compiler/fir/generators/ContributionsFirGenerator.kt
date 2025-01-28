@@ -88,8 +88,6 @@ internal class ContributionsFirGenerator(session: FirSession) :
     register(contributesAnnotationPredicate)
   }
 
-  private val hintClassIdsToOrigins = ConcurrentHashMap<ClassId, ClassId>()
-
   sealed interface Contribution {
     val origin: ClassId
 
@@ -129,40 +127,6 @@ internal class ContributionsFirGenerator(session: FirSession) :
       override val origin: ClassId = annotatedType.classId
       override val callableName: String = "bindIntoMap"
     }
-  }
-
-  @ExperimentalTopLevelDeclarationsGenerationApi
-  override fun getTopLevelClassIds(): Set<ClassId> {
-    // TODO can we do this without the cache? This gets recalled many times
-    val ids = mutableSetOf<ClassId>()
-
-    for (contributingSymbol in
-      session.predicateBasedProvider
-        .getSymbolsByPredicate(contributesAnnotationPredicate)
-        .toSet()) {
-      when (contributingSymbol) {
-        is FirRegularClassSymbol -> {
-          val hintClassId = contributingSymbol.classId.hintClassId
-          if (hintClassIdsToOrigins.containsKey(hintClassId)) {
-            ids += hintClassId
-            continue
-          } else if (
-            contributingSymbol.isAnnotatedWithAny(
-              session,
-              session.classIds.allContributesAnnotations,
-            )
-          ) {
-            ids += hintClassId
-            hintClassIdsToOrigins[hintClassId] = contributingSymbol.classId
-          }
-        }
-        else -> {
-          error("Unsupported contributing symbol type: ${contributingSymbol.javaClass}")
-        }
-      }
-    }
-
-    return ids
   }
 
   private fun findContributions(contributingSymbol: FirClassSymbol<*>): Set<Contribution>? {
@@ -209,18 +173,6 @@ internal class ContributionsFirGenerator(session: FirSession) :
     } else {
       contributions
     }
-  }
-
-  @ExperimentalTopLevelDeclarationsGenerationApi
-  override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
-    // TODO change this structure to be a property instead? Just want the origin annotation
-    val origin = hintClassIdsToOrigins[classId] ?: return null
-    return createTopLevelClass(classId, key = Keys.Default, classKind = ClassKind.INTERFACE) {
-        // annoyingly not implicit from the class kind
-        modality = Modality.ABSTRACT
-      }
-      .apply { replaceAnnotationsSafe(listOf(buildOriginAnnotation(origin))) }
-      .symbol
   }
 
   override fun getNestedClassifiersNames(
@@ -370,38 +322,5 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
   private fun buildIntoMapAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.intoMapClassSymbol }
-  }
-
-  private fun buildOriginAnnotation(origin: ClassId): FirAnnotation {
-    return buildAnnotation {
-      val originAnno = session.metroFirBuiltIns.originClassSymbol
-
-      annotationTypeRef = originAnno.defaultType().toFirResolvedTypeRef()
-
-      argumentMapping = buildAnnotationArgumentMapping {
-        mapping[Name.identifier("value")] = buildGetClassCall {
-          val lookupTag = origin.toLookupTag()
-          val referencedType = lookupTag.constructType()
-          val resolvedType =
-            StandardClassIds.KClass.constructClassLikeType(arrayOf(referencedType), false)
-          argumentList =
-            buildUnaryArgumentList(
-              buildClassReferenceExpression {
-                classTypeRef = buildResolvedTypeRef { coneType = referencedType }
-                coneTypeOrNull = resolvedType
-              }
-            )
-          coneTypeOrNull = resolvedType
-        }
-      }
-    }
-  }
-
-  override fun hasPackage(packageFqName: FqName): Boolean {
-    return if (packageFqName == Symbols.FqNames.metroHintsPackage) {
-      true
-    } else {
-      super.hasPackage(packageFqName)
-    }
   }
 }
