@@ -773,6 +773,11 @@ internal val ClassId.hintClassId: ClassId
     return ClassId(Symbols.FqNames.metroHintsPackage, simpleName)
   }
 
+internal val ClassId.nestedContributorClassId: ClassId
+  get() {
+    return createNestedClassId(Symbols.Names.metroContribution)
+  }
+
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 

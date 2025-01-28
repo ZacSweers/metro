@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.hintClassId
 import dev.zacsweers.metro.compiler.fir.resolvedClassArgumentTarget
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
@@ -72,7 +71,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
   // TODO can we remove this and just use generatedScopesToContributions? Seems like they're always
-  // generated first
+  //  generated first
   private val inCompilationScopesToContributions:
     FirCache<Unit, Map<ClassId, Set<ClassId>>, TypeResolveService> =
     session.firCachesFactory.createCache { _, typeResolver ->
@@ -87,7 +86,7 @@ internal class ContributedInterfaceSupertypeGenerator(
             .forEach { scopeClassId ->
               scopesToContributingClass
                 .getOrPut(scopeClassId, ::mutableSetOf)
-                .add(clazz.classId.hintClassId)
+                .add(clazz.classId.createNestedClassId(Symbols.Names.metroContribution))
             }
         }
       scopesToContributingClass
@@ -119,7 +118,9 @@ internal class ContributedInterfaceSupertypeGenerator(
             .mapNotNull { it.resolvedScopeClassId(typeResolver) }
             .distinct()
             .forEach { scopeClassId ->
-              getOrPut(scopeClassId, ::mutableSetOf).add(contribution.classId)
+              val metroContribution =
+                originClass.classId.createNestedClassId(Symbols.Names.metroContribution)
+              getOrPut(scopeClassId, ::mutableSetOf).add(metroContribution)
             }
         }
       }

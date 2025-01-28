@@ -82,6 +82,10 @@ internal object Keys {
     override fun toString() = "MetroGraphFactoryImplDeclaration"
   }
 
+  data object MetroContributionDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "MetroContributionDeclaration"
+  }
+
   data object MembersInjectorClassDeclaration : GeneratedDeclarationKey() {
     override fun toString() = "MembersInjectorClassDeclaration"
   }

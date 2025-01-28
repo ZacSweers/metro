@@ -27,7 +27,6 @@ import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import kotlin.reflect.KClass
 import kotlin.test.Test
 
-// Need to resume these tests after fixing FIR generation bits first!
 class AggregationTest : MetroCompilerTest() {
 
   override val extraImports: List<String> = listOf("kotlin.reflect.*")
@@ -48,7 +47,10 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       val graph = ExampleGraph
       assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly("metro.hints.TestContributedInterface", "test.ContributedInterface")
+        .containsExactly(
+          "test.ContributedInterface$$\$MetroContribution",
+          "test.ContributedInterface",
+        )
     }
   }
 
@@ -77,7 +79,10 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       val graph = ExampleGraph
       assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly("metro.hints.TestContributedInterface", "test.ContributedInterface")
+        .containsExactly(
+          "test.ContributedInterface$$\$MetroContribution",
+          "test.ContributedInterface",
+        )
     }
   }
 
@@ -2068,7 +2073,10 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       val graph = ExampleGraph
       assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly("metro.hints.TestContributedInterface", "test.ContributedInterface")
+        .containsExactly(
+          "test.ContributedInterface$$\$MetroContribution",
+          "test.ContributedInterface",
+        )
     }
   }
 }

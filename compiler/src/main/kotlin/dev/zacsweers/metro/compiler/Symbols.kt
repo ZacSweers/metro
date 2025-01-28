@@ -52,9 +52,9 @@ internal class Symbols(
     const val FACTORY = "factory"
     const val INJECT_MEMBERS = "injectMembers"
     const val INVOKE = "invoke"
-    const val METRO_FACTORY = "\$\$MetroFactory"
+    const val METRO_FACTORY = "$\$MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
-    const val METRO_IMPL = "\$\$Impl"
+    const val METRO_IMPL = "$\$Impl"
     const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
     const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
     const val NEW_INSTANCE = "newInstance"
@@ -101,9 +101,10 @@ internal class Symbols(
     val injectMembers = Name.identifier(StringNames.INJECT_MEMBERS)
     val invoke = Name.identifier(StringNames.INVOKE)
     val metroFactory = Name.identifier(StringNames.METRO_FACTORY)
-    val metroGraph = Name.identifier("\$\$MetroGraph")
+    val metroContribution = Name.identifier("$\$MetroContribution")
+    val metroGraph = Name.identifier("$\$MetroGraph")
     val metroImpl = StringNames.METRO_IMPL.asName()
-    val metroMembersInjector = Name.identifier("\$\$MetroMembersInjector")
+    val metroMembersInjector = Name.identifier("$\$MetroMembersInjector")
     val membersInjector = Name.identifier("MembersInjector")
     val newInstanceFunction = StringNames.NEW_INSTANCE.asName()
     val providerClassName = Name.identifier("Provider")
