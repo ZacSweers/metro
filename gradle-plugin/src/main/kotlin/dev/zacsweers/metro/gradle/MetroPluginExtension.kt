@@ -39,6 +39,9 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
   public val generateAssistedFactories: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(false)
 
+  public val enableTopLevelFunctionInjection: Property<Boolean> =
+      objects.property(Boolean::class.javaObjectType).convention(false)
+
   public abstract val reportsDestination: DirectoryProperty
 
   /**

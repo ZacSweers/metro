@@ -48,13 +48,16 @@ abstract class MetroCompilerTest {
   protected open val extraImports: List<String>
     get() = emptyList()
 
+  protected open val metroOptions: MetroOptions
+    get() = MetroOptions()
+
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
     debug: Boolean = MetroOption.DEBUG.raw.defaultValue.expectAs(),
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      MetroOptions(debug = debug, generateAssistedFactories = generateAssistedFactories),
+      metroOptions.copy(debug = debug, generateAssistedFactories = generateAssistedFactories),
     previousCompilationResult: JvmCompilationResult? = null,
   ): KotlinCompilation {
     return KotlinCompilation().apply {
@@ -70,6 +73,9 @@ abstract class MetroCompilerTest {
       // TODO this is needed until/unless we implement JVM reflection support for DefaultImpls
       //  invocations
       kotlincArguments += "-Xjvm-default=all"
+
+      // TODO test enabling IC?
+      //  kotlincArguments += "-Xenable-incremental-compilation"
 
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
@@ -91,6 +97,8 @@ abstract class MetroCompilerTest {
                 )
               MetroOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
+              MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
+                processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.LOGGING -> {
@@ -234,7 +242,7 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      MetroOptions(
+      metroOptions.copy(
         enabled = metroEnabled,
         debug = debug,
         generateAssistedFactories = generateAssistedFactories,

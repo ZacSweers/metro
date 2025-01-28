@@ -18,6 +18,7 @@ package dev.zacsweers.metro.compiler.transformers
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.captureStandardOut
 import dev.zacsweers.metro.compiler.createGraphViaFactory
@@ -30,6 +31,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class TopLevelInjectTest : MetroCompilerTest() {
+
+  override val metroOptions: MetroOptions
+    get() = MetroOptions(enableTopLevelFunctionInjection = true)
 
   @Test
   fun simple() {

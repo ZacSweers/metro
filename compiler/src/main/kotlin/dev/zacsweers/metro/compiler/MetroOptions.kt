@@ -109,6 +109,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_TOP_LEVEL_FUNCTION_INJECTION(
+    RawMetroOption.boolean(
+      name = "enable-top-level-function-injection",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable top-level function injection. Note this is disabled by default because this is not compatible with incremental compilation yet.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -334,6 +344,8 @@ public data class MetroOptions(
       ?.let(Paths::get),
   val generateAssistedFactories: Boolean =
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
+  val enableTopLevelFunctionInjection: Boolean =
+    MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     MetroOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -408,6 +420,9 @@ public data class MetroOptions(
           }
           MetroOption.GENERATE_ASSISTED_FACTORIES ->
             options = options.copy(generateAssistedFactories = configuration.getAsBoolean(entry))
+
+          MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
+            options = options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =

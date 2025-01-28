@@ -143,11 +143,13 @@ internal class InjectedClassFirGenerator(session: FirSession) :
   //  no extension receivers
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
+    if (!session.metroFirBuiltIns.options.enableTopLevelFunctionInjection) return emptySet()
     return symbols.getValue(Unit, null).keys
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
+    if (!session.metroFirBuiltIns.options.enableTopLevelFunctionInjection) return null
     val function = symbols.getValue(Unit, null).getValue(classId)
     val annotations = function.metroAnnotations(session)
     return createTopLevelClass(classId, Keys.TopLevelInjectFunctionClass)

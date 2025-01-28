@@ -53,6 +53,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("debug", extension.debug))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
+        add(lazyOption("enable-top-level-function-injection", extension.enableTopLevelFunctionInjection))
         extension.reportsDestination.orNull
             ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
             ?.let(::add)
