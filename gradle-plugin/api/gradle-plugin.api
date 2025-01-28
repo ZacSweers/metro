@@ -23,6 +23,7 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public final fun customAnnotations (Lorg/gradle/api/Action;)V
 	public final fun getCustomAnnotations ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
+	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;

@@ -114,7 +114,8 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       name = "enable-top-level-function-injection",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable/disable top-level function injection. Note this is disabled by default because this is not compatible with incremental compilation yet.",
+      description =
+        "Enable/disable top-level function injection. Note this is disabled by default because this is not compatible with incremental compilation yet.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -422,7 +423,8 @@ public data class MetroOptions(
             options = options.copy(generateAssistedFactories = configuration.getAsBoolean(entry))
 
           MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
-            options = options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
+            options =
+              options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =
