@@ -86,7 +86,6 @@ import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
-import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
@@ -128,8 +127,10 @@ internal class DependencyGraphData {
   val graphs = mutableMapOf<ClassId, DependencyGraphNode>()
 }
 
-internal class DependencyGraphTransformer(context: IrMetroContext, moduleFragment: IrModuleFragment) :
-  IrElementTransformer<DependencyGraphData>, IrMetroContext by context {
+internal class DependencyGraphTransformer(
+  context: IrMetroContext,
+  moduleFragment: IrModuleFragment,
+) : IrElementTransformer<DependencyGraphData>, IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
   private val injectConstructorTransformer =
