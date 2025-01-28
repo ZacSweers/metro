@@ -54,8 +54,6 @@ internal class MetroFirExtensionRegistrar(
     )
     // TODO enable once we support metadata propagation
     //  +::FirProvidesStatusTransformer
-    //    +declarationGenerator("FirGen - TopLevelInjectFunction",
-    // ::TopLevelInjectFunctionFirGenerator, true)
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
