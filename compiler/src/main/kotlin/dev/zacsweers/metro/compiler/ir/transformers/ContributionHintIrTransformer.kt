@@ -71,7 +71,7 @@ internal class ContributionHintIrTransformer(
                   packageDirective = buildPackageDirective {
                     packageFqName = Symbols.FqNames.metroHintsPackage
                   }
-                  name = hintCallableId.callableName.toString()
+                  name = "${hintCallableId.callableName}.kt"
                 }
               )
           }
