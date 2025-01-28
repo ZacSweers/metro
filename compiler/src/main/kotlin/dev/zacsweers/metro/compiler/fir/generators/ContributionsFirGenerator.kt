@@ -218,43 +218,6 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .symbol
   }
 
-  private fun buildBindsAnnotation(): FirAnnotation {
-    return buildSimpleAnnotation { session.metroFirBuiltIns.bindsClassSymbol }
-  }
-
-  private fun buildIntoSetAnnotation(): FirAnnotation {
-    return buildSimpleAnnotation { session.metroFirBuiltIns.intoSetClassSymbol }
-  }
-
-  private fun buildIntoMapAnnotation(): FirAnnotation {
-    return buildSimpleAnnotation { session.metroFirBuiltIns.intoMapClassSymbol }
-  }
-
-  private fun buildOriginAnnotation(origin: ClassId): FirAnnotation {
-    return buildAnnotation {
-      val originAnno = session.metroFirBuiltIns.originClassSymbol
-
-      annotationTypeRef = originAnno.defaultType().toFirResolvedTypeRef()
-
-      argumentMapping = buildAnnotationArgumentMapping {
-        mapping[Name.identifier("value")] = buildGetClassCall {
-          val lookupTag = origin.toLookupTag()
-          val referencedType = lookupTag.constructType()
-          val resolvedType =
-            StandardClassIds.KClass.constructClassLikeType(arrayOf(referencedType), false)
-          argumentList =
-            buildUnaryArgumentList(
-              buildClassReferenceExpression {
-                classTypeRef = buildResolvedTypeRef { coneType = referencedType }
-                coneTypeOrNull = resolvedType
-              }
-            )
-          coneTypeOrNull = resolvedType
-        }
-      }
-    }
-  }
-
   override fun getCallableNamesForClass(
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
@@ -351,11 +314,40 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .symbol
   }
 
-  override fun hasPackage(packageFqName: FqName): Boolean {
-    return if (packageFqName == Symbols.FqNames.metroHintsPackage) {
-      true
-    } else {
-      super.hasPackage(packageFqName)
+  private fun buildBindsAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.bindsClassSymbol }
+  }
+
+  private fun buildIntoSetAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.intoSetClassSymbol }
+  }
+
+  private fun buildIntoMapAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.intoMapClassSymbol }
+  }
+
+  private fun buildOriginAnnotation(origin: ClassId): FirAnnotation {
+    return buildAnnotation {
+      val originAnno = session.metroFirBuiltIns.originClassSymbol
+
+      annotationTypeRef = originAnno.defaultType().toFirResolvedTypeRef()
+
+      argumentMapping = buildAnnotationArgumentMapping {
+        mapping[Name.identifier("value")] = buildGetClassCall {
+          val lookupTag = origin.toLookupTag()
+          val referencedType = lookupTag.constructType()
+          val resolvedType =
+            StandardClassIds.KClass.constructClassLikeType(arrayOf(referencedType), false)
+          argumentList =
+            buildUnaryArgumentList(
+              buildClassReferenceExpression {
+                classTypeRef = buildResolvedTypeRef { coneType = referencedType }
+                coneTypeOrNull = resolvedType
+              }
+            )
+          coneTypeOrNull = resolvedType
+        }
+      }
     }
   }
 }
