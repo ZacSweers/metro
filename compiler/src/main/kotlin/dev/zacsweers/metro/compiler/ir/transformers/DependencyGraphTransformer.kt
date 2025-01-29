@@ -492,7 +492,11 @@ internal class DependencyGraphTransformer(
     val bindingGraph = createBindingGraph(node)
 
     try {
-      checkGraphSelfCycle(dependencyGraphDeclaration, node.typeKey, BindingStack.empty())
+      checkGraphSelfCycle(
+        dependencyGraphDeclaration,
+        node.typeKey,
+        BindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.CycleDetection)),
+      )
 
       val deferredTypes =
         bindingGraph.validate(node) { message ->
@@ -619,7 +623,7 @@ internal class DependencyGraphTransformer(
           }
         val multibindingTypeKey = provider.typeKey.copy(type = multibindingType)
         graph
-          .getOrCreateMultibinding(pluginContext, multibindingTypeKey)
+          .getOrCreateMultibinding(pluginContext, multibindingTypeKey, bindingStack)
           .sourceBindings
           .add(provider)
       } else {
@@ -1060,7 +1064,7 @@ internal class DependencyGraphTransformer(
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
         val irFunction = this
-        val binding = context.graph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
+        val binding = context.graph.requireBinding(contextualTypeKey.typeKey, context.bindingStack)
         context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
         body =
           pluginContext.createIrBuilder(symbol).run {
@@ -1345,7 +1349,9 @@ internal class DependencyGraphTransformer(
     }
 
     // Recursively process dependencies
-    binding.parameters.nonInstanceParameters.forEach { param ->
+    for (param in binding.parameters.nonInstanceParameters) {
+      if (param.isAssisted) continue
+
       // Process binding dependencies
       findAndProcessBinding(
         contextKey = param.contextualTypeKey,

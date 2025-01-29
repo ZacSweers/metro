@@ -142,10 +142,11 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   fun getOrCreateMultibinding(
     pluginContext: IrPluginContext,
     typeKey: TypeKey,
+    bindingStack: BindingStack,
   ): Binding.Multibinding {
     return bindings.getOrPut(typeKey) {
       Binding.Multibinding.create(metroContext, typeKey, null).also {
-        addBinding(typeKey, it, BindingStack.empty())
+        addBinding(typeKey, it, bindingStack)
         // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
         if (it.isMap) {
           val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
@@ -154,8 +155,8 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
               .typeOrNull!!
               .wrapInProvider(this@BindingGraph.metroContext.symbols.metroProvider)
           val providerTypeKey =
-            typeKey.copy(pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
-          addBinding(providerTypeKey, it, BindingStack.empty())
+            typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+          addBinding(providerTypeKey, it, bindingStack)
         }
       }
     } as Binding.Multibinding
