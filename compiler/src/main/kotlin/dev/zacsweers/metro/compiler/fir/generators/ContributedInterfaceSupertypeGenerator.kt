@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
@@ -68,14 +69,17 @@ internal class ContributedInterfaceSupertypeGenerator(
       annotated(classIds.allContributesAnnotations.map { it.asSingleFqName() })
     }
 
-  // TODO can we remove this and just use generatedScopesToContributions? Seems like they're always
-  //  generated first
   private val inCompilationScopesToContributions:
-    FirCache<Unit, Map<ClassId, Set<ClassId>>, TypeResolveService> =
-    session.firCachesFactory.createCache { _, typeResolver ->
+    FirCache<FirSession, Map<ClassId, Set<ClassId>>, TypeResolveService> =
+    session.firCachesFactory.createCache { session, typeResolver ->
       val scopesToContributingClass = mutableMapOf<ClassId, MutableSet<ClassId>>()
-      session.predicateBasedProvider
-        .getSymbolsByPredicate(contributingTypesPredicate)
+      // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
+      // generating supertypes for a graph in jvmMain, we want to capture contributions declared in
+      // commonMain.
+      val allSessions =
+        sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
+      allSessions
+        .flatMap { it.predicateBasedProvider.getSymbolsByPredicate(contributingTypesPredicate) }
         .filterIsInstance<FirRegularClassSymbol>()
         .forEach { clazz ->
           clazz.annotations
@@ -125,10 +129,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     if (declaration.symbol !in dependencyGraphs) {
       return false
     }
-    val graphAnnotation = declaration.graphAnnotation()
-    if (graphAnnotation == null) {
-      return false
-    }
+    val graphAnnotation = declaration.graphAnnotation() ?: return false
 
     // TODO in an FIR checker, disallow omitting scope but defining additional scopes
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
@@ -152,15 +153,13 @@ internal class ContributedInterfaceSupertypeGenerator(
 
     val contributions =
       scopes.flatMap { scopeClassId ->
-        // TODO these may include some from this compilation unit. Maybe we don't need to look
-        //  separately?
         val classPathContributions =
           generatedScopesToContributions
             .getValue(Symbols.FqNames.metroHintsPackage, typeResolver)[scopeClassId]
             .orEmpty()
 
         val inCompilationContributions =
-          inCompilationScopesToContributions.getValue(Unit, typeResolver)[scopeClassId].orEmpty()
+          inCompilationScopesToContributions.getValue(session, typeResolver)[scopeClassId].orEmpty()
 
         (inCompilationContributions + classPathContributions).map {
           it.constructClassLikeType(emptyArray())
