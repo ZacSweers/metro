@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 plugins {
-  kotlin("jvm")
+  alias(libs.plugins.kotlin.jvm)
   java
 }
 
@@ -36,18 +36,17 @@ dependencies {
   testRuntimeOnly(libs.kotlin.annotationsJvm)
 }
 
-val generateTests by
-  tasks.registering(JavaExec::class) {
-    inputs
-      .dir(layout.projectDirectory.dir("src/test/data"))
-      .withPropertyName("testData")
-      .withPathSensitivity(PathSensitivity.RELATIVE)
-    outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
+tasks.register<JavaExec>("generateTests") {
+  inputs
+    .dir(layout.projectDirectory.dir("src/test/data"))
+    .withPropertyName("testData")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
+  outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 
-    classpath = sourceSets.test.get().runtimeClasspath
-    mainClass.set("dev.zacsweers.metro.GenerateTestsKt")
-    workingDir = rootDir
-  }
+  classpath = sourceSets.test.get().runtimeClasspath
+  mainClass.set("dev.zacsweers.metro.GenerateTestsKt")
+  workingDir = rootDir
+}
 
 tasks.withType<Test> {
   dependsOn(metroRuntimeClasspath)
