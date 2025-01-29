@@ -125,24 +125,21 @@ internal class ContributionsFirGenerator(session: FirSession) :
         }
         in contributesBindingAnnotations -> {
           contributions +=
-            Contribution.ContributesBinding(
-              contributingSymbol,
-              annotation,
-            ) { listOf(buildBindsAnnotation()) }
+            Contribution.ContributesBinding(contributingSymbol, annotation) {
+              listOf(buildBindsAnnotation())
+            }
         }
         in contributesIntoSetAnnotations -> {
           contributions +=
-            Contribution.ContributesIntoSetBinding(
-              contributingSymbol,
-              annotation,
-            ) { listOf(buildIntoSetAnnotation(), buildBindsAnnotation()) }
+            Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+              listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
+            }
         }
         in contributesIntoMapAnnotations -> {
           contributions +=
-            Contribution.ContributesIntoMapBinding(
-              contributingSymbol,
-              annotation,
-            ) { listOf(buildIntoMapAnnotation(), buildBindsAnnotation()) }
+            Contribution.ContributesIntoMapBinding(contributingSymbol, annotation) {
+              listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
+            }
         }
       }
     }
