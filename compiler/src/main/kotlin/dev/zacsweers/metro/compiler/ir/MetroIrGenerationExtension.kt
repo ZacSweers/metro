@@ -25,7 +25,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
-internal class MetroIrGenerationExtension(
+public class MetroIrGenerationExtension(
   private val messageCollector: MessageCollector,
   private val classIds: ClassIds,
   private val options: MetroOptions,

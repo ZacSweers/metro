@@ -45,7 +45,7 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "integration-tests")
+  ignoredProjects += listOf("compiler", "compiler-tests", "integration-tests")
   ignoredPackages += listOf("dev.zacsweers.metro.internal")
   @OptIn(ExperimentalBCVApi::class)
   klib {
@@ -77,6 +77,7 @@ allprojects {
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
+      targetExclude("**/src/test/data/**")
     }
     kotlinGradle {
       target("*.kts")
@@ -94,6 +95,8 @@ allprojects {
       licenseHeaderFile(rootProject.file("spotless/spotless.kt"), "(package|@file:)")
       target("src/**/*.kt")
       targetExclude(
+        "**/src/test/data/**",
+        "**/*Generated.java",
         "**/AbstractMapFactory.kt",
         "**/Assisted.kt",
         "**/AssistedFactory.kt",
