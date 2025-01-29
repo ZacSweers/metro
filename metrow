@@ -29,8 +29,8 @@ case "$1" in
 
        if [[ "$local" = true ]]; then
            echo "Publishing version $version locally..."
-           ./gradlew -p gradle-plugin publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}"
-           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}"
+           ./gradlew -p gradle-plugin publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
+           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
        else
            echo "Publishing version $version..."
        fi
