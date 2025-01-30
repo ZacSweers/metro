@@ -336,13 +336,13 @@ class TopLevelInjectTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @Inject
             fun App(int: Int): Int {
               return int
             }
 
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               val app: AppClass

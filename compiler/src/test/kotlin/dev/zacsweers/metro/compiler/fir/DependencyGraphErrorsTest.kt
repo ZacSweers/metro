@@ -106,10 +106,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
-              @Multibinds @Singleton fun values(): Map<String, String>
+              @Multibinds @SingleIn(AppScope::class) fun values(): Map<String, String>
             }
           """
             .trimIndent()
@@ -125,10 +125,10 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
-              @Singleton
+              @SingleIn(AppScope::class)
               val value: String
             }
           """
@@ -145,7 +145,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               @get:Singleton
@@ -165,7 +165,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               val value: Unit
@@ -190,7 +190,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun value(): Unit
@@ -211,7 +211,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun value()
@@ -235,7 +235,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               val value: Nothing
@@ -254,7 +254,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun value(): Nothing
@@ -273,7 +273,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: Int, target2: Int)
@@ -294,7 +294,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: Int): Int
@@ -315,7 +315,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: ExampleClass)
@@ -341,7 +341,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: ExampleClass)
@@ -367,7 +367,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: ExampleClass)

@@ -15,13 +15,14 @@
  */
 package dev.zacsweers.metro.sample
 
+import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.Singleton
+import dev.zacsweers.metro.SingleIn
 
-@Singleton
+@SingleIn(AppScope::class)
 @DependencyGraph
 interface ExampleGraph : FileSystemProviders {
 
@@ -38,16 +39,16 @@ interface ExampleGraph : FileSystemProviders {
 }
 
 interface FileSystemProviders {
-  @Singleton @Provides private fun provideFileSystem(): FileSystem = FileSystem()
+  @SingleIn(AppScope::class) @Provides private fun provideFileSystem(): FileSystem = FileSystem()
 
-  @Singleton
+  @SingleIn(AppScope::class)
   @Provides
   private fun provideFileSystemProvider(fs: FileSystem): FileSystemProvider = fs.provider()
 }
 
-@Singleton @Inject class Example1(val text: String)
+@SingleIn(AppScope::class) @Inject class Example1(val text: String)
 
-@Singleton class Example2 @Inject constructor(fs: FileSystem)
+@SingleIn(AppScope::class) class Example2 @Inject constructor(fs: FileSystem)
 
 class Example3<T> @Inject constructor(fs: T)
 

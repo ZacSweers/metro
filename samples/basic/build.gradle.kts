@@ -36,10 +36,7 @@ kotlin {
   // macosArm64()
   // js { browser() }
   // @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
-  sourceSets {
-    //    commonMain { dependencies { implementation(project(":runtime")) } }
-    commonTest { dependencies { implementation(libs.kotlin.test) } }
-  }
+  sourceSets { commonTest { dependencies { implementation(libs.kotlin.test) } } }
 }
 
 metro { debug.set(false) }

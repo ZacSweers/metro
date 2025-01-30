@@ -26,14 +26,12 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntKey
 import dev.zacsweers.metro.IntoMap
 import dev.zacsweers.metro.IntoSet
-import dev.zacsweers.metro.LongKey
 import dev.zacsweers.metro.MapKey
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.Singleton
 import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.createGraphFactory
@@ -834,9 +832,9 @@ class DependencyGraphProcessingTest {
 
     val longs: Map<Long, Int>
 
-    @Provides @IntoMap @LongKey(1) private fun provideLongKey1(): Int = 1
+    @Provides @IntoMap @IntKey(1) private fun provideIntKey1(): Int = 1
 
-    @Provides @IntoMap @LongKey(2) private fun provideLongKey2(): Int = 2
+    @Provides @IntoMap @IntKey(2) private fun provideIntKey2(): Int = 2
 
     val strings: Map<String, Int>
 

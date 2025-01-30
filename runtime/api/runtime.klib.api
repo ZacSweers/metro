@@ -117,20 +117,6 @@ open annotation class dev.zacsweers.metro/IntoSet : kotlin/Annotation { // dev.z
     constructor <init>() // dev.zacsweers.metro/IntoSet.<init>|<init>(){}[0]
 }
 
-open annotation class dev.zacsweers.metro/LazyClassKey : kotlin/Annotation { // dev.zacsweers.metro/LazyClassKey|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/LazyClassKey.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
-
-    final val value // dev.zacsweers.metro/LazyClassKey.value|{}value[0]
-        final fun <get-value>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/LazyClassKey.value.<get-value>|<get-value>(){}[0]
-}
-
-open annotation class dev.zacsweers.metro/LongKey : kotlin/Annotation { // dev.zacsweers.metro/LongKey|null[0]
-    constructor <init>(kotlin/Long) // dev.zacsweers.metro/LongKey.<init>|<init>(kotlin.Long){}[0]
-
-    final val value // dev.zacsweers.metro/LongKey.value|{}value[0]
-        final fun <get-value>(): kotlin/Long // dev.zacsweers.metro/LongKey.value.<get-value>|<get-value>(){}[0]
-}
-
 open annotation class dev.zacsweers.metro/MapKey : kotlin/Annotation { // dev.zacsweers.metro/MapKey|null[0]
     constructor <init>(kotlin/Boolean = ...) // dev.zacsweers.metro/MapKey.<init>|<init>(kotlin.Boolean){}[0]
 
@@ -166,10 +152,6 @@ open annotation class dev.zacsweers.metro/SingleIn : kotlin/Annotation { // dev.
 
     final val scope // dev.zacsweers.metro/SingleIn.scope|{}scope[0]
         final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/SingleIn.scope.<get-scope>|<get-scope>(){}[0]
-}
-
-open annotation class dev.zacsweers.metro/Singleton : kotlin/Annotation { // dev.zacsweers.metro/Singleton|null[0]
-    constructor <init>() // dev.zacsweers.metro/Singleton.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/StringKey : kotlin/Annotation { // dev.zacsweers.metro/StringKey|null[0]

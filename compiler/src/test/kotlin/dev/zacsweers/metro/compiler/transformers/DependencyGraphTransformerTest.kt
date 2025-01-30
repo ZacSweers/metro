@@ -42,7 +42,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
 
@@ -54,7 +54,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               }
             }
 
-            @Singleton
+            @SingleIn(AppScope::class)
             @Inject
             class ExampleClass(private val text: String) : Callable<String> {
               override fun call(): String = text
@@ -380,7 +380,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             import dev.zacsweers.metro.Named
             import dev.zacsweers.metro.Singleton
 
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             abstract class ExampleGraph {
 
@@ -393,7 +393,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               @Named("unscoped")
               abstract val unscoped: String
 
-              @Singleton
+              @SingleIn(AppScope::class)
               @Provides
               @Named("scoped")
               fun provideScoped(): String = "text " + scopedCounter++
@@ -440,7 +440,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
             abstract class UserScope private constructor()
 
-            @Singleton
+            @SingleIn(AppScope::class)
             @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
@@ -459,7 +459,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertContains(
       """
-        ExampleGraph.kt:11:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@Singleton', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
+        ExampleGraph.kt:11:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
                 [test.ExampleGraph] test.ExampleGraph.intValue
@@ -726,7 +726,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               val value: String
 
-              @Singleton
+              @SingleIn(AppScope::class)
               @Provides
               fun provideValue(): String = "Hello, world!"
             }
@@ -741,7 +741,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       .contains(
         """
           ExampleGraph.kt:7:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
-              kotlin.String (scoped to '@Singleton')
+              kotlin.String (scoped to '@SingleIn(AppScope::class)')
               kotlin.String is requested at
                   [test.ExampleGraph] test.ExampleGraph.value
         """
@@ -841,7 +841,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             import java.nio.file.FileSystem
             import java.nio.file.FileSystems
 
-            @Singleton
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
 
@@ -855,9 +855,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               fun provideCacheDirName(): String = "cache"
             }
 
-            @Inject @Singleton class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
-            @Inject @Singleton class HttpClient(cache: Cache)
-            @Inject @Singleton class ApiClient(httpClient: Lazy<HttpClient>)
+            @Inject @SingleIn(AppScope::class) class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
+            @Inject @SingleIn(AppScope::class) class HttpClient(cache: Cache)
+            @Inject @SingleIn(AppScope::class) class ApiClient(httpClient: Lazy<HttpClient>)
             @Inject class Repository(apiClient: ApiClient)
 
           """

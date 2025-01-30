@@ -107,7 +107,6 @@ allprojects {
         "**/IntKey.kt",
         "**/IntoMap.kt",
         "**/IntoSet.kt",
-        "**/LazyClassKey.kt",
         "**/LongKey.kt",
         "**/MapFactory.kt",
         "**/MapKey.kt",
