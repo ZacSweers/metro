@@ -445,7 +445,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
                 [test.ExampleGraph] test.ExampleGraph.intValue
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -717,7 +718,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             kotlin.String (scoped to '@SingleIn(AppScope::class)')
             kotlin.String is requested at
                 [test.ExampleGraph] test.ExampleGraph.value
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
@@ -807,17 +809,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @SingleIn(AppScope::class)
           @DependencyGraph
           interface ExampleGraph {
-  
+
             val repository: Repository
-  
+
             @Provides
             fun provideFileSystem(): FileSystem = FileSystems.getDefault()
-  
+
             @Named("cache-dir-name")
             @Provides
             fun provideCacheDirName(): String = "cache"
           }
-  
+
           @Inject @SingleIn(AppScope::class) class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
           @Inject @SingleIn(AppScope::class) class HttpClient(cache: Cache)
           @Inject @SingleIn(AppScope::class) class ApiClient(httpClient: Lazy<HttpClient>)

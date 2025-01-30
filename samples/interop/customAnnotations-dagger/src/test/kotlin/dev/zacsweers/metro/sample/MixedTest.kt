@@ -18,8 +18,7 @@ package dev.zacsweers.metro.sample
 import dagger.Component
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
-import dev.zacsweers.metro.AppScope
-import dev.zacsweers.metro.ForScope
+import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.createGraphFactory
 import jakarta.inject.Inject
@@ -35,7 +34,7 @@ class MixedTest {
   @Component
   interface SimpleComponent {
     val message: String
-    @ForScope(AppScope::class) val qualifiedMessage: String
+    @Named("qualified") val qualifiedMessage: String
 
     val injectedClass: InjectedClass
     val scopedInjectedClass: ScopedInjectedClass
@@ -45,19 +44,19 @@ class MixedTest {
     interface Factory {
       fun create(
         @Provides message: String,
-        @Provides @ForScope(AppScope::class) qualifiedMessage: String,
+        @Provides @Named("qualified") qualifiedMessage: String,
       ): SimpleComponent
     }
   }
 
   class InjectedClass
   @Inject
-  constructor(val message: String, @ForScope(AppScope::class) val qualifiedMessage: String)
+  constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
 
   @Singleton
   class ScopedInjectedClass
   @Inject
-  constructor(val message: String, @ForScope(AppScope::class) val qualifiedMessage: String)
+  constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
 
   class AssistedClass @Inject constructor(@Assisted val assisted: String, val message: String) {
     @AssistedFactory
