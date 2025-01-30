@@ -806,7 +806,7 @@ class DependencyGraphProcessingTest {
   fun `multibindings - misc other map key types`() {
     val graph = createGraph<MultibindingGraphWithMultipleOtherMapKeyTypes>()
     assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), graph.seasoningAmounts)
-    assertEquals(mapOf(1L to 1, 2L to 2), graph.longs)
+    assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
     assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
     assertEquals(
       mapOf(
@@ -830,7 +830,7 @@ class DependencyGraphProcessingTest {
 
     @MapKey annotation class SeasoningKey(val value: Seasoning)
 
-    val longs: Map<Long, Int>
+    val ints: Map<Int, Int>
 
     @Provides @IntoMap @IntKey(1) private fun provideIntKey1(): Int = 1
 
