@@ -369,17 +369,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // to unscoped bindings are called every time.
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @SingleIn(AppScope::class)
             @DependencyGraph
             abstract class ExampleGraph {
@@ -405,9 +396,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
             @Inject
             class ExampleClass(@Named("hello") private val text: String)
-
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -427,20 +417,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // Ensure scoped bindings match the graph that is trying to use them
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Singleton
-            import dev.zacsweers.metro.SingleIn
-            import dev.zacsweers.metro.AppScope
-
-            abstract class UserScope private constructor()
-
-            @SingleIn(AppScope::class)
+            @Singleton
             @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
@@ -451,20 +430,22 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               @Provides
               fun invalidScope(): Int = 0
             }
+
+            abstract class UserScope private constructor()
+            @Scope annotation class Singleton
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
+    result.assertDiagnostics(
       """
-        ExampleGraph.kt:11:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
+        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@Singleton', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
                 [test.ExampleGraph] test.ExampleGraph.intValue
-      """
-        .trimIndent()
+      """.trimIndent()
     )
   }
 
@@ -712,15 +693,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `unscoped graphs may not reference scoped types`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph {
 
@@ -732,21 +706,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    assertThat(result.messages)
-      .contains(
-        """
-          ExampleGraph.kt:7:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
-              kotlin.String (scoped to '@SingleIn(AppScope::class)')
-              kotlin.String is requested at
-                  [test.ExampleGraph] test.ExampleGraph.value
-        """
-          .trimIndent()
-      )
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
+            kotlin.String (scoped to '@SingleIn(AppScope::class)')
+            kotlin.String is requested at
+                [test.ExampleGraph] test.ExampleGraph.value
+      """.trimIndent()
+    )
   }
 
   @Test
@@ -827,41 +799,31 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `advanced dependency chains`() {
     // This is a compile-only test. The full integration is in integration-tests
     compile(
-      kotlin(
-        "ExampleGraph.kt",
+      source(
         """
-            package test
+          import java.nio.file.FileSystem
+          import java.nio.file.FileSystems
 
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Singleton
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Provider
-            import java.nio.file.FileSystem
-            import java.nio.file.FileSystems
-
-            @SingleIn(AppScope::class)
-            @DependencyGraph
-            interface ExampleGraph {
-
-              val repository: Repository
-
-              @Provides
-              fun provideFileSystem(): FileSystem = FileSystems.getDefault()
-
-              @Named("cache-dir-name")
-              @Provides
-              fun provideCacheDirName(): String = "cache"
-            }
-
-            @Inject @SingleIn(AppScope::class) class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
-            @Inject @SingleIn(AppScope::class) class HttpClient(cache: Cache)
-            @Inject @SingleIn(AppScope::class) class ApiClient(httpClient: Lazy<HttpClient>)
-            @Inject class Repository(apiClient: ApiClient)
-
+          @SingleIn(AppScope::class)
+          @DependencyGraph
+          interface ExampleGraph {
+  
+            val repository: Repository
+  
+            @Provides
+            fun provideFileSystem(): FileSystem = FileSystems.getDefault()
+  
+            @Named("cache-dir-name")
+            @Provides
+            fun provideCacheDirName(): String = "cache"
+          }
+  
+          @Inject @SingleIn(AppScope::class) class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
+          @Inject @SingleIn(AppScope::class) class HttpClient(cache: Cache)
+          @Inject @SingleIn(AppScope::class) class ApiClient(httpClient: Lazy<HttpClient>)
+          @Inject class Repository(apiClient: ApiClient)
           """
-          .trimIndent(),
+          .trimIndent()
       )
     )
   }
