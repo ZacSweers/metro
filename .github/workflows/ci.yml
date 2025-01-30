@@ -75,6 +75,13 @@ jobs:
       - name: Check samples
         run: ./gradlew -p samples check --quiet
 
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-build
+          path: |
+            **/build/reports/**
 #  publish:
 #    runs-on: macos-14
 #    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.repository == 'zacsweers/metro'
