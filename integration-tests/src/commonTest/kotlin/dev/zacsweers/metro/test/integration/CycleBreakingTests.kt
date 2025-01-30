@@ -19,7 +19,6 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.Singleton
 import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
