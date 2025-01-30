@@ -148,7 +148,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
-              @get:Singleton
+              @get:SingleIn(AppScope::class)
               val value: String
             }
           """

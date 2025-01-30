@@ -456,17 +456,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // binding resolution and being able to invoke them correctly in the resulting graph.
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
               val value: String
@@ -492,17 +483,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // binding resolution and being able to invoke them correctly in the resulting graph.
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
 
@@ -529,17 +511,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `providers overridden from supertypes are errors`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
 
@@ -559,25 +532,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
-      "ExampleGraph.kt:14:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead."
-    )
+    result.assertDiagnostics("e: ExampleGraph.kt:11:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.")
   }
 
   @Test
   fun `overrides annotated with provides from non-provides supertypes are ok`() {
     compile(
-      kotlin(
-        "ExampleGraph.kt",
+      source(
         """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
 
