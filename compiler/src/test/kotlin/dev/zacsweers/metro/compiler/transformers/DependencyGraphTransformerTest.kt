@@ -469,7 +469,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -499,7 +499,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -527,12 +527,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertDiagnostics("e: ExampleGraph.kt:11:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:11:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead."
+    )
   }
 
   @Test
@@ -554,7 +556,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-          .trimIndent(),
+          .trimIndent()
       )
     )
   }
