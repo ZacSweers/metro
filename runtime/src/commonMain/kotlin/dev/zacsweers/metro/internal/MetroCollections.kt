@@ -49,16 +49,16 @@ internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> {
 }
 
 /**
- * Creates a {@link HashSet} instance, with a high enough "intial capcity" that it <em>should</em>
- * hold {@code expectedSize} elements without growth.
+ * Creates a [HashSet] instance, with a high enough "initial capacity" that it _should_ hold
+ * [expectedSize] elements without growth.
  */
 internal fun <T> newHashSetWithExpectedSize(expectedSize: Int): HashSet<T> {
   return HashSet(calculateInitialCapacity(expectedSize))
 }
 
 /**
- * Creates a {@link LinkedHashMap} instance, with a high enough "initial capacity" that it
- * <em>should</em> hold {@code expectedSize} elements without growth.
+ * Creates a [LinkedHashMap] instance, with a high enough "initial capacity" that it _should_ hold
+ * [expectedSize] elements without growth.
  */
 public fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHashMap<K, V> {
   return LinkedHashMap(calculateInitialCapacity(expectedSize))
@@ -72,7 +72,6 @@ public fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHas
  * Pulled from Kotlin stdlib's collection builders. Slightly different from dagger's but
  * functionally the same.
  */
-@PublishedApi
 internal fun calculateInitialCapacity(expectedSize: Int): Int =
   when {
     // We are not coercing the value to a valid one and not throwing an exception. It is up to the
