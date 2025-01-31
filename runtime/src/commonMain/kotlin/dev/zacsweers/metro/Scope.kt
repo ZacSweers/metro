@@ -16,7 +16,7 @@
 package dev.zacsweers.metro
 
 /**
- * So
+ * TODO
  */
 @Target(AnnotationTarget.ANNOTATION_CLASS)
 public annotation class Scope
