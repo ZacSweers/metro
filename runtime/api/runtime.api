@@ -85,14 +85,6 @@ public abstract interface annotation class dev/zacsweers/metro/IntoMap : java/la
 public abstract interface annotation class dev/zacsweers/metro/IntoSet : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/metro/LazyClassKey : java/lang/annotation/Annotation {
-	public abstract fun value ()Ljava/lang/Class;
-}
-
-public abstract interface annotation class dev/zacsweers/metro/LongKey : java/lang/annotation/Annotation {
-	public abstract fun value ()J
-}
-
 public abstract interface annotation class dev/zacsweers/metro/MapKey : java/lang/annotation/Annotation {
 	public abstract fun unwrapValue ()Z
 }
@@ -128,9 +120,6 @@ public abstract interface annotation class dev/zacsweers/metro/Scope : java/lang
 
 public abstract interface annotation class dev/zacsweers/metro/SingleIn : java/lang/annotation/Annotation {
 	public abstract fun scope ()Ljava/lang/Class;
-}
-
-public abstract interface annotation class dev/zacsweers/metro/Singleton : java/lang/annotation/Annotation {
 }
 
 public abstract interface annotation class dev/zacsweers/metro/StringKey : java/lang/annotation/Annotation {
