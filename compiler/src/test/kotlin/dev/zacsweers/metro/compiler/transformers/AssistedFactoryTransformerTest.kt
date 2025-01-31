@@ -735,4 +735,43 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       )
     }
   }
+
+  @Test
+  fun `assisted parameters in later order work`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClassFactory: ExampleClass.Factory
+
+            @Provides val int: Int get() = 0
+          }
+
+          class ExampleClass @Inject constructor(
+            val count: Int,
+            @Assisted val text: String,
+          ) {
+            fun template(): String = text + count
+
+            @AssistedFactory
+            interface Factory {
+              fun create(@Assisted text: String): ExampleClass
+            }
+          }
+
+          fun main(text: String): String {
+            val graph = createGraph<ExampleGraph>()
+            val exampleClass = graph.exampleClassFactory.create(text)
+            return exampleClass.template()
+          }
+          """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val result = invokeMain<String>("hello ", mainClass = "test.ExampleGraphKt")
+      assertThat(result).isEqualTo("hello 0")
+    }
+  }
 }

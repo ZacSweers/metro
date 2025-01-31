@@ -218,19 +218,44 @@ internal class InjectConstructorTransformer(
     }
     invokeFunction.body =
       pluginContext.createIrBuilder(invokeFunction.symbol).irBlockBody {
-        val assistedArgs = invokeFunction.valueParameters.map { irGet(it) }
+        val constructorParameterNames =
+          constructorParameters.valueParameters
+            .filterNot { it.isAssisted }
+            .associateBy { it.originalName }
+
+        val functionParamsByName = invokeFunction.valueParameters.associate { it.name to irGet(it) }
+
+        val args =
+          constructorParameters.valueParameters.map { targetParam ->
+            when (val parameterName = targetParam.originalName) {
+              in constructorParameterNames -> {
+                val constructorParam = constructorParameterNames.getValue(parameterName)
+                val providerInstance =
+                  irGetField(
+                    irGet(invokeFunction.dispatchReceiverParameter!!),
+                    parametersToFields.getValue(constructorParam),
+                  )
+                val contextKey = targetParam.contextualTypeKey
+                typeAsProviderArgument(
+                  context = metroContext,
+                  contextKey = contextKey,
+                  bindingCode = providerInstance,
+                  isAssisted = false,
+                  isGraphInstance = constructorParam.isGraphInstance,
+                )
+              }
+              in functionParamsByName -> {
+                functionParamsByName.getValue(targetParam.originalName)
+              }
+              else -> error("Unmatched top level injected function param: $targetParam")
+            }
+          }
+
         val newInstance =
           irInvoke(
               dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
               callee = newInstanceFunction.symbol,
-              args =
-                assistedArgs +
-                  parametersAsProviderArguments(
-                    context = metroContext,
-                    parameters = constructorParameters,
-                    receiver = invokeFunction.dispatchReceiverParameter!!,
-                    parametersToFields = parametersToFields,
-                  ),
+              args = args,
             )
             .apply {
               if (newInstanceFunction.typeParameters.isNotEmpty()) {
@@ -293,7 +318,7 @@ internal class InjectConstructorTransformer(
         body =
           pluginContext.createIrBuilder(symbol).run {
             val constructorParameterNames =
-              constructorParameters.valueParameters.associate { it.originalName to it }
+              constructorParameters.valueParameters.associateBy { it.originalName }
 
             val functionParamsByName =
               invokeFunction.valueParameters.associate { it.name to irGet(it) }
