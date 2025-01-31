@@ -21,7 +21,7 @@ package dev.zacsweers.metro
  *  provider/lazy
  *  compiler must run over every class
  *  assisted injection
- *  member injection
+ *  member injection (including private)
  */
 @Target(
   AnnotationTarget.CLASS,
