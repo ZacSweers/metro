@@ -19,7 +19,7 @@ package dev.zacsweers.metro
  * Annotates an _assisted_ parameter in an injected class or function. An assisted parameter is one
  * that is supplied at instantiation-time rather than from the dependency graph.
  *
- * TODO example
+ * @see Inject's kdoc for full documentation on assisted injection with examples.
  */
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)
