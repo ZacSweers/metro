@@ -25,7 +25,8 @@ package dev.zacsweers.metro
  *   match the type of an assisted injection type, and parameters must match the exact list of
  *   [Assisted] parameters in the assisted injection type's constructor (and in the same order).
  *
- * See [Inject]
+ * @see [Assisted]
+ * @see [Inject]
  */
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)

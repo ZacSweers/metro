@@ -15,4 +15,5 @@
  */
 package dev.zacsweers.metro
 
+// TODO doc
 @Target(AnnotationTarget.ANNOTATION_CLASS) public annotation class Scope

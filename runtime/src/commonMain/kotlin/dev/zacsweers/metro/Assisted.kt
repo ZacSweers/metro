@@ -16,9 +16,10 @@
 package dev.zacsweers.metro
 
 /**
- * Annotates a parameter within an [AssistedInject]-annotated constructor.
+ * Annotates an _assisted_ parameter in an injected class or function. An assisted parameter is one
+ * that is supplied at instantiation-time rather than from the dependency graph.
  *
- * See [AssistedInject].
+ * TODO example
  */
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)
@@ -27,20 +28,20 @@ public annotation class Assisted(
   /**
    * Returns an identifier for an [Assisted] parameter.
    *
-   * Within an [AssistedInject] constructor, each [Assisted] parameter must be uniquely defined by
-   * the combination of its identifier and type. If no identifier is specified, the default
-   * identifier is an empty string. Thus, the following parameters are equivalent within an
-   * [AssistedInject] constructor:
-   * * `@Assisted Foo foo`
-   * * `@Assisted("") Foo foo`
+   * Within an [Inject] constructor, each [Assisted] parameter must be uniquely defined by the
+   * combination of its identifier and type. If no identifier is specified, the default identifier
+   * is an empty string. Thus, the following parameters are equivalent within an [Inject]
+   * constructor:
+   * * `@Assisted foo: Foo`
+   * * `@Assisted("") foo: Foo`
    *
    * Within an [AssistedFactory] method, each parameter must match an [Assisted] parameter in the
-   * associated [AssistedInject] constructor (i.e. identifier + type). A parameter with no
-   * `@Assisted` annotation will be assigned the default identifier. Thus, the following parameters
-   * are equivalent within an [AssistedFactory] method:
-   * * `Foo foo`
-   * * `@Assisted Foo foo`
-   * * `@Assisted("") Foo foo`
+   * associated [Inject] constructor (i.e. identifier + type). A parameter with no `@Assisted`
+   * annotation will be assigned the default identifier. Thus, the following parameters are
+   * equivalent within an [AssistedFactory] method:
+   * * `foo: Foo`
+   * * `@Assisted foo: Foo`
+   * * `@Assisted("") foo: Foo`
    *
    * Example:
    * ```

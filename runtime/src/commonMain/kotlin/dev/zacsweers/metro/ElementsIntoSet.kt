@@ -16,11 +16,9 @@
 package dev.zacsweers.metro
 
 /**
- * The method's return type is `Set<T>` and all values are contributed to the set. The `Set<T>`
- * produced from the accumulation of values will be immutable. An example use is to provide a
- * default empty set binding, which is otherwise not possible using [IntoSet].
- *
- * @see <a href="https://dagger.dev/multibindings.set-multibindings">Set multibinding</a>
+ * The callable's return type is a `Collection<T>` and all values are contributed to the set. The
+ * `Collection<T>` produced from the accumulation of values will be immutable. An example use is to
+ * provide a default empty set binding, which is otherwise not possible using [IntoSet].
  */
 @MustBeDocumented
 @Target(AnnotationTarget.FUNCTION)

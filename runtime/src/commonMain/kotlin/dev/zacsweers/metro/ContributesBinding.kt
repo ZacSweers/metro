@@ -16,11 +16,38 @@
 package dev.zacsweers.metro
 
 import kotlin.annotation.AnnotationTarget.CLASS
-import kotlin.annotation.AnnotationTarget.TYPE
 import kotlin.reflect.KClass
 
-/** TODO doc */
-@Target(CLASS, TYPE)
+/**
+ * Contributes a binding of the annotated type to the given [scope] as a [boundType] (if specified)
+ * or single declared supertype.
+ *
+ * ```
+ * // Implicit supertype is Base
+ * @ContributesBinding(AppScope::class)
+ * @Inject
+ * class Impl : Base
+ * ```
+ *
+ * Use [BoundType] to specify a specific bound type if an implicit one is not possible.
+ *
+ * ```
+ * // Explicit supertype is Base
+ * @ContributesBinding(AppScope::class, boundType = BoundType<Base>())
+ * @Inject
+ * class Impl : Base, AnotherBase
+ * ```
+ *
+ * This annotation is _repeatable_, allowing for contributions as multiple bound types. Note that
+ * all repeated annotations must use the same [scope].
+ *
+ * If this declaration is scoped, the [Scope] annotation will be propagated to the generated [Binds]
+ * declaration.
+ *
+ * If this declaration is qualified, the [Qualifier] annotation will be propagated to the generated [Binds]
+ * declaration.
+ */
+@Target(CLASS)
 @Repeatable
 public annotation class ContributesBinding(
   val scope: KClass<*>,
