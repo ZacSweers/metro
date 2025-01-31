@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.DECLARATION_RETURN_TYPE
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.MODALITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.NAME_IDENTIFIER
+import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.OVERRIDE_MODIFIER
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.TYPE_PARAMETERS_LIST
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies.VISIBILITY_MODIFIER
 import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
@@ -135,6 +136,8 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val PROVIDES_ERROR by error1<String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<String>(NAME_IDENTIFIER)
+  val MULTIBINDS_ERROR by error1<String>(NAME_IDENTIFIER)
+  val MULTIBINDS_OVERRIDE_ERROR by error1<String>(OVERRIDE_MODIFIER)
   val MEMBERS_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_STATUS_ERROR by error1<String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<String>(NAME_IDENTIFIER)
@@ -196,6 +199,8 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(MEMBERS_INJECT_WARNING, "{0}", STRING)
       put(MEMBERS_INJECT_RETURN_TYPE_WARNING, "{0}", STRING)
       put(BINDS_ERROR, "{0}", STRING)
+      put(MULTIBINDS_ERROR, "{0}", STRING)
+      put(MULTIBINDS_OVERRIDE_ERROR, "{0}", STRING)
       put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
       put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
       put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)

@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBoundType
@@ -36,9 +37,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isAny
@@ -225,10 +224,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        val implementsBoundType =
-          lookupSuperTypes(klass = declaration, true, true, session, true).any {
-            it.classId?.let { it == refClassId } == true
-          }
+        val implementsBoundType = declaration.isOrImplements(refClassId, session)
 
         if (!implementsBoundType) {
           reporter.reportOn(

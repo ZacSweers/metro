@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
@@ -837,12 +838,10 @@ internal fun FirAnnotation.annotationArgument(name: Name, index: Int) =
 
 internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
   findArgumentByName(name)?.let {
-    @Suppress("UNCHECKED_CAST")
     return it as? T?
   }
   if (this !is FirAnnotationCall) return null
   // Fall back to the index if necessary
-  @Suppress("UNCHECKED_CAST")
   return arguments.getOrNull(index) as? T?
 }
 
@@ -864,4 +863,36 @@ internal fun buildSimpleAnnotation(symbol: () -> FirRegularClassSymbol): FirAnno
 
     argumentMapping = buildAnnotationArgumentMapping()
   }
+}
+
+internal fun FirClass.isOrImplements(supertype: ClassId, session: FirSession): Boolean {
+  if (classId == supertype) return true
+  return implements(supertype, session)
+}
+
+internal fun FirClass.implements(supertype: ClassId, session: FirSession): Boolean {
+  return lookupSuperTypes(
+      klass = this,
+      lookupInterfaces = true,
+      deep = true,
+      useSiteSession = session,
+      substituteTypes = true,
+    )
+    .any { it.classId?.let { it == supertype } == true }
+}
+
+internal fun FirClassSymbol<*>.isOrImplements(supertype: ClassId, session: FirSession): Boolean {
+  if (classId == supertype) return true
+  return implements(supertype, session)
+}
+
+internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSession): Boolean {
+  return lookupSuperTypes(
+      symbols = listOf(this),
+      lookupInterfaces = true,
+      deep = true,
+      useSiteSession = session,
+      substituteTypes = true,
+    )
+    .any { it.classId?.let { it == supertype } == true }
 }

@@ -600,7 +600,6 @@ internal class DependencyGraphTransformer(
             provider.intoSet -> {
               pluginContext.irBuiltIns.setClass.typeWith(provider.typeKey.type)
             }
-            // TODO Dagger only supports the target collection, but maybe we can loosen that?
             provider.elementsIntoSet -> provider.typeKey.type
             provider.intoMap && provider.mapKey != null -> {
               // TODO this is probably not robust enough
