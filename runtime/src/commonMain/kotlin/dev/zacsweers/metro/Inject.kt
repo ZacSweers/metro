@@ -22,6 +22,7 @@ package dev.zacsweers.metro
  *  compiler must run over every class
  *  assisted injection
  *  member injection (including private)
+ *  function injection (including private)
  */
 @Target(
   AnnotationTarget.CLASS,
