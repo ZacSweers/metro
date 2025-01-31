@@ -19,8 +19,8 @@ import kotlin.annotation.AnnotationTarget.CLASS
 import kotlin.reflect.KClass
 
 /**
- * Contributes an [IntoSet] binding of the annotated type to the given [scope] as a [boundType] (if specified)
- * or single declared supertype.
+ * Contributes an [IntoSet] binding of the annotated type to the given [scope] as a [boundType] (if
+ * specified) or single declared supertype.
  *
  * ```
  * // Implicit supertype is Base
@@ -42,11 +42,11 @@ import kotlin.reflect.KClass
  * This annotation is _repeatable_, allowing for contributions as multiple bound types. Note that
  * all repeated annotations must use the same [scope].
  *
- * If this declaration is scoped, the [Scope] annotation will be propagated to the generated [IntoSet]
- * declaration.
+ * If this declaration is scoped, the [Scope] annotation will be propagated to the generated
+ * [IntoSet] declaration.
  *
- * If this declaration is qualified, the [Qualifier] annotation will be propagated to the generated [IntoSet]
- * declaration.
+ * If this declaration is qualified, the [Qualifier] annotation will be propagated to the generated
+ * [IntoSet] declaration.
  */
 @Target(CLASS)
 @Repeatable

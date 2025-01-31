@@ -15,9 +15,7 @@
  */
 package dev.zacsweers.metro
 
-/**
- * A simple [Qualifier] that disambiguates based on the [name] value.
- */
+/** A simple [Qualifier] that disambiguates based on the [name] value. */
 @Target(
   AnnotationTarget.CLASS,
   AnnotationTarget.FIELD,

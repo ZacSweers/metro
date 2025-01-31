@@ -44,8 +44,8 @@ import kotlin.reflect.KClass
  * If this declaration is scoped, the [Scope] annotation will be propagated to the generated [Binds]
  * declaration.
  *
- * If this declaration is qualified, the [Qualifier] annotation will be propagated to the generated [Binds]
- * declaration.
+ * If this declaration is qualified, the [Qualifier] annotation will be propagated to the generated
+ * [Binds] declaration.
  */
 @Target(CLASS)
 @Repeatable

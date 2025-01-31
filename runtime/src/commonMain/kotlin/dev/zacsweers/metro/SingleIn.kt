@@ -18,7 +18,8 @@ package dev.zacsweers.metro
 import kotlin.reflect.KClass
 
 /**
- * A [Scope] that uses a given [scope] key value to indicate what scope the annotated type is a singleton in.
+ * A [Scope] that uses a given [scope] key value to indicate what scope the annotated type is a
+ * singleton in.
  *
  * Example:
  * ```
