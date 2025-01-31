@@ -73,29 +73,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val callables = declaration.declarations.asSequence().filterIsInstance<FirCallableDeclaration>()
 
     for (callable in callables) {
-      val isMultibinds = callable.isAnnotatedWithAny(session, classIds.multibindsAnnotations)
-      if (isMultibinds) {
-        val scopeAnnotation = callable.annotations.scopeAnnotation(session)
-        if (scopeAnnotation != null) {
-          reporter.reportOn(
-            scopeAnnotation.fir.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
-            "@Multibinds members cannot be scoped.",
-            context,
-          )
-          continue
-        }
-        if (!callable.isAbstract) {
-          reporter.reportOn(
-            callable.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
-            "@Multibinds members must be abstract.",
-            context,
-          )
-          continue
-        }
-      }
-
       if (!callable.isAbstract) continue
 
       val isBindsOrProvides =

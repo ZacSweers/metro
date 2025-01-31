@@ -95,6 +95,28 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         return
       }
 
+      // Cannot also be Provides/Binds
+      if (annotations.isProvides || annotations.isBinds) {
+        reporter.reportOn(
+          source,
+          FirMetroErrors.MULTIBINDS_ERROR,
+          "`@Multibinds` declarations cannot also be annotated with `@Provides` or `@Binds` annotations.",
+          context,
+        )
+        return
+      }
+
+      val scopeAnnotation = annotations.scope
+      if (scopeAnnotation != null) {
+        reporter.reportOn(
+          scopeAnnotation.fir.source,
+          FirMetroErrors.MULTIBINDS_ERROR,
+          "@Multibinds declarations cannot be scoped.",
+          context,
+        )
+        return
+      }
+
       // No need to check for explicit return types as that's enforced implicitly by the abstract
       // check above
 

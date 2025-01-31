@@ -587,9 +587,6 @@ internal class DependencyGraphTransformer(
           providerFunction = function.ir,
           contextualTypeKey = contextKey,
           parameters = parameters,
-          // TODO FIR only one annotation is allowed
-          // TODO FIR no scopes on multibindings
-          // TODO FIR can't mix @Multibinds and @Provides
           annotations = annotations,
           aliasedType = bindsImplType,
         )

@@ -65,61 +65,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `multibinds must be abstract - property`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Multibinds val values: Map<String, String> get() = emptyMap()
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:19 @Multibinds members must be abstract.")
-  }
-
-  @Test
-  fun `multibinds must be abstract - function`() {
-    val result =
-      compile(
-        source(
-          """
-            @DependencyGraph
-            interface ExampleGraph {
-              @Multibinds fun values(): Map<String, String> = emptyMap()
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:19 @Multibinds members must be abstract.")
-  }
-
-  @Test
-  fun `multibinds cannot be scoped`() {
-    val result =
-      compile(
-        source(
-          """
-            @SingleIn(AppScope::class)
-            @DependencyGraph
-            interface ExampleGraph {
-              @Multibinds @SingleIn(AppScope::class) fun values(): Map<String, String>
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:15 @Multibinds members cannot be scoped.")
-  }
-
-  @Test
   fun `accessors cannot be scoped - property`() {
     val result =
       compile(

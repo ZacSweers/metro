@@ -106,6 +106,53 @@ class MultibindsErrorsTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `multibinds cannot be scoped`() {
+    compile(
+      source(
+        """
+            interface ExampleGraph {
+              @Multibinds @SingleIn(AppScope::class) fun ints(): Set<Int>
+              @Multibinds @SingleIn(AppScope::class) val intsProp: Set<Int>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:7:15 @Multibinds declarations cannot be scoped.
+          e: ExampleGraph.kt:8:15 @Multibinds declarations cannot be scoped.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `multibinds cannot be binds or provides`() {
+    // Impossible to write a Provides+Multibinds since abtract check would kick in
+    compile(
+      source(
+        """
+            interface ExampleGraph {
+              @Multibinds @Binds @Named("qualified") val Set<Int>.intsProp: Set<Int>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:7:55 `@Multibinds` declarations cannot also be annotated with `@Provides` or `@Binds` annotations.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
   fun `multibinds must be maps or sets`() {
     compile(
       source(
