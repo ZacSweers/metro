@@ -83,15 +83,90 @@ import kotlin.reflect.KClass
  *   /* fake */ override val RealHttpClient.bind: HttpClient
  * }
  * ```
- *
- * ## Generating graph creators
- *
- * TODO
  */
 @Target(AnnotationTarget.CLASS)
 public annotation class DependencyGraph(
   val scope: KClass<*> = Nothing::class,
   val additionalScopes: Array<KClass<*>> = [],
 ) {
+  /**
+   * Graph factories can be declared as a single nested declaration within the target graph to
+   * create instances with bound instances (via [Provides]) or graph dependencies.
+   *
+   * ```
+   * @DependencyGraph
+   * interface AppGraph {
+   *   @DependencyGraph.Factory
+   *   fun interface Factory {
+   *     fun create(@Provides text: String, networkGraph: NetworkGraph)
+   *   }
+   * }
+   * ```
+   *
+   * In the above example, the `text` parameter is an _instance_ binding (analogous to
+   * `@BindsInstance` in Dagger) and available as a binding on the graph.
+   *
+   * The `networkGraph` parameter is a _graph_ dependency. This can be any type and is treated as
+   * another [DependencyGraph] type. Any type these deps expose as _accessors_ are available as
+   * bindings to this graph. For example:
+   * ```
+   * interface NetworkGraph {
+   *   val httpClient: HttpClient
+   * }
+   * ```
+   *
+   * In this case, `HttpClient` would be an available binding in the consuming `AppGraph`. Only
+   * explicitly declared accessors are considered candidates for bindings.
+   *
+   * ## Graph factory generation
+   *
+   * Metro will automatically generate one of the following scenarios for graph factories:
+   * ```
+   *                      ┌────────────────────┐
+   *                ┌─────┤Has a graph factory?├──┐
+   *                │     └────────────────────┘  │
+   *                ▼                             ▼
+   *                No                           Yes
+   *                │                             │
+   *                │                             │
+   *      ┌─────────▼─────────────┐       ┌───────▼───────────┐
+   *      │  Generate an empty    │       │Is it an interface?│
+   *      │operator fun invoke()  │       └─┬──────────┬──────┘
+   *      │to the companion object│         │          ▼
+   *      └───────────────────────┘         │          No
+   *                                        │
+   *                                        │  ┌───────────────────┐
+   *                    Yes◄────────────────┘  │ Is there already  │
+   *                     │                     │a companion object?│
+   *            ┌────────▼──────────┐          └┬────────────┬─────┘
+   *            │ Is there already  │           │            │
+   *            │a companion object?│           ▼            ▼
+   *            └┬─────────────────┬┘          Yes           No───┐
+   *             ▼                 ▼            │                 │
+   *            Yes                No           │         ┌───────▼────┐
+   *             │                 │            ├─────────┤Generate one│
+   * ┌───────────▼─────────┐       │            │         └────────────┘
+   * │Generate a matching  │       │          ┌─▼───────────────────────────┐
+   * │operator fun invoke()│       │          │Generate a factory() function│
+   * │function into it     │       │          │    into it                  │
+   * └─────────────────────┘       │          └─────────────────────────────┘
+   *                               │
+   *                               │
+   *              ┌────────────────▼───────┐
+   *              │Generate one and make it│
+   *              │implement the factory   │
+   *              │interface               │
+   *              └────────────────────────┘
+   * ```
+   *
+   * All of this happens under the hood and [createGraph]/[createGraphFactory] with resolve the
+   * correct one to use.
+   *
+   * ## Using generated declarations directly
+   *
+   * If you enable third party FIR plugins in the IDE (TODO link), these will be visible and
+   * directly linkable. However, your mileage may vary and it's recommended to stick with the graph
+   * creator intrinsics for now until the IDE support is improved.
+   */
   @Target(AnnotationTarget.CLASS) public annotation class Factory
 }
