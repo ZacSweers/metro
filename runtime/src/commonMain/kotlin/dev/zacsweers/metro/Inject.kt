@@ -15,7 +15,14 @@
  */
 package dev.zacsweers.metro
 
-/** TODO standard injection docs + assisted injection docs */
+/**
+ * TODO
+ *  constructor injection
+ *  provider/lazy
+ *  compiler must run over every class
+ *  assisted injection
+ *  member injection
+ */
 @Target(
   AnnotationTarget.CLASS,
   AnnotationTarget.CONSTRUCTOR,
