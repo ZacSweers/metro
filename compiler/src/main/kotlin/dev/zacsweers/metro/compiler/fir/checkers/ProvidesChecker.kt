@@ -40,6 +40,8 @@ import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
@@ -91,6 +93,16 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         source,
         FirMetroErrors.PROVIDES_ERROR,
         "Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.",
+        context,
+      )
+      return
+    }
+
+    if (declaration.returnTypeRef.coneTypeOrNull?.isMarkedNullable == true) {
+      reporter.reportOn(
+        source,
+        FirMetroErrors.PROVIDES_ERROR,
+        "Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153",
         context,
       )
       return

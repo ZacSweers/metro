@@ -529,4 +529,36 @@ class ProvidesErrorsTest : MetroCompilerTest() {
         .trimIndent()
     )
   }
+
+  @Test
+  fun `provides cannot be nullable`() {
+    val result =
+      compile(
+        source(
+          """
+            abstract class ExampleGraph {
+              @Provides
+              fun provideString(): String? = null
+              @Provides val provideLong: Long? = null
+
+              companion object {
+                @Provides
+                fun provideInt(): Int? = null
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:8:7 Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+        e: ExampleGraph.kt:9:17 Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+        e: ExampleGraph.kt:13:9 Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+      """
+        .trimIndent()
+    )
+  }
 }
