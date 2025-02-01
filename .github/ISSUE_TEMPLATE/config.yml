@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask for help
+    url: https://github.com/ZacSweers/metro/discussions/new?category=q-a
+    about: If you have a usage or debugging question, please use the Q&A feature of the repo's Discussions section.
+  - name: Create an issue without template
+    url: https://github.com/zacsweers/metro/issues/new
+    about: This option is only available for repository maintainers.
