@@ -1,0 +1,89 @@
+# pip3 install mkdocs mkdocs-material
+# mkdocs serve
+# mkdocs gh-deploy
+
+site_name: Metro
+repo_name: Metro
+repo_url: https://github.com/ZacSweers/metro
+site_description: "A multiplatform dependency injection framework for Kotlin"
+site_author: Zac Sweers
+remote_branch: gh-pages
+
+copyright: 'Copyright &copy; 2025 Zac Sweers'
+
+theme:
+  name: 'material'
+#  favicon: images/metro_logo_small.png
+#  logo: images/metro_logo.png
+  palette:
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      primary: 'white'
+      accent: 'green'
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      primary: 'black'
+      accent: 'green'
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: 'Inter'
+    code: 'Fira Code'
+  features:
+    - content.code.copy
+    - content.code.select
+
+#extra_css:
+#  - 'css/app.css'
+
+markdown_extensions:
+  - smarty
+  - codehilite:
+      guess_lang: false
+  - footnotes
+  - meta
+  - toc:
+      permalink: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.emoji
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - admonition
+  - attr_list
+  - md_in_html
+
+nav:
+  - 'Introduction': index.md
+  - 'Overview':
+    - 'Features': features.md
+    - 'Differences': differences.md
+  - 'Installation': installation.md
+  - 'Design':
+      - 'Dependency Graphs': dependency-graphs.md
+      - 'Provides': provides.md
+      - 'Injection Types': injection-types.md
+      - 'Scopes': scopes.md
+      - 'Metro Intrinsics': metro-intrinsics.md
+      - 'Bindings': bindings.md
+      - 'Aggregation (aka "Anvil")': aggregation.md
+      - 'Multiplatform': multiplatform.md
+      - 'Validation & Error Reporting': validation-and-error-reporting.md
+      - 'Interop': interop.md
+      - 'Generating Custom Metro Code': generating-metro-code.md
+  - 'Debugging': debugging.md
+  - 'API': api/0.x/index.html
+  - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
+  - 'Change Log': changelog.md
+#  - 'Contributing': contributing.md
+#  - 'CoC': code-of-conduct.md

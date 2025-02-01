@@ -49,7 +49,7 @@ but usage in newer versions of kotlinc are not guaranteed to be stable.
 License
 -------
 
-    Copyright (C) 2024 Zac Sweers
+    Copyright (C) 2025 Zac Sweers
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
