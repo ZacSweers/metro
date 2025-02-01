@@ -28,6 +28,7 @@ plugins {
   id("dev.zacsweers.metro") apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.mavenPublish) apply false // wat
+  alias(libs.plugins.kotlin.plugin.serialization) apply false
 }
 
 allprojects {

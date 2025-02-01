@@ -32,11 +32,11 @@ dependencyResolutionManagement {
 rootProject.name = "metro-samples"
 
 include(
-  ":basic",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-kotlinInject",
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
+  ":weather-app",
 )
 
 includeBuild("..")
