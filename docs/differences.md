@@ -15,7 +15,7 @@
 
 * typealiases are not treated as implicit qualifiers.
 * Dependency graph classes cannot have primary constructors, their parameters must be defined as `@Provides` or graph parameters on a `@DependencyGraph.Factory` function like Dagger.
-* Higher order functions cannot be used. Instead, use `Provider` and declared `@AssistedFactory`\-annotated types.
+* Higher order functions cannot be used. Instead, use `Provider` and declared `@AssistedFactory`-annotated types.
 * No need for use-site targets for most annotations.
 * No need for `@get:Provides Impl.bind: Type get() = this` to achieve type bindings. See the docs on `@Provides`.
 * Metro can inject private properties and functions.

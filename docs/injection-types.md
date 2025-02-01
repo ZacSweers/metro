@@ -19,7 +19,7 @@ Constructor-injected classes can be instantiated+managed entirely by Metro and e
 
 ## Assisted Injection
 
-For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case \- an injected constructor (or class with one constructor) must be annotated with `@Inject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.
+For types that require dynamic dependencies at instantiation, assisted injection can be used to supply these inputs. In this case - an injected constructor (or class with one constructor) must be annotated with `@Inject`, assisted parameters annotated with `@Assisted`, and a factory interface or abstract class with one single abstract function that accepts these assisted parameters and returns the target class.
 
 ```kotlin
 @Inject
@@ -34,7 +34,7 @@ class HttpClient(
 }
 ```
 
-Then, the `@AssistedFactory`\-annotated type can be accessed from the dependency graph.
+Then, the `@AssistedFactory`-annotated type can be accessed from the dependency graph.
 
 ```kotlin
 @Inject
@@ -64,10 +64,10 @@ class HttpClient(
 
 ### Automatic Assisted Factory Generation
 
-As of [this PR](https://github.com/ZacSweers/lattice/pull/60), there is a feature (behind a compiler option) to let Metro *automatically* generate assisted factory interfaces for `@Inject`\-annotated constructors that contain `@Assisted`\-annotated parameters. This should save boilerplate in most cases, but may not be suitable for all cases. Cases where you may not want this include:
+As of [this PR](https://github.com/ZacSweers/lattice/pull/60), there is a feature (behind a compiler option) to let Metro *automatically* generate assisted factory interfaces for `@Inject`-annotated constructors that contain `@Assisted`\-annotated parameters. This should save boilerplate in most cases, but may not be suitable for all cases. Cases where you may not want this include:
 
 1. You want assisted factories to conform to a common interface.
-2. Likely in combination with \#1, you may want to contribute these factories to multibindings of some sort and thus need to annotate them with `@IntoSet`, etc.
+2. Likely in combination with #1, you may want to contribute these factories to multibindings of some sort and thus need to annotate them with `@IntoSet`, etc.
 
 ## Member Injection
 
@@ -97,7 +97,7 @@ class ProfileActivity : Activity() {
 
 Like Dagger, these classes can be injected via multiple avenues.
 
-### 1. In constructor-injected types, `@Inject`\-annotated members are injected *automatically*.
+### 1. In constructor-injected types, `@Inject`-annotated members are injected *automatically*.
 
 ```kotlin
 // Injection with constructor injection
@@ -184,7 +184,7 @@ Because it’s generated in FIR, this type will be user-visible in the IDE and c
 *Note that this feature requires enabling third party FIR plugins in the IDE to fully work. It will compile without it, but generated wrapper classes will be red/missing in the IDE.*
 
 !!! note
-    The generated class is called `<function name>` \+ `Class` because of a limitation in the Kotlin compiler. TODO Link issue?
+    The generated class is called `<function name>` + `Class` because of a limitation in the Kotlin compiler. TODO Link issue?
 
 ```kotlin
 @DependencyGraph

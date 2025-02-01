@@ -9,7 +9,7 @@ plugins {
 }
 ```
 
-…and that’s it\! This will add metro’s runtime dependencies and do all the necessary compiler plugin wiring.
+…and that’s it! This will add metro’s runtime dependencies and do all the necessary compiler plugin wiring.
 
 If applying in other build systems, apply it however that build system conventionally applies Kotlin compiler plugins. For example with [Bazel](https://github.com/bazelbuild/rules_kotlin?tab=readme-ov-file#kotlin-compiler-plugins):
 

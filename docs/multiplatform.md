@@ -1,6 +1,6 @@
 # Multiplatform
 
-Should Just Work™️ but will see when we get there\! The runtime and code gen have been implemented to be entirely platform-agnostic so far.
+Should Just Work™️! The runtime and code gen have been implemented to be entirely platform-agnostic so far.
 
 There is one issue in the repo right now where the compiler appears to have a bug with generated FIR declarations where it doesn’t deserialize them correctly on non-JVM targets. Waiting for feedback from JB.
 

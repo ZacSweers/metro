@@ -1,6 +1,6 @@
 # Metro Intrinsics
 
-Like Dagger, Metro supports injection of bindings wrapped in intrinsic types. Namely \- `Provider` and `Lazy`. These are useful for deferring creation/initialization of dependencies. These only need to be requested at the injection site, Metro’s code gen will generate all the necessary stitching to fulfill that request.
+Like Dagger, Metro supports injection of bindings wrapped in intrinsic types. Namely - `Provider` and `Lazy`. These are useful for deferring creation/initialization of dependencies. These only need to be requested at the injection site, Metro’s code gen will generate all the necessary stitching to fulfill that request.
 
 ## `Provider`
 

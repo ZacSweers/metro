@@ -49,7 +49,7 @@ metro {
 
 `@DependencyGraph` is replaceable but your mileage may vary if you use Anvil or modules, since Metro’s annotation unifies Anvil’s `@MergeComponent` functionality and doesn’t support modules.
 
-Similarly, `@ContributesBinding` is replaceable but there are not direct analogues for Anvil’s `@ContributesMultibinding` or kotlin-inject-anvil’s `@ContributesBinding(multibinding = …)` as these annotations are implemented as `@ContributesInto*` annotations in Metro. Also \- `boundType` in metro uses a more flexible mechanism to support generics.
+Similarly, `@ContributesBinding` is replaceable but there are not direct analogues for Anvil’s `@ContributesMultibinding` or kotlin-inject-anvil’s `@ContributesBinding(multibinding = …)` as these annotations are implemented as `@ContributesInto*` annotations in Metro. Also - `boundType` in metro uses a more flexible mechanism to support generics.
 
 Intrinsics like `Provider` and `Lazy` are not supported because their semantics are slightly different. However, we could look into this in the future as integration artifacts that offer composite implementations (similar to how Dagger’s internal `Provider` implements both `javax.inject.Provider` and `jakarta.inject.Provider` now).
 

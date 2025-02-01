@@ -48,7 +48,7 @@ interface AppGraph {
 class MessageImpl(val text: String) : Message
 ```
 
-If you want to limit access to these from your API, you can make these declarations `private` and just return `this`. Note it’s still important to annotate them with `@Binds` so that the Metro compiler understands its intent\! Otherwise, it’s an error to *implement* these declarations.
+If you want to limit access to these from your API, you can make these declarations `private` and just return `this`. Note it’s still important to annotate them with `@Binds` so that the Metro compiler understands its intent! Otherwise, it’s an error to *implement* these declarations.
 
 `@Binds` declarations can also declare multibinding annotations.
 
@@ -104,7 +104,7 @@ interface MapMultibinding {
 }
 ```
 
-Alternatively, they can be declared with an `@Multibinds`\-annotated accessor property/function in a component. This member will be implemented by the Metro compiler and is useful for scenarios where the multibinding may be empty.
+Alternatively, they can be declared with an `@Multibinds`-annotated accessor property/function in a component. This member will be implemented by the Metro compiler and is useful for scenarios where the multibinding may be empty.
 
 ```kotlin
 @DependencyGraph

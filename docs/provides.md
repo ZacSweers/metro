@@ -24,7 +24,7 @@ It is an error to override providers declarations. While it can be enticing for 
 * What if you override with sub/supertypes?
 * What if your override’s implementation needs different dependencies?
 
-To the testing end, it is recommended to instead leverage the `DependencyGraph.excludes` \+ `ContributesTo.replaces` APIs in merging.
+To the testing end, it is recommended to instead leverage the `DependencyGraph.excludes` + `ContributesTo.replaces` APIs in merging.
 
 ```kotlin
 // Don't do this pattern!
