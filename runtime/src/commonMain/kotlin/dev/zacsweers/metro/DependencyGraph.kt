@@ -118,11 +118,11 @@ public annotation class DependencyGraph(
    *                │                             │
    *      ┌─────────▼─────────────┐       ┌───────▼───────────┐
    *      │  Generate an empty    │       │Is it an interface?│
-   *      │operator fun invoke()  │       └─┬──────────┬──────┘
+   *      │ operator fun invoke() │       └─┬──────────┬──────┘
    *      │to the companion object│         │          ▼
    *      └───────────────────────┘         │          No
-   *                                        │
-   *                                        │  ┌───────────────────┐
+   *                                        │          │
+   *                                        │  ┌───────▼───────────┐
    *                    Yes◄────────────────┘  │ Is there already  │
    *                     │                     │a companion object?│
    *            ┌────────▼──────────┐          └┬────────────┬─────┘
