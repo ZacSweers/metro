@@ -62,7 +62,8 @@ package dev.zacsweers.metro
  *
  * @see Assisted
  * @see Inject
- * @see <a href="https://zacsweers.github.io/metro/installation.md/#ide-support">Docs for how to enable IDE support</a>
+ * @see <a href="https://zacsweers.github.io/metro/installation.md/#ide-support">Docs for how to
+ *   enable IDE support</a>
  */
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)
