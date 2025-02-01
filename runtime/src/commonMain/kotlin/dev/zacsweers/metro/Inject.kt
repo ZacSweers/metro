@@ -255,7 +255,6 @@ package dev.zacsweers.metro
  * 1. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
  *    currently compatible with incremental compilation.
  * 2. IDE support is rudimentary at best and currently requires enabling a custom registry flag.
- *    TODO link registry flag docs.
  *
  * Because of this, it's likely better for now to just hand-write the equivalent class that Metro
  * generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
@@ -265,6 +264,8 @@ package dev.zacsweers.metro
  *   enableTopLevelFunctionInjection.set(true)
  * }
  * ```
+ *
+ * @see <a href="https://zacsweers.github.io/metro/installation.md/#ide-support">Docs for how to enable IDE support</a>
  */
 @Target(
   AnnotationTarget.CLASS,

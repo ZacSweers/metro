@@ -49,8 +49,7 @@ package dev.zacsweers.metro
  * ### Why opt-in?
  *
  * The main reason this is behind an opt-in option at the moment is because compiler plugin IDE
- * support is rudimentary at best and currently requires enabling a custom registry flag. TODO link
- * registry flag docs.
+ * support is rudimentary at best and currently requires enabling a custom registry flag.
  *
  * Because of this, it's likely better for now to just hand-write the equivalent class that Metro
  * generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.
@@ -63,6 +62,7 @@ package dev.zacsweers.metro
  *
  * @see Assisted
  * @see Inject
+ * @see <a href="https://zacsweers.github.io/metro/installation.md/#ide-support">Docs for how to enable IDE support</a>
  */
 @MustBeDocumented
 @Retention(AnnotationRetention.RUNTIME)

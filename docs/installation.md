@@ -42,3 +42,15 @@ kt_jvm_library(
     ],
 )
 ```
+
+## IDE Support
+
+The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. 
+
+To enable it, do the following:
+
+1. Enable K2 Mode for the Kotlin IntelliJ plugin.
+2. Open the Registry
+3. Set the `kotlin.k2.only.bundled.compiler.plugins.enabled` entry to `false`.
+
+Note that support is unstable and subject to change.
