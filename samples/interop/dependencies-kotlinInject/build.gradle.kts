@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.atomicfu)
   alias(libs.plugins.ksp)
   id("dev.zacsweers.metro")
 }
