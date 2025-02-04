@@ -104,7 +104,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Graph accessor members must have a return type and cannot be Unit.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:8:14 Graph accessor members must have a return type and cannot be Unit."
+    )
   }
 
   @Suppress("RedundantUnitReturnType")
@@ -143,7 +145,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:7 Graph accessor members must have a return type and cannot be Unit.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:8:7 Graph accessor members must have a return type and cannot be Unit."
+    )
   }
 
   @Test
@@ -239,7 +243,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+    )
   }
 
   @Test
@@ -259,7 +265,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+    )
   }
 
   @Test
@@ -281,7 +289,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary."
+    )
   }
 
   @Test

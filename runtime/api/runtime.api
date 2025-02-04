@@ -122,6 +122,10 @@ public abstract interface annotation class dev/zacsweers/metro/SingleIn : java/l
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/SingleIn$Container : java/lang/annotation/Annotation {
+	public abstract fun value ()[Ldev/zacsweers/metro/SingleIn;
+}
+
 public abstract interface annotation class dev/zacsweers/metro/StringKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/String;
 }

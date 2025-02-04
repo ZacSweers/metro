@@ -14,9 +14,8 @@ import kotlin.reflect.KClass
  *
  * _See [Scope] before reading this section!_
  *
- * Graphs may declare a [scope] (and optionally [additionalScopes] if there are
- * more). Each of these declared scopes act as an implicit [SingleIn] representation of that scope.
- * For example:
+ * Graphs may declare a [scope] (and optionally [additionalScopes] if there are more). Each of these
+ * declared scopes act as an implicit [SingleIn] representation of that scope. For example:
  * ```
  * @DependencyGraph(AppScope::class)
  * interface AppGraph
