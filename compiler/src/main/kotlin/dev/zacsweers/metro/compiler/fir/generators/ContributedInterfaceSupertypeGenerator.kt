@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -133,8 +134,8 @@ internal class ContributedInterfaceSupertypeGenerator(
 
     val scopes =
       buildSet {
-          graphAnnotation.resolvedScopeClassId(typeResolver)?.let { add(it) }
-          // TODO additionalScopes
+          graphAnnotation.resolvedScopeClassId(typeResolver)?.let(::add)
+          graphAnnotation.resolvedAdditionalScopesClassIds(typeResolver)?.let(::addAll)
         }
         .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 

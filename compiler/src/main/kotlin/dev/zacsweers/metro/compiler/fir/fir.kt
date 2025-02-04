@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirArrayLiteral
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirEmptyArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -148,6 +149,13 @@ internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   names: Set<ClassId>,
 ): Boolean {
   return annotations.filter { it.isResolved }.any { it.toAnnotationClassIdSafe(session) in names }
+}
+
+internal fun FirBasedSymbol<*>.findAnnotation(
+  session: FirSession,
+  names: Set<ClassId>,
+): FirAnnotation? {
+  return annotations.filter { it.isResolved }.find { it.toAnnotationClassIdSafe(session) in names }
 }
 
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
@@ -769,6 +777,9 @@ private val FirPropertyAccessExpression.qualifierName: Name?
 
 internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), index = 0)
 
+internal fun FirAnnotation.additionalScopesArgument() =
+  argumentAsOrNull<FirArrayLiteral>("additionalScopes".asName(), index = 1)
+
 internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
 
 internal fun FirAnnotation.resolvedBoundType() =
@@ -782,6 +793,24 @@ internal fun FirAnnotation.resolvedScopeClassId(typeResolver: TypeResolveService
   // try to resolve within the enclosing scope
   return scopeArgument.resolvedClassId()
     ?: scopeArgument.resolvedClassArgumentTarget(typeResolver)?.classId
+}
+
+internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =
+  additionalScopesArgument()?.argumentList?.arguments?.mapNotNull {
+    it.expectAsOrNull<FirGetClassCall>()?.resolvedClassId()
+  }
+
+internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
+  typeResolver: TypeResolveService
+): List<ClassId>? {
+  val scopeArgument =
+    additionalScopesArgument()?.argumentList?.arguments?.mapNotNull {
+      it.expectAsOrNull<FirGetClassCall>()
+    } ?: return null
+  // Try to resolve it normally first. If this fails,
+  // try to resolve within the enclosing scope
+  return scopeArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
+    ?: scopeArgument.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
 }
 
 internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
