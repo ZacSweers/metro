@@ -58,6 +58,7 @@ import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
+import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -207,18 +208,30 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
     type.rawType().classIdOrFail,
     valueArguments
       .map {
-        when (it) {
-          is IrConst -> it.value
-          is IrClassReference -> it.classType.classOrNull?.owner?.classId
-          is IrGetEnumValue -> it.symbol.owner.fqNameWhenAvailable
-          else -> {
-            error("Unknown annotation argument type: ${it?.let { it::class.java }}")
-          }
-        }
+        it?.computeHashSource()
+          ?: error("Unknown annotation argument type: ${it?.let { it::class.java }}")
       }
       .toTypedArray()
       .contentDeepHashCode(),
   )
+}
+
+private fun IrExpression.computeHashSource(): Any? {
+  return when (this) {
+    is IrConst -> value
+    is IrClassReference -> classType.classOrNull?.owner?.classId
+    is IrGetEnumValue -> symbol.owner.fqNameWhenAvailable
+    is IrConstructorCall -> computeAnnotationHash()
+    is IrVararg -> {
+      elements.map {
+        when (it) {
+          is IrExpression -> it.computeHashSource()
+          else -> it
+        }
+      }
+    }
+    else -> null
+  }
 }
 
 // TODO create an instance of this that caches lookups?
