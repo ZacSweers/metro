@@ -12,22 +12,22 @@ import org.gradle.api.provider.SetProperty
 public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFactory) {
 
   public val customAnnotations: CustomAnnotations =
-    objects.newInstance(CustomAnnotations::class.java)
+      objects.newInstance(CustomAnnotations::class.java)
 
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+      objects.property(Boolean::class.javaObjectType).convention(true)
 
   /** If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging. */
   public val debug: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+      objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
    * provider callables. See the kdoc on `Provides` for more details.
    */
   public val publicProviderSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+      objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
    * Enables whether the Metro compiler plugin will automatically generate assisted factories for
@@ -35,7 +35,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
    * details.
    */
   public val generateAssistedFactories: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+      objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
@@ -45,7 +45,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
    * incremental compilation!
    */
   public val enableTopLevelFunctionInjection: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+      objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
@@ -89,8 +89,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
     public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
       if (!includeJavax && !includeJakarta) {
         System.err.println(
-          "At least one of metro.customAnnotations.includeDagger.includeJavax or metro.customAnnotations.includeDagger.includeJakarta should be true"
-        )
+            "At least one of metro.customAnnotations.includeDagger.includeJavax or metro.customAnnotations.includeDagger.includeJakarta should be true")
       }
       assisted.add("dagger/assisted/Assisted")
       assistedFactory.add("dagger/assisted/AssistedFactory")
@@ -130,8 +129,8 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
 
     @JvmOverloads
     public fun includeAnvil(
-      includeDaggerAnvil: Boolean = true,
-      includeKotlinInjectAnvil: Boolean = true,
+        includeDaggerAnvil: Boolean = true,
+        includeKotlinInjectAnvil: Boolean = true,
     ) {
       check(includeDaggerAnvil || includeKotlinInjectAnvil) {
         "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
