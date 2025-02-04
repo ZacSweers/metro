@@ -57,8 +57,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
               @SingleIn(AppScope::class)
               val value: String
@@ -68,7 +67,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:3 Graph accessor members cannot be scoped.")
+    result.assertDiagnostics("e: ExampleGraph.kt:8:3 Graph accessor members cannot be scoped.")
   }
 
   @Test
@@ -77,8 +76,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
               @get:SingleIn(AppScope::class)
               val value: String
@@ -88,7 +86,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:3 Graph accessor members cannot be scoped.")
+    result.assertDiagnostics("e: ExampleGraph.kt:8:3 Graph accessor members cannot be scoped.")
   }
 
   @Test
@@ -97,7 +95,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               val value: Unit
@@ -107,12 +104,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics(
-      """
-        e: ExampleGraph.kt:9:14 Graph accessor members must have a return type and cannot be Unit.
-      """
-        .trimIndent()
-    )
+    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Graph accessor members must have a return type and cannot be Unit.")
   }
 
   @Suppress("RedundantUnitReturnType")
@@ -122,7 +114,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun value(): Unit
@@ -133,7 +124,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:9:16 Graph accessor members must have a return type and cannot be Unit."
+      "e: ExampleGraph.kt:8:16 Graph accessor members must have a return type and cannot be Unit."
     )
   }
 
@@ -143,7 +134,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun value()
@@ -153,12 +143,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics(
-      """
-        e: ExampleGraph.kt:9:7 Graph accessor members must have a return type and cannot be Unit.
-      """
-        .trimIndent()
-    )
+    result.assertDiagnostics("e: ExampleGraph.kt:8:7 Graph accessor members must have a return type and cannot be Unit.")
   }
 
   @Test
@@ -167,7 +152,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               val value: Nothing
@@ -177,7 +161,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:7 Graph accessor members cannot return Nothing.")
+    result.assertDiagnostics("e: ExampleGraph.kt:8:7 Graph accessor members cannot return Nothing.")
   }
 
   @Test
@@ -186,7 +170,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun value(): Nothing
@@ -196,7 +179,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:9:7 Graph accessor members cannot return Nothing.")
+    result.assertDiagnostics("e: ExampleGraph.kt:8:7 Graph accessor members cannot return Nothing.")
   }
 
   @Test
@@ -205,7 +188,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: Int, target2: Int)
@@ -216,7 +198,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:9:7 Inject functions must have exactly one parameter."
+      "e: ExampleGraph.kt:8:7 Inject functions must have exactly one parameter."
     )
   }
 
@@ -226,7 +208,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: Int): Int
@@ -237,7 +218,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
     result.assertDiagnostics(
-      "e: ExampleGraph.kt:9:28 Inject functions must not return anything other than Unit."
+      "e: ExampleGraph.kt:8:28 Inject functions must not return anything other than Unit."
     )
   }
 
@@ -247,7 +228,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: ExampleClass)
@@ -259,12 +239,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics(
-      """
-        e: ExampleGraph.kt:9:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.
-      """
-        .trimIndent()
-    )
+    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.")
   }
 
   @Test
@@ -273,7 +248,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: ExampleClass)
@@ -285,12 +259,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics(
-      """
-        e: ExampleGraph.kt:9:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.
-      """
-        .trimIndent()
-    )
+    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.")
   }
 
   @Test
@@ -299,7 +268,6 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               fun inject(target: ExampleClass)
@@ -313,12 +281,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics(
-      """
-        e: ExampleGraph.kt:9:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.
-      """
-        .trimIndent()
-    )
+    result.assertDiagnostics("e: ExampleGraph.kt:8:14 Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.")
   }
 
   @Test
@@ -367,7 +330,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     )
   }
 
-  @Ignore("This isn't captured yet")
+  @Ignore("This isn't captured yet. May need to do it in the IR backend instead.")
   @Test
   fun `graph creators must return graphs - inherited invalid return type`() {
     val result =

@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeMain
 import java.util.concurrent.Callable
 import kotlin.test.Ignore
+import kotlin.test.assertNotNull
 import org.junit.Test
 
 class DependencyGraphTransformerTest : MetroCompilerTest() {
@@ -29,8 +30,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
 
               fun exampleClass(): ExampleClass
@@ -358,8 +358,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @SingleIn(AppScope::class)
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             abstract class ExampleGraph {
 
               private var scopedCounter = 0
@@ -407,8 +406,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         source(
           """
             @Singleton
-            @SingleIn(AppScope::class)
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
 
               val intValue: Int
@@ -428,7 +426,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@Singleton', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
+        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@Singleton') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
                 [test.ExampleGraph] test.ExampleGraph.intValue
@@ -757,8 +755,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           import java.nio.file.FileSystem
           import java.nio.file.FileSystems
 
-          @SingleIn(AppScope::class)
-          @DependencyGraph
+          @DependencyGraph(AppScope::class)
           interface ExampleGraph {
 
             val repository: Repository
@@ -1760,6 +1757,60 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val count = graph.callProperty<Int>("count")
       assertThat(count).isEqualTo(3)
+    }
+  }
+
+  // Compile-only validation test
+  @Test
+  fun `graphs with scope properties declare implicit SingleIn scopes`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+            }
+
+            @SingleIn(AppScope::class)
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("exampleClass"))
+    }
+  }
+
+  // Compile-only validation test
+  @Test
+  fun `graphs with additional scopes declare implicit SingleIn scopes`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class, additionalScopes = [LoggedInScope::class])
+            interface ExampleGraph {
+              val appClass: AppClass
+              val loggedInClass: LoggedInClass
+            }
+
+            abstract class LoggedInScope private constructor()
+
+            @SingleIn(AppScope::class)
+            @Inject
+            class AppClass
+
+            @SingleIn(LoggedInScope::class)
+            @Inject
+            class LoggedInClass
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("appClass"))
+      assertNotNull(graph.callProperty<Any>("loggedInClass"))
     }
   }
 }

@@ -329,8 +329,7 @@ class TopLevelInjectTest : MetroCompilerTest() {
               return int
             }
 
-            @SingleIn(AppScope::class)
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
               val app: AppClass
 

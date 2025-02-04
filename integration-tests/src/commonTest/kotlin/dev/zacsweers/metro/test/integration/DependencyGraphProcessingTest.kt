@@ -1102,8 +1102,7 @@ class DependencyGraphProcessingTest {
   }
 
   @Singleton
-  @SingleIn(AppScope::class)
-  @DependencyGraph
+  @DependencyGraph(AppScope::class)
   abstract class GraphWithMultipleScopes {
     private var intCounter = 0
     private var longCounter = 0L

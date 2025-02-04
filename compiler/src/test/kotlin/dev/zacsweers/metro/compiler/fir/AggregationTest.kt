@@ -100,6 +100,34 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `ContributesBinding with implicit bound type - additional scope`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          abstract class LoggedInScope private constructor()
+
+          @ContributesBinding(LoggedInScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class, additionalScopes = [LoggedInScope::class])
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
   fun `ContributesBinding with implicit bound type - from another module`() {
     val firstResult =
       compile(
