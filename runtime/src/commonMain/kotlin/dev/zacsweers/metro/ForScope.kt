@@ -9,8 +9,7 @@ import kotlin.reflect.KClass
  * bindings that exist in multiple scoped and you want to disambiguate them from each other.
  *
  * ```
- * @SingleIn(AppScope::class)
- * @DependencyGraph
+ * @DependencyGraph(AppScope::class)
  * interface AppGraph {
  *   @Provides
  *   @ForScope(AppScope::class)

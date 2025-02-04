@@ -20,8 +20,7 @@ package dev.zacsweers.metro
  * @Inject
  * class HttpClient(...)
  *
- * @SingleIn(AppScope::class)
- * @DependencyGraph
+ * @DependencyGraph(AppScope::class)
  * interface AppGraph {
  *   val httpClient: HttpClient
  * }

@@ -10,8 +10,7 @@ import kotlin.reflect.KClass
  *
  * Example:
  * ```
- * @SingleIn(AppScope::class)
- * @DependencyGraph
+ * @DependencyGraph(AppScope::class)
  * interface AppGraph {
  *   @SingleIn(AppScope::class)
  *   @Provides
@@ -19,8 +18,12 @@ import kotlin.reflect.KClass
  * }
  * ```
  *
- * @see AppScope for an out-of-the-box app-wide key.
+ * This is a [Repeatable] annotation to declare multiple scopes on
+ * [dependency graphs][DependencyGraph], as long as each annotation declares a different [scope].
+ *
+ * @see AppScope for an out-of-the-box application-wide key.
  */
+@Repeatable
 @Target(
   AnnotationTarget.CLASS,
   AnnotationTarget.FUNCTION,

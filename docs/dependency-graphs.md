@@ -90,6 +90,26 @@ val messageGraph =
     .create("Hello, world!")
 ```
 
+## Scoping
+
+_See [Scopes](scopes.md) for more details on scopes!_
+
+Graphs may declare a `scope` (and optionally `additionalScopes` if there are more). Each of these declared scopes act as an implicit `@SingleIn` representation of that scope for [aggregation](aggregation.md).
+
+For example:
+```kotlin
+@DependencyGraph(AppScope::class)
+interface AppGraph
+```
+
+Is functionally equivalent to writing the below.
+
+```kotlin
+@SingleIn(AppScope::class)
+@DependencyGraph(AppScope::class)
+interface AppGraph
+```
+
 ## Implementation Notes
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.

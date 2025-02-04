@@ -10,6 +10,43 @@ import kotlin.reflect.KClass
  *
  * Graph types must be either an interface or an abstract class.
  *
+ * ## Scoping
+ *
+ * _See [Scope] before reading this section!_
+ *
+ * Graphs may declare a [scope] (and optionally [additionalScopes] if there are
+ * more). Each of these declared scopes act as an implicit [SingleIn] representation of that scope.
+ * For example:
+ * ```
+ * @DependencyGraph(AppScope::class)
+ * interface AppGraph
+ * ```
+ *
+ * Is functionally equivalent to writing the below.
+ *
+ * ```
+ * @SingleIn(AppScope::class)
+ * @DependencyGraph(AppScope::class)
+ * interface AppGraph
+ * ```
+ *
+ * ## Creating a graph
+ *
+ * For simple graphs with no creator types, an implicit one will be generated. You can instantiate
+ * them with [createGraph].
+ *
+ * ```
+ * val graph = createGraph<AppGraph>()
+ * ```
+ *
+ * For creators (more below), you can create a factory with [createGraphFactory].
+ *
+ * ```
+ * val graph = createGraphFactory<AppGraph.Factory().create("hello!")
+ * ```
+ *
+ * ## Providers
+ *
  * Graph types can declare providers via [Provides] and [Binds] to provide dependencies into the
  * graph.
  *
@@ -24,21 +61,6 @@ import kotlin.reflect.KClass
  * }
  * ```
  *
- * ## Creating a graph
- *
- * For simple graphs with no creator types, an implicit one will be generated nad you can instatiate
- * them with [createGraph].
- *
- * ```
- * val graph = createGraph<AppGraph>()
- * ```
- *
- * For creators (more below), you can create a factory with [createGraphFactory].
- *
- * ```
- * val graph = createGraphFactory<AppGraph.Factory().create("hello!")
- * ```
- *
  * ## Creators
  *
  * Graphs can have _creators_. Right now, this just means [Factory] creators. See its doc for more
@@ -46,10 +68,10 @@ import kotlin.reflect.KClass
  *
  * ## Aggregation
  *
- * Graphs can automatically _aggregate_ contributed bindings and interfaces by declaring a [scope].
- * If specified, any contributions to the same scope will be automatically aggregated to this graph.
- * This includes contributions generated from [ContributesTo] (supertypes), [ContributesBinding],
- * [ContributesIntoSet], and [ContributesIntoMap].
+ * Graphs can automatically _aggregate_ contributed bindings and interfaces. Any contributions to
+ * the same scope will be automatically aggregated to this graph. This includes contributions
+ * generated from [ContributesTo] (supertypes), [ContributesBinding], [ContributesIntoSet], and
+ * [ContributesIntoMap].
  *
  * ```
  * @DependencyGraph(AppScope::class)

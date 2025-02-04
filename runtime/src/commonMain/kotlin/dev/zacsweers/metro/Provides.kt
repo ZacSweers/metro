@@ -49,8 +49,7 @@ package dev.zacsweers.metro
  * singleton within that scope.
  *
  * ```
- * @SingleIn(AppScope::class)
- * @DependencyGraph
+ * @DependencyGraph(AppScope::class)
  * interface AppGraph {
  *   @SingleIn(AppScope::class)
  *   @Provides
