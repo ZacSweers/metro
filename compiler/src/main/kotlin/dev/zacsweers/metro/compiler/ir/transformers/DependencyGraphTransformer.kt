@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -19,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.TypeKey
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
+import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
@@ -83,6 +85,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -97,6 +100,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isInterface
@@ -218,11 +222,12 @@ internal class DependencyGraphTransformer(
     assistedFactoryTransformer.visitClass(declaration)
     providesTransformer.visitClass(declaration)
 
-    val isDependencyGraph = declaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
-    if (!isDependencyGraph) return super.visitClass(declaration, data)
+    val dependencyGraphAnno =
+      declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+    if (dependencyGraphAnno == null) return super.visitClass(declaration, data)
 
     try {
-      getOrBuildDependencyGraph(declaration)
+      getOrBuildDependencyGraph(declaration, dependencyGraphAnno)
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
     }
@@ -236,13 +241,17 @@ internal class DependencyGraphTransformer(
     graphDeclaration: IrClass,
     bindingStack: BindingStack,
     metroGraph: IrClass? = null,
+    dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
     val graphClassId = graphDeclaration.classIdOrFail
     dependencyGraphNodesByClass[graphClassId]?.let {
       return it
     }
 
-    val isGraph = graphDeclaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
+    val dependencyGraphAnno =
+      dependencyGraphAnno
+        ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+    val isGraph = dependencyGraphAnno != null
     if (graphDeclaration.isExternalParent || !isGraph) {
       val accessorsToCheck =
         if (isGraph) {
@@ -381,6 +390,32 @@ internal class DependencyGraphTransformer(
     // Add all our binds
     providerFunctions +=
       bindsFunctions.map { (function, contextKey) -> contextKey.typeKey to function }
+    scopes += buildSet {
+      val scope =
+        dependencyGraphAnno.getValueArgument("scope".asName())?.let { scopeArg ->
+          pluginContext.createIrBuilder(graphDeclaration.symbol).run {
+            irCall(symbols.metroSingleInConstructor).apply { putValueArgument(0, scopeArg) }
+          }
+        }
+
+      if (scope != null) {
+        add(IrAnnotation(scope))
+        dependencyGraphAnno
+          .getValueArgument("additionalScopes".asName())
+          ?.expectAs<IrVararg>()
+          ?.elements
+          ?.forEach {
+            val scopeClassExpression = it.expectAs<IrExpression>()
+            val newAnno =
+              pluginContext.createIrBuilder(graphDeclaration.symbol).run {
+                irCall(symbols.metroSingleInConstructor).apply {
+                  putValueArgument(0, scopeClassExpression)
+                }
+              }
+            add(IrAnnotation(newAnno))
+          }
+      }
+    }
     for (type in graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false)) {
       val clazz = type.classOrFail.owner
       scopes += clazz.scopeAnnotations()
@@ -448,7 +483,10 @@ internal class DependencyGraphTransformer(
     return dependencyGraphNode
   }
 
-  private fun getOrBuildDependencyGraph(dependencyGraphDeclaration: IrClass): IrClass {
+  private fun getOrBuildDependencyGraph(
+    dependencyGraphDeclaration: IrClass,
+    dependencyGraphAnno: IrConstructorCall,
+  ): IrClass {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
     metroDependencyGraphsByClass[graphClassId]?.let {
       return it
@@ -471,6 +509,7 @@ internal class DependencyGraphTransformer(
           metroContext.loggerFor(MetroLogger.Type.GraphNodeConstruction),
         ),
         metroGraph,
+        dependencyGraphAnno,
       )
 
     // Generate creator functions

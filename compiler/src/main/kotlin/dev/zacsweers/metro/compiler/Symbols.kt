@@ -69,6 +69,7 @@ internal class Symbols(
     val metroFactory = ClassId(FqNames.metroRuntimeInternalPackage, Names.factoryClassName)
     val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.providerClassName)
     val metroProvides = ClassId(FqNames.metroRuntimePackage, "Provides".asName())
+    val metroSingleIn = ClassId(FqNames.metroRuntimePackage, "SingleIn".asName())
     val metroInjectedFunctionClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "InjectedFunctionClass".asName())
     val membersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
@@ -209,6 +210,12 @@ internal class Symbols(
       ClassId(metroRuntimeInternal.packageFqName, Name.identifier("Factory"))
     )!!
   }
+
+  val metroSingleIn: IrClassSymbol by lazy {
+    pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, Name.identifier("SingleIn")))!!
+  }
+
+  val metroSingleInConstructor: IrConstructorSymbol by lazy { metroSingleIn.constructors.first() }
 
   private val setFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
