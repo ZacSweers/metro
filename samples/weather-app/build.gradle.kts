@@ -8,18 +8,7 @@ plugins {
 
 kotlin {
   jvm()
-  /*
-   TODO non-jvm targets fail with "IrValueParameterSymbolImpl is already bound" exceptions
-    e: java.lang.IllegalStateException: IrValueParameterSymbolImpl is already bound. Signature: null.
-    Owner: VALUE_PARAMETER INSTANCE_RECEIVER name:<this> type:<uninitialized parent>.$$MetroGraph
-        at org.jetbrains.kotlin.ir.symbols.impl.IrSymbolBase.bind(IrSymbolImpl.kt:67)
-        at org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl.<init>(IrValueParameterImpl.kt:48)
-        at org.jetbrains.kotlin.ir.declarations.IrFactory.createValueParameter(IrFactory.kt:407)
-        at org.jetbrains.kotlin.backend.common.serialization.IrDeclarationDeserializer.deserializeIrValueParameter
-        (IrDeclarationDeserializer.kt:298)
-        at org.jetbrains.kotlin.backend.common.serialization.IrDeclarationDeserializer.deserializeIrValueParameter
-        $default(IrDeclarationDeserializer.kt:294)
-  */
+  // TODO grow this out
   // macosArm64()
   // js { browser() }
   // @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
