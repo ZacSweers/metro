@@ -1240,5 +1240,7 @@ class DependencyGraphProcessingTest {
 }
 
 class FileSystem
+
 class Path
+
 fun String.toPath(): Path = Path()
