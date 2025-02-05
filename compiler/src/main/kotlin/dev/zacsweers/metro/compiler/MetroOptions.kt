@@ -210,8 +210,8 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "custom-graph",
       defaultValue = emptySet(),
-      valueDescription = "Graph annotations",
-      description = "Graph annotations",
+      valueDescription = "DependencyGraph annotations",
+      description = "DependencyGraph annotations",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
@@ -221,8 +221,30 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
     RawMetroOption(
       name = "custom-graph-factory",
       defaultValue = emptySet(),
-      valueDescription = "GraphFactory annotations",
-      description = "GraphFactory annotations",
+      valueDescription = "DependencyGraph.Factory annotations",
+      description = "DependencyGraph.Factory annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
+  CUSTOM_GRAPH_EXTENSION(
+    RawMetroOption(
+      name = "custom-graph-extension",
+      defaultValue = emptySet(),
+      valueDescription = "Graph extension annotations",
+      description = "Graph extension annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
+  CUSTOM_GRAPH_EXTENSION_FACTORY(
+    RawMetroOption(
+      name = "custom-graph-extension-factory",
+      defaultValue = emptySet(),
+      valueDescription = "GraphExtension.Factory annotations",
+      description = "GraphExtension.Factory annotations",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
@@ -356,6 +378,9 @@ public data class MetroOptions(
   val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
   val customGraphFactoryAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_GRAPH_FACTORY.raw.defaultValue.expectAs(),
+  val customGraphExtensionAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH_EXTENSION.raw.defaultValue.expectAs(),
+  val customGraphExtensionFactoryAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY.raw.defaultValue.expectAs(),
   val customInjectAnnotations: Set<ClassId> = MetroOption.CUSTOM_INJECT.raw.defaultValue.expectAs(),
   val customIntoMapAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_INTO_MAP.raw.defaultValue.expectAs(),
@@ -386,6 +411,8 @@ public data class MetroOptions(
       val customElementsIntoSetAnnotations = mutableSetOf<ClassId>()
       val customGraphAnnotations = mutableSetOf<ClassId>()
       val customGraphFactoryAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionAnnotations = mutableSetOf<ClassId>()
+      val customGraphExtensionFactoryAnnotations = mutableSetOf<ClassId>()
       val customInjectAnnotations = mutableSetOf<ClassId>()
       val customIntoMapAnnotations = mutableSetOf<ClassId>()
       val customIntoSetAnnotations = mutableSetOf<ClassId>()
@@ -443,6 +470,9 @@ public data class MetroOptions(
           MetroOption.CUSTOM_GRAPH -> customGraphAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_GRAPH_FACTORY ->
             customGraphFactoryAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION -> customGraphExtensionAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY ->
+            customGraphExtensionFactoryAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INJECT -> customInjectAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_INTO_MAP ->
             customIntoMapAnnotations.addAll(configuration.getAsSet(entry))
