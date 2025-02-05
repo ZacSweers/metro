@@ -706,7 +706,8 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
   isFakeOverride = false
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
-    this.dispatchReceiverParameter = dispatchReceiverParameter.copyTo(this)
+    this.dispatchReceiverParameter =
+      dispatchReceiverParameter.copyTo(this, type = dispatchReceiverParameter.type)
   } else if (this is IrProperty) {
     this.getter?.finalizeFakeOverride(dispatchReceiverParameter)
     this.setter?.finalizeFakeOverride(dispatchReceiverParameter)
