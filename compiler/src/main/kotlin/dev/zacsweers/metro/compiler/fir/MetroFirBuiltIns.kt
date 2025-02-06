@@ -22,7 +22,9 @@ internal class MetroFirBuiltIns(
 ) : FirExtensionSessionComponent(session) {
 
   val errorFunctionSymbol by unsafeLazy {
-    session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).single()
+    session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).first {
+      it.valueParameterSymbols.size == 1
+    }
   }
 
   val injectedFunctionClassClassSymbol by unsafeLazy {
