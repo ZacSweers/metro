@@ -241,16 +241,14 @@ internal class DependencyGraphTransformer(
     graphDeclaration: IrClass,
     bindingStack: BindingStack,
     metroGraph: IrClass? = null,
-    dependencyGraphAnno: IrConstructorCall? = null,
+    dependencyGraphAnno: IrConstructorCall? =
+      graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull(),
   ): DependencyGraphNode {
     val graphClassId = graphDeclaration.classIdOrFail
     dependencyGraphNodesByClass[graphClassId]?.let {
       return it
     }
 
-    val dependencyGraphAnno =
-      dependencyGraphAnno
-        ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
     val isGraph = dependencyGraphAnno != null
     if (graphDeclaration.isExternalParent || !isGraph) {
       val accessorsToCheck =
@@ -297,7 +295,6 @@ internal class DependencyGraphTransformer(
           injectors = emptyList(),
           isExternal = true,
           creator = null,
-          typeKey = TypeKey(graphDeclaration.typeWith()),
         )
 
       dependencyGraphNodesByClass[graphClassId] = dependentNode
@@ -392,7 +389,7 @@ internal class DependencyGraphTransformer(
       bindsFunctions.map { (function, contextKey) -> contextKey.typeKey to function }
     scopes += buildSet {
       val scope =
-        dependencyGraphAnno.getValueArgument("scope".asName())?.let { scopeArg ->
+        dependencyGraphAnno?.getValueArgument("scope".asName())?.let { scopeArg ->
           pluginContext.createIrBuilder(graphDeclaration.symbol).run {
             irCall(symbols.metroSingleInConstructor).apply { putValueArgument(0, scopeArg) }
           }
