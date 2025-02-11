@@ -29,9 +29,7 @@ kotlin {
   }
 
   targets
-    .matching {
-      it.platformType == KotlinPlatformType.js || it.platformType == KotlinPlatformType.wasm
-    }
+    .matching { it.platformType == KotlinPlatformType.js }
     .configureEach {
       compilations.configureEach {
         compileTaskProvider.configure {

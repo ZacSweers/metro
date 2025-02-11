@@ -130,7 +130,7 @@ Same rules around qualifiers and `boundType()` apply in this scenario
 To contribute into a Map multibinding, the map key annotation must be specified on the class or `BoundType` type argument.
 
 ```kotlin
-// Will be contributed into a Map multibinding with ClassKey(
+// Will be contributed into a Map multibinding with @StringKey("Networking")
 @ContributesIntoMap(AppScope::class)
 @StringKey("Networking")
 @Inject
@@ -147,9 +147,9 @@ class CacheImpl(...) : Cache
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
 
-## `@GraphExtension`
+## `@GraphExtension`/`@ContributesGraphExtension`
 
-Not yet implemented, but TL;DR will work the same as kotlin-inject-anvil’s `@ContributesSubcomponent`.
+Not yet implemented. Please share design feedback in [#165](https://github.com/ZacSweers/metro/issues/165)!
 
 ## Implementation notes
 
