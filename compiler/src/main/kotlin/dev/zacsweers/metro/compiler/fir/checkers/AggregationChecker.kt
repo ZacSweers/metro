@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -159,18 +160,37 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     createBinding: (FirTypeKey, mapKey: MetroFirAnnotation?) -> T,
   ): Boolean {
     // Ensure the class is injected
+    val isAssistedFactory =
+      declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
     val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
-    if (injectConstructor == null) {
+    val isInjectedOrFactory = !isAssistedFactory && injectConstructor == null
+    if (isInjectedOrFactory) {
       reporter.reportOn(
         annotation.source,
         FirMetroErrors.AGGREGATION_ERROR,
-        "`@$kind` is only applicable to constructor-injected classes. Did you forget to inject ${declaration.symbol.classId.asSingleFqName()}?",
+        "`@$kind` is only applicable to constructor-injected classes or assisted factories. Did you forget to inject ${declaration.symbol.classId.asSingleFqName()}?",
         context,
       )
       return false
     }
 
-    val hasSupertypes = declaration.superTypeRefs.isNotEmpty()
+    val isAssistedInject =
+      injectConstructor != null &&
+        injectConstructor.valueParameterSymbols.any {
+          it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+        }
+    if (isAssistedInject) {
+      reporter.reportOn(
+        annotation.source,
+        FirMetroErrors.AGGREGATION_ERROR,
+        "`@$kind` doesn't make sense on assisted-injected class ${declaration.symbol.classId.asSingleFqName()}. Did you mean to apply this to its assisted factory?",
+        context,
+      )
+      return false
+    }
+
+    val supertypesExcludingAny = declaration.superTypeRefs.filterNot { it.coneType.isAny }
+    val hasSupertypes = supertypesExcludingAny.isNotEmpty()
 
     val explicitBoundType = annotation.resolvedBoundType()
 
@@ -188,16 +208,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        if (!hasSupertypes && !explicitBoundType.isAny) {
-          reporter.reportOn(
-            annotation.source,
-            FirMetroErrors.AGGREGATION_ERROR,
-            "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
-            context,
-          )
-          return false
-        }
-
         val coneType = explicitBoundType.coneTypeOrNull ?: return true
         val refClassId = coneType.fullyExpandedClassId(session) ?: return true
 
@@ -206,6 +216,16 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             explicitBoundType.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Redundant explicit bound type ${refClassId.asSingleFqName()} is the same as the annotated class ${refClassId.asSingleFqName()}.",
+            context,
+          )
+          return false
+        }
+
+        if (!hasSupertypes) {
+          reporter.reportOn(
+            annotation.source,
+            FirMetroErrors.AGGREGATION_ERROR,
+            "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
             context,
           )
           return false
@@ -233,7 +253,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             context,
           )
           return false
-        } else if (declaration.superTypeRefs.size != 1) {
+        } else if (supertypesExcludingAny.size != 1) {
           reporter.reportOn(
             annotation.source,
             FirMetroErrors.AGGREGATION_ERROR,
@@ -242,7 +262,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           )
           return false
         }
-        val implicitBoundType = declaration.superTypeRefs[0]
+        val implicitBoundType = supertypesExcludingAny[0]
         FirTypeKey(implicitBoundType.coneType, classQualifier)
       }
 

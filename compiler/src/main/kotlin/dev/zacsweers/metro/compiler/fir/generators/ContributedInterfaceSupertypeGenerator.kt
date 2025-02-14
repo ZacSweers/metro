@@ -124,7 +124,6 @@ internal class ContributedInterfaceSupertypeGenerator(
     return graphAnnotation.scopeArgument() != null
   }
 
-  @OptIn(org.jetbrains.kotlin.fir.symbols.SymbolInternals::class)
   override fun computeAdditionalSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     resolvedSupertypes: List<FirResolvedTypeRef>,
