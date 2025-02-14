@@ -530,7 +530,13 @@ internal class DependencyGraphTransformer(
           exitProcessing()
         }
 
+      val platformName =
+        pluginContext.platform?.let { platform ->
+          platform.componentPlatforms.joinToString("-") { it.platformName }
+        }
+
       options.reportsDestination
+        ?.letIf(platformName != null) { it.resolve(platformName!!) }
         ?.createDirectories()
         ?.resolve("graph-dump-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt")
         ?.apply { deleteIfExists() }
