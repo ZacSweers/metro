@@ -10,6 +10,8 @@ import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.name
+import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.builder.buildPackageDirective
@@ -26,6 +28,25 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
 
+/**
+ * A transformer that generates hint marker functions for _downstream_ compilations. In-compilation
+ * contributions are looked up directly. This works by generating hints into a synthetic
+ * [IrFileImpl] in the [Symbols.FqNames.metroHintsPackage] package. The signature of the function is
+ * simply a generated name (via [hintCallableId]) and return type pointing at the contributing
+ * class. This class is then looked up separately.
+ *
+ * Example of a generated synthetic function:
+ * ```
+ * fun ComExampleMyClass(): MyClass = error("Stub!")
+ * ```
+ *
+ * Importantly, this transformer also adds these generated functions to metadata via
+ * [IrGeneratedDeclarationsRegistrar.registerFunctionAsMetadataVisible], which ensures they are
+ * visible to downstream compilations.
+ *
+ * File creation is on a little big of shaky ground, but necessary for this to work. More
+ * explanation can be found below.
+ */
 internal class ContributionHintIrTransformer(
   context: IrMetroContext,
   private val moduleFragment: IrModuleFragment,
@@ -77,6 +98,7 @@ internal class ContributionHintIrTransformer(
       moduleFragment.addFile(hintFile)
       hintFile.addChild(function)
       pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+      hintFile.dumpToMetroLog(fakeNewPath.name)
     }
   }
 }

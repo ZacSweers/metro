@@ -783,7 +783,11 @@ internal fun FirAnnotation.additionalScopesArgument() =
 internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
 
 internal fun FirAnnotation.resolvedBoundType() =
-  boundTypeArgument()?.typeArguments[0]?.expectAsOrNull<FirTypeProjectionWithVariance>()?.typeRef
+  boundTypeArgument()
+    ?.typeArguments
+    ?.get(0)
+    ?.expectAsOrNull<FirTypeProjectionWithVariance>()
+    ?.typeRef
 
 internal fun FirAnnotation.resolvedScopeClassId() = scopeArgument()?.resolvedClassId()
 
