@@ -17,6 +17,8 @@ internal class ClassIds(
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
   customGraphAnnotations: Set<ClassId> = emptySet(),
   customGraphFactoryAnnotations: Set<ClassId> = emptySet(),
+  customGraphExtensionAnnotations: Set<ClassId> = emptySet(),
+  customGraphExtensionFactoryAnnotations: Set<ClassId> = emptySet(),
   customInjectAnnotations: Set<ClassId> = emptySet(),
   customIntoMapAnnotations: Set<ClassId> = emptySet(),
   customIntoSetAnnotations: Set<ClassId> = emptySet(),
@@ -41,6 +43,12 @@ internal class ClassIds(
   val dependencyGraphFactoryAnnotations =
     setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory"))) +
       customGraphFactoryAnnotations
+  private val graphExtensionAnnotation =
+    Symbols.FqNames.metroRuntimePackage.classIdOf("GraphExtension")
+  val graphExtensionAnnotations = setOf(graphExtensionAnnotation) + customGraphExtensionAnnotations
+  val graphExtensionFactoryAnnotations =
+    setOf(graphExtensionAnnotation.createNestedClassId(Name.identifier("Factory"))) +
+      customGraphExtensionFactoryAnnotations
 
   // Assisted inject
   private val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")

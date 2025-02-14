@@ -146,6 +146,17 @@ abstract class MetroCompilerTest {
                   customGraphFactoryAnnotations.joinToString(":"),
                 )
               }
+              MetroOption.CUSTOM_GRAPH_EXTENSION -> {
+                if (customGraphExtensionAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customGraphExtensionAnnotations.joinToString(":"))
+              }
+              MetroOption.CUSTOM_GRAPH_EXTENSION_FACTORY -> {
+                if (customGraphExtensionFactoryAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customGraphExtensionFactoryAnnotations.joinToString(":"),
+                )
+              }
               MetroOption.CUSTOM_INJECT -> {
                 if (customInjectAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customInjectAnnotations.joinToString(":"))
