@@ -14,16 +14,21 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.recordClassLikeLookup
+import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -152,6 +157,19 @@ internal class ContributedInterfaceSupertypeGenerator(
           it.constructClassLikeType(emptyArray())
         }
       }
+
+    val source = classLikeDeclaration.source
+
+    val declarationFile =
+      session.firProvider.getFirClassifierContainerFileIfAny(classLikeDeclaration.classId)?.source
+
+    // TODO is there a way to just watch the package itself?
+    // TODO is this necessary for all additional supertype generators?
+    for (contribution in contributions) {
+      val classId = contribution.classId ?: continue
+      // Record a lookup of the contributed type so that this recompiles if that class is changed
+      session.lookupTracker?.recordClassLikeLookup(classId, source, declarationFile)
+    }
 
     return contributions
   }
