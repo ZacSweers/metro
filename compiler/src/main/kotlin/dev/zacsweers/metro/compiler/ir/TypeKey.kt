@@ -2,17 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.removeAnnotations
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.render
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
-internal class TypeKey(type: IrType, val qualifier: IrAnnotation? = null) : Comparable<TypeKey> {
-
-  val type = type.removeAnnotations()
+@Poko
+internal class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
+  Comparable<TypeKey> {
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
 
@@ -20,9 +21,12 @@ internal class TypeKey(type: IrType, val qualifier: IrAnnotation? = null) : Comp
     return TypeKey(type, qualifier)
   }
 
-  override fun toString(): String = render(short = true)
+  override fun toString(): String = cachedRender
 
-  override fun compareTo(other: TypeKey) = cachedRender.compareTo(other.cachedRender)
+  override fun compareTo(other: TypeKey): Int {
+    if (this == other) return 0
+    return cachedRender.compareTo(other.cachedRender)
+  }
 
   fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
     if (includeQualifier) {
@@ -40,32 +44,18 @@ internal class TypeKey(type: IrType, val qualifier: IrAnnotation? = null) : Comp
     append(typeString)
   }
 
-  private fun IrType.renderShort(): String {
-    val simpleName = simpleName
-    val args =
-      if (this is IrSimpleType) {
-        arguments
-          .takeUnless { it.isEmpty() }
-          ?.joinToString(", ", prefix = "<", postfix = ">") {
-            it.typeOrNull?.renderShort() ?: "<error>"
-          }
-          .orEmpty()
-      } else {
-        ""
-      }
-    return "$simpleName$args"
-  }
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as TypeKey
-
-    return cachedRender == other.cachedRender
-  }
-
-  override fun hashCode(): Int {
-    return cachedRender.hashCode()
+  private fun IrType.renderShort(): String = buildString {
+    append(simpleName)
+    if (isMarkedNullable()) {
+      append("?")
+    }
+    if (this@renderShort is IrSimpleType) {
+      arguments
+        .takeUnless { it.isEmpty() }
+        ?.joinToString(", ", prefix = "<", postfix = ">") {
+          it.typeOrNull?.renderShort() ?: "<error>"
+        }
+        ?.let { append(it) }
+    }
   }
 }

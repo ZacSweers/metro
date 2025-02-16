@@ -1813,4 +1813,28 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertNotNull(graph.callProperty<Any>("loggedInClass"))
     }
   }
+
+  @Test
+  fun `JvmSuppressWildcards does not affect type keys`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds
+              val ints: Set<Int>
+              
+              val exampleClass: ExampleClass
+            }
+
+            @Inject
+            class ExampleClass(ints: Set<@JvmSuppressWildcards Int>)
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("exampleClass"))
+    }
+  }
 }

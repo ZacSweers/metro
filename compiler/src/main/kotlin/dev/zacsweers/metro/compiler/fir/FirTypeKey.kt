@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fir.FirSession
@@ -20,17 +21,17 @@ import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 
 // TODO cache these?
+@Poko
 internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnotation? = null) :
   Comparable<FirTypeKey> {
   private val cachedToString by unsafeLazy { render(short = false, includeQualifier = true) }
 
-  override fun equals(other: Any?) = cachedToString.hashCode() == other.hashCode()
-
-  override fun hashCode() = cachedToString.hashCode()
-
   override fun toString(): String = cachedToString
 
-  override fun compareTo(other: FirTypeKey) = toString().compareTo(other.toString())
+  override fun compareTo(other: FirTypeKey): Int {
+    if (this == other) return 0
+    return toString().compareTo(other.toString())
+  }
 
   fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
     if (includeQualifier) {
