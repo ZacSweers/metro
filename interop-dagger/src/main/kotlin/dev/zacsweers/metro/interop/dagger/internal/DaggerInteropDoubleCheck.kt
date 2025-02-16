@@ -1,0 +1,65 @@
+package dev.zacsweers.metro.interop.dagger.internal
+
+import dagger.Lazy as DaggerLazy
+import dagger.internal.Provider as DaggerProvider
+import dev.zacsweers.metro.Provider as MetroProvider
+import dev.zacsweers.metro.internal.BaseDoubleCheck
+import dev.zacsweers.metro.interop.dagger.asMetroProvider
+import jakarta.inject.Provider as JakartaProvider
+import javax.inject.Provider as JavaxProvider
+
+/** @see BaseDoubleCheck */
+public class DaggerInteropDoubleCheck<T : Any>(provider: MetroProvider<T>) :
+  BaseDoubleCheck<T>(provider), DaggerProvider<T>, DaggerLazy<T> {
+
+  override fun get(): T = invoke()
+
+  public companion object {
+    public fun <P : JavaxProvider<T>, T : Any> javaxProvider(delegate: P): JavaxProvider<T> {
+      if (delegate is DaggerInteropDoubleCheck<*>) {
+        return delegate
+      }
+      return DaggerInteropDoubleCheck(delegate.asMetroProvider())
+    }
+
+    public fun <P : JavaxProvider<T>, T : Any> jakartaProvider(delegate: P): JakartaProvider<T> {
+      if (delegate is DaggerInteropDoubleCheck<*>) {
+        @Suppress("UNCHECKED_CAST")
+        return delegate as JakartaProvider<T>
+      }
+      return DaggerInteropDoubleCheck(delegate.asMetroProvider())
+    }
+
+    public fun <P : JavaxProvider<T>, T : Any> daggerProvider(delegate: P): DaggerProvider<T> {
+      if (delegate is DaggerInteropDoubleCheck<*>) {
+        @Suppress("UNCHECKED_CAST")
+        return delegate as DaggerProvider<T>
+      }
+      return DaggerInteropDoubleCheck(delegate.asMetroProvider())
+    }
+
+    public fun <P : DaggerProvider<T>, T : Any> daggerLazy(provider: P): DaggerLazy<T> {
+      if (provider is DaggerLazy<*>) {
+        @Suppress("UNCHECKED_CAST")
+        return provider as DaggerLazy<T>
+      }
+      return DaggerInteropDoubleCheck((provider as JakartaProvider<T>).asMetroProvider())
+    }
+
+    public fun <P : JavaxProvider<T>, T : Any> daggerLazy(provider: P): DaggerLazy<T> {
+      if (provider is DaggerLazy<*>) {
+        @Suppress("UNCHECKED_CAST")
+        return provider as DaggerLazy<T>
+      }
+      return DaggerInteropDoubleCheck(provider.asMetroProvider())
+    }
+
+    public fun <P : JakartaProvider<T>, T : Any> daggerLazy(provider: P): DaggerLazy<T> {
+      if (provider is DaggerLazy<*>) {
+        @Suppress("UNCHECKED_CAST")
+        return provider as DaggerLazy<T>
+      }
+      return DaggerInteropDoubleCheck(provider.asMetroProvider())
+    }
+  }
+}

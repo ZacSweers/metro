@@ -17,7 +17,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "metro"
 
-include(":compiler", ":integration-tests", ":runtime")
+include(":compiler", ":integration-tests", ":interop-dagger", ":runtime")
 
 includeBuild("gradle-plugin") {
   dependencySubstitution {

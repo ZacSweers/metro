@@ -86,6 +86,7 @@ allprojects {
         "**/AssistedFactory.kt",
         "**/ClassKey.kt",
         "**/DelegateFactory.kt",
+        "**/BaseDoubleCheck.kt",
         "**/DoubleCheck.kt",
         "**/DoubleCheckTest.kt",
         "**/ElementsIntoSet.kt",

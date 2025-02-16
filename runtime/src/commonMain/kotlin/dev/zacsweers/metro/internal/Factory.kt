@@ -4,4 +4,4 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
 
-public interface Factory<T : Any> : Provider<T>
+public fun interface Factory<T : Any> : Provider<T>
