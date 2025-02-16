@@ -35,7 +35,19 @@ public interface MetroLogger {
       return MetroLoggerImpl(type, output, tag)
     }
 
-    public val NONE: MetroLogger = MetroLoggerImpl(Type.None, {})
+    public val NONE: MetroLogger = NoOpMetroLogger
+  }
+}
+
+private object NoOpMetroLogger : MetroLogger {
+  override val type: MetroLogger.Type = MetroLogger.Type.None
+
+  override fun indent() = this
+
+  override fun unindent() = this
+
+  override fun log(message: () -> String) {
+    // Do nothing
   }
 }
 
