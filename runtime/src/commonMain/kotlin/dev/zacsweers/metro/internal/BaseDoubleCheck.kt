@@ -16,9 +16,9 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.concurrent.Volatile
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
-import kotlin.concurrent.Volatile
 
 private val UNINITIALIZED = Any()
 
@@ -32,9 +32,8 @@ private val UNINITIALIZED = Any()
  * - The [_value] will eagerly return if initialized
  * - [_value] is [@Volatile][Volatile]
  */
-public abstract class BaseDoubleCheck<T : Any>(
-  provider: Provider<T>
-) : SynchronizedObject(), Provider<T>, Lazy<T> {
+public abstract class BaseDoubleCheck<T : Any>(provider: Provider<T>) :
+  SynchronizedObject(), Provider<T>, Lazy<T> {
   private var provider: Provider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED
 

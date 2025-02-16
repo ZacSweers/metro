@@ -17,9 +17,7 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
 
-/**
- * @see [BaseDoubleCheck]
- */
+/** @see [BaseDoubleCheck] */
 public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
   BaseDoubleCheck<T>(provider) {
 
