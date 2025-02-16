@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.functions
@@ -111,8 +112,8 @@ internal class AssistedFactoryTransformer(
     val assistedParameters =
       constructorParams.valueParameters.filter { parameter -> parameter.isAssisted }
     val assistedParameterKeys =
-      assistedParameters.mapIndexed { index, parameter ->
-        injectConstructor.valueParameters[index].toAssistedParameterKey(symbols, parameter.typeKey)
+      assistedParameters.map { parameter ->
+        parameter.assistedParameterKey
       }
 
     val ctor = implClass.primaryConstructor!!
@@ -132,7 +133,10 @@ internal class AssistedFactoryTransformer(
             // parameter the function parameter where the keys match.
             val argumentList =
               assistedParameterKeys.map { assistedParameterKey ->
-                irGet(functionParams.getValue(assistedParameterKey))
+                val param = functionParams[assistedParameterKey] ?: error(
+                  "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${functionParams.keys.joinToString("\n")}"
+                )
+                irGet(param)
               }
 
             irExprBodySafe(

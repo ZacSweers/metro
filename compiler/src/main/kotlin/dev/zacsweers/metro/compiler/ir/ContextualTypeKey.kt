@@ -7,10 +7,13 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.letIf
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.render
@@ -142,7 +145,7 @@ internal fun IrType.asContextualTypeKey(
           .typeOrFail
       isWrappedInProvider || isWrappedInLazy -> declaredType.arguments.single().typeOrFail
       else -> declaredType
-    }
+    }.letIf(isMarkedNullable()) { it.makeNullable() }
 
   val isDeferrable =
     isLazyWrappedInProvider ||
