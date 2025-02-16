@@ -100,7 +100,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
       graphFactory.add("dagger/Component.Factory")
       intoMap.add("dagger/multibindings/IntoMap")
       intoSet.add("dagger/multibindings/IntoSet")
-      mapKey.add("dagger/multibindings/MapKey")
+      mapKey.add("dagger/MapKey")
       multibinds.add("dagger/multibindings/Multibinds")
       provides.addAll("dagger/Provides", "dagger/BindsInstance")
       if (includeJavax) {
