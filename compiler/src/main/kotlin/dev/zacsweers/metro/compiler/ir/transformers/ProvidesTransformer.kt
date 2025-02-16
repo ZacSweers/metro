@@ -103,9 +103,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration, annotations))
   }
 
-  // TODO what about inherited/overridden providers?
-  //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
-  fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass {
+  fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass? {
     val reference =
       binding.providerFunction.correspondingPropertySymbol?.owner?.let {
         getOrPutCallableReference(it)
@@ -125,7 +123,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         reference.callee.owner.reportError(
           "Could not find generated factory for ${reference.fqName} in upstream module where it's defined. Run the Metro compiler over that module too."
         )
-        exitProcessing()
+        return null
       }
       generatedFactories[reference.fqName] = generatedClass
     }

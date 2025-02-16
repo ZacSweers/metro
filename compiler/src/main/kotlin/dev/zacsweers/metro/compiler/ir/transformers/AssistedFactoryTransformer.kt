@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
@@ -52,7 +51,7 @@ internal class AssistedFactoryTransformer(
     }
   }
 
-  internal fun getOrGenerateImplClass(declaration: IrClass): IrClass {
+  internal fun getOrGenerateImplClass(declaration: IrClass): IrClass? {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
     val classId: ClassId = declaration.classIdOrFail
@@ -71,7 +70,7 @@ internal class AssistedFactoryTransformer(
             declaration.reportError(
               "Found a Metro assisted factory impl declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
             )
-            exitProcessing()
+            return null
           }
         }
         isMetroImpl
@@ -82,7 +81,7 @@ internal class AssistedFactoryTransformer(
         declaration.reportError(
           "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
         )
-        exitProcessing()
+        return null
       } else {
         error(
           "No expected assisted factory impl class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
@@ -107,6 +106,7 @@ internal class AssistedFactoryTransformer(
 
     val generatedFactory =
       injectConstructorTransformer.getOrGenerateFactoryClass(targetType, injectConstructor)
+        ?: return null
 
     val constructorParams = injectConstructor.parameters(this)
     val assistedParameters =

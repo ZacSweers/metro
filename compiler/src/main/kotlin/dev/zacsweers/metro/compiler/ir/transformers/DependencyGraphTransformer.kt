@@ -49,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -1002,9 +1003,13 @@ internal class DependencyGraphTransformer(
           // Provider<*> fields
           val fieldType =
             if (binding is Binding.ConstructorInjected && binding.isAssisted) {
-              injectConstructorTransformer
-                .getOrGenerateFactoryClass(binding.type, binding.injectedConstructor)
-                .typeWith() // TODO generic factories?
+              val factory =
+                injectConstructorTransformer.getOrGenerateFactoryClass(
+                  binding.type,
+                  binding.injectedConstructor,
+                ) ?: return@forEach
+
+              factory.typeWith() // TODO generic factories?
             } else {
               symbols.metroProvider.typeWith(key.type)
             }
@@ -1596,7 +1601,7 @@ internal class DependencyGraphTransformer(
           injectConstructorTransformer.getOrGenerateFactoryClass(
             binding.type,
             injectableConstructor,
-          )
+          ) ?: return stubExpression(metroContext)
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {
@@ -1629,7 +1634,9 @@ internal class DependencyGraphTransformer(
           )
         }
 
-        val factoryClass = providesTransformer.getOrGenerateFactoryClass(binding)
+        val factoryClass =
+          providesTransformer.getOrGenerateFactoryClass(binding)
+            ?: return stubExpression(metroContext)
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {
@@ -1655,7 +1662,9 @@ internal class DependencyGraphTransformer(
       }
       is Binding.Assisted -> {
         // Example9_Factory_Impl.create(example9Provider);
-        val implClass = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
+        val implClass =
+          assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
+            ?: return stubExpression(metroContext)
         val implClassCompanion = implClass.companionObject()!!
         val createFunction = implClassCompanion.requireSimpleFunction(Symbols.StringNames.CREATE)
         val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)

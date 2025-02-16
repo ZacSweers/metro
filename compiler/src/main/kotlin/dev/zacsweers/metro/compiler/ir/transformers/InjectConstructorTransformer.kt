@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -66,7 +65,7 @@ internal class InjectConstructorTransformer(
     }
   }
 
-  fun getOrGenerateFactoryClass(declaration: IrClass, targetConstructor: IrConstructor): IrClass {
+  fun getOrGenerateFactoryClass(declaration: IrClass, targetConstructor: IrConstructor): IrClass? {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
     val injectedClassId: ClassId = declaration.classIdOrFail
@@ -94,7 +93,7 @@ internal class InjectConstructorTransformer(
             declaration.reportError(
               "Found a Metro factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
             )
-            exitProcessing()
+            return null
           }
         }
         isMetroFactory
@@ -105,7 +104,7 @@ internal class InjectConstructorTransformer(
         declaration.reportError(
           "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
         )
-        exitProcessing()
+        return null
       } else {
         error(
           "No expected factory class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
