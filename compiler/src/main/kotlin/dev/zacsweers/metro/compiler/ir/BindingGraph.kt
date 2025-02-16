@@ -22,8 +22,17 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   // Use ConcurrentHashMap to allow reentrant modification
   private val bindings = ConcurrentHashMap<TypeKey, Binding>()
   private val dependencies = ConcurrentHashMap<TypeKey, Lazy<Set<ContextualTypeKey>>>()
+
   // TODO eventually add inject() targets too from member injection
   private val accessors = mutableMapOf<ContextualTypeKey, BindingStack.Entry>()
+
+  fun copy(): BindingGraph {
+    val newGraph = BindingGraph(metroContext)
+    newGraph.bindings.putAll(bindings)
+    newGraph.dependencies.putAll(dependencies)
+    newGraph.accessors.putAll(accessors)
+    return newGraph
+  }
 
   fun addAccessor(key: ContextualTypeKey, entry: BindingStack.Entry) {
     accessors[key] = entry
