@@ -1823,7 +1823,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             interface ExampleGraph {
               @Multibinds
               val ints: Set<Int>
-              
+
               val exampleClass: ExampleClass
             }
 

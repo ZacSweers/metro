@@ -112,9 +112,7 @@ internal class AssistedFactoryTransformer(
     val assistedParameters =
       constructorParams.valueParameters.filter { parameter -> parameter.isAssisted }
     val assistedParameterKeys =
-      assistedParameters.map { parameter ->
-        parameter.assistedParameterKey
-      }
+      assistedParameters.map { parameter -> parameter.assistedParameterKey }
 
     val ctor = implClass.primaryConstructor!!
     implClass.apply {
@@ -133,9 +131,11 @@ internal class AssistedFactoryTransformer(
             // parameter the function parameter where the keys match.
             val argumentList =
               assistedParameterKeys.map { assistedParameterKey ->
-                val param = functionParams[assistedParameterKey] ?: error(
-                  "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${functionParams.keys.joinToString("\n")}"
-                )
+                val param =
+                  functionParams[assistedParameterKey]
+                    ?: error(
+                      "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${functionParams.keys.joinToString("\n")}"
+                    )
                 irGet(param)
               }
 
