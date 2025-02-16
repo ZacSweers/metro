@@ -2,17 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.render
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
-internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
-  Comparable<TypeKey> {
+internal class TypeKey(type: IrType, val qualifier: IrAnnotation? = null) : Comparable<TypeKey> {
+
+  val type = type.removeAnnotations()
+
+  private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
+
+  fun copy(type: IrType = this.type, qualifier: IrAnnotation? = this.qualifier): TypeKey {
+    return TypeKey(type, qualifier)
+  }
+
   override fun toString(): String = render(short = true)
 
-  override fun compareTo(other: TypeKey) = toString().compareTo(other.toString())
+  override fun compareTo(other: TypeKey) = cachedRender.compareTo(other.cachedRender)
 
   fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
     if (includeQualifier) {
@@ -44,5 +54,18 @@ internal data class TypeKey(val type: IrType, val qualifier: IrAnnotation? = nul
         ""
       }
     return "$simpleName$args"
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as TypeKey
+
+    return cachedRender == other.cachedRender
+  }
+
+  override fun hashCode(): Int {
+    return cachedRender.hashCode()
   }
 }
