@@ -28,7 +28,6 @@ import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
@@ -56,12 +55,7 @@ internal interface IrMetroContext {
   }
 
   fun IrDeclaration.reportError(message: String) {
-    val location =
-      this.locationOrNull()
-        ?: error(
-          "No location for ${dumpKotlinLike()} in class\n${parentClassOrNull?.dumpKotlinLike()}.\n\nMessage:\n$message"
-        )
-    messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
+    messageCollector.report(CompilerMessageSeverity.ERROR, message, locationOrNull())
   }
 
   fun reportError(message: String, location: CompilerMessageSourceLocation) {
