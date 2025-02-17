@@ -6,7 +6,7 @@ plugins {
 }
 
 metro {
-  customAnnotations {
+  interop {
     includeDagger()
     includeAnvil()
   }

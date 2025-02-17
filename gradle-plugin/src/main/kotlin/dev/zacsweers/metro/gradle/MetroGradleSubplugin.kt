@@ -47,7 +47,18 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
             ?.let(::add)
 
-        with(extension.customAnnotations) {
+        with(extension.interop) {
+          add(lazyOption("enable-dagger-runtime-interop", enableDaggerRuntimeInterop))
+          provider
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-provider", value = it.joinToString(":")) }
+              ?.let(::add)
+          lazy
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-lazy", value = it.joinToString(":")) }
+              ?.let(::add)
           assisted
               .getOrElse(emptySet())
               .takeUnless { it.isEmpty() }

@@ -9,10 +9,11 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 
+@MetroExtensionMarker
 public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFactory) {
 
-  public val customAnnotations: CustomAnnotations =
-      objects.newInstance(CustomAnnotations::class.java)
+  public val interop: InteropHandler =
+      objects.newInstance(InteropHandler::class.java)
 
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> =
@@ -56,16 +57,26 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
   public abstract val reportsDestination: DirectoryProperty
 
   /**
-   * Configures custom annotations to support in generated code, usually from another DI framework.
+   * Configures interop to support in generated code, usually from another DI framework.
    *
-   * Note that the format of the annotation should be in the Kotlin compiler `ClassId` format, e.g.
+   * This is primarily for supplying custom annotations and custom runtime intrinsic types (i.e. `Provider`).
+   *
+   * Note that the format of the class IDs should be in the Kotlin compiler `ClassId` format, e.g.
    * `kotlin/Map.Entry`.
    */
-  public fun customAnnotations(action: Action<CustomAnnotations>) {
-    action.execute(customAnnotations)
+  public fun interop(action: Action<InteropHandler>) {
+    action.execute(interop)
   }
 
-  public abstract class CustomAnnotations @Inject constructor(objects: ObjectFactory) {
+  @MetroExtensionMarker
+  public abstract class InteropHandler @Inject constructor(objects: ObjectFactory) {
+    public abstract val enableDaggerRuntimeInterop: Property<Boolean>
+
+    // Intrinsics
+    public val provider: SetProperty<String> = objects.setProperty(String::class.java)
+    public val lazy: SetProperty<String> = objects.setProperty(String::class.java)
+
+    // Annotations
     public val assisted: SetProperty<String> = objects.setProperty(String::class.java)
     public val assistedFactory: SetProperty<String> = objects.setProperty(String::class.java)
     public val assistedInject: SetProperty<String> = objects.setProperty(String::class.java)
@@ -84,13 +95,26 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
     public val qualifier: SetProperty<String> = objects.setProperty(String::class.java)
     public val scope: SetProperty<String> = objects.setProperty(String::class.java)
 
+    /** Includes Javax annotations support. */
+    public fun includeJavax() {
+      provider.add("javax/inject/Provider")
+      inject.add("javax/inject/Inject")
+      qualifier.add("javax/inject/Qualifier")
+      scope.add("javax/inject/Scope")
+    }
+
+    /** Includes Jakarta annotations support. */
+    public fun includeJakarta() {
+      provider.add("jakarta/inject/Provider")
+      inject.add("jakarta/inject/Inject")
+      qualifier.add("jakarta/inject/Qualifier")
+      scope.add("jakarta/inject/Scope")
+    }
+
     /** Includes Dagger annotations support. */
     @JvmOverloads
     public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
-      if (!includeJavax && !includeJakarta) {
-        System.err.println(
-            "At least one of metro.customAnnotations.includeDagger.includeJavax or metro.customAnnotations.includeDagger.includeJakarta should be true")
-      }
+      enableDaggerRuntimeInterop.set(true)
       assisted.add("dagger/assisted/Assisted")
       assistedFactory.add("dagger/assisted/AssistedFactory")
       assistedInject.add("dagger/assisted/AssistedInject")
@@ -103,15 +127,16 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
       mapKey.add("dagger/MapKey")
       multibinds.add("dagger/multibindings/Multibinds")
       provides.addAll("dagger/Provides", "dagger/BindsInstance")
+
+      if (!includeJavax && !includeJakarta) {
+        System.err.println(
+            "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true")
+      }
       if (includeJavax) {
-        inject.add("javax/inject/Inject")
-        qualifier.add("javax/inject/Qualifier")
-        scope.add("javax/inject/Scope")
+        includeJavax()
       }
       if (includeJakarta) {
-        inject.add("jakarta/inject/Inject")
-        qualifier.add("jakarta/inject/Qualifier")
-        scope.add("jakarta/inject/Scope")
+        includeJakarta()
       }
     }
 

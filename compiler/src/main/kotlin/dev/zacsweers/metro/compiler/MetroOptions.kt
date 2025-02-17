@@ -107,6 +107,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_DAGGER_RUNTIME_INTEROP(
+    RawMetroOption.boolean(
+      name = "enable-dagger-runtime-interop",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable interop with Dagger's runtime (Provider, Lazy, and generated Dagger factories).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -127,6 +138,28 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence('|').map(MetroLogger.Type::valueOf).toSet() },
+    )
+  ),
+  CUSTOM_PROVIDER(
+    RawMetroOption(
+      name = "custom-provider",
+      defaultValue = emptySet(),
+      valueDescription = "Provider types",
+      description = "Provider types",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
+  CUSTOM_LAZY(
+    RawMetroOption(
+      name = "custom-lazy",
+      defaultValue = emptySet(),
+      valueDescription = "Lazy types",
+      description = "Lazy types",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
   CUSTOM_ASSISTED(
@@ -339,6 +372,12 @@ public data class MetroOptions(
       DiagnosticSeverity.valueOf(it)
     },
   val enabledLoggers: Set<MetroLogger.Type> = MetroOption.LOGGING.raw.defaultValue.expectAs(),
+  val enableDaggerRuntimeInterop: Boolean = MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
+  // Intrinsics
+  val customProviderTypes: Set<ClassId> =
+    MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
+  val customLazyTypes: Set<ClassId> =
+    MetroOption.CUSTOM_LAZY.raw.defaultValue.expectAs(),
   // Custom annotations
   val customAssistedAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ASSISTED.raw.defaultValue.expectAs(),
@@ -377,6 +416,8 @@ public data class MetroOptions(
       val enabledLoggers = mutableSetOf<MetroLogger.Type>()
 
       // Custom annotations
+      val customProviderTypes = mutableSetOf<ClassId>()
+      val customLazyTypes = mutableSetOf<ClassId>()
       val customAssistedAnnotations = mutableSetOf<ClassId>()
       val customAssistedFactoryAnnotations = mutableSetOf<ClassId>()
       val customAssistedInjectAnnotations = mutableSetOf<ClassId>()
@@ -398,7 +439,9 @@ public data class MetroOptions(
       for (entry in MetroOption.entries) {
         when (entry) {
           MetroOption.DEBUG -> options = options.copy(debug = configuration.getAsBoolean(entry))
+
           MetroOption.ENABLED -> options = options.copy(enabled = configuration.getAsBoolean(entry))
+
           MetroOption.REPORTS_DESTINATION -> {
             options =
               options.copy(
@@ -406,6 +449,7 @@ public data class MetroOptions(
                   configuration.getAsString(entry).takeUnless(String::isBlank)?.let(Paths::get)
               )
           }
+
           MetroOption.GENERATE_ASSISTED_FACTORIES ->
             options = options.copy(generateAssistedFactories = configuration.getAsBoolean(entry))
 
@@ -421,10 +465,22 @@ public data class MetroOptions(
                     DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
                   }
               )
+
           MetroOption.LOGGING -> {
             enabledLoggers +=
               configuration.get(entry.raw.key)?.expectAs<Set<MetroLogger.Type>>().orEmpty()
           }
+
+          MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP -> {
+            options =
+              options.copy(enableDaggerRuntimeInterop = configuration.getAsBoolean(entry))
+          }
+
+          // Intrinsics
+          MetroOption.CUSTOM_PROVIDER ->
+            customProviderTypes.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_LAZY ->
+            customLazyTypes.addAll(configuration.getAsSet(entry))
 
           // Custom annotations
           MetroOption.CUSTOM_ASSISTED ->
@@ -467,6 +523,8 @@ public data class MetroOptions(
 
       options =
         options.copy(
+          customProviderTypes = customProviderTypes,
+          customLazyTypes = customLazyTypes,
           customAssistedAnnotations = customAssistedAnnotations,
           customAssistedFactoryAnnotations = customAssistedFactoryAnnotations,
           customAssistedInjectAnnotations = customAssistedInjectAnnotations,
@@ -491,7 +549,7 @@ public data class MetroOptions(
 
     private fun CompilerConfiguration.getAsString(option: MetroOption): String {
       @Suppress("UNCHECKED_CAST") val typed = option.raw as RawMetroOption<String>
-      return get(typed.key, typed.defaultValue.orEmpty())
+      return get(typed.key, typed.defaultValue)
     }
 
     private fun CompilerConfiguration.getAsBoolean(option: MetroOption): Boolean {

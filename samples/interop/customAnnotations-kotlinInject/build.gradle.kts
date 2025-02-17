@@ -20,7 +20,7 @@ kotlin {
 }
 
 metro {
-  customAnnotations {
+  interop {
     includeKotlinInject()
     includeAnvil()
   }

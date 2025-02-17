@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 internal class ClassIds(
+  customLazyClasses: Set<ClassId> = emptySet(),
+  customProviderClasses: Set<ClassId> = emptySet(),
   customAssistedAnnotations: Set<ClassId> = emptySet(),
   customAssistedFactoryAnnotations: Set<ClassId> = emptySet(),
   customAssistedInjectAnnotations: Set<ClassId> = emptySet(),
@@ -98,6 +99,6 @@ internal class ClassIds(
       contributesIntoSetAnnotations +
       contributesIntoMapAnnotations
 
-  val providerTypes = setOf(Symbols.ClassIds.metroProvider)
-  val lazyTypes = setOf(kotlinPackageFqn.classIdOf("Lazy"))
+  val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
+  val lazyTypes = setOf(Symbols.ClassIds.lazy) + customLazyClasses
 }

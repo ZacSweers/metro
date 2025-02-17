@@ -29,7 +29,7 @@ These are configurable via Metro’s Gradle extension.
 
 ```kotlin
 metro {
-  customAnnotations {
+  interop {
     assisted.add("dagger/assisted/Assisted")
   }
 }
@@ -39,7 +39,7 @@ For Dagger and KI specifically, there are convenience helper functions.
 
 ```kotlin
 metro {
-  customAnnotations {
+  interop {
     includeDagger()
     includeKotlinInject()
     includeAnvil()
