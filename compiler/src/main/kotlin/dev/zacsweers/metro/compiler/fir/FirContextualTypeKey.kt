@@ -41,7 +41,7 @@ internal class FirContextualTypeKey(
       when {
         isWrappedInProvider -> "Provider"
         isWrappedInLazy -> "Lazy"
-        isLazyWrappedInProvider -> "Provider<Lazy<"
+        isLazyWrappedInProvider -> "Provider<Lazy"
         else -> null
       }
     if (wrapperType != null) {
