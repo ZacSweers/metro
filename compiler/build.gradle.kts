@@ -47,16 +47,20 @@ dependencies {
   ksp(libs.autoService.ksp)
 
   testImplementation(project(":runtime"))
+  testImplementation(project(":interop-dagger"))
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)
   testImplementation(libs.kotlin.compilerEmbeddable)
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)
-  testImplementation(libs.kotlinCompileTesting)
+  testImplementation(libs.kct)
+  testImplementation(libs.kct.ksp)
   testImplementation(libs.okio)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation(libs.truth)
   testImplementation(libs.coroutines)
   testImplementation(libs.coroutines.test)
+  testImplementation(libs.dagger.compiler)
+  testImplementation(libs.dagger.runtime)
 }

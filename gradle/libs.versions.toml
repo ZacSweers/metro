@@ -17,7 +17,7 @@ autoService = "1.1.1"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
 dagger = "2.55"
-kotlinCompileTesting = "0.7.0"
+kct = "0.7.0"
 kotlin = "2.1.10"
 kotlinInject = "0.7.2"
 kotlinInject-anvil = "0.1.2"
@@ -104,4 +104,5 @@ slf4jNop = "org.slf4j:slf4j-nop:2.0.16"
 
 junit = { module = "junit:junit", version = "4.13.2" }
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
-kotlinCompileTesting = { module = "dev.zacsweers.kctfork:core", version.ref = "kotlinCompileTesting" }
+kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
+kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }
