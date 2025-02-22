@@ -5,6 +5,8 @@ package dev.zacsweers.metro.interop.dagger
 import dev.zacsweers.metro.Provider as MetroProvider
 import jakarta.inject.Provider as JakartaProvider
 import javax.inject.Provider as JavaxProvider
+import dev.zacsweers.metro.MembersInjector as MetroMembersInjector
+import dagger.MembersInjector as DaggerMembersInjector
 
 /**
  * Converts a javax [JavaxProvider] into a Metro [MetroProvider].
@@ -47,8 +49,8 @@ public fun <T : Any> MetroProvider<T>.asJavaxProvider(): JavaxProvider<T> =
  *
  * @return A [JakartaProvider] that delegates its invocation to the source [MetroProvider].
  */
-public fun <T : Any> MetroProvider<T>.asMetroProvider(): JakartaProvider<T> =
-  JakartaProvider<T> { this@asMetroProvider() }
+public fun <T : Any> MetroProvider<T>.asJakartaProvider(): JakartaProvider<T> =
+  JakartaProvider<T> { this@asJakartaProvider() }
 
 /**
  * Converts a Kotlin [Lazy] into a Dagger [dagger.Lazy].
@@ -57,3 +59,19 @@ public fun <T : Any> MetroProvider<T>.asMetroProvider(): JakartaProvider<T> =
  */
 public fun <T : Any> Lazy<T>.asKotlinLazy(): dagger.Lazy<T> =
   dagger.Lazy<T> { this@asKotlinLazy.value }
+
+/**
+ * Converts a Metro [MetroMembersInjector] into a Dagger [DaggerMembersInjector].
+ *
+ * @return A [DaggerMembersInjector] that delegates its invocation to the source [MetroMembersInjector].
+ */
+public fun <T : Any> MetroMembersInjector<T>.asDaggerMembersInjector(): DaggerMembersInjector<T> =
+  DaggerMembersInjector<T> { instance -> this@asDaggerMembersInjector.injectMembers(instance) }
+
+/**
+ * Converts a Dagger [DaggerMembersInjector] into a Metro [MetroMembersInjector].
+ *
+ * @return A [MetroMembersInjector] that delegates its invocation to the source [DaggerMembersInjector].
+ */
+public fun <T : Any> DaggerMembersInjector<T>.asMetroMembersInjector(): MetroMembersInjector<T> =
+  MetroMembersInjector<T> { instance -> this@asMetroMembersInjector.injectMembers(instance) }
