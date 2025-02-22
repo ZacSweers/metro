@@ -372,12 +372,11 @@ public data class MetroOptions(
       DiagnosticSeverity.valueOf(it)
     },
   val enabledLoggers: Set<MetroLogger.Type> = MetroOption.LOGGING.raw.defaultValue.expectAs(),
-  val enableDaggerRuntimeInterop: Boolean = MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
+  val enableDaggerRuntimeInterop: Boolean =
+    MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
   // Intrinsics
-  val customProviderTypes: Set<ClassId> =
-    MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
-  val customLazyTypes: Set<ClassId> =
-    MetroOption.CUSTOM_LAZY.raw.defaultValue.expectAs(),
+  val customProviderTypes: Set<ClassId> = MetroOption.CUSTOM_PROVIDER.raw.defaultValue.expectAs(),
+  val customLazyTypes: Set<ClassId> = MetroOption.CUSTOM_LAZY.raw.defaultValue.expectAs(),
   // Custom annotations
   val customAssistedAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ASSISTED.raw.defaultValue.expectAs(),
@@ -472,15 +471,12 @@ public data class MetroOptions(
           }
 
           MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP -> {
-            options =
-              options.copy(enableDaggerRuntimeInterop = configuration.getAsBoolean(entry))
+            options = options.copy(enableDaggerRuntimeInterop = configuration.getAsBoolean(entry))
           }
 
           // Intrinsics
-          MetroOption.CUSTOM_PROVIDER ->
-            customProviderTypes.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_LAZY ->
-            customLazyTypes.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_PROVIDER -> customProviderTypes.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_LAZY -> customLazyTypes.addAll(configuration.getAsSet(entry))
 
           // Custom annotations
           MetroOption.CUSTOM_ASSISTED ->

@@ -11,11 +11,11 @@ import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.implementsProviderType
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.implementsProviderType
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -51,7 +51,6 @@ import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
@@ -76,7 +75,10 @@ internal class InjectConstructorTransformer(
     }
   }
 
-  fun getOrGenerateFactory(declaration: IrClass, targetConstructor: IrConstructor): ConstructorInjectedFactory? {
+  fun getOrGenerateFactory(
+    declaration: IrClass,
+    targetConstructor: IrConstructor,
+  ): ConstructorInjectedFactory? {
     val injectedClassId: ClassId = declaration.classIdOrFail
     generatedFactories[injectedClassId]?.let {
       return it
@@ -115,10 +117,7 @@ internal class InjectConstructorTransformer(
           val daggerFactoryClassId = injectedClassId.generatedClass("_Factory")
           val daggerFactoryClass = pluginContext.referenceClass(daggerFactoryClassId)?.owner
           if (daggerFactoryClass != null) {
-            val wrapper = ConstructorInjectedFactory.DaggerFactory(
-              metroContext,
-              daggerFactoryClass
-            )
+            val wrapper = ConstructorInjectedFactory.DaggerFactory(metroContext, daggerFactoryClass)
             generatedFactories[injectedClassId] = wrapper
             return wrapper
           }
@@ -149,9 +148,9 @@ internal class InjectConstructorTransformer(
     val constructorParameters = targetConstructor.parameters(metroContext, factoryCls, declaration)
     val allParameters =
       buildList {
-        add(constructorParameters)
-        addAll(memberInjectParameters)
-      }
+          add(constructorParameters)
+          addAll(memberInjectParameters)
+        }
         .distinct()
     val allValueParameters = allParameters.flatMap { it.valueParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
@@ -265,10 +264,10 @@ internal class InjectConstructorTransformer(
 
         val newInstance =
           irInvoke(
-            dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
-            callee = newInstanceFunction.symbol,
-            args = args,
-          )
+              dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
+              callee = newInstanceFunction.symbol,
+              args = args,
+            )
             .apply {
               if (newInstanceFunction.typeParameters.isNotEmpty()) {
                 putTypeArgument(0, invokeFunction.returnType)
@@ -365,12 +364,12 @@ internal class InjectConstructorTransformer(
 
             val invokeExpression =
               irInvoke(
-                callee = targetCallable,
-                dispatchReceiver = null,
-                extensionReceiver = null,
-                typeHint = targetCallable.owner.returnType,
-                args = args,
-              )
+                  callee = targetCallable,
+                  dispatchReceiver = null,
+                  extensionReceiver = null,
+                  typeHint = targetCallable.owner.returnType,
+                  args = args,
+                )
                 .apply {
                   // TODO type params
                 }
@@ -436,15 +435,17 @@ internal class InjectConstructorTransformer(
     val factoryClass: IrClass
     val invokeFunctionSymbol: IrFunctionSymbol
 
-    fun IrBuilderWithScope.invokeCreateExpression(computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>): IrExpression
+    fun IrBuilderWithScope.invokeCreateExpression(
+      computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
+    ): IrExpression
 
-    class MetroFactory(
-      override val factoryClass: IrClass,
-    ) : ConstructorInjectedFactory {
+    class MetroFactory(override val factoryClass: IrClass) : ConstructorInjectedFactory {
       override val invokeFunctionSymbol: IrFunctionSymbol
         get() = factoryClass.requireSimpleFunction(Symbols.StringNames.INVOKE)
 
-      override fun IrBuilderWithScope.invokeCreateExpression(computeArgs: IrBuilderWithScope.(IrSimpleFunction) -> List<IrExpression?>): IrExpression {
+      override fun IrBuilderWithScope.invokeCreateExpression(
+        computeArgs: IrBuilderWithScope.(IrSimpleFunction) -> List<IrExpression?>
+      ): IrExpression {
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {
@@ -458,7 +459,7 @@ internal class InjectConstructorTransformer(
           dispatchReceiver = irGetObject(creatorClass.symbol),
           callee = createFunction,
           args = args,
-          typeHint = factoryClass.typeWith()
+          typeHint = factoryClass.typeWith(),
         )
       }
     }
@@ -470,7 +471,9 @@ internal class InjectConstructorTransformer(
       override val invokeFunctionSymbol: IrFunctionSymbol
         get() = factoryClass.requireSimpleFunction(Symbols.StringNames.GET)
 
-      override fun IrBuilderWithScope.invokeCreateExpression(computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>): IrExpression {
+      override fun IrBuilderWithScope.invokeCreateExpression(
+        computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
+      ): IrExpression {
         // Anvil may generate the factory
         val isJava = factoryClass.isFromJava()
         val creatorClass =
@@ -479,27 +482,29 @@ internal class InjectConstructorTransformer(
           } else {
             factoryClass.companionObject()!!
           }
-        val createFunction = creatorClass.simpleFunctions()
-          .first {
-            it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider
-          }
-          .symbol
+        val createFunction =
+          creatorClass
+            .simpleFunctions()
+            .first {
+              it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider
+            }
+            .symbol
         val args = computeArgs(createFunction.owner)
-        val createExpression = irInvoke(
-          dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
-          callee = createFunction,
-          args = args,
-          typeHint = factoryClass.typeWith()
-        )
+        val createExpression =
+          irInvoke(
+            dispatchReceiver = if (isJava) null else irGetObject(creatorClass.symbol),
+            callee = createFunction,
+            args = args,
+            typeHint = factoryClass.typeWith(),
+          )
 
         // Wrap in a metro provider if this is a provider
         return if (factoryClass.defaultType.implementsProviderType(metroContext)) {
           irInvoke(
-            extensionReceiver = createExpression,
-            callee = metroContext.symbols.daggerSymbols!!.asMetroProvider
-          ).apply {
-            putTypeArgument(0, factoryClass.typeWith())
-          }
+              extensionReceiver = createExpression,
+              callee = metroContext.symbols.daggerSymbols!!.asMetroProvider,
+            )
+            .apply { putTypeArgument(0, factoryClass.typeWith()) }
         } else {
           createExpression
         }

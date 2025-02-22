@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.interop.dagger
 
+import dagger.MembersInjector as DaggerMembersInjector
+import dev.zacsweers.metro.MembersInjector as MetroMembersInjector
 import dev.zacsweers.metro.Provider as MetroProvider
 import jakarta.inject.Provider as JakartaProvider
 import javax.inject.Provider as JavaxProvider
-import dev.zacsweers.metro.MembersInjector as MetroMembersInjector
-import dagger.MembersInjector as DaggerMembersInjector
 
 /**
  * Converts a javax [JavaxProvider] into a Metro [MetroProvider].
@@ -63,7 +63,8 @@ public fun <T : Any> Lazy<T>.asKotlinLazy(): dagger.Lazy<T> =
 /**
  * Converts a Metro [MetroMembersInjector] into a Dagger [DaggerMembersInjector].
  *
- * @return A [DaggerMembersInjector] that delegates its invocation to the source [MetroMembersInjector].
+ * @return A [DaggerMembersInjector] that delegates its invocation to the source
+ *   [MetroMembersInjector].
  */
 public fun <T : Any> MetroMembersInjector<T>.asDaggerMembersInjector(): DaggerMembersInjector<T> =
   DaggerMembersInjector<T> { instance -> this@asDaggerMembersInjector.injectMembers(instance) }
@@ -71,7 +72,8 @@ public fun <T : Any> MetroMembersInjector<T>.asDaggerMembersInjector(): DaggerMe
 /**
  * Converts a Dagger [DaggerMembersInjector] into a Metro [MetroMembersInjector].
  *
- * @return A [MetroMembersInjector] that delegates its invocation to the source [DaggerMembersInjector].
+ * @return A [MetroMembersInjector] that delegates its invocation to the source
+ *   [DaggerMembersInjector].
  */
 public fun <T : Any> DaggerMembersInjector<T>.asMetroMembersInjector(): MetroMembersInjector<T> =
   MetroMembersInjector<T> { instance -> this@asMetroMembersInjector.injectMembers(instance) }

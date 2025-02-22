@@ -122,8 +122,9 @@ internal fun IrType.findProviderSupertype(context: IrMetroContext): IrType? {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
   val rawTypeClass = rawTypeOrNull() ?: return null
   // Get the specific provider type it implements
-  return rawTypeClass.getAllSuperTypes(context.pluginContext, excludeSelf = false)
-    .firstOrNull { it.rawTypeOrNull()?.classId in context.symbols.providerTypes }
+  return rawTypeClass.getAllSuperTypes(context.pluginContext, excludeSelf = false).firstOrNull {
+    it.rawTypeOrNull()?.classId in context.symbols.providerTypes
+  }
 }
 
 internal fun IrType.implementsProviderType(context: IrMetroContext): Boolean {
@@ -187,18 +188,22 @@ internal fun IrType.asContextualTypeKey(
       }
 
   // Java types may be "Flexible" nullable types, assume not null here
-  val adjustedType = if (type.isWithFlexibleNullability()) {
-    type.makeNotNull()
-      .removeAnnotations { it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME) }
-  } else {
-    type
-  }
-  val adjustedRawType = if (type.isWithFlexibleNullability()) {
-    makeNotNull()
-      .removeAnnotations { it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME) }
-  } else {
-    this
-  }
+  val adjustedType =
+    if (type.isWithFlexibleNullability()) {
+      type.makeNotNull().removeAnnotations {
+        it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME)
+      }
+    } else {
+      type
+    }
+  val adjustedRawType =
+    if (type.isWithFlexibleNullability()) {
+      makeNotNull().removeAnnotations {
+        it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME)
+      }
+    } else {
+      this
+    }
   val typeKey = TypeKey(adjustedType, qualifierAnnotation)
   return ContextualTypeKey(
     typeKey = typeKey,

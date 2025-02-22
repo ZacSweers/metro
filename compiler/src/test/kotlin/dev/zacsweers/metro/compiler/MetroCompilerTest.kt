@@ -92,20 +92,15 @@ abstract class MetroCompilerTest {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
               }
-              MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP -> processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
+              MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
+                processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
               MetroOption.CUSTOM_PROVIDER -> {
                 if (customProviderTypes.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customProviderTypes.joinToString(":"),
-                )
+                processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))
               }
               MetroOption.CUSTOM_LAZY -> {
                 if (customLazyTypes.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customLazyTypes.joinToString(":"),
-                )
+                processor.option(entry.raw.cliOption, customLazyTypes.joinToString(":"))
               }
               MetroOption.CUSTOM_ASSISTED -> {
                 if (customAssistedAnnotations.isEmpty()) continue
@@ -250,7 +245,7 @@ abstract class MetroCompilerTest {
         generateAssistedFactories = generateAssistedFactories,
       ),
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
-    compilationBlock: KotlinCompilation.()  -> Unit = {},
+    compilationBlock: KotlinCompilation.() -> Unit = {},
     previousCompilationResult: JvmCompilationResult? = null,
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {

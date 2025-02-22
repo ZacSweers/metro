@@ -868,10 +868,10 @@ internal class DependencyGraphTransformer(
           if (isBindsInstance) {
             providerFields[param.typeKey] =
               addField(
-                fieldName = fieldNameAllocator.newName("${param.name}Instance"),
-                fieldType = symbols.metroProvider.typeWith(param.type),
-                fieldVisibility = DescriptorVisibilities.PRIVATE,
-              )
+                  fieldName = fieldNameAllocator.newName("${param.name}Instance"),
+                  fieldType = symbols.metroProvider.typeWith(param.type),
+                  fieldVisibility = DescriptorVisibilities.PRIVATE,
+                )
                 .apply {
                   isFinal = true
                   initializer =
@@ -895,10 +895,10 @@ internal class DependencyGraphTransformer(
       val thisReceiverParameter = thisReceiverOrFail
       val thisGraphField =
         addField(
-          fieldName = fieldNameAllocator.newName(graphClass.name.asString().decapitalizeUS()),
-          fieldType = thisReceiverParameter.type,
-          fieldVisibility = DescriptorVisibilities.PRIVATE,
-        )
+            fieldName = fieldNameAllocator.newName(graphClass.name.asString().decapitalizeUS()),
+            fieldType = thisReceiverParameter.type,
+            fieldVisibility = DescriptorVisibilities.PRIVATE,
+          )
           .apply {
             isFinal = true
             initializer =
@@ -917,13 +917,13 @@ internal class DependencyGraphTransformer(
       //  field only if requested more than once?
       providerFields[node.typeKey] =
         addField(
-          fieldName =
-            fieldNameAllocator.newName(
-              "${node.sourceGraph.name.asString().decapitalizeUS()}Provider"
-            ),
-          fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
-          fieldVisibility = DescriptorVisibilities.PRIVATE,
-        )
+            fieldName =
+              fieldNameAllocator.newName(
+                "${node.sourceGraph.name.asString().decapitalizeUS()}Provider"
+              ),
+            fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
+            fieldVisibility = DescriptorVisibilities.PRIVATE,
+          )
           .apply {
             isFinal = true
             initializer =
@@ -982,9 +982,9 @@ internal class DependencyGraphTransformer(
             val binding = bindingDependencies[deferredTypeKey] ?: return@associateWith null
             val field =
               addField(
-                fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
-                deferredTypeKey.type.wrapInProvider(symbols.metroProvider),
-              )
+                  fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
+                  deferredTypeKey.type.wrapInProvider(symbols.metroProvider),
+                )
                 .apply {
                   isFinal = true
                   initializer =
@@ -1024,11 +1024,11 @@ internal class DependencyGraphTransformer(
 
           val field =
             addField(
-              fieldName =
-                fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
-              fieldType = fieldType,
-              fieldVisibility = DescriptorVisibilities.PRIVATE,
-            )
+                fieldName =
+                  fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
+                fieldType = fieldType,
+                fieldVisibility = DescriptorVisibilities.PRIVATE,
+              )
               .apply {
                 isFinal = true
                 initializer =
@@ -1060,26 +1060,26 @@ internal class DependencyGraphTransformer(
           buildBlockBody(pluginContext) {
             +originalBody.statements
             +irInvoke(
-              dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
-              callee = symbols.metroDelegateFactorySetDelegate,
-              // TODO de-dupe?
-              args =
-                listOf(
-                  irGetField(irGet(thisReceiverParameter), field),
-                  pluginContext.createIrBuilder(symbol).run {
-                    generateBindingCode(
-                      binding,
-                      baseGenerationContext,
-                      fieldInitKey = deferredTypeKey,
-                    )
-                      .letIf(binding.scope != null) {
-                        // If it's scoped, wrap it in double-check
-                        // DoubleCheck.provider(<provider>)
-                        it.doubleCheck(this@run, symbols, binding.typeKey)
-                      }
-                  },
-                ),
-            )
+                dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
+                callee = symbols.metroDelegateFactorySetDelegate,
+                // TODO de-dupe?
+                args =
+                  listOf(
+                    irGetField(irGet(thisReceiverParameter), field),
+                    pluginContext.createIrBuilder(symbol).run {
+                      generateBindingCode(
+                          binding,
+                          baseGenerationContext,
+                          fieldInitKey = deferredTypeKey,
+                        )
+                        .letIf(binding.scope != null) {
+                          // If it's scoped, wrap it in double-check
+                          // DoubleCheck.provider(<provider>)
+                          it.doubleCheck(this@run, symbols, binding.typeKey)
+                        }
+                    },
+                  ),
+              )
               .apply { putTypeArgument(0, deferredTypeKey.type) }
           }
         }
@@ -1156,10 +1156,10 @@ internal class DependencyGraphTransformer(
             // }
 
             for (type in
-            pluginContext
-              .referenceClass(binding.targetClassId)!!
-              .owner
-              .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
+              pluginContext
+                .referenceClass(binding.targetClassId)!!
+                .owner
+                .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
@@ -1337,8 +1337,8 @@ internal class DependencyGraphTransformer(
     // Scoped, graph, and members injector bindings always need (provider) fields
     if (
       bindingScope != null ||
-      binding is Binding.GraphDependency ||
-      (binding is Binding.MembersInjected && !binding.isFromInjectorFunction)
+        binding is Binding.GraphDependency ||
+        (binding is Binding.MembersInjected && !binding.isFromInjectorFunction)
     ) {
       bindingDependencies[key] = binding
     }
@@ -1417,7 +1417,7 @@ internal class DependencyGraphTransformer(
     val paramsToMap = buildList {
       if (
         binding is Binding.Provided &&
-        targetParams.instance?.type?.rawTypeOrNull()?.isObject != true
+          targetParams.instance?.type?.rawTypeOrNull()?.isObject != true
       ) {
         targetParams.instance?.let(::add)
       }
@@ -1447,12 +1447,9 @@ internal class DependencyGraphTransformer(
       // TODO consolidate this logic with generateBindingCode
       generationContext.instanceFields[typeKey]?.let { instanceField ->
         // If it's in instance field, invoke that field
-        return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField)
-          .let {
-            with(metroProviderSymbols) {
-              transformMetroProvider(it, contextualTypeKey)
-            }
-          }
+        return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField).let {
+          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+        }
       }
 
       val providerInstance =
@@ -1464,8 +1461,8 @@ internal class DependencyGraphTransformer(
           )
         } else if (
           binding is Binding.Provided &&
-          binding.isIntoMultibinding &&
-          binding in generationContext.multibindingProviderFields
+            binding.isIntoMultibinding &&
+            binding in generationContext.multibindingProviderFields
         ) {
           irGetField(
             irGet(generationContext.thisReceiver),
@@ -1506,8 +1503,7 @@ internal class DependencyGraphTransformer(
 
               is Binding.Absent,
               is Binding.BoundInstance,
-              is Binding.GraphDependency,
-                -> error("Should never happen, logic is handled above")
+              is Binding.GraphDependency -> error("Should never happen, logic is handled above")
             }
           generationContext.bindingStack.push(entry)
           // Generate binding code for each param
@@ -1598,16 +1594,13 @@ internal class DependencyGraphTransformer(
     // If we already have a provider field we can just return it
     if (
       binding is Binding.Provided &&
-      binding.isIntoMultibinding &&
-      binding in generationContext.multibindingProviderFields
+        binding.isIntoMultibinding &&
+        binding in generationContext.multibindingProviderFields
     ) {
       generationContext.multibindingProviderFields[binding]?.let {
-        return irGetField(irGet(generationContext.thisReceiver), it)
-          .let {
-            with(metroProviderSymbols) {
-              transformMetroProvider(it, contextualTypeKey)
-            }
-          }
+        return irGetField(irGet(generationContext.thisReceiver), it).let {
+          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+        }
       }
     }
 
@@ -1616,12 +1609,9 @@ internal class DependencyGraphTransformer(
     // This is important for cases like DelegateFactory and breaking cycles.
     if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
       generationContext.providerFields[binding.typeKey]?.let {
-        return irGetField(irGet(generationContext.thisReceiver), it)
-          .let {
-            with(metroProviderSymbols) {
-              transformMetroProvider(it, contextualTypeKey)
-            }
-          }
+        return irGetField(irGet(generationContext.thisReceiver), it).let {
+          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+        }
       }
     }
 
@@ -1630,10 +1620,8 @@ internal class DependencyGraphTransformer(
         // Example_Factory.create(...)
         val injectableConstructor = binding.injectedConstructor
         val factory =
-          injectConstructorTransformer.getOrGenerateFactory(
-            binding.type,
-            injectableConstructor,
-          ) ?: return stubExpression(metroContext)
+          injectConstructorTransformer.getOrGenerateFactory(binding.type, injectableConstructor)
+            ?: return stubExpression(metroContext)
 
         with(factory) {
           invokeCreateExpression { createFunction ->
@@ -1695,10 +1683,15 @@ internal class DependencyGraphTransformer(
         val isFromDagger: Boolean
         if (options.enableDaggerRuntimeInterop && implClass.isFromJava()) {
           // Dagger interop
-          createFunction = implClass.simpleFunctions()
-            .first { it.isStatic &&
-              (it.name == Symbols.Names.create || it.name == Symbols.Names.createFactoryProvider) }
-            .symbol
+          createFunction =
+            implClass
+              .simpleFunctions()
+              .first {
+                it.isStatic &&
+                  (it.name == Symbols.Names.create ||
+                    it.name == Symbols.Names.createFactoryProvider)
+              }
+              .symbol
           dispatchReceiver = null
           isFromDagger = true
         } else {
@@ -1709,14 +1702,16 @@ internal class DependencyGraphTransformer(
         }
 
         val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)
-        val invokeCreateExpression = irInvoke(
-          dispatchReceiver = dispatchReceiver,
-          callee = createFunction,
-          args = listOf(delegateFactoryProvider),
-        )
+        val invokeCreateExpression =
+          irInvoke(
+            dispatchReceiver = dispatchReceiver,
+            callee = createFunction,
+            args = listOf(delegateFactoryProvider),
+          )
         if (isFromDagger) {
           with(symbols.daggerSymbols) {
-            val targetType = (createFunction.owner.returnType as IrSimpleType).arguments[0].typeOrFail
+            val targetType =
+              (createFunction.owner.returnType as IrSimpleType).arguments[0].typeOrFail
             transformToMetroProvider(invokeCreateExpression, targetType)
           }
         } else {
@@ -1736,14 +1731,11 @@ internal class DependencyGraphTransformer(
         if (injectorClass == null) {
           // Return a noop
           irInvoke(
-            dispatchReceiver = irGetObject(symbols.metroMembersInjectors),
-            callee = symbols.metroMembersInjectorsNoOp,
-          )
-            .apply { putTypeArgument(0, injectedType) }.let {
-              with(metroProviderSymbols) {
-                transformMetroProvider(it, contextualTypeKey)
-              }
-            }
+              dispatchReceiver = irGetObject(symbols.metroMembersInjectors),
+              callee = symbols.metroMembersInjectorsNoOp,
+            )
+            .apply { putTypeArgument(0, injectedType) }
+            .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         } else {
           val createFunction = injectorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
           val args =
@@ -1754,25 +1746,23 @@ internal class DependencyGraphTransformer(
               generationContext,
             )
           instanceFactory(
-            injectedType,
-            // InjectableClass_MembersInjector.create(stringValueProvider,
-            // exampleComponentProvider)
-            irInvoke(
-              dispatchReceiver = if (injectorClass.isObject) {
-                irGetObject(injectorClass.symbol)
-              } else {
-                // It's static from java, dagger interop
-                check(createFunction.owner.isStatic)
-                null
-              },
-              callee = createFunction,
-              args = args,
-            ),
-          ).let {
-            with(metroProviderSymbols) {
-              transformMetroProvider(it, contextualTypeKey)
-            }
-          }
+              injectedType,
+              // InjectableClass_MembersInjector.create(stringValueProvider,
+              // exampleComponentProvider)
+              irInvoke(
+                dispatchReceiver =
+                  if (injectorClass.isObject) {
+                    irGetObject(injectorClass.symbol)
+                  } else {
+                    // It's static from java, dagger interop
+                    check(createFunction.owner.isStatic)
+                    null
+                  },
+                callee = createFunction,
+                args = args,
+              ),
+            )
+            .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         }
       }
 
@@ -1826,11 +1816,11 @@ internal class DependencyGraphTransformer(
             )
           }
         irInvoke(
-          dispatchReceiver = null,
-          callee = symbols.metroProviderFunction,
-          typeHint = binding.typeKey.type.wrapInProvider(symbols.metroProvider),
-          args = listOf(lambda),
-        )
+            dispatchReceiver = null,
+            callee = symbols.metroProviderFunction,
+            typeHint = binding.typeKey.type.wrapInProvider(symbols.metroProvider),
+            args = listOf(lambda),
+          )
           .apply { putTypeArgument(0, binding.typeKey.type) }
       }
     }
@@ -1948,10 +1938,10 @@ internal class DependencyGraphTransformer(
     // SetFactory.<String>builder(1, 1)
     val builder: IrExpression =
       irInvoke(
-        dispatchReceiver = irGetObject(symbols.setFactoryCompanionObject),
-        callee = symbols.setFactoryBuilderFunction,
-        typeHint = symbols.setFactoryBuilder.typeWith(elementType),
-      )
+          dispatchReceiver = irGetObject(symbols.setFactoryCompanionObject),
+          callee = symbols.setFactoryBuilderFunction,
+          typeHint = symbols.setFactoryBuilder.typeWith(elementType),
+        )
         .apply {
           putTypeArgument(0, elementType)
           putValueArgument(0, irInt(individualProviders.size))
@@ -1961,10 +1951,10 @@ internal class DependencyGraphTransformer(
     val withProviders =
       individualProviders.fold(builder) { receiver, provider ->
         irInvoke(
-          dispatchReceiver = receiver,
-          callee = symbols.setFactoryBuilderAddProviderFunction,
-          typeHint = builder.type,
-        )
+            dispatchReceiver = receiver,
+            callee = symbols.setFactoryBuilderAddProviderFunction,
+            typeHint = builder.type,
+          )
           .apply {
             putValueArgument(
               0,
@@ -1977,10 +1967,10 @@ internal class DependencyGraphTransformer(
     val withCollectionProviders =
       collectionProviders.fold(withProviders) { receiver, provider ->
         irInvoke(
-          dispatchReceiver = receiver,
-          callee = symbols.setFactoryBuilderAddCollectionProviderFunction,
-          typeHint = builder.type,
-        )
+            dispatchReceiver = receiver,
+            callee = symbols.setFactoryBuilderAddCollectionProviderFunction,
+            typeHint = builder.type,
+          )
           .apply {
             putValueArgument(
               0,
@@ -2051,10 +2041,10 @@ internal class DependencyGraphTransformer(
     // MapProviderFactory.<Integer, Integer>builder(2)
     val builder: IrExpression =
       irInvoke(
-        dispatchReceiver = irGetObject(targetCompanionObject),
-        callee = builderFunction,
-        typeHint = builderType.typeWith(keyType, valueType),
-      )
+          dispatchReceiver = irGetObject(targetCompanionObject),
+          callee = builderFunction,
+          typeHint = builderType.typeWith(keyType, valueType),
+        )
         .apply {
           putTypeArgument(0, keyType)
           putTypeArgument(1, valueType)

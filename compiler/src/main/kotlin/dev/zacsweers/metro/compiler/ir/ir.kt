@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.metroAnnotations
+import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -91,7 +92,6 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import java.util.Objects
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -411,15 +411,12 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
         dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
         callee = symbols.providerOfLazyCreate,
         args = listOf(providerExpression),
-        typeHint = contextKey.typeKey.type.wrapInLazy(symbols)
-          .wrapInProvider(symbols.metroProvider),
+        typeHint = contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
       )
     }
 
     contextKey.isWrappedInProvider -> {
-      with(providerSymbols) {
-        transformMetroProvider(providerExpression, contextKey)
-      }
+      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
     }
 
     // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
@@ -429,9 +426,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     // to a Provider and we can simply use the parameter name in the
     // argument list.
     contextKey.isWrappedInLazy && isAssisted -> {
-      with(providerSymbols) {
-        transformMetroProvider(providerExpression, contextKey)
-      }
+      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
     }
 
     contextKey.isWrappedInLazy -> {
@@ -446,16 +441,15 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
     isAssisted || isGraphInstance -> {
       // provider
-      with(providerSymbols) {
-        transformMetroProvider(providerExpression, contextKey)
-      }
+      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
     }
 
     else -> {
       // provider.invoke()
-      val metroProviderExpression = with(providerSymbols) {
-        transformToMetroProvider(providerExpression, contextKey.typeKey.type)
-      }
+      val metroProviderExpression =
+        with(providerSymbols) {
+          transformToMetroProvider(providerExpression, contextKey.typeKey.type)
+        }
       irInvoke(
         dispatchReceiver = metroProviderExpression,
         callee = symbols.providerInvoke,
@@ -551,11 +545,11 @@ internal fun IrExpression.doubleCheck(
   with(irBuilder) {
     val providerType = typeKey.type.wrapInProvider(symbols.metroProvider)
     irInvoke(
-      dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-      callee = symbols.doubleCheckProvider,
-      typeHint = providerType,
-      args = listOf(this@doubleCheck),
-    )
+        dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+        callee = symbols.doubleCheckProvider,
+        typeHint = providerType,
+        args = listOf(this@doubleCheck),
+      )
       .apply {
         putTypeArgument(0, providerType)
         putTypeArgument(1, typeKey.type)
@@ -664,11 +658,11 @@ internal val IrType.simpleName: String
 internal val IrProperty.allAnnotations: List<IrConstructorCall>
   get() {
     return buildList {
-      addAll(annotations)
-      getter?.let { addAll(it.annotations) }
-      setter?.let { addAll(it.annotations) }
-      backingField?.let { addAll(it.annotations) }
-    }
+        addAll(annotations)
+        getter?.let { addAll(it.annotations) }
+        setter?.let { addAll(it.annotations) }
+        backingField?.let { addAll(it.annotations) }
+      }
       .distinct()
   }
 
@@ -703,7 +697,7 @@ internal val IrClass.isMetroGenerated: Boolean
   }
 
 internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
-  dispatchReceiverParameter: IrValueParameter,
+  dispatchReceiverParameter: IrValueParameter
 ) {
   check(isFakeOverride) { "Function $name is not a fake override!" }
   isFakeOverride = false
@@ -719,12 +713,12 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
 
 // TODO is there a faster way to do this use case?
 internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequence<S> where
-  S : IrSymbol {
+S : IrSymbol {
   return overriddenSymbolsSequence(mutableSetOf())
 }
 
 private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
-  visited: MutableSet<S>,
+  visited: MutableSet<S>
 ): Sequence<S> where S : IrSymbol {
   return sequence {
     for (overridden in overriddenSymbols) {
