@@ -26,6 +26,8 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     val classIds =
       ClassIds(
+        customProviderClasses = options.customProviderTypes,
+        customLazyClasses = options.customLazyTypes,
         customAssistedAnnotations = options.customAssistedAnnotations,
         customAssistedFactoryAnnotations = options.customAssistedFactoryAnnotations,
         customAssistedInjectAnnotations = options.customAssistedInjectAnnotations,
