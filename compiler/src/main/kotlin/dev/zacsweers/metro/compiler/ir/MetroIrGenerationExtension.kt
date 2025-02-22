@@ -19,7 +19,7 @@ internal class MetroIrGenerationExtension(
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-    val symbols = Symbols(moduleFragment, pluginContext, classIds)
+    val symbols = Symbols(moduleFragment, pluginContext, classIds, options)
     val context = IrMetroContext(pluginContext, messageCollector, symbols, options)
     val dependencyGraphTransformer = DependencyGraphTransformer(context, moduleFragment)
     // TODO is this really necessary?

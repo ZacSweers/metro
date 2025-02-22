@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -24,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer.ConstructorInjectedFactory
 import kotlin.collections.component1
 import kotlin.collections.component2
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -40,12 +42,14 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
+import kotlin.collections.set
 
 internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroContext by context {
 
@@ -77,8 +81,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   }
 
   fun getOrGenerateInjector(declaration: IrClass): MemberInjectClass? {
-    // TODO if declaration is external to this compilation, look
-    //  up its factory or warn if it doesn't exist
     val injectedClassId: ClassId = declaration.classId ?: return null
     generatedInjectors[injectedClassId]?.let {
       return it
@@ -109,6 +111,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       }
 
     if (injectorClass == null) {
+      if (options.enableDaggerRuntimeInterop) {
+        // TODO Look up where dagger would generate one
+        //  requires memberInjectParameters to support fields
+      }
       // For now, assume there's no members to inject. Would be nice if we could better check this
       // in the future
       generatedInjectors[injectedClassId] = null
@@ -121,7 +127,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     // Loop through _declared_ member inject params. Collect and use to create unique names
     val injectedMembersByClass = declaration.memberInjectParameters(this)
     val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
-    val declaredInjectFunctions: Map<IrSimpleFunction, Parameters<MembersInjectParameter>> =
+    val declaredInjectFunctions =
       parameterGroupsForClass.associateBy { params ->
         val name =
           if (params.isProperty) {
@@ -272,42 +278,42 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
 }
 
 internal fun IrClass.memberInjectParameters(
-  context: IrMetroContext
+  context: IrMetroContext,
 ): Map<ClassId, List<Parameters<MembersInjectParameter>>> {
   return buildList {
-      val nameAllocator =
-        dev.zacsweers.metro.compiler.NameAllocator(
-          mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT
-        )
-      for (type in
-        getAllSuperTypes(context.pluginContext, excludeSelf = false, excludeAny = true)) {
-        val clazz = type.rawTypeOrNull() ?: continue
-        // TODO revisit - can we support this now? Interfaces can declare mutable vars that may not
-        // be implemented in
-        //  the consuming class if using class delegation
-        if (clazz.isInterface) continue
+    val nameAllocator =
+      dev.zacsweers.metro.compiler.NameAllocator(
+        mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT
+      )
+    for (type in
+    getAllSuperTypes(context.pluginContext, excludeSelf = false, excludeAny = true)) {
+      val clazz = type.rawTypeOrNull() ?: continue
+      // TODO revisit - can we support this now? Interfaces can declare mutable vars that may not
+      // be implemented in
+      //  the consuming class if using class delegation
+      if (clazz.isInterface) continue
 
-        val injectedMembers =
-          clazz
-            .declaredCallableMembers(
-              context = context,
-              functionFilter = { it.isAnnotatedWithAny(context.symbols.injectAnnotations) },
-              propertyFilter = {
-                (it.isVar || it.isLateinit) &&
-                  (it.isAnnotatedWithAny(context.symbols.injectAnnotations) ||
-                    it.setter?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true ||
-                    it.backingField?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true)
-              },
-            )
-            .map { it.ir.memberInjectParameters(context, nameAllocator, clazz) }
-            // TODO extension receivers not supported. What about overrides?
-            .toList()
+      val injectedMembers =
+        clazz
+          .declaredCallableMembers(
+            context = context,
+            functionFilter = { it.isAnnotatedWithAny(context.symbols.injectAnnotations) },
+            propertyFilter = {
+              (it.isVar || it.isLateinit) &&
+                (it.isAnnotatedWithAny(context.symbols.injectAnnotations) ||
+                  it.setter?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true ||
+                  it.backingField?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true)
+            },
+          )
+          .map { it.ir.memberInjectParameters(context, nameAllocator, clazz) }
+          // TODO extension receivers not supported. What about overrides?
+          .toList()
 
-        if (injectedMembers.isNotEmpty()) {
-          add(clazz.classIdOrFail to injectedMembers)
-        }
+      if (injectedMembers.isNotEmpty()) {
+        add(clazz.classIdOrFail to injectedMembers)
       }
     }
+  }
     // Reverse it such that the supertypes are first
     .asReversed()
     .associate { it.first to it.second }

@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
@@ -78,6 +79,15 @@ internal class AssistedFactoryTransformer(
 
     if (implClass == null) {
       if (isExternal) {
+        if (options.enableDaggerRuntimeInterop) {
+          // Look up where dagger would generate one
+          val daggerImplClassId = classId.generatedClass("_Impl")
+          val daggerImplClass = pluginContext.referenceClass(daggerImplClassId)?.owner
+          if (daggerImplClass != null) {
+            generatedImpls[classId] = daggerImplClass
+            return daggerImplClass
+          }
+        }
         declaration.reportError(
           "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
         )
@@ -105,7 +115,7 @@ internal class AssistedFactoryTransformer(
       targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
 
     val generatedFactory =
-      injectConstructorTransformer.getOrGenerateFactoryClass(targetType, injectConstructor)
+      injectConstructorTransformer.getOrGenerateFactory(targetType, injectConstructor)
         ?: return null
 
     val constructorParams = injectConstructor.parameters(this)
@@ -134,7 +144,11 @@ internal class AssistedFactoryTransformer(
                 val param =
                   functionParams[assistedParameterKey]
                     ?: error(
-                      "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${functionParams.keys.joinToString("\n")}"
+                      "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
+                        functionParams.keys.joinToString(
+                          "\n"
+                        )
+                      }"
                     )
                 irGet(param)
               }
@@ -144,7 +158,7 @@ internal class AssistedFactoryTransformer(
               irInvoke(
                 dispatchReceiver =
                   irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
-                callee = generatedFactory.requireSimpleFunction(Symbols.StringNames.INVOKE),
+                callee = generatedFactory.invokeFunctionSymbol,
                 args = argumentList,
               ),
             )

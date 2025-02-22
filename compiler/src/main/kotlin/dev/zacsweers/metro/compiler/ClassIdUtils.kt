@@ -194,3 +194,7 @@ public fun ClassId.mergedClassId(): ClassId {
     Name.identifier("Merged" + relativeClassName.asString().capitalizeUS()),
   )
 }
+
+public fun ClassId.generatedClass(suffix: String): ClassId {
+  return joinSimpleNames(separator = "_", suffix = suffix)
+}

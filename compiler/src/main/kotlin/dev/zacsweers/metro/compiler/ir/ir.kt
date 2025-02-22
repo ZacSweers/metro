@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.metroAnnotations
-import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -92,6 +91,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import java.util.Objects
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -231,6 +231,7 @@ private fun IrExpression.computeHashSource(): Any? {
         }
       }
     }
+
     else -> null
   }
 }
@@ -391,48 +392,72 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   isGraphInstance: Boolean,
 ): IrExpression {
   val symbols = context.symbols
-  if (!bindingCode.type.isMetroProviderType(context)) {
+  val providerType = bindingCode.type.findProviderSupertype(context)
+  if (providerType == null) {
     // Not a provider, nothing else to do here!
     return bindingCode
   }
+
+  // More readability
+  val providerExpression = bindingCode
+
+  val providerSymbols = symbols.providerSymbolsFor(contextKey)
+
   return when {
     contextKey.isLazyWrappedInProvider -> {
+      // TODO FIR error if mixing non-metro provider and kotlin lazy
       // ProviderOfLazy.create(provider)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
         callee = symbols.providerOfLazyCreate,
-        args = listOf(bindingCode),
-        typeHint = contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
+        args = listOf(providerExpression),
+        typeHint = contextKey.typeKey.type.wrapInLazy(symbols)
+          .wrapInProvider(symbols.metroProvider),
       )
     }
 
-    contextKey.isWrappedInProvider -> bindingCode
+    contextKey.isWrappedInProvider -> {
+      with(providerSymbols) {
+        transformMetroProvider(providerExpression, contextKey)
+      }
+    }
+
     // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
     // (usually the container is a joined type), therefore we use
     // `.lazy(..)` to convert the Provider to a Lazy. Assisted
     // parameters behave differently and the Lazy type is not changed
     // to a Provider and we can simply use the parameter name in the
     // argument list.
-    contextKey.isWrappedInLazy && isAssisted -> bindingCode
+    contextKey.isWrappedInLazy && isAssisted -> {
+      with(providerSymbols) {
+        transformMetroProvider(providerExpression, contextKey)
+      }
+    }
+
     contextKey.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
       irInvoke(
-        dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-        callee = symbols.doubleCheckLazy,
-        args = listOf(bindingCode),
-        typeHint = contextKey.typeKey.type.wrapInLazy(symbols),
+        dispatchReceiver = irGetObject(providerSymbols.doubleCheckCompanionObject),
+        callee = providerSymbols.doubleCheckLazy,
+        args = listOf(providerExpression),
+        typeHint = contextKey.toIrType(context),
       )
     }
 
     isAssisted || isGraphInstance -> {
       // provider
-      bindingCode
+      with(providerSymbols) {
+        transformMetroProvider(providerExpression, contextKey)
+      }
     }
 
     else -> {
       // provider.invoke()
+      val metroProviderExpression = with(providerSymbols) {
+        transformToMetroProvider(providerExpression, contextKey.typeKey.type)
+      }
       irInvoke(
-        dispatchReceiver = bindingCode,
+        dispatchReceiver = metroProviderExpression,
         callee = symbols.providerInvoke,
         typeHint = contextKey.typeKey.type,
       )
@@ -492,37 +517,13 @@ internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExp
 internal val IrClass.thisReceiverOrFail: IrValueParameter
   get() = this.thisReceiver ?: error("No thisReceiver for $classId")
 
-internal fun IrBuilderWithScope.checkNotNullCall(
-  context: IrMetroContext,
-  parent: IrDeclarationParent,
-  firstArg: IrExpression,
-  message: String,
-): IrExpression =
-  irInvoke(
-      callee = context.symbols.stdlibCheckNotNull,
-      args =
-        listOf(
-          firstArg,
-          irLambda(
-            context.pluginContext,
-            parent = parent, // TODO this is obvi wrong
-            receiverParameter = null,
-            valueParameters = emptyList(),
-            returnType = context.pluginContext.irBuiltIns.stringType,
-            suspend = false,
-          ) {
-            +irReturn(irString(message))
-          },
-        ),
-    )
-    .apply { putTypeArgument(0, firstArg.type) }
-
 internal fun IrClass.getAllSuperTypes(
   pluginContext: IrPluginContext,
   excludeSelf: Boolean = true,
   excludeAny: Boolean = true,
 ): Sequence<IrType> {
   val self = this
+
   // TODO are there ever cases where superTypes includes the current class?
   suspend fun SequenceScope<IrType>.allSuperInterfacesImpl(currentClass: IrClass) {
     for (superType in currentClass.superTypes) {
@@ -550,11 +551,11 @@ internal fun IrExpression.doubleCheck(
   with(irBuilder) {
     val providerType = typeKey.type.wrapInProvider(symbols.metroProvider)
     irInvoke(
-        dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-        callee = symbols.doubleCheckProvider,
-        typeHint = providerType,
-        args = listOf(this@doubleCheck),
-      )
+      dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
+      callee = symbols.doubleCheckProvider,
+      typeHint = providerType,
+      args = listOf(this@doubleCheck),
+    )
       .apply {
         putTypeArgument(0, providerType)
         putTypeArgument(1, typeKey.type)
@@ -651,21 +652,23 @@ internal val IrType.simpleName: String
       is IrClassSymbol -> {
         classifier.owner.name.asString()
       }
+
       is IrScriptSymbol -> error("No simple name for script symbol: ${dumpKotlinLike()}")
       is IrTypeParameterSymbol -> {
         classifier.owner.name.asString()
       }
+
       null -> error("No classifier for ${dumpKotlinLike()}")
     }
 
 internal val IrProperty.allAnnotations: List<IrConstructorCall>
   get() {
     return buildList {
-        addAll(annotations)
-        getter?.let { addAll(it.annotations) }
-        setter?.let { addAll(it.annotations) }
-        backingField?.let { addAll(it.annotations) }
-      }
+      addAll(annotations)
+      getter?.let { addAll(it.annotations) }
+      setter?.let { addAll(it.annotations) }
+      backingField?.let { addAll(it.annotations) }
+    }
       .distinct()
   }
 
@@ -700,7 +703,7 @@ internal val IrClass.isMetroGenerated: Boolean
   }
 
 internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
-  dispatchReceiverParameter: IrValueParameter
+  dispatchReceiverParameter: IrValueParameter,
 ) {
   check(isFakeOverride) { "Function $name is not a fake override!" }
   isFakeOverride = false
@@ -716,12 +719,12 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
 
 // TODO is there a faster way to do this use case?
 internal fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(): Sequence<S> where
-S : IrSymbol {
+  S : IrSymbol {
   return overriddenSymbolsSequence(mutableSetOf())
 }
 
 private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
-  visited: MutableSet<S>
+  visited: MutableSet<S>,
 ): Sequence<S> where S : IrSymbol {
   return sequence {
     for (overridden in overriddenSymbols) {

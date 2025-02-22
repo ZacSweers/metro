@@ -5,17 +5,25 @@ package dev.zacsweers.metro.compiler
 import dev.zacsweers.metro.compiler.Symbols.FqNames.kotlinCollectionsPackageFqn
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
+import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import kotlin.collections.contains
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.builtins.StandardNames
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.explicitParametersCount
@@ -32,11 +40,13 @@ internal class Symbols(
   private val moduleFragment: IrModuleFragment,
   val pluginContext: IrPluginContext,
   val classIds: dev.zacsweers.metro.compiler.ClassIds,
+  val options: MetroOptions,
 ) {
 
   object StringNames {
     const val CREATE = "create"
     const val FACTORY = "factory"
+    const val GET = "get"
     const val INJECT_MEMBERS = "injectMembers"
     const val INVOKE = "invoke"
     const val METRO_FACTORY = "$\$MetroFactory"
@@ -81,6 +91,7 @@ internal class Symbols(
   object Names {
     val bindsClassName = Name.identifier("Binds")
     val create = StringNames.CREATE.asName()
+    val createFactoryProvider = "createFactoryProvider".asName()
     val delegateFactory = Name.identifier("delegateFactory")
     val factoryClassName = Name.identifier("Factory")
     val factoryFunctionName = StringNames.FACTORY.asName()
@@ -105,13 +116,34 @@ internal class Symbols(
 
   // TODO use more constants from StandardNames.FqNames
 
-  private val metroRuntime: IrPackageFragment by lazy { createPackage(METRO_RUNTIME_PACKAGE) }
-  private val metroRuntimeInternal: IrPackageFragment by lazy {
-    createPackage(METRO_RUNTIME_INTERNAL_PACKAGE)
+  private val metroRuntime: IrPackageFragment by lazy {
+    moduleFragment.createPackage(METRO_RUNTIME_PACKAGE)
   }
-  private val stdlib: IrPackageFragment by lazy { createPackage(kotlinPackageFqn.asString()) }
+  private val metroRuntimeInternal: IrPackageFragment by lazy {
+    moduleFragment.createPackage(METRO_RUNTIME_INTERNAL_PACKAGE)
+  }
+  private val stdlib: IrPackageFragment by lazy {
+    moduleFragment.createPackage(kotlinPackageFqn.asString())
+  }
   private val stdlibCollections: IrPackageFragment by lazy {
-    createPackage(kotlinCollectionsPackageFqn.asString())
+    moduleFragment.createPackage(kotlinCollectionsPackageFqn.asString())
+  }
+
+  val metroProviderSymbols = MetroProviderSymbols(metroRuntimeInternal, pluginContext)
+  val daggerSymbols by lazy {
+    check(options.enableDaggerRuntimeInterop)
+    DaggerSymbols(moduleFragment, pluginContext)
+  }
+
+  fun providerSymbolsFor(key: ContextualTypeKey): ProviderSymbols {
+    return key.rawType?.let(::providerSymbolsFor) ?: metroProviderSymbols
+  }
+
+  fun providerSymbolsFor(type: IrType?): ProviderSymbols {
+    val useDaggerInterop =
+      options.enableDaggerRuntimeInterop &&
+        type?.classOrNull?.owner?.classId in daggerSymbols.providerPrimitives
+    return if (useDaggerInterop) daggerSymbols else metroProviderSymbols
   }
 
   val metroCreateGraph: IrSimpleFunctionSymbol by lazy {
@@ -379,6 +411,179 @@ internal class Symbols(
   val lazyTypes
     get() = classIds.lazyTypes
 
-  private fun createPackage(packageName: String): IrPackageFragment =
-    createEmptyExternalPackageFragment(moduleFragment.descriptor, FqName(packageName))
+  sealed class ProviderSymbols {
+    protected abstract val doubleCheck: IrClassSymbol
+
+    val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
+    val doubleCheckProvider by lazy { doubleCheckCompanionObject.requireSimpleFunction("provider") }
+    val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+
+    /** Transforms a given [metroProvider] into the [target] type's provider equivalent. */
+    abstract fun IrBuilderWithScope.transformMetroProvider(
+      metroProvider: IrExpression,
+      target: ContextualTypeKey,
+    ): IrExpression
+
+    /** Transforms a given [provider] into a Metro provider. */
+    abstract fun IrBuilderWithScope.transformToMetroProvider(
+      provider: IrExpression,
+      type: IrType,
+    ): IrExpression
+  }
+
+  class MetroProviderSymbols(
+    private val metroRuntimeInternal: IrPackageFragment,
+    private val pluginContext: IrPluginContext,
+  ) : ProviderSymbols() {
+    override val doubleCheck by lazy {
+      pluginContext.referenceClass(
+        ClassId(metroRuntimeInternal.packageFqName, Name.identifier("DoubleCheck"))
+      )!!
+    }
+
+    override fun IrBuilderWithScope.transformMetroProvider(
+      metroProvider: IrExpression,
+      target: ContextualTypeKey,
+    ): IrExpression {
+      // Nothing to do here!
+      return metroProvider
+    }
+
+    override fun IrBuilderWithScope.transformToMetroProvider(
+      provider: IrExpression,
+      type: IrType,
+    ): IrExpression {
+      // Nothing to do here!
+      return provider
+    }
+  }
+
+  class DaggerSymbols(
+    private val moduleFragment: IrModuleFragment,
+    private val pluginContext: IrPluginContext,
+  ) : ProviderSymbols() {
+
+    private val daggerRuntime: IrPackageFragment by lazy { moduleFragment.createPackage("dagger") }
+
+    private val daggerRuntimeInternal: IrPackageFragment by lazy {
+      moduleFragment.createPackage("dagger.internal")
+    }
+
+    private val daggerInteropRuntime: IrPackageFragment by lazy {
+      moduleFragment.createPackage("dev.zacsweers.metro.interop.dagger")
+    }
+
+    private val daggerInteropRuntimeInternal: IrPackageFragment by lazy {
+      moduleFragment.createPackage("dev.zacsweers.metro.interop.dagger.internal")
+    }
+
+    // TODO double check, its helpers, converters
+
+    val primitives =
+      setOf(
+        ClassIds.DAGGER_LAZY_CLASS_ID,
+        ClassIds.JAVAX_PROVIDER_CLASS_ID,
+        ClassIds.JAKARTA_PROVIDER_CLASS_ID,
+      )
+
+    val providerPrimitives =
+      setOf(ClassIds.JAVAX_PROVIDER_CLASS_ID, ClassIds.JAKARTA_PROVIDER_CLASS_ID)
+
+    override val doubleCheck by lazy {
+      pluginContext.referenceClass(
+        ClassId(
+          daggerInteropRuntimeInternal.packageFqName,
+          Name.identifier("DaggerInteropDoubleCheck"),
+        )
+      )!!
+    }
+
+    override fun IrBuilderWithScope.transformMetroProvider(
+      metroProvider: IrExpression,
+      target: ContextualTypeKey,
+    ): IrExpression {
+      val targetClassId =
+        target.rawType?.classOrNull?.owner?.classId
+          ?: error("Unexpected non-jakarta/javax provider type $target")
+      val interopFunction =
+        when (targetClassId) {
+          ClassIds.JAVAX_PROVIDER_CLASS_ID -> asJavaxProvider
+          ClassIds.JAKARTA_PROVIDER_CLASS_ID -> asJakartaProvider
+          else -> error("Unexpected non-jakarta/javax provider $targetClassId")
+        }
+      return irInvoke(extensionReceiver = metroProvider, callee = interopFunction).apply {
+        putTypeArgument(0, target.typeKey.type)
+      }
+    }
+
+    override fun IrBuilderWithScope.transformToMetroProvider(
+      provider: IrExpression,
+      type: IrType,
+    ): IrExpression {
+      return irInvoke(extensionReceiver = provider, callee = asMetroProvider).apply {
+        putTypeArgument(0, type)
+      }
+    }
+
+    val daggerLazy: IrClassSymbol by lazy {
+      pluginContext.referenceClass(ClassIds.DAGGER_LAZY_CLASS_ID)!!
+    }
+
+    val javaxProvider: IrClassSymbol by lazy {
+      pluginContext.referenceClass(ClassIds.JAVAX_PROVIDER_CLASS_ID)!!
+    }
+
+    val jakartaProvider: IrClassSymbol by lazy {
+      pluginContext.referenceClass(ClassIds.JAKARTA_PROVIDER_CLASS_ID)!!
+    }
+
+    val asJavaxProvider by lazy {
+      pluginContext
+        .referenceFunctions(
+          CallableId(daggerInteropRuntime.packageFqName, "asJavaxProvider".asName())
+        )
+        .single()
+    }
+
+    val asJakartaProvider by lazy {
+      pluginContext
+        .referenceFunctions(
+          CallableId(daggerInteropRuntime.packageFqName, "asJakartaProvider".asName())
+        )
+        .single()
+    }
+
+    val asMetroProvider by lazy {
+      pluginContext
+        .referenceFunctions(
+          CallableId(daggerInteropRuntime.packageFqName, "asMetroProvider".asName())
+        )
+        .first()
+    }
+
+    val asDaggerMembersInjector by lazy {
+      pluginContext
+        .referenceFunctions(
+          CallableId(daggerInteropRuntime.packageFqName, "asDaggerMembersInjector".asName())
+        )
+        .first()
+    }
+
+    val asMetroMembersInjector by lazy {
+      pluginContext
+        .referenceFunctions(
+          CallableId(daggerInteropRuntime.packageFqName, "asMetroMembersInjector".asName())
+        )
+        .first()
+    }
+
+    object ClassIds {
+      val DAGGER_LAZY_CLASS_ID = ClassId(FqName("dagger"), Name.identifier("Lazy"))
+      val JAVAX_PROVIDER_CLASS_ID = ClassId(FqName("javax.inject"), Name.identifier("Provider"))
+      val JAKARTA_PROVIDER_CLASS_ID = ClassId(FqName("jakarta.inject"), Name.identifier("Provider"))
+    }
+  }
 }
+
+private fun IrModuleFragment.createPackage(packageName: String): IrPackageFragment =
+  createEmptyExternalPackageFragment(descriptor, FqName(packageName))
