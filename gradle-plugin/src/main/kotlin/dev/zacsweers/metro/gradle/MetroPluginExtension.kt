@@ -115,6 +115,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
     @JvmOverloads
     public fun includeDagger(includeJavax: Boolean = true, includeJakarta: Boolean = true) {
       enableDaggerRuntimeInterop.set(true)
+
       assisted.add("dagger/assisted/Assisted")
       assistedFactory.add("dagger/assisted/AssistedFactory")
       assistedInject.add("dagger/assisted/AssistedInject")
@@ -124,6 +125,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
       graphFactory.add("dagger/Component.Factory")
       intoMap.add("dagger/multibindings/IntoMap")
       intoSet.add("dagger/multibindings/IntoSet")
+      lazy.addAll("dagger/Lazy")
       mapKey.add("dagger/MapKey")
       multibinds.add("dagger/multibindings/Multibinds")
       provides.addAll("dagger/Provides", "dagger/BindsInstance")
