@@ -35,8 +35,9 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         "dev.zacsweers.metro:runtime:$VERSION",
     )
 
-    val isJvmTarget = kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
-      kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
+    val isJvmTarget =
+        kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
+            kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
     if (isJvmTarget && extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
       project.dependencies.add(
           kotlinCompilation.implementationConfigurationName,
