@@ -110,3 +110,25 @@ abstract class KotlinInjectComponent(
   abstract val message: String
 }
 ```
+
+## Runtime
+
+For more advanced _runtime_ interop with Dagger, you can enable `enableDaggerRuntimeInterop` and add the optional `dagger-interop` dependency.
+
+```kotlin
+metro {
+  interop {
+    enableDaggerRuntimeInterop.set(true)
+    includeDagger()
+  }
+}
+
+dependencies {
+  implementation("dev.zacsweers.metro:interop-dagger:<version>")
+}
+```
+
+This enables two features.
+
+1. Interop with Dagger/Javax/Jakarta's `Provider` and `Lazy` runtime intrinsics.
+2. Interop with generated Dagger factories for constructor-injected and assisted-injected classes. This means that an upstream class that was processed with the dagger compiler and has a generated Java _factory_ class for a constructor injected class can be reused by Metro natively.
