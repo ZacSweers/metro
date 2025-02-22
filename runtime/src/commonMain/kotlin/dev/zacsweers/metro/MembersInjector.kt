@@ -21,7 +21,7 @@ package dev.zacsweers.metro
  *
  * @param T type to inject members of
  */
-public interface MembersInjector<T : Any> {
+public fun interface MembersInjector<T : Any> {
   /**
    * Injects dependencies into the properties and functions of [instance]. Ignores the presence or
    * absence of an injectable constructor.
