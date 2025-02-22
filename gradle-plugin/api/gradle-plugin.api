@@ -7,6 +7,9 @@ public final class dev/zacsweers/metro/gradle/DiagnosticSeverity : java/lang/Enu
 	public static fun values ()[Ldev/zacsweers/metro/gradle/DiagnosticSeverity;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/gradle/MetroExtensionMarker : java/lang/annotation/Annotation {
+}
+
 public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrains/kotlin/gradle/plugin/KotlinCompilerPluginSupportPlugin {
 	public fun <init> ()V
 	public synthetic fun apply (Ljava/lang/Object;)V
@@ -20,17 +23,17 @@ public final class dev/zacsweers/metro/gradle/MetroGradleSubplugin : org/jetbrai
 
 public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension {
 	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
-	public final fun customAnnotations (Lorg/gradle/api/Action;)V
-	public final fun getCustomAnnotations ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations;
 	public final fun getDebug ()Lorg/gradle/api/provider/Property;
 	public final fun getEnableTopLevelFunctionInjection ()Lorg/gradle/api/provider/Property;
 	public final fun getEnabled ()Lorg/gradle/api/provider/Property;
 	public final fun getGenerateAssistedFactories ()Lorg/gradle/api/provider/Property;
+	public final fun getInterop ()Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;
 	public final fun getPublicProviderSeverity ()Lorg/gradle/api/provider/Property;
 	public abstract fun getReportsDestination ()Lorg/gradle/api/file/DirectoryProperty;
+	public final fun interop (Lorg/gradle/api/Action;)V
 }
 
-public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations {
+public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler {
 	public fun <init> (Lorg/gradle/api/model/ObjectFactory;)V
 	public final fun getAssisted ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getAssistedFactory ()Lorg/gradle/api/provider/SetProperty;
@@ -39,24 +42,29 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnno
 	public final fun getContributesBinding ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesTo ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getElementsIntoSet ()Lorg/gradle/api/provider/SetProperty;
+	public abstract fun getEnableDaggerRuntimeInterop ()Lorg/gradle/api/provider/Property;
 	public final fun getGraph ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getGraphFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getInject ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoMap ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getIntoSet ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getLazy ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMapKey ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getMultibinds ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getProvider ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getProvides ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getQualifier ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getScope ()Lorg/gradle/api/provider/SetProperty;
 	public final fun includeAnvil ()V
 	public final fun includeAnvil (Z)V
 	public final fun includeAnvil (ZZ)V
-	public static synthetic fun includeAnvil$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
+	public static synthetic fun includeAnvil$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
 	public final fun includeDagger ()V
 	public final fun includeDagger (Z)V
 	public final fun includeDagger (ZZ)V
-	public static synthetic fun includeDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$CustomAnnotations;ZZILjava/lang/Object;)V
+	public static synthetic fun includeDagger$default (Ldev/zacsweers/metro/gradle/MetroPluginExtension$InteropHandler;ZZILjava/lang/Object;)V
+	public final fun includeJakarta ()V
+	public final fun includeJavax ()V
 	public final fun includeKotlinInject ()V
 }
 

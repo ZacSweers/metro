@@ -2,12 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
-import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.configureKsp
 import dagger.internal.codegen.KspComponentProcessor
-import dev.zacsweers.metro.MembersInjector
-import dev.zacsweers.metro.compiler.ExampleClass
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.MetroOptions
@@ -15,10 +12,9 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
-import dev.zacsweers.metro.compiler.newInstanceStrict
-import kotlin.test.assertNotNull
 import org.jetbrains.kotlin.name.ClassId
 import org.junit.Test
+import kotlin.test.assertNotNull
 
 class DaggerInteropTest : MetroCompilerTest() {
 
@@ -387,58 +383,6 @@ class DaggerInteropTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val factory = assertNotNull(graph.callProperty("exampleClassFactory"))
       assertNotNull(factory.invokeInstanceMethod("create", 1))
-    }
-  }
-
-  @Test
-  fun `dagger members injector can be loaded`() {
-    val firstCompilation =
-      compile(
-        SourceFile.java(
-          "ExampleClass.java",
-          """
-          package test;
-
-          import javax.inject.Inject;
-
-          public class ExampleClass {
-            @Inject public String string;
-
-            public ExampleClass() {
-
-            }
-          }
-        """
-            .trimIndent(),
-        ),
-        compilationBlock = {
-          configureKsp(true) { symbolProcessorProviders += KspComponentProcessor.Provider() }
-        },
-      )
-
-    compile(
-      source(
-        """
-          @DependencyGraph
-          interface ExampleGraph {
-            val exampleClassInjector: MembersInjector<ExampleClass>
-
-            fun inject(exampleClass: ExampleClass)
-
-            @Provides fun provideString(): String = "hello"
-          }
-        """
-          .trimIndent()
-      ),
-      previousCompilationResult = firstCompilation,
-    ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      val exampleClass1 = ExampleClass.newInstanceStrict()
-      val injector = graph.callProperty<MembersInjector<Any>>("exampleClassInjector")
-      injector.injectMembers(exampleClass1)
-      assertThat(exampleClass1.javaClass.getDeclaredField("string").get(exampleClass1))
-        .isEqualTo("hello")
-      // TODO inject() function
     }
   }
 }

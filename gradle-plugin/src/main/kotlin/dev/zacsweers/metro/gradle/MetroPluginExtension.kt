@@ -12,8 +12,7 @@ import org.gradle.api.provider.SetProperty
 @MetroExtensionMarker
 public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFactory) {
 
-  public val interop: InteropHandler =
-      objects.newInstance(InteropHandler::class.java)
+  public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> =
@@ -59,7 +58,8 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
   /**
    * Configures interop to support in generated code, usually from another DI framework.
    *
-   * This is primarily for supplying custom annotations and custom runtime intrinsic types (i.e. `Provider`).
+   * This is primarily for supplying custom annotations and custom runtime intrinsic types (i.e.
+   * `Provider`).
    *
    * Note that the format of the class IDs should be in the Kotlin compiler `ClassId` format, e.g.
    * `kotlin/Map.Entry`.
