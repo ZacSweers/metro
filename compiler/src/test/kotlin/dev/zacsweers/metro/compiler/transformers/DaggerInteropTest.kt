@@ -12,9 +12,9 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
+import kotlin.test.assertNotNull
 import org.jetbrains.kotlin.name.ClassId
 import org.junit.Test
-import kotlin.test.assertNotNull
 
 class DaggerInteropTest : MetroCompilerTest() {
 
