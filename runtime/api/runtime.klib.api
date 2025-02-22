@@ -161,12 +161,12 @@ open annotation class dev.zacsweers.metro/StringKey : kotlin/Annotation { // dev
         final fun <get-value>(): kotlin/String // dev.zacsweers.metro/StringKey.value.<get-value>|<get-value>(){}[0]
 }
 
-abstract fun interface <#A: kotlin/Any> dev.zacsweers.metro/Provider { // dev.zacsweers.metro/Provider|null[0]
-    abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
+abstract fun interface <#A: kotlin/Any> dev.zacsweers.metro/MembersInjector { // dev.zacsweers.metro/MembersInjector|null[0]
+    abstract fun injectMembers(#A) // dev.zacsweers.metro/MembersInjector.injectMembers|injectMembers(1:0){}[0]
 }
 
-abstract interface <#A: kotlin/Any> dev.zacsweers.metro/MembersInjector { // dev.zacsweers.metro/MembersInjector|null[0]
-    abstract fun injectMembers(#A) // dev.zacsweers.metro/MembersInjector.injectMembers|injectMembers(1:0){}[0]
+abstract fun interface <#A: kotlin/Any> dev.zacsweers.metro/Provider { // dev.zacsweers.metro/Provider|null[0]
+    abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
 }
 
 abstract class dev.zacsweers.metro/AppScope // dev.zacsweers.metro/AppScope|null[0]
