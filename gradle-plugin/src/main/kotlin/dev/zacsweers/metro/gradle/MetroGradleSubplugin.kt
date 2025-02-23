@@ -34,6 +34,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         kotlinCompilation.implementationConfigurationName,
         "dev.zacsweers.metro:runtime:$VERSION",
     )
+    if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
+      project.dependencies.add(
+        "commonMainImplementation",
+        "dev.zacsweers.metro:runtime:$VERSION",
+      )
+    }
 
     val isJvmTarget =
         kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
