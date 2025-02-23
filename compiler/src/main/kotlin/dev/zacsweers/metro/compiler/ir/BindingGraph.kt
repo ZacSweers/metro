@@ -67,19 +67,18 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
         is Binding.ConstructorInjected -> {
           // Recursively follow deps from its constructor params
           getConstructorDependencies(
-            binding.type,
             bindingStack,
-            onlyUsePrimaryConstructor = binding.annotations.isInject,
+            binding.injectedConstructor,
           )
         }
         is Binding.Provided -> {
           getFunctionDependencies(binding.providerFunction, bindingStack)
         }
         is Binding.Assisted -> {
+          val targetConstructor = binding.target.injectedConstructor
           getConstructorDependencies(
-            binding.target.type,
             bindingStack,
-            onlyUsePrimaryConstructor = binding.annotations.isInject,
+            targetConstructor,
           )
         }
         is Binding.Multibinding -> {
@@ -288,12 +287,9 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   }
 
   private fun getConstructorDependencies(
-    type: IrClass,
     bindingStack: BindingStack,
-    onlyUsePrimaryConstructor: Boolean,
+    constructor: IrConstructor,
   ): Set<ContextualTypeKey> {
-    val constructor =
-      with(metroContext) { type.findInjectableConstructor(onlyUsePrimaryConstructor) }!!
     return getFunctionDependencies(constructor, bindingStack)
   }
 
