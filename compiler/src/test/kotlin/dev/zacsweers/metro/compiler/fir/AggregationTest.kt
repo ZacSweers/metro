@@ -2009,10 +2009,26 @@ class AggregationTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
+    )
+  }
+
+  @Test
+  fun `explicit bound types into map must declare map key - class is ok`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesIntoMap(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @Inject
+          class Impl : ContributedInterface
+        """
+          .trimIndent()
+      ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key on the explicit bound type but doesn't."
+        "e: ContributedInterface.kt:9:60 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class."
       )
     }
   }

@@ -268,9 +268,10 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val mapKey =
       if (isMapBinding) {
+        val classMapKey = declaration.annotations.mapKeyAnnotation(session)
         val resolvedKey =
           if (explicitBoundType == null) {
-            declaration.annotations.mapKeyAnnotation(session).also {
+            classMapKey.also {
               if (it == null) {
                 reporter.reportOn(
                   annotation.source,
@@ -281,12 +282,12 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               }
             }
           } else {
-            explicitBoundType.annotations.mapKeyAnnotation(session).also {
+            (explicitBoundType.annotations.mapKeyAnnotation(session) ?: classMapKey).also {
               if (it == null) {
                 reporter.reportOn(
                   explicitBoundType.source,
                   FirMetroErrors.AGGREGATION_ERROR,
-                  "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key on the explicit bound type but doesn't.",
+                  "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key but doesn't. Add one on the explicit bound type or the class.",
                   context,
                 )
               }
