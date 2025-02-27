@@ -100,7 +100,7 @@ okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", versio
 
 picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
-slf4jNop = "org.slf4j:slf4j-nop:2.0.16"
+slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
 
 junit = { module = "junit:junit", version = "4.13.2" }
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
