@@ -92,8 +92,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
         is Binding.MembersInjected -> {
           binding.parameters.valueParameters.mapToSet { it.contextualTypeKey }
         }
-        is Binding.BoundInstance -> emptySet()
-        is Binding.GraphDependency -> emptySet()
+        is Binding.ObjectClass, is Binding.BoundInstance, is Binding.GraphDependency -> emptySet()
         is Binding.Absent -> error("Should never happen")
       }
     }

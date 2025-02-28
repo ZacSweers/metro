@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBoundType
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
@@ -34,6 +35,15 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.name.ClassId
 
 internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
+  enum class ContributionKind(val readableName: String) {
+    CONTRIBUTES_TO("ContributesTo"),
+    CONTRIBUTES_BINDING("ContributesBinding"),
+    CONTRIBUTES_INTO_SET("ContributesIntoSet"),
+    CONTRIBUTES_INTO_MAP("ContributesIntoMap");
+    
+    override fun toString(): String = readableName
+  }
+  
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
     val session = context.session
@@ -59,7 +69,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val contribution = Contribution.ContributesTo(declaration, annotation, scope, replaces)
             addContributionAndCheckForDuplicate(
               contribution,
-              "ContributesTo",
+              ContributionKind.CONTRIBUTES_TO,
               contributesToAnnotations,
               annotation,
               scope,
@@ -73,7 +83,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val valid =
               checkBindingContribution(
                 session,
-                "ContributesBinding",
+                ContributionKind.CONTRIBUTES_BINDING,
                 declaration,
                 classQualifier,
                 annotation,
@@ -94,7 +104,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val valid =
               checkBindingContribution(
                 session,
-                "ContributesIntoSet",
+                ContributionKind.CONTRIBUTES_INTO_SET,
                 declaration,
                 classQualifier,
                 annotation,
@@ -115,7 +125,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val valid =
               checkBindingContribution(
                 session,
-                "ContributesIntoMap",
+                ContributionKind.CONTRIBUTES_INTO_MAP,
                 declaration,
                 classQualifier,
                 annotation,
@@ -147,7 +157,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   @OptIn(UnexpandedTypeCheck::class)
   private fun <T : Contribution> checkBindingContribution(
     session: FirSession,
-    kind: String,
+    kind: ContributionKind,
     declaration: FirClass,
     classQualifier: MetroFirAnnotation?,
     annotation: FirAnnotation,
@@ -159,16 +169,17 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     isMapBinding: Boolean,
     createBinding: (FirTypeKey, mapKey: MetroFirAnnotation?) -> T,
   ): Boolean {
-    // Ensure the class is injected
+    val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
     val isAssistedFactory =
       declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
-    val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
-    val isInjectedOrFactory = !isAssistedFactory && injectConstructor == null
-    if (isInjectedOrFactory) {
+    // Ensure the class is injected or an object. Objects are ok IFF they are not @ContributesTo
+    val isNotInjectedOrFactory = !isAssistedFactory && injectConstructor == null
+    val isValidObject = declaration.classKind.isObject && kind != ContributionKind.CONTRIBUTES_TO
+    if (isNotInjectedOrFactory && !isValidObject) {
       reporter.reportOn(
         annotation.source,
         FirMetroErrors.AGGREGATION_ERROR,
-        "`@$kind` is only applicable to constructor-injected classes or assisted factories. Did you forget to inject ${declaration.symbol.classId.asSingleFqName()}?",
+        "`@$kind` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure ${declaration.symbol.classId.asSingleFqName()} is injectable or a bindable object.",
         context,
       )
       return false
@@ -315,7 +326,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
   private inline fun <T : Contribution> addContributionAndCheckForDuplicate(
     contribution: T,
-    kind: String,
+    kind: ContributionKind,
     collection: MutableSet<T>,
     annotation: FirAnnotation,
     scope: ClassId,

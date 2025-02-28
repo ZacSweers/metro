@@ -100,6 +100,31 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `ContributesBinding with implicit bound type - object`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          object Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
   fun `ContributesBinding with implicit bound type - additional scope`() {
     compile(
       source(
@@ -384,6 +409,33 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `ContributesIntoSet with implicit bound type - object`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesIntoSet(AppScope::class)
+          object Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).isNotEmpty()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.first().javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
   fun `ContributesIntoSet with implicit bound type - from another compilation`() {
     val firstResult =
       compile(
@@ -599,6 +651,36 @@ class AggregationTest : MetroCompilerTest() {
         """
           .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces).isNotEmpty()
+      assertThat(contributedInterfaces).hasSize(1)
+      assertThat(contributedInterfaces.entries.first().key.java.name).isEqualTo("test.Impl")
+      assertThat(contributedInterfaces.entries.first().value.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesIntoMap with implicit bound type - object`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ClassKey(Impl::class)
+          @ContributesIntoMap(AppScope::class)
+          object Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Map<KClass<*>, ContributedInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")
@@ -1193,7 +1275,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesBinding` is only applicable to constructor-injected classes or assisted factories. Did you forget to inject test.Impl?"
+        "e: ContributedInterface.kt:9:1 `@ContributesBinding` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
       )
     }
   }
@@ -1657,7 +1739,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoSet` is only applicable to constructor-injected classes or assisted factories. Did you forget to inject test.Impl?"
+        "e: ContributedInterface.kt:9:1 `@ContributesIntoSet` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
       )
     }
   }
@@ -2187,7 +2269,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` is only applicable to constructor-injected classes or assisted factories. Did you forget to inject test.Impl?"
+        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
       )
     }
   }

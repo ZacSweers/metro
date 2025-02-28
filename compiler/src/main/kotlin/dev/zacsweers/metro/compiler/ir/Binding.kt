@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -95,6 +96,41 @@ internal sealed interface Binding {
         parameters,
         dependencies,
       )
+    }
+  }
+
+  // TODO
+  //  - scopes not allowed
+  class ObjectClass(
+    @Poko.Skip override val type: IrClass,
+    override val annotations: MetroAnnotations<IrAnnotation>,
+    override val typeKey: TypeKey,
+  ) : Binding, BindingWithAnnotations, InjectedClassBinding<ObjectClass> {
+    override val scope: IrAnnotation? = null
+    override val parameters: Parameters<out Parameter> = Parameters.empty()
+    override val dependencies: Map<TypeKey, Parameter> = emptyMap()
+
+    override val nameHint: String = type.name.asString()
+    override val contextualTypeKey: ContextualTypeKey =
+      ContextualTypeKey(
+        typeKey,
+        isWrappedInProvider = false,
+        isWrappedInLazy = false,
+        isLazyWrappedInProvider = false,
+        hasDefault = false,
+      )
+
+    override val reportableLocation: CompilerMessageSourceLocation
+      get() = type.location()
+
+    override fun toString() = buildString {
+      append("@Inject ")
+      append(typeKey.render(short = true))
+    }
+
+    override fun withMapKey(mapKey: IrAnnotation?): ObjectClass {
+      if (mapKey == null) return this
+      return ObjectClass(type, annotations.copy(mapKeys = annotations.mapKeys + mapKey), typeKey)
     }
   }
 
@@ -339,6 +375,12 @@ internal sealed interface Binding {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
       val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+
+      if (irClass.isObject) {
+        // TODO make these opt-in?
+        return ObjectClass(irClass, classAnnotations, key)
+      }
+
       val injectableConstructor =
         irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
       val binding =

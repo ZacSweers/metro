@@ -1480,6 +1480,8 @@ internal class DependencyGraphTransformer(
                 )
               }
 
+              is Binding.ObjectClass -> error("Object classes cannot have dependencies")
+
               is Binding.Provided -> {
                 BindingStack.Entry.injectedAt(
                   contextualTypeKey,
@@ -1633,6 +1635,13 @@ internal class DependencyGraphTransformer(
             )
           }
         }
+      }
+      
+      is Binding.ObjectClass -> {
+        instanceFactory(
+          binding.typeKey.type,
+          irGetObject(binding.type.symbol)
+        )
       }
 
       is Binding.Provided -> {

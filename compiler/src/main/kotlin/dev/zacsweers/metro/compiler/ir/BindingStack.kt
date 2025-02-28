@@ -379,6 +379,7 @@ internal fun bindingStackEntryForDependency(
     is Binding.Multibinding -> {
       Entry.contributedToMultibinding(contextKey, binding.declaration)
     }
+    is Binding.ObjectClass -> TODO()
     is Binding.BoundInstance -> TODO()
     is Binding.GraphDependency -> TODO()
     is Binding.Absent -> error("Should never happen")
