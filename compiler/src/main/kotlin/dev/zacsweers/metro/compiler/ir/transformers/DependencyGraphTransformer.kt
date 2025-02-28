@@ -1636,12 +1636,9 @@ internal class DependencyGraphTransformer(
           }
         }
       }
-      
+
       is Binding.ObjectClass -> {
-        instanceFactory(
-          binding.typeKey.type,
-          irGetObject(binding.type.symbol)
-        )
+        instanceFactory(binding.typeKey.type, irGetObject(binding.type.symbol))
       }
 
       is Binding.Provided -> {

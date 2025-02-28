@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -66,20 +65,14 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       when (binding) {
         is Binding.ConstructorInjected -> {
           // Recursively follow deps from its constructor params
-          getConstructorDependencies(
-            bindingStack,
-            binding.injectedConstructor,
-          )
+          getConstructorDependencies(bindingStack, binding.injectedConstructor)
         }
         is Binding.Provided -> {
           getFunctionDependencies(binding.providerFunction, bindingStack)
         }
         is Binding.Assisted -> {
           val targetConstructor = binding.target.injectedConstructor
-          getConstructorDependencies(
-            bindingStack,
-            targetConstructor,
-          )
+          getConstructorDependencies(bindingStack, targetConstructor)
         }
         is Binding.Multibinding -> {
           // This is a manual @Multibinds or triggered by the above
@@ -92,7 +85,9 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
         is Binding.MembersInjected -> {
           binding.parameters.valueParameters.mapToSet { it.contextualTypeKey }
         }
-        is Binding.ObjectClass, is Binding.BoundInstance, is Binding.GraphDependency -> emptySet()
+        is Binding.ObjectClass,
+        is Binding.BoundInstance,
+        is Binding.GraphDependency -> emptySet()
         is Binding.Absent -> error("Should never happen")
       }
     }

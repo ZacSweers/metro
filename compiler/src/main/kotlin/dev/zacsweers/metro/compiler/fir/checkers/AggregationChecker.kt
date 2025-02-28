@@ -40,10 +40,10 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     CONTRIBUTES_BINDING("ContributesBinding"),
     CONTRIBUTES_INTO_SET("ContributesIntoSet"),
     CONTRIBUTES_INTO_MAP("ContributesIntoMap");
-    
+
     override fun toString(): String = readableName
   }
-  
+
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
     val session = context.session
