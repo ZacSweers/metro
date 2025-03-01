@@ -2543,10 +2543,13 @@ class AggregationTest : MetroCompilerTest() {
           interface ExampleGraph
         """
           .trimIndent()
-      )
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.INTERNAL_ERROR,
     ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      assertNotNull(graph.callProperty("contributedInterface"))
+      assertThat(messages)
+        .contains(
+          "Some excluded types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]"
+        )
     }
   }
 }
