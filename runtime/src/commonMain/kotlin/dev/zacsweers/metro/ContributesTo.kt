@@ -20,6 +20,9 @@ import kotlin.reflect.KClass
  * @DependencyGraph(AppScope::class)
  * interface AppGraph
  * ```
+ *
+ * @property scope The scope this interface contributes to.
+ * @property replaces List of interface types that this interface replaces in the scope.
  */
 @Target(CLASS)
 @Repeatable

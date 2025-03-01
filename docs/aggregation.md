@@ -55,6 +55,18 @@ interface NetworkProviders {
 }
 ```
 
+Similar to [kotlin-inject-anvil](https://github.com/amzn/kotlin-inject-anvil), `@ContributesBinding` (as well as the other `@Contributes*` annotations) supports replacing other contributions by class. This is useful for cases like tests, where you may want to contribute a test/fake implementation that supersedes the “real” graph.
+
+```kotlin
+@DependencyGraph(AppScope::class)
+interface TestAppGraph
+
+@ContributesTo(AppScope::class, replaces = [RealNetworkProviders::class])
+interface TestNetworkProviders {
+  @Provides fun provideHttpClient(): TestHttpClient
+}
+```
+
 ## @ContributesBinding
 
 This annotation is used to contribute injected classes to a target scope as a given bound type.

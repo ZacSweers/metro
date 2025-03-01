@@ -34,6 +34,12 @@ import kotlin.reflect.KClass
  *
  * If this declaration is qualified, the [Qualifier] annotation will be propagated to the generated
  * [IntoSet] declaration.
+ *
+ * @property scope The scope this binding contributes to.
+ * @property replaces List of other contributing classes that this binding should replace in the
+ *   scope.
+ * @property boundType The explicit bound type for this contribution, if not using the implicit
+ *   supertype.
  */
 @Target(CLASS)
 @Repeatable

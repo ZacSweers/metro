@@ -783,6 +783,9 @@ internal fun FirAnnotation.additionalScopesArgument() =
 internal fun FirAnnotation.excludesArgument() =
   argumentAsOrNull<FirArrayLiteral>("excludes".asName(), index = 2)
 
+internal fun FirAnnotation.replacesArgument() =
+  argumentAsOrNull<FirArrayLiteral>("replaces".asName(), index = 1)
+
 internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
 
 internal fun FirAnnotation.resolvedBoundType() =
@@ -832,6 +835,20 @@ internal fun FirAnnotation.resolvedExcludedClassIds(
     excludesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
       ?: excludesArgument.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
   return excluded.toSet()
+}
+
+internal fun FirAnnotation.resolvedReplacedClassIds(
+  typeResolver: TypeResolveService
+): Set<ClassId> {
+  val replacesArgument =
+    replacesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
+      ?: return emptySet()
+  // Try to resolve it normally first. If this fails,
+  // try to resolve within the enclosing scope
+  val replaced =
+    replacesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
+      ?: replacesArgument.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
+  return replaced.toSet()
 }
 
 internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId

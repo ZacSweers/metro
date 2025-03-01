@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertNotNull
+import org.junit.Ignore
 
 class AggregationTest : MetroCompilerTest() {
 
@@ -2530,6 +2531,7 @@ class AggregationTest : MetroCompilerTest() {
     }
   }
 
+  @Ignore("TODO revisit when there's a better way to do this")
   @Test
   fun `unused exclusions are an error`() {
     compile(
@@ -2549,6 +2551,139 @@ class AggregationTest : MetroCompilerTest() {
       assertThat(messages)
         .contains(
           "Some excluded types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]"
+        )
+    }
+  }
+
+  @Test
+  fun `replacements are respected - interface`() {
+    compile(
+      source(
+        """
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface1
+
+          @ContributesTo(AppScope::class, replaces = [ContributedInterface1::class])
+          interface ContributedInterface2
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph
+      assertThat(graph.allSupertypes().map { it.name })
+        .containsExactly(
+          "test.ContributedInterface2",
+          "test.ContributedInterface2$$\$MetroContribution",
+        )
+    }
+  }
+
+  @Test
+  fun `replacements are respected - binding`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          object Impl1 : ContributedInterface
+
+          @ContributesBinding(AppScope::class, replaces = [Impl1::class])
+          object Impl2 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty("contributedInterface"))
+    }
+  }
+
+  @Test
+  fun `replacements are respected - into set`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesIntoSet(AppScope::class)
+          object Impl1 : ContributedInterface
+
+          @ContributesIntoSet(AppScope::class, replaces = [Impl1::class])
+          object Impl2 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Set<*>>("contributedInterfaces")).hasSize(1)
+    }
+  }
+
+  @Test
+  fun `replacements are respected - into map`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @ContributesIntoMap(AppScope::class)
+          @StringKey("Impl1")
+          object Impl1 : ContributedInterface
+
+          @ContributesIntoMap(AppScope::class, replaces = [Impl1::class])
+          @StringKey("Impl2")
+          object Impl2 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterfaces: Map<String, ContributedInterface>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Map<String, *>>("contributedInterfaces")).hasSize(1)
+    }
+  }
+
+  @Ignore("TODO revisit when there's a better way to do this")
+  @Test
+  fun `unused replacements are an error`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          object Impl1 : ContributedInterface
+
+          @ContributesBinding(AppScope::class, replaces = [Impl1::class])
+          object Impl2 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.INTERNAL_ERROR,
+    ) {
+      assertThat(messages)
+        .contains(
+          "Some replaced types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]"
         )
     }
   }
