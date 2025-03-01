@@ -115,6 +115,9 @@ This annotation is *repeatable* and can be used to contribute to multiple scopes
 class CacheImpl(...) : Cache, AnotherType
 ```
 
+!!! tip
+    Contributions may be `object` classes. In this event, Metro will automatically provide the object instance in its binding.
+
 ## @ContributesIntoSet/@ContributesIntoMap
 
 To contribute into a multibinding, use the `@ContributesIntoSet` or `@ContributesIntoMap` annotations as needed.
