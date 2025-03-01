@@ -36,8 +36,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     )
     if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
       project.dependencies.add(
-        "commonMainImplementation",
-        "dev.zacsweers.metro:runtime:$VERSION",
+          "commonMainImplementation",
+          "dev.zacsweers.metro:runtime:$VERSION",
       )
     }
 
