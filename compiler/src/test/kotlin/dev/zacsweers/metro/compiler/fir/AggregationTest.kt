@@ -679,8 +679,7 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      debug = true,
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces")

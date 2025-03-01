@@ -484,8 +484,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
           }
         """
             .trimIndent()
-        ),
-        debug = true,
+        )
       )
       .apply {
         val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
