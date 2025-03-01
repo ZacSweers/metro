@@ -780,6 +780,9 @@ internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), ind
 internal fun FirAnnotation.additionalScopesArgument() =
   argumentAsOrNull<FirArrayLiteral>("additionalScopes".asName(), index = 1)
 
+internal fun FirAnnotation.excludesArgument() =
+  argumentAsOrNull<FirArrayLiteral>("excludes".asName(), index = 2)
+
 internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
 
 internal fun FirAnnotation.resolvedBoundType() =
@@ -806,15 +809,29 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =
 
 internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
   typeResolver: TypeResolveService
-): List<ClassId>? {
-  val scopeArgument =
+): List<ClassId> {
+  val additionalScopes =
     additionalScopesArgument()?.argumentList?.arguments?.mapNotNull {
       it.expectAsOrNull<FirGetClassCall>()
-    } ?: return null
+    } ?: return emptyList()
   // Try to resolve it normally first. If this fails,
   // try to resolve within the enclosing scope
-  return scopeArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
-    ?: scopeArgument.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
+  return additionalScopes.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
+    ?: additionalScopes.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
+}
+
+internal fun FirAnnotation.resolvedExcludedClassIds(
+  typeResolver: TypeResolveService
+): Set<ClassId> {
+  val excludesArgument =
+    excludesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
+      ?: return emptySet()
+  // Try to resolve it normally first. If this fails,
+  // try to resolve within the enclosing scope
+  val excluded =
+    excludesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
+      ?: excludesArgument.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
+  return excluded.toSet()
 }
 
 internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId

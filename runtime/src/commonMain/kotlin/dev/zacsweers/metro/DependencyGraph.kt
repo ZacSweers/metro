@@ -91,11 +91,15 @@ import kotlin.reflect.KClass
  *   /* fake */ override val RealHttpClient.bind: HttpClient
  * }
  * ```
+ *
+ * @property excludes Optional list of excluded contributing classes (requires a [scope] to be
+ *   defined).
  */
 @Target(AnnotationTarget.CLASS)
 public annotation class DependencyGraph(
   val scope: KClass<*> = Nothing::class,
   val additionalScopes: Array<KClass<*>> = [],
+  val excludes: Array<KClass<*>> = [],
 ) {
   /**
    * Graph factories can be declared as a single nested declaration within the target graph to
