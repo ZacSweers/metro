@@ -242,7 +242,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
       if (boundTypeRef == null) {
         contribution.annotatedType.mapKeyAnnotation(session)
       } else {
-        boundTypeRef.annotations.mapKeyAnnotation(session)
+        // Call back to the class if the bound type doesn't have one
+        boundTypeRef.annotations.mapKeyAnnotation(session) ?: contribution.annotatedType.mapKeyAnnotation(session)
       }
 
     val suffix = buildString {
