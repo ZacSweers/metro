@@ -73,8 +73,8 @@ internal sealed interface Binding {
         hasDefault = false,
       )
 
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = type.locationOrNull()
 
     fun parameterFor(typeKey: TypeKey) =
       injectedConstructor.valueParameters[
@@ -99,8 +99,6 @@ internal sealed interface Binding {
     }
   }
 
-  // TODO
-  //  - scopes not allowed
   class ObjectClass(
     @Poko.Skip override val type: IrClass,
     override val annotations: MetroAnnotations<IrAnnotation>,
@@ -120,8 +118,8 @@ internal sealed interface Binding {
         hasDefault = false,
       )
 
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = type.locationOrNull()
 
     override fun toString() = buildString {
       append("@Inject ")
@@ -166,8 +164,8 @@ internal sealed interface Binding {
 
     override val nameHint: String = providerFunction.name.asString()
 
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = providerFunction.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = providerFunction.locationOrNull()
 
     fun parameterFor(typeKey: TypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
@@ -213,8 +211,8 @@ internal sealed interface Binding {
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey)
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = type.locationOrNull()
 
     override fun withMapKey(mapKey: IrAnnotation?): Assisted {
       if (mapKey == null) return this
