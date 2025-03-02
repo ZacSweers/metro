@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
+import dev.zacsweers.metro.compiler.assertNoWarningsOrErrors
 import org.junit.Test
 
 class InjectConstructorErrorsTest : MetroCompilerTest() {
@@ -40,6 +41,22 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
       assertDiagnostics(
         "w: ExampleClass.kt:6:20 There are no parameters on the @Inject-annotated constructor. Consider moving the annotation to the class instead."
       )
+    }
+  }
+
+  @Test
+  fun `do not suggest moving inject annotation to class if secondary constructor is empty`() {
+    compile(
+      source(
+        """
+            class ExampleClass internal constructor(int: Int) {
+              @Inject constructor() : this(0)
+            }
+          """
+          .trimIndent()
+      )
+    ) {
+      assertNoWarningsOrErrors()
     }
   }
 

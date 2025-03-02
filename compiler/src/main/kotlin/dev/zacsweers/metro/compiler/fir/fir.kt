@@ -383,17 +383,19 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
     0 -> null
     1 -> {
       constructorInjections[0].also {
-        val isAssisted =
-          it.annotations.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-        if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
-          reporter.reportOn(
-            it.annotations
-              .annotationsIn(session, session.classIds.injectAnnotations)
-              .single()
-              .source,
-            FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
-            context,
-          )
+        if (it.isPrimary) {
+          val isAssisted =
+            it.annotations.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+          if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
+            reporter.reportOn(
+              it.annotations
+                .annotationsIn(session, session.classIds.injectAnnotations)
+                .single()
+                .source,
+              FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
+              context,
+            )
+          }
         }
       }
     }
