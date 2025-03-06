@@ -237,7 +237,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
             val providerScope = annotations.scope
             val classScope = returnClass.annotations.scopeAnnotation(session)
             // TODO maybe we should report matching keys but different scopes? Feels like it could be confusing at best
-            if (providerScope != null && classScope != null && providerScope != classScope) {
+            if (providerScope == classScope) {
               reporter.reportOn(
                 source,
                 FirMetroErrors.PROVIDES_WARNING,

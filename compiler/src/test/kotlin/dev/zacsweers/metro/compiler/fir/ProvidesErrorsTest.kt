@@ -606,7 +606,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
               @Provides @Named("hello") fun provideExampleClass(): ExampleClass = ExampleClass()
             }
 
-             @Named("hello")
+            @Named("hello")
             @Inject
             class ExampleClass
           """
