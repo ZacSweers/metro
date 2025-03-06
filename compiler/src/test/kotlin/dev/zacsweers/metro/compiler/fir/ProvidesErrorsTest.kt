@@ -572,6 +572,29 @@ class ProvidesErrorsTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `provided injected classes with matching type keys but different scopes are ok`() {
+    compile(
+      source(
+        """
+            @SingleIn(AppScope::class) 
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Provides @SingleIn(AppScope::class) fun provideExampleClass(): ExampleClass = ExampleClass()
+            }
+
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      ),
+    ) {
+      assertNoWarningsOrErrors()
+    }
+  }
+
+  @Test
   fun `provided injected classes with matching type keys are reported as warnings - qualified`() {
     compile(
       source(

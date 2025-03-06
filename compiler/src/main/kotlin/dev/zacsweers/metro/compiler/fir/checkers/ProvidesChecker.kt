@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.scopeAnnotation
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -229,17 +230,22 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           .firstOrNull()
 
         if (injectConstructor != null) {
-          // If the type keys are the same,
+          // If the type keys and scope are the same, this is redundant
           val classTypeKey = FirTypeKey.from(session, returnType, returnClass.annotations)
           val providerTypeKey = FirTypeKey.from(session, returnType, declaration.annotations)
           if (classTypeKey == providerTypeKey) {
-            reporter.reportOn(
-              source,
-              FirMetroErrors.PROVIDES_WARNING,
-              "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.",
-              context,
-            )
-            return
+            val providerScope = annotations.scope
+            val classScope = returnClass.annotations.scopeAnnotation(session)
+            // TODO maybe we should report matching keys but different scopes? Feels like it could be confusing at best
+            if (providerScope != null && classScope != null && providerScope != classScope) {
+              reporter.reportOn(
+                source,
+                FirMetroErrors.PROVIDES_WARNING,
+                "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.",
+                context,
+              )
+              return
+            }
           }
         }
       }
