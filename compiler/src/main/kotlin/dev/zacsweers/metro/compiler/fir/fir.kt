@@ -30,8 +30,10 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
+import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
@@ -91,6 +93,7 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -788,12 +791,27 @@ internal fun FirAnnotation.replacesArgument() =
 
 internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
 
-internal fun FirAnnotation.resolvedBoundType() =
-  boundTypeArgument()
-    ?.typeArguments
-    ?.get(0)
-    ?.expectAsOrNull<FirTypeProjectionWithVariance>()
-    ?.typeRef
+internal fun FirAnnotation.resolvedBoundType(session: FirSession): FirTypeRef? {
+  // Return a BoundType defined using metro api's
+  boundTypeArgument()?.let { boundType ->
+    return boundType.typeArguments[0].expectAsOrNull<FirTypeProjectionWithVariance>()?.typeRef
+  }
+  // Return a boundType defined using anvil KClass
+  return kClassBoundTypeArgument(session)
+}
+
+internal fun FirAnnotation.kClassBoundTypeArgument(session: FirSession): FirTypeRef? {
+  return getAnnotationKClassArgument("boundType".asName(), session)?.toFirResolvedTypeRef()
+}
+
+internal fun FirAnnotation.getAnnotationKClassArgument(
+  name: Name,
+  session: FirSession,
+): ConeKotlinType? {
+  val argument = findArgumentByName(name) ?: return null
+  val getClassCall = argument.evaluateAs<FirGetClassCall>(session) ?: return null
+  return getClassCall.getTargetType()
+}
 
 internal fun FirAnnotation.resolvedScopeClassId() = scopeArgument()?.resolvedClassId()
 

@@ -203,7 +203,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val supertypesExcludingAny = declaration.superTypeRefs.filterNot { it.coneType.isAny }
     val hasSupertypes = supertypesExcludingAny.isNotEmpty()
 
-    val explicitBoundType = annotation.resolvedBoundType()
+    val explicitBoundType = annotation.resolvedBoundType(session)
 
     val typeKey =
       if (explicitBoundType != null) {

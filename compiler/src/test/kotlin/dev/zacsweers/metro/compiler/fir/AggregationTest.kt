@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertNotNull
+import org.jetbrains.kotlin.name.ClassId
 import org.junit.Ignore
 
 class AggregationTest : MetroCompilerTest() {
@@ -1071,6 +1072,52 @@ class AggregationTest : MetroCompilerTest() {
       val contributedInterface2 = graph.callProperty<Any>("contributedInterface2")
       assertThat(contributedInterface2).isNotNull()
       assertThat(contributedInterface2.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding annotations with different scopes and same bound types are ok2`() {
+    compile(
+      source(
+        packageName = "com.squareup.anvil.annotations",
+        source =
+          """
+            annotation class ContributesBinding(
+              val scope: KClass<*>,
+              val boundType: KClass<*> = Unit::class,
+            )
+            """
+            .trimIndent(),
+      ),
+      source(
+        """
+          import com.squareup.anvil.annotations.ContributesBinding
+          import dev.zacsweers.metro.Inject
+
+          interface ContributedInterface
+          interface SecondInterface
+
+          @ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @Inject
+          class Impl : ContributedInterface, SecondInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      options =
+        metroOptions.copy(
+          customContributesBindingAnnotations =
+            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
+        ),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
     }
   }
 

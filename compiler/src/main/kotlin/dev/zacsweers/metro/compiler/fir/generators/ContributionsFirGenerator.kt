@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.kClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -192,12 +193,16 @@ internal class ContributionsFirGenerator(session: FirSession) :
   }
 
   private fun FirAnnotation.boundTypeOrNull(): FirTypeRef? {
-    return argumentAsOrNull<FirFunctionCall>("boundType".asName(), 2)
-      ?.typeArguments
-      ?.getOrNull(0)
-      ?.expectAsOrNull<FirTypeProjectionWithVariance>()
-      ?.typeRef
-      ?.takeUnless { it == session.builtinTypes.nothingType }
+    // Return a BoundType defined using metro api's
+    argumentAsOrNull<FirFunctionCall>("boundType".asName(), 2)?.let { boundType ->
+      return boundType.typeArguments
+        .getOrNull(0)
+        ?.expectAsOrNull<FirTypeProjectionWithVariance>()
+        ?.typeRef
+        ?.takeUnless { it == session.builtinTypes.nothingType }
+    }
+    // Return a boundType defined using anvil KClass
+    return kClassBoundTypeArgument(session)
   }
 
   override fun generateProperties(
