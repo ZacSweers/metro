@@ -548,4 +548,49 @@ class ProvidesErrorsTest : MetroCompilerTest() {
         .trimIndent()
     )
   }
+
+  @Test
+  fun `provided injected classes with matching type keys are reported as warnings`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Provides fun provideExampleClass(): ExampleClass = ExampleClass()
+            }
+
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      ),
+    ) {
+      assertDiagnostics("w: ExampleGraph.kt:10:17 Provided type 'test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.")
+    }
+  }
+
+  @Test
+  fun `provided injected classes with matching type keys are reported as warnings - qualified`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Provides @Named("hello") fun provideExampleClass(): ExampleClass = ExampleClass()
+            }
+
+             @Named("hello")
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      ),
+    ) {
+      assertDiagnostics("w: ExampleGraph.kt:10:33 Provided type '@Named(\"hello\") test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.")
+    }
+  }
 }

@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -26,6 +27,7 @@ import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
@@ -75,7 +77,8 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
-    if (declaration.returnTypeRef.source?.kind is KtFakeSourceElementKind.ImplicitTypeRef) {
+    val returnTypeRef = declaration.returnTypeRef
+    if (returnTypeRef.source?.kind is KtFakeSourceElementKind.ImplicitTypeRef) {
       reporter.reportOn(
         source,
         FirMetroErrors.PROVIDES_ERROR,
@@ -85,7 +88,8 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
-    if (declaration.returnTypeRef.coneTypeOrNull?.isMarkedNullable == true) {
+    val returnType = returnTypeRef.coneTypeOrNull ?: return
+    if (returnType.isMarkedNullable) {
       reporter.reportOn(
         source,
         FirMetroErrors.PROVIDES_ERROR,
@@ -216,6 +220,28 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           context,
         )
         return
+      }
+
+      if (returnType.typeArguments.isEmpty()) {
+        val returnClass = returnType.toClassSymbol(session) ?: return
+        val injectConstructor = returnClass
+          .findInjectConstructors(session)
+          .firstOrNull()
+
+        if (injectConstructor != null) {
+          // If the type keys are the same,
+          val classTypeKey = FirTypeKey.from(session, returnType, returnClass.annotations)
+          val providerTypeKey = FirTypeKey.from(session, returnType, declaration.annotations)
+          if (classTypeKey == providerTypeKey) {
+            reporter.reportOn(
+              source,
+              FirMetroErrors.PROVIDES_WARNING,
+              "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.",
+              context,
+            )
+            return
+          }
+        }
       }
     }
   }

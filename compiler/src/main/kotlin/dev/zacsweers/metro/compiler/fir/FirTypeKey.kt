@@ -15,7 +15,10 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.renderer.ConeIdRendererForDiagnostics
 import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
@@ -85,9 +88,17 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
       typeRef: FirTypeRef,
       annotations: List<FirAnnotation>,
     ): FirTypeKey {
-      // Check duplicate params
       val qualifier = annotations.qualifierAnnotation(session)
       return FirTypeKey(typeRef.coneType, qualifier)
+    }
+
+    fun from(
+      session: FirSession,
+      coneType: ConeKotlinType,
+      annotations: List<FirAnnotation>
+    ): FirTypeKey {
+      val qualifier = annotations.qualifierAnnotation(session)
+      return FirTypeKey(coneType, qualifier)
     }
   }
 
