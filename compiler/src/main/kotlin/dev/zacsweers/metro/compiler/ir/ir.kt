@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.metroAnnotations
+import java.io.File
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
@@ -118,6 +119,17 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
     columnEnd = sourceRangeInfo.endColumnNumber + 1,
     lineContent = null,
   )!!
+}
+
+internal fun CompilerMessageSourceLocation.render(): String {
+  return buildString {
+    val fileUri = File(path).toPath().toUri()
+    append("$fileUri")
+    if (line > 0 && column > 0) {
+      append(":$line:$column")
+    }
+    append(' ')
+  }
 }
 
 /** Returns the raw [IrClass] of this [IrType] or throws. */
