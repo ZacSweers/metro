@@ -31,7 +31,7 @@ public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
          */
         return delegate
       }
-      return DoubleCheck<T>(delegate)
+      return DoubleCheck(delegate)
     }
 
     /** Returns a [Lazy] that caches the value from the given provider. */
@@ -45,7 +45,7 @@ public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
         // the same, so it will be fine for that case.
         return lazy
       }
-      return DoubleCheck<T>(provider)
+      return DoubleCheck(provider)
     }
   }
 }

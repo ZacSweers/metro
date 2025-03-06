@@ -59,7 +59,7 @@ public class MapFactory<K : Any, V : Any> private constructor(map: Map<K, Provid
 
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
-      return Builder<K, V>(size)
+      return Builder(size)
     }
 
     /** Returns a factory of an empty map. */
