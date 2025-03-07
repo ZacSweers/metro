@@ -22,6 +22,7 @@ class AnvilTest {
 
     val message: String
     val baseClass: BaseClass
+    val baseClass2: BaseClass2
 
     @MergeComponent.Factory
     interface Factory {
@@ -36,6 +37,13 @@ class AnvilTest {
   @ContributesBinding(AppScope::class)
   class Impl @Inject constructor(override val message: String) : BaseClass
 
+  interface BaseClass2 {
+    val message: String
+  }
+
+  @ContributesBinding(AppScope::class, boundType = BaseClass2::class)
+  class Impl2 @Inject constructor(override val message: String) : BaseClass2
+
   @ContributesTo(AppScope::class) interface ContributedInterface
 
   @Test
@@ -46,5 +54,6 @@ class AnvilTest {
     assertTrue(component is ContributedInterface)
 
     assertEquals("Hello, world!", component.baseClass.message)
+    assertEquals("Hello, world!", component.baseClass2.message)
   }
 }
