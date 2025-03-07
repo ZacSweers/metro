@@ -524,6 +524,15 @@ internal class DependencyGraphTransformer(
 
     val bindingGraph = createBindingGraph(node)
 
+    val platformName =
+      pluginContext.platform?.let { platform ->
+        platform.componentPlatforms.joinToString("-") { it.platformName }
+      }
+
+    val reportsDir = options.reportsDestination
+      ?.letIf(platformName != null) { it.resolve(platformName!!) }
+      ?.createDirectories()
+
     try {
       checkGraphSelfCycle(
         dependencyGraphDeclaration,
@@ -537,14 +546,7 @@ internal class DependencyGraphTransformer(
           exitProcessing()
         }
 
-      val platformName =
-        pluginContext.platform?.let { platform ->
-          platform.componentPlatforms.joinToString("-") { it.platformName }
-        }
-
-      options.reportsDestination
-        ?.letIf(platformName != null) { it.resolve(platformName!!) }
-        ?.createDirectories()
+      reportsDir
         ?.resolve("graph-dump-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt")
         ?.apply { deleteIfExists() }
         ?.writeText(bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false))
@@ -563,6 +565,11 @@ internal class DependencyGraphTransformer(
     metroDependencyGraphsByClass[graphClassId] = metroGraph
 
     metroGraph.dumpToMetroLog()
+
+    reportsDir
+      ?.resolve("graph-dumpKotlin-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt")
+      ?.apply { deleteIfExists() }
+      ?.writeText(metroGraph.dumpKotlinLike())
 
     return metroGraph
   }
