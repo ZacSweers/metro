@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro
+package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.test.model.TestFile
 import org.jetbrains.kotlin.test.services.ReversibleSourceFilePreprocessor

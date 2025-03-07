@@ -1,8 +1,9 @@
-package dev.zacsweers.metro;
+package dev.zacsweers.metro.compiler;
 
 import com.intellij.testFramework.TestDataPath;
 import java.io.File;
 import java.util.regex.Pattern;
+
 import org.jetbrains.kotlin.test.TargetBackend;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.jetbrains.kotlin.test.util.KtTestUtil;
