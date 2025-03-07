@@ -35,6 +35,8 @@ import org.jetbrains.kotlin.ir.util.classId
 internal class MetroAnnotations<T>(
   val isDependencyGraph: Boolean,
   val isDependencyGraphFactory: Boolean,
+  val isGraphExtension: Boolean,
+  val isGraphExtensionFactory: Boolean,
   val isInject: Boolean,
   val isProvides: Boolean,
   val isBinds: Boolean,
@@ -62,9 +64,14 @@ internal class MetroAnnotations<T>(
   val isIntoMultibinding
     get() = isIntoSet || isElementsIntoSet || isIntoMap || mapKeys.isNotEmpty()
 
+  val isGraphExtensionType
+    get() = isGraphExtension || isGraphExtensionFactory
+
   fun copy(
     isDependencyGraph: Boolean = this.isDependencyGraph,
     isDependencyGraphFactory: Boolean = this.isDependencyGraphFactory,
+    isGraphExtension: Boolean = this.isGraphExtension,
+    isGraphExtensionFactory: Boolean = this.isGraphExtensionFactory,
     isInject: Boolean = this.isInject,
     isProvides: Boolean = this.isProvides,
     isBinds: Boolean = this.isBinds,
@@ -83,6 +90,8 @@ internal class MetroAnnotations<T>(
     return MetroAnnotations(
       isDependencyGraph,
       isDependencyGraphFactory,
+      isGraphExtension,
+      isGraphExtensionFactory,
       isInject,
       isProvides,
       isBinds,
@@ -129,6 +138,8 @@ private fun IrAnnotationContainer.metroAnnotations(
 ): MetroAnnotations<IrAnnotation> {
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
+  var isGraphExtension = false
+  var isGraphExtensionFactory = false
   var isInject = false
   var isProvides = false
   var isBinds = false
@@ -213,6 +224,14 @@ private fun IrAnnotationContainer.metroAnnotations(
             isDependencyGraphFactory = true
             continue
           }
+          in ids.graphExtensionAnnotations -> {
+            isGraphExtension = true
+            continue
+          }
+          in ids.graphExtensionFactoryAnnotations -> {
+            isGraphExtensionFactory = true
+            continue
+          }
         }
       }
     }
@@ -240,6 +259,8 @@ private fun IrAnnotationContainer.metroAnnotations(
     MetroAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
+      isGraphExtension = isGraphExtension,
+      isGraphExtensionFactory = isGraphExtensionFactory,
       isInject = isInject,
       isProvides = isProvides,
       isBinds = isBinds,
@@ -262,37 +283,43 @@ private fun IrAnnotationContainer.metroAnnotations(
       yield(annotations)
 
       // You can fit so many annotations in properties
-      if (thisContainer is IrProperty) {
-        // Retrieve annotations from this property's various accessors
-        getter?.let { getter ->
-          if (getter != callingContainer) {
-            yield(getter.metroAnnotations(ids, callingContainer = thisContainer))
+      when (thisContainer) {
+        is IrProperty -> {
+          // Retrieve annotations from this property's various accessors
+          getter?.let { getter ->
+            if (getter != callingContainer) {
+              yield(getter.metroAnnotations(ids, callingContainer = thisContainer))
+            }
+          }
+          setter?.let { setter ->
+            if (setter != callingContainer) {
+              yield(setter.metroAnnotations(ids, callingContainer = thisContainer))
+            }
+          }
+          backingField?.let { field ->
+            if (field != callingContainer) {
+              yield(field.metroAnnotations(ids, callingContainer = thisContainer))
+            }
           }
         }
-        setter?.let { setter ->
-          if (setter != callingContainer) {
-            yield(setter.metroAnnotations(ids, callingContainer = thisContainer))
+
+        is IrSimpleFunction -> {
+          correspondingPropertySymbol?.owner?.let { property ->
+            if (property != callingContainer) {
+              val propertyAnnotations =
+                property.metroAnnotations(ids, callingContainer = thisContainer)
+              yield(propertyAnnotations)
+            }
           }
         }
-        backingField?.let { field ->
-          if (field != callingContainer) {
-            yield(field.metroAnnotations(ids, callingContainer = thisContainer))
-          }
-        }
-      } else if (thisContainer is IrSimpleFunction) {
-        correspondingPropertySymbol?.owner?.let { property ->
-          if (property != callingContainer) {
-            val propertyAnnotations =
-              property.metroAnnotations(ids, callingContainer = thisContainer)
-            yield(propertyAnnotations)
-          }
-        }
-      } else if (thisContainer is IrField) {
-        correspondingPropertySymbol?.owner?.let { property ->
-          if (property != callingContainer) {
-            val propertyAnnotations =
-              property.metroAnnotations(ids, callingContainer = thisContainer)
-            yield(propertyAnnotations)
+
+        is IrField -> {
+          correspondingPropertySymbol?.owner?.let { property ->
+            if (property != callingContainer) {
+              val propertyAnnotations =
+                property.metroAnnotations(ids, callingContainer = thisContainer)
+              yield(propertyAnnotations)
+            }
           }
         }
       }
@@ -313,6 +340,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   val ids = session.classIds
   var isDependencyGraph = false
   var isDependencyGraphFactory = false
+  var isGraphExtension = false
+  var isGraphExtensionFactory = false
   var isInject = false
   var isProvides = false
   var isBinds = false
@@ -387,15 +416,27 @@ private fun FirBasedSymbol<*>.metroAnnotations(
 
       is FirClassSymbol<*> -> {
         // AssistedFactory, DependencyGraph, DependencyGraph.Factory
-        if (classId in ids.assistedFactoryAnnotations) {
-          isAssistedFactory = true
-          continue
-        } else if (classId in ids.dependencyGraphAnnotations) {
-          isDependencyGraph = true
-          continue
-        } else if (classId in ids.dependencyGraphFactoryAnnotations) {
-          isDependencyGraphFactory = true
-          continue
+        when (classId) {
+          in ids.assistedFactoryAnnotations -> {
+            isAssistedFactory = true
+            continue
+          }
+          in ids.dependencyGraphAnnotations -> {
+            isDependencyGraph = true
+            continue
+          }
+          in ids.dependencyGraphFactoryAnnotations -> {
+            isDependencyGraphFactory = true
+            continue
+          }
+          in ids.graphExtensionAnnotations -> {
+            isGraphExtension = true
+            continue
+          }
+          in ids.graphExtensionFactoryAnnotations -> {
+            isGraphExtensionFactory = true
+            continue
+          }
         }
       }
     }
@@ -423,6 +464,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
     MetroAnnotations(
       isDependencyGraph = isDependencyGraph,
       isDependencyGraphFactory = isDependencyGraphFactory,
+      isGraphExtension = isGraphExtension,
+      isGraphExtensionFactory = isGraphExtensionFactory,
       isInject = isInject,
       isProvides = isProvides,
       isBinds = isBinds,
