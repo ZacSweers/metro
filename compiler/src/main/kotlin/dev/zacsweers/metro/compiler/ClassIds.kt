@@ -52,6 +52,8 @@ public class ClassIds(
     setOf(graphExtensionAnnotation.createNestedClassId(Name.identifier("Factory"))) +
       customGraphExtensionFactoryAnnotations
 
+  internal val allGraphAnnotations = dependencyGraphAnnotations + graphExtensionAnnotations
+
   // Assisted inject
   private val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
   internal val assistedAnnotations = setOf(metroAssisted) + customAssistedAnnotations

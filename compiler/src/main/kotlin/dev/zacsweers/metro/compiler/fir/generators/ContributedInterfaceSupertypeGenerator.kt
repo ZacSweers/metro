@@ -55,13 +55,7 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   private val dependencyGraphPredicate =
-    LookupPredicate.create {
-      annotated(
-        classIds.dependencyGraphAnnotations.plus(classIds.graphExtensionAnnotations).map {
-          it.asSingleFqName()
-        }
-      )
-    }
+    LookupPredicate.create { annotated(classIds.allGraphAnnotations.map { it.asSingleFqName() }) }
 
   private val dependencyGraphs by lazy {
     session.predicateBasedProvider
@@ -128,12 +122,7 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
-    return annotations
-      .annotationsIn(
-        session,
-        classIds.dependencyGraphAnnotations.plus(classIds.graphExtensionAnnotations),
-      )
-      .firstOrNull()
+    return annotations.annotationsIn(session, classIds.allGraphAnnotations).firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
