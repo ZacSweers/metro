@@ -24,6 +24,7 @@ kotlinInject-anvil = "0.1.2"
 kotlinx-coroutines = "1.10.1"
 kotlinx-serialization = "1.8.0"
 ktor = "3.1.1"
+gjf = "1.25.2"
 jdk = "23"
 jvmTarget = "11"
 ksp = "2.1.10-1.0.31"
@@ -89,6 +90,7 @@ kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.6.2"
 
 # Only present to trigger automatic renovate updates
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
+gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
 
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
