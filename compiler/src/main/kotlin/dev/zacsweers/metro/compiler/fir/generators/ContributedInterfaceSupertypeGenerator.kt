@@ -38,7 +38,12 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.StandardClassIds
 
-// Toe-hold for contributed types
+/**
+ * Aggregates contributed interfaces and generates them as supertypes onto Graph declarations with
+ * matching scopes.
+ *
+ * This covers both `DependencyGraph` as well as `GraphExtension`.
+ */
 internal class ContributedInterfaceSupertypeGenerator(
   session: FirSession,
   private val classIds: ClassIds,
@@ -51,7 +56,11 @@ internal class ContributedInterfaceSupertypeGenerator(
 
   private val dependencyGraphPredicate =
     LookupPredicate.create {
-      annotated(classIds.dependencyGraphAnnotations.map { it.asSingleFqName() })
+      annotated(
+        classIds.dependencyGraphAnnotations.plus(classIds.graphExtensionAnnotations).map {
+          it.asSingleFqName()
+        }
+      )
     }
 
   private val dependencyGraphs by lazy {
@@ -119,7 +128,12 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
-    return annotations.annotationsIn(session, classIds.dependencyGraphAnnotations).firstOrNull()
+    return annotations
+      .annotationsIn(
+        session,
+        classIds.dependencyGraphAnnotations.plus(classIds.graphExtensionAnnotations),
+      )
+      .firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
