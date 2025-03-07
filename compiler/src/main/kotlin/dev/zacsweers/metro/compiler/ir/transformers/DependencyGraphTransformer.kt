@@ -645,9 +645,13 @@ internal class DependencyGraphTransformer(
             }
 
             provider.elementsIntoSet -> provider.typeKey.type
-            provider.intoMap && provider.mapKey != null -> {
+            provider.intoMap -> {
+              val mapKey = provider.mapKey ?: run {
+                // Hard error because the FIR checker should catch these, so this implies broken FIR code gen
+                error("Missing @MapKey for @IntoMap function: ${function.ir.dumpKotlinLike()}")
+              }
               // TODO this is probably not robust enough
-              val rawKeyType = provider.mapKey.ir
+              val rawKeyType = mapKey.ir
               val unwrapValues = rawKeyType.shouldUnwrapMapKeyValues()
               val keyType =
                 if (unwrapValues) {
@@ -663,7 +667,9 @@ internal class DependencyGraphTransformer(
               )
             }
 
-            else -> error("Not possible")
+            else -> {
+              error("Unrecognized provider: ${function.ir.dumpKotlinLike()}")
+            }
           }
         val multibindingTypeKey = provider.typeKey.copy(type = multibindingType)
         graph
