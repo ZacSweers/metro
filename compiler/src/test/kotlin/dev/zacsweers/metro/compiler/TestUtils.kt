@@ -15,7 +15,6 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.provider
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.PrintStream
 import java.lang.reflect.Field
 import java.lang.reflect.Method
@@ -483,7 +482,12 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     }
     .groupBy { it.severity }
     .mapValues { (_, messages) ->
-      messages.map { it.message.cleanOutputLine(includeSeverity = false) }
+      messages.map {
+        it.message
+          .lineSequence()
+          .map(String::cleanOutputLine)
+          .joinToString("\n")
+      }
     }
     .let { parsed ->
       buildMap {
@@ -493,23 +497,9 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     }
 }
 
-fun String.cleanOutputLine(includeSeverity: Boolean): String {
-  val trimmed = trimEnd()
-  val sourceFileIndex = trimmed.indexOf(".kt")
-  if (sourceFileIndex == -1) return trimmed
-  val startIndex =
-    trimmed.withIndex().indexOfLast { (i, char) ->
-      i < sourceFileIndex && char == File.separatorChar
-    }
-  if (startIndex == -1) return trimmed
-  val severity =
-    if (includeSeverity) {
-      "${trimmed.substringBefore(": ", "")}: "
-    } else {
-      ""
-    }
-  return "$severity${trimmed.substring(startIndex + 1)}"
-}
+private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
+
+fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 
 inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {
   val throwable = assertFailsWith(T::class, block)

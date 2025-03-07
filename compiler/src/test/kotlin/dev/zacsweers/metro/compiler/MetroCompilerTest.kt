@@ -263,7 +263,7 @@ abstract class MetroCompilerTest {
 
     // Print cleaned output
     while (!cleaningOutput.exhausted()) {
-      println(cleaningOutput.readUtf8Line()?.cleanOutputLine(includeSeverity = true))
+      println(cleaningOutput.readUtf8Line()?.cleanOutputLine())
     }
 
     return result
