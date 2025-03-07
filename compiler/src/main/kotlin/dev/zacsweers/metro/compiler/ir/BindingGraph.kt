@@ -340,6 +340,12 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
 
     binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
 
+    if (binding is Binding.Provided) {
+      if (binding.aliasedType != null) {
+        appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
+      }
+    }
+
     if (binding.dependencies.isNotEmpty()) {
       appendLine("├─ Dependencies:")
       binding.dependencies.forEach { (depKey, param) ->

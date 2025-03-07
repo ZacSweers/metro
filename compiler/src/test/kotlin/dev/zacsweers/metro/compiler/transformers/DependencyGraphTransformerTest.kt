@@ -1837,4 +1837,80 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertNotNull(graph.callProperty<Any>("exampleClass"))
     }
   }
+
+  @Test
+  fun `duplicate bindings are reported - double provides`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Provides fun provideExampleClass1(): ExampleClass = ExampleClass()
+              @Provides fun provideExampleClass2(): ExampleClass = ExampleClass()
+            }
+
+            class ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `transitive scoped bindings are ordered correctly`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          class Impl1 : ContributedInterface
+          
+          @Inject
+          @SingleIn(AppScope::class)
+          class Impl2(val contributedInterface: ContributedInterface)
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+            val impl1: Impl1
+            val impl2: Impl2
+            
+            @Binds val Impl1.bind: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      // Impl1 is correctly scoped and bound
+      val impl1 = graph.callProperty<Any>("impl1")
+      val contributed = graph.callProperty<Any>("contributedInterface")
+      assertThat(impl1.javaClass.simpleName).isEqualTo("Impl1")
+      assertThat(impl1).isSameInstanceAs(contributed)
+
+      // Impl2 correctly uses the bound type
+      val impl2 = graph.callProperty<Any>("impl2")
+      val impl1FromImpl2 = impl2.callProperty<Any>("contributedInterface")
+      assertThat(impl1FromImpl2).isSameInstanceAs(impl1)
+      assertThat(impl1FromImpl2).isSameInstanceAs(contributed)
+
+      // Calling again also respects scoping
+      assertThat(graph.callProperty<Any>("impl2")).isSameInstanceAs(impl2)
+    }
+  }
 }

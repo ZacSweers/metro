@@ -1018,6 +1018,10 @@ internal class DependencyGraphTransformer(
       // Create fields in dependency-order
       initOrder
         .filterNot { it.typeKey in deferredFields }
+        .filterNot {
+          // We don't generate fields for these even though we do track them in dependencies above, it's just for propagating their aliased type in sorting
+          it is Binding.Provided && it.aliasedType != null
+        }
         .forEach { binding ->
           val key = binding.typeKey
           // Since assisted injections don't implement Factory, we can't just type these as
@@ -1356,44 +1360,50 @@ internal class DependencyGraphTransformer(
       bindingDependencies[key] = binding
     }
 
-    // For assisted bindings, we need provider fields for the assisted factory impl type
-    // The factory impl type depends on a provider of the assisted type
-    if (binding is Binding.Assisted) {
-      bindingDependencies[key] = binding.target
-      // TODO is this safe to end up as a provider field? Can someone create a
-      //  binding such that you have an assisted type on the DI graph that is
-      //  provided by a provider that depends on the assisted factory? I suspect
-      //  yes, so in that case we should probably track a separate field mapping
-      usedUnscopedBindings += binding.target.typeKey
-      // By definition, these parameters are not available on the graph
-      return
-    }
-
-    // For multibindings, we depend on anything the delegate providers depend on
-    if (binding is Binding.Multibinding) {
-      if (bindingScope != null) {
-        // This is scoped so we want to keep an instance
-        // TODO are these allowed?
-        //  bindingDependencies[key] = buildMap {
-        //    for (provider in binding.providers) {
-        //      putAll(provider.dependencies)
-        //    }
-        //  }
-      } else {
-        // Process all providers deps, but don't need a specific dep for this one
-        for (provider in binding.sourceBindings) {
-          processBinding(
-            binding = provider,
-            node = node,
-            graph = graph,
-            bindingStack = bindingStack,
-            bindingDependencies = bindingDependencies,
-            usedUnscopedBindings = usedUnscopedBindings,
-            visitedBindings = visitedBindings,
-          )
-        }
+    when (binding) {
+      is Binding.Assisted -> {
+        // For assisted bindings, we need provider fields for the assisted factory impl type
+        // The factory impl type depends on a provider of the assisted type
+        bindingDependencies[key] = binding.target
+        // TODO is this safe to end up as a provider field? Can someone create a
+        //  binding such that you have an assisted type on the DI graph that is
+        //  provided by a provider that depends on the assisted factory? I suspect
+        //  yes, so in that case we should probably track a separate field mapping
+        usedUnscopedBindings += binding.target.typeKey
+        // By definition, these parameters are not available on the graph
+        return
       }
-      return
+
+      is Binding.Multibinding -> {
+        // For multibindings, we depend on anything the delegate providers depend on
+        if (bindingScope != null) {
+          // This is scoped so we want to keep an instance
+          // TODO are these allowed?
+          //  bindingDependencies[key] = buildMap {
+          //    for (provider in binding.providers) {
+          //      putAll(provider.dependencies)
+          //    }
+          //  }
+        } else {
+          // Process all providers deps, but don't need a specific dep for this one
+          for (provider in binding.sourceBindings) {
+            processBinding(
+              binding = provider,
+              node = node,
+              graph = graph,
+              bindingStack = bindingStack,
+              bindingDependencies = bindingDependencies,
+              usedUnscopedBindings = usedUnscopedBindings,
+              visitedBindings = visitedBindings,
+            )
+          }
+        }
+        return
+      }
+
+      else -> {
+        // Do nothing here
+      }
     }
 
     // Track dependencies before creating fields
@@ -1416,6 +1426,12 @@ internal class DependencyGraphTransformer(
         usedUnscopedBindings = usedUnscopedBindings,
         visitedBindings = visitedBindings,
       )
+    }
+
+    if (binding is Binding.Provided && binding.aliasedType != null) {
+      // Track this even though we won't generate a field so that we can reference it when sorting
+      // Annoyingly, I was never able to create a test that actually failed without this, but did need this fix to fix a real world example in github.com/zacsweers/catchup
+      bindingDependencies[key] = graph.requireBinding(binding.aliasedType.typeKey, bindingStack)
     }
   }
 
@@ -1656,11 +1672,10 @@ internal class DependencyGraphTransformer(
 
       is Binding.Provided -> {
         // For binds functions, just use the backing type
-        binding.aliasedType?.let {
+        binding.aliasedBinding(generationContext.graph, generationContext.bindingStack)?.let {
           return generateBindingCode(
-            generationContext.graph.getOrCreateBinding(it, generationContext.bindingStack),
-            generationContext,
             it,
+            generationContext,
           )
         }
 

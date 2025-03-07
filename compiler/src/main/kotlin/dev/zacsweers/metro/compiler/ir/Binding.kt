@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
+import java.util.Optional
 import java.util.TreeSet
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -138,11 +139,26 @@ internal sealed interface Binding {
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters<ConstructorParameter>,
-    override val dependencies: Map<TypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey },
-    val aliasedType: ContextualTypeKey?,
-    val callableId: CallableId = providerFunction.callableId,
+    val aliasedType: ContextualTypeKey? = null,
   ) : Binding, BindingWithAnnotations {
+
+    private var aliasedBinding: Optional<Binding>? = if (aliasedType == null) Optional.empty() else null
+
+    fun aliasedBinding(graph: BindingGraph, stack: BindingStack): Binding? {
+      aliasedType ?: return null
+      val optionalBinding = aliasedBinding
+      return if (optionalBinding == null) {
+        val binding = graph.getOrCreateBinding(aliasedType, stack)
+        aliasedBinding = Optional.of(binding)
+        binding
+      } else {
+        optionalBinding.get()
+      }
+    }
+
+    override val dependencies: Map<TypeKey, Parameter> =
+      parameters.nonInstanceParameters.associateBy { it.typeKey }
+
     override val scope: IrAnnotation?
       get() = annotations.scope
 

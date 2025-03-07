@@ -2687,4 +2687,69 @@ class AggregationTest : MetroCompilerTest() {
         )
     }
   }
+
+  @Test
+  fun `scoped binding is still scoped`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class)
+          class Impl1 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(
+        graph.callProperty<Any>("contributedInterface")
+      ).isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
+    }
+  }
+
+  @Test
+  fun `replaced scoped binding is still scoped`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class)
+          class Impl1 : ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class, replaces = [Impl1::class])
+          class Impl2(
+            val impl1: Impl1
+          ) : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+            val impl1: Impl1
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val impl2 = graph.callProperty<Any>("contributedInterface")
+      assertThat(impl2.javaClass.simpleName).isEqualTo("Impl2")
+      assertThat(impl2).isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
+      val impl1 = impl2.callProperty<Any>("impl1")
+      assertThat(impl1).isSameInstanceAs(graph.callProperty<Any>("impl1"))
+    }
+  }
 }
