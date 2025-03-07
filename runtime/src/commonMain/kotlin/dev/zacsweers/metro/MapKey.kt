@@ -17,7 +17,7 @@ package dev.zacsweers.metro
 
 /**
  * Identifies annotation types that are used to associate keys with values returned by
- * [provider methods][Provides] in order to compose a [map][IntoMap].
+ * [provider callables][Provides] in order to compose a [map][IntoMap].
  *
  * Every provider method annotated with `@Provides` and `@IntoMap` must also have an annotation that
  * identifies the key for that map entry. That annotation's type must be annotated with `@MapKey`.
@@ -48,8 +48,8 @@ package dev.zacsweers.metro
  *
  * If `unwrapValue` is true, the annotation's single member can be any type except an array.
  *
- * See [dev.zacsweers.metro.annotations.multibindings] for standard unwrapped map key annotations
- * for keys that are boxed primitives, strings, or classes.
+ * See [dev.zacsweers.metro.annotations] for standard unwrapped map key annotations for keys that
+ * are boxed primitives, strings, or classes.
  *
  * ## Annotations as keys
  *

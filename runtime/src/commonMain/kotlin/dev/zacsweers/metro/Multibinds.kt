@@ -40,8 +40,6 @@ package dev.zacsweers.metro
  *
  * A given set or map multibinding can be declared any number of times without error. Dagger never
  * implements or calls any `@Multibinds` methods.
- *
- * @see <a href="https://dagger.dev/multibindings">Multibindings</a>
  */
 @MustBeDocumented
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)

@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
@@ -116,9 +103,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     getOrGenerateFactoryClass(getOrPutCallableReference(declaration, annotations))
   }
 
-  // TODO what about inherited/overridden providers?
-  //  https://github.com/evant/kotlin-inject?tab=readme-ov-file#component-inheritance
-  fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass {
+  fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass? {
     val reference =
       binding.providerFunction.correspondingPropertySymbol?.owner?.let {
         getOrPutCallableReference(it)
@@ -138,7 +123,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         reference.callee.owner.reportError(
           "Could not find generated factory for ${reference.fqName} in upstream module where it's defined. Run the Metro compiler over that module too."
         )
-        exitProcessing()
+        return null
       }
       generatedFactories[reference.fqName] = generatedClass
     }

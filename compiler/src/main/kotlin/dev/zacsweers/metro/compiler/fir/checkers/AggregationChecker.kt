@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2025 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
@@ -21,10 +8,13 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBoundType
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
@@ -36,9 +26,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isAny
@@ -47,6 +35,15 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.name.ClassId
 
 internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
+  enum class ContributionKind(val readableName: String) {
+    CONTRIBUTES_TO("ContributesTo"),
+    CONTRIBUTES_BINDING("ContributesBinding"),
+    CONTRIBUTES_INTO_SET("ContributesIntoSet"),
+    CONTRIBUTES_INTO_MAP("ContributesIntoMap");
+
+    override fun toString(): String = readableName
+  }
+
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
     declaration.source ?: return
     val session = context.session
@@ -72,7 +69,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val contribution = Contribution.ContributesTo(declaration, annotation, scope, replaces)
             addContributionAndCheckForDuplicate(
               contribution,
-              "ContributesTo",
+              ContributionKind.CONTRIBUTES_TO,
               contributesToAnnotations,
               annotation,
               scope,
@@ -86,7 +83,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val valid =
               checkBindingContribution(
                 session,
-                "ContributesBinding",
+                ContributionKind.CONTRIBUTES_BINDING,
                 declaration,
                 classQualifier,
                 annotation,
@@ -107,7 +104,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val valid =
               checkBindingContribution(
                 session,
-                "ContributesIntoSet",
+                ContributionKind.CONTRIBUTES_INTO_SET,
                 declaration,
                 classQualifier,
                 annotation,
@@ -128,7 +125,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             val valid =
               checkBindingContribution(
                 session,
-                "ContributesIntoMap",
+                ContributionKind.CONTRIBUTES_INTO_MAP,
                 declaration,
                 classQualifier,
                 annotation,
@@ -160,7 +157,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   @OptIn(UnexpandedTypeCheck::class)
   private fun <T : Contribution> checkBindingContribution(
     session: FirSession,
-    kind: String,
+    kind: ContributionKind,
     declaration: FirClass,
     classQualifier: MetroFirAnnotation?,
     annotation: FirAnnotation,
@@ -172,21 +169,41 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     isMapBinding: Boolean,
     createBinding: (FirTypeKey, mapKey: MetroFirAnnotation?) -> T,
   ): Boolean {
-    // Ensure the class is injected
     val injectConstructor = declaration.symbol.findInjectConstructors(session).singleOrNull()
-    if (injectConstructor == null) {
+    val isAssistedFactory =
+      declaration.symbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
+    // Ensure the class is injected or an object. Objects are ok IFF they are not @ContributesTo
+    val isNotInjectedOrFactory = !isAssistedFactory && injectConstructor == null
+    val isValidObject = declaration.classKind.isObject && kind != ContributionKind.CONTRIBUTES_TO
+    if (isNotInjectedOrFactory && !isValidObject) {
       reporter.reportOn(
         annotation.source,
         FirMetroErrors.AGGREGATION_ERROR,
-        "`@$kind` is only applicable to constructor-injected classes. Did you forget to inject ${declaration.symbol.classId.asSingleFqName()}?",
+        "`@$kind` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure ${declaration.symbol.classId.asSingleFqName()} is injectable or a bindable object.",
         context,
       )
       return false
     }
 
-    val hasSupertypes = declaration.superTypeRefs.isNotEmpty()
+    val isAssistedInject =
+      injectConstructor != null &&
+        injectConstructor.valueParameterSymbols.any {
+          it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+        }
+    if (isAssistedInject) {
+      reporter.reportOn(
+        annotation.source,
+        FirMetroErrors.AGGREGATION_ERROR,
+        "`@$kind` doesn't make sense on assisted-injected class ${declaration.symbol.classId.asSingleFqName()}. Did you mean to apply this to its assisted factory?",
+        context,
+      )
+      return false
+    }
 
-    val explicitBoundType = annotation.resolvedBoundType()
+    val supertypesExcludingAny = declaration.superTypeRefs.filterNot { it.coneType.isAny }
+    val hasSupertypes = supertypesExcludingAny.isNotEmpty()
+
+    val explicitBoundType = annotation.resolvedBoundType(session)
 
     val typeKey =
       if (explicitBoundType != null) {
@@ -197,16 +214,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             explicitBoundType.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Explicit bound types should not be `Nothing` or `Nothing?`.",
-            context,
-          )
-          return false
-        }
-
-        if (!hasSupertypes && !explicitBoundType.isAny) {
-          reporter.reportOn(
-            annotation.source,
-            FirMetroErrors.AGGREGATION_ERROR,
-            "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
             context,
           )
           return false
@@ -225,10 +232,17 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        val implementsBoundType =
-          lookupSuperTypes(klass = declaration, true, true, session, true).any {
-            it.classId?.let { it == refClassId } == true
-          }
+        if (!hasSupertypes) {
+          reporter.reportOn(
+            annotation.source,
+            FirMetroErrors.AGGREGATION_ERROR,
+            "`@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} has no supertypes to bind to.",
+            context,
+          )
+          return false
+        }
+
+        val implementsBoundType = declaration.isOrImplements(refClassId, session)
 
         if (!implementsBoundType) {
           reporter.reportOn(
@@ -250,7 +264,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             context,
           )
           return false
-        } else if (declaration.superTypeRefs.size != 1) {
+        } else if (supertypesExcludingAny.size != 1) {
           reporter.reportOn(
             annotation.source,
             FirMetroErrors.AGGREGATION_ERROR,
@@ -259,15 +273,16 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           )
           return false
         }
-        val implicitBoundType = declaration.superTypeRefs[0]
+        val implicitBoundType = supertypesExcludingAny[0]
         FirTypeKey(implicitBoundType.coneType, classQualifier)
       }
 
     val mapKey =
       if (isMapBinding) {
+        val classMapKey = declaration.annotations.mapKeyAnnotation(session)
         val resolvedKey =
           if (explicitBoundType == null) {
-            declaration.annotations.mapKeyAnnotation(session).also {
+            classMapKey.also {
               if (it == null) {
                 reporter.reportOn(
                   annotation.source,
@@ -278,12 +293,12 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               }
             }
           } else {
-            explicitBoundType.annotations.mapKeyAnnotation(session).also {
+            (explicitBoundType.annotations.mapKeyAnnotation(session) ?: classMapKey).also {
               if (it == null) {
                 reporter.reportOn(
                   explicitBoundType.source,
                   FirMetroErrors.AGGREGATION_ERROR,
-                  "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key on the explicit bound type but doesn't.",
+                  "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key but doesn't. Add one on the explicit bound type or the class.",
                   context,
                 )
               }
@@ -311,7 +326,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
   private inline fun <T : Contribution> addContributionAndCheckForDuplicate(
     contribution: T,
-    kind: String,
+    kind: ContributionKind,
     collection: MutableSet<T>,
     annotation: FirAnnotation,
     scope: ClassId,

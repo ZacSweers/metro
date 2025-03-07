@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroLogger
@@ -22,7 +9,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -49,7 +35,31 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     }
     if (bindings.containsKey(key)) {
       val message = buildString {
-        appendLine("Duplicate binding for ${key.render(short = false, includeQualifier = true)}")
+        appendLine(
+          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+        )
+        val existing = bindings.getValue(key)
+        val duplicate = binding
+        val locations =
+          listOfNotNull(
+              existing.reportableLocation?.render(),
+              duplicate.reportableLocation?.render(),
+            )
+            .distinct()
+        when (locations.size) {
+          0 -> {
+            appendLine("├─ No binding source locations available, they may be contributed.")
+          }
+          1 -> {
+            appendLine("├─ Binding 1: ${locations[0]}")
+            appendLine("├─ Binding 2: Unknown source location, this may be contributed")
+          }
+          2 -> {
+            for ((i, location) in locations.withIndex()) {
+              appendLine("├─ Binding ${i + 1}: $location")
+            }
+          }
+        }
         appendBindingStack(bindingStack)
       }
       val location = binding.reportableLocation ?: bindingStack.graph.location()
@@ -79,21 +89,14 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       when (binding) {
         is Binding.ConstructorInjected -> {
           // Recursively follow deps from its constructor params
-          getConstructorDependencies(
-            binding.type,
-            bindingStack,
-            onlyUsePrimaryConstructor = binding.annotations.isInject,
-          )
+          getConstructorDependencies(bindingStack, binding.injectedConstructor)
         }
         is Binding.Provided -> {
           getFunctionDependencies(binding.providerFunction, bindingStack)
         }
         is Binding.Assisted -> {
-          getConstructorDependencies(
-            binding.target.type,
-            bindingStack,
-            onlyUsePrimaryConstructor = binding.annotations.isInject,
-          )
+          val targetConstructor = binding.target.injectedConstructor
+          getConstructorDependencies(bindingStack, targetConstructor)
         }
         is Binding.Multibinding -> {
           // This is a manual @Multibinds or triggered by the above
@@ -106,7 +109,8 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
         is Binding.MembersInjected -> {
           binding.parameters.valueParameters.mapToSet { it.contextualTypeKey }
         }
-        is Binding.BoundInstance -> emptySet()
+        is Binding.ObjectClass,
+        is Binding.BoundInstance,
         is Binding.GraphDependency -> emptySet()
         is Binding.Absent -> error("Should never happen")
       }
@@ -142,10 +146,11 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   fun getOrCreateMultibinding(
     pluginContext: IrPluginContext,
     typeKey: TypeKey,
+    bindingStack: BindingStack,
   ): Binding.Multibinding {
     return bindings.getOrPut(typeKey) {
       Binding.Multibinding.create(metroContext, typeKey, null).also {
-        addBinding(typeKey, it, BindingStack.empty())
+        addBinding(typeKey, it, bindingStack)
         // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
         if (it.isMap) {
           val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
@@ -154,8 +159,8 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
               .typeOrNull!!
               .wrapInProvider(this@BindingGraph.metroContext.symbols.metroProvider)
           val providerTypeKey =
-            typeKey.copy(pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
-          addBinding(providerTypeKey, it, BindingStack.empty())
+            typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+          addBinding(providerTypeKey, it, bindingStack)
         }
       }
     } as Binding.Multibinding
@@ -300,12 +305,9 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   }
 
   private fun getConstructorDependencies(
-    type: IrClass,
     bindingStack: BindingStack,
-    onlyUsePrimaryConstructor: Boolean,
+    constructor: IrConstructor,
   ): Set<ContextualTypeKey> {
-    val constructor =
-      with(metroContext) { type.findInjectableConstructor(onlyUsePrimaryConstructor) }!!
     return getFunctionDependencies(constructor, bindingStack)
   }
 
@@ -362,6 +364,12 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
 
     binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
 
+    if (binding is Binding.Provided) {
+      if (binding.aliasedType != null) {
+        appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
+      }
+    }
+
     if (binding.dependencies.isNotEmpty()) {
       appendLine("├─ Dependencies:")
       binding.dependencies.forEach { (depKey, param) ->
@@ -387,6 +395,6 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       }
     }
 
-    binding.reportableLocation?.let { location -> appendLine("└─ Location: $location") }
+    binding.reportableLocation?.let { location -> appendLine("└─ Location: ${location.render()}") }
   }
 }

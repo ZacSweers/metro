@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
@@ -733,6 +720,44 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
           """
           .trimIndent()
       )
+    }
+  }
+
+  @Test
+  fun `assisted parameters in later order work`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val exampleClassFactory: ExampleClass.Factory
+
+            @Provides val int: Int get() = 0
+          }
+
+          class ExampleClass @Inject constructor(
+            val count: Int,
+            @Assisted val text: String,
+          ) {
+            fun template(): String = text + count
+
+            @AssistedFactory
+            interface Factory {
+              fun create(@Assisted text: String): ExampleClass
+            }
+          }
+
+          fun main(text: String): String {
+            val graph = createGraph<ExampleGraph>()
+            val exampleClass = graph.exampleClassFactory.create(text)
+            return exampleClass.template()
+          }
+          """
+          .trimIndent()
+      )
+    ) {
+      val result = invokeMain<String>("hello ", mainClass = "test.ExampleGraphKt")
+      assertThat(result).isEqualTo("hello 0")
     }
   }
 }

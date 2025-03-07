@@ -1,51 +1,45 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
-  alias(libs.plugins.atomicfu)
   id("dev.zacsweers.metro")
 }
 
 kotlin {
   jvm()
-  /*
-   TODO non-jvm targets fail with "IrValueParameterSymbolImpl is already bound" exceptions
-    e: java.lang.IllegalStateException: IrValueParameterSymbolImpl is already bound. Signature: null.
-    Owner: VALUE_PARAMETER INSTANCE_RECEIVER name:<this> type:<uninitialized parent>.$$MetroGraph
-        at org.jetbrains.kotlin.ir.symbols.impl.IrSymbolBase.bind(IrSymbolImpl.kt:67)
-        at org.jetbrains.kotlin.ir.declarations.impl.IrValueParameterImpl.<init>(IrValueParameterImpl.kt:48)
-        at org.jetbrains.kotlin.ir.declarations.IrFactory.createValueParameter(IrFactory.kt:407)
-        at org.jetbrains.kotlin.backend.common.serialization.IrDeclarationDeserializer.deserializeIrValueParameter
-        (IrDeclarationDeserializer.kt:298)
-        at org.jetbrains.kotlin.backend.common.serialization.IrDeclarationDeserializer.deserializeIrValueParameter
-        $default(IrDeclarationDeserializer.kt:294)
-  */
-  // macosArm64()
-  // js { browser() }
-  // @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
+
+  js { browser() }
+  @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
+
+  configureOrCreateNativePlatforms()
+
   sourceSets {
     commonMain { dependencies { implementation(project(":runtime")) } }
     commonTest {
       dependencies {
-        implementation(libs.okio)
-        implementation(libs.okio.fakefilesystem)
         implementation(libs.kotlin.test)
+        // For PlatformUtils use
+        implementation(libs.ktor.client)
       }
     }
   }
+
+  targets
+    .matching { it.platformType == KotlinPlatformType.js }
+    .configureEach {
+      compilations.configureEach {
+        compileTaskProvider.configure {
+          // These are all read at compile-time
+          compilerOptions.freeCompilerArgs.add(
+            "-Xsuppress-warning=RUNTIME_ANNOTATION_NOT_SUPPORTED"
+          )
+        }
+      }
+    }
 }
 
 metro { debug.set(false) }
@@ -60,4 +54,33 @@ configurations.configureEach {
     substitute(module("dev.zacsweers.metro:runtime-jvm")).using(project(":runtime"))
     substitute(module("dev.zacsweers.metro:compiler")).using(project(":compiler"))
   }
+}
+
+// Sourced from https://kotlinlang.org/docs/native-target-support.html
+fun KotlinMultiplatformExtension.configureOrCreateNativePlatforms() {
+  // Tier 1
+  linuxX64()
+  macosX64()
+  macosArm64()
+  iosSimulatorArm64()
+  iosX64()
+
+  // Tier 2
+  linuxArm64()
+  watchosSimulatorArm64()
+  watchosX64()
+  watchosArm32()
+  watchosArm64()
+  tvosSimulatorArm64()
+  tvosX64()
+  tvosArm64()
+  iosArm64()
+
+  // Tier 3
+  androidNativeArm32()
+  androidNativeArm64()
+  androidNativeX86()
+  androidNativeX64()
+  mingwX64()
+  watchosDeviceArm64()
 }

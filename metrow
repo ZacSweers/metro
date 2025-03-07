@@ -22,17 +22,19 @@ case "$1" in
            esac
        done
 
-       if [[ -z "$version" ]]; then
-           echo "Version required for non-local publish"
-           exit 1
-       fi
-
        if [[ "$local" = true ]]; then
+           if [[ -z "$version" ]]; then
+               echo "Version required for local publish"
+               exit 1
+           fi
+
            echo "Publishing version $version locally..."
-           ./gradlew -p gradle-plugin publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}"
-           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}"
+           ./gradlew -p gradle-plugin publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
+           ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
        else
            echo "Publishing version $version..."
+           ./gradlew -p gradle-plugin publish -x dokkaGeneratePublicationHtml
+           ./gradlew publish -x dokkaGeneratePublicationHtml
        fi
        ;;
 
@@ -52,8 +54,9 @@ case "$1" in
 
    "regen")
        echo "Applying formatting and API gen..."
-       ./gradlew spotlessApply apiDump
-       ./gradlew -p gradle-plugin spotlessApply apiDump
+       # Annoyingly, the apiDump task has some caching issues
+       ./gradlew clean spotlessApply apiDump --rerun-tasks --no-build-cache
+       ./gradlew -p gradle-plugin clean spotlessApply apiDump --rerun-tasks --no-build-cache
        ./gradlew -p samples spotlessApply
        ;;
 

@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
@@ -20,10 +7,19 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.letIf
+import org.jetbrains.kotlin.backend.jvm.JvmSymbols
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
+import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isClassWithFqName
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.makeNotNull
+import org.jetbrains.kotlin.ir.types.makeNullable
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.render
@@ -38,6 +34,7 @@ internal class ContextualTypeKey(
   val hasDefault: Boolean = false,
   val isDeferrable: Boolean = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider,
   val isIntoMultibinding: Boolean = false,
+  @Poko.Skip val rawType: IrType? = null,
 ) {
 
   val requiresProviderInstance: Boolean =
@@ -71,6 +68,11 @@ internal class ContextualTypeKey(
   }
 
   fun toIrType(metroContext: IrMetroContext): IrType {
+    rawType?.let {
+      // Already cached it, use it
+      return it
+    }
+
     val rawType = typeKey.type
     return when {
       isWrappedInProvider -> rawType.wrapInProvider(metroContext.symbols.metroProvider)
@@ -116,13 +118,17 @@ internal class ContextualTypeKey(
   }
 }
 
-internal fun IrType.isMetroProviderType(context: IrMetroContext): Boolean {
+internal fun IrType.findProviderSupertype(context: IrMetroContext): IrType? {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
+  val rawTypeClass = rawTypeOrNull() ?: return null
+  // Get the specific provider type it implements
+  return rawTypeClass.getAllSuperTypes(context.pluginContext, excludeSelf = false).firstOrNull {
+    it.rawTypeOrNull()?.classId in context.symbols.providerTypes
+  }
+}
 
-  val declaredType = this
-  val rawTypeClass = declaredType.rawTypeOrNull()
-
-  return rawTypeClass!!.implementsAny(context.pluginContext, context.symbols.providerTypes)
+internal fun IrType.implementsProviderType(context: IrMetroContext): Boolean {
+  return findProviderSupertype(context) != null
 }
 
 internal fun IrType.asContextualTypeKey(
@@ -155,7 +161,7 @@ internal fun IrType.asContextualTypeKey(
           .typeOrFail
       isWrappedInProvider || isWrappedInLazy -> declaredType.arguments.single().typeOrFail
       else -> declaredType
-    }
+    }.letIf(isMarkedNullable()) { it.makeNullable() }
 
   val isDeferrable =
     isLazyWrappedInProvider ||
@@ -181,7 +187,24 @@ internal fun IrType.asContextualTypeKey(
         valueTypeContextKey.isDeferrable
       }
 
-  val typeKey = TypeKey(type, qualifierAnnotation)
+  // Java types may be "Flexible" nullable types, assume not null here
+  val adjustedType =
+    if (type.isWithFlexibleNullability()) {
+      type.makeNotNull().removeAnnotations {
+        it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME)
+      }
+    } else {
+      type
+    }
+  val adjustedRawType =
+    if (type.isWithFlexibleNullability()) {
+      makeNotNull().removeAnnotations {
+        it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME)
+      }
+    } else {
+      this
+    }
+  val typeKey = TypeKey(adjustedType, qualifierAnnotation)
   return ContextualTypeKey(
     typeKey = typeKey,
     isWrappedInProvider = isWrappedInProvider,
@@ -190,5 +213,6 @@ internal fun IrType.asContextualTypeKey(
     hasDefault = hasDefault,
     isDeferrable = isDeferrable,
     isIntoMultibinding = isIntoMultibinding,
+    rawType = adjustedRawType,
   )
 }

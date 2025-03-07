@@ -1,24 +1,12 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -32,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.TypeKey
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
+import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
@@ -60,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -87,20 +77,20 @@ import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.removeAnnotations
-import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
@@ -109,15 +99,19 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
+import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.ClassId
@@ -126,8 +120,10 @@ internal class DependencyGraphData {
   val graphs = mutableMapOf<ClassId, DependencyGraphNode>()
 }
 
-internal class DependencyGraphTransformer(context: IrMetroContext) :
-  IrElementTransformer<DependencyGraphData>, IrMetroContext by context {
+internal class DependencyGraphTransformer(
+  context: IrMetroContext,
+  moduleFragment: IrModuleFragment,
+) : IrElementTransformer<DependencyGraphData>, IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
   private val injectConstructorTransformer =
@@ -135,9 +131,11 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
+  private val contributionHintIrTransformer = ContributionHintIrTransformer(context, moduleFragment)
 
   // Keyed by the source declaration
   private val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
+
   // Keyed by the source declaration
   private val metroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
@@ -187,6 +185,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
           }
         }
       }
+
       symbols.metroCreateGraph -> {
         // Get the called type
         val type =
@@ -221,16 +220,18 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
+    contributionHintIrTransformer.visitClass(declaration)
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
     providesTransformer.visitClass(declaration)
 
-    val isDependencyGraph = declaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
-    if (!isDependencyGraph) return super.visitClass(declaration, data)
+    val dependencyGraphAnno =
+      declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+    if (dependencyGraphAnno == null) return super.visitClass(declaration, data)
 
     try {
-      getOrBuildDependencyGraph(declaration)
+      getOrBuildDependencyGraph(declaration, dependencyGraphAnno)
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
     }
@@ -244,13 +245,17 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     graphDeclaration: IrClass,
     bindingStack: BindingStack,
     metroGraph: IrClass? = null,
+    dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
     val graphClassId = graphDeclaration.classIdOrFail
     dependencyGraphNodesByClass[graphClassId]?.let {
       return it
     }
 
-    val isGraph = graphDeclaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)
+    val dependencyGraphAnno =
+      dependencyGraphAnno
+        ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+    val isGraph = dependencyGraphAnno != null
     if (graphDeclaration.isExternalParent || !isGraph) {
       val accessorsToCheck =
         if (isGraph) {
@@ -357,6 +362,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
             collection += (metroFunction to contextKey)
           }
         }
+
         is IrProperty -> {
           // Can only be an accessor or binds
 
@@ -389,6 +395,32 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     // Add all our binds
     providerFunctions +=
       bindsFunctions.map { (function, contextKey) -> contextKey.typeKey to function }
+    scopes += buildSet {
+      val scope =
+        dependencyGraphAnno.getValueArgument("scope".asName())?.let { scopeArg ->
+          pluginContext.createIrBuilder(graphDeclaration.symbol).run {
+            irCall(symbols.metroSingleInConstructor).apply { putValueArgument(0, scopeArg) }
+          }
+        }
+
+      if (scope != null) {
+        add(IrAnnotation(scope))
+        dependencyGraphAnno
+          .getValueArgument("additionalScopes".asName())
+          ?.expectAs<IrVararg>()
+          ?.elements
+          ?.forEach {
+            val scopeClassExpression = it.expectAs<IrExpression>()
+            val newAnno =
+              pluginContext.createIrBuilder(graphDeclaration.symbol).run {
+                irCall(symbols.metroSingleInConstructor).apply {
+                  putValueArgument(0, scopeClassExpression)
+                }
+              }
+            add(IrAnnotation(newAnno))
+          }
+      }
+    }
     for (type in graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false)) {
       val clazz = type.classOrFail.owner
       scopes += clazz.scopeAnnotations()
@@ -456,7 +488,10 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     return dependencyGraphNode
   }
 
-  private fun getOrBuildDependencyGraph(dependencyGraphDeclaration: IrClass): IrClass {
+  private fun getOrBuildDependencyGraph(
+    dependencyGraphDeclaration: IrClass,
+    dependencyGraphAnno: IrConstructorCall,
+  ): IrClass {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
     metroDependencyGraphsByClass[graphClassId]?.let {
       return it
@@ -479,6 +514,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
           metroContext.loggerFor(MetroLogger.Type.GraphNodeConstruction),
         ),
         metroGraph,
+        dependencyGraphAnno,
       )
 
     // Generate creator functions
@@ -486,8 +522,22 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
 
     val bindingGraph = createBindingGraph(node)
 
+    val platformName =
+      pluginContext.platform?.let { platform ->
+        platform.componentPlatforms.joinToString("-") { it.platformName }
+      }
+
+    val reportsDir =
+      options.reportsDestination
+        ?.letIf(platformName != null) { it.resolve(platformName!!) }
+        ?.createDirectories()
+
     try {
-      checkGraphSelfCycle(dependencyGraphDeclaration, node.typeKey, BindingStack.empty())
+      checkGraphSelfCycle(
+        dependencyGraphDeclaration,
+        node.typeKey,
+        BindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.CycleDetection)),
+      )
 
       val deferredTypes =
         bindingGraph.validate(node) { message ->
@@ -495,8 +545,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
           exitProcessing()
         }
 
-      options.reportsDestination
-        ?.createDirectories()
+      reportsDir
         ?.resolve("graph-dump-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.txt")
         ?.apply { deleteIfExists() }
         ?.writeText(bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false))
@@ -515,6 +564,11 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     metroDependencyGraphsByClass[graphClassId] = metroGraph
 
     metroGraph.dumpToMetroLog()
+
+    reportsDir
+      ?.resolve("graph-dumpKotlin-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt")
+      ?.apply { deleteIfExists() }
+      ?.writeText(metroGraph.dumpKotlinLike())
 
     return metroGraph
   }
@@ -578,9 +632,6 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
           providerFunction = function.ir,
           contextualTypeKey = contextKey,
           parameters = parameters,
-          // TODO FIR only one annotation is allowed
-          // TODO FIR no scopes on multibindings
-          // TODO FIR can't mix @Multibinds and @Provides
           annotations = annotations,
           aliasedType = bindsImplType,
         )
@@ -591,11 +642,18 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
             provider.intoSet -> {
               pluginContext.irBuiltIns.setClass.typeWith(provider.typeKey.type)
             }
-            // TODO Dagger only supports the target collection, but maybe we can loosen that?
+
             provider.elementsIntoSet -> provider.typeKey.type
-            provider.intoMap && provider.mapKey != null -> {
+            provider.intoMap -> {
+              val mapKey =
+                provider.mapKey
+                  ?: run {
+                    // Hard error because the FIR checker should catch these, so this implies broken
+                    // FIR code gen
+                    error("Missing @MapKey for @IntoMap function: ${function.ir.dumpKotlinLike()}")
+                  }
               // TODO this is probably not robust enough
-              val rawKeyType = provider.mapKey.ir
+              val rawKeyType = mapKey.ir
               val unwrapValues = rawKeyType.shouldUnwrapMapKeyValues()
               val keyType =
                 if (unwrapValues) {
@@ -610,11 +668,14 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
                 provider.typeKey.type.removeAnnotations(),
               )
             }
-            else -> error("Not possible")
+
+            else -> {
+              error("Unrecognized provider: ${function.ir.dumpKotlinLike()}")
+            }
           }
         val multibindingTypeKey = provider.typeKey.copy(type = multibindingType)
         graph
-          .getOrCreateMultibinding(pluginContext, multibindingTypeKey)
+          .getOrCreateMultibinding(pluginContext, multibindingTypeKey, bindingStack)
           .sourceBindings
           .add(provider)
       } else {
@@ -959,15 +1020,24 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
       // Create fields in dependency-order
       initOrder
         .filterNot { it.typeKey in deferredFields }
+        .filterNot {
+          // We don't generate fields for these even though we do track them in dependencies above,
+          // it's just for propagating their aliased type in sorting
+          it is Binding.Provided && it.aliasedType != null
+        }
         .forEach { binding ->
           val key = binding.typeKey
           // Since assisted injections don't implement Factory, we can't just type these as
           // Provider<*> fields
           val fieldType =
             if (binding is Binding.ConstructorInjected && binding.isAssisted) {
-              injectConstructorTransformer
-                .getOrGenerateFactoryClass(binding.type, binding.injectedConstructor)
-                .typeWith() // TODO generic factories?
+              val factory =
+                injectConstructorTransformer.getOrGenerateFactory(
+                  binding.type,
+                  binding.injectedConstructor,
+                ) ?: return@forEach
+
+              factory.factoryClass.typeWith() // TODO generic factories?
             } else {
               symbols.metroProvider.typeWith(key.type)
             }
@@ -1002,8 +1072,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         }
 
       // Add statements to our constructor's deferred fields _after_ we've added all provider
-      // fields
-      // for everything else. This is important in case they reference each other
+      // fields for everything else. This is important in case they reference each other
       for ((deferredTypeKey, field) in deferredFields) {
         val binding = bindingGraph.requireBinding(deferredTypeKey, bindingStack)
         with(ctor) {
@@ -1055,7 +1124,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
         val irFunction = this
-        val binding = context.graph.getOrCreateBinding(contextualTypeKey, BindingStack.empty())
+        val binding = context.graph.requireBinding(contextualTypeKey.typeKey, context.bindingStack)
         context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
         body =
           pluginContext.createIrBuilder(symbol).run {
@@ -1294,44 +1363,50 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
       bindingDependencies[key] = binding
     }
 
-    // For assisted bindings, we need provider fields for the assisted factory impl type
-    // The factory impl type depends on a provider of the assisted type
-    if (binding is Binding.Assisted) {
-      bindingDependencies[key] = binding.target
-      // TODO is this safe to end up as a provider field? Can someone create a
-      //  binding such that you have an assisted type on the DI graph that is
-      //  provided by a provider that depends on the assisted factory? I suspect
-      //  yes, so in that case we should probably track a separate field mapping
-      usedUnscopedBindings += binding.target.typeKey
-      // By definition, these parameters are not available on the graph
-      return
-    }
-
-    // For multibindings, we depend on anything the delegate providers depend on
-    if (binding is Binding.Multibinding) {
-      if (bindingScope != null) {
-        // This is scoped so we want to keep an instance
-        // TODO are these allowed?
-        //  bindingDependencies[key] = buildMap {
-        //    for (provider in binding.providers) {
-        //      putAll(provider.dependencies)
-        //    }
-        //  }
-      } else {
-        // Process all providers deps, but don't need a specific dep for this one
-        for (provider in binding.sourceBindings) {
-          processBinding(
-            binding = provider,
-            node = node,
-            graph = graph,
-            bindingStack = bindingStack,
-            bindingDependencies = bindingDependencies,
-            usedUnscopedBindings = usedUnscopedBindings,
-            visitedBindings = visitedBindings,
-          )
-        }
+    when (binding) {
+      is Binding.Assisted -> {
+        // For assisted bindings, we need provider fields for the assisted factory impl type
+        // The factory impl type depends on a provider of the assisted type
+        bindingDependencies[key] = binding.target
+        // TODO is this safe to end up as a provider field? Can someone create a
+        //  binding such that you have an assisted type on the DI graph that is
+        //  provided by a provider that depends on the assisted factory? I suspect
+        //  yes, so in that case we should probably track a separate field mapping
+        usedUnscopedBindings += binding.target.typeKey
+        // By definition, these parameters are not available on the graph
+        return
       }
-      return
+
+      is Binding.Multibinding -> {
+        // For multibindings, we depend on anything the delegate providers depend on
+        if (bindingScope != null) {
+          // This is scoped so we want to keep an instance
+          // TODO are these allowed?
+          //  bindingDependencies[key] = buildMap {
+          //    for (provider in binding.providers) {
+          //      putAll(provider.dependencies)
+          //    }
+          //  }
+        } else {
+          // Process all providers deps, but don't need a specific dep for this one
+          for (provider in binding.sourceBindings) {
+            processBinding(
+              binding = provider,
+              node = node,
+              graph = graph,
+              bindingStack = bindingStack,
+              bindingDependencies = bindingDependencies,
+              usedUnscopedBindings = usedUnscopedBindings,
+              visitedBindings = visitedBindings,
+            )
+          }
+        }
+        return
+      }
+
+      else -> {
+        // Do nothing here
+      }
     }
 
     // Track dependencies before creating fields
@@ -1340,7 +1415,9 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     }
 
     // Recursively process dependencies
-    binding.parameters.nonInstanceParameters.forEach { param ->
+    for (param in binding.parameters.nonInstanceParameters) {
+      if (param.isAssisted) continue
+
       // Process binding dependencies
       findAndProcessBinding(
         contextKey = param.contextualTypeKey,
@@ -1352,6 +1429,13 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         usedUnscopedBindings = usedUnscopedBindings,
         visitedBindings = visitedBindings,
       )
+    }
+
+    if (binding is Binding.Provided && binding.aliasedType != null) {
+      // Track this even though we won't generate a field so that we can reference it when sorting
+      // Annoyingly, I was never able to create a test that actually failed without this, but did
+      // need this fix to fix a real world example in github.com/zacsweers/catchup
+      bindingDependencies[key] = graph.requireBinding(binding.aliasedType.typeKey, bindingStack)
     }
   }
 
@@ -1391,10 +1475,14 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
       val contextualTypeKey = paramsToMap[i].contextualTypeKey
       val typeKey = contextualTypeKey.typeKey
 
+      val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
+
       // TODO consolidate this logic with generateBindingCode
       generationContext.instanceFields[typeKey]?.let { instanceField ->
         // If it's in instance field, invoke that field
-        return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField)
+        return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField).let {
+          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+        }
       }
 
       val providerInstance =
@@ -1424,6 +1512,9 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
                   constructor.valueParameters[i],
                 )
               }
+
+              is Binding.ObjectClass -> error("Object classes cannot have dependencies")
+
               is Binding.Provided -> {
                 BindingStack.Entry.injectedAt(
                   contextualTypeKey,
@@ -1431,16 +1522,20 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
                   function.valueParameters[i],
                 )
               }
+
               is Binding.Assisted -> {
                 BindingStack.Entry.injectedAt(contextualTypeKey, function)
               }
+
               is Binding.MembersInjected -> {
                 BindingStack.Entry.injectedAt(contextualTypeKey, function)
               }
+
               is Binding.Multibinding -> {
                 // TODO can't be right?
                 BindingStack.Entry.injectedAt(contextualTypeKey, function)
               }
+
               is Binding.Absent,
               is Binding.BoundInstance,
               is Binding.GraphDependency -> error("Should never happen, logic is handled above")
@@ -1484,8 +1579,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     return unwrapValue
   }
 
-  private fun generateMapKeyLiteral(binding: Binding, keyType: IrType): IrExpression {
-    // TODO this is iffy
+  private fun generateMapKeyLiteral(binding: Binding): IrExpression {
     val mapKey =
       when (binding) {
         is Binding.Provided -> binding.annotations.mapKeys.first().ir
@@ -1499,23 +1593,9 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         mapKey
       } else {
         // We can just copy the expression!
-        // TODO do we need to call shallowCopy()?
         mapKey.getValueArgument(0)!!
       }
 
-    val typeToCompare =
-      if (expression is IrClassReference) {
-        // We want KClass<*>, not the specific type in the annotation we got (i.e. KClass<Int>).
-        pluginContext.irBuiltIns.kClassClass.starProjectedType
-      } else {
-        expression.type
-      }
-    if (typeToCompare != keyType) {
-      // TODO check in FIR instead
-      error(
-        "Map key type mismatch: ${typeToCompare.dumpKotlinLike()} != ${keyType.dumpKotlinLike()}"
-      )
-    }
     return expression
   }
 
@@ -1529,6 +1609,8 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
       error("Absent bindings need to be checked prior to generateBindingCode()")
     }
 
+    val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
+
     // If we already have a provider field we can just return it
     if (
       binding is Binding.Provided &&
@@ -1536,7 +1618,9 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         binding in generationContext.multibindingProviderFields
     ) {
       generationContext.multibindingProviderFields[binding]?.let {
-        return irGetField(irGet(generationContext.thisReceiver), it)
+        return irGetField(irGet(generationContext.thisReceiver), it).let {
+          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+        }
       }
     }
 
@@ -1545,7 +1629,9 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
     // This is important for cases like DelegateFactory and breaking cycles.
     if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
       generationContext.providerFields[binding.typeKey]?.let {
-        return irGetField(irGet(generationContext.thisReceiver), it)
+        return irGetField(irGet(generationContext.thisReceiver), it).let {
+          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+        }
       }
     }
 
@@ -1553,44 +1639,35 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
       is Binding.ConstructorInjected -> {
         // Example_Factory.create(...)
         val injectableConstructor = binding.injectedConstructor
-        val factoryClass =
-          injectConstructorTransformer.getOrGenerateFactoryClass(
-            binding.type,
-            injectableConstructor,
-          )
-        // Invoke its factory's create() function
-        val creatorClass =
-          if (factoryClass.isObject) {
-            factoryClass
-          } else {
-            factoryClass.companionObject()!!
+        val factory =
+          injectConstructorTransformer.getOrGenerateFactory(binding.type, injectableConstructor)
+            ?: return stubExpression(metroContext)
+
+        with(factory) {
+          invokeCreateExpression { createFunction ->
+            generateBindingArguments(
+              createFunction.parameters(metroContext),
+              createFunction,
+              binding,
+              generationContext,
+            )
           }
-        val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
-        val args =
-          generateBindingArguments(
-            createFunction.owner.parameters(metroContext),
-            createFunction.owner,
-            binding,
-            generationContext,
-          )
-        irInvoke(
-          dispatchReceiver = irGetObject(creatorClass.symbol),
-          callee = createFunction,
-          args = args,
-        )
+        }
+      }
+
+      is Binding.ObjectClass -> {
+        instanceFactory(binding.typeKey.type, irGetObject(binding.type.symbol))
       }
 
       is Binding.Provided -> {
         // For binds functions, just use the backing type
-        binding.aliasedType?.let {
-          return generateBindingCode(
-            generationContext.graph.getOrCreateBinding(it, generationContext.bindingStack),
-            generationContext,
-            it,
-          )
+        binding.aliasedBinding(generationContext.graph, generationContext.bindingStack)?.let {
+          return generateBindingCode(it, generationContext)
         }
 
-        val factoryClass = providesTransformer.getOrGenerateFactoryClass(binding)
+        val factoryClass =
+          providesTransformer.getOrGenerateFactoryClass(binding)
+            ?: return stubExpression(metroContext)
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {
@@ -1614,21 +1691,58 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
           args = args,
         )
       }
+
       is Binding.Assisted -> {
         // Example9_Factory_Impl.create(example9Provider);
-        val implClass = assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
-        val implClassCompanion = implClass.companionObject()!!
-        val createFunction = implClassCompanion.requireSimpleFunction(Symbols.StringNames.CREATE)
+        val implClass =
+          assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
+            ?: return stubExpression(metroContext)
+
+        val dispatchReceiver: IrExpression?
+        val createFunction: IrSimpleFunctionSymbol
+        val isFromDagger: Boolean
+        if (options.enableDaggerRuntimeInterop && implClass.isFromJava()) {
+          // Dagger interop
+          createFunction =
+            implClass
+              .simpleFunctions()
+              .first {
+                it.isStatic &&
+                  (it.name == Symbols.Names.create ||
+                    it.name == Symbols.Names.createFactoryProvider)
+              }
+              .symbol
+          dispatchReceiver = null
+          isFromDagger = true
+        } else {
+          val implClassCompanion = implClass.companionObject()!!
+          createFunction = implClassCompanion.requireSimpleFunction(Symbols.StringNames.CREATE)
+          dispatchReceiver = irGetObject(implClassCompanion.symbol)
+          isFromDagger = false
+        }
+
         val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)
-        irInvoke(
-          dispatchReceiver = irGetObject(implClassCompanion.symbol),
-          callee = createFunction,
-          args = listOf(delegateFactoryProvider),
-        )
+        val invokeCreateExpression =
+          irInvoke(
+            dispatchReceiver = dispatchReceiver,
+            callee = createFunction,
+            args = listOf(delegateFactoryProvider),
+          )
+        if (isFromDagger) {
+          with(symbols.daggerSymbols) {
+            val targetType =
+              (createFunction.owner.returnType as IrSimpleType).arguments[0].typeOrFail
+            transformToMetroProvider(invokeCreateExpression, targetType)
+          }
+        } else {
+          invokeCreateExpression
+        }
       }
+
       is Binding.Multibinding -> {
         generateMultibindingExpression(binding, contextualTypeKey, generationContext, fieldInitKey)
       }
+
       is Binding.MembersInjected -> {
         val injectedClass = pluginContext.referenceClass(binding.targetClassId)!!.owner
         val injectedType = injectedClass.defaultType
@@ -1641,6 +1755,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
               callee = symbols.metroMembersInjectorsNoOp,
             )
             .apply { putTypeArgument(0, injectedType) }
+            .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         } else {
           val createFunction = injectorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
           val args =
@@ -1651,25 +1766,36 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
               generationContext,
             )
           instanceFactory(
-            injectedType,
-            // InjectableClass_MembersInjector.create(stringValueProvider,
-            // exampleComponentProvider)
-            irInvoke(
-              dispatchReceiver = irGetObject(injectorClass.symbol),
-              callee = createFunction,
-              args = args,
-            ),
-          )
+              injectedType,
+              // InjectableClass_MembersInjector.create(stringValueProvider,
+              // exampleComponentProvider)
+              irInvoke(
+                dispatchReceiver =
+                  if (injectorClass.isObject) {
+                    irGetObject(injectorClass.symbol)
+                  } else {
+                    // It's static from java, dagger interop
+                    check(createFunction.owner.isStatic)
+                    null
+                  },
+                callee = createFunction,
+                args = args,
+              ),
+            )
+            .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         }
       }
+
       is Binding.Absent -> {
         // Should never happen, this should be checked before function/constructor injections.
         error("Unable to generate code for unexpected Absent binding: $binding")
       }
+
       is Binding.BoundInstance -> {
         // Should never happen, this should get handled in the provider fields logic above.
         error("Unable to generate code for unexpected BoundInstance binding: $binding")
       }
+
       is Binding.GraphDependency -> {
         /*
         TODO eventually optimize this like dagger does and generate static provider classes that don't hold outer refs
@@ -1771,12 +1897,14 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
         callee = symbols.emptySet
         args = emptyList()
       }
+
       1 -> {
         // setOf(<one>)
         callee = symbols.setOfSingleton
         val provider = binding.sourceBindings.first()
         args = listOf(generateMultibindingArgument(provider, generationContext, fieldInitKey))
       }
+
       else -> {
         // buildSet(<size>) { ... }
         callee = symbols.buildSetWithCapacity
@@ -1975,7 +2103,7 @@ internal class DependencyGraphTransformer(context: IrMetroContext) :
             putFunction
           }
         irInvoke(dispatchReceiver = receiver, callee = putter, typeHint = builder.type).apply {
-          putValueArgument(0, generateMapKeyLiteral(sourceBinding, keyType))
+          putValueArgument(0, generateMapKeyLiteral(sourceBinding))
           putValueArgument(
             1,
             generateBindingCode(sourceBinding, generationContext, fieldInitKey = fieldInitKey),

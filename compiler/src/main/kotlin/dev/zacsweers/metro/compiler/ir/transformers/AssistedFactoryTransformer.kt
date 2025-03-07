@@ -1,23 +1,10 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
@@ -41,6 +28,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.functions
@@ -64,7 +52,7 @@ internal class AssistedFactoryTransformer(
     }
   }
 
-  internal fun getOrGenerateImplClass(declaration: IrClass): IrClass {
+  internal fun getOrGenerateImplClass(declaration: IrClass): IrClass? {
     // TODO if declaration is external to this compilation, look
     //  up its factory or warn if it doesn't exist
     val classId: ClassId = declaration.classIdOrFail
@@ -83,7 +71,7 @@ internal class AssistedFactoryTransformer(
             declaration.reportError(
               "Found a Metro assisted factory impl declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
             )
-            exitProcessing()
+            return null
           }
         }
         isMetroImpl
@@ -91,10 +79,19 @@ internal class AssistedFactoryTransformer(
 
     if (implClass == null) {
       if (isExternal) {
+        if (options.enableDaggerRuntimeInterop) {
+          // Look up where dagger would generate one
+          val daggerImplClassId = classId.generatedClass("_Impl")
+          val daggerImplClass = pluginContext.referenceClass(daggerImplClassId)?.owner
+          if (daggerImplClass != null) {
+            generatedImpls[classId] = daggerImplClass
+            return daggerImplClass
+          }
+        }
         declaration.reportError(
           "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
         )
-        exitProcessing()
+        return null
       } else {
         error(
           "No expected assisted factory impl class generated for '${declaration.kotlinFqName}'. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
@@ -118,15 +115,14 @@ internal class AssistedFactoryTransformer(
       targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
 
     val generatedFactory =
-      injectConstructorTransformer.getOrGenerateFactoryClass(targetType, injectConstructor)
+      injectConstructorTransformer.getOrGenerateFactory(targetType, injectConstructor)
+        ?: return null
 
     val constructorParams = injectConstructor.parameters(this)
     val assistedParameters =
       constructorParams.valueParameters.filter { parameter -> parameter.isAssisted }
     val assistedParameterKeys =
-      assistedParameters.mapIndexed { index, parameter ->
-        injectConstructor.valueParameters[index].toAssistedParameterKey(symbols, parameter.typeKey)
-      }
+      assistedParameters.map { parameter -> parameter.assistedParameterKey }
 
     val ctor = implClass.primaryConstructor!!
     implClass.apply {
@@ -145,7 +141,16 @@ internal class AssistedFactoryTransformer(
             // parameter the function parameter where the keys match.
             val argumentList =
               assistedParameterKeys.map { assistedParameterKey ->
-                irGet(functionParams.getValue(assistedParameterKey))
+                val param =
+                  functionParams[assistedParameterKey]
+                    ?: error(
+                      "Could not find matching parameter for $assistedParameterKey on constructor for ${implClass.classId}.\n\nAvailable keys are\n${
+                        functionParams.keys.joinToString(
+                          "\n"
+                        )
+                      }"
+                    )
+                irGet(param)
               }
 
             irExprBodySafe(
@@ -153,7 +158,7 @@ internal class AssistedFactoryTransformer(
               irInvoke(
                 dispatchReceiver =
                   irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
-                callee = generatedFactory.requireSimpleFunction(Symbols.StringNames.INVOKE),
+                callee = generatedFactory.invokeFunctionSymbol,
                 args = argumentList,
               ),
             )

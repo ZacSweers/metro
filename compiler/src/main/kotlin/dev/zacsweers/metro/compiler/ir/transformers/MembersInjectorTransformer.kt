@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
@@ -39,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import kotlin.collections.component1
 import kotlin.collections.component2
+import kotlin.collections.set
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -90,8 +78,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   }
 
   fun getOrGenerateInjector(declaration: IrClass): MemberInjectClass? {
-    // TODO if declaration is external to this compilation, look
-    //  up its factory or warn if it doesn't exist
     val injectedClassId: ClassId = declaration.classId ?: return null
     generatedInjectors[injectedClassId]?.let {
       return it
@@ -122,6 +108,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       }
 
     if (injectorClass == null) {
+      if (options.enableDaggerRuntimeInterop) {
+        // TODO Look up where dagger would generate one
+        //  requires memberInjectParameters to support fields
+      }
       // For now, assume there's no members to inject. Would be nice if we could better check this
       // in the future
       generatedInjectors[injectedClassId] = null
@@ -134,7 +124,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     // Loop through _declared_ member inject params. Collect and use to create unique names
     val injectedMembersByClass = declaration.memberInjectParameters(this)
     val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
-    val declaredInjectFunctions: Map<IrSimpleFunction, Parameters<MembersInjectParameter>> =
+    val declaredInjectFunctions =
       parameterGroupsForClass.associateBy { params ->
         val name =
           if (params.isProperty) {

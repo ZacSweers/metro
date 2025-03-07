@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2021 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2021 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
 import com.google.common.truth.Truth.assertThat
@@ -48,13 +35,16 @@ abstract class MetroCompilerTest {
   protected open val extraImports: List<String>
     get() = emptyList()
 
+  protected open val metroOptions: MetroOptions
+    get() = MetroOptions()
+
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
     debug: Boolean = MetroOption.DEBUG.raw.defaultValue.expectAs(),
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      MetroOptions(debug = debug, generateAssistedFactories = generateAssistedFactories),
+      metroOptions.copy(debug = debug, generateAssistedFactories = generateAssistedFactories),
     previousCompilationResult: JvmCompilationResult? = null,
   ): KotlinCompilation {
     return KotlinCompilation().apply {
@@ -70,6 +60,9 @@ abstract class MetroCompilerTest {
       // TODO this is needed until/unless we implement JVM reflection support for DefaultImpls
       //  invocations
       kotlincArguments += "-Xjvm-default=all"
+
+      // TODO test enabling IC?
+      //  kotlincArguments += "-Xenable-incremental-compilation"
 
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
@@ -91,11 +84,23 @@ abstract class MetroCompilerTest {
                 )
               MetroOption.GENERATE_ASSISTED_FACTORIES ->
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
+              MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
+                processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
+              }
+              MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP ->
+                processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
+              MetroOption.CUSTOM_PROVIDER -> {
+                if (customProviderTypes.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))
+              }
+              MetroOption.CUSTOM_LAZY -> {
+                if (customLazyTypes.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customLazyTypes.joinToString(":"))
               }
               MetroOption.CUSTOM_ASSISTED -> {
                 if (customAssistedAnnotations.isEmpty()) continue
@@ -234,12 +239,13 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      MetroOptions(
+      metroOptions.copy(
         enabled = metroEnabled,
         debug = debug,
         generateAssistedFactories = generateAssistedFactories,
       ),
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
+    compilationBlock: KotlinCompilation.() -> Unit = {},
     previousCompilationResult: JvmCompilationResult? = null,
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
@@ -251,12 +257,13 @@ abstract class MetroCompilerTest {
           options = options,
           previousCompilationResult = previousCompilationResult,
         )
+        .apply(compilationBlock)
         .apply { this.messageOutputStream = cleaningOutput.outputStream() }
         .compile()
 
     // Print cleaned output
     while (!cleaningOutput.exhausted()) {
-      println(cleaningOutput.readUtf8Line()?.cleanOutputLine(includeSeverity = true))
+      println(cleaningOutput.readUtf8Line()?.cleanOutputLine())
     }
 
     return result

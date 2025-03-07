@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
@@ -32,6 +19,7 @@ import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeMain
 import java.util.concurrent.Callable
 import kotlin.test.Ignore
+import kotlin.test.assertNotNull
 import org.junit.Test
 
 class DependencyGraphTransformerTest : MetroCompilerTest() {
@@ -42,8 +30,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            @Singleton
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
 
               fun exampleClass(): ExampleClass
@@ -54,7 +41,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               }
             }
 
-            @Singleton
+            @SingleIn(AppScope::class)
             @Inject
             class ExampleClass(private val text: String) : Callable<String> {
               override fun call(): String = text
@@ -369,19 +356,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // to unscoped bindings are called every time.
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
-            @Singleton
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             abstract class ExampleGraph {
 
               private var scopedCounter = 0
@@ -393,7 +370,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               @Named("unscoped")
               abstract val unscoped: String
 
-              @Singleton
+              @SingleIn(AppScope::class)
               @Provides
               @Named("scoped")
               fun provideScoped(): String = "text " + scopedCounter++
@@ -405,9 +382,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
             @Inject
             class ExampleClass(@Named("hello") private val text: String)
-
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -427,22 +403,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // Ensure scoped bindings match the graph that is trying to use them
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Singleton
-            import dev.zacsweers.metro.SingleIn
-            import dev.zacsweers.metro.AppScope
-
-            abstract class UserScope private constructor()
-
             @Singleton
-            @SingleIn(AppScope::class)
-            @DependencyGraph
+            @DependencyGraph(AppScope::class)
             interface ExampleGraph {
 
               val intValue: Int
@@ -451,15 +415,18 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               @Provides
               fun invalidScope(): Int = 0
             }
+
+            abstract class UserScope private constructor()
+            @Scope annotation class Singleton
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
+    result.assertDiagnostics(
       """
-        ExampleGraph.kt:11:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@Singleton', '@SingleIn(AppScope::class)') may not reference bindings from different scopes:
+        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@Singleton') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
                 [test.ExampleGraph] test.ExampleGraph.intValue
@@ -474,17 +441,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // binding resolution and being able to invoke them correctly in the resulting graph.
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
               val value: String
@@ -496,7 +454,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -510,17 +468,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // binding resolution and being able to invoke them correctly in the resulting graph.
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
 
@@ -535,7 +484,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         )
       )
 
@@ -547,17 +496,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `providers overridden from supertypes are errors`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
 
@@ -572,30 +512,21 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
-      "ExampleGraph.kt:14:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead."
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:11:16 Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead."
     )
   }
 
   @Test
   fun `overrides annotated with provides from non-provides supertypes are ok`() {
     compile(
-      kotlin(
-        "ExampleGraph.kt",
+      source(
         """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph : TextProvider {
 
@@ -610,7 +541,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-          .trimIndent(),
+          .trimIndent()
       )
     )
   }
@@ -712,41 +643,33 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `unscoped graphs may not reference scoped types`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Singleton
-
             @DependencyGraph
             interface ExampleGraph {
 
               val value: String
 
-              @Singleton
+              @SingleIn(AppScope::class)
               @Provides
               fun provideValue(): String = "Hello, world!"
             }
 
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    assertThat(result.messages)
-      .contains(
-        """
-          ExampleGraph.kt:7:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
-              kotlin.String (scoped to '@Singleton')
-              kotlin.String is requested at
-                  [test.ExampleGraph] test.ExampleGraph.value
-        """
-          .trimIndent()
-      )
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
+            kotlin.String (scoped to '@SingleIn(AppScope::class)')
+            kotlin.String is requested at
+                [test.ExampleGraph] test.ExampleGraph.value
+      """
+        .trimIndent()
+    )
   }
 
   @Test
@@ -827,41 +750,30 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `advanced dependency chains`() {
     // This is a compile-only test. The full integration is in integration-tests
     compile(
-      kotlin(
-        "ExampleGraph.kt",
+      source(
         """
-            package test
+          import java.nio.file.FileSystem
+          import java.nio.file.FileSystems
 
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Singleton
-            import dev.zacsweers.metro.Named
-            import dev.zacsweers.metro.Provider
-            import java.nio.file.FileSystem
-            import java.nio.file.FileSystems
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph {
 
-            @Singleton
-            @DependencyGraph
-            interface ExampleGraph {
+            val repository: Repository
 
-              val repository: Repository
+            @Provides
+            fun provideFileSystem(): FileSystem = FileSystems.getDefault()
 
-              @Provides
-              fun provideFileSystem(): FileSystem = FileSystems.getDefault()
+            @Named("cache-dir-name")
+            @Provides
+            fun provideCacheDirName(): String = "cache"
+          }
 
-              @Named("cache-dir-name")
-              @Provides
-              fun provideCacheDirName(): String = "cache"
-            }
-
-            @Inject @Singleton class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
-            @Inject @Singleton class HttpClient(cache: Cache)
-            @Inject @Singleton class ApiClient(httpClient: Lazy<HttpClient>)
-            @Inject class Repository(apiClient: ApiClient)
-
+          @Inject @SingleIn(AppScope::class) class Cache(fileSystem: FileSystem, @Named("cache-dir-name") cacheDirName: Provider<String>)
+          @Inject @SingleIn(AppScope::class) class HttpClient(cache: Cache)
+          @Inject @SingleIn(AppScope::class) class ApiClient(httpClient: Lazy<HttpClient>)
+          @Inject class Repository(apiClient: ApiClient)
           """
-          .trimIndent(),
+          .trimIndent()
       )
     )
   }
@@ -1845,6 +1757,260 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val count = graph.callProperty<Int>("count")
       assertThat(count).isEqualTo(3)
+    }
+  }
+
+  // Compile-only validation test
+  @Test
+  fun `graphs with scope properties declare implicit SingleIn scopes`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+            }
+
+            @SingleIn(AppScope::class)
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("exampleClass"))
+    }
+  }
+
+  // Compile-only validation test
+  @Test
+  fun `graphs with additional scopes declare implicit SingleIn scopes`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class, additionalScopes = [LoggedInScope::class])
+            interface ExampleGraph {
+              val appClass: AppClass
+              val loggedInClass: LoggedInClass
+            }
+
+            abstract class LoggedInScope private constructor()
+
+            @SingleIn(AppScope::class)
+            @Inject
+            class AppClass
+
+            @SingleIn(LoggedInScope::class)
+            @Inject
+            class LoggedInClass
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("appClass"))
+      assertNotNull(graph.callProperty<Any>("loggedInClass"))
+    }
+  }
+
+  @Test
+  fun `JvmSuppressWildcards does not affect type keys`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds
+              val ints: Set<Int>
+
+              val exampleClass: ExampleClass
+            }
+
+            @Inject
+            class ExampleClass(ints: Set<@JvmSuppressWildcards Int>)
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("exampleClass"))
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double provides`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Provides fun provideExampleClass1(): ExampleClass = ExampleClass()
+              @Provides fun provideExampleClass2(): ExampleClass = ExampleClass()
+            }
+
+            class ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double provides and binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Provides fun provideExampleClass1(): ExampleClass = Impl1()
+              @Binds fun Impl2.provideExampleClass2(): ExampleClass
+            }
+
+            interface ExampleClass
+            class Impl1 : ExampleClass
+            @Inject class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:10:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:11:3
+          ├─ Binding 2: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Binds fun Impl1.provideExampleClass1(): ExampleClass
+              @Binds fun Impl2.provideExampleClass2(): ExampleClass
+            }
+
+            interface ExampleClass
+            @Inject class Impl1 : ExampleClass
+            @Inject class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double contributed binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+            }
+
+            interface ExampleClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class Impl1 : ExampleClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:17:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:13:1
+          ├─ Binding 2: ExampleGraph.kt:17:1
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `transitive scoped bindings are ordered correctly`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          class Impl1 : ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          class Impl2(val contributedInterface: ContributedInterface)
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+            val impl1: Impl1
+            val impl2: Impl2
+
+            @Binds val Impl1.bind: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      // Impl1 is correctly scoped and bound
+      val impl1 = graph.callProperty<Any>("impl1")
+      val contributed = graph.callProperty<Any>("contributedInterface")
+      assertThat(impl1.javaClass.simpleName).isEqualTo("Impl1")
+      assertThat(impl1).isSameInstanceAs(contributed)
+
+      // Impl2 correctly uses the bound type
+      val impl2 = graph.callProperty<Any>("impl2")
+      val impl1FromImpl2 = impl2.callProperty<Any>("contributedInterface")
+      assertThat(impl1FromImpl2).isSameInstanceAs(impl1)
+      assertThat(impl1FromImpl2).isSameInstanceAs(contributed)
+
+      // Calling again also respects scoping
+      assertThat(graph.callProperty<Any>("impl2")).isSameInstanceAs(impl2)
     }
   }
 }

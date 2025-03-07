@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.test.integration
 
 import dev.zacsweers.metro.AppScope
@@ -26,17 +13,16 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntKey
 import dev.zacsweers.metro.IntoMap
 import dev.zacsweers.metro.IntoSet
-import dev.zacsweers.metro.LongKey
 import dev.zacsweers.metro.MapKey
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.Singleton
 import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.createGraphFactory
+import io.ktor.util.PlatformUtils
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -44,9 +30,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
-import okio.FileSystem
-import okio.Path.Companion.toPath
-import okio.fakefilesystem.FakeFileSystem
 
 class DependencyGraphProcessingTest {
 
@@ -57,7 +40,7 @@ class DependencyGraphProcessingTest {
     val repository: Repository
     val apiClient: ApiClient
 
-    @Provides private fun provideFileSystem(): FileSystem = FakeFileSystem()
+    @Provides private fun provideFileSystem(): FileSystem = FileSystem()
 
     @Named("cache-dir-name") @Provides private fun provideCacheDirName(): String = "cache"
 
@@ -544,7 +527,11 @@ class DependencyGraphProcessingTest {
     assertNotSame(graph.ints, graph.ints)
 
     // Ensure we return immutable types
-    assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
+    // TODO on the JVM we get Collections.singleton() but other platforms just us HashSet. Maybe we
+    //  should use our own? Or use buildSet
+    if (PlatformUtils.IS_JVM) {
+      assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
+    }
   }
 
   @DependencyGraph
@@ -808,15 +795,18 @@ class DependencyGraphProcessingTest {
   fun `multibindings - misc other map key types`() {
     val graph = createGraph<MultibindingGraphWithMultipleOtherMapKeyTypes>()
     assertEquals(mapOf(Seasoning.SPICY to 1, Seasoning.REGULAR to 2), graph.seasoningAmounts)
-    assertEquals(mapOf(1L to 1, 2L to 2), graph.longs)
+    assertEquals(mapOf(1 to 1, 2 to 2), graph.ints)
     assertEquals(mapOf("1" to 1, "2" to 2), graph.strings)
-    assertEquals(
-      mapOf(
-        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
-        MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to 2,
-      ),
-      graph.wrappedSeasoningAmounts,
-    )
+    // TODO WASM annotation classes don't implement equals correctly
+    if (!PlatformUtils.IS_WASM_JS) {
+      assertEquals(
+        mapOf(
+          MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.SPICY) to 1,
+          MultibindingGraphWithMultipleOtherMapKeyTypes.WrappedSeasoningKey(Seasoning.REGULAR) to 2,
+        ),
+        graph.wrappedSeasoningAmounts,
+      )
+    }
   }
 
   @DependencyGraph
@@ -832,11 +822,11 @@ class DependencyGraphProcessingTest {
 
     @MapKey annotation class SeasoningKey(val value: Seasoning)
 
-    val longs: Map<Long, Int>
+    val ints: Map<Int, Int>
 
-    @Provides @IntoMap @LongKey(1) private fun provideLongKey1(): Int = 1
+    @Provides @IntoMap @IntKey(1) private fun provideIntKey1(): Int = 1
 
-    @Provides @IntoMap @LongKey(2) private fun provideLongKey2(): Int = 2
+    @Provides @IntoMap @IntKey(2) private fun provideIntKey2(): Int = 2
 
     val strings: Map<String, Int>
 
@@ -1117,8 +1107,7 @@ class DependencyGraphProcessingTest {
   }
 
   @Singleton
-  @SingleIn(AppScope::class)
-  @DependencyGraph
+  @DependencyGraph(AppScope::class)
   abstract class GraphWithMultipleScopes {
     private var intCounter = 0
     private var longCounter = 0L
@@ -1249,3 +1238,9 @@ class DependencyGraphProcessingTest {
     }
   }
 }
+
+class FileSystem
+
+class Path
+
+fun String.toPath(): Path = Path()

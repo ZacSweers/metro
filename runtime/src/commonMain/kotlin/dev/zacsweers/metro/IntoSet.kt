@@ -16,9 +16,9 @@
 package dev.zacsweers.metro
 
 /**
- * The method's return type forms the generic type argument of a `Set<T>`, and the returned value is
- * contributed to the set. The object graph will pass dependencies to the method as parameters. The
- * `Set<T>` produced from the accumulation of values will be immutable.
+ * The declaration's return type forms the generic type argument of a `Set<T>`, and the returned
+ * value is contributed to the set. The object graph will pass dependencies to the method as
+ * parameters. The `Set<T>` produced from the accumulation of values will be immutable.
  *
  * @see <a href="https://dagger.dev/multibindings.set-multibindings">Set multibinding</a>
  */

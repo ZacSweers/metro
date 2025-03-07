@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
@@ -21,6 +8,7 @@ import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callProperty
+import dev.zacsweers.metro.compiler.captureStandardOut
 import dev.zacsweers.metro.compiler.companionObjectClass
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
@@ -29,6 +17,7 @@ import dev.zacsweers.metro.compiler.provideValueAs
 import dev.zacsweers.metro.compiler.providesFactoryClass
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.provider
+import kotlinx.coroutines.test.runTest
 import org.junit.Ignore
 import org.junit.Test
 
@@ -472,6 +461,42 @@ class ProvidesTransformerTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
     }
+  }
+
+  @Test
+  fun `function types are supported`() = runTest {
+    compile(
+        source(
+          """
+          @DependencyGraph
+          interface ExampleGraph {
+            val unitFunction: () -> Unit
+            val intFunction: () -> Int
+            val intIntFunction: (Int) -> Int
+            val floatReceiverFloatFunction: Float.() -> Float
+            val suspendBooleanFunction: suspend () -> Boolean
+
+            @Provides fun provideUnitFunction(): () -> Unit = { println("Hello, world!") }
+            @Provides fun provideIntFunction(): () -> Int = { 2 }
+            @Provides fun provideIntIntFunction(): (Int) -> Int = { 2 * it }
+            @Provides fun provideFloatReceiverFloatFunction(): Float.() -> Float = { 2 * this }
+            @Provides fun provideSuspendBooleanFunction(): suspend () -> Boolean = { true }
+          }
+        """
+            .trimIndent()
+        )
+      )
+      .apply {
+        val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+        val out = captureStandardOut { graph.callProperty<() -> Unit>("unitFunction").invoke() }
+        assertThat(out).isEqualTo("Hello, world!")
+        assertThat(graph.callProperty<() -> Int>("intFunction").invoke()).isEqualTo(2)
+        assertThat(graph.callProperty<(Int) -> Int>("intIntFunction").invoke(2)).isEqualTo(4)
+        assertThat(graph.callProperty<Float.() -> Float>("floatReceiverFloatFunction").invoke(2f))
+          .isEqualTo(4f)
+        assertThat(graph.callProperty<suspend () -> Boolean>("suspendBooleanFunction").invoke())
+          .isEqualTo(true)
+      }
   }
 
   // TODO

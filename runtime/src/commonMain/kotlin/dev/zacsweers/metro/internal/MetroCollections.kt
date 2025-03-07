@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.internal
 
 /** The maximum value for a signed 32-bit integer that is equal to a power of 2. */
@@ -49,16 +36,16 @@ internal fun <K, V> Map<K, V>.toUnmodifiableMap(): Map<K, V> {
 }
 
 /**
- * Creates a {@link HashSet} instance, with a high enough "intial capcity" that it <em>should</em>
- * hold {@code expectedSize} elements without growth.
+ * Creates a [HashSet] instance, with a high enough "initial capacity" that it _should_ hold
+ * [expectedSize] elements without growth.
  */
 internal fun <T> newHashSetWithExpectedSize(expectedSize: Int): HashSet<T> {
   return HashSet(calculateInitialCapacity(expectedSize))
 }
 
 /**
- * Creates a {@link LinkedHashMap} instance, with a high enough "initial capacity" that it
- * <em>should</em> hold {@code expectedSize} elements without growth.
+ * Creates a [LinkedHashMap] instance, with a high enough "initial capacity" that it _should_ hold
+ * [expectedSize] elements without growth.
  */
 public fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHashMap<K, V> {
   return LinkedHashMap(calculateInitialCapacity(expectedSize))
@@ -72,7 +59,6 @@ public fun <K, V> newLinkedHashMapWithExpectedSize(expectedSize: Int): LinkedHas
  * Pulled from Kotlin stdlib's collection builders. Slightly different from dagger's but
  * functionally the same.
  */
-@PublishedApi
 internal fun calculateInitialCapacity(expectedSize: Int): Int =
   when {
     // We are not coercing the value to a valid one and not throwing an exception. It is up to the

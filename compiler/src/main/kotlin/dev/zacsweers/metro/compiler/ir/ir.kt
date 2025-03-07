@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
@@ -22,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.metroAnnotations
+import java.io.File
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
@@ -71,6 +59,7 @@ import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
+import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -91,6 +80,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -130,6 +120,17 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
     columnEnd = sourceRangeInfo.endColumnNumber + 1,
     lineContent = null,
   )!!
+}
+
+internal fun CompilerMessageSourceLocation.render(): String {
+  return buildString {
+    val fileUri = File(path).toPath().toUri()
+    append("$fileUri")
+    if (line > 0 && column > 0) {
+      append(":$line:$column")
+    }
+    append(' ')
+  }
 }
 
 /** Returns the raw [IrClass] of this [IrType] or throws. */
@@ -221,18 +222,31 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
     type.rawType().classIdOrFail,
     valueArguments
       .map {
-        when (it) {
-          is IrConst -> it.value
-          is IrClassReference -> it.classType.classOrNull?.owner?.classId
-          is IrGetEnumValue -> it.symbol.owner.fqNameWhenAvailable
-          else -> {
-            error("Unknown annotation argument type: ${it?.let { it::class.java }}")
-          }
-        }
+        it?.computeHashSource()
+          ?: error("Unknown annotation argument type: ${it?.let { it::class.java }}")
       }
       .toTypedArray()
       .contentDeepHashCode(),
   )
+}
+
+private fun IrExpression.computeHashSource(): Any? {
+  return when (this) {
+    is IrConst -> value
+    is IrClassReference -> classType.classOrNull?.owner?.classId
+    is IrGetEnumValue -> symbol.owner.fqNameWhenAvailable
+    is IrConstructorCall -> computeAnnotationHash()
+    is IrVararg -> {
+      elements.map {
+        when (it) {
+          is IrExpression -> it.computeHashSource()
+          else -> it
+        }
+      }
+    }
+
+    else -> null
+  }
 }
 
 // TODO create an instance of this that caches lookups?
@@ -391,48 +405,66 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   isGraphInstance: Boolean,
 ): IrExpression {
   val symbols = context.symbols
-  if (!bindingCode.type.isMetroProviderType(context)) {
+  val providerType = bindingCode.type.findProviderSupertype(context)
+  if (providerType == null) {
     // Not a provider, nothing else to do here!
     return bindingCode
   }
+
+  // More readability
+  val providerExpression = bindingCode
+
+  val providerSymbols = symbols.providerSymbolsFor(contextKey)
+
   return when {
     contextKey.isLazyWrappedInProvider -> {
+      // TODO FIR error if mixing non-metro provider and kotlin lazy
       // ProviderOfLazy.create(provider)
       irInvoke(
         dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
         callee = symbols.providerOfLazyCreate,
-        args = listOf(bindingCode),
+        args = listOf(providerExpression),
         typeHint = contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
       )
     }
 
-    contextKey.isWrappedInProvider -> bindingCode
+    contextKey.isWrappedInProvider -> {
+      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
+    }
+
     // Normally Dagger changes Lazy<Type> parameters to a Provider<Type>
     // (usually the container is a joined type), therefore we use
     // `.lazy(..)` to convert the Provider to a Lazy. Assisted
     // parameters behave differently and the Lazy type is not changed
     // to a Provider and we can simply use the parameter name in the
     // argument list.
-    contextKey.isWrappedInLazy && isAssisted -> bindingCode
+    contextKey.isWrappedInLazy && isAssisted -> {
+      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
+    }
+
     contextKey.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
       irInvoke(
-        dispatchReceiver = irGetObject(symbols.doubleCheckCompanionObject),
-        callee = symbols.doubleCheckLazy,
-        args = listOf(bindingCode),
-        typeHint = contextKey.typeKey.type.wrapInLazy(symbols),
+        dispatchReceiver = irGetObject(providerSymbols.doubleCheckCompanionObject),
+        callee = providerSymbols.doubleCheckLazy,
+        args = listOf(providerExpression),
+        typeHint = contextKey.toIrType(context),
       )
     }
 
     isAssisted || isGraphInstance -> {
       // provider
-      bindingCode
+      with(providerSymbols) { transformMetroProvider(providerExpression, contextKey) }
     }
 
     else -> {
       // provider.invoke()
+      val metroProviderExpression =
+        with(providerSymbols) {
+          transformToMetroProvider(providerExpression, contextKey.typeKey.type)
+        }
       irInvoke(
-        dispatchReceiver = bindingCode,
+        dispatchReceiver = metroProviderExpression,
         callee = symbols.providerInvoke,
         typeHint = contextKey.typeKey.type,
       )
@@ -492,37 +524,13 @@ internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExp
 internal val IrClass.thisReceiverOrFail: IrValueParameter
   get() = this.thisReceiver ?: error("No thisReceiver for $classId")
 
-internal fun IrBuilderWithScope.checkNotNullCall(
-  context: IrMetroContext,
-  parent: IrDeclarationParent,
-  firstArg: IrExpression,
-  message: String,
-): IrExpression =
-  irInvoke(
-      callee = context.symbols.stdlibCheckNotNull,
-      args =
-        listOf(
-          firstArg,
-          irLambda(
-            context.pluginContext,
-            parent = parent, // TODO this is obvi wrong
-            receiverParameter = null,
-            valueParameters = emptyList(),
-            returnType = context.pluginContext.irBuiltIns.stringType,
-            suspend = false,
-          ) {
-            +irReturn(irString(message))
-          },
-        ),
-    )
-    .apply { putTypeArgument(0, firstArg.type) }
-
 internal fun IrClass.getAllSuperTypes(
   pluginContext: IrPluginContext,
   excludeSelf: Boolean = true,
   excludeAny: Boolean = true,
 ): Sequence<IrType> {
   val self = this
+
   // TODO are there ever cases where superTypes includes the current class?
   suspend fun SequenceScope<IrType>.allSuperInterfacesImpl(currentClass: IrClass) {
     for (superType in currentClass.superTypes) {
@@ -651,10 +659,12 @@ internal val IrType.simpleName: String
       is IrClassSymbol -> {
         classifier.owner.name.asString()
       }
+
       is IrScriptSymbol -> error("No simple name for script symbol: ${dumpKotlinLike()}")
       is IrTypeParameterSymbol -> {
         classifier.owner.name.asString()
       }
+
       null -> error("No classifier for ${dumpKotlinLike()}")
     }
 
@@ -707,7 +717,8 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
   origin = IrDeclarationOrigin.DEFINED
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
-    this.dispatchReceiverParameter = dispatchReceiverParameter.deepCopyWithSymbols(this)
+    this.dispatchReceiverParameter =
+      dispatchReceiverParameter.copyTo(this, type = dispatchReceiverParameter.type)
   } else if (this is IrProperty) {
     this.getter?.finalizeFakeOverride(dispatchReceiverParameter)
     this.setter?.finalizeFakeOverride(dispatchReceiverParameter)
@@ -739,11 +750,8 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 
 internal fun IrFunction.stubExpressionBody(context: IrMetroContext) =
   context.pluginContext.createIrBuilder(symbol).run {
-    irExprBodySafe(
-      symbol,
-      irInvoke(
-        callee = context.symbols.stdlibErrorFunction,
-        args = listOf(irString("Never called")),
-      ),
-    )
+    irExprBodySafe(symbol, stubExpression(context))
   }
+
+internal fun IrBuilderWithScope.stubExpression(context: IrMetroContext) =
+  irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))

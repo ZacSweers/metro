@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2021 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2021 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
 import org.gradle.api.Project
@@ -20,6 +7,7 @@ import org.gradle.api.provider.Provider
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 
@@ -46,6 +34,22 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         kotlinCompilation.implementationConfigurationName,
         "dev.zacsweers.metro:runtime:$VERSION",
     )
+    if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
+      project.dependencies.add(
+          "commonMainImplementation",
+          "dev.zacsweers.metro:runtime:$VERSION",
+      )
+    }
+
+    val isJvmTarget =
+        kotlinCompilation.target.platformType == KotlinPlatformType.jvm ||
+            kotlinCompilation.target.platformType == KotlinPlatformType.androidJvm
+    if (isJvmTarget && extension.interop.enableDaggerRuntimeInterop.getOrElse(false)) {
+      project.dependencies.add(
+          kotlinCompilation.implementationConfigurationName,
+          "dev.zacsweers.metro:interop-dagger:$VERSION",
+      )
+    }
 
     return project.provider {
       buildList {
@@ -53,11 +57,31 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("debug", extension.debug))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
+        add(
+            lazyOption(
+                "enable-top-level-function-injection", extension.enableTopLevelFunctionInjection))
         extension.reportsDestination.orNull
             ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
             ?.let(::add)
 
-        with(extension.customAnnotations) {
+        if (isJvmTarget) {
+          add(
+              SubpluginOption(
+                  "enable-dagger-runtime-interop",
+                  extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString()))
+        }
+
+        with(extension.interop) {
+          provider
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-provider", value = it.joinToString(":")) }
+              ?.let(::add)
+          lazy
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-lazy", value = it.joinToString(":")) }
+              ?.let(::add)
           assisted
               .getOrElse(emptySet())
               .takeUnless { it.isEmpty() }

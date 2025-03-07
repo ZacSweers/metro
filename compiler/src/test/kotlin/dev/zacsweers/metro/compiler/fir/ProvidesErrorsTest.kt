@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
@@ -528,5 +515,109 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       """
         .trimIndent()
     )
+  }
+
+  @Test
+  fun `provides cannot be nullable`() {
+    val result =
+      compile(
+        source(
+          """
+            abstract class ExampleGraph {
+              @Provides
+              fun provideString(): String? = null
+              @Provides val provideLong: Long? = null
+
+              companion object {
+                @Provides
+                fun provideInt(): Int? = null
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:8:7 Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+        e: ExampleGraph.kt:9:17 Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+        e: ExampleGraph.kt:13:9 Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+      """
+        .trimIndent()
+    )
+  }
+
+  @Test
+  fun `provided injected classes with matching type keys are reported as warnings`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Provides fun provideExampleClass(): ExampleClass = ExampleClass()
+            }
+
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      )
+    ) {
+      assertDiagnostics(
+        "w: ExampleGraph.kt:10:17 Provided type 'test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration."
+      )
+    }
+  }
+
+  @Test
+  fun `provided injected classes with matching type keys but different scopes are ok`() {
+    compile(
+      source(
+        """
+            @SingleIn(AppScope::class)
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Provides @SingleIn(AppScope::class) fun provideExampleClass(): ExampleClass = ExampleClass()
+            }
+
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      )
+    ) {
+      assertNoWarningsOrErrors()
+    }
+  }
+
+  @Test
+  fun `provided injected classes with matching type keys are reported as warnings - qualified`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Provides @Named("hello") fun provideExampleClass(): ExampleClass = ExampleClass()
+            }
+
+            @Named("hello")
+            @Inject
+            class ExampleClass
+          """
+          .trimIndent()
+      )
+    ) {
+      assertDiagnostics(
+        "w: ExampleGraph.kt:10:33 Provided type '@Named(\"hello\") test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration."
+      )
+    }
   }
 }

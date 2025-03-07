@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2024 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2024 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
@@ -73,29 +60,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val callables = declaration.declarations.asSequence().filterIsInstance<FirCallableDeclaration>()
 
     for (callable in callables) {
-      val isMultibinds = callable.isAnnotatedWithAny(session, classIds.multibindsAnnotations)
-      if (isMultibinds) {
-        val scopeAnnotation = callable.annotations.scopeAnnotation(session)
-        if (scopeAnnotation != null) {
-          reporter.reportOn(
-            scopeAnnotation.fir.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
-            "@Multibinds members cannot be scoped.",
-            context,
-          )
-          continue
-        }
-        if (!callable.isAbstract) {
-          reporter.reportOn(
-            callable.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
-            "@Multibinds members must be abstract.",
-            context,
-          )
-          continue
-        }
-      }
-
       if (!callable.isAbstract) continue
 
       val isBindsOrProvides =

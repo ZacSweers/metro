@@ -1,18 +1,5 @@
-/*
- * Copyright (C) 2025 Zac Sweers
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
@@ -29,9 +16,11 @@ import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.unsafeLazy
+import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.computeTypeAttributes
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
@@ -49,6 +38,7 @@ import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.withParameterNameAnnotation
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -57,14 +47,22 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.CompilerConeAttributes
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirErrorTypeRef
+import org.jetbrains.kotlin.fir.types.FirFunctionTypeRef
 import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.FirUserTypeRef
+import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
+import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.fir.types.functionTypeService
+import org.jetbrains.kotlin.fir.types.parametersCount
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -331,29 +329,33 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     val returnType =
       when (val type = callable.fir.returnTypeRef) {
         is FirUserTypeRef -> {
-          typeResolver.resolveUserType(type).also {
-            if (it is FirErrorTypeRef) {
-              val message = buildString {
-                appendLine(
-                  "Could not resolve provider return type for provider: ${callable.callableId}"
-                )
-                appendLine(
-                  "This can happen if the provider references a class that is nested within the same parent class and has cyclical references to other classes."
-                )
-                appendLine(callable.fir.render())
-              }
-              if (session is FirCliSession) {
-                error(message)
-              } else {
-                // TODO TypeResolveService appears to be unimplemented in the IDE
-                //  https://youtrack.jetbrains.com/issue/KT-74553/
-                System.err.println(message)
-                return emptyList()
+          typeResolver
+            .resolveUserType(type)
+            .also {
+              if (it is FirErrorTypeRef) {
+                val message =
+                  """
+                Could not resolve provider return type for provider: ${callable.callableId}
+                This can happen if the provider references a class that is nested within the same parent class and has cyclical references to other classes.
+                ${callable.fir.render()}
+              """
+                    .trimIndent()
+                if (session is FirCliSession) {
+                  error(message)
+                } else {
+                  // TODO TypeResolveService appears to be unimplemented in the IDE
+                  //  https://youtrack.jetbrains.com/issue/KT-74553/
+                  System.err.println(message)
+                  return emptyList()
+                }
               }
             }
-          }
+            .coneType
         }
-        is FirResolvedTypeRef -> type
+        is FirFunctionTypeRef -> {
+          createFunctionType(type, typeResolver) ?: return emptyList()
+        }
+        is FirResolvedTypeRef -> type.coneType
         is FirImplicitTypeRef -> {
           // Ignore, will report in FIR checker
           return emptyList()
@@ -364,7 +366,76 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     val factoryType =
       session.symbolProvider
         .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
-        .constructType(arrayOf(returnType.coneType))
+        .constructType(arrayOf(returnType))
     return listOf(factoryType.toFirResolvedTypeRef())
+  }
+
+  private fun FirTypeRef.coneTypeLayered(typeResolver: TypeResolveService): ConeKotlinType? {
+    return when (this) {
+      is FirUserTypeRef ->
+        typeResolver.resolveUserType(this).takeUnless { it is FirErrorTypeRef }?.coneType
+      else -> coneTypeOrNull
+    }
+  }
+
+  private fun createFunctionType(
+    typeRef: FirFunctionTypeRef,
+    typeResolver: TypeResolveService,
+  ): ConeClassLikeType? {
+    val parametersWithNulls =
+      typeRef.contextReceiverTypeRefs.map { it.coneTypeLayered(typeResolver) } +
+        listOfNotNull(typeRef.receiverTypeRef?.coneTypeLayered(typeResolver)) +
+        typeRef.parameters.map {
+          it.returnTypeRef.coneTypeLayered(typeResolver)?.withParameterNameAnnotation(it, session)
+        } +
+        listOf(typeRef.returnTypeRef.coneTypeLayered(typeResolver))
+    val parameters = parametersWithNulls.filterNotNull()
+    if (parameters.size != parametersWithNulls.size) {
+      val message =
+        "Could not resolve function type parameters for function type: ${typeRef.render()}"
+      if (session is FirCliSession) {
+        error(message)
+      } else {
+        // TODO TypeResolveService appears to be unimplemented in the IDE
+        //  https://youtrack.jetbrains.com/issue/KT-74553/
+        System.err.println(message)
+        return null
+      }
+    }
+    val functionKinds =
+      session.functionTypeService.extractAllSpecialKindsForFunctionTypeRef(typeRef)
+    val kind =
+      when (functionKinds.size) {
+        0 -> FunctionTypeKind.Function
+        1 -> functionKinds.single()
+        else -> {
+          FunctionTypeKind.Function
+        }
+      }
+
+    val classId = kind.numberedClassId(typeRef.parametersCount)
+
+    val attributes =
+      typeRef.annotations.computeTypeAttributes(
+        session,
+        predefined =
+          buildList {
+            if (typeRef.receiverTypeRef != null) {
+              add(CompilerConeAttributes.ExtensionFunctionType)
+            }
+
+            if (typeRef.contextReceiverTypeRefs.isNotEmpty()) {
+              add(
+                CompilerConeAttributes.ContextFunctionTypeParams(
+                  typeRef.contextReceiverTypeRefs.size
+                )
+              )
+            }
+          },
+        shouldExpandTypeAliases = true,
+      )
+    return classId
+      .toLookupTag()
+      .constructClassType(parameters.toTypedArray(), typeRef.isMarkedNullable, attributes)
   }
 }
