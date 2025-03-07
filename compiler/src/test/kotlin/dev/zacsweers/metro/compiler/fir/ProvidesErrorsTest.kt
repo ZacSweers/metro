@@ -557,7 +557,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Provides fun provideExampleClass(): ExampleClass = ExampleClass()
             }
 
@@ -565,9 +565,11 @@ class ProvidesErrorsTest : MetroCompilerTest() {
             class ExampleClass
           """
           .trimIndent()
-      ),
+      )
     ) {
-      assertDiagnostics("w: ExampleGraph.kt:10:17 Provided type 'test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.")
+      assertDiagnostics(
+        "w: ExampleGraph.kt:10:17 Provided type 'test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration."
+      )
     }
   }
 
@@ -576,11 +578,11 @@ class ProvidesErrorsTest : MetroCompilerTest() {
     compile(
       source(
         """
-            @SingleIn(AppScope::class) 
+            @SingleIn(AppScope::class)
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Provides @SingleIn(AppScope::class) fun provideExampleClass(): ExampleClass = ExampleClass()
             }
 
@@ -588,7 +590,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
             class ExampleClass
           """
           .trimIndent()
-      ),
+      )
     ) {
       assertNoWarningsOrErrors()
     }
@@ -602,7 +604,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Provides @Named("hello") fun provideExampleClass(): ExampleClass = ExampleClass()
             }
 
@@ -611,9 +613,11 @@ class ProvidesErrorsTest : MetroCompilerTest() {
             class ExampleClass
           """
           .trimIndent()
-      ),
+      )
     ) {
-      assertDiagnostics("w: ExampleGraph.kt:10:33 Provided type '@Named(\"hello\") test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.")
+      assertDiagnostics(
+        "w: ExampleGraph.kt:10:33 Provided type '@Named(\"hello\") test.ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration."
+      )
     }
   }
 }

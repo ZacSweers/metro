@@ -527,9 +527,10 @@ internal class DependencyGraphTransformer(
         platform.componentPlatforms.joinToString("-") { it.platformName }
       }
 
-    val reportsDir = options.reportsDestination
-      ?.letIf(platformName != null) { it.resolve(platformName!!) }
-      ?.createDirectories()
+    val reportsDir =
+      options.reportsDestination
+        ?.letIf(platformName != null) { it.resolve(platformName!!) }
+        ?.createDirectories()
 
     try {
       checkGraphSelfCycle(
@@ -644,10 +645,13 @@ internal class DependencyGraphTransformer(
 
             provider.elementsIntoSet -> provider.typeKey.type
             provider.intoMap -> {
-              val mapKey = provider.mapKey ?: run {
-                // Hard error because the FIR checker should catch these, so this implies broken FIR code gen
-                error("Missing @MapKey for @IntoMap function: ${function.ir.dumpKotlinLike()}")
-              }
+              val mapKey =
+                provider.mapKey
+                  ?: run {
+                    // Hard error because the FIR checker should catch these, so this implies broken
+                    // FIR code gen
+                    error("Missing @MapKey for @IntoMap function: ${function.ir.dumpKotlinLike()}")
+                  }
               // TODO this is probably not robust enough
               val rawKeyType = mapKey.ir
               val unwrapValues = rawKeyType.shouldUnwrapMapKeyValues()
@@ -1017,7 +1021,8 @@ internal class DependencyGraphTransformer(
       initOrder
         .filterNot { it.typeKey in deferredFields }
         .filterNot {
-          // We don't generate fields for these even though we do track them in dependencies above, it's just for propagating their aliased type in sorting
+          // We don't generate fields for these even though we do track them in dependencies above,
+          // it's just for propagating their aliased type in sorting
           it is Binding.Provided && it.aliasedType != null
         }
         .forEach { binding ->
@@ -1428,7 +1433,8 @@ internal class DependencyGraphTransformer(
 
     if (binding is Binding.Provided && binding.aliasedType != null) {
       // Track this even though we won't generate a field so that we can reference it when sorting
-      // Annoyingly, I was never able to create a test that actually failed without this, but did need this fix to fix a real world example in github.com/zacsweers/catchup
+      // Annoyingly, I was never able to create a test that actually failed without this, but did
+      // need this fix to fix a real world example in github.com/zacsweers/catchup
       bindingDependencies[key] = graph.requireBinding(binding.aliasedType.typeKey, bindingStack)
     }
   }
@@ -1656,10 +1662,7 @@ internal class DependencyGraphTransformer(
       is Binding.Provided -> {
         // For binds functions, just use the backing type
         binding.aliasedBinding(generationContext.graph, generationContext.bindingStack)?.let {
-          return generateBindingCode(
-            it,
-            generationContext,
-          )
+          return generateBindingCode(it, generationContext)
         }
 
         val factoryClass =

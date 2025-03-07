@@ -35,13 +35,17 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     }
     if (bindings.containsKey(key)) {
       val message = buildString {
-        appendLine("[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}")
+        appendLine(
+          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+        )
         val existing = bindings.getValue(key)
         val duplicate = binding
-        val locations = listOfNotNull(
-          existing.reportableLocation?.render(),
-          duplicate.reportableLocation?.render()
-        ).distinct()
+        val locations =
+          listOfNotNull(
+              existing.reportableLocation?.render(),
+              duplicate.reportableLocation?.render(),
+            )
+            .distinct()
         when (locations.size) {
           0 -> {
             appendLine("├─ No binding source locations available, they may be contributed.")

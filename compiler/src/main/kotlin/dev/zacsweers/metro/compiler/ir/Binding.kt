@@ -22,14 +22,11 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.originalFunction
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
 internal sealed interface Binding {
@@ -146,7 +143,8 @@ internal sealed interface Binding {
     val aliasedType: ContextualTypeKey? = null,
   ) : Binding, BindingWithAnnotations {
 
-    private var aliasedBinding: Optional<Binding>? = if (aliasedType == null) Optional.empty() else null
+    private var aliasedBinding: Optional<Binding>? =
+      if (aliasedType == null) Optional.empty() else null
 
     fun aliasedBinding(graph: BindingGraph, stack: BindingStack): Binding? {
       aliasedType ?: return null
@@ -186,13 +184,12 @@ internal sealed interface Binding {
 
     override val reportableLocation: CompilerMessageSourceLocation?
       get() {
-        return (providerFunction
-          .overriddenSymbolsSequence()
-          .lastOrNull()
-          ?.owner ?: providerFunction)
+        return (providerFunction.overriddenSymbolsSequence().lastOrNull()?.owner
+            ?: providerFunction)
           .let {
             if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
-              // If it's a contribution, the source is SourceClass.$$MetroContribution.bindingFunction
+              // If it's a contribution, the source is
+              // SourceClass.$$MetroContribution.bindingFunction
               //                                       ^^^
               it.parentAsClass.parentAsClass.locationOrNull()
             } else {

@@ -225,9 +225,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
 
       if (returnType.typeArguments.isEmpty()) {
         val returnClass = returnType.toClassSymbol(session) ?: return
-        val injectConstructor = returnClass
-          .findInjectConstructors(session)
-          .firstOrNull()
+        val injectConstructor = returnClass.findInjectConstructors(session).firstOrNull()
 
         if (injectConstructor != null) {
           // If the type keys and scope are the same, this is redundant
@@ -236,7 +234,8 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           if (classTypeKey == providerTypeKey) {
             val providerScope = annotations.scope
             val classScope = returnClass.annotations.scopeAnnotation(session)
-            // TODO maybe we should report matching keys but different scopes? Feels like it could be confusing at best
+            // TODO maybe we should report matching keys but different scopes? Feels like it could
+            // be confusing at best
             if (providerScope == classScope) {
               reporter.reportOn(
                 source,

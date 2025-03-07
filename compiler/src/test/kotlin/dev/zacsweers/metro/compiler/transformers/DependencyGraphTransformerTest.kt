@@ -1846,7 +1846,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Provides fun provideExampleClass1(): ExampleClass = ExampleClass()
               @Provides fun provideExampleClass2(): ExampleClass = ExampleClass()
             }
@@ -1862,7 +1862,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:10:3
           ├─ Binding 2: ExampleGraph.kt:11:3
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -1875,7 +1876,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Provides fun provideExampleClass1(): ExampleClass = Impl1()
               @Binds fun Impl2.provideExampleClass2(): ExampleClass
             }
@@ -1893,7 +1894,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:10:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:11:3
           ├─ Binding 2: ExampleGraph.kt:10:3
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -1906,7 +1908,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val exampleClass: ExampleClass
-              
+
               @Binds fun Impl1.provideExampleClass1(): ExampleClass
               @Binds fun Impl2.provideExampleClass2(): ExampleClass
             }
@@ -1924,7 +1926,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:10:3
           ├─ Binding 2: ExampleGraph.kt:11:3
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -1940,11 +1943,11 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
             interface ExampleClass
-            
+
             @ContributesBinding(AppScope::class)
             @Inject
             class Impl1 : ExampleClass
-            
+
             @ContributesBinding(AppScope::class)
             @Inject
             class Impl2 : ExampleClass
@@ -1958,7 +1961,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:17:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:13:1
           ├─ Binding 2: ExampleGraph.kt:17:1
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -1973,7 +1977,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Inject
           @SingleIn(AppScope::class)
           class Impl1 : ContributedInterface
-          
+
           @Inject
           @SingleIn(AppScope::class)
           class Impl2(val contributedInterface: ContributedInterface)
@@ -1983,13 +1987,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             val contributedInterface: ContributedInterface
             val impl1: Impl1
             val impl2: Impl2
-            
+
             @Binds val Impl1.bind: ContributedInterface
           }
         """
           .trimIndent()
       ),
-      debug = true
+      debug = true,
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
 

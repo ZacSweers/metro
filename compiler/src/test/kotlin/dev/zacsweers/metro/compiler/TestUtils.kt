@@ -482,12 +482,7 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     }
     .groupBy { it.severity }
     .mapValues { (_, messages) ->
-      messages.map {
-        it.message
-          .lineSequence()
-          .map(String::cleanOutputLine)
-          .joinToString("\n")
-      }
+      messages.map { it.message.lineSequence().map(String::cleanOutputLine).joinToString("\n") }
     }
     .let { parsed ->
       buildMap {

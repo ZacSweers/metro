@@ -2706,12 +2706,11 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      assertThat(
-        graph.callProperty<Any>("contributedInterface")
-      ).isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
+      assertThat(graph.callProperty<Any>("contributedInterface"))
+        .isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
     }
   }
 
@@ -2742,7 +2741,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      debug = true
+      debug = true,
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val impl2 = graph.callProperty<Any>("contributedInterface")
