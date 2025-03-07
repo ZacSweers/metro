@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Zac Sweers
+// Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
@@ -37,6 +37,8 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
         customGraphAnnotations = options.customGraphAnnotations,
         customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
+        customGraphExtensionAnnotations = options.customGraphExtensionAnnotations,
+        customGraphExtensionFactoryAnnotations = options.customGraphExtensionFactoryAnnotations,
         customInjectAnnotations = options.customInjectAnnotations,
         customIntoMapAnnotations = options.customIntoMapAnnotations,
         customIntoSetAnnotations = options.customIntoSetAnnotations,

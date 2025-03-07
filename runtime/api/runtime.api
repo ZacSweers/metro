@@ -73,6 +73,14 @@ public abstract interface annotation class dev/zacsweers/metro/ForScope : java/l
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
+public abstract interface annotation class dev/zacsweers/metro/GraphExtension : java/lang/annotation/Annotation {
+	public abstract fun additionalScopes ()[Ljava/lang/Class;
+	public abstract fun scope ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/metro/GraphExtension$Factory : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/metro/Inject : java/lang/annotation/Annotation {
 }
 

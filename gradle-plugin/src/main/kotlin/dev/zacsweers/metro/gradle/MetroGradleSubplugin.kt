@@ -127,6 +127,16 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               .takeUnless { it.isEmpty() }
               ?.let { SubpluginOption("custom-graph-factory", value = it.joinToString(":")) }
               ?.let(::add)
+          graphExtension
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-graph-extension", value = it.joinToString(":")) }
+              ?.let(::add)
+          graphExtensionFactory
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-graph-extension-factory", value = it.joinToString(":")) }
+              ?.let(::add)
           inject
               .getOrElse(emptySet())
               .takeUnless { it.isEmpty() }
