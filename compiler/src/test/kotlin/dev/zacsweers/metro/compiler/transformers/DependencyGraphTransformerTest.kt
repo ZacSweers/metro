@@ -1868,6 +1868,102 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `duplicate bindings are reported - double provides and binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Provides fun provideExampleClass1(): ExampleClass = Impl1()
+              @Binds fun Impl2.provideExampleClass2(): ExampleClass
+            }
+
+            interface ExampleClass
+            class Impl1 : ExampleClass
+            @Inject class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:10:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:11:3
+          ├─ Binding 2: ExampleGraph.kt:10:3
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+              
+              @Binds fun Impl1.provideExampleClass1(): ExampleClass
+              @Binds fun Impl2.provideExampleClass2(): ExampleClass
+            }
+
+            interface ExampleClass
+            @Inject class Impl1 : ExampleClass
+            @Inject class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double contributed binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+            }
+
+            interface ExampleClass
+            
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class Impl1 : ExampleClass
+            
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:17:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:13:1
+          ├─ Binding 2: ExampleGraph.kt:17:1
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
   fun `transitive scoped bindings are ordered correctly`() {
     compile(
       source(

@@ -83,7 +83,6 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
@@ -92,7 +91,6 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.removeAnnotations
-import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
@@ -1575,8 +1573,7 @@ internal class DependencyGraphTransformer(
     return unwrapValue
   }
 
-  private fun generateMapKeyLiteral(binding: Binding, keyType: IrType): IrExpression {
-    // TODO this is iffy
+  private fun generateMapKeyLiteral(binding: Binding): IrExpression {
     val mapKey =
       when (binding) {
         is Binding.Provided -> binding.annotations.mapKeys.first().ir
@@ -1590,23 +1587,9 @@ internal class DependencyGraphTransformer(
         mapKey
       } else {
         // We can just copy the expression!
-        // TODO do we need to call shallowCopy()?
         mapKey.getValueArgument(0)!!
       }
 
-    val typeToCompare =
-      if (expression is IrClassReference) {
-        // We want KClass<*>, not the specific type in the annotation we got (i.e. KClass<Int>).
-        pluginContext.irBuiltIns.kClassClass.starProjectedType
-      } else {
-        expression.type
-      }
-    if (typeToCompare != keyType) {
-      // TODO check in FIR instead
-      error(
-        "Map key type mismatch: ${typeToCompare.dumpKotlinLike()} != ${keyType.dumpKotlinLike()}"
-      )
-    }
     return expression
   }
 
@@ -2117,7 +2100,7 @@ internal class DependencyGraphTransformer(
             putFunction
           }
         irInvoke(dispatchReceiver = receiver, callee = putter, typeHint = builder.type).apply {
-          putValueArgument(0, generateMapKeyLiteral(sourceBinding, keyType))
+          putValueArgument(0, generateMapKeyLiteral(sourceBinding))
           putValueArgument(
             1,
             generateBindingCode(sourceBinding, generationContext, fieldInitKey = fieldInitKey),

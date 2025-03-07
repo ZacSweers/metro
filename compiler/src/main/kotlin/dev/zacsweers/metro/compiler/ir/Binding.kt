@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
@@ -25,6 +26,9 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.originalFunction
+import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
@@ -181,7 +185,21 @@ internal sealed interface Binding {
     override val nameHint: String = providerFunction.name.asString()
 
     override val reportableLocation: CompilerMessageSourceLocation?
-      get() = providerFunction.locationOrNull()
+      get() {
+        return (providerFunction
+          .overriddenSymbolsSequence()
+          .lastOrNull()
+          ?.owner ?: providerFunction)
+          .let {
+            if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
+              // If it's a contribution, the source is SourceClass.$$MetroContribution.bindingFunction
+              //                                       ^^^
+              it.parentAsClass.parentAsClass.locationOrNull()
+            } else {
+              it.locationOrNull()
+            }
+          }
+      }
 
     fun parameterFor(typeKey: TypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
