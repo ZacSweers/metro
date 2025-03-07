@@ -161,7 +161,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     return createNestedClass(
         owner,
         name = name,
-        key = Keys.MetroContributionDeclaration,
+        key = Keys.MetroContributionClassDeclaration,
         classKind = ClassKind.INTERFACE,
       ) {
         // annoyingly not implicit from the class kind
@@ -180,7 +180,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    if (!classSymbol.hasOrigin(Keys.MetroContributionDeclaration)) return emptySet()
+    if (!classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptySet()
     val origin = classSymbol.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptySet()
     val contributions = findContributions(origin) ?: return emptySet()
     // Note the names we supply here are not final, we just need to know if we're going to generate
@@ -205,7 +205,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     context: MemberGenerationContext?,
   ): List<FirPropertySymbol> {
     val owner = context?.owner ?: return emptyList()
-    if (!owner.hasOrigin(Keys.MetroContributionDeclaration)) return emptyList()
+    if (!owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
     val origin = owner.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val contributions = findContributions(origin) ?: return emptyList()
     val properties =
@@ -258,7 +258,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
     return createMemberProperty(
         owner,
-        Keys.Default,
+        Keys.MetroContributionCallableDeclaration,
         (contribution.callableName + "As" + suffix).asName(),
         returnType = boundType,
         hasBackingField = false,
