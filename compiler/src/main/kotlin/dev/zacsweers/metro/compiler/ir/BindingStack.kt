@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.ir.BindingStack.Entry
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -38,7 +38,7 @@ internal interface BindingStack {
     val contextKey: ContextualTypeKey,
     val usage: String?,
     val graphContext: String?,
-    val declaration: IrDeclaration?,
+    val declaration: IrDeclarationWithName?,
     val displayTypeKey: TypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
@@ -103,7 +103,7 @@ internal interface BindingStack {
        */
       fun contributedToMultibinding(
         contextKey: ContextualTypeKey,
-        declaration: IrDeclaration?,
+        declaration: IrDeclarationWithName?,
       ): Entry =
         Entry(
           contextKey = contextKey,
@@ -133,7 +133,7 @@ internal interface BindingStack {
         contextKey: ContextualTypeKey,
         function: IrFunction,
         param: IrValueParameter? = null,
-        declaration: IrDeclaration? = param,
+        declaration: IrDeclarationWithName? = param,
         displayTypeKey: TypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
