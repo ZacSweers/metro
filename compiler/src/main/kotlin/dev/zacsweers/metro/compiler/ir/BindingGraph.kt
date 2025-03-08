@@ -24,6 +24,9 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   // TODO eventually add inject() targets too from member injection
   private val accessors = mutableMapOf<ContextualTypeKey, BindingStack.Entry>()
 
+  // Thin immutable view over the internal bindings
+  fun bindingsSnapshot(): Map<TypeKey, Binding> = bindings
+
   fun addAccessor(key: ContextualTypeKey, entry: BindingStack.Entry) {
     accessors[key] = entry
   }
