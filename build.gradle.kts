@@ -29,6 +29,7 @@ plugins {
   alias(libs.plugins.spotless)
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
+  alias(libs.plugins.wire) apply false
 }
 
 apiValidation {

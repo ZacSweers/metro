@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dev.zacsweers.metro.compiler.proto;
+
+option java_package = "dev.zacsweers.metro.compiler.proto";
+option java_multiple_files = true;
+
+message DependencyGraphProto {
+  // Required boolean "isGraph"
+  bool is_graph = 1;
+
+  // Required map of ClassIds (as strings) of provider factory classes
+  // If is_graph is true, this includes _all_ inherited classes' factories too
+  repeated string provider_factory_classes = 2;
+
+  // Set of provider field names (strings). Only present if is_graph is true
+  repeated string provider_field_names = 3;
+
+  // Set of binds callable IDs (strings)
+  repeated string binds_callable_ids = 4;
+
+  // Set of accessor callable IDs (strings)
+  repeated string accessor_callable_ids = 5;
+}
+
+message MetroMetadata {
+  // Optional DependencyGraphProto field
+  optional DependencyGraphProto dependency_graph = 1;
+}

@@ -7,6 +7,7 @@ plugins {
   alias(libs.plugins.ksp)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
+  alias(libs.plugins.wire)
 }
 
 kotlin {
@@ -39,11 +40,14 @@ buildConfig {
 
 tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }
 
+wire { kotlin {} }
+
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
   implementation(libs.autoService)
   implementation(libs.picnic)
+  implementation(libs.wire.runtime)
   ksp(libs.autoService.ksp)
 
   testImplementation(project(":runtime"))
