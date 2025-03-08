@@ -23,9 +23,9 @@
 #### …from Anvil
 
 * There is no `rank`.
-* `@ContributesBinding` uses a `BoundType` API to support generic bound types. See the [aggregation docs](aggregation.md) for more info.
+* `@ContributesBinding` uses a `binding` API to support generic bound types. See the [aggregation docs](aggregation.md) for more info.
 
 #### …from kotlin-inject-anvil
 
 * There is no need for `@CreateComponent` or `expect fun createComponent()` functions.
-* `@ContributesBinding` uses a `BoundType` API to support generic bound types. See the [aggregation docs](aggregation.md) for more info.
+* `@ContributesBinding` uses a `binding` API to support generic bound types. See the [aggregation docs](aggregation.md) for more info.

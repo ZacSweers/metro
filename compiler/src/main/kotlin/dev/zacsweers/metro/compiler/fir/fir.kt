@@ -791,18 +791,18 @@ internal fun FirAnnotation.excludesArgument() =
 internal fun FirAnnotation.replacesArgument() =
   argumentAsOrNull<FirArrayLiteral>("replaces".asName(), index = 1)
 
-internal fun FirAnnotation.boundTypeArgument() = annotationArgument("boundType".asName(), index = 2)
+internal fun FirAnnotation.bindingArgument() = annotationArgument("binding".asName(), index = 1)
 
-internal fun FirAnnotation.resolvedBoundType(session: FirSession): FirTypeRef? {
-  // Return a BoundType defined using metro api's
-  boundTypeArgument()?.let { boundType ->
-    return boundType.typeArguments[0].expectAsOrNull<FirTypeProjectionWithVariance>()?.typeRef
+internal fun FirAnnotation.resolvedBindingArgument(session: FirSession): FirTypeRef? {
+  // Return a binding defined using Metro's API
+  bindingArgument()?.let { binding ->
+    return binding.typeArguments[0].expectAsOrNull<FirTypeProjectionWithVariance>()?.typeRef
   }
-  // Return a boundType defined using anvil KClass
-  return kClassBoundTypeArgument(session)
+  // Anvil interop - try a boundType defined using anvil KClass
+  return anvilKClassBoundTypeArgument(session)
 }
 
-internal fun FirAnnotation.kClassBoundTypeArgument(session: FirSession): FirTypeRef? {
+internal fun FirAnnotation.anvilKClassBoundTypeArgument(session: FirSession): FirTypeRef? {
   return getAnnotationKClassArgument("boundType".asName(), session)?.toFirResolvedTypeRef()
 }
 

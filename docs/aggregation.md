@@ -88,25 +88,28 @@ For simple cases where there is a single typertype, that type is implicitly used
 class CacheImpl(...) : Cache
 ```
 
-For classes with multiple supertypes or advanced cases where you want to bind an ancestor type, you can explicitly define this via `boundType` parameter.
+For classes with multiple supertypes or advanced cases where you want to bind an ancestor type, you can explicitly define this via `binding` parameter.
 
 ```kotlin
 @ContributesBinding(
   scope = AppScope::class,
-  boundType = BoundType<Cache>()
+  binding = binding<Cache>()
 )
 @Inject
 class CacheImpl(...) : Cache, AnotherType
 ```
 
+!!! tip
+    Whoa, is that a function call in an annotation argument? Nope! `binding` is just a decapitalized class in this case, intentionally designed for readability. It's an adjective in this context and the functional syntax better conveys that.
+
 Note that the bound type is defined as the type argument to `@ContributesBinding`. This allows for the bound type to be generic and is validated in FIR.
 
-Qualifier annotations can be specified on the `BoundType` type parameter and will take precedence over any qualifiers on the class itself.
+Qualifier annotations can be specified on the `binding` type parameter and will take precedence over any qualifiers on the class itself.
 
 ```kotlin
 @ContributesBinding(
   scope = AppScope::class,
-  boundType = BoundType<@Named("cache") Cache>()
+  binding = binding<@Named("cache") Cache>()
 )
 @Inject
 class CacheImpl(...) : Cache, AnotherType
@@ -117,11 +120,11 @@ This annotation is *repeatable* and can be used to contribute to multiple scopes
 ```kotlin
 @ContributesBinding(
   scope = AppScope::class,
-  boundType = BoundType<Cache>()
+  binding = binding<Cache>()
 )
 @ContributesBinding(
   scope = AppScope::class,
-  boundType = BoundType<AnotherType>()
+  binding = binding<AnotherType>()
 )
 @Inject
 class CacheImpl(...) : Cache, AnotherType
@@ -140,9 +143,9 @@ To contribute into a multibinding, use the `@ContributesIntoSet` or `@Contribute
 class CacheImpl(...) : Cache
 ```
 
-Same rules around qualifiers and `boundType()` apply in this scenario
+Same rules around qualifiers and `binding()` apply in this scenario
 
-To contribute into a Map multibinding, the map key annotation must be specified on the class or `BoundType` type argument.
+To contribute into a Map multibinding, the map key annotation must be specified on the class or `binding` type argument.
 
 ```kotlin
 // Will be contributed into a Map multibinding with @StringKey("Networking")
@@ -151,10 +154,10 @@ To contribute into a Map multibinding, the map key annotation must be specified 
 @Inject
 class CacheImpl(...) : Cache
 
-// Or if using BoundType
+// Or if using binding
 @ContributesIntoMap(
   scope = AppScope::class,
-  boundType = BoundType<@StringKey("Networking") Cache>()
+  binding = binding<@StringKey("Networking") Cache>()
 )
 @Inject
 class CacheImpl(...) : Cache

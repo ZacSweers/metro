@@ -51,7 +51,7 @@ metro {
 
 Similarly, `@ContributesBinding` is replaceable but there are not direct analogues for Anvil’s `@ContributesMultibinding` or kotlin-inject-anvil’s `@ContributesBinding(multibinding = …)` as these annotations are implemented as `@ContributesInto*` annotations in Metro.
 
-`boundType` in Metro uses a more flexible mechanism to support generics, but interop with Anvil's `boundType: KClass<*>` property is supported.
+`binding` in Metro uses a more flexible mechanism to support generics, but interop with Anvil's `boundType: KClass<*>` property is supported.
 
 ## Components
 

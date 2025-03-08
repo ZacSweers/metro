@@ -7,12 +7,12 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.kClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -192,17 +192,17 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .keys
   }
 
-  private fun FirAnnotation.boundTypeOrNull(): FirTypeRef? {
-    // Return a BoundType defined using metro api's
-    argumentAsOrNull<FirFunctionCall>("boundType".asName(), 2)?.let { boundType ->
-      return boundType.typeArguments
+  private fun FirAnnotation.bindingTypeOrNull(): FirTypeRef? {
+    // Return a binding defined using Metro's API
+    argumentAsOrNull<FirFunctionCall>("binding".asName(), 1)?.let { bindingType ->
+      return bindingType.typeArguments
         .getOrNull(0)
         ?.expectAsOrNull<FirTypeProjectionWithVariance>()
         ?.typeRef
         ?.takeUnless { it == session.builtinTypes.nothingType }
     }
     // Return a boundType defined using anvil KClass
-    return kClassBoundTypeArgument(session)
+    return anvilKClassBoundTypeArgument(session)
   }
 
   override fun generateProperties(
@@ -231,31 +231,31 @@ internal class ContributionsFirGenerator(session: FirSession) :
     owner: FirClassSymbol<*>,
     contribution: Contribution.BindingContribution,
   ): FirPropertySymbol {
-    val boundTypeRef = contribution.annotation.boundTypeOrNull()
+    val bindingTypeRef = contribution.annotation.bindingTypeOrNull()
     // Standard annotation on the class itself, look for a single bound type
-    val boundType =
-      (boundTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
+    val bindingType =
+      (bindingTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
 
     val qualifier =
-      if (boundTypeRef == null) {
+      if (bindingTypeRef == null) {
         contribution.annotatedType.qualifierAnnotation(session)
       } else {
-        boundTypeRef.annotations.qualifierAnnotation(session)
+        bindingTypeRef.annotations.qualifierAnnotation(session)
       }
 
     val mapKey =
-      if (boundTypeRef == null) {
+      if (bindingTypeRef == null) {
         contribution.annotatedType.mapKeyAnnotation(session)
       } else {
         // Call back to the class if the bound type doesn't have one
-        boundTypeRef.annotations.mapKeyAnnotation(session)
+        bindingTypeRef.annotations.mapKeyAnnotation(session)
           ?: contribution.annotatedType.mapKeyAnnotation(session)
       }
 
     val suffix = buildString {
       qualifier?.hashString()?.let(::append)
 
-      boundType.classId
+      bindingType.classId
         ?.joinSimpleNames("", camelCase = true)
         ?.shortClassName
         ?.capitalizeUS()
@@ -266,7 +266,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
         owner,
         Keys.MetroContributionCallableDeclaration,
         (contribution.callableName + "As" + suffix).asName(),
-        returnType = boundType,
+        returnType = bindingType,
         hasBackingField = false,
       ) {
         modality = Modality.ABSTRACT

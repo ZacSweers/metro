@@ -227,7 +227,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<ContributedInterface>()
+            binding<ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -257,11 +257,11 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<ContributedInterface>()
+            binding<ContributedInterface>()
           )
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<AnotherInterface>()
+            binding<AnotherInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -295,7 +295,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<@Named("hello") ContributedInterface>()
+            binding<@Named("hello") ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -325,7 +325,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<ContributedInterface<String>>()
+            binding<ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -355,7 +355,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<@Named("named") ContributedInterface<String>>()
+            binding<@Named("named") ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -513,7 +513,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<ContributedInterface>()
+            binding<ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -544,7 +544,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<@Named("hello") ContributedInterface>()
+            binding<@Named("hello") ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -575,7 +575,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<ContributedInterface<String>>()
+            binding<ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -606,7 +606,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<@Named("named") ContributedInterface<String>>()
+            binding<@Named("named") ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -773,7 +773,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>()
+            binding<@ClassKey(Impl::class) ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -805,7 +805,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) @Named("hello") ContributedInterface>()
+            binding<@ClassKey(Impl::class) @Named("hello") ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -837,7 +837,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) ContributedInterface<String>>()
+            binding<@ClassKey(Impl::class) ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -869,7 +869,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) @Named("named") ContributedInterface<String>>()
+            binding<@ClassKey(Impl::class) @Named("named") ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -961,8 +961,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -990,8 +990,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("1") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1019,8 +1019,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1051,7 +1051,7 @@ class AggregationTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @ContributesBinding(AppScope::class)
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1148,6 +1148,7 @@ class AggregationTest : MetroCompilerTest() {
     }
   }
 
+  // TODO loosen this restriction
   @Test
   fun `explicit bound types don't use class qualifier - ContributesBinding`() {
     compile(
@@ -1155,7 +1156,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1188,7 +1189,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
           @ContributesBinding(AppScope::class)
           @Inject
           class Impl : ContributedInterface
@@ -1211,13 +1212,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType as Nothing is an error - ContributesBinding`() {
+  fun `binding as Nothing is an error - ContributesBinding`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Nothing>())
+          @ContributesBinding(AppScope::class, binding<Nothing>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1229,19 +1230,19 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
       )
     }
   }
 
   @Test
-  fun `boundType can be Any - ContributesBinding`() {
+  fun `binding can be Any - ContributesBinding`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Any>())
+          @ContributesBinding(AppScope::class, binding<Any>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1254,13 +1255,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType is not assignable - ContributesBinding`() {
+  fun `binding is not assignable - ContributesBinding`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Unit>())
+          @ContributesBinding(AppScope::class, binding<Unit>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1272,13 +1273,13 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
       )
     }
   }
 
   @Test
-  fun `boundType can be ancestor - ContributesBinding`() {
+  fun `binding can be ancestor - ContributesBinding`() {
     compile(
       source(
         """
@@ -1286,7 +1287,7 @@ class AggregationTest : MetroCompilerTest() {
 
           interface ContributedInterface : BaseContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<BaseContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1414,7 +1415,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesBinding(AppScope::class, binding<Impl>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1426,7 +1427,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -1436,7 +1437,7 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @ContributesBinding(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesBinding(AppScope::class, binding<Impl>())
           @Inject
           class Impl
 
@@ -1448,7 +1449,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -1486,8 +1487,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1512,8 +1513,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("1") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1538,8 +1539,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1572,7 +1573,7 @@ class AggregationTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @ContributesIntoSet(AppScope::class)
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1633,7 +1634,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1666,7 +1667,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
           @ContributesIntoSet(AppScope::class)
           @Inject
           class Impl : ContributedInterface
@@ -1686,13 +1687,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType as Nothing is an error - ContributesIntoSet`() {
+  fun `binding as Nothing is an error - ContributesIntoSet`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Nothing>())
+          @ContributesIntoSet(AppScope::class, binding<Nothing>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1701,19 +1702,19 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
       )
     }
   }
 
   @Test
-  fun `boundType can be Any - ContributesIntoSet`() {
+  fun `binding can be Any - ContributesIntoSet`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Any>())
+          @ContributesIntoSet(AppScope::class, binding<Any>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1723,13 +1724,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType is not assignable - ContributesIntoSet`() {
+  fun `binding is not assignable - ContributesIntoSet`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Unit>())
+          @ContributesIntoSet(AppScope::class, binding<Unit>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1738,13 +1739,13 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
       )
     }
   }
 
   @Test
-  fun `boundType can be ancestor - ContributesIntoSet`() {
+  fun `binding can be ancestor - ContributesIntoSet`() {
     compile(
       source(
         """
@@ -1752,7 +1753,7 @@ class AggregationTest : MetroCompilerTest() {
 
           interface ContributedInterface : BaseContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<BaseContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1878,7 +1879,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoSet(AppScope::class, binding<Impl>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1887,7 +1888,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -1897,7 +1898,7 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoSet(AppScope::class, binding<Impl>())
           @Inject
           class Impl
         """
@@ -1906,7 +1907,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -1945,8 +1946,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1971,8 +1972,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1997,8 +1998,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -2033,7 +2034,7 @@ class AggregationTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @ContributesIntoMap(AppScope::class)
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
           @Named("1")
           @ClassKey(Impl::class)
           @Inject
@@ -2099,7 +2100,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -2132,7 +2133,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<ContributedInterface>())
           @ClassKey(Impl::class) // Class key is ignored if bound is explicit
           @Inject
           class Impl : ContributedInterface
@@ -2149,7 +2150,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -2158,7 +2159,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class."
+        "e: ContributedInterface.kt:9:46 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class."
       )
     }
   }
@@ -2191,7 +2192,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
           @ContributesIntoMap(AppScope::class)
           @ClassKey(Impl::class)
           @Inject
@@ -2212,13 +2213,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType as Nothing is an error - ContributesIntoMap`() {
+  fun `binding as Nothing is an error - ContributesIntoMap`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Nothing>())
+          @ContributesIntoMap(AppScope::class, binding<Nothing>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2228,19 +2229,19 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
       )
     }
   }
 
   @Test
-  fun `boundType can be Any - ContributesIntoMap`() {
+  fun `binding can be Any - ContributesIntoMap`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) Any>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) Any>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2251,13 +2252,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType is not assignable - ContributesIntoMap`() {
+  fun `binding is not assignable - ContributesIntoMap`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Unit>())
+          @ContributesIntoMap(AppScope::class, binding<Unit>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2267,13 +2268,13 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
       )
     }
   }
 
   @Test
-  fun `boundType can be ancestor - ContributesIntoMap`() {
+  fun `binding can be ancestor - ContributesIntoMap`() {
     compile(
       source(
         """
@@ -2281,7 +2282,7 @@ class AggregationTest : MetroCompilerTest() {
 
           interface ContributedInterface : BaseContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) BaseContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -2409,7 +2410,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoMap(AppScope::class, binding<Impl>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2419,7 +2420,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -2429,7 +2430,7 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoMap(AppScope::class, binding<Impl>())
           @ClassKey(Impl::class)
           @Inject
           class Impl
@@ -2439,7 +2440,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }

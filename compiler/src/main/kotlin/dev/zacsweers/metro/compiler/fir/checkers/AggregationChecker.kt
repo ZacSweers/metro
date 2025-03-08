@@ -12,7 +12,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
-import dev.zacsweers.metro.compiler.fir.resolvedBoundType
+import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -93,8 +93,14 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 reporter,
                 contributesBindingAnnotations,
                 isMapBinding = false,
-              ) { boundType, _ ->
-                Contribution.ContributesBinding(declaration, annotation, scope, replaces, boundType)
+              ) { bindingType, _ ->
+                Contribution.ContributesBinding(
+                  declaration,
+                  annotation,
+                  scope,
+                  replaces,
+                  bindingType,
+                )
               }
             if (!valid) {
               return
@@ -114,8 +120,14 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 reporter,
                 contributesIntoSetAnnotations,
                 isMapBinding = false,
-              ) { boundType, _ ->
-                Contribution.ContributesIntoSet(declaration, annotation, scope, replaces, boundType)
+              ) { bindingType, _ ->
+                Contribution.ContributesIntoSet(
+                  declaration,
+                  annotation,
+                  scope,
+                  replaces,
+                  bindingType,
+                )
               }
             if (!valid) {
               return
@@ -135,13 +147,13 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
                 reporter,
                 contributesIntoMapAnnotations,
                 isMapBinding = true,
-              ) { boundType, mapKey ->
+              ) { bindingType, mapKey ->
                 Contribution.ContributesIntoMap(
                   declaration,
                   annotation,
                   scope,
                   replaces,
-                  boundType,
+                  bindingType,
                   mapKey!!,
                 )
               }
@@ -203,15 +215,15 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val supertypesExcludingAny = declaration.superTypeRefs.filterNot { it.coneType.isAny }
     val hasSupertypes = supertypesExcludingAny.isNotEmpty()
 
-    val explicitBoundType = annotation.resolvedBoundType(session)
+    val explicitBindingType = annotation.resolvedBindingArgument(session)
 
     val typeKey =
-      if (explicitBoundType != null) {
+      if (explicitBindingType != null) {
         // No need to check for nullable Nothing because it's enforced with the <T : Any>
         // bound
-        if (explicitBoundType.isNothing) {
+        if (explicitBindingType.isNothing) {
           reporter.reportOn(
-            explicitBoundType.source,
+            explicitBindingType.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Explicit bound types should not be `Nothing` or `Nothing?`.",
             context,
@@ -219,12 +231,12 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        val coneType = explicitBoundType.coneTypeOrNull ?: return true
+        val coneType = explicitBindingType.coneTypeOrNull ?: return true
         val refClassId = coneType.fullyExpandedClassId(session) ?: return true
 
         if (refClassId == declaration.symbol.classId) {
           reporter.reportOn(
-            explicitBoundType.source,
+            explicitBindingType.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Redundant explicit bound type ${refClassId.asSingleFqName()} is the same as the annotated class ${refClassId.asSingleFqName()}.",
             context,
@@ -242,11 +254,11 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        val implementsBoundType = declaration.isOrImplements(refClassId, session)
+        val implementsBindingType = declaration.isOrImplements(refClassId, session)
 
-        if (!implementsBoundType) {
+        if (!implementsBindingType) {
           reporter.reportOn(
-            explicitBoundType.source,
+            explicitBindingType.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Class ${declaration.classId.asSingleFqName()} does not implement explicit bound type ${refClassId.asSingleFqName()}",
             context,
@@ -254,7 +266,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        FirTypeKey(coneType, (explicitBoundType.annotations.qualifierAnnotation(session)))
+        FirTypeKey(coneType, (explicitBindingType.annotations.qualifierAnnotation(session)))
       } else {
         if (!hasSupertypes) {
           reporter.reportOn(
@@ -268,20 +280,20 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           reporter.reportOn(
             annotation.source,
             FirMetroErrors.AGGREGATION_ERROR,
-            "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `boundType` but has multiple supertypes. You must define an explicit bound type in this scenario.",
+            "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `bindingType` but has multiple supertypes. You must define an explicit bound type in this scenario.",
             context,
           )
           return false
         }
-        val implicitBoundType = supertypesExcludingAny[0]
-        FirTypeKey(implicitBoundType.coneType, classQualifier)
+        val implicitBindingType = supertypesExcludingAny[0]
+        FirTypeKey(implicitBindingType.coneType, classQualifier)
       }
 
     val mapKey =
       if (isMapBinding) {
         val classMapKey = declaration.annotations.mapKeyAnnotation(session)
         val resolvedKey =
-          if (explicitBoundType == null) {
+          if (explicitBindingType == null) {
             classMapKey.also {
               if (it == null) {
                 reporter.reportOn(
@@ -293,10 +305,10 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
               }
             }
           } else {
-            (explicitBoundType.annotations.mapKeyAnnotation(session) ?: classMapKey).also {
+            (explicitBindingType.annotations.mapKeyAnnotation(session) ?: classMapKey).also {
               if (it == null) {
                 reporter.reportOn(
-                  explicitBoundType.source,
+                  explicitBindingType.source,
                   FirMetroErrors.AGGREGATION_ERROR,
                   "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key but doesn't. Add one on the explicit bound type or the class.",
                   context,
@@ -362,7 +374,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val replaces: Set<ClassId>
 
     sealed interface BindingContribution : Contribution {
-      val boundType: FirTypeKey
+      val bindingType: FirTypeKey
     }
 
     @Poko
@@ -379,7 +391,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
       override val replaces: Set<ClassId>,
-      override val boundType: FirTypeKey,
+      override val bindingType: FirTypeKey,
     ) : Contribution, BindingContribution
 
     @Poko
@@ -388,7 +400,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
       override val replaces: Set<ClassId>,
-      override val boundType: FirTypeKey,
+      override val bindingType: FirTypeKey,
     ) : Contribution, BindingContribution
 
     @Poko
@@ -397,7 +409,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       @Poko.Skip override val annotation: FirAnnotation,
       override val scope: ClassId,
       override val replaces: Set<ClassId>,
-      override val boundType: FirTypeKey,
+      override val bindingType: FirTypeKey,
       val mapKey: MetroFirAnnotation,
     ) : Contribution, BindingContribution
   }

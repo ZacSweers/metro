@@ -14,7 +14,7 @@ package dev.zacsweers.metro
  * supertype).
  *
  * ```kotlin
- * @ContributesBinding(AppScope::class, boundType = BoundType<Base>())
+ * @ContributesBinding(AppScope::class, binding = binding<Base>())
  * class Impl : Base, AnotherBase
  * ```
  *
@@ -23,13 +23,13 @@ package dev.zacsweers.metro
  * on the class, if any.
  *
  * ```kotlin
- * // Uses the qualifier on `boundType`
- * @ContributesBinding(AppScope::class, boundType = BoundType<@Named("qualified") Base>())
+ * // Uses the qualifier on `binding`
+ * @ContributesBinding(AppScope::class, binding = binding<@Named("qualified") Base>())
  * class Impl : Base, AnotherBase
  *
  * // Falls back to the class
  * @Named("qualified")
- * @ContributesBinding(AppScope::class, boundType = BoundType<Base>())
+ * @ContributesBinding(AppScope::class, binding = binding<Base>())
  * class Impl : Base, AnotherBase
  * ```
  *
@@ -37,8 +37,8 @@ package dev.zacsweers.metro
  * [MapKey]. If none is defined on [T], there _must_ be one on the annotated class to use.
  *
  * ```kotlin
- * @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) Base>())
+ * @ContributesIntoMap(AppScope::class, binding = binding<@ClassKey(Impl::class) Base>())
  * class Impl : Base, AnotherBase
  * ```
  */
-public annotation class BoundType<@Suppress("unused") T : Any>
+@Suppress("ClassName") public annotation class binding<@Suppress("unused") T : Any>
