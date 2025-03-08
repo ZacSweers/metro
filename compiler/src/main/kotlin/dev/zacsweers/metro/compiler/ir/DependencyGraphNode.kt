@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.typeWith
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
@@ -18,9 +19,10 @@ internal data class DependencyGraphNode(
   val accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
   val bindsFunctions: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
   val injectors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
+  val extensions: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
-  val typeKey: TypeKey,
+  val typeKey: TypeKey = TypeKey(sourceGraph.typeWith()),
 ) {
   data class Creator(
     val type: IrClass,

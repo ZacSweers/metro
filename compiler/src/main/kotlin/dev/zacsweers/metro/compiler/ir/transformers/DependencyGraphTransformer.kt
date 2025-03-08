@@ -55,6 +55,7 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.metroAnnotations
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
@@ -227,7 +228,7 @@ internal class DependencyGraphTransformer(
     providesTransformer.visitClass(declaration)
 
     val dependencyGraphAnno =
-      declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+      declaration.annotationsIn(symbols.classIds.allGraphAnnotations).singleOrNull()
     if (dependencyGraphAnno == null) return super.visitClass(declaration, data)
 
     try {
@@ -245,16 +246,13 @@ internal class DependencyGraphTransformer(
     graphDeclaration: IrClass,
     bindingStack: BindingStack,
     metroGraph: IrClass? = null,
-    dependencyGraphAnno: IrConstructorCall? = null,
+    dependencyGraphAnno: IrConstructorCall? = graphDeclaration.annotationsIn(symbols.classIds.allGraphAnnotations).singleOrNull(),
   ): DependencyGraphNode {
     val graphClassId = graphDeclaration.classIdOrFail
     dependencyGraphNodesByClass[graphClassId]?.let {
       return it
     }
 
-    val dependencyGraphAnno =
-      dependencyGraphAnno
-        ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
     val isGraph = dependencyGraphAnno != null
     if (graphDeclaration.isExternalParent || !isGraph) {
       val accessorsToCheck =
@@ -299,9 +297,9 @@ internal class DependencyGraphTransformer(
             accessors.map { it to ContextualTypeKey.from(metroContext, it.ir, it.annotations) },
           bindsFunctions = emptyList(),
           injectors = emptyList(),
+          extensions = emptyList(),
           isExternal = true,
           creator = null,
-          typeKey = TypeKey(graphDeclaration.typeWith()),
         )
 
       dependencyGraphNodesByClass[graphClassId] = dependentNode
@@ -324,6 +322,7 @@ internal class DependencyGraphTransformer(
     val accessors = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
     val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
     val injectors = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
+    val extensions = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
@@ -332,7 +331,7 @@ internal class DependencyGraphTransformer(
       if (annotations.isProvides) continue
       when (declaration) {
         is IrSimpleFunction -> {
-          // Could be an injector or accessor
+          // Could be an injector, accessor, binds, or extension
 
           // If the overridden symbol has a default getter/value then skip
           var hasDefaultImplementation = false
@@ -350,21 +349,27 @@ internal class DependencyGraphTransformer(
             val contextKey = ContextualTypeKey.from(this, declaration, metroFunction.annotations)
             injectors += (metroFunction to contextKey)
           } else {
-            // Accessor or binds
+            // Accessor, binds, or extension
             val metroFunction = metroFunctionOf(declaration, annotations)
             val contextKey = ContextualTypeKey.from(this, declaration, metroFunction.annotations)
             val collection =
               if (metroFunction.annotations.isBinds) {
                 bindsFunctions
               } else {
-                accessors
+                val exposedTypeAnnotations = declaration.returnType.rawType()
+                  .metroAnnotations(symbols.classIds)
+                if (exposedTypeAnnotations.isGraphExtensionType) {
+                  extensions
+                } else {
+                  accessors
+                }
               }
             collection += (metroFunction to contextKey)
           }
         }
 
         is IrProperty -> {
-          // Can only be an accessor or binds
+          // Can only be an accessor, binds, or extension
 
           // If the overridden symbol has a default getter/value then skip
           var hasDefaultImplementation = false
@@ -383,7 +388,13 @@ internal class DependencyGraphTransformer(
             if (metroFunction.annotations.isBinds) {
               bindsFunctions
             } else {
-              accessors
+              val exposedTypeAnnotations = getter.returnType.rawType()
+                .metroAnnotations(symbols.classIds)
+              if (exposedTypeAnnotations.isGraphExtensionType) {
+                extensions
+              } else {
+                accessors
+              }
             }
           collection += (metroFunction to contextKey)
         }
@@ -397,7 +408,7 @@ internal class DependencyGraphTransformer(
       bindsFunctions.map { (function, contextKey) -> contextKey.typeKey to function }
     scopes += buildSet {
       val scope =
-        dependencyGraphAnno.getValueArgument("scope".asName())?.let { scopeArg ->
+        dependencyGraphAnno?.getValueArgument("scope".asName())?.let { scopeArg ->
           pluginContext.createIrBuilder(graphDeclaration.symbol).run {
             irCall(symbols.metroSingleInConstructor).apply { putValueArgument(0, scopeArg) }
           }
@@ -480,6 +491,7 @@ internal class DependencyGraphTransformer(
         providerFunctions = providerFunctions,
         accessors = accessors,
         injectors = injectors,
+        extensions = extensions,
         isExternal = false,
         creator = creator,
         typeKey = graphTypeKey,
