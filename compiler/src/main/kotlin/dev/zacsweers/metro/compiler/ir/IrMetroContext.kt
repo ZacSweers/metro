@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
+import kotlin.system.measureTimeMillis
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -167,4 +168,9 @@ internal interface IrMetroContext {
       }
     }
   }
+}
+
+internal inline fun IrMetroContext.timedComputation(name: String, block: () -> Unit) {
+  val result = measureTimeMillis(block)
+  log("$name took ${result}ms")
 }
