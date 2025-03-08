@@ -789,7 +789,7 @@ internal fun FirAnnotation.excludesArgument() =
   argumentAsOrNull<FirArrayLiteral>("excludes".asName(), index = 2)
 
 internal fun FirAnnotation.replacesArgument() =
-  argumentAsOrNull<FirArrayLiteral>("replaces".asName(), index = 1)
+  argumentAsOrNull<FirArrayLiteral>("replaces".asName(), index = 2)
 
 internal fun FirAnnotation.bindingArgument() = annotationArgument("binding".asName(), index = 1)
 
