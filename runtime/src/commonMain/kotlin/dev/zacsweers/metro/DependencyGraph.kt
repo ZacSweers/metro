@@ -94,12 +94,15 @@ import kotlin.reflect.KClass
  *
  * @property excludes Optional list of excluded contributing classes (requires a [scope] to be
  *   defined).
+ * @property isExtendable If enabled, marks this graph as available for extension and generates
+ *   extra metadata about this graph's available bindings for child graphs to read.
  */
 @Target(AnnotationTarget.CLASS)
 public annotation class DependencyGraph(
   val scope: KClass<*> = Nothing::class,
   val additionalScopes: Array<KClass<*>> = [],
   val excludes: Array<KClass<*>> = [],
+  val isExtendable: Boolean = false,
 ) {
   /**
    * Graph factories can be declared as a single nested declaration within the target graph to
