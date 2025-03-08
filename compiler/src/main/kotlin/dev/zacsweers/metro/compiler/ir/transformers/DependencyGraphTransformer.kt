@@ -292,6 +292,7 @@ internal class DependencyGraphTransformer(
       val dependentNode =
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
+          isExtendable = dependencyGraphAnno?.getBooleanConstArgument(i = 3) == true,
           dependencies = emptyMap(),
           scopes = emptySet(),
           providerFunctions = emptyList(),
@@ -474,6 +475,7 @@ internal class DependencyGraphTransformer(
     val dependencyGraphNode =
       DependencyGraphNode(
         sourceGraph = graphDeclaration,
+        isExtendable = dependencyGraphAnno.getBooleanConstArgument(i = 3) == true,
         dependencies = graphDependencies,
         scopes = scopes,
         bindsFunctions = bindsFunctions,

@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
+  val isExtendable: Boolean,
   val dependencies: Map<TypeKey, DependencyGraphNode>,
   val scopes: Set<IrAnnotation>,
   val providerFunctions: List<Pair<TypeKey, MetroSimpleFunction>>,
