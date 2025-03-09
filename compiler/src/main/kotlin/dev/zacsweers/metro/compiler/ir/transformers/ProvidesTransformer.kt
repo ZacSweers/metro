@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
@@ -30,6 +31,8 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
+import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
+import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -54,14 +57,15 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.synthetic.isVisibleOutside
 
 internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by context {
 
   private val references = mutableMapOf<FqName, CallableReference>()
   private val generatedFactories = mutableMapOf<FqName, IrClass>()
+  private val generatedFactoriesByClass = mutableMapOf<FqName, MutableList<ClassId>>()
 
   fun visitClass(declaration: IrClass) {
     // Defensive copy because we add to this class in some factories!
@@ -83,6 +87,33 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           }
         }
       }
+    }
+
+    // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
+    // class's metadata. This allows consumers in downstream compilations to know if there are
+    // providers to consume here even if they are private.
+    val generatedFactories = generatedFactoriesByClass[declaration.kotlinFqName].orEmpty()
+    val shouldGenerateMetadata =
+      generatedFactories.isNotEmpty() &&
+        !declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations)
+    if (shouldGenerateMetadata) {
+      // TODO store metadata for graph's providers
+      // TODO can we just return this view?
+      //  need to copy qualifiers and scopes to the generated factory for reference
+      val metroMetadata =
+        MetroMetadata(
+          DependencyGraphProto(
+            is_graph = false,
+            provider_factory_classes = generatedFactories.map { it.asString() }.sorted(),
+          )
+        )
+      val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
+      // TODO
+      //  pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
+      //    declaration,
+      //    PLUGIN_ID,
+      //    serialized
+      //  )
     }
   }
 
@@ -109,12 +140,16 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         getOrPutCallableReference(it)
       } ?: getOrPutCallableReference(binding.providerFunction)
 
+    // Eager cache check
+    generatedFactories[reference.fqName]?.let {
+      return it
+    }
+
     // If it's from another module, look up its already-generated factory
     // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
     //  external but no factory is found?
     if (binding.providerFunction.parentAsClass.isExternalParent) {
       // Look up the external class
-      // TODO do we generate it here + warn like dagger does?
       val generatedClass =
         binding.providerFunction.parentAsClass.nestedClasses.find {
           it.name == reference.generatedClassId.shortClassName
@@ -126,6 +161,9 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         return null
       }
       generatedFactories[reference.fqName] = generatedClass
+      generatedFactoriesByClass
+        .getOrPut(reference.fqName, ::mutableListOf)
+        .add(generatedClass.classIdOrFail)
     }
     return getOrGenerateFactoryClass(reference)
   }
@@ -135,20 +173,8 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       return it
     }
 
-    // TODO FIR check function is not abstract
     // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
     //  tho
-
-    // TODO Private functions need to be visible downstream. To do this we use a new API to add
-    //  custom metadata
-    if (!reference.callee.owner.visibility.isVisibleOutside()) {
-      // TODO properties?
-      // TODO registerFunctionAsMetadataVisible doesn't appear to work unless the function is public
-      //  ... so I don't understand what it's for
-      //      pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
-      //        reference.callee.owner as IrSimpleFunction
-      //      )
-    }
 
     val sourceValueParameters = reference.parameters.valueParameters
 
@@ -264,6 +290,10 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     factoryCls.dumpToMetroLog()
 
     generatedFactories[reference.fqName] = factoryCls
+    generatedFactoriesByClass
+      .getOrPut(reference.graphParent.kotlinFqName, ::mutableListOf)
+      .add(generatedClassId)
+
     return factoryCls
   }
 

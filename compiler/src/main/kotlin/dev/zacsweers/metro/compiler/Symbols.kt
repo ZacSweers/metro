@@ -98,6 +98,7 @@ internal class Symbols(
     val instance = Name.identifier("instance")
     val injectMembers = Name.identifier(StringNames.INJECT_MEMBERS)
     val invoke = Name.identifier(StringNames.INVOKE)
+    val isExtendable = "isExtendable".asName()
     val metroFactory = Name.identifier(StringNames.METRO_FACTORY)
     val metroContribution = Name.identifier("$\$MetroContribution")
     val metroGraph = Name.identifier("$\$MetroGraph")
