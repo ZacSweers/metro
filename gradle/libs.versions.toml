@@ -47,6 +47,7 @@ dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.31.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.18.2" }
+shadow = { id = "com.gradleup.shadow", version = "8.3.6" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.2" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
@@ -116,4 +117,4 @@ truth = { module = "com.google.truth:truth", version = "1.4.4" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
 kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }
 
-wire-runtime = { module = "com.squareup.wire:wire-runtime", version.ref = "wire" }
+wire-runtime = { module = "com.squareup.wire:wire-runtime-jvm", version.ref = "wire" }
