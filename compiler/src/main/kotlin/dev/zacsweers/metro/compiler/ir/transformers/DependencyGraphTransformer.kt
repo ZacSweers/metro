@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.doubleCheck
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
+import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.getSingleConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -52,9 +53,12 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.timedComputation
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
+import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
@@ -292,7 +296,8 @@ internal class DependencyGraphTransformer(
       val dependentNode =
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
-          isExtendable = dependencyGraphAnno?.getBooleanConstArgument(i = 3) == true,
+          isExtendable =
+            dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true,
           dependencies = emptyMap(),
           scopes = emptySet(),
           providerFunctions = emptyList(),
@@ -475,7 +480,8 @@ internal class DependencyGraphTransformer(
     val dependencyGraphNode =
       DependencyGraphNode(
         sourceGraph = graphDeclaration,
-        isExtendable = dependencyGraphAnno.getBooleanConstArgument(i = 3) == true,
+        isExtendable =
+          dependencyGraphAnno.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true,
         dependencies = graphDependencies,
         scopes = scopes,
         bindsFunctions = bindsFunctions,
@@ -863,8 +869,8 @@ internal class DependencyGraphTransformer(
     graphClass: IrClass,
     bindingGraph: BindingGraph,
     deferredTypes: Set<TypeKey>,
-  ): IrClass {
-    return graphClass.apply {
+  ) =
+    with(graphClass) {
       val ctor = primaryConstructor!!
 
       // Add fields for providers. May include both scoped and unscoped providers as well as bound
@@ -1108,7 +1114,53 @@ internal class DependencyGraphTransformer(
       }
 
       implementOverrides(node.accessors, node.bindsFunctions, node.injectors, baseGenerationContext)
+
+      if (node.isExtendable) {
+        timedComputation("Generating Metro metadata") {
+          // Finally, generate metadata
+          val metroMetadata =
+            MetroMetadata(
+              node.toProto(
+                bindingGraph = bindingGraph,
+                providerFields = providerFields.values.map { it.name.asString() }.sorted(),
+              )
+            )
+          val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
+          // TODO add to metadata
+          //  pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
+          //    graphClass,
+          //    PLUGIN_ID,
+          //    serialized
+          //  )
+        }
+      }
     }
+
+  private fun DependencyGraphNode.toProto(
+    bindingGraph: BindingGraph,
+    providerFields: List<String>,
+  ): DependencyGraphProto {
+    val providerFactoryClasses = mutableListOf<String>()
+    val bindsCallableIds = mutableListOf<String>()
+
+    for (binding in bindingGraph.bindingsSnapshot().values) {
+      if (binding is Binding.Provided) {
+        if (binding.aliasedType != null) {
+          bindsCallableIds += binding.providerFunction.name.asString()
+        } else {
+          providerFactoryClasses +=
+            providesTransformer.getOrGenerateFactoryClass(binding)!!.classIdOrFail.asString()
+        }
+      }
+    }
+
+    return DependencyGraphProto(
+      is_graph = true,
+      provider_field_names = providerFields,
+      provider_factory_classes = providerFactoryClasses.sorted(),
+      binds_callable_ids = bindsCallableIds.sorted(),
+      accessor_callable_ids = accessors.map { it.first.ir.name.asString() }.sorted(),
+    )
   }
 
   private fun implementOverrides(
