@@ -85,6 +85,7 @@ import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isObject
@@ -629,6 +630,9 @@ internal fun IrClass.implementsAny(
 
 internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? =
   (getValueArgument(0) as IrConst?)?.value as Boolean?
+
+internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
+  (getValueArgument(name) as IrConst?)?.value as Boolean?
 
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
   return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
