@@ -43,15 +43,9 @@ tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }
 
 wire { kotlin {} }
 
-val shade: Configuration = configurations.maybeCreate("compileShaded")
-
-configurations.getByName("compileOnly").extendsFrom(shade)
-
 val shadowJar =
   tasks.shadowJar.apply {
     configure {
-      archiveClassifier.set("")
-      configurations = listOf(shade)
       relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
     }
   }
@@ -66,7 +60,7 @@ dependencies {
   compileOnly(libs.kotlin.stdlib)
   implementation(libs.autoService)
   implementation(libs.picnic) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
-  shade(libs.wire.runtime) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
+  shadow(libs.wire.runtime) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
   ksp(libs.autoService.ksp)
 
   testImplementation(project(":runtime"))
