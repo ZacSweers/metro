@@ -41,7 +41,7 @@ buildConfig {
 
 tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }
 
-wire { kotlin {} }
+wire { kotlin { javaInterop = false } }
 
 val shadowJar =
   tasks.shadowJar.apply {
