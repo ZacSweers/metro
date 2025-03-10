@@ -22,6 +22,7 @@ case "$1" in
            esac
        done
 
+       export PUBLISHING=true
        if [[ "$local" = true ]]; then
            if [[ -z "$version" ]]; then
                echo "Version required for local publish"

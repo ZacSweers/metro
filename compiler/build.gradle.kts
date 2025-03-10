@@ -43,9 +43,16 @@ tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }
 
 wire { kotlin { javaInterop = false } }
 
+val isPublishing = providers.environmentVariable("PUBLISHING").isPresent
+
 val shadowJar =
   tasks.shadowJar.apply {
     configure {
+      if (isPublishing) {
+        // Since we change the classifier of the shadowJar we need to disable the default jar task
+        // or we'll get two artifacts that have the same classifier
+        archiveClassifier.set("ignored")
+      }
       relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
     }
   }
