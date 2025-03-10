@@ -383,10 +383,10 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     typeResolver: TypeResolveService,
   ): ConeClassLikeType? {
     val parametersWithNulls =
-      typeRef.contextReceiverTypeRefs.map { it.coneTypeLayered(typeResolver) } +
+      typeRef.contextParameterTypeRefs.map { it.coneTypeLayered(typeResolver) } +
         listOfNotNull(typeRef.receiverTypeRef?.coneTypeLayered(typeResolver)) +
         typeRef.parameters.map {
-          it.returnTypeRef.coneTypeLayered(typeResolver)?.withParameterNameAnnotation(it, session)
+          it.returnTypeRef.coneTypeLayered(typeResolver)?.withParameterNameAnnotation(it)
         } +
         listOf(typeRef.returnTypeRef.coneTypeLayered(typeResolver))
     val parameters = parametersWithNulls.filterNotNull()
@@ -424,10 +424,10 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
               add(CompilerConeAttributes.ExtensionFunctionType)
             }
 
-            if (typeRef.contextReceiverTypeRefs.isNotEmpty()) {
+            if (typeRef.contextParameterTypeRefs.isNotEmpty()) {
               add(
                 CompilerConeAttributes.ContextFunctionTypeParams(
-                  typeRef.contextReceiverTypeRefs.size
+                  typeRef.contextParameterTypeRefs.size
                 )
               )
             }
