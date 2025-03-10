@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -108,12 +109,11 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           )
         )
       val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
-      // TODO
-      //  pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-      //    declaration,
-      //    PLUGIN_ID,
-      //    serialized
-      //  )
+      pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
+        declaration,
+        PLUGIN_ID,
+        serialized,
+      )
     }
   }
 
