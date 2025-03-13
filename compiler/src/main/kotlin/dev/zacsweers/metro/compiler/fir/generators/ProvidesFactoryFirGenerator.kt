@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.computeTypeAttributes
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
@@ -233,7 +235,37 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           Keys.ProviderFactoryClassDeclaration,
           classKind = classKind,
         )
-        .apply { markAsDeprecatedHidden(session) }
+        .apply {
+          markAsDeprecatedHidden(session)
+          // Copy scope/into*/qualifier/mapkey annotations for use later
+          val ids = session.classIds
+          val newAnnotations = buildList {
+            for (annotation in sourceCallable.symbol.resolvedAnnotationsWithClassIds) {
+              val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
+              when (annotationClassId) {
+                in ids.intoSetAnnotations -> add(annotation)
+                in ids.intoMapAnnotations -> add(annotation)
+                else -> {
+                  val annotationClass =
+                    session.symbolProvider.getClassLikeSymbolByClassId(annotationClassId)
+                      ?: continue
+                  if (annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
+                    add(annotation)
+                  } else if (
+                    annotationClass.isAnnotatedWithAny(session, ids.qualifierAnnotations)
+                  ) {
+                    add(annotation)
+                  } else if (annotationClass.isAnnotatedWithAny(session, ids.mapKeyAnnotations)) {
+                    add(annotation)
+                  }
+                }
+              }
+            }
+          }
+          if (newAnnotations.isNotEmpty()) {
+            replaceAnnotationsSafe(annotations + newAnnotations)
+          }
+        }
         .symbol
         .also { providerFactoryClassIdsToSymbols[it.classId] = it }
     } else {
