@@ -249,13 +249,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           val ids = session.classIds
           val newAnnotations = buildList {
             // Add the source info
-            add(
-              buildProvidesCallableIdAnnotation(
-                callableId = sourceCallable.callableId,
-                isProperty = sourceCallable.symbol is FirPropertySymbol,
-                isPropertyAccessor = sourceCallable.symbol is FirPropertyAccessorSymbol,
-              )
-            )
+            add(buildProvidesCallableIdAnnotation(sourceCallable))
 
             for (annotation in sourceCallable.symbol.resolvedAnnotationsWithClassIds) {
               val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
@@ -302,11 +296,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     return ProviderCallable(owner, this, instanceReceiver, params)
   }
 
-  private fun buildProvidesCallableIdAnnotation(
-    callableId: CallableId,
-    isProperty: Boolean,
-    isPropertyAccessor: Boolean,
-  ): FirAnnotation {
+  private fun buildProvidesCallableIdAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
     return buildAnnotation {
       val anno = session.metroFirBuiltIns.providesCallableIdClassSymbol
 
@@ -317,7 +307,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.String,
-            value = callableId.callableName.asString(),
+            value = sourceCallable.callableId.callableName.asString(),
             annotations = null,
             setType = true,
             prefix = null,
@@ -326,16 +316,21 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Boolean,
-            value = isProperty,
+            value =
+              when (sourceCallable.symbol) {
+                is FirPropertyAccessorSymbol,
+                is FirPropertySymbol -> true
+                else -> false
+              },
             annotations = null,
             setType = true,
             prefix = null,
           )
-        mapping[Name.identifier("isPropertyAccessor")] =
+        mapping[Name.identifier("location")] =
           buildLiteralExpression(
             source = null,
-            kind = ConstantValueKind.Boolean,
-            value = isPropertyAccessor,
+            kind = ConstantValueKind.String,
+            value = "", // TODO can we compute this in FIR?
             annotations = null,
             setType = true,
             prefix = null,

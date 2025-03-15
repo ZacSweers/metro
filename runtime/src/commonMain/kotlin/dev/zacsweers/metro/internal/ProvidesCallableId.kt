@@ -6,4 +6,11 @@ import kotlin.annotation.AnnotationTarget.CLASS
 
 /** Marker for generated factories indicating their source callable ID. */
 @Target(CLASS)
-public annotation class ProvidesCallableId(val callableName: String, val isProperty: Boolean, val isPropertyAccessor: Boolean)
+public annotation class ProvidesCallableId(
+  val callableName: String,
+  val isProperty: Boolean,
+  /**
+   * Location string. Format is path:line:column
+   */
+  val location: String
+)
