@@ -12,11 +12,13 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.unsafeLazy
+import kotlin.collections.set
 import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
@@ -26,6 +28,10 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -47,6 +53,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.CompilerConeAttributes
@@ -69,6 +76,7 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.types.ConstantValueKind
 
 /** Generates factory declarations for `@Provides`-annotated members. */
 internal class ProvidesFactoryFirGenerator(session: FirSession) :
@@ -240,6 +248,15 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           // Copy scope/into*/qualifier/mapkey annotations for use later
           val ids = session.classIds
           val newAnnotations = buildList {
+            // Add the source info
+            add(
+              buildProvidesCallableIdAnnotation(
+                callableId = sourceCallable.callableId,
+                isProperty = sourceCallable.symbol is FirPropertySymbol,
+                isPropertyAccessor = sourceCallable.symbol is FirPropertyAccessorSymbol,
+              )
+            )
+
             for (annotation in sourceCallable.symbol.resolvedAnnotationsWithClassIds) {
               val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
               when (annotationClassId) {
@@ -283,6 +300,48 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         else -> return null
       }
     return ProviderCallable(owner, this, instanceReceiver, params)
+  }
+
+  private fun buildProvidesCallableIdAnnotation(
+    callableId: CallableId,
+    isProperty: Boolean,
+    isPropertyAccessor: Boolean,
+  ): FirAnnotation {
+    return buildAnnotation {
+      val anno = session.metroFirBuiltIns.providesCallableIdClassSymbol
+
+      annotationTypeRef = anno.defaultType().toFirResolvedTypeRef()
+
+      argumentMapping = buildAnnotationArgumentMapping {
+        mapping[Name.identifier("callableName")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.String,
+            value = callableId.callableName.asString(),
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+        mapping[Name.identifier("isProperty")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Boolean,
+            value = isProperty,
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+        mapping[Name.identifier("isPropertyAccessor")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Boolean,
+            value = isPropertyAccessor,
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+      }
+    }
   }
 
   class ProviderCallable(
