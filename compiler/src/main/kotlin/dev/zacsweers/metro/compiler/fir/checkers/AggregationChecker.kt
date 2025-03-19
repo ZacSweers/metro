@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -25,6 +26,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.coneType
@@ -346,6 +348,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     context: CheckerContext,
     onError: () -> Nothing,
   ) {
+    checkContributionKind(kind, annotation, contribution, reporter, context) { onError() }
     val added = collection.add(contribution)
     if (!added) {
       reporter.reportOn(
@@ -363,6 +366,27 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         context,
       )
 
+      onError()
+    }
+  }
+
+  private inline fun checkContributionKind(
+    kind: ContributionKind,
+    annotation: FirAnnotation,
+    contribution: Contribution,
+    reporter: DiagnosticReporter,
+    context: CheckerContext,
+    onError: () -> Nothing,
+  ) {
+    if (kind != ContributionKind.CONTRIBUTES_TO) return
+    val declaration = (contribution as Contribution.ContributesTo).declaration
+    if (declaration.classKind != ClassKind.INTERFACE) {
+      reporter.reportOn(
+        annotation.source,
+        FirMetroErrors.AGGREGATION_ERROR,
+        "`@${kind}` annotations only permitted on interfaces. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
+        context,
+      )
       onError()
     }
   }
