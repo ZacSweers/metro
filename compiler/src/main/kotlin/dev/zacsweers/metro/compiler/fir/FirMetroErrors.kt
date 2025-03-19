@@ -107,7 +107,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0(NAME_IDENTIFIER)
   val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0(NAME_IDENTIFIER)
   val ONLY_CLASSES_CAN_BE_INJECTED by error0(NAME_IDENTIFIER)
-  val ONLY_FINAL_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
+  val ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error0(VISIBILITY_MODIFIER)
 
@@ -172,8 +172,8 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
         "Only classes can be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(
-        ONLY_FINAL_CLASSES_CAN_BE_INJECTED,
-        "Only final classes be annotated with @Inject or have @Inject-annotated constructors.",
+        ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
+        "Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(
         INJECTED_CLASSES_MUST_BE_VISIBLE,

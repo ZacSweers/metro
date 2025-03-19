@@ -119,7 +119,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `only final classes can be injected`() {
+  fun `only final and open classes can be injected`() {
     compile(
       source(
         fileNameWithoutExtension = "FinalClasses",
@@ -143,9 +143,8 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: FinalClasses.kt:7:1 Only final classes be annotated with @Inject or have @Inject-annotated constructors.
-            e: FinalClasses.kt:10:1 Only final classes be annotated with @Inject or have @Inject-annotated constructors.
-            e: FinalClasses.kt:13:1 Only final classes be annotated with @Inject or have @Inject-annotated constructors.
+            e: FinalClasses.kt:10:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
+            e: FinalClasses.kt:13:1 Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.
           """
           .trimIndent()
       )

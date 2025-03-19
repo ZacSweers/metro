@@ -423,7 +423,7 @@ internal fun FirClassLikeSymbol<*>.findInjectConstructors(
 ): List<FirConstructorSymbol> {
   if (this !is FirClassSymbol<*>) return emptyList()
   if (classKind != ClassKind.CLASS) return emptyList()
-  rawStatus.modality?.let { if (it.ordinal > 0) return emptyList() }
+  rawStatus.modality?.let { if (it != Modality.FINAL && it != Modality.OPEN) return emptyList() }
   return if (checkClass && isAnnotatedInject(session)) {
     declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter { it.isPrimary }
   } else {
@@ -446,12 +446,17 @@ internal inline fun FirClass.validateInjectedClass(
   when (classKind) {
     ClassKind.CLASS -> {
       when (modality) {
-        Modality.FINAL -> {
-          // This is fine
+        Modality.FINAL,
+        Modality.OPEN -> {
+          // final/open This is fine
         }
         else -> {
-          // open/sealed/abstract
-          reporter.reportOn(source, FirMetroErrors.ONLY_FINAL_CLASSES_CAN_BE_INJECTED, context)
+          // sealed/abstract
+          reporter.reportOn(
+            source,
+            FirMetroErrors.ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
+            context,
+          )
           onError()
         }
       }
