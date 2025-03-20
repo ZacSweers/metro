@@ -1148,9 +1148,8 @@ class AggregationTest : MetroCompilerTest() {
     }
   }
 
-  // TODO loosen this restriction
   @Test
-  fun `explicit bound types don't use class qualifier - ContributesBinding`() {
+  fun `ContributesBinding supports explicit bound type with class-level qualifier`() {
     compile(
       source(
         """
@@ -1167,18 +1166,12 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:16:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") test.ContributedInterface
-
-              @Named("1") test.ContributedInterface is requested at
-                  [test.ExampleGraph] test.ExampleGraph.contributedInterface1
-        """
-          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface1")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
     }
   }
 
@@ -1628,7 +1621,7 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `explicit bound types don't use class qualifier - ContributesIntoSet`() {
+  fun `ContributesIntoSet supports explicit bound type with class-level qualifier`() {
     compile(
       source(
         """
@@ -1645,18 +1638,13 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:16:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") kotlin.collections.Set<test.ContributedInterface>
-
-              @Named("1") kotlin.collections.Set<test.ContributedInterface> is requested at
-                  [test.ExampleGraph] test.ExampleGraph.contributedInterfaces1
-        """
-          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces1")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces.size).isEqualTo(1)
+      assertThat(contributedInterfaces.single().javaClass.name).isEqualTo("test.Impl")
     }
   }
 
@@ -2123,7 +2111,7 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `explicit bound types don't use class qualifier - ContributesIntoMap`() {
+  fun `ContributesIntoMap supports explicit bound type with class-level qualifier`() {
     compile(
       source(
         """
@@ -2140,18 +2128,13 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:16:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") kotlin.collections.Map<kotlin.reflect.KClass<*>, test.ContributedInterface>
-
-              @Named("1") kotlin.collections.Map<kotlin.reflect.KClass<*>, test.ContributedInterface> is requested at
-                  [test.ExampleGraph] test.ExampleGraph.contributedInterfaces1
-        """
-          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces.size).isEqualTo(1)
+      assertThat(contributedInterfaces.entries.single().value.javaClass.name).isEqualTo("test.Impl")
     }
   }
 

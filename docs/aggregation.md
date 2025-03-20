@@ -79,7 +79,7 @@ The below example will contribute the `CacheImpl` class as a `Cache` type to `Ap
 class CacheImpl(...) : Cache
 ```
 
-For simple cases where there is a single typertype, that type is implicitly used as the bound type. If your bound type is qualified, for the implicit case you can put the qualifier on the class.
+For simple cases where there is a single supertype, that type is implicitly used as the bound type. If your bound type is qualified, for the implicit case you can put the qualifier on the class.
 
 ```kotlin
 @Named("cache")
@@ -91,6 +91,7 @@ class CacheImpl(...) : Cache
 For classes with multiple supertypes or advanced cases where you want to bind an ancestor type, you can explicitly define this via `binding` parameter.
 
 ```kotlin
+@Named("cache")
 @ContributesBinding(
   scope = AppScope::class,
   binding = binding<Cache>()
@@ -104,7 +105,7 @@ class CacheImpl(...) : Cache, AnotherType
 
 Note that the bound type is defined as the type argument to `@ContributesBinding`. This allows for the bound type to be generic and is validated in FIR.
 
-Qualifier annotations can be specified on the `binding` type parameter and will take precedence over any qualifiers on the class itself.
+Qualifier annotations can also be specified on the `binding` type parameter and will take precedence over any qualifiers on the class itself.
 
 ```kotlin
 @ContributesBinding(
