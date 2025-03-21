@@ -57,6 +57,9 @@ fun <T> JvmCompilationResult.invokeMain(vararg args: Any?, mainClass: String = "
 val JvmCompilationResult.ExampleClass: Class<*>
   get() = classLoader.loadClass("test.ExampleClass")
 
+val JvmCompilationResult.ExampleClass2: Class<*>
+  get() = classLoader.loadClass("test.ExampleClass2")
+
 val JvmCompilationResult.ExampleClassFactory: Class<*>
   get() = classLoader.loadClass("test.ExampleClassFactory")
 
