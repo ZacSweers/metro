@@ -145,6 +145,8 @@ internal fun FirExtension.copyParameters(
             }
           }
         }
+      }.apply {
+        replaceAnnotationsSafe(original.symbol.annotations)
       }
   }
 }
