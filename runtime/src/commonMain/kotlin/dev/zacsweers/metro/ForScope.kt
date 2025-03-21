@@ -23,6 +23,7 @@ import kotlin.reflect.KClass
   AnnotationTarget.PROPERTY,
   AnnotationTarget.PROPERTY_GETTER,
   AnnotationTarget.VALUE_PARAMETER,
+  AnnotationTarget.TYPE,
 )
 @Qualifier
 public annotation class ForScope(val scope: KClass<*>)
