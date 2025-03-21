@@ -353,7 +353,13 @@ internal class DependencyGraphTransformer(
           if (declaration.valueParameters.isNotEmpty() && !annotations.isBinds) {
             // It's an injector
             val metroFunction = metroFunctionOf(declaration, annotations)
-            val contextKey = ContextualTypeKey.from(this, declaration, metroFunction.annotations)
+            val contextKey =
+              ContextualTypeKey.from(
+                context = this,
+                function = declaration,
+                annotations = metroFunction.annotations,
+                type = declaration.valueParameters.first().type,
+              )
             injectors += (metroFunction to contextKey)
           } else {
             // Accessor or binds
