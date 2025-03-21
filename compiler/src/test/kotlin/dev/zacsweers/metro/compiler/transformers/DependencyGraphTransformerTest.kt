@@ -1968,6 +1968,99 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `the fully qualified contributing class names are reported when there are duplicated bindings but both are missing location info`() {
+    val otherResult =
+      compile(
+        source(
+          """
+            interface OtherClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class ExampleClass : OtherClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class ExampleClass2 : OtherClass
+          """
+            .trimIndent(),
+          packageName = "other",
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph
+        """
+          .trimIndent(),
+        extraImports = arrayOf("other.OtherClass"),
+      ),
+      previousCompilationResult = otherResult,
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
+          ├─ Binding 1: other.ExampleClass
+          ├─ Binding 2: other.ExampleClass2
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `the fully qualified contributing class name is reported when there are duplicated bindings but one is missing location info`() {
+    val otherResult =
+      compile(
+        source(
+          """
+            interface OtherClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class ExampleClass : OtherClass
+          """
+            .trimIndent(),
+          packageName = "other",
+        )
+      )
+
+    compile(
+      source(
+        """
+          @ContributesBinding(AppScope::class)
+          @Inject
+          class ExampleClass2 : OtherClass
+        """
+          .trimIndent(),
+        extraImports = arrayOf("other.OtherClass"),
+      ),
+      source(
+        """
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph
+        """
+          .trimIndent(),
+        extraImports = arrayOf("other.OtherClass"),
+      ),
+      previousCompilationResult = otherResult,
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
+          ├─ Binding 1: other.ExampleClass
+          ├─ Binding 2: ExampleClass2.kt:7:1
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
   fun `transitive scoped bindings are ordered correctly`() {
     compile(
       source(

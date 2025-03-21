@@ -43,29 +43,11 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
         )
         val existing = bindings.getValue(key)
         val duplicate = binding
-        val locations =
-          listOfNotNull(
-              existing.reportableLocation?.render(),
-              duplicate.reportableLocation?.render(),
-            )
-            .distinct()
-        when (locations.size) {
-          0 -> {
-            appendLine("├─ No binding source locations available, they may be contributed.")
-          }
-          1 -> {
-            appendLine("├─ Binding 1: ${locations[0]}")
-            appendLine("├─ Binding 2: Unknown source location, this may be contributed")
-          }
-          2 -> {
-            for ((i, location) in locations.withIndex()) {
-              appendLine("├─ Binding ${i + 1}: $location")
-            }
-          }
-        }
+        appendLine("├─ Binding 1: ${existing.getContributionLocationOrDiagnosticInfo()}")
+        appendLine("├─ Binding 2: ${duplicate.getContributionLocationOrDiagnosticInfo()}")
         appendBindingStack(bindingStack)
       }
-      val location = binding.reportableLocation ?: bindingStack.graph.location()
+      val location = bindingStack.graph.location()
       metroContext.reportError(message, location)
       exitProcessing()
     }
@@ -118,6 +100,15 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
         is Binding.Absent -> error("Should never happen")
       }
     }
+  }
+
+  private fun Binding.getContributionLocationOrDiagnosticInfo(): String {
+    // First check if we have the contributing file and line number
+    return reportableLocation?.render()
+      // Or the fully-qualified contributing class name
+      ?: dependencies.entries.firstOrNull()?.key?.toString()
+      // Or print the full set of info we know about the binding
+      ?: "Unknown source location, this may be contributed. Here's some additional information we have for the binding: $this"
   }
 
   // For bindings we expect to already be cached
