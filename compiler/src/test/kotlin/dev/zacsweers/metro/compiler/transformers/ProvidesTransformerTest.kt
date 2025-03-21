@@ -23,6 +23,84 @@ import org.junit.Test
 
 class ProvidesTransformerTest : MetroCompilerTest() {
 
+  override val extraImports: List<String> = listOf("kotlin.reflect.*")
+
+  @Test
+  fun `a constructor can be injected with a @ForScope-qualified provider`() {
+    compile(
+      source(
+        """
+         @DependencyGraph(AppScope::class)
+         interface ExampleGraph {
+           // This is fine
+           @ForScope(AppScope::class)
+           val int: Int
+
+           val myClass: MyClass
+         }
+
+         @ContributesTo(AppScope::class)
+         interface ContributedInterface {
+           @Provides @ForScope(AppScope::class) fun provideInt(): Int = 2
+         }
+
+         class MyClass @Inject constructor(
+           // This fails
+           @ForScope(AppScope::class)
+           val int: Int
+         )
+       """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
+      assertThat(graph.callProperty<Any>("myClass").callProperty<Int>("int")).isEqualTo(2)
+    }
+  }
+
+  @Test
+  fun `a constructor can be injected with a @ForScope-qualified binding`() {
+    compile(
+      source(
+        """
+         @DependencyGraph(scope = AppScope::class)
+         interface ExampleGraph {
+           // This is fine
+           @ForScope(AppScope::class)
+           val contributedInterface: ContributedInterface
+
+           val myClass: MyClass
+         }
+
+         interface ContributedInterface
+
+         @ContributesBinding(AppScope::class, binding<@ForScope(AppScope::class) ContributedInterface>())
+         @Inject
+         class Impl : ContributedInterface
+
+         class MyClass @Inject constructor(
+           // This fails
+           @ForScope(AppScope::class)
+           val contributedInterface: ContributedInterface
+         )
+       """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val myClass = graph.callProperty<Any>("myClass")
+      val myClassField = myClass.callProperty<Any>("contributedInterface")
+      assertThat(myClass).isNotNull()
+      assertThat(myClassField).isNotNull()
+      assertThat(myClassField.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
   @Test
   fun `simple function provider`() {
     val result =
