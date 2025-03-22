@@ -28,7 +28,6 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        w: ExampleGraph.kt:7:17 `@Provides` declarations should be private.
         w: ExampleGraph.kt:8:17 `@Provides` declarations should be private.
       """
         .trimIndent()
@@ -71,7 +70,6 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:7:17 `@Provides` declarations should be private.
         e: ExampleGraph.kt:8:17 `@Provides` declarations should be private.
       """
         .trimIndent()
@@ -96,8 +94,6 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        w: ExampleGraph.kt:7:17 `@Provides` declarations should be private.
-        w: ExampleGraph.kt:8:17 `@Provides` declarations should be private.
         w: ExampleGraph.kt:9:17 `@Provides` declarations should be private.
       """
         .trimIndent()
@@ -121,7 +117,6 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        w: ExampleGraph.kt:7:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
         w: ExampleGraph.kt:8:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
       """
         .trimIndent()
@@ -145,7 +140,6 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        w: ExampleGraph.kt:7:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
         w: ExampleGraph.kt:8:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
       """
         .trimIndent()
@@ -231,7 +225,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
         source(
           """
             interface ExampleGraph {
-              @Provides private val Long.provideInt: Int get() = this.toInt()
+              @Provides val Long.provideInt: Int get() = this.toInt()
               @Provides private fun CharSequence.provideString(): String = this.toString()
             }
           """
@@ -242,7 +236,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:7:30 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.
+        e: ExampleGraph.kt:7:22 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.
         e: ExampleGraph.kt:8:38 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.
       """
         .trimIndent()
@@ -256,7 +250,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
         source(
           """
             abstract class ExampleGraph {
-              @Provides private val Long.provideInt: Int get() = this.toInt()
+              @Provides val Long.provideInt: Int get() = this.toInt()
               @Provides private fun CharSequence.provideString(): String = "Hello"
             }
           """
@@ -266,7 +260,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:7:30 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.
+        e: ExampleGraph.kt:7:22 `@Provides` properties may not be extension properties. Use `@Binds` instead for these.
         e: ExampleGraph.kt:8:38 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.
       """
         .trimIndent()
@@ -355,7 +349,6 @@ class ProvidesErrorsTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        w: ExampleGraph.kt:7:18 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
         w: ExampleGraph.kt:8:21 `@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private.
       """
         .trimIndent()

@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 
 // TODO would be great if this was standalone to more easily test.
 internal class BindingGraph(private val metroContext: IrMetroContext) {
@@ -94,8 +95,11 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           // Recursively follow deps from its constructor params
           getConstructorDependencies(bindingStack, binding.injectedConstructor)
         }
+        is Binding.Alias -> {
+          setOf(ContextualTypeKey(binding.aliasedType))
+        }
         is Binding.Provided -> {
-          getFunctionDependencies(binding.providerFunction, bindingStack)
+          getFunctionDependencies(binding.providerFactory.providesFunction, bindingStack)
         }
         is Binding.Assisted -> {
           val targetConstructor = binding.target.injectedConstructor
@@ -106,7 +110,18 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           // This type's dependencies are just its providers' dependencies
           // TODO dedupe logic with above
           binding.sourceBindings.flatMapTo(mutableSetOf()) { sourceBinding ->
-            getFunctionDependencies(sourceBinding.providerFunction, bindingStack)
+            when (sourceBinding) {
+              is Binding.Provided -> {
+                getFunctionDependencies(
+                  sourceBinding.providerFactory.clazz.primaryConstructor!!,
+                  bindingStack,
+                )
+              }
+              is Binding.Alias -> {
+                setOf(ContextualTypeKey(sourceBinding.aliasedType))
+              }
+              else -> error("Not possible")
+            }
           }
         }
         is Binding.MembersInjected -> {
@@ -367,10 +382,8 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
 
     binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
 
-    if (binding is Binding.Provided) {
-      if (binding.aliasedType != null) {
-        appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
-      }
+    if (binding is Binding.Alias) {
+      appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
     }
 
     if (binding.dependencies.isNotEmpty()) {

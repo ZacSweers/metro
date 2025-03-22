@@ -33,9 +33,11 @@ kotlin {
     .configureEach {
       compilations.configureEach {
         compileTaskProvider.configure {
-          // These are all read at compile-time
-          compilerOptions.freeCompilerArgs.add(
-            "-Xsuppress-warning=RUNTIME_ANNOTATION_NOT_SUPPORTED"
+          compilerOptions.freeCompilerArgs.addAll(
+            // These are all read at compile-time
+            "-Xsuppress-warning=RUNTIME_ANNOTATION_NOT_SUPPORTED",
+            // Big yikes in how this was rolled out as noisy compiler warnings
+            "-Xannotation-default-target=param-property",
           )
         }
       }

@@ -365,8 +365,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             interface ExampleGraph {
               val app: AppClass
 
-              @Provides private val provideInt: Int get() = 2
-              @Provides private val provideLong: Long get() = 3
+              @Provides val provideInt: Int get() = 2
+              @Provides val provideLong: Long get() = 3
             }
           """
             .trimIndent()

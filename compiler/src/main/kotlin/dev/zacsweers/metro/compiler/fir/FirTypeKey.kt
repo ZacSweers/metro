@@ -55,8 +55,8 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
 
     fun from(session: FirSession, parameter: FirValueParameterSymbol): FirTypeKey {
       val annotations =
-        if (parameter.containingFunctionSymbol.receiverParameter == parameter) {
-          parameter.containingFunctionSymbol.annotations.filter {
+        if (parameter.containingFunctionSymbol?.receiverParameter == parameter) {
+          parameter.containingFunctionSymbol!!.annotations.filter {
             it.useSiteTarget == AnnotationUseSiteTarget.RECEIVER
           }
         } else {

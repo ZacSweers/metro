@@ -12,9 +12,9 @@ import dev.zacsweers.metro.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
-import java.util.Optional
 import java.util.TreeSet
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -136,27 +136,11 @@ internal sealed interface Binding {
 
   @Poko
   class Provided(
-    @Poko.Skip val providerFunction: IrSimpleFunction,
+    @Poko.Skip val providerFactory: ProviderFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters<ConstructorParameter>,
-    val aliasedType: ContextualTypeKey? = null,
   ) : Binding, BindingWithAnnotations {
-
-    private var aliasedBinding: Optional<Binding>? =
-      if (aliasedType == null) Optional.empty() else null
-
-    fun aliasedBinding(graph: BindingGraph, stack: BindingStack): Binding? {
-      aliasedType ?: return null
-      val optionalBinding = aliasedBinding
-      return if (optionalBinding == null) {
-        val binding = graph.getOrCreateBinding(aliasedType, stack)
-        aliasedBinding = Optional.of(binding)
-        binding
-      } else {
-        optionalBinding.get()
-      }
-    }
 
     override val dependencies: Map<TypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey }
@@ -180,37 +164,20 @@ internal sealed interface Binding {
     val isIntoMultibinding
       get() = annotations.isIntoMultibinding
 
-    override val nameHint: String = providerFunction.name.asString()
+    override val nameHint: String = providerFactory.callableId.callableName.asString()
 
     override val reportableLocation: CompilerMessageSourceLocation?
-      get() {
-        return (providerFunction.overriddenSymbolsSequence().lastOrNull()?.owner
-            ?: providerFunction)
-          .let {
-            if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
-              // If it's a contribution, the source is
-              // SourceClass.$$MetroContribution.bindingFunction
-              //                                       ^^^
-              it.parentAsClass.parentAsClass.locationOrNull()
-            } else {
-              it.locationOrNull()
-            }
-          }
-      }
+      get() = providerFactory.providesFunction.locationOrNull()
 
     fun parameterFor(typeKey: TypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
         ?: error(
-          "No value parameter found for key $typeKey in ${providerFunction.kotlinFqName.asString()}."
+          "No value parameter found for key $typeKey in ${providerFactory.callableId.asSingleFqName().asString()}."
         )
     }
 
     override fun toString() = buildString {
-      if (annotations.isBinds) {
-        append("@Binds ")
-      } else {
-        append("@Provides ")
-      }
+      append("@Provides ")
       if (intoSet) {
         append("@IntoSet ")
       } else if (elementsIntoSet) {
@@ -222,7 +189,72 @@ internal sealed interface Binding {
           append(' ')
         }
       }
-      append(providerFunction.kotlinFqName.asString())
+      append(providerFactory.callableId.asSingleFqName().asString())
+      append(": ")
+      append(typeKey.render(short = true))
+    }
+  }
+
+  /** Represents an aliased binding, i.e. `@Binds`. Can be a multibinding. */
+  @Poko
+  class Alias(
+    override val typeKey: TypeKey,
+    val aliasedType: TypeKey,
+    @Poko.Skip val ir: IrSimpleFunction?,
+    override val parameters: Parameters<out Parameter>,
+    override val annotations: MetroAnnotations<IrAnnotation>,
+  ) : Binding, BindingWithAnnotations {
+    private var aliasedBinding: Binding? = null
+
+    fun aliasedBinding(graph: BindingGraph, stack: BindingStack): Binding {
+      val optionalBinding = aliasedBinding
+      return if (optionalBinding == null) {
+        val binding = graph.getOrCreateBinding(contextualTypeKey.withTypeKey(aliasedType), stack)
+        aliasedBinding = binding
+        binding
+      } else {
+        optionalBinding
+      }
+    }
+
+    override val scope: IrAnnotation? = null
+    override val dependencies: Map<TypeKey, Parameter> =
+      parameters.valueParameters.associateBy { it.typeKey }
+    override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey)
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() {
+        if (ir == null) return null
+        return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
+          if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
+            // If it's a contribution, the source is
+            // SourceClass.$$MetroContribution.bindingFunction
+            //                                 ^^^
+            it.parentAsClass.parentAsClass.locationOrNull()
+          } else {
+            it.locationOrNull()
+          }
+        }
+      }
+
+    override fun toString() = buildString {
+      if (annotations.isBinds) {
+        append("@Binds ")
+      } else {
+        append("@Provides ")
+      }
+      if (annotations.isIntoSet) {
+        append("@IntoSet ")
+      } else if (annotations.isElementsIntoSet) {
+        append("@ElementsIntoSet ")
+      } else if (annotations.isIntoMap || annotations.mapKeys.isNotEmpty()) {
+        append("@IntoMap ")
+        annotations.mapKeys.firstOrNull()?.let {
+          append(it.toString())
+          append(' ')
+        }
+      }
+      append(nameHint)
       append(": ")
       append(typeKey.render(short = true))
     }
@@ -325,7 +357,7 @@ internal sealed interface Binding {
     val isMap: Boolean,
     // Reconcile this with dependencies?
     // Sorted for consistency
-    val sourceBindings: MutableSet<Provided> =
+    val sourceBindings: MutableSet<BindingWithAnnotations> =
       TreeSet(
         compareBy<Binding> { it.typeKey }
           .thenBy { it.nameHint }
