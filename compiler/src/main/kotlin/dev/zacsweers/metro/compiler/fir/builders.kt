@@ -119,7 +119,7 @@ internal fun FirExtension.copyParameters(
         name = original.name
         origin = Keys.ValueParameter.origin
         symbol = FirValueParameterSymbol(original.symbol.name)
-        containingFunctionSymbol = functionBuilder.symbol
+        containingDeclarationSymbol = functionBuilder.symbol
         parameterInit(original)
         if (!copyParameterDefaults) {
           if (originalFir.symbol.hasDefaultValue) {
@@ -173,7 +173,7 @@ internal fun FirExtension.buildSimpleValueParameter(
         coneTypeOrNull = session.builtinTypes.nothingType.coneType
       }
     }
-    this.containingFunctionSymbol = containingFunctionSymbol
+    this.containingDeclarationSymbol = containingFunctionSymbol
     this.isCrossinline = isCrossinline
     this.isNoinline = isNoinline
     this.isVararg = isVararg

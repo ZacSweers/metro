@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 
@@ -13,7 +14,7 @@ internal data class DependencyGraphNode(
   val isExtendable: Boolean,
   val dependencies: Map<TypeKey, DependencyGraphNode>,
   val scopes: Set<IrAnnotation>,
-  val providerFunctions: List<Pair<TypeKey, MetroSimpleFunction>>,
+  val providerFactories: List<Pair<TypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,

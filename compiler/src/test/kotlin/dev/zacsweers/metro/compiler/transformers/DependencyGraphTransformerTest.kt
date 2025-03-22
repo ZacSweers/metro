@@ -1748,7 +1748,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             abstract class ExampleGraph {
               abstract val count: Int
 
-              @get:Provides private val countProvider: Int = 3
+              @get:Provides val countProvider: Int = 3
             }
           """
           .trimIndent()
@@ -1891,9 +1891,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:10:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
-          ├─ Binding 1: ExampleGraph.kt:11:3
-          ├─ Binding 2: ExampleGraph.kt:10:3
+          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
         """
           .trimIndent()
       )
@@ -1992,8 +1992,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      debug = true,
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
 
