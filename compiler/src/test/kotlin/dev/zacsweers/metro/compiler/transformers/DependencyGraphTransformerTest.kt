@@ -1859,7 +1859,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:10:3
           ├─ Binding 2: ExampleGraph.kt:11:3
         """
@@ -1891,7 +1891,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:10:3
           ├─ Binding 2: ExampleGraph.kt:11:3
         """
@@ -1923,7 +1923,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:11:3 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:10:3
           ├─ Binding 2: ExampleGraph.kt:11:3
         """
@@ -1958,7 +1958,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:17:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:13:1
           ├─ Binding 2: ExampleGraph.kt:17:1
         """
@@ -2003,8 +2003,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
-          ├─ Binding 1: other.ExampleClass
-          ├─ Binding 2: other.ExampleClass2
+          ├─ Binding 1: Unknown source location, this may be contributed. Here's some additional information we have for the binding: @Binds <get-bindAsOtherClass>: OtherClass
+          ├─ Binding 2: Unknown source location, this may be contributed. Here's some additional information we have for the binding: @Binds <get-bindAsOtherClass>: OtherClass
         """
           .trimIndent()
       )
@@ -2052,7 +2052,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
-          ├─ Binding 1: other.ExampleClass
+          ├─ Binding 1: Unknown source location, this may be contributed. Here's some additional information we have for the binding: @Binds <get-bindAsOtherClass>: OtherClass
           ├─ Binding 2: ExampleClass2.kt:7:1
         """
           .trimIndent()
