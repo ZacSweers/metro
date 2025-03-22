@@ -12,7 +12,7 @@ interface NetworkProviders {
 interface AppGraph : NetworkProviders
 ```
 
-Providers should be `private` by default.
+Provider _functions_ should be `private` by default. Provider _properties_ cannot be private yet, but may be supported in the future.
 
 !!! tip
     It’s recommended to *not* call providers from each other.

@@ -18,7 +18,6 @@ import dev.zacsweers.metro.compiler.providesFactoryClass
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.provider
 import kotlinx.coroutines.test.runTest
-import org.junit.Ignore
 import org.junit.Test
 
 class ProvidesTransformerTest : MetroCompilerTest() {
@@ -431,7 +430,6 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("Won't work until we support propagating metadata info")
   @Test
   fun `a private provider is visible from a supertype in another module`() {
     val otherModuleResult =

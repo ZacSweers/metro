@@ -32,6 +32,11 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val providesCallableIdClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.providesCallableIdClass)
+      as FirRegularClassSymbol
+  }
+
   val composableClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.composable)
       as FirRegularClassSymbol
