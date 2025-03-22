@@ -1582,22 +1582,21 @@ internal class DependencyGraphTransformer(
       }
       addAll(targetParams.valueParameters.filterNot { it.isAssisted })
     }
-    //    if (
-    //      binding is Binding.Provided && binding.providerFunction.correspondingPropertySymbol ==
-    // null
-    //    ) {
-    //      check(params.valueParameters.size == paramsToMap.size) {
-    //        """
-    //          Inconsistent parameter types for type ${binding.typeKey}!
-    //          Input type keys:
-    //            - ${paramsToMap.map { it.typeKey }.joinToString()}
-    //          Binding parameters (${function.kotlinFqName}):
-    //            - ${function.valueParameters.map { ContextualTypeKey.from(metroContext,
-    // it).typeKey }.joinToString()}
-    //        """
-    //          .trimIndent()
-    //      }
-    //    }
+    if (
+      binding is Binding.Provided &&
+        binding.providerFactory.providesFunction.correspondingPropertySymbol == null
+    ) {
+      check(params.valueParameters.size == paramsToMap.size) {
+        """
+        Inconsistent parameter types for type ${binding.typeKey}!
+        Input type keys:
+          - ${paramsToMap.map { it.typeKey }.joinToString()}
+        Binding parameters (${function.kotlinFqName}):
+          - ${function.valueParameters.map { ContextualTypeKey.from(metroContext,it).typeKey }.joinToString()}
+        """
+          .trimIndent()
+      }
+    }
 
     return params.valueParameters.mapIndexed { i, param ->
       val contextualTypeKey = paramsToMap[i].contextualTypeKey
