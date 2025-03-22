@@ -62,7 +62,7 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
     }
   }
 
-  fun mergeValueParametersWith(other: Parameters<T>): Parameters<T> {
+  fun mergeValueParametersWith(other: Parameters<*>): Parameters<T> {
     @Suppress("UNCHECKED_CAST")
     return mergeValueParametersWithUntyped(other) as Parameters<T>
   }
