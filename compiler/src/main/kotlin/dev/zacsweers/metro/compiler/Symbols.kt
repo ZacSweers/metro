@@ -64,6 +64,7 @@ internal class Symbols(
     val metroRuntimePackage = FqName(METRO_RUNTIME_PACKAGE)
     val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
+    val providesCallableIdClass = ClassIds.providesCallableIdClass.asSingleFqName()
   }
 
   // TODO replace with StandardClassIds
@@ -82,6 +83,8 @@ internal class Symbols(
     val metroSingleIn = ClassId(FqNames.metroRuntimePackage, "SingleIn".asName())
     val metroInjectedFunctionClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "InjectedFunctionClass".asName())
+    val providesCallableIdClass =
+      ClassId(FqNames.metroRuntimeInternalPackage, "ProvidesCallableId".asName())
     val membersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val lazy = StandardClassIds.byName("Lazy")
     val map = StandardClassIds.Map
@@ -380,6 +383,24 @@ internal class Symbols(
     pluginContext.irBuiltIns.mutableSetClass.owner.declarations
       .filterIsInstance<IrSimpleFunction>()
       .single { it.name.asString() == "add" }
+  }
+
+  val intoMapConstructor by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntime.packageFqName, "IntoMap".asName())
+    )!!.constructors.single()
+  }
+
+  val intoSetConstructor by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntime.packageFqName, "IntoSet".asName())
+    )!!.constructors.single()
+  }
+
+  val elementsIntoSetConstructor by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntime.packageFqName, "ElementsIntoSet".asName())
+    )!!.constructors.single()
   }
 
   val dependencyGraphAnnotations

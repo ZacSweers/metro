@@ -8,9 +8,5 @@ import kotlin.annotation.AnnotationTarget.CLASS
 @Target(CLASS)
 public annotation class ProvidesCallableId(
   val callableName: String,
-  val isProperty: Boolean,
-  /**
-   * Location string. Format is path:line:column
-   */
-  val location: String
+  val isPropertyAccessor: Boolean,
 )
