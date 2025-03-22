@@ -502,7 +502,7 @@ internal class InjectConstructorTransformer(
         return if (factoryClass.defaultType.implementsProviderType(metroContext)) {
           irInvoke(
               extensionReceiver = createExpression,
-              callee = metroContext.symbols.daggerSymbols!!.asMetroProvider,
+              callee = metroContext.symbols.daggerSymbols.asMetroProvider,
             )
             .apply { putTypeArgument(0, factoryClass.typeWith()) }
         } else {
