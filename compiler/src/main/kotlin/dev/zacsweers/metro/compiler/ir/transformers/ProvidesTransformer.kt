@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -37,12 +38,14 @@ import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -316,9 +319,26 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
     val providesFunction = reference.callee.owner
     if (providesFunction.isEffectivelyPrivate()) {
-      pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
-        providesFunction as IrSimpleFunction
-      )
+      // If any annotations have IrClassReference arguments, the compiler barfs
+      var hasErrors = false
+      for (annotation in providesFunction.annotations) {
+        for (arg in annotation.valueArguments) {
+          if (arg is IrClassReference) {
+            val message =
+              "Private provider functions with KClass arguments are not supported: " +
+                "${providesFunction.kotlinFqName}. Make this function public to work around this for now."
+            // TODO link bug
+            reportError(message, providesFunction.location())
+            hasErrors = true
+          }
+        }
+      }
+
+      if (!hasErrors) {
+        pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
+          providesFunction as IrSimpleFunction
+        )
+      }
     }
 
     val providerFactory =

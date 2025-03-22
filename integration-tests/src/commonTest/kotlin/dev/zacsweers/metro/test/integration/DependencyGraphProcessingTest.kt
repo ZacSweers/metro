@@ -101,7 +101,7 @@ class DependencyGraphProcessingTest {
   abstract class ProvidersWithSiteTargetsGraph {
     abstract val count: Int
 
-    @get:Provides private val countProvider: Int = 3
+    @get:Provides val countProvider: Int = 3
   }
 
   @Test
@@ -786,9 +786,9 @@ class DependencyGraphProcessingTest {
   interface MultibindingGraphWithKClassMap {
     val ints: Map<KClass<*>, Int>
 
-    @Provides @IntoMap @ClassKey(Int::class) private fun provideMapInt1(): Int = 1
+    @Provides @IntoMap @ClassKey(Int::class) fun provideMapInt1(): Int = 1
 
-    @Provides @IntoMap @Singleton @ClassKey(Float::class) private fun provideMapInt2(): Int = 2
+    @Provides @IntoMap @Singleton @ClassKey(Float::class) fun provideMapInt2(): Int = 2
   }
 
   @Test
@@ -1117,7 +1117,7 @@ class DependencyGraphProcessingTest {
 
     @Provides @Singleton private fun provideInt(): Int = intCounter++
 
-    @Provides @SingleIn(AppScope::class) private fun provideLong(): Long = longCounter++
+    @Provides @SingleIn(AppScope::class) fun provideLong(): Long = longCounter++
   }
 
   @Test
@@ -1145,7 +1145,7 @@ class DependencyGraphProcessingTest {
 
     @Provides @Singleton private fun provideInt(): Int = intCounter++
 
-    @Provides @SingleIn(AppScope::class) private fun provideLong(): Long = longCounter++
+    @Provides @SingleIn(AppScope::class) fun provideLong(): Long = longCounter++
   }
 
   @Test
@@ -1159,7 +1159,7 @@ class DependencyGraphProcessingTest {
     val number: Number
 
     @Provides
-    private val provideInt: Int
+    val provideInt: Int
       get() = 3
 
     @Binds val Int.provideNumber: Number
