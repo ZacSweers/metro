@@ -155,9 +155,23 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
   }
 
   fun getOrLookupFactoryClass(binding: Binding.Provided): ProviderFactory? {
+    // Eager cache check using the factory's callable ID
+    val fqName = binding.providerFactory.callableId.asSingleFqName()
+    generatedFactories[fqName]?.let {
+      return it
+    }
+
+    // If it's from another module, look up its already-generated factory
+    if (binding.providerFactory.clazz.isExternalParent) {
+      val providerFactory = externalProviderFactoryFor(binding.providerFactory.clazz)
+      generatedFactories[fqName] = providerFactory
+      generatedFactoriesByClass.getOrPut(fqName, ::mutableListOf).add(providerFactory)
+      return providerFactory
+    }
+
+    // For factories in the current module, we need to get or create the factory
     val function =
       if (binding.providerFactory.isPropertyAccessor) {
-        // TODO support fully once properties can be made visible in metadata
         metroContext.pluginContext
           .referenceProperties(binding.providerFactory.callableId)
           .firstOrNull()
@@ -181,20 +195,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         binding.providerFactory.clazz.metroAnnotations(symbols.classIds),
       )
 
-    // Eager cache check
-    generatedFactories[reference.fqName]?.let {
-      return it
-    }
-
-    // If it's from another module, look up its already-generated factory
-    // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
-    //  external but no factory is found?
-    if (binding.providerFactory.clazz.isExternalParent) {
-      val providerFactory = externalProviderFactoryFor(binding.providerFactory.clazz)
-
-      generatedFactories[reference.fqName] = providerFactory
-      generatedFactoriesByClass.getOrPut(reference.fqName, ::mutableListOf).add(providerFactory)
-    }
     return getOrLookupFactoryClass(reference)
   }
 
