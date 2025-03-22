@@ -250,7 +250,7 @@ abstract class MetroCompilerTest {
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
     val cleaningOutput = Buffer()
-    val result =
+    val compilation =
       prepareCompilation(
           sourceFiles = sourceFiles,
           debug = debug,
@@ -259,11 +259,24 @@ abstract class MetroCompilerTest {
         )
         .apply(compilationBlock)
         .apply { this.messageOutputStream = cleaningOutput.outputStream() }
-        .compile()
+
+    val result = compilation.compile()
 
     // Print cleaned output
     while (!cleaningOutput.exhausted()) {
       println(cleaningOutput.readUtf8Line()?.cleanOutputLine())
+    }
+
+    // Print generated files if debug is enabled
+    if (debug) {
+      compilation.workingDir
+        .walkTopDown()
+        .filter { file -> file.isFile && (file.extension.let { it == "kt" || it == "java" }) }
+        .forEach { file ->
+          println("Generated source file: ${file.name}")
+          println(file.readText())
+          println()
+        }
     }
 
     return result
