@@ -129,6 +129,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
       mapKey.add("dagger/MapKey")
       multibinds.add("dagger/multibindings/Multibinds")
       provides.addAll("dagger/Provides", "dagger/BindsInstance")
+      provider.add("dagger/internal/Provider")
 
       if (!includeJavax && !includeJakarta) {
         System.err.println(
