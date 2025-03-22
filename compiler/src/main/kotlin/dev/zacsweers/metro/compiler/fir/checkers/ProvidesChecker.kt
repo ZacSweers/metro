@@ -109,28 +109,33 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         else -> return
       }
 
+    val isPrivate = declaration.visibility == Visibilities.Private
+    if (declaration !is FirProperty) {
     if (
       session.metroFirBuiltIns.options.publicProviderSeverity !=
         MetroOptions.DiagnosticSeverity.NONE
     ) {
-      val isPrivate = declaration.visibility == Visibilities.Private
-      if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
-        val message =
-          if (annotations.isBinds) {
-            "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
-          } else {
-            "`@Provides` declarations should be private."
-          }
-        val diagnosticFactory =
-          when (session.metroFirBuiltIns.options.publicProviderSeverity) {
-            MetroOptions.DiagnosticSeverity.NONE -> error("Not possible")
-            MetroOptions.DiagnosticSeverity.WARN ->
-              FirMetroErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
-            MetroOptions.DiagnosticSeverity.ERROR ->
-              FirMetroErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
-          }
-        reporter.reportOn(source, diagnosticFactory, message, context)
+        if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
+          val message =
+            if (annotations.isBinds) {
+              "`@Binds` declarations rarely need to have bodies unless they are also private. Consider removing the body or making this private."
+            } else {
+              "`@Provides` declarations should be private."
+            }
+          val diagnosticFactory =
+            when (session.metroFirBuiltIns.options.publicProviderSeverity) {
+              MetroOptions.DiagnosticSeverity.NONE -> error("Not possible")
+              MetroOptions.DiagnosticSeverity.WARN ->
+                FirMetroErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING
+              MetroOptions.DiagnosticSeverity.ERROR ->
+                FirMetroErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
+            }
+          reporter.reportOn(source, diagnosticFactory, message, context)
+        }
       }
+    } else if (isPrivate /* && is FirProperty */) {
+      reporter.reportOn(source, FirMetroErrors.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE, "`@Provides` properties cannot be private yet.", context)
+      return
     }
 
     // TODO support first, non-receiver parameter
