@@ -118,6 +118,29 @@ internal class MetroAnnotations<T>(
       qualifier = qualifier ?: other.qualifier,
       mapKeys = mapKeys + other.mapKeys,
     )
+
+  companion object {
+    private val NONE = MetroAnnotations<Any>(
+      isDependencyGraph = false,
+        isDependencyGraphFactory = false,
+        isInject = false,
+        isProvides = false,
+        isBinds = false,
+        isBindsInstance = false,
+        isIntoSet = false,
+        isElementsIntoSet = false,
+        isIntoMap = false,
+        isMultibinds = false,
+        isAssistedFactory = false,
+        isComposable = false,
+        assisted = false,
+        scope = null,
+        qualifier = null,
+        mapKeys = emptySet(),
+    )
+    @Suppress("UNCHECKED_CAST")
+    fun <T> none(): MetroAnnotations<T> = NONE as MetroAnnotations<T>
+  }
 }
 
 internal fun IrAnnotationContainer.metroAnnotations(ids: ClassIds): MetroAnnotations<IrAnnotation> =
