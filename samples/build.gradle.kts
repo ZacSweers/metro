@@ -68,7 +68,11 @@ subprojects {
         progressiveMode.set(true)
         if (this is KotlinJvmCompilerOptions) {
           jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
-          freeCompilerArgs.addAll("-Xjvm-default=all")
+          freeCompilerArgs.addAll(
+            "-Xjvm-default=all",
+            // Big yikes in how this was rolled out as noisy compiler warnings
+            "-Xannotation-default-target=param-property",
+          )
         }
       }
     }
