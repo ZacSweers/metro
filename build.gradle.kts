@@ -115,6 +115,7 @@ allprojects {
         "**/Multibinds.kt",
         "**/NameAllocator.kt",
         "**/NameAllocatorTest.kt",
+        "**/MemoizedSequence.kt",
         "**/ProviderOfLazy.kt",
         "**/SetFactory.kt",
         "**/SetFactoryTest.kt",
