@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
@@ -41,14 +43,13 @@ internal class ProviderFactory(
     callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
     isPropertyAccessor =
       providesCallableIdAnno.getConstBooleanArgumentOrNull("isPropertyAccessor".asName()) ?: false
-    providesFunction = sourceCallable
-      ?: context.pluginContext.referenceFunctions(callableId).firstOrNull()?.owner
+    providesFunction =
+      sourceCallable
+        ?: context.pluginContext.referenceFunctions(callableId).firstOrNull()?.owner
         ?: error("No matching provider function found for $callableId")
     annotations = sourceAnnotations ?: providesFunction.metroAnnotations(context.symbols.classIds)
     typeKey = sourceTypeKey.copy(qualifier = annotations.qualifier)
   }
 
-  val parameters by unsafeLazy {
-    providesFunction.parameters(context)
-  }
+  val parameters by unsafeLazy { providesFunction.parameters(context) }
 }

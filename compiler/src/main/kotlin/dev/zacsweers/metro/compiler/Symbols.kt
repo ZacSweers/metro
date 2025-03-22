@@ -386,21 +386,24 @@ internal class Symbols(
   }
 
   val intoMapConstructor by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntime.packageFqName, "IntoMap".asName())
-    )!!.constructors.single()
+    pluginContext
+      .referenceClass(ClassId(metroRuntime.packageFqName, "IntoMap".asName()))!!
+      .constructors
+      .single()
   }
 
   val intoSetConstructor by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntime.packageFqName, "IntoSet".asName())
-    )!!.constructors.single()
+    pluginContext
+      .referenceClass(ClassId(metroRuntime.packageFqName, "IntoSet".asName()))!!
+      .constructors
+      .single()
   }
 
   val elementsIntoSetConstructor by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntime.packageFqName, "ElementsIntoSet".asName())
-    )!!.constructors.single()
+    pluginContext
+      .referenceClass(ClassId(metroRuntime.packageFqName, "ElementsIntoSet".asName()))!!
+      .constructors
+      .single()
   }
 
   val dependencyGraphAnnotations

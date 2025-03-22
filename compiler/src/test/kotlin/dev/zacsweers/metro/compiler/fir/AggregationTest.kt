@@ -2788,7 +2788,7 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val impl2 = graph.callProperty<Any>("contributedInterface")

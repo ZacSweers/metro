@@ -120,8 +120,9 @@ internal class MetroAnnotations<T>(
     )
 
   companion object {
-    private val NONE = MetroAnnotations<Any>(
-      isDependencyGraph = false,
+    private val NONE =
+      MetroAnnotations<Any>(
+        isDependencyGraph = false,
         isDependencyGraphFactory = false,
         isInject = false,
         isProvides = false,
@@ -137,9 +138,9 @@ internal class MetroAnnotations<T>(
         scope = null,
         qualifier = null,
         mapKeys = emptySet(),
-    )
-    @Suppress("UNCHECKED_CAST")
-    fun <T> none(): MetroAnnotations<T> = NONE as MetroAnnotations<T>
+      )
+
+    @Suppress("UNCHECKED_CAST") fun <T> none(): MetroAnnotations<T> = NONE as MetroAnnotations<T>
   }
 }
 

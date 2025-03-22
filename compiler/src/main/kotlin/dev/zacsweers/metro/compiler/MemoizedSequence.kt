@@ -22,7 +22,8 @@ internal class MemoizedSequence<T>(sequence: Sequence<T>) : Sequence<T> {
 
   private var iter: Lazy<Iterator<T>>? = lazy { sequence.iterator() }
 
-  internal val isCacheOnly: Boolean get() = iter == null
+  internal val isCacheOnly: Boolean
+    get() = iter == null
 
   private inner class CachedIterator() : Iterator<T> {
     var idx = 0

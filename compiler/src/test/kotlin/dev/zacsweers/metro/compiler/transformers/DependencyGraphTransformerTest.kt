@@ -1600,7 +1600,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
           """
             .trimIndent()
-        ),
+        )
       )
     val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
 
@@ -1992,7 +1992,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
 

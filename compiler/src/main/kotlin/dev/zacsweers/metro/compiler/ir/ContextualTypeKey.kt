@@ -41,12 +41,17 @@ internal class ContextualTypeKey(
     isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
 
   override fun toString(): String = render(short = true)
-  
+
   fun withTypeKey(typeKey: TypeKey, rawType: IrType? = null): ContextualTypeKey {
-    return ContextualTypeKey(typeKey, isWrappedInProvider,
-      isWrappedInLazy, isLazyWrappedInProvider,
-      hasDefault, isDeferrable, isIntoMultibinding,
-      rawType
+    return ContextualTypeKey(
+      typeKey,
+      isWrappedInProvider,
+      isWrappedInLazy,
+      isLazyWrappedInProvider,
+      hasDefault,
+      isDeferrable,
+      isIntoMultibinding,
+      rawType,
     )
   }
 

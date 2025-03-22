@@ -111,10 +111,10 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
 
     val isPrivate = declaration.visibility == Visibilities.Private
     if (declaration !is FirProperty) {
-    if (
-      session.metroFirBuiltIns.options.publicProviderSeverity !=
-        MetroOptions.DiagnosticSeverity.NONE
-    ) {
+      if (
+        session.metroFirBuiltIns.options.publicProviderSeverity !=
+          MetroOptions.DiagnosticSeverity.NONE
+      ) {
         if (!isPrivate && (annotations.isProvides || /* isBinds && */ bodyExpression != null)) {
           val message =
             if (annotations.isBinds) {
@@ -134,7 +134,12 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         }
       }
     } else if (isPrivate /* && is FirProperty */) {
-      reporter.reportOn(source, FirMetroErrors.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE, "`@Provides` properties cannot be private yet.", context)
+      reporter.reportOn(
+        source,
+        FirMetroErrors.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE,
+        "`@Provides` properties cannot be private yet.",
+        context,
+      )
       return
     }
 

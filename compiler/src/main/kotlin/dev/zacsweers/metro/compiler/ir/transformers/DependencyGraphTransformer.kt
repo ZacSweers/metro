@@ -60,10 +60,8 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoized
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
-import dev.zacsweers.metro.compiler.unsafeLazy
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
@@ -265,7 +263,8 @@ internal class DependencyGraphTransformer(
       dependencyGraphAnno
         ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
     val isGraph = dependencyGraphAnno != null
-    val supertypes = graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false).memoized()
+    val supertypes =
+      graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false).memoized()
     if (graphDeclaration.isExternalParent || !isGraph) {
       val accessorsToCheck =
         if (isGraph) {
@@ -405,8 +404,8 @@ internal class DependencyGraphTransformer(
     val scopes = mutableSetOf<IrAnnotation>()
     val providerFactories = mutableListOf<Pair<TypeKey, ProviderFactory>>()
     // Add all our binds
-//    providerFunctions +=
-//      bindsFunctions.map { (function, contextKey) -> contextKey.typeKey to function }
+    //    providerFunctions +=
+    //      bindsFunctions.map { (function, contextKey) -> contextKey.typeKey to function }
     scopes += buildSet {
       val scope =
         dependencyGraphAnno.getValueArgument("scope".asName())?.let { scopeArg ->
@@ -615,16 +614,13 @@ internal class DependencyGraphTransformer(
       )
 
     // Add instance parameters
-    val graphInstanceBinding = Binding.BoundInstance(
-      node.typeKey,
-      "${node.sourceGraph.name}Provider",
-      node.sourceGraph.location(),
-    )
-    graph.addBinding(
-      node.typeKey,
-      graphInstanceBinding,
-      bindingStack,
-    )
+    val graphInstanceBinding =
+      Binding.BoundInstance(
+        node.typeKey,
+        "${node.sourceGraph.name}Provider",
+        node.sourceGraph.location(),
+      )
+    graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
     // Add aliases for all its supertypes
     // TODO dedupe supertype iteration
     for (superType in node.sourceGraph.getAllSuperTypes(pluginContext, excludeSelf = true)) {
@@ -638,7 +634,7 @@ internal class DependencyGraphTransformer(
           Parameters.empty(),
           MetroAnnotations.none(),
         ),
-        bindingStack
+        bindingStack,
       )
     }
     node.creator?.parameters?.valueParameters.orEmpty().forEach {
@@ -671,7 +667,9 @@ internal class DependencyGraphTransformer(
                   ?: run {
                     // Hard error because the FIR checker should catch these, so this implies broken
                     // FIR code gen
-                    error("Missing @MapKey for @IntoMap function: ${providerFactory.providesFunction.dumpKotlinLike()}")
+                    error(
+                      "Missing @MapKey for @IntoMap function: ${providerFactory.providesFunction.dumpKotlinLike()}"
+                    )
                   }
               // TODO this is probably not robust enough
               val rawKeyType = mapKey.ir
@@ -797,7 +795,14 @@ internal class DependencyGraphTransformer(
           null
         }
 
-      val binding = Binding.Alias(contextKey.typeKey, bindsImplType!!.typeKey, bindingCallable.ir, parameters, annotations)
+      val binding =
+        Binding.Alias(
+          contextKey.typeKey,
+          bindsImplType!!.typeKey,
+          bindingCallable.ir,
+          parameters,
+          annotations,
+        )
 
       if (annotations.isIntoMultibinding) {
         val multibindingType =
@@ -813,7 +818,9 @@ internal class DependencyGraphTransformer(
                   ?: run {
                     // Hard error because the FIR checker should catch these, so this implies broken
                     // FIR code gen
-                    error("Missing @MapKey for @IntoMap function: ${bindingCallable.ir.locationOrNull()}")
+                    error(
+                      "Missing @MapKey for @IntoMap function: ${bindingCallable.ir.locationOrNull()}"
+                    )
                   }
               // TODO this is probably not robust enough
               val rawKeyType = mapKey.ir
@@ -1213,9 +1220,7 @@ internal class DependencyGraphTransformer(
         providerFactoryClasses +=
           providesTransformer.getOrLookupFactoryClass(binding)!!.clazz.classIdOrFail.asString()
       } else if (binding is Binding.Alias) {
-        binding.ir?.let {
-          bindsCallableIds += it.name.asString()
-        }
+        binding.ir?.let { bindsCallableIds += it.name.asString() }
       }
     }
 
@@ -1423,7 +1428,9 @@ internal class DependencyGraphTransformer(
     usedUnscopedBindings: MutableSet<TypeKey>,
     visitedBindings: MutableSet<TypeKey>,
   ) {
-    val isMultibindingProvider = (binding is Binding.Provided || binding is Binding.Alias) && binding.annotations.isIntoMultibinding
+    val isMultibindingProvider =
+      (binding is Binding.Provided || binding is Binding.Alias) &&
+        binding.annotations.isIntoMultibinding
     val key = binding.typeKey
 
     // Skip if already visited
@@ -1575,20 +1582,22 @@ internal class DependencyGraphTransformer(
       }
       addAll(targetParams.valueParameters.filterNot { it.isAssisted })
     }
-//    if (
-//      binding is Binding.Provided && binding.providerFunction.correspondingPropertySymbol == null
-//    ) {
-//      check(params.valueParameters.size == paramsToMap.size) {
-//        """
-//          Inconsistent parameter types for type ${binding.typeKey}!
-//          Input type keys:
-//            - ${paramsToMap.map { it.typeKey }.joinToString()}
-//          Binding parameters (${function.kotlinFqName}):
-//            - ${function.valueParameters.map { ContextualTypeKey.from(metroContext, it).typeKey }.joinToString()}
-//        """
-//          .trimIndent()
-//      }
-//    }
+    //    if (
+    //      binding is Binding.Provided && binding.providerFunction.correspondingPropertySymbol ==
+    // null
+    //    ) {
+    //      check(params.valueParameters.size == paramsToMap.size) {
+    //        """
+    //          Inconsistent parameter types for type ${binding.typeKey}!
+    //          Input type keys:
+    //            - ${paramsToMap.map { it.typeKey }.joinToString()}
+    //          Binding parameters (${function.kotlinFqName}):
+    //            - ${function.valueParameters.map { ContextualTypeKey.from(metroContext,
+    // it).typeKey }.joinToString()}
+    //        """
+    //          .trimIndent()
+    //      }
+    //    }
 
     return params.valueParameters.mapIndexed { i, param ->
       val contextualTypeKey = paramsToMap[i].contextualTypeKey
@@ -1634,7 +1643,8 @@ internal class DependencyGraphTransformer(
 
               is Binding.ObjectClass -> error("Object classes cannot have dependencies")
 
-              is Binding.Provided, is Binding.Alias -> {
+              is Binding.Provided,
+              is Binding.Alias -> {
                 BindingStack.Entry.injectedAt(
                   contextualTypeKey,
                   function,
@@ -1781,10 +1791,9 @@ internal class DependencyGraphTransformer(
 
       is Binding.Alias -> {
         // For binds functions, just use the backing type
-        val aliasedBinding = binding.aliasedBinding(generationContext.graph, generationContext.bindingStack)
-        check(aliasedBinding != binding) {
-          "Aliased binding aliases itself"
-        }
+        val aliasedBinding =
+          binding.aliasedBinding(generationContext.graph, generationContext.bindingStack)
+        check(aliasedBinding != binding) { "Aliased binding aliases itself" }
         return generateBindingCode(aliasedBinding, generationContext)
       }
 

@@ -7,7 +7,6 @@ import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.ir.BindingStack.Entry
-import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -138,20 +137,21 @@ internal interface BindingStack {
         displayTypeKey: TypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
-        val context = if (function == null) {
-          "<intrinsic>"
-        } else {
-          val targetFqName = function.parent.kotlinFqName
-          val middle =
-            when {
-              function is IrConstructor -> ""
-              function.isPropertyAccessor ->
-                ".${(function.propertyIfAccessor as IrProperty).name.asString()}"
-              else -> ".${function.name.asString()}"
-            }
-          val end = if (param == null) "()" else "(…, ${param.name.asString()})"
-          "$targetFqName$middle$end"
-        }
+        val context =
+          if (function == null) {
+            "<intrinsic>"
+          } else {
+            val targetFqName = function.parent.kotlinFqName
+            val middle =
+              when {
+                function is IrConstructor -> ""
+                function.isPropertyAccessor ->
+                  ".${(function.propertyIfAccessor as IrProperty).name.asString()}"
+                else -> ".${function.name.asString()}"
+              }
+            val end = if (param == null) "()" else "(…, ${param.name.asString()})"
+            "$targetFqName$middle$end"
+          }
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,

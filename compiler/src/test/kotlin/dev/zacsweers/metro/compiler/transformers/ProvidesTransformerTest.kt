@@ -18,7 +18,6 @@ import dev.zacsweers.metro.compiler.providesFactoryClass
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.provider
 import kotlinx.coroutines.test.runTest
-import org.junit.Ignore
 import org.junit.Test
 
 class ProvidesTransformerTest : MetroCompilerTest() {
