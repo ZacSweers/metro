@@ -431,7 +431,6 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("Won't work until we support propagating metadata info")
   @Test
   fun `a private provider is visible from a supertype in another module`() {
     val otherModuleResult =
