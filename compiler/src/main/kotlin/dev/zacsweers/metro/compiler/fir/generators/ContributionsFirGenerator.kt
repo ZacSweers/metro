@@ -237,11 +237,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
       (bindingTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
 
     val qualifier =
-      if (bindingTypeRef == null) {
-        contribution.annotatedType.qualifierAnnotation(session)
-      } else {
-        bindingTypeRef.annotations.qualifierAnnotation(session)
-      }
+      bindingTypeRef?.annotations?.qualifierAnnotation(session)
+        ?: contribution.annotatedType.qualifierAnnotation(session)
 
     val mapKey =
       if (bindingTypeRef == null) {
