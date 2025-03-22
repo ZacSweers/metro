@@ -25,6 +25,7 @@ public final class dev/zacsweers/metro/interop/dagger/internal/DaggerInteropDoub
 }
 
 public final class dev/zacsweers/metro/interop/dagger/internal/InternalDaggerInteropKt {
+	public static final fun asDaggerInternalProvider (Ldev/zacsweers/metro/Provider;)Ldagger/internal/Provider;
 	public static final fun asMetroFactory (Ldagger/internal/Factory;)Ldev/zacsweers/metro/internal/Factory;
 }
 

@@ -76,4 +76,6 @@ public fun <T : Any> MetroMembersInjector<T>.asDaggerMembersInjector(): DaggerMe
  *   [DaggerMembersInjector].
  */
 public fun <T : Any> DaggerMembersInjector<T>.asMetroMembersInjector(): MetroMembersInjector<T> =
-  MetroMembersInjector { instance -> this@asMetroMembersInjector.injectMembers(instance) }
+  MetroMembersInjector { instance ->
+    this@asMetroMembersInjector.injectMembers(instance)
+  }

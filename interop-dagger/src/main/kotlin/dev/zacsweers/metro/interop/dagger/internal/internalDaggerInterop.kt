@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.interop.dagger.internal
 
-import dev.zacsweers.metro.Provider as MetroProvider
-import dagger.internal.Provider as DaggerProvider
 import dagger.internal.Factory as DaggerFactory
+import dagger.internal.Provider as DaggerProvider
+import dev.zacsweers.metro.Provider as MetroProvider
 import dev.zacsweers.metro.internal.Factory as MetroFactory
 
 public fun <T : Any> DaggerFactory<T>.asMetroFactory(): MetroFactory<T> =
