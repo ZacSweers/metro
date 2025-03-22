@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.computeTypeAttributes
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
@@ -245,37 +244,10 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         )
         .apply {
           markAsDeprecatedHidden(session)
-          // Copy scope/into*/qualifier/mapkey annotations for use later
-          val ids = session.classIds
-          val newAnnotations = buildList {
-            // Add the source info
-            add(buildProvidesCallableIdAnnotation(sourceCallable))
-
-            for (annotation in sourceCallable.symbol.resolvedAnnotationsWithClassIds) {
-              val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
-              when (annotationClassId) {
-                in ids.intoSetAnnotations -> add(annotation)
-                in ids.intoMapAnnotations -> add(annotation)
-                else -> {
-                  val annotationClass =
-                    session.symbolProvider.getClassLikeSymbolByClassId(annotationClassId)
-                      ?: continue
-                  if (annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
-                    add(annotation)
-                  } else if (
-                    annotationClass.isAnnotatedWithAny(session, ids.qualifierAnnotations)
-                  ) {
-                    add(annotation)
-                  } else if (annotationClass.isAnnotatedWithAny(session, ids.mapKeyAnnotations)) {
-                    add(annotation)
-                  }
-                }
-              }
-            }
-          }
-          if (newAnnotations.isNotEmpty()) {
-            replaceAnnotationsSafe(annotations + newAnnotations)
-          }
+          // Add the source callable info
+          replaceAnnotationsSafe(
+            annotations + listOf(buildProvidesCallableIdAnnotation(sourceCallable))
+          )
         }
         .symbol
         .also { providerFactoryClassIdsToSymbols[it.classId] = it }
@@ -312,7 +284,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             setType = true,
             prefix = null,
           )
-        mapping[Name.identifier("isProperty")] =
+        mapping[Name.identifier("isPropertyAccessor")] =
           buildLiteralExpression(
             source = null,
             kind = ConstantValueKind.Boolean,
@@ -322,15 +294,6 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
                 is FirPropertySymbol -> true
                 else -> false
               },
-            annotations = null,
-            setType = true,
-            prefix = null,
-          )
-        mapping[Name.identifier("location")] =
-          buildLiteralExpression(
-            source = null,
-            kind = ConstantValueKind.String,
-            value = "", // TODO can we compute this in FIR?
             annotations = null,
             setType = true,
             prefix = null,
