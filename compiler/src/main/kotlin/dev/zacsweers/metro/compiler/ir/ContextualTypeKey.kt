@@ -41,6 +41,14 @@ internal class ContextualTypeKey(
     isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
 
   override fun toString(): String = render(short = true)
+  
+  fun withTypeKey(typeKey: TypeKey, rawType: IrType? = null): ContextualTypeKey {
+    return ContextualTypeKey(typeKey, isWrappedInProvider,
+      isWrappedInLazy, isLazyWrappedInProvider,
+      hasDefault, isDeferrable, isIntoMultibinding,
+      rawType
+    )
+  }
 
   fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
     val wrapperType =
