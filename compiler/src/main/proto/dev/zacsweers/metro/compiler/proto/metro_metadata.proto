@@ -21,6 +21,9 @@ message DependencyGraphProto {
 
   // Set of accessor callable IDs (strings)
   repeated string accessor_callable_ids = 5;
+
+  // Set of parent class IDs (strings)
+  repeated string parent_graph_classes = 6;
 }
 
 message MetroMetadata {

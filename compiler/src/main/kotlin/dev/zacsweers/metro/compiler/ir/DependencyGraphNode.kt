@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
+import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 
@@ -23,6 +24,7 @@ internal data class DependencyGraphNode(
   val isExternal: Boolean,
   val creator: Creator?,
   val typeKey: TypeKey,
+  val proto: DependencyGraphProto? = null,
 ) {
   data class Creator(
     val type: IrClass,

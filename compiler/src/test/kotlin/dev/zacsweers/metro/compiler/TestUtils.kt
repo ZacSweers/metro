@@ -311,6 +311,12 @@ fun <T> Class<Factory<*>>.provideValueAs(providerName: String, vararg args: Any)
 val JvmCompilationResult.ExampleGraph: Class<*>
   get() = classLoader.loadClass("test.ExampleGraph")
 
+val JvmCompilationResult.ParentGraph: Class<*>
+  get() = classLoader.loadClass("test.ParentGraph")
+
+val JvmCompilationResult.ChildGraph: Class<*>
+  get() = classLoader.loadClass("test.ChildGraph")
+
 fun Class<*>.generatedMetroGraphClass(): Class<*> {
   return classes.singleOrNull { it.simpleName == Symbols.Names.metroGraph.asString() }
     ?: error(

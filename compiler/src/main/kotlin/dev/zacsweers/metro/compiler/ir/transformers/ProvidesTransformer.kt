@@ -593,7 +593,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     return providerFactories.map { providerFactory -> providerFactory.typeKey to providerFactory }
   }
 
-  private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
+  fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
     val factoryType = factoryCls.superTypes.first { it.classOrNull == symbols.metroFactory }
     // Extract TypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
