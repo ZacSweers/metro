@@ -219,4 +219,5 @@ class GraphExtensionTest : MetroCompilerTest() {
   //  - what happens if you pass a fake parent graph instance in
   //  - inherit binds
   //  - multibindings with mixed parents
+  //  - aggregating contributions
 }

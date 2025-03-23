@@ -166,7 +166,7 @@ class CacheImpl(...) : Cache
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
 
-## `@GraphExtension`/`@ContributesGraphExtension`
+## `@ContributesGraphExtension`
 
 Not yet implemented. Please share design feedback in [#165](https://github.com/ZacSweers/metro/issues/165)!
 
