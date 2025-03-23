@@ -613,4 +613,48 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       )
     }
   }
+
+  @Test
+  fun `provides properties cannot be mutable`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            abstract class ExampleGraph {
+              abstract val int: Int
+
+              @Provides var provideInt: Int = 0
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:10:17 @Provides properties cannot be var"
+      )
+    }
+  }
+
+  @Test
+  fun `provides functions cannot be top-level`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            abstract class ExampleGraph {
+              abstract val int: Int
+            }
+
+            @Provides fun provideInt(): Int = 0
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:11:15 @Provides/@Binds declarations must be within a class/object/interface"
+      )
+    }
+  }
 }

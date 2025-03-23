@@ -87,27 +87,22 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       return it
     }
 
-    // Defensive copy because we add to this class in some factories!
-    // TODO is this still true?
-    val sourceDeclarations =
-      declaration.declarations
-        .asSequence()
-        // Skip fake overrides, we care only about the original declaration because those have
-        // default values
-        .filterNot { it.isFakeOverride }
-        .toList()
-    sourceDeclarations.forEach { nestedDeclaration ->
-      when (nestedDeclaration) {
-        is IrProperty -> visitProperty(nestedDeclaration)
-        is IrSimpleFunction -> visitFunction(nestedDeclaration)
-        is IrClass -> {
-          if (nestedDeclaration.isCompanionObject) {
-            // Include companion object refs
-            visitClass(nestedDeclaration)
+    // Skip fake overrides, we care only about the original declaration because those have
+    // default values
+    declaration.declarations
+      .filterNot { it.isFakeOverride }
+      .forEach { nestedDeclaration ->
+        when (nestedDeclaration) {
+          is IrProperty -> visitProperty(nestedDeclaration)
+          is IrSimpleFunction -> visitFunction(nestedDeclaration)
+          is IrClass -> {
+            if (nestedDeclaration.isCompanionObject) {
+              // Include companion object refs
+              visitClass(nestedDeclaration)
+            }
           }
         }
       }
-    }
 
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
@@ -203,9 +198,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       return it
     }
 
-    // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
-    //  tho
-
     val sourceValueParameters = reference.parameters.valueParameters
 
     val generatedClassId = reference.generatedClassId
@@ -244,7 +236,10 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           assistedIdentifier = "",
           symbols = symbols,
           isGraphInstance = true,
-          // TODO is this right/ever going to happen?
+          // This creates a binding stack entry for the graph instance parameter.
+          // This is used for cycle detection in the dependency graph.
+          // This code path is executed when a provider function is not in an object
+          // and needs access to the graph instance.
           bindingStackEntry = BindingStack.Entry.simpleTypeRef(contextualTypeKey),
           isBindsInstance = false,
           hasDefault = false,
@@ -366,8 +361,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
     return references.getOrPut(function.kotlinFqName) {
-      // TODO FIR error if it is top-level/not in graph
-
       val typeKey = ContextualTypeKey.from(this, function, annotations).typeKey
       val isPropertyAccessor = function.isPropertyAccessor
       val fqName =
@@ -396,11 +389,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
   ): CallableReference {
     val fqName = property.fqNameWhenAvailable ?: error("No FqName for property ${property.name}")
     return references.getOrPut(fqName) {
-      // TODO FIR error if it has a receiver param
-      // TODO FIR check property is not var
-      // TODO enforce get:? enforce no site target?
-      // TODO FIR error if it is top-level/not in graph
-
       val getter =
         property.getter
           ?: error(

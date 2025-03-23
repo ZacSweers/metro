@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.getDirectOverriddenSymbols
+import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -34,6 +35,7 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
+
 
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
@@ -73,6 +75,28 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         source,
         FirMetroErrors.METRO_TYPE_PARAMETERS_ERROR,
         "`@$type` declarations may not have type parameters.",
+        context,
+      )
+      return
+    }
+
+    // Ensure declarations are within a class/object/interface
+    if (declaration.symbol.containingClassLookupTag() == null) {
+      reporter.reportOn(
+        source,
+        FirMetroErrors.PROVIDES_ERROR,
+        "@Provides/@Binds declarations must be within a class/object/interface",
+        context,
+      )
+      return
+    }
+
+    // Check property is not var
+    if (declaration is FirProperty && declaration.isVar) {
+      reporter.reportOn(
+        source,
+        FirMetroErrors.PROVIDES_ERROR,
+        "@Provides properties cannot be var",
         context,
       )
       return

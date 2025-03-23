@@ -18,7 +18,7 @@ package dev.zacsweers.metro.compiler
 
 internal class MemoizedSequence<T>(sequence: Sequence<T>) : Sequence<T> {
 
-  private val cache = arrayListOf<T>()
+  private val cache = ArrayList<T>()
 
   private var iter: Lazy<Iterator<T>>? = lazy { sequence.iterator() }
 
@@ -29,20 +29,34 @@ internal class MemoizedSequence<T>(sequence: Sequence<T>) : Sequence<T> {
     var idx = 0
 
     override fun hasNext(): Boolean {
-      val hasNext = idx < cache.size || (iter?.value?.hasNext() == true)
-      if (!hasNext && iter != null) {
+      if (idx < cache.size) {
+        return true
+      }
+
+      val iterRef = iter
+      if (iterRef == null) {
+        return false
+      }
+
+      val iterValue = iterRef.value
+      val hasNext = iterValue.hasNext()
+
+      if (!hasNext) {
         // Relinquish the underlying sequence to GC after exhaustion
         iter = null
       }
+
       return hasNext
     }
 
     override fun next(): T {
-      val iter = iter ?: throw NoSuchElementException()
-      if (idx == cache.size) {
-        cache.add(iter.value.next())
+      if (idx < cache.size) {
+        return cache[idx++]
       }
-      val value = cache[idx]
+
+      val iterRef = iter ?: throw NoSuchElementException()
+      val value = iterRef.value.next()
+      cache.add(value)
       idx++
       return value
     }
