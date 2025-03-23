@@ -630,9 +630,7 @@ class ProvidesErrorsTest : MetroCompilerTest() {
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
-      assertDiagnostics(
-        "e: ExampleGraph.kt:10:17 @Provides properties cannot be var"
-      )
+      assertDiagnostics("e: ExampleGraph.kt:10:17 @Provides properties cannot be var")
     }
   }
 

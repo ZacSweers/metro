@@ -81,7 +81,6 @@ public class ClassIds(
   internal val multibindsAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Multibinds")) + customMultibindsAnnotations
 
-  internal val originAnnotation = Symbols.FqNames.metroRuntimeInternalPackage.classIdOf("Origin")
   private val contributesToAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesTo")
   private val contributesBindingAnnotation =
@@ -95,8 +94,10 @@ public class ClassIds(
     setOf(contributesToAnnotation) + customContributesToAnnotations
   internal val contributesBindingAnnotations =
     setOf(contributesBindingAnnotation) + customContributesBindingAnnotations
-  internal val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) + customElementsIntoSetAnnotations
-  internal val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
+  internal val contributesIntoSetAnnotations =
+    setOf(contributesIntoSetAnnotation) + customElementsIntoSetAnnotations
+  internal val contributesIntoMapAnnotations =
+    setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
   internal val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +

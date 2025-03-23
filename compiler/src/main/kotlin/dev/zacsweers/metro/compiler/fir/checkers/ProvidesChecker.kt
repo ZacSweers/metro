@@ -36,7 +36,6 @@ import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
-
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
 //  Check for no conflicting names, requires class-level
