@@ -95,8 +95,8 @@ public class ClassIds(
     setOf(contributesToAnnotation) + customContributesToAnnotations
   internal val contributesBindingAnnotations =
     setOf(contributesBindingAnnotation) + customContributesBindingAnnotations
-  internal val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) // TODO custom
-  internal val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) // TODO custom
+  internal val contributesIntoSetAnnotations = setOf(contributesIntoSetAnnotation) + customElementsIntoSetAnnotations
+  internal val contributesIntoMapAnnotations = setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
   internal val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +
