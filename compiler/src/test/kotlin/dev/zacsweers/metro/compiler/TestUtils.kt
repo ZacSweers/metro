@@ -314,8 +314,17 @@ val JvmCompilationResult.ExampleGraph: Class<*>
 val JvmCompilationResult.ParentGraph: Class<*>
   get() = classLoader.loadClass("test.ParentGraph")
 
+val JvmCompilationResult.GrandParentGraph: Class<*>
+  get() = classLoader.loadClass("test.GrandParentGraph")
+
 val JvmCompilationResult.ChildGraph: Class<*>
   get() = classLoader.loadClass("test.ChildGraph")
+
+val JvmCompilationResult.Parent1Graph: Class<*>
+  get() = classLoader.loadClass("test.Parent1Graph")
+
+val JvmCompilationResult.Parent2Graph: Class<*>
+  get() = classLoader.loadClass("test.Parent2Graph")
 
 fun Class<*>.generatedMetroGraphClass(): Class<*> {
   return classes.singleOrNull { it.simpleName == Symbols.Names.metroGraph.asString() }

@@ -3,12 +3,17 @@ package dev.zacsweers.metro.compiler.transformers
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ChildGraph
+import dev.zacsweers.metro.compiler.GrandParentGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.Parent1Graph
+import dev.zacsweers.metro.compiler.Parent2Graph
 import dev.zacsweers.metro.compiler.ParentGraph
+import dev.zacsweers.metro.compiler.assertThrows
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import java.lang.reflect.Proxy
 import org.junit.Test
 
 class GraphExtensionTest : MetroCompilerTest() {
@@ -43,16 +48,17 @@ class GraphExtensionTest : MetroCompilerTest() {
 
   @Test
   fun `simple extension in another module`() {
-    val firstCompilation = compile(
-      source(
-        """
+    val firstCompilation =
+      compile(
+        source(
+          """
             @DependencyGraph(isExtendable = true)
             interface ParentGraph {
               @Provides fun provideInt(): Int = 1
             }
         """
+        )
       )
-    )
 
     compile(
       source(
@@ -68,7 +74,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             }
         """
       ),
-      previousCompilationResult = firstCompilation
+      previousCompilationResult = firstCompilation,
     ) {
       val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
@@ -173,7 +179,8 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
-      assertThat(childGraph.callProperty<Provider<Int>>("int")).isSameInstanceAs(childGraph.callProperty<Provider<Int>>("int"))
+      assertThat(childGraph.callProperty<Provider<Int>>("int"))
+        .isSameInstanceAs(childGraph.callProperty<Provider<Int>>("int"))
     }
   }
 
@@ -211,13 +218,228 @@ class GraphExtensionTest : MetroCompilerTest() {
     }
   }
 
-  // TODO test
-  //  - multiple levels
-  //    - three levels of parents
-  //    - parent extends interface with provider in companion
-  //  - multiple parent graphs
-  //  - what happens if you pass a fake parent graph instance in
-  //  - inherit binds
-  //  - multibindings with mixed parents
-  //  - aggregating contributions
+  @Test
+  fun `multiple levels - three levels`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(isExtendable = true)
+            interface GrandParentGraph {
+              @Provides fun provideString(): String = "grandparent"
+            }
+            
+            @DependencyGraph(isExtendable = true)
+            interface ParentGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(grandParent: GrandParentGraph): ParentGraph  
+              }
+              
+              @Provides fun provideInt(): Int = 1
+            }
+            
+            @DependencyGraph
+            interface ChildGraph {
+              val string: String
+              val int: Int
+              
+              @DependencyGraph.Factory 
+              fun interface Factory {
+                fun create(parent: ParentGraph): ChildGraph
+              }
+            }
+        """
+      ),
+      debug = true,
+    ) {
+      val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph =
+        ParentGraph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
+      assertThat(childGraph.callProperty<String>("string")).isEqualTo("grandparent")
+      assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
+    }
+  }
+
+  @Test
+  fun `parent extends interface with companion provider`() {
+    compile(
+      source(
+        """
+            interface HasCompanion {
+              companion object {
+                @Provides fun provideString(): String = "companion"
+              }
+            }
+            
+            @DependencyGraph(isExtendable = true)
+            interface ParentGraph : HasCompanion {
+              @Provides fun provideInt(): Int = 1
+            }
+            
+            @DependencyGraph
+            interface ChildGraph {
+              val string: String
+              val int: Int
+              
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(parent: ParentGraph): ChildGraph  
+              }
+            }
+        """
+      )
+    ) {
+      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
+      assertThat(childGraph.callProperty<String>("string")).isEqualTo("companion")
+      assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
+    }
+  }
+
+  @Test
+  fun `multiple parent graphs`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(isExtendable = true)
+            interface Parent1Graph {
+              @Provides fun provideString(): String = "parent1"
+            }
+            
+            @DependencyGraph(isExtendable = true) 
+            interface Parent2Graph {
+              @Provides fun provideInt(): Int = 2
+            }
+            
+            @DependencyGraph
+            interface ChildGraph {
+              val string: String
+              val int: Int
+              
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
+              }
+            }
+        """
+      )
+    ) {
+      val parent1Graph = Parent1Graph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parent2Graph = Parent2Graph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph =
+        ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parent1Graph, parent2Graph)
+      assertThat(childGraph.callProperty<String>("string")).isEqualTo("parent1")
+      assertThat(childGraph.callProperty<Int>("int")).isEqualTo(2)
+    }
+  }
+
+  @Test
+  fun `inherited binds`() {
+    compile(
+      source(
+        """
+            interface Base
+            class Impl : Base
+            
+            @DependencyGraph(isExtendable = true)
+            interface ParentGraph {
+              @Provides fun impl(): Impl = Impl()
+              @Binds fun bind(impl: Impl): Base
+            }
+            
+            @DependencyGraph  
+            interface ChildGraph {
+              val base: Base
+              
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(parent: ParentGraph): ChildGraph
+              }
+            }
+        """
+      )
+    ) {
+      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
+      assertThat(childGraph.callProperty<Any>("base").javaClass.simpleName).isEqualTo("Impl")
+    }
+  }
+
+  @Test
+  fun `multibindings with mixed parents`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(isExtendable = true)
+            interface Parent1Graph {
+              @IntoSet @Provides fun string1(): String = "parent1"
+            }
+            
+            @DependencyGraph(isExtendable = true)
+            interface Parent2Graph {
+              @IntoSet @Provides fun string2(): String = "parent2" 
+            }
+            
+            @DependencyGraph
+            interface ChildGraph {
+              val strings: Set<String>
+              
+              @IntoSet @Provides fun string3(): String = "child"
+              
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
+              }
+            }
+        """
+      )
+    ) {
+      val parent1Graph = Parent1Graph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parent2Graph = Parent2Graph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph =
+        ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parent1Graph, parent2Graph)
+      assertThat(childGraph.callProperty<Set<String>>("strings"))
+        .containsExactly("parent1", "parent2", "child")
+    }
+  }
+
+  @Test
+  fun `invalid parent graph instance is rejected`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(isExtendable = true)
+            interface ParentGraph {
+              @Provides fun provideString(): String = "parent"
+            }
+            
+            @DependencyGraph
+            interface ChildGraph {
+              val string: String
+              
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(parent: ParentGraph): ChildGraph
+              }
+            } 
+        """
+      )
+    ) {
+      val fakeParentGraph =
+        Proxy.newProxyInstance(ParentGraph.classLoader, arrayOf(ParentGraph)) { _, method, _ ->
+          if (method.name == "toString") "fake" else null
+        }
+      assertThrows<Throwable> {
+          ChildGraph.generatedMetroGraphClass().createGraphViaFactory(fakeParentGraph)
+        }
+        .hasCauseThat()
+        .hasMessageThat()
+        .isEqualTo(
+          "Constructor parameter parent _must_ be a Metro-compiler-generated instance of test.ParentGraph but was $fakeParentGraph"
+        )
+    }
+  }
+
+  // TODO test with two parents with common grandparent
 }
