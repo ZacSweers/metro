@@ -67,6 +67,7 @@ import dev.zacsweers.metro.compiler.split
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
+import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrElement
@@ -77,12 +78,16 @@ import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irConcat
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irIfThen
 import org.jetbrains.kotlin.ir.builders.irInt
+import org.jetbrains.kotlin.ir.builders.irNotIs
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -96,6 +101,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.expressions.addArgument
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -316,8 +322,7 @@ internal class DependencyGraphTransformer(
       if (isExtendable) {
         val serialized =
           pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
-            graphDeclaration
-              .requireNestedClass(Symbols.Names.metroGraph),
+            graphDeclaration.requireNestedClass(Symbols.Names.metroGraph),
             PLUGIN_ID,
           )
         if (serialized == null) {
@@ -815,7 +820,7 @@ internal class DependencyGraphTransformer(
     }
 
     // Add bindings from graph dependencies
-    node.dependencies.forEach { (_, depNode) ->
+    node.allDependencies.forEach { depNode ->
       depNode.accessors.forEach { (getter, contextualTypeKey) ->
         graph.addBinding(
           contextualTypeKey.typeKey,
@@ -1065,6 +1070,7 @@ internal class DependencyGraphTransformer(
       val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
       val graphTypesToCtorParams = mutableMapOf<TypeKey, IrValueParameter>()
       val fieldNameAllocator = dev.zacsweers.metro.compiler.NameAllocator()
+      val extraConstructorStatements = mutableListOf<IrBuilderWithScope.() -> IrStatement>()
 
       node.creator?.let { creator ->
         for ((i, param) in creator.parameters.valueParameters.withIndex()) {
@@ -1098,6 +1104,36 @@ internal class DependencyGraphTransformer(
             if (graphDep.isExtendable) {
               // Extended graphs
               addBoundInstanceField()
+              // Check that the input parameter is an instance of the metrograph class
+              val depMetroGraph = graphDep.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+              extraConstructorStatements.add {
+                irIfThen(
+                  condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
+                  type = pluginContext.irBuiltIns.unitType,
+                  thenPart =
+                    irThrow(
+                      irInvoke(
+                        callee = context.irBuiltIns.illegalArgumentExceptionSymbol,
+                        args =
+                          listOf(
+                            irConcat().apply {
+                              addArgument(
+                                irString(
+                                  "Constructor parameter ${irParam.name} _must_ be a Metro-compiler-generated instance of ${graphDep.sourceGraph.kotlinFqName.asString()} but was "
+                                )
+                              )
+                              addArgument(
+                                irInvoke(
+                                  dispatchReceiver = irGet(irParam),
+                                  callee = context.irBuiltIns.memberToString,
+                                )
+                              )
+                            }
+                          ),
+                      )
+                    ),
+                )
+              }
             }
             for ((_, contextualTypeKey) in graphDep.accessors) {
               graphTypesToCtorParams[contextualTypeKey.typeKey] = irParam
@@ -1303,32 +1339,39 @@ internal class DependencyGraphTransformer(
       // fields for everything else. This is important in case they reference each other
       for ((deferredTypeKey, field) in deferredFields) {
         val binding = bindingGraph.requireBinding(deferredTypeKey, bindingStack)
-        with(ctor) {
-          val originalBody = checkNotNull(body)
-          buildBlockBody(pluginContext) {
-            +originalBody.statements
-            +irInvoke(
-                dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
-                callee = symbols.metroDelegateFactorySetDelegate,
-                // TODO de-dupe?
-                args =
-                  listOf(
-                    irGetField(irGet(thisReceiverParameter), field),
-                    pluginContext.createIrBuilder(symbol).run {
-                      generateBindingCode(
-                          binding,
-                          baseGenerationContext,
-                          fieldInitKey = deferredTypeKey,
-                        )
-                        .letIf(binding.scope != null) {
-                          // If it's scoped, wrap it in double-check
-                          // DoubleCheck.provider(<provider>)
-                          it.doubleCheck(this@run, symbols, binding.typeKey)
-                        }
-                    },
-                  ),
-              )
-              .apply { putTypeArgument(0, deferredTypeKey.type) }
+        extraConstructorStatements.add {
+          irInvoke(
+              dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
+              callee = symbols.metroDelegateFactorySetDelegate,
+              // TODO de-dupe?
+              args =
+                listOf(
+                  irGetField(irGet(thisReceiverParameter), field),
+                  pluginContext.createIrBuilder(symbol).run {
+                    generateBindingCode(
+                        binding,
+                        baseGenerationContext,
+                        fieldInitKey = deferredTypeKey,
+                      )
+                      .letIf(binding.scope != null) {
+                        // If it's scoped, wrap it in double-check
+                        // DoubleCheck.provider(<provider>)
+                        it.doubleCheck(this@run, symbols, binding.typeKey)
+                      }
+                  },
+                ),
+            )
+            .apply { putTypeArgument(0, deferredTypeKey.type) }
+        }
+      }
+
+      // Add extra constructor statements
+      with(ctor) {
+        val originalBody = checkNotNull(body)
+        buildBlockBody(pluginContext) {
+          +originalBody.statements
+          for (extra in extraConstructorStatements) {
+            +extra()
           }
         }
       }
@@ -2098,22 +2141,6 @@ internal class DependencyGraphTransformer(
       }
 
       is Binding.GraphDependency -> {
-        /*
-        TODO eventually optimize this like dagger does and generate static provider classes that don't hold outer refs
-        private static final class GetCharSequenceProvider implements Provider<CharSequence> {
-          private final CharSequenceGraph charSequenceGraph;
-
-          GetCharSequenceProvider(CharSequenceGraph charSequenceGraph) {
-            this.charSequenceGraph = charSequenceGraph;
-          }
-
-          @Override
-          public CharSequence get() {
-            return Preconditions.checkNotNullFromGraph(charSequenceGraph.getCharSequence());
-          }
-        }
-        */
-
         val graphParameter =
           generationContext.graphTypesToCtorParams[binding.typeKey]
             ?: run {
