@@ -116,4 +116,8 @@ internal object Keys {
   data object ProviderFieldAccessor : GeneratedDeclarationKey() {
     override fun toString() = "ProviderFieldAccessor"
   }
+
+  data object InstanceFieldAccessor : GeneratedDeclarationKey() {
+    override fun toString() = "InstanceFieldAccessor"
+  }
 }

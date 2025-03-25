@@ -43,4 +43,6 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.TopLevelInjectFunctionClassFunction)
   val ProviderFieldAccessor: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ProviderFieldAccessor)
+  val InstanceFieldAccessor: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.InstanceFieldAccessor)
 }
