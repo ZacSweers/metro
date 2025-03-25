@@ -26,6 +26,9 @@ internal data class DependencyGraphNode(
   val typeKey: TypeKey,
   val proto: DependencyGraphProto? = null,
 ) {
+
+  override fun toString(): String = typeKey.render(short = true)
+
   data class Creator(
     val type: IrClass,
     val createFunction: IrSimpleFunction,
@@ -33,6 +36,7 @@ internal data class DependencyGraphNode(
   )
 
   // Lazy-wrapped to cache these per-node
+  // TODO make this smarter and check for already visited graphs while searching
   val allDependencies by lazy {
     sequence {
         yieldAll(dependencies.values)
