@@ -248,9 +248,9 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(parent: ParentGraph): ChildGraph
               }
             }
-        """
+        """,
+        fileNameWithoutExtension = "Graphs"
       ),
-      debug = true,
     ) {
       val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val parentGraph =
