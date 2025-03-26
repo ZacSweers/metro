@@ -1,0 +1,1 @@
+/ProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified.kt:(170,189): warning: Provided type '@Named("hello") ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.

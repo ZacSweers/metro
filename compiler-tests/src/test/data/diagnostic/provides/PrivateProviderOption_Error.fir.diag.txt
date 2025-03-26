@@ -1,0 +1,1 @@
+/PrivateProviderOption_Error.kt:(198,211): error: `@Provides` declarations should be private.

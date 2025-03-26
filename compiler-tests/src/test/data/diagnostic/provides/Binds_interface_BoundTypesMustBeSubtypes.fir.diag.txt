@@ -1,0 +1,3 @@
+/Binds_interface_BoundTypesMustBeSubtypes.kt:(181,185): error: Binds receiver type `kotlin.Number` is not a subtype of bound type `kotlin.Int`.
+
+/Binds_interface_BoundTypesMustBeSubtypes.kt:(217,221): error: Binds receiver type `kotlin.CharSequence` is not a subtype of bound type `kotlin.String`.
