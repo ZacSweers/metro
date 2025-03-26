@@ -15,8 +15,12 @@ internal class MetroSimpleFunction(
   @Poko.Skip val ir: IrSimpleFunction,
   val annotations: MetroAnnotations<IrAnnotation>,
   val callableId: CallableId = ir.callableId,
-) {
+) : Comparable<MetroSimpleFunction> {
   override fun toString() = callableId.toString()
+
+  override fun compareTo(other: MetroSimpleFunction): Int {
+    return callableId.toString().compareTo(other.callableId.toString())
+  }
 }
 
 internal fun IrMetroContext.metroFunctionOf(
