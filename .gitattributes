@@ -1,4 +1,2 @@
 compiler-tests/**/*.java linguist-generated=true
-compiler-tests/**/*.fir.txt linguist-generated=true
-compiler-tests/**/*.fir.diag.txt linguist-generated=true
 **/yarn.lock linguist-generated=true
