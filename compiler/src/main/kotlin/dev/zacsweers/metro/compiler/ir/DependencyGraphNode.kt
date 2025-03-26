@@ -30,13 +30,18 @@ internal data class DependencyGraphNode(
 ) {
 
   val multibindingAccessors by unsafeLazy {
-    proto?.let {
-      val bitfield = it.multibinding_accessor_indices
-      val multibindingCallableIds = it.accessor_callable_ids
-        .filterIndexedTo(mutableSetOf()) { index, _ -> (bitfield shr index) and 1 == 1 }
-      accessors.filter { it.first.ir.name.asString() in multibindingCallableIds }
-        .mapToSet { it.first }
-    }.orEmpty()
+    proto
+      ?.let {
+        val bitfield = it.multibinding_accessor_indices
+        val multibindingCallableIds =
+          it.accessor_callable_ids.filterIndexedTo(mutableSetOf()) { index, _ ->
+            (bitfield shr index) and 1 == 1
+          }
+        accessors
+          .filter { it.first.ir.name.asString() in multibindingCallableIds }
+          .mapToSet { it.first }
+      }
+      .orEmpty()
   }
 
   override fun toString(): String = typeKey.render(short = true)

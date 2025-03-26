@@ -489,9 +489,12 @@ class GraphExtensionTest : MetroCompilerTest() {
       )
     ) {
       val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      val parent1Graph = Parent1Graph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
-      val parent2Graph = Parent2Graph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
-      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parent1Graph, parent2Graph)
+      val parent1Graph =
+        Parent1Graph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
+      val parent2Graph =
+        Parent2Graph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
+      val childGraph =
+        ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parent1Graph, parent2Graph)
 
       assertThat(childGraph.callProperty<Int>("commonInt")).isEqualTo(42)
       assertThat(childGraph.callProperty<String>("string")).isEqualTo("parent1")
@@ -507,14 +510,15 @@ class GraphExtensionTest : MetroCompilerTest() {
           @DependencyGraph
           abstract class ExampleGraph {
             @Provides
-            @SingleIn(AppScope::class) 
+            @SingleIn(AppScope::class)
             fun provideString(): String = "nonExtendable"
           }
       """
       )
     ) {
       val graphClass = ExampleGraph.generatedMetroGraphClass()
-      val accessors = graphClass.declaredMethods.map { it.name }.filter { it.contains("_metroAccessor") }
+      val accessors =
+        graphClass.declaredMethods.map { it.name }.filter { it.contains("_metroAccessor") }
       assertThat(accessors).isEmpty()
     }
   }
@@ -529,18 +533,18 @@ class GraphExtensionTest : MetroCompilerTest() {
             @IntoSet
             @Provides
             fun stringFromParent(): String = "parent"
-  
+
             val parentSet: Set<String>
           }
-  
+
           @DependencyGraph
           interface ChildGraph {
             val strings: Set<String>
-  
+
             @IntoSet
             @Provides
             fun stringFromChild(): String = "child"
-  
+
             @DependencyGraph.Factory
             fun interface Factory {
               fun create(parent: ParentGraph): ChildGraph

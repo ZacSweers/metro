@@ -1478,7 +1478,10 @@ internal class DependencyGraphTransformer(
           val graphProto =
             node.toProto(
               bindingGraph = bindingGraph,
-              parentGraphs = node.allDependencies.filter { it.isExtendable }.mapToSet { it.sourceGraph.classIdOrFail.asString() },
+              parentGraphs =
+                node.allDependencies
+                  .filter { it.isExtendable }
+                  .mapToSet { it.sourceGraph.classIdOrFail.asString() },
               providerFields =
                 providerFields
                   .filterKeys { typeKey -> typeKey != node.typeKey }
@@ -1509,12 +1512,12 @@ internal class DependencyGraphTransformer(
           val binding = bindingGraph.requireBinding(key, bindingStack)
           val getter =
             addFunction(
-              name = "${field.name.asString()}_metroAccessor",
-              returnType = field.type,
-              // TODO is this... ok?
-              visibility = DescriptorVisibilities.INTERNAL,
-              origin = Origins.ProviderFieldAccessor,
-            )
+                name = "${field.name.asString()}_metroAccessor",
+                returnType = field.type,
+                // TODO is this... ok?
+                visibility = DescriptorVisibilities.INTERNAL,
+                origin = Origins.ProviderFieldAccessor,
+              )
               .apply {
                 // TODO add deprecation + hidden annotation to hide? Not sure if necessary
                 body =
@@ -1534,12 +1537,12 @@ internal class DependencyGraphTransformer(
           if (key == node.typeKey) continue // Skip this graph instance field
           val getter =
             addFunction(
-              name = "${field.name.asString()}_metroAccessor",
-              returnType = field.type,
-              // TODO is this... ok?
-              visibility = DescriptorVisibilities.INTERNAL,
-              origin = Origins.InstanceFieldAccessor,
-            )
+                name = "${field.name.asString()}_metroAccessor",
+                returnType = field.type,
+                // TODO is this... ok?
+                visibility = DescriptorVisibilities.INTERNAL,
+                origin = Origins.InstanceFieldAccessor,
+              )
               .apply {
                 // TODO add deprecation + hidden annotation to hide? Not sure if necessary
                 body =
@@ -1565,14 +1568,18 @@ internal class DependencyGraphTransformer(
       }
 
     var multibindingAccessors = 0
-    val accessorIds = accessors.sortedBy { it.first.ir.name.asString() }
-      .onEachIndexed { index, (_, contextKey) ->
-        val isMultibindingAccessor = bindingGraph.requireBinding(contextKey.typeKey, BindingStack.empty()) is Binding.Multibinding
-        if (isMultibindingAccessor) {
-          multibindingAccessors = multibindingAccessors or (1 shl index)
+    val accessorIds =
+      accessors
+        .sortedBy { it.first.ir.name.asString() }
+        .onEachIndexed { index, (_, contextKey) ->
+          val isMultibindingAccessor =
+            bindingGraph.requireBinding(contextKey.typeKey, BindingStack.empty()) is
+              Binding.Multibinding
+          if (isMultibindingAccessor) {
+            multibindingAccessors = multibindingAccessors or (1 shl index)
+          }
         }
-      }
-      .map { it.first.ir.name.asString() }
+        .map { it.first.ir.name.asString() }
 
     return DependencyGraphProto(
       is_graph = true,
