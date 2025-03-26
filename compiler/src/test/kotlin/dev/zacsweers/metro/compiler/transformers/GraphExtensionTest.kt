@@ -518,4 +518,47 @@ class GraphExtensionTest : MetroCompilerTest() {
       assertThat(accessors).isEmpty()
     }
   }
+
+  // TODO
+  //  - when exposing bindings, determine if the backing binding is a multibinding
+  //    - add a metadata-visible annotation?
+  //  - when adding graph accessors from a parent, ignore accessors for multibindig-backed types
+  //  - when adding graph accessors (in producer), ignore multibindings
+  @Test
+  fun `multibindings with parent and child`() {
+    compile(
+      source(
+        """
+          @DependencyGraph(isExtendable = true)
+          interface ParentGraph {
+            @IntoSet
+            @Provides
+            fun stringFromParent(): String = "parent"
+  
+            val parentSet: Set<String>
+          }
+  
+          @DependencyGraph
+          interface ChildGraph {
+            val strings: Set<String>
+  
+            @IntoSet
+            @Provides
+            fun stringFromChild(): String = "child"
+  
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(parent: ParentGraph): ChildGraph
+            }
+          }
+        """
+      )
+    ) {
+      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
+
+      assertThat(parentGraph.callProperty<Set<String>>("parentSet")).containsExactly("parent")
+      assertThat(childGraph.callProperty<Set<String>>("strings")).containsExactly("parent", "child")
+    }
+  }
 }
