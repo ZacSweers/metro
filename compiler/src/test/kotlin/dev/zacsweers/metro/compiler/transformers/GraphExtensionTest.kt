@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
@@ -31,7 +33,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph
             interface ChildGraph {
               val int: Int
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
@@ -66,7 +68,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph
             interface ChildGraph {
               val int: Int
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
@@ -90,14 +92,14 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph(isExtendable = true)
             abstract class ParentGraph {
               private var count: Int = 0
-            
+
               @Provides fun provideInt(): Int = count++
             }
 
             @DependencyGraph
             interface ChildGraph {
               val int: Int
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
@@ -123,7 +125,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph(isExtendable = true)
             abstract class ParentGraph {
               private var count: Int = 0
-            
+
               @SingleIn(AppScope::class)
               @Provides
               fun provideInt(): Int = count++
@@ -133,7 +135,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph
             interface ChildGraph {
               val int: Int
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
@@ -158,7 +160,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph(isExtendable = true)
             abstract class ParentGraph {
               private var count: Int = 0
-            
+
               @SingleIn(AppScope::class)
               @Provides
               fun provideInt(): Int = count++
@@ -168,7 +170,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph
             interface ChildGraph {
               val int: Provider<Int>
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
@@ -193,7 +195,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph(isExtendable = true)
             abstract class ParentGraph {
               private var count: Int = 0
-            
+
               @SingleIn(AppScope::class)
               @Provides
               fun provideInt(): Int = count++
@@ -202,7 +204,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             @DependencyGraph
             interface ChildGraph {
               val int: Int
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
@@ -227,30 +229,30 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface GrandParentGraph {
               @Provides fun provideString(): String = "grandparent"
             }
-            
+
             @DependencyGraph(isExtendable = true)
             interface ParentGraph {
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(grandParent: GrandParentGraph): ParentGraph  
+                fun create(grandParent: GrandParentGraph): ParentGraph
               }
-              
+
               @Provides fun provideInt(): Int = 1
             }
-            
+
             @DependencyGraph
             interface ChildGraph {
               val string: String
               val int: Int
-              
-              @DependencyGraph.Factory 
+
+              @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
               }
             }
         """,
-        fileNameWithoutExtension = "Graphs"
-      ),
+        fileNameWithoutExtension = "Graphs",
+      )
     ) {
       val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val parentGraph =
@@ -271,20 +273,20 @@ class GraphExtensionTest : MetroCompilerTest() {
                 @Provides fun provideString(): String = "companion"
               }
             }
-            
+
             @DependencyGraph(isExtendable = true)
             interface ParentGraph : HasCompanion {
               @Provides fun provideInt(): Int = 1
             }
-            
+
             @DependencyGraph
             interface ChildGraph {
               val string: String
               val int: Int
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph  
+                fun create(parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -306,17 +308,17 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface Parent1Graph {
               @Provides fun provideString(): String = "parent1"
             }
-            
-            @DependencyGraph(isExtendable = true) 
+
+            @DependencyGraph(isExtendable = true)
             interface Parent2Graph {
               @Provides fun provideInt(): Int = 2
             }
-            
+
             @DependencyGraph
             interface ChildGraph {
               val string: String
               val int: Int
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
@@ -341,17 +343,17 @@ class GraphExtensionTest : MetroCompilerTest() {
         """
             interface Base
             class Impl : Base
-            
+
             @DependencyGraph(isExtendable = true)
             interface ParentGraph {
               @Provides fun impl(): Impl = Impl()
               @Binds fun bind(impl: Impl): Base
             }
-            
-            @DependencyGraph  
+
+            @DependencyGraph
             interface ChildGraph {
               val base: Base
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
@@ -375,18 +377,18 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface Parent1Graph {
               @IntoSet @Provides fun string1(): String = "parent1"
             }
-            
+
             @DependencyGraph(isExtendable = true)
             interface Parent2Graph {
-              @IntoSet @Provides fun string2(): String = "parent2" 
+              @IntoSet @Provides fun string2(): String = "parent2"
             }
-            
+
             @DependencyGraph
             interface ChildGraph {
               val strings: Set<String>
-              
+
               @IntoSet @Provides fun string3(): String = "child"
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
@@ -413,16 +415,16 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface ParentGraph {
               @Provides fun provideString(): String = "parent"
             }
-            
+
             @DependencyGraph
             interface ChildGraph {
               val string: String
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(parent: ParentGraph): ChildGraph
               }
-            } 
+            }
         """
       )
     ) {

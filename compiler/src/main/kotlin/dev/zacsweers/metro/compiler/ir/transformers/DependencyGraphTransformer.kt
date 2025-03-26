@@ -1208,8 +1208,7 @@ internal class DependencyGraphTransformer(
         if (!parent.isExtendable) continue
         val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
         val instanceAccessors =
-          parentMetroGraph
-            .functions
+          parentMetroGraph.functions
             .filter { it.origin == Origins.InstanceFieldAccessor }
             .map {
               val metroFunction = metroFunctionOf(it)
@@ -1221,7 +1220,10 @@ internal class DependencyGraphTransformer(
             instanceFields.getOrPut(contextualTypeKey.typeKey) {
               addField(
                   fieldName =
-                    fieldNameAllocator.newName(contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() + "Instance"),
+                    fieldNameAllocator.newName(
+                      contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() +
+                        "Instance"
+                    ),
                   fieldType = contextualTypeKey.typeKey.type,
                   fieldVisibility = DescriptorVisibilities.PRIVATE,
                 )
@@ -1229,15 +1231,19 @@ internal class DependencyGraphTransformer(
                   isFinal = true
                   initializer =
                     pluginContext.createIrBuilder(symbol).run {
-                      val receiverTypeKey = accessor.ir.dispatchReceiverParameter!!.type.let {
-                        val rawType = it.rawTypeOrNull()
-                        if (rawType?.origin == Origins.MetroGraphDeclaration) {
-                          // if it's a $$MetroGraph, we actually want the parent type
-                          rawType.parentAsClass.defaultType
-                        } else {
-                          it
-                        }
-                      }.let(::TypeKey)
+                      val receiverTypeKey =
+                        accessor.ir.dispatchReceiverParameter!!
+                          .type
+                          .let {
+                            val rawType = it.rawTypeOrNull()
+                            if (rawType?.origin == Origins.MetroGraphDeclaration) {
+                              // if it's a $$MetroGraph, we actually want the parent type
+                              rawType.parentAsClass.defaultType
+                            } else {
+                              it
+                            }
+                          }
+                          .let(::TypeKey)
                       irExprBody(
                         irInvoke(
                           dispatchReceiver =
@@ -1309,12 +1315,16 @@ internal class DependencyGraphTransformer(
                   initializer =
                     pluginContext.createIrBuilder(symbol).run {
                       // If this is in instance fields, just do a quick assignment
-                      val bindingExpression = if (binding.typeKey in instanceFields) {
-                        val field = instanceFields.getValue(binding.typeKey)
-                        instanceFactory(binding.typeKey.type, irGetField(irGet(thisReceiverParameter), field))
-                      } else {
-                        generateBindingCode(binding, generationContext = baseGenerationContext)
-                      }
+                      val bindingExpression =
+                        if (binding.typeKey in instanceFields) {
+                          val field = instanceFields.getValue(binding.typeKey)
+                          instanceFactory(
+                            binding.typeKey.type,
+                            irGetField(irGet(thisReceiverParameter), field),
+                          )
+                        } else {
+                          generateBindingCode(binding, generationContext = baseGenerationContext)
+                        }
                       irExprBody(bindingExpression)
                     }
                 }
@@ -1494,8 +1504,12 @@ internal class DependencyGraphTransformer(
                 // TODO add deprecation + hidden annotation to hide? Not sure if necessary
                 body =
                   pluginContext.createIrBuilder(symbol).run {
-                    irExprBodySafe(symbol,
-                      generateBindingCode(binding, baseGenerationContext.withReceiver(dispatchReceiverParameter!!))
+                    irExprBodySafe(
+                      symbol,
+                      generateBindingCode(
+                        binding,
+                        baseGenerationContext.withReceiver(dispatchReceiverParameter!!),
+                      ),
                     )
                   }
               }
