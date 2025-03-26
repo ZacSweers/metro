@@ -27,6 +27,9 @@ message DependencyGraphProto {
 
   // Set of instance field names (strings). Only present if is_graph is true
   repeated string instance_field_names = 7;
+
+  // Bit field to represent which accessor IDs are multibindings
+  int32 multibinding_accessor_indices = 8;
 }
 
 message MetroMetadata {

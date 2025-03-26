@@ -5,7 +5,9 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
+import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 
@@ -26,6 +28,16 @@ internal data class DependencyGraphNode(
   val typeKey: TypeKey,
   val proto: DependencyGraphProto? = null,
 ) {
+
+  val multibindingAccessors by unsafeLazy {
+    proto?.let {
+      val bitfield = it.multibinding_accessor_indices
+      val multibindingCallableIds = it.accessor_callable_ids
+        .filterIndexedTo(mutableSetOf()) { index, _ -> (bitfield shr index) and 1 == 1 }
+      accessors.filter { it.first.ir.name.asString() in multibindingCallableIds }
+        .mapToSet { it.first }
+    }.orEmpty()
+  }
 
   override fun toString(): String = typeKey.render(short = true)
 

@@ -60,6 +60,7 @@ import dev.zacsweers.metro.compiler.ir.timedComputation
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
@@ -822,7 +823,12 @@ internal class DependencyGraphTransformer(
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen
     node.allDependencies.forEach { depNode ->
-      depNode.accessors.forEach { (getter, contextualTypeKey) ->
+      for ((getter, contextualTypeKey) in depNode.accessors) {
+        if (depNode.isExtendable && getter in depNode.multibindingAccessors) {
+          // Ignore exposed multibindings, we will aggregate them in our own graph
+          println("Ignoring multibinding $getter")
+          continue
+        }
         graph.addBinding(
           contextualTypeKey.typeKey,
           Binding.GraphDependency(
@@ -1472,6 +1478,7 @@ internal class DependencyGraphTransformer(
           val graphProto =
             node.toProto(
               bindingGraph = bindingGraph,
+              parentGraphs = node.allDependencies.filter { it.isExtendable }.mapToSet { it.sourceGraph.classIdOrFail.asString() },
               providerFields =
                 providerFields
                   .filterKeys { typeKey -> typeKey != node.typeKey }
@@ -1497,17 +1504,17 @@ internal class DependencyGraphTransformer(
         }
         // TODO dedup logic below
         // Expose getters for provider fields and expose them to metadata
-        providerFields.forEach { (key, field) ->
-          if (key == node.typeKey) return@forEach // Skip the graph instance field
+        for ((key, field) in providerFields) {
+          if (key == node.typeKey) continue // Skip the graph instance field
           val binding = bindingGraph.requireBinding(key, bindingStack)
           val getter =
             addFunction(
-                name = "${field.name.asString()}_metroAccessor",
-                returnType = field.type,
-                // TODO is this... ok?
-                visibility = DescriptorVisibilities.INTERNAL,
-                origin = Origins.ProviderFieldAccessor,
-              )
+              name = "${field.name.asString()}_metroAccessor",
+              returnType = field.type,
+              // TODO is this... ok?
+              visibility = DescriptorVisibilities.INTERNAL,
+              origin = Origins.ProviderFieldAccessor,
+            )
               .apply {
                 // TODO add deprecation + hidden annotation to hide? Not sure if necessary
                 body =
@@ -1523,16 +1530,16 @@ internal class DependencyGraphTransformer(
               }
           pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(getter)
         }
-        instanceFields.forEach { (key, field) ->
-          if (key == node.typeKey) return@forEach // Skip this graph instance field
+        for ((key, field) in instanceFields) {
+          if (key == node.typeKey) continue // Skip this graph instance field
           val getter =
             addFunction(
-                name = "${field.name.asString()}_metroAccessor",
-                returnType = field.type,
-                // TODO is this... ok?
-                visibility = DescriptorVisibilities.INTERNAL,
-                origin = Origins.InstanceFieldAccessor,
-              )
+              name = "${field.name.asString()}_metroAccessor",
+              returnType = field.type,
+              // TODO is this... ok?
+              visibility = DescriptorVisibilities.INTERNAL,
+              origin = Origins.InstanceFieldAccessor,
+            )
               .apply {
                 // TODO add deprecation + hidden annotation to hide? Not sure if necessary
                 body =
@@ -1547,6 +1554,7 @@ internal class DependencyGraphTransformer(
 
   private fun DependencyGraphNode.toProto(
     bindingGraph: BindingGraph,
+    parentGraphs: Set<String>,
     providerFields: List<String>,
     instanceFields: List<String>,
   ): DependencyGraphProto {
@@ -1556,6 +1564,16 @@ internal class DependencyGraphTransformer(
         binding.ir?.name?.asString()
       }
 
+    var multibindingAccessors = 0
+    val accessorIds = accessors.sortedBy { it.first.ir.name.asString() }
+      .onEachIndexed { index, (_, contextKey) ->
+        val isMultibindingAccessor = bindingGraph.requireBinding(contextKey.typeKey, BindingStack.empty()) is Binding.Multibinding
+        if (isMultibindingAccessor) {
+          multibindingAccessors = multibindingAccessors or (1 shl index)
+        }
+      }
+      .map { it.first.ir.name.asString() }
+
     return DependencyGraphProto(
       is_graph = true,
       provider_field_names = providerFields,
@@ -1563,7 +1581,9 @@ internal class DependencyGraphTransformer(
       provider_factory_classes =
         providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.asString() }.sorted(),
       binds_callable_ids = bindsCallableIds.sorted(),
-      accessor_callable_ids = accessors.map { it.first.ir.name.asString() }.sorted(),
+      accessor_callable_ids = accessorIds,
+      parent_graph_classes = parentGraphs.sorted(),
+      multibinding_accessor_indices = multibindingAccessors,
     )
   }
 

@@ -519,11 +519,6 @@ class GraphExtensionTest : MetroCompilerTest() {
     }
   }
 
-  // TODO
-  //  - when exposing bindings, determine if the backing binding is a multibinding
-  //    - add a metadata-visible annotation?
-  //  - when adding graph accessors from a parent, ignore accessors for multibindig-backed types
-  //  - when adding graph accessors (in producer), ignore multibindings
   @Test
   fun `multibindings with parent and child`() {
     compile(
