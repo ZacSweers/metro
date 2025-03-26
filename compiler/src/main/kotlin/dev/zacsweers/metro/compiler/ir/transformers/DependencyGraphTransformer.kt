@@ -855,6 +855,14 @@ internal class DependencyGraphTransformer(
           val accessor =
             providerFieldAccessorsByName.getValue("${providerField}_metroAccessor".asName())
           val contextualTypeKey = ContextualTypeKey.from(this, accessor.ir, accessor.annotations)
+          val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
+          if (existingBinding != null) {
+            // If it's a graph type we can just proceed, can happen with common ancestors
+            val rawType = existingBinding.typeKey.type.rawTypeOrNull()
+            if (rawType?.annotationsIn(symbols.dependencyGraphAnnotations).orEmpty().any()) {
+              return@forEach
+            }
+          }
           graph.addBinding(
             contextualTypeKey.typeKey,
             Binding.GraphDependency(

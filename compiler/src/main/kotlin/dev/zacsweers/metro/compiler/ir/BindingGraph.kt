@@ -126,6 +126,8 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       ?: "Unknown source location, this may be contributed. Here's some additional information we have for the binding: $this"
   }
 
+  fun findBinding(key: TypeKey): Binding? = bindings[key]
+
   // For bindings we expect to already be cached
   fun requireBinding(key: TypeKey, stack: BindingStack): Binding =
     bindings[key]

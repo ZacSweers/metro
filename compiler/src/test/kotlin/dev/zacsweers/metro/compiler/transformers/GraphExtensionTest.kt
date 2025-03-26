@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.transformers
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ChildGraph
+import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.GrandParentGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.Parent1Graph
@@ -443,5 +444,78 @@ class GraphExtensionTest : MetroCompilerTest() {
     }
   }
 
-  // TODO test with two parents with common grandparent
+  @Test
+  fun `two parents with common grandparent`() {
+    compile(
+      source(
+        """
+          @DependencyGraph(isExtendable = true)
+          interface GrandParentGraph {
+            @Provides fun provideCommonInt(): Int = 42
+          }
+
+          @DependencyGraph(isExtendable = true)
+          interface Parent1Graph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(grandParent: GrandParentGraph): Parent1Graph
+            }
+
+            @Provides fun provideString(): String = "parent1"
+          }
+
+          @DependencyGraph(isExtendable = true)
+          interface Parent2Graph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(grandParent: GrandParentGraph): Parent2Graph
+            }
+
+            @Provides fun provideDouble(): Double = 3.14
+          }
+
+          @DependencyGraph
+          interface ChildGraph {
+            val commonInt: Int
+            val string: String
+            val double: Double
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
+            }
+          }
+      """
+      )
+    ) {
+      val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parent1Graph = Parent1Graph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
+      val parent2Graph = Parent2Graph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parent1Graph, parent2Graph)
+
+      assertThat(childGraph.callProperty<Int>("commonInt")).isEqualTo(42)
+      assertThat(childGraph.callProperty<String>("string")).isEqualTo("parent1")
+      assertThat(childGraph.callProperty<Double>("double")).isEqualTo(3.14)
+    }
+  }
+
+  @Test
+  fun `no accessors generated when extension not enabled`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          abstract class ExampleGraph {
+            @Provides
+            @SingleIn(AppScope::class) 
+            fun provideString(): String = "nonExtendable"
+          }
+      """
+      )
+    ) {
+      val graphClass = ExampleGraph.generatedMetroGraphClass()
+      val accessors = graphClass.declaredMethods.map { it.name }.filter { it.contains("_metroAccessor") }
+      assertThat(accessors).isEmpty()
+    }
+  }
 }
