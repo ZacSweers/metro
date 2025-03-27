@@ -127,6 +127,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ProvidesCannotLiveInObjects.kt")
+    public void testProvidesCannotLiveInObjects() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesCannotLiveInObjects.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesFunctionsCannotBeTopLevel.kt")
     public void testProvidesFunctionsCannotBeTopLevel() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesFunctionsCannotBeTopLevel.kt");

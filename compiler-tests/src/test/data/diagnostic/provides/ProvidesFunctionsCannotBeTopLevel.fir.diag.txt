@@ -1,1 +1,1 @@
-/ProvidesFunctionsCannotBeTopLevel.kt:(150,160): error: @Provides/@Binds declarations must be within a class/object/interface
+/ProvidesFunctionsCannotBeTopLevel.kt:(150,160): error: @Provides/@Binds declarations must be within an interface, class, or companion object. If you're seeing this, `provideInt` is likely defined as a top-level method which isn't supported.
