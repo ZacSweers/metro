@@ -66,6 +66,7 @@ allprojects {
       endWithNewline()
       targetExclude("**/spotless.java")
       targetExclude("**/src/test/data/**")
+      targetExclude("**/*Generated.java")
     }
     kotlin {
       target("src/**/*.kt")
