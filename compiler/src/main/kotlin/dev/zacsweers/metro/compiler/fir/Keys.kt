@@ -112,4 +112,12 @@ internal object Keys {
   data object TopLevelInjectFunctionClassFunction : GeneratedDeclarationKey() {
     override fun toString() = "TopLevelInjectFunctionClassFunction"
   }
+
+  data object ProviderFieldAccessor : GeneratedDeclarationKey() {
+    override fun toString() = "ProviderFieldAccessor"
+  }
+
+  data object InstanceFieldAccessor : GeneratedDeclarationKey() {
+    override fun toString() = "InstanceFieldAccessor"
+  }
 }

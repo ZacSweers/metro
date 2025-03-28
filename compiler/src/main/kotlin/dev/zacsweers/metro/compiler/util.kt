@@ -104,3 +104,7 @@ internal infix operator fun Name.plus(other: String) = (asString() + other).asNa
 internal infix operator fun Name.plus(other: Name) = (asString() + other.asString()).asName()
 
 internal fun Boolean?.orElse(ifNull: Boolean): Boolean = this ?: ifNull
+
+internal fun String.split(index: Int): Pair<String, String> {
+  return substring(0, index) to substring(index + 1)
+}

@@ -953,14 +953,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `self referencing graph dependency cycle should fail`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-
             @DependencyGraph
             interface CharSequenceGraph {
 
@@ -971,21 +965,20 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(graph: CharSequenceGraph): CharSequenceGraph
+                fun create(@Includes graph: CharSequenceGraph): CharSequenceGraph
               }
             }
-
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
+    result.assertDiagnostics(
       """
-        ExampleGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself.
-            test.CharSequenceGraph is requested at
-                [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
+      e: CharSequenceGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself.
+          test.CharSequenceGraph is requested at
+              [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
       """
         .trimIndent()
     )
@@ -1009,7 +1002,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(stringGraph: StringGraph): CharSequenceGraph
+                fun create(@Includes stringGraph: StringGraph): CharSequenceGraph
               }
             }
 
@@ -1023,7 +1016,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(charSequenceGraph: CharSequenceGraph): StringGraph
+                fun create(@Includes charSequenceGraph: CharSequenceGraph): StringGraph
               }
             }
 

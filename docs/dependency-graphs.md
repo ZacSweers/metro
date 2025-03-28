@@ -53,7 +53,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(messageGraph: MessageGraph): AppGraph
+    fun create(@Includes messageGraph: MessageGraph): AppGraph
   }
 
   @DependencyGraph interface MessageGraph {
@@ -73,7 +73,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(messageProvider: MessageProvider): AppGraph
+    fun create(@Includes messageProvider: MessageProvider): AppGraph
   }
 
   interface MessageProvider {
@@ -109,6 +109,33 @@ Is functionally equivalent to writing the below.
 @DependencyGraph(AppScope::class)
 interface AppGraph
 ```
+
+## Graph Extensions
+
+Dependency graphs can be marked as _extendable_ to allow child graphs to extend them. These are similar in functionality to Dagger's `Subcomponents` but are detached in nature like in kotlin-inject.
+
+A graph must opt itself into extension in via `@DependencyGraph(..., isExtendable = true)`, which will make the Metro compiler generate extra metadata for downstream child graphs.
+
+Then, a child graph can add an `@Extends`-annotated parameter to its creator to extend that graph.
+
+```kotlin
+@DependencyGraph(isExtendable = true)
+interface AppGraph {
+  @Provides fun provideHttpClient(): HttpClient { ... }
+}
+
+@DependencyGraph
+interface UserGraph {
+  @DependencyGraph.Factory
+  fun interface Factory {
+    fun create(@Extends appGraph: AppGraph): UserGraph
+  }
+}
+```
+
+Child graphs then contain a _superset_ of bindings they can inject, including both their bindings and their parents'. Graph extensions can be chained as well.
+
+Child graphs also implicitly inherit their parents' _scopes_.
 
 ## Implementation Notes
 

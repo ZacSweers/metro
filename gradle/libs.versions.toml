@@ -17,18 +17,18 @@ autoService = "1.1.1"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
 wire = "5.3.1"
-dagger = "2.56"
+dagger = "2.56.1"
 kct = "0.7.0"
 kotlin = "2.1.20"
 kotlinInject = "0.7.2"
 kotlinInject-anvil = "0.1.2"
 kotlinx-coroutines = "1.10.1"
 kotlinx-serialization = "1.8.0"
-ktor = "3.1.1"
-gjf = "1.25.2"
+ktor = "3.1.2"
+gjf = "1.26.0"
 jdk = "23"
 jvmTarget = "11"
-ksp = "2.1.20-1.0.31"
+ksp = "2.1.20-1.0.32"
 ktfmt = "0.54"
 okhttp = "5.0.0-alpha.14"
 okio = "3.10.2"
@@ -42,11 +42,11 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.17.0" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.5.4" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.0" }
 dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.31.0" }
-poko = { id = "dev.drewhamilton.poko", version = "0.18.2" }
+poko = { id = "dev.drewhamilton.poko", version = "0.18.4" }
 shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta11" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.2" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }

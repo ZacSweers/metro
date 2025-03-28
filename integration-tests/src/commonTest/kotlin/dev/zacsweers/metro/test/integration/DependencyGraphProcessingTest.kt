@@ -9,6 +9,7 @@ import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.ClassKey
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.ElementsIntoSet
+import dev.zacsweers.metro.Includes
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntKey
 import dev.zacsweers.metro.IntoMap
@@ -171,7 +172,7 @@ class DependencyGraphProcessingTest {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(stringGraph: StringGraph): GraphWithDependencies
+      fun create(@Includes stringGraph: StringGraph): GraphWithDependencies
     }
   }
 
@@ -208,10 +209,10 @@ class DependencyGraphProcessingTest {
     @DependencyGraph.Factory
     fun interface Factory {
       fun create(
-        intProvider: IntProvider,
-        longProvider: LongProvider,
-        doubleProvider: DoubleProvider,
-        stringProvider: StringProvider,
+        @Includes intProvider: IntProvider,
+        @Includes longProvider: LongProvider,
+        @Includes doubleProvider: DoubleProvider,
+        @Includes stringProvider: StringProvider,
       ): GraphWithNonGraphDependencies
     }
 
@@ -500,7 +501,7 @@ class DependencyGraphProcessingTest {
 
     @DependencyGraph.Factory
     interface Factory {
-      fun create(dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
+      fun create(@Includes dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
     }
 
     class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {

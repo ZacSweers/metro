@@ -1,0 +1,3 @@
+/ProvidesMustHaveABody_Interface.kt:(103,113): error: `@Provides` declarations must have bodies.
+
+/ProvidesMustHaveABody_Interface.kt:(135,148): error: `@Provides` declarations must have bodies.

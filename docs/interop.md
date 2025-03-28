@@ -65,7 +65,7 @@ interface MetroGraph {
   @DependencyGraph.Factory
   fun interface Factory {
     fun create(
-      daggerComponent: DaggerComponent
+      @Includes daggerComponent: DaggerComponent
     ): MetroGraph
   }
 }

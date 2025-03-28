@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
@@ -59,27 +60,35 @@ import dev.zacsweers.metro.compiler.ir.timedComputation
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.split
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
+import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addField
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irConcat
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irIfThen
 import org.jetbrains.kotlin.ir.builders.irInt
+import org.jetbrains.kotlin.ir.builders.irNotIs
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -93,10 +102,12 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.expressions.addArgument
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -121,7 +132,9 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
 internal class DependencyGraphData {
   val graphs = mutableMapOf<ClassId, DependencyGraphNode>()
@@ -265,6 +278,15 @@ internal class DependencyGraphTransformer(
     val isGraph = dependencyGraphAnno != null
     val supertypes =
       graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false).memoized()
+
+    val accessors = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
+    val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
+    val scopes = mutableSetOf<IrAnnotation>()
+    val providerFactories = mutableListOf<Pair<TypeKey, ProviderFactory>>()
+
+    val isExtendable =
+      dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
+
     if (graphDeclaration.isExternalParent || !isGraph) {
       val accessorsToCheck =
         if (isGraph) {
@@ -288,7 +310,7 @@ internal class DependencyGraphTransformer(
           }
         }
 
-      val accessors =
+      accessors +=
         accessorsToCheck
           .filterNot {
             it.ir.valueParameters.isNotEmpty() ||
@@ -296,23 +318,89 @@ internal class DependencyGraphTransformer(
               it.annotations.isProvides ||
               it.annotations.isMultibinds
           }
-          .toList()
+          .map { it to ContextualTypeKey.from(metroContext, it.ir, it.annotations) }
+
+      // Read metadata if this is an extendable graph
+      val dependencies = mutableMapOf<TypeKey, DependencyGraphNode>()
+      var graphProto: DependencyGraphProto? = null
+      if (isExtendable) {
+        val serialized =
+          pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
+            graphDeclaration.requireNestedClass(Symbols.Names.metroGraph),
+            PLUGIN_ID,
+          )
+        if (serialized == null) {
+          reportError(
+            "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
+            graphDeclaration.location(),
+          )
+          exitProcessing()
+        }
+
+        val metadata = MetroMetadata.ADAPTER.decode(serialized)
+        graphProto = metadata.dependency_graph
+        if (graphProto == null) {
+          reportError(
+            "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
+            graphDeclaration.location(),
+          )
+          exitProcessing()
+        }
+
+        // Add any provider factories
+        providerFactories +=
+          graphProto.provider_factory_classes
+            .map { classId ->
+              val clazz = pluginContext.referenceClass(ClassId.fromString(classId))!!.owner
+              providesTransformer.externalProviderFactoryFor(clazz)
+            }
+            .map { it.typeKey to it }
+
+        // Add any binds functions
+        bindsFunctions.addAll(
+          graphProto.binds_callable_ids.map { callableIdString ->
+            val (classIdString, name) =
+              callableIdString.split(callableIdString.indexOfLast { it == '.' })
+            val callableId = CallableId(ClassId.fromString(classIdString), name.asName())
+
+            val function = pluginContext.referenceFunctions(callableId).single().owner
+
+            val metroFunction = metroFunctionOf(function)
+            metroFunction to ContextualTypeKey.from(this, function, metroFunction.annotations)
+          }
+        )
+
+        // Read scopes from annotations
+        // We copy scope annotations from parents onto this graph if it's extendable so we only need
+        // to copy once
+        scopes.addAll(graphDeclaration.scopeAnnotations())
+
+        dependencies.putAll(
+          graphProto.parent_graph_classes.associate { graphClassId ->
+            val clazz =
+              pluginContext.referenceClass(ClassId.fromString(graphClassId))
+                ?: error("Could not find graph class $graphClassId.")
+            val typeKey = TypeKey(clazz.defaultType)
+            val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack)
+            typeKey to node
+          }
+        )
+      }
 
       val dependentNode =
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
-          isExtendable =
-            dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true,
-          dependencies = emptyMap(),
-          scopes = emptySet(),
-          providerFactories = emptyList(),
-          accessors =
-            accessors.map { it to ContextualTypeKey.from(metroContext, it.ir, it.annotations) },
-          bindsFunctions = emptyList(),
-          injectors = emptyList(),
+          isExtendable = isExtendable,
+          dependencies = dependencies,
+          scopes = scopes,
+          providerFactories = providerFactories,
+          accessors = accessors,
+          bindsFunctions = bindsFunctions,
+          injectors = emptyList(), // Unnecessary to us here
           isExternal = true,
           creator = null,
           typeKey = TypeKey(graphDeclaration.typeWith()),
+          proto = graphProto,
         )
 
       dependencyGraphNodesByClass[graphClassId] = dependentNode
@@ -332,8 +420,6 @@ internal class DependencyGraphTransformer(
         hasDefault = false,
       )
 
-    val accessors = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
-    val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
     val injectors = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
@@ -407,11 +493,6 @@ internal class DependencyGraphTransformer(
       }
     }
 
-    val scopes = mutableSetOf<IrAnnotation>()
-    val providerFactories = mutableListOf<Pair<TypeKey, ProviderFactory>>()
-    // Add all our binds
-    //    providerFunctions +=
-    //      bindsFunctions.map { (function, contextKey) -> contextKey.typeKey to function }
     scopes += buildSet {
       val scope =
         dependencyGraphAnno.getValueArgument("scope".asName())?.let { scopeArg ->
@@ -438,15 +519,30 @@ internal class DependencyGraphTransformer(
           }
       }
     }
-    // TODO track these so we can add supertype aliases too
-    for (type in supertypes) {
+
+    val scopesOnType = graphDeclaration.scopeAnnotations()
+    scopes += scopesOnType
+    for ((i, type) in supertypes.withIndex()) {
       val clazz = type.classOrFail.owner
-      scopes += clazz.scopeAnnotations()
+
+      if (i != 0) {
+        // We don't need to do a double lookup
+        scopes += clazz.scopeAnnotations()
+      }
 
       providerFactories += providesTransformer.factoryClassesFor(clazz)
     }
 
-    // TODO source this from FIR-generated
+    if (isExtendable) {
+      // Copy inherited scopes onto this graph for faster lookups downstream
+      val inheritedScopes = scopes - scopesOnType
+      pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+        graphDeclaration,
+        inheritedScopes.map { it.ir },
+      )
+    }
+
+    // TODO since we already check this in FIR can we leave a more specific breadcrumb somewhere
     val creator =
       graphDeclaration.nestedClasses
         .singleOrNull { klass ->
@@ -470,7 +566,7 @@ internal class DependencyGraphTransformer(
         ?.parameters
         ?.valueParameters
         .orEmpty()
-        .filter { !it.isBindsInstance }
+        .filter { it.isIncludes || it.isExtends }
         .associate {
           val type = it.typeKey.type.rawType()
           val node =
@@ -482,11 +578,16 @@ internal class DependencyGraphTransformer(
           it.typeKey to node
         }
 
+    for ((_, depNode) in graphDependencies) {
+      if (depNode.isExtendable) {
+        scopes += depNode.scopes
+      }
+    }
+
     val dependencyGraphNode =
       DependencyGraphNode(
         sourceGraph = graphDeclaration,
-        isExtendable =
-          dependencyGraphAnno.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true,
+        isExtendable = isExtendable,
         dependencies = graphDependencies,
         scopes = scopes,
         bindsFunctions = bindsFunctions,
@@ -644,10 +745,18 @@ internal class DependencyGraphTransformer(
       )
     }
     node.creator?.parameters?.valueParameters.orEmpty().forEach {
-      graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
+      // Only expose the binding if it's a bound instance or extended graph. Included containers are
+      // not directly available
+      if (it.isBindsInstance || it.isExtends) {
+        graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
+      }
     }
 
-    node.providerFactories.forEach { (typeKey, providerFactory) ->
+    val providerFactoriesToAdd = buildList {
+      addAll(node.providerFactories)
+      addAll(node.allDependencies.filter { it.isExtendable }.flatMap { it.providerFactories })
+    }
+    providerFactoriesToAdd.forEach { (typeKey, providerFactory) ->
       val parameters = providerFactory.parameters
       val contextKey = ContextualTypeKey(typeKey)
 
@@ -731,8 +840,16 @@ internal class DependencyGraphTransformer(
     }
 
     // Add bindings from graph dependencies
-    node.dependencies.forEach { (_, depNode) ->
-      depNode.accessors.forEach { (getter, contextualTypeKey) ->
+    // TODO dedupe this allDependencies iteration with graph gen
+    node.allDependencies.forEach { depNode ->
+      for ((getter, contextualTypeKey) in depNode.accessors) {
+        if (depNode.isExtendable && getter in depNode.multibindingAccessors) {
+          // Ignore exposed multibindings, we will aggregate them in our own graph
+          continue
+        } else if (contextualTypeKey.typeKey in graph) {
+          // This can happen if an ancestor graph binding appears from multiple parents
+          continue
+        }
         graph.addBinding(
           contextualTypeKey.typeKey,
           Binding.GraphDependency(
@@ -742,6 +859,52 @@ internal class DependencyGraphTransformer(
           ),
           bindingStack,
         )
+      }
+      if (depNode.isExtendable && depNode.proto != null) {
+        val providerFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
+        val instanceFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
+
+        val providerFieldsSet = depNode.proto.provider_field_names.toSet()
+        val instanceFieldsSet = depNode.proto.instance_field_names.toSet()
+
+        val graphImpl = depNode.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+        for (accessor in graphImpl.functions) {
+          when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
+            in providerFieldsSet -> {
+              val metroFunction = metroFunctionOf(accessor)
+              providerFieldAccessorsByName[metroFunction.ir.name] = metroFunction
+            }
+            in instanceFieldsSet -> {
+              val metroFunction = metroFunctionOf(accessor)
+              instanceFieldAccessorsByName[metroFunction.ir.name] = metroFunction
+            }
+          }
+        }
+
+        depNode.proto.provider_field_names.forEach { providerField ->
+          val accessor =
+            providerFieldAccessorsByName.getValue(
+              "${providerField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
+            )
+          val contextualTypeKey = ContextualTypeKey.from(this, accessor.ir, accessor.annotations)
+          val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
+          if (existingBinding != null) {
+            // If it's a graph type we can just proceed, can happen with common ancestors
+            val rawType = existingBinding.typeKey.type.rawTypeOrNull()
+            if (rawType?.annotationsIn(symbols.dependencyGraphAnnotations).orEmpty().any()) {
+              return@forEach
+            }
+          }
+          graph.addBinding(
+            contextualTypeKey.typeKey,
+            Binding.GraphDependency(
+              graph = depNode.sourceGraph,
+              getter = accessor.ir,
+              typeKey = contextualTypeKey.typeKey,
+            ),
+            bindingStack,
+          )
+        }
       }
     }
 
@@ -787,7 +950,11 @@ internal class DependencyGraphTransformer(
     }
 
     // Add aliases ("@Binds"). Important this runs last so it can resolve aliases
-    node.bindsFunctions.forEach { (bindingCallable, contextKey) ->
+    val bindsFunctionsToAdd = buildList {
+      addAll(node.bindsFunctions)
+      addAll(node.allDependencies.filter { it.isExtendable }.flatMap { it.bindsFunctions })
+    }
+    bindsFunctionsToAdd.forEach { (bindingCallable, contextKey) ->
       val annotations = bindingCallable.annotations
       val parameters = bindingCallable.ir.parameters(metroContext)
       // TODO what about T -> T but into multibinding
@@ -951,12 +1118,15 @@ internal class DependencyGraphTransformer(
     with(graphClass) {
       val ctor = primaryConstructor!!
 
-      // Add fields for providers. May include both scoped and unscoped providers as well as bound
+      // Fields for providers. May include both scoped and unscoped providers as well as bound
       // instances
       val providerFields = mutableMapOf<TypeKey, IrField>()
       val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
-      val graphTypesToCtorParams = mutableMapOf<TypeKey, IrValueParameter>()
       val fieldNameAllocator = dev.zacsweers.metro.compiler.NameAllocator()
+      val extraConstructorStatements = mutableListOf<IrBuilderWithScope.() -> IrStatement>()
+
+      // Fields for this graph and other instance params
+      val instanceFields = mutableMapOf<TypeKey, IrField>()
 
       node.creator?.let { creator ->
         for ((i, param) in creator.parameters.valueParameters.withIndex()) {
@@ -966,45 +1136,81 @@ internal class DependencyGraphTransformer(
           //  together
           val irParam = ctor.valueParameters[i]
 
+          val addBoundInstanceField: (initializer: IrBuilderWithScope.() -> IrExpression) -> Unit =
+            { initializer ->
+              providerFields[param.typeKey] =
+                addField(
+                    fieldName = fieldNameAllocator.newName("${param.name}InstanceProvider"),
+                    fieldType = symbols.metroProvider.typeWith(param.type),
+                    fieldVisibility = DescriptorVisibilities.PRIVATE,
+                  )
+                  .apply {
+                    isFinal = true
+                    this.initializer =
+                      pluginContext.createIrBuilder(symbol).run {
+                        irExprBody(instanceFactory(param.type, initializer()))
+                      }
+                  }
+            }
           if (isBindsInstance) {
-            providerFields[param.typeKey] =
-              addField(
-                  fieldName = fieldNameAllocator.newName("${param.name}Instance"),
-                  fieldType = symbols.metroProvider.typeWith(param.type),
-                  fieldVisibility = DescriptorVisibilities.PRIVATE,
-                )
-                .apply {
-                  isFinal = true
-                  initializer =
-                    pluginContext.createIrBuilder(symbol).run {
-                      irExprBody(instanceFactory(param.type, irGet(irParam)))
-                    }
-                }
+            addBoundInstanceField { irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
             // this constructor parameter for provider field initialization
             val graphDep = node.dependencies.getValue(param.typeKey)
-            for ((_, contextualTypeKey) in graphDep.accessors) {
-              graphTypesToCtorParams[contextualTypeKey.typeKey] = irParam
+            instanceFields[graphDep.typeKey] =
+              addSimpleInstanceField(
+                fieldNameAllocator.newName(
+                  graphDep.sourceGraph.name.asString().decapitalizeUS() + "Instance"
+                ),
+                graphDep.typeKey.type,
+                { irGet(irParam) },
+              )
+            if (graphDep.isExtendable) {
+              // Extended graphs
+              addBoundInstanceField { irGet(irParam) }
+              // Check that the input parameter is an instance of the metrograph class
+              val depMetroGraph = graphDep.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+              extraConstructorStatements.add {
+                irIfThen(
+                  condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
+                  type = pluginContext.irBuiltIns.unitType,
+                  thenPart =
+                    irThrow(
+                      irInvoke(
+                        callee = context.irBuiltIns.illegalArgumentExceptionSymbol,
+                        args =
+                          listOf(
+                            irConcat().apply {
+                              addArgument(
+                                irString(
+                                  "Constructor parameter ${irParam.name} _must_ be a Metro-compiler-generated instance of ${graphDep.sourceGraph.kotlinFqName.asString()} but was "
+                                )
+                              )
+                              addArgument(
+                                irInvoke(
+                                  dispatchReceiver = irGet(irParam),
+                                  callee = context.irBuiltIns.memberToString,
+                                )
+                              )
+                            }
+                          ),
+                      )
+                    ),
+                )
+              }
             }
           }
         }
       }
 
-      // Add fields for this graph and other instance params
-      val instanceFields = mutableMapOf<TypeKey, IrField>()
       val thisReceiverParameter = thisReceiverOrFail
       val thisGraphField =
-        addField(
-            fieldName = fieldNameAllocator.newName(graphClass.name.asString().decapitalizeUS()),
-            fieldType = thisReceiverParameter.type,
-            fieldVisibility = DescriptorVisibilities.PRIVATE,
-          )
-          .apply {
-            isFinal = true
-            initializer =
-              pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(thisReceiverParameter)) }
-          }
+        addSimpleInstanceField(
+          fieldNameAllocator.newName("thisGraphInstance"),
+          thisReceiverParameter.type,
+          { irGet(thisReceiverParameter) },
+        )
 
       instanceFields[node.typeKey] = thisGraphField
       // Add convenience mappings for all supertypes to this field so
@@ -1013,9 +1219,7 @@ internal class DependencyGraphTransformer(
         instanceFields[TypeKey(superType)] = thisGraphField
       }
 
-      // Expose the graph as a provider binding
-      // TODO can we just add a binding instead and store a
-      //  field only if requested more than once?
+      // Expose the graph as a provider field
       providerFields[node.typeKey] =
         addField(
             fieldName =
@@ -1037,6 +1241,77 @@ internal class DependencyGraphTransformer(
                 )
               }
           }
+
+      // Add instance fields for all the parent graphs
+      for (parent in node.allDependencies) {
+        if (!parent.isExtendable) continue
+        val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+        val proto =
+          parent.proto
+            ?: run {
+              reportError(
+                "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?"
+              )
+              exitProcessing()
+            }
+        val instanceAccessorNames = proto.instance_field_names.toSet()
+        val instanceAccessors =
+          parentMetroGraph.functions
+            .filter {
+              it.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR) in
+                instanceAccessorNames
+            }
+            .map {
+              val metroFunction = metroFunctionOf(it)
+              val contextKey = ContextualTypeKey.from(metroContext, it, metroFunction.annotations)
+              metroFunction to contextKey
+            }
+        for ((accessor, contextualTypeKey) in instanceAccessors) {
+          instanceFields.getOrPut(contextualTypeKey.typeKey) {
+            addField(
+                fieldName =
+                  fieldNameAllocator.newName(
+                    contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() +
+                      "Instance"
+                  ),
+                fieldType = contextualTypeKey.typeKey.type,
+                fieldVisibility = DescriptorVisibilities.PRIVATE,
+              )
+              .apply {
+                isFinal = true
+                initializer =
+                  pluginContext.createIrBuilder(symbol).run {
+                    val receiverTypeKey =
+                      accessor.ir.dispatchReceiverParameter!!
+                        .type
+                        .let {
+                          val rawType = it.rawTypeOrNull()
+                          // This stringy check is unfortunate but origins are not visible
+                          // across compilation boundaries
+                          if (rawType?.name == Symbols.Names.metroGraph) {
+                            // if it's a $$MetroGraph, we actually want the parent type
+                            rawType.parentAsClass.defaultType
+                          } else {
+                            it
+                          }
+                        }
+                        .let(::TypeKey)
+                    irExprBody(
+                      irInvoke(
+                        dispatchReceiver =
+                          irGetField(
+                            irGet(thisReceiverParameter),
+                            instanceFields.getValue(receiverTypeKey),
+                          ),
+                        callee = accessor.ir.symbol,
+                        typeHint = accessor.ir.returnType,
+                      )
+                    )
+                  }
+              }
+          }
+        }
+      }
 
       // Track a stack for bindings
       val bindingStack =
@@ -1068,11 +1343,46 @@ internal class DependencyGraphTransformer(
           bindingGraph,
           thisReceiverParameter,
           instanceFields,
-          graphTypesToCtorParams,
           providerFields,
           multibindingProviderFields,
           bindingStack,
         )
+
+      for ((key, binding) in bindingGraph.bindingsSnapshot()) {
+        if (binding is Binding.GraphDependency) {
+          val getter = binding.getter
+          if (getter.origin == Origins.ProviderFieldAccessor) {
+            // Init a provider field pointing at this
+            providerFields[key] =
+              addField(
+                  fieldName =
+                    fieldNameAllocator.newName(
+                      "${getter.name.asString().decapitalizeUS().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)}Provider"
+                    ),
+                  fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
+                  fieldVisibility = DescriptorVisibilities.PRIVATE,
+                )
+                .apply {
+                  isFinal = true
+                  initializer =
+                    pluginContext.createIrBuilder(symbol).run {
+                      // If this is in instance fields, just do a quick assignment
+                      val bindingExpression =
+                        if (binding.typeKey in instanceFields) {
+                          val field = instanceFields.getValue(binding.typeKey)
+                          instanceFactory(
+                            binding.typeKey.type,
+                            irGetField(irGet(thisReceiverParameter), field),
+                          )
+                        } else {
+                          generateBindingCode(binding, generationContext = baseGenerationContext)
+                        }
+                      irExprBody(bindingExpression)
+                    }
+                }
+          }
+        }
+      }
 
       // For all deferred types, assign them first as factories
       // TODO For any types that depend on deferred types, they need providers too?
@@ -1161,32 +1471,39 @@ internal class DependencyGraphTransformer(
       // fields for everything else. This is important in case they reference each other
       for ((deferredTypeKey, field) in deferredFields) {
         val binding = bindingGraph.requireBinding(deferredTypeKey, bindingStack)
-        with(ctor) {
-          val originalBody = checkNotNull(body)
-          buildBlockBody(pluginContext) {
-            +originalBody.statements
-            +irInvoke(
-                dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
-                callee = symbols.metroDelegateFactorySetDelegate,
-                // TODO de-dupe?
-                args =
-                  listOf(
-                    irGetField(irGet(thisReceiverParameter), field),
-                    pluginContext.createIrBuilder(symbol).run {
-                      generateBindingCode(
-                          binding,
-                          baseGenerationContext,
-                          fieldInitKey = deferredTypeKey,
-                        )
-                        .letIf(binding.scope != null) {
-                          // If it's scoped, wrap it in double-check
-                          // DoubleCheck.provider(<provider>)
-                          it.doubleCheck(this@run, symbols, binding.typeKey)
-                        }
-                    },
-                  ),
-              )
-              .apply { putTypeArgument(0, deferredTypeKey.type) }
+        extraConstructorStatements.add {
+          irInvoke(
+              dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
+              callee = symbols.metroDelegateFactorySetDelegate,
+              // TODO de-dupe?
+              args =
+                listOf(
+                  irGetField(irGet(thisReceiverParameter), field),
+                  pluginContext.createIrBuilder(symbol).run {
+                    generateBindingCode(
+                        binding,
+                        baseGenerationContext,
+                        fieldInitKey = deferredTypeKey,
+                      )
+                      .letIf(binding.scope != null) {
+                        // If it's scoped, wrap it in double-check
+                        // DoubleCheck.provider(<provider>)
+                        it.doubleCheck(this@run, symbols, binding.typeKey)
+                      }
+                  },
+                ),
+            )
+            .apply { putTypeArgument(0, deferredTypeKey.type) }
+        }
+      }
+
+      // Add extra constructor statements
+      with(ctor) {
+        val originalBody = checkNotNull(body)
+        buildBlockBody(pluginContext) {
+          +originalBody.statements
+          for (extra in extraConstructorStatements) {
+            +extra()
           }
         }
       }
@@ -1196,48 +1513,137 @@ internal class DependencyGraphTransformer(
       if (node.isExtendable) {
         timedComputation("Generating Metro metadata") {
           // Finally, generate metadata
-          val metroMetadata =
-            MetroMetadata(
-              node.toProto(
-                bindingGraph = bindingGraph,
-                providerFields = providerFields.values.map { it.name.asString() }.sorted(),
-              )
+          val graphProto =
+            node.toProto(
+              bindingGraph = bindingGraph,
+              parentGraphs =
+                node.allDependencies
+                  .filter { it.isExtendable }
+                  .mapToSet { it.sourceGraph.classIdOrFail.asString() },
+              providerFields =
+                providerFields
+                  .filterKeys { typeKey -> typeKey != node.typeKey }
+                  .values
+                  .map { it.name.asString() }
+                  .sorted(),
+              instanceFields =
+                instanceFields
+                  .filterKeys { typeKey -> typeKey != node.typeKey }
+                  .values
+                  .map { it.name.asString() }
+                  .sorted(),
             )
+          val metroMetadata = MetroMetadata(graphProto)
           val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
-          // TODO add to metadata
-          //  pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-          //    graphClass,
-          //    PLUGIN_ID,
-          //    serialized
-          //  )
+          pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
+            graphClass,
+            PLUGIN_ID,
+            serialized,
+          )
+          dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail] =
+            node.copy(proto = graphProto)
+        }
+        // TODO dedup logic below
+        // Expose getters for provider fields and expose them to metadata
+        for ((key, field) in providerFields) {
+          if (key == node.typeKey) continue // Skip the graph instance field
+          val binding = bindingGraph.requireBinding(key, bindingStack)
+          val getter =
+            addFunction(
+                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
+                returnType = field.type,
+                // TODO is this... ok?
+                visibility = DescriptorVisibilities.INTERNAL,
+                origin = Origins.ProviderFieldAccessor,
+              )
+              .apply {
+                // TODO add deprecation + hidden annotation to hide? Not sure if necessary
+                body =
+                  pluginContext.createIrBuilder(symbol).run {
+                    irExprBodySafe(
+                      symbol,
+                      generateBindingCode(
+                        binding,
+                        baseGenerationContext.withReceiver(dispatchReceiverParameter!!),
+                      ),
+                    )
+                  }
+              }
+          pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(getter)
+        }
+        for ((key, field) in instanceFields) {
+          if (key == node.typeKey) continue // Skip this graph instance field
+          val getter =
+            addFunction(
+                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
+                returnType = field.type,
+                // TODO is this... ok?
+                visibility = DescriptorVisibilities.INTERNAL,
+                origin = Origins.InstanceFieldAccessor,
+              )
+              .apply {
+                // TODO add deprecation + hidden annotation to hide? Not sure if necessary
+                body =
+                  pluginContext.createIrBuilder(symbol).run {
+                    irExprBodySafe(symbol, irGetField(irGet(dispatchReceiverParameter!!), field))
+                  }
+              }
+          pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(getter)
         }
       }
     }
 
   private fun DependencyGraphNode.toProto(
     bindingGraph: BindingGraph,
+    parentGraphs: Set<String>,
     providerFields: List<String>,
+    instanceFields: List<String>,
   ): DependencyGraphProto {
-    val providerFactoryClasses = mutableListOf<String>()
-    val bindsCallableIds = mutableListOf<String>()
-
-    for (binding in bindingGraph.bindingsSnapshot().values) {
-      if (binding is Binding.Provided) {
-        providerFactoryClasses +=
-          providesTransformer.getOrLookupFactoryClass(binding)!!.clazz.classIdOrFail.asString()
-      } else if (binding is Binding.Alias) {
-        binding.ir?.let { bindsCallableIds += it.name.asString() }
+    val bindsCallableIds =
+      bindingGraph.bindingsSnapshot().values.filterIsInstance<Binding.Alias>().mapNotNull { binding
+        ->
+        binding.ir?.name?.asString()
       }
-    }
+
+    var multibindingAccessors = 0
+    val accessorIds =
+      accessors
+        .sortedBy { it.first.ir.name.asString() }
+        .onEachIndexed { index, (_, contextKey) ->
+          val isMultibindingAccessor =
+            bindingGraph.requireBinding(contextKey.typeKey, BindingStack.empty()) is
+              Binding.Multibinding
+          if (isMultibindingAccessor) {
+            multibindingAccessors = multibindingAccessors or (1 shl index)
+          }
+        }
+        .map { it.first.ir.name.asString() }
 
     return DependencyGraphProto(
       is_graph = true,
       provider_field_names = providerFields,
-      provider_factory_classes = providerFactoryClasses.sorted(),
+      instance_field_names = instanceFields,
+      provider_factory_classes =
+        providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.asString() }.sorted(),
       binds_callable_ids = bindsCallableIds.sorted(),
-      accessor_callable_ids = accessors.map { it.first.ir.name.asString() }.sorted(),
+      accessor_callable_ids = accessorIds,
+      parent_graph_classes = parentGraphs.sorted(),
+      multibinding_accessor_indices = multibindingAccessors,
     )
   }
+
+  // TODO add asProvider support?
+  private fun IrClass.addSimpleInstanceField(
+    name: String,
+    type: IrType,
+    initializerExpression: IrBuilderWithScope.() -> IrExpression,
+  ): IrField =
+    addField(fieldName = name, fieldType = type, fieldVisibility = DescriptorVisibilities.PRIVATE)
+      .apply {
+        isFinal = true
+        initializer =
+          pluginContext.createIrBuilder(symbol).run { irExprBody(initializerExpression()) }
+      }
 
   private fun implementOverrides(
     accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
@@ -1935,26 +2341,13 @@ internal class DependencyGraphTransformer(
       }
 
       is Binding.GraphDependency -> {
-        /*
-        TODO eventually optimize this like dagger does and generate static provider classes that don't hold outer refs
-        private static final class GetCharSequenceProvider implements Provider<CharSequence> {
-          private final CharSequenceGraph charSequenceGraph;
-
-          GetCharSequenceProvider(CharSequenceGraph charSequenceGraph) {
-            this.charSequenceGraph = charSequenceGraph;
-          }
-
-          @Override
-          public CharSequence get() {
-            return Preconditions.checkNotNullFromGraph(charSequenceGraph.getCharSequence());
-          }
-        }
-        */
-
-        val graphParameter =
-          generationContext.graphTypesToCtorParams[binding.typeKey]
+        val ownerKey = TypeKey(binding.graph.defaultType)
+        val graphInstanceField =
+          generationContext.instanceFields[ownerKey]
             ?: run {
-              error("No matching dependency graph instance found for type $binding.typeKey")
+              error(
+                "No matching included type instance found for type ${ownerKey}. Available instance fields ${generationContext.instanceFields.keys}"
+              )
             }
         val lambda =
           irLambda(
@@ -1967,7 +2360,8 @@ internal class DependencyGraphTransformer(
           ) {
             +irReturn(
               irInvoke(
-                dispatchReceiver = irGet(graphParameter),
+                dispatchReceiver =
+                  irGetField(irGet(generationContext.thisReceiver), graphInstanceField),
                 callee = binding.getter.symbol,
                 typeHint = binding.typeKey.type,
               )
@@ -2294,7 +2688,6 @@ internal class GraphGenerationContext(
   val graph: BindingGraph,
   val thisReceiver: IrValueParameter,
   val instanceFields: Map<TypeKey, IrField>,
-  val graphTypesToCtorParams: Map<TypeKey, IrValueParameter>,
   val providerFields: Map<TypeKey, IrField>,
   val multibindingProviderFields: Map<Binding.Provided, IrField>,
   val bindingStack: BindingStack,
@@ -2308,7 +2701,6 @@ internal class GraphGenerationContext(
       graph,
       receiver,
       instanceFields,
-      graphTypesToCtorParams,
       providerFields,
       multibindingProviderFields,
       bindingStack,

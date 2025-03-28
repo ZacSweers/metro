@@ -106,7 +106,8 @@ public annotation class DependencyGraph(
 ) {
   /**
    * Graph factories can be declared as a single nested declaration within the target graph to
-   * create instances with bound instances (via [Provides]) or graph dependencies.
+   * create instances with bound instances (via [Provides]), graph dependencies (via [Includes]), or
+   * parent graphs to extend (via [Extends]).
    *
    * ```
    * @DependencyGraph

@@ -19,10 +19,12 @@ import java.util.TreeSet
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -341,7 +343,11 @@ internal sealed interface Binding {
     override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation?
-      get() = getter.locationOrNull()
+      get() = getter.propertyIfAccessor.locationOrNull()
+
+    override fun toString(): String {
+      return "${graph.kotlinFqName}.${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
+    }
   }
 
   // TODO sets

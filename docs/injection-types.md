@@ -220,7 +220,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(message: String): AppGraph
+    fun create(@Provides message: String): AppGraph
   }
 }
 

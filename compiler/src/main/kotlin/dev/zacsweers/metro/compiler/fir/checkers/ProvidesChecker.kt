@@ -13,17 +13,22 @@ import dev.zacsweers.metro.compiler.fir.scopeAnnotation
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
+import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.getDirectOverriddenSymbols
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -79,12 +84,31 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
-    // Ensure declarations are within a class/object/interface
+    // Ensure declarations are within a class/companion object/interface
     if (declaration.symbol.containingClassLookupTag() == null) {
       reporter.reportOn(
         source,
         FirMetroErrors.PROVIDES_ERROR,
-        "@Provides/@Binds declarations must be within a class/object/interface",
+        "@Provides/@Binds declarations must be within an interface, class, or companion object. " +
+          "If you're seeing this, `${declaration.nameOrSpecialName}` is likely defined as a " +
+          "top-level method which isn't supported.",
+        context,
+      )
+      return
+    } else if (
+      annotations.isProvides &&
+        declaration.symbol.getContainingClassSymbol()?.classKind?.isObject == true &&
+        declaration.symbol.getContainingClassSymbol()?.isCompanion != true
+    ) {
+      // @Provides declarations can't live in objects currently, this is a common case hit when
+      // migrating from Dagger/Anvil and you have a non-contributed @Module,
+      // e.g. `@Module object MyModule { /* provides */ }`
+      reporter.reportOn(
+        source,
+        FirMetroErrors.PROVIDES_ERROR,
+        "@Provides declarations must be within an interface, class, or companion object. " +
+          "`${declaration.nameOrSpecialName}` appears to be defined directly within a " +
+          "(non-companion) object.",
         context,
       )
       return

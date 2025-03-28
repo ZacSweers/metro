@@ -31,7 +31,7 @@ tasks.register<JavaExec>("generateTests") {
   outputs.dir(layout.projectDirectory.dir("src/test/java")).withPropertyName("generatedTests")
 
   classpath = sourceSets.test.get().runtimeClasspath
-  mainClass.set("dev.zacsweers.metro.GenerateTestsKt")
+  mainClass.set("dev.zacsweers.metro.compiler.GenerateTestsKt")
   workingDir = rootDir
 }
 

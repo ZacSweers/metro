@@ -1,0 +1,3 @@
+/Provides_AbstractClass_MayNotHaveTypeParameters.kt:(110,113): error: `@Provides` declarations may not have type parameters.
+
+/Provides_AbstractClass_MayNotHaveTypeParameters.kt:(192,195): error: `@Provides` declarations may not have type parameters.

@@ -236,6 +236,8 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           assistedIdentifier = "",
           symbols = symbols,
           isGraphInstance = true,
+          isExtends = false,
+          isIncludes = false,
           // This creates a binding stack entry for the graph instance parameter.
           // This is used for cycle detection in the dependency graph.
           // This code path is executed when a provider function is not in an object
@@ -593,7 +595,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     return providerFactories.map { providerFactory -> providerFactory.typeKey to providerFactory }
   }
 
-  private fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
+  fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
     val factoryType = factoryCls.superTypes.first { it.classOrNull == symbols.metroFactory }
     // Extract TypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
