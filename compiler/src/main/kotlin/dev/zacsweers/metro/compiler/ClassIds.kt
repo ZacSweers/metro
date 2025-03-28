@@ -106,4 +106,7 @@ public class ClassIds(
 
   internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
   internal val lazyTypes = setOf(Symbols.ClassIds.lazy) + customLazyClasses
+
+  internal val includes = setOf(Symbols.ClassIds.metroIncludes)
+  internal val extends = setOf(Symbols.ClassIds.metroExtends)
 }
