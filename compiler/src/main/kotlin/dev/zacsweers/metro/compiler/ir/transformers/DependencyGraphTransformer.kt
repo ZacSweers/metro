@@ -107,6 +107,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -320,6 +321,8 @@ internal class DependencyGraphTransformer(
           .map { it to ContextualTypeKey.from(metroContext, it.ir, it.annotations) }
 
       // Read metadata if this is an extendable graph
+      val dependencies = mutableMapOf<TypeKey, DependencyGraphNode>()
+      var graphProto: DependencyGraphProto? = null
       if (isExtendable) {
         val serialized =
           pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
@@ -335,7 +338,7 @@ internal class DependencyGraphTransformer(
         }
 
         val metadata = MetroMetadata.ADAPTER.decode(serialized)
-        val graphProto = metadata.dependency_graph
+        graphProto = metadata.dependency_graph
         if (graphProto == null) {
           reportError(
             "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
@@ -371,13 +374,24 @@ internal class DependencyGraphTransformer(
         // We copy scope annotations from parents onto this graph if it's extendable so we only need
         // to copy once
         scopes.addAll(graphDeclaration.scopeAnnotations())
+
+        dependencies.putAll(
+          graphProto.parent_graph_classes.associate { graphClassId ->
+            val clazz =
+              pluginContext.referenceClass(ClassId.fromString(graphClassId))
+                ?: error("Could not find graph class $graphClassId.")
+            val typeKey = TypeKey(clazz.defaultType)
+            val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack)
+            typeKey to node
+          }
+        )
       }
 
       val dependentNode =
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
           isExtendable = isExtendable,
-          dependencies = emptyMap(),
+          dependencies = dependencies,
           scopes = scopes,
           providerFactories = providerFactories,
           accessors = accessors,
@@ -386,6 +400,7 @@ internal class DependencyGraphTransformer(
           isExternal = true,
           creator = null,
           typeKey = TypeKey(graphDeclaration.typeWith()),
+          proto = graphProto,
         )
 
       dependencyGraphNodesByClass[graphClassId] = dependentNode
@@ -826,7 +841,9 @@ internal class DependencyGraphTransformer(
       for ((getter, contextualTypeKey) in depNode.accessors) {
         if (depNode.isExtendable && getter in depNode.multibindingAccessors) {
           // Ignore exposed multibindings, we will aggregate them in our own graph
-          println("Ignoring multibinding $getter")
+          continue
+        } else if (contextualTypeKey.typeKey in graph) {
+          // This can happen if an ancestor graph binding appears from multiple parents
           continue
         }
         graph.addBinding(
@@ -843,14 +860,17 @@ internal class DependencyGraphTransformer(
         val providerFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
         val instanceFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
 
+        val providerFieldsSet = depNode.proto.provider_field_names.toSet()
+        val instanceFieldsSet = depNode.proto.instance_field_names.toSet()
+
         val graphImpl = depNode.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
         for (accessor in graphImpl.functions) {
-          when (accessor.origin) {
-            Origins.ProviderFieldAccessor -> {
+          when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
+            in providerFieldsSet -> {
               val metroFunction = metroFunctionOf(accessor)
               providerFieldAccessorsByName[metroFunction.ir.name] = metroFunction
             }
-            Origins.InstanceFieldAccessor -> {
+            in instanceFieldsSet -> {
               val metroFunction = metroFunctionOf(accessor)
               instanceFieldAccessorsByName[metroFunction.ir.name] = metroFunction
             }
@@ -859,7 +879,9 @@ internal class DependencyGraphTransformer(
 
         depNode.proto.provider_field_names.forEach { providerField ->
           val accessor =
-            providerFieldAccessorsByName.getValue("${providerField}_metroAccessor".asName())
+            providerFieldAccessorsByName.getValue(
+              "${providerField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
+            )
           val contextualTypeKey = ContextualTypeKey.from(this, accessor.ir, accessor.annotations)
           val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
           if (existingBinding != null) {
@@ -1217,61 +1239,73 @@ internal class DependencyGraphTransformer(
           }
 
       // Add instance fields for all the parent graphs
-      // TODO only add if not in providerFields already. May be a bound instance
       for (parent in node.allDependencies) {
         if (!parent.isExtendable) continue
         val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+        val proto =
+          parent.proto
+            ?: run {
+              reportError(
+                "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?"
+              )
+              exitProcessing()
+            }
+        val instanceAccessorNames = proto.instance_field_names.toSet()
         val instanceAccessors =
           parentMetroGraph.functions
-            .filter { it.origin == Origins.InstanceFieldAccessor }
+            .filter {
+              it.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR) in
+                instanceAccessorNames
+            }
             .map {
               val metroFunction = metroFunctionOf(it)
               val contextKey = ContextualTypeKey.from(metroContext, it, metroFunction.annotations)
               metroFunction to contextKey
             }
         for ((accessor, contextualTypeKey) in instanceAccessors) {
-          val field =
-            instanceFields.getOrPut(contextualTypeKey.typeKey) {
-              addField(
-                  fieldName =
-                    fieldNameAllocator.newName(
-                      contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() +
-                        "Instance"
-                    ),
-                  fieldType = contextualTypeKey.typeKey.type,
-                  fieldVisibility = DescriptorVisibilities.PRIVATE,
-                )
-                .apply {
-                  isFinal = true
-                  initializer =
-                    pluginContext.createIrBuilder(symbol).run {
-                      val receiverTypeKey =
-                        accessor.ir.dispatchReceiverParameter!!
-                          .type
-                          .let {
-                            val rawType = it.rawTypeOrNull()
-                            if (rawType?.origin == Origins.MetroGraphDeclaration) {
-                              // if it's a $$MetroGraph, we actually want the parent type
-                              rawType.parentAsClass.defaultType
-                            } else {
-                              it
-                            }
+          instanceFields.getOrPut(contextualTypeKey.typeKey) {
+            addField(
+                fieldName =
+                  fieldNameAllocator.newName(
+                    contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() +
+                      "Instance"
+                  ),
+                fieldType = contextualTypeKey.typeKey.type,
+                fieldVisibility = DescriptorVisibilities.PRIVATE,
+              )
+              .apply {
+                isFinal = true
+                initializer =
+                  pluginContext.createIrBuilder(symbol).run {
+                    val receiverTypeKey =
+                      accessor.ir.dispatchReceiverParameter!!
+                        .type
+                        .let {
+                          val rawType = it.rawTypeOrNull()
+                          // This stringy check is unfortunate but origins are not visible
+                          // across compilation boundaries
+                          if (rawType?.name == Symbols.Names.metroGraph) {
+                            // if it's a $$MetroGraph, we actually want the parent type
+                            rawType.parentAsClass.defaultType
+                          } else {
+                            it
                           }
-                          .let(::TypeKey)
-                      irExprBody(
-                        irInvoke(
-                          dispatchReceiver =
-                            irGetField(
-                              irGet(thisReceiverParameter),
-                              instanceFields.getValue(receiverTypeKey),
-                            ),
-                          callee = accessor.ir.symbol,
-                          typeHint = accessor.ir.returnType,
-                        )
+                        }
+                        .let(::TypeKey)
+                    irExprBody(
+                      irInvoke(
+                        dispatchReceiver =
+                          irGetField(
+                            irGet(thisReceiverParameter),
+                            instanceFields.getValue(receiverTypeKey),
+                          ),
+                        callee = accessor.ir.symbol,
+                        typeHint = accessor.ir.returnType,
                       )
-                    }
-                }
-            }
+                    )
+                  }
+              }
+          }
         }
       }
 
@@ -1319,7 +1353,7 @@ internal class DependencyGraphTransformer(
               addField(
                   fieldName =
                     fieldNameAllocator.newName(
-                      "${getter.name.asString().decapitalizeUS().removeSuffix("_metroAccessor")}Provider"
+                      "${getter.name.asString().decapitalizeUS().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)}Provider"
                     ),
                   fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
                   fieldVisibility = DescriptorVisibilities.PRIVATE,
@@ -1512,7 +1546,7 @@ internal class DependencyGraphTransformer(
           val binding = bindingGraph.requireBinding(key, bindingStack)
           val getter =
             addFunction(
-                name = "${field.name.asString()}_metroAccessor",
+                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
                 returnType = field.type,
                 // TODO is this... ok?
                 visibility = DescriptorVisibilities.INTERNAL,
@@ -1537,7 +1571,7 @@ internal class DependencyGraphTransformer(
           if (key == node.typeKey) continue // Skip this graph instance field
           val getter =
             addFunction(
-                name = "${field.name.asString()}_metroAccessor",
+                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
                 returnType = field.type,
                 // TODO is this... ok?
                 visibility = DescriptorVisibilities.INTERNAL,

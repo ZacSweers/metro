@@ -49,6 +49,7 @@ internal class Symbols(
     const val GET = "get"
     const val INJECT_MEMBERS = "injectMembers"
     const val INVOKE = "invoke"
+    const val METRO_ACCESSOR = "_metroAccessor"
     const val METRO_FACTORY = "$\$MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
     const val METRO_IMPL = "$\$Impl"
@@ -102,6 +103,7 @@ internal class Symbols(
     val injectMembers = Name.identifier(StringNames.INJECT_MEMBERS)
     val invoke = Name.identifier(StringNames.INVOKE)
     val isExtendable = "isExtendable".asName()
+    val metroAccessor = StringNames.METRO_ACCESSOR.asName()
     val metroFactory = Name.identifier(StringNames.METRO_FACTORY)
     val metroContribution = Name.identifier("$\$MetroContribution")
     val metroGraph = Name.identifier("$\$MetroGraph")

@@ -265,6 +265,57 @@ class GraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `multiple levels - three levels - multi-module`() {
+    val firstCompilation = compile(
+      source(
+        """
+            @DependencyGraph(isExtendable = true)
+            interface GrandParentGraph {
+              @Provides fun provideString(): String = "grandparent"
+            }
+
+            @DependencyGraph(isExtendable = true)
+            interface ParentGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(grandParent: GrandParentGraph): ParentGraph
+              }
+
+              @Provides fun provideInt(): Int = 1
+            }
+        """,
+        fileNameWithoutExtension = "ParentGraphs",
+      ),
+      debug = true
+    )
+
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ChildGraph {
+              val string: String
+              val int: Int
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(parent: ParentGraph): ChildGraph
+              }
+            }
+        """,
+      ),
+      previousCompilationResult = firstCompilation
+    ) {
+      val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val parentGraph =
+        ParentGraph.generatedMetroGraphClass().createGraphViaFactory(grandParentGraph)
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
+      assertThat(childGraph.callProperty<String>("string")).isEqualTo("grandparent")
+      assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
+    }
+  }
+
+  @Test
   fun `parent extends interface with companion provider`() {
     compile(
       source(
