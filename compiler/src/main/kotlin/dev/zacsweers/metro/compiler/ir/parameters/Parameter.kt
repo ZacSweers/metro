@@ -31,6 +31,8 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val typeKey: TypeKey
   val isGraphInstance: Boolean
   val isBindsInstance: Boolean
+  val isIncludes: Boolean
+  val isExtends: Boolean
   val hasDefault: Boolean
   val location: CompilerMessageSourceLocation?
   val ir: IrValueParameter

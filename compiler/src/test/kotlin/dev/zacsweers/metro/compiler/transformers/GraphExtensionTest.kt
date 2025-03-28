@@ -37,7 +37,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -72,7 +72,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -103,7 +103,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -139,7 +139,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -174,7 +174,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -208,7 +208,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -235,7 +235,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface ParentGraph {
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(grandParent: GrandParentGraph): ParentGraph
+                fun create(@Extends grandParent: GrandParentGraph): ParentGraph
               }
 
               @Provides fun provideInt(): Int = 1
@@ -248,7 +248,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """,
@@ -279,7 +279,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             interface ParentGraph {
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(grandParent: GrandParentGraph): ParentGraph
+                fun create(@Extends grandParent: GrandParentGraph): ParentGraph
               }
 
               @Provides fun provideInt(): Int = 1
@@ -299,7 +299,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -338,7 +338,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -373,7 +373,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
+                fun create(@Extends parent1: Parent1Graph, @Extends parent2: Parent2Graph): ChildGraph
               }
             }
         """
@@ -408,7 +408,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -443,7 +443,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
+                fun create(@Extends parent1: Parent1Graph, @Extends parent2: Parent2Graph): ChildGraph
               }
             }
         """
@@ -474,7 +474,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(parent: ParentGraph): ChildGraph
+                fun create(@Extends parent: ParentGraph): ChildGraph
               }
             }
         """
@@ -509,7 +509,7 @@ class GraphExtensionTest : MetroCompilerTest() {
           interface Parent1Graph {
             @DependencyGraph.Factory
             fun interface Factory {
-              fun create(grandParent: GrandParentGraph): Parent1Graph
+              fun create(@Extends grandParent: GrandParentGraph): Parent1Graph
             }
 
             @Provides fun provideString(): String = "parent1"
@@ -519,7 +519,7 @@ class GraphExtensionTest : MetroCompilerTest() {
           interface Parent2Graph {
             @DependencyGraph.Factory
             fun interface Factory {
-              fun create(grandParent: GrandParentGraph): Parent2Graph
+              fun create(@Extends grandParent: GrandParentGraph): Parent2Graph
             }
 
             @Provides fun provideDouble(): Double = 3.14
@@ -533,7 +533,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
             @DependencyGraph.Factory
             fun interface Factory {
-              fun create(parent1: Parent1Graph, parent2: Parent2Graph): ChildGraph
+              fun create(@Extends parent1: Parent1Graph, @Extends parent2: Parent2Graph): ChildGraph
             }
           }
       """
@@ -598,7 +598,7 @@ class GraphExtensionTest : MetroCompilerTest() {
 
             @DependencyGraph.Factory
             fun interface Factory {
-              fun create(parent: ParentGraph): ChildGraph
+              fun create(@Extends parent: ParentGraph): ChildGraph
             }
           }
         """

@@ -18,6 +18,8 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.Name
 
 @Poko
@@ -28,6 +30,8 @@ internal class ConstructorParameter(
   override val isAssisted: Boolean,
   override val isGraphInstance: Boolean,
   override val isBindsInstance: Boolean,
+  override val isIncludes: Boolean,
+  override val isExtends: Boolean,
   override val hasDefault: Boolean,
   override val assistedIdentifier: String,
   override val assistedParameterKey: Parameter.AssistedParameterKey =
@@ -98,8 +102,24 @@ internal fun IrValueParameter.toConstructorParameter(
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
-  val isBindsInstance =
-    annotationsIn(context.symbols.classIds.providesAnnotations).singleOrNull() != null
+  var isProvides = false
+  var isIncludes = false
+  var isExtends = false
+  for (annotation in annotations) {
+    val classId = annotation.symbol.owner.parentAsClass.classId
+    when (classId) {
+      in context.symbols.classIds.providesAnnotations -> {
+        isProvides = true
+      }
+      in context.symbols.classIds.includes -> {
+        isIncludes = true
+      }
+      in context.symbols.classIds.extends -> {
+        isExtends = true
+      }
+      else -> continue
+    }
+  }
 
   val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
 
@@ -117,7 +137,9 @@ internal fun IrValueParameter.toConstructorParameter(
       symbols = context.symbols,
       isGraphInstance = false,
       bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
-      isBindsInstance = isBindsInstance,
+      isBindsInstance = isProvides,
+      isExtends = isExtends,
+      isIncludes = isIncludes,
       hasDefault = defaultValue != null,
       location = locationOrNull(),
     )

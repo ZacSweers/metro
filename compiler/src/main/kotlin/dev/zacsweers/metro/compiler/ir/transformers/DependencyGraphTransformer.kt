@@ -566,7 +566,7 @@ internal class DependencyGraphTransformer(
         ?.parameters
         ?.valueParameters
         .orEmpty()
-        .filter { !it.isBindsInstance }
+        .filter { it.isIncludes || it.isExtends }
         .associate {
           val type = it.typeKey.type.rawType()
           val node =
@@ -745,7 +745,9 @@ internal class DependencyGraphTransformer(
       )
     }
     node.creator?.parameters?.valueParameters.orEmpty().forEach {
-      graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
+      if (it.isBindsInstance || it.isExtends) {
+        graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
+      }
     }
 
     val providerFactoriesToAdd = buildList {
