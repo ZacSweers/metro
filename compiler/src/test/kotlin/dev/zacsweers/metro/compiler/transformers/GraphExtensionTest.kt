@@ -266,9 +266,10 @@ class GraphExtensionTest : MetroCompilerTest() {
 
   @Test
   fun `multiple levels - three levels - multi-module`() {
-    val firstCompilation = compile(
-      source(
-        """
+    val firstCompilation =
+      compile(
+        source(
+          """
             @DependencyGraph(isExtendable = true)
             interface GrandParentGraph {
               @Provides fun provideString(): String = "grandparent"
@@ -284,10 +285,9 @@ class GraphExtensionTest : MetroCompilerTest() {
               @Provides fun provideInt(): Int = 1
             }
         """,
-        fileNameWithoutExtension = "ParentGraphs",
-      ),
-      debug = true
-    )
+          fileNameWithoutExtension = "ParentGraphs",
+        )
+      )
 
     compile(
       source(
@@ -302,9 +302,9 @@ class GraphExtensionTest : MetroCompilerTest() {
                 fun create(parent: ParentGraph): ChildGraph
               }
             }
-        """,
+        """
       ),
-      previousCompilationResult = firstCompilation
+      previousCompilationResult = firstCompilation,
     ) {
       val grandParentGraph = GrandParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val parentGraph =
