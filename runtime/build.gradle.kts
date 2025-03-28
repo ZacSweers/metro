@@ -73,6 +73,10 @@ kotlin {
         withJvm()
         withNative()
       }
+      group("browserCommon") {
+        withJs()
+        withWasmJs()
+      }
     }
   }
 
@@ -90,14 +94,15 @@ kotlin {
   }
 
   targets
-    .matching {
-      it.platformType == KotlinPlatformType.js || it.platformType == KotlinPlatformType.wasm
-    }
     .configureEach {
+      val target = this
       compilations.configureEach {
         compileTaskProvider.configure {
           compilerOptions {
-            freeCompilerArgs.add("-Xklib-duplicated-unique-name-strategy=allow-all-with-warning")
+            freeCompilerArgs.add("-Xexpect-actual-classes")
+            if (target.platformType == KotlinPlatformType.js || target.platformType == KotlinPlatformType.wasm) {
+              freeCompilerArgs.add("-Xklib-duplicated-unique-name-strategy=allow-all-with-warning")
+            }
           }
         }
       }
