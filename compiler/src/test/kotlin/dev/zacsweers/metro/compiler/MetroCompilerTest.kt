@@ -271,7 +271,11 @@ abstract class MetroCompilerTest {
     if (debug) {
       compilation.workingDir
         .walkTopDown()
-        .filter { file -> file.isFile && (file.extension.let { it == "kt" || it == "java" }) }
+        .filter { file -> file.extension.let { it == "kt" || it == "java" } }
+        .filterNot {
+          // Don't print test sources
+          it.absolutePath.contains("sources")
+        }
         .forEach { file ->
           println("Generated source file: ${file.name}")
           println(file.readText())
