@@ -490,6 +490,14 @@ internal sealed interface Binding {
             appendLine(key.render(short = false))
             appendLine()
             appendBindingStack(bindingStack, short = false)
+            val similarBindings = bindingGraph.findSimilarBindings(key)
+            if (similarBindings.isNotEmpty()) {
+              appendLine()
+              appendLine("Similar bindings:")
+              for (binding in similarBindings) {
+                appendLine("  - ${binding.typeKey.render(short = true)}")
+              }
+            }
             if (metroContext.debug) {
               appendLine(
                 bindingGraph.dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false)

@@ -128,6 +128,15 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
 
   fun findBinding(key: TypeKey): Binding? = bindings[key]
 
+  fun findSimilarBindings(key: TypeKey): List<Binding> {
+    return if (key.qualifier != null) {
+      listOfNotNull(findBinding(key.copy(qualifier = null)))
+    } else {
+      // Little more involved, iterate the bindings for ones with the same type
+      bindings.values.filter { it.typeKey.type == key.type }
+    }
+  }
+
   // For bindings we expect to already be cached
   fun requireBinding(key: TypeKey, stack: BindingStack): Binding =
     bindings[key]
@@ -159,7 +168,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     typeKey: TypeKey,
     bindingStack: BindingStack,
   ): Binding.Multibinding {
-    return bindings.getOrPut(typeKey) {
+    val binding = bindings.getOrPut(typeKey) {
       Binding.Multibinding.create(metroContext, typeKey, null).also {
         addBinding(typeKey, it, bindingStack)
         // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
@@ -174,7 +183,13 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           addBinding(providerTypeKey, it, bindingStack)
         }
       }
-    } as Binding.Multibinding
+    }
+
+    return binding as? Binding.Multibinding ?: error(
+      """
+        Expected a multibinding but got $binding.
+      """.trimIndent()
+    )
   }
 
   fun getOrCreateBinding(contextKey: ContextualTypeKey, bindingStack: BindingStack): Binding {
