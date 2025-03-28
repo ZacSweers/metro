@@ -2098,4 +2098,67 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertThat(graph.callProperty<Any>("impl2")).isSameInstanceAs(impl2)
     }
   }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/250
+  @Test
+  fun `instantiating graphs is possible from separate compilations`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          @DependencyGraph
+          interface ExampleGraph
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          fun main() = createGraph<ExampleGraph>()
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    ) {
+      val graph = invokeMain<Any>()
+      assertNotNull(graph)
+      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/250
+  @Test
+  fun `instantiating graphs is possible from separate compilations - custom factory`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          @DependencyGraph
+          interface ExampleGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun createGraph(): ExampleGraph
+            }
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          fun main() = createGraphFactory<ExampleGraph.Factory>().createGraph()
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    ) {
+      val graph = invokeMain<Any>()
+      assertNotNull(graph)
+      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+    }
+  }
 }

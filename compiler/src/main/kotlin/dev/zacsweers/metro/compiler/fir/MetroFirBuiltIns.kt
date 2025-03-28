@@ -37,6 +37,12 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val graphFactoryInvokeFunctionMarkerClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(
+      Symbols.ClassIds.graphFactoryInvokeFunctionMarkerClass
+    ) as FirRegularClassSymbol
+  }
+
   val composableClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.composable)
       as FirRegularClassSymbol

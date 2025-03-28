@@ -118,6 +118,7 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getValueArgument
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isFromJava
@@ -220,9 +221,9 @@ internal class DependencyGraphTransformer(
         }
         val companion = rawType.companionObject()!!
         val factoryFunction =
-          companion.functions.single {
-            it.origin == Origins.MetroGraphCreatorsObjectInvokeDeclaration
-          }
+          companion.functions.singleOrNull {
+            it.hasAnnotation(Symbols.FqNames.graphFactoryInvokeFunctionMarkerClass)
+          } ?: error("Cannot find a graph factory function for ${rawType.kotlinFqName}")
         // Replace it with a call directly to the create function
         return pluginContext.createIrBuilder(expression.symbol).run {
           irCall(callee = factoryFunction.symbol, type = type).apply {
