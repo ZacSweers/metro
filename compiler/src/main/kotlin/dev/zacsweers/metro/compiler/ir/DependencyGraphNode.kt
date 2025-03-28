@@ -29,6 +29,11 @@ internal data class DependencyGraphNode(
   val proto: DependencyGraphProto? = null,
 ) {
 
+  val publicAccessors by unsafeLazy {
+    accessors
+      .mapToSet { (_, contextKey) -> contextKey.typeKey }
+  }
+
   val multibindingAccessors by unsafeLazy {
     proto
       ?.let {

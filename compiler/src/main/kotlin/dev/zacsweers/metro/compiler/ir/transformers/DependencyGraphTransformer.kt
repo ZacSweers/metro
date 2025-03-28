@@ -1523,7 +1523,9 @@ internal class DependencyGraphTransformer(
                   .mapToSet { it.sourceGraph.classIdOrFail.asString() },
               providerFields =
                 providerFields
-                  .filterKeys { typeKey -> typeKey != node.typeKey }
+                  .filterKeys { typeKey ->
+                    typeKey != node.typeKey && typeKey !in node.publicAccessors
+                  }
                   .values
                   .map { it.name.asString() }
                   .sorted(),
@@ -1544,10 +1546,13 @@ internal class DependencyGraphTransformer(
           dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail] =
             node.copy(proto = graphProto)
         }
+
         // TODO dedup logic below
         // Expose getters for provider fields and expose them to metadata
         for ((key, field) in providerFields) {
           if (key == node.typeKey) continue // Skip the graph instance field
+          if (key in node.publicAccessors)
+            continue // Skip public accessors, would be redundant to add our own
           val binding = bindingGraph.requireBinding(key, bindingStack)
           val getter =
             addFunction(
