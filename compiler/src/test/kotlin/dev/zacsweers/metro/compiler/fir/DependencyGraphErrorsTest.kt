@@ -362,7 +362,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics("sdaf")
   }
-  
+
   @Test
   fun `all factory parameters must be annotated with Provides XOR Includes XOR Extends`() {
     val result =
@@ -381,7 +381,9 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
-    result.assertDiagnostics("e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends.")
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends."
+    )
   }
 
   @Test
@@ -393,7 +395,7 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               annotation class AnnotationClass
-            
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(
@@ -414,7 +416,8 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       """
         e: ExampleGraph.kt:13:17 @Includes cannot be applied to enums, annotations, or platform types.
         e: ExampleGraph.kt:15:17 @Includes cannot be applied to enums, annotations, or platform types.
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 

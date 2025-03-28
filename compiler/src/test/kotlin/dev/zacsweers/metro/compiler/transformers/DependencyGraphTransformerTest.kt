@@ -969,7 +969,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               }
             }
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
@@ -979,7 +979,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       e: CharSequenceGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself.
           test.CharSequenceGraph is requested at
               [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
