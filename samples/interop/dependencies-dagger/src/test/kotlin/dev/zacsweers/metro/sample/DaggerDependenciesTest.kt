@@ -4,6 +4,7 @@ package dev.zacsweers.metro.sample
 
 import dagger.Component
 import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.Includes
 import kotlin.test.Test
 
 /** Basic tests having dagger components and metro graphs depend on each other. */
@@ -15,7 +16,7 @@ class DaggerDependenciesTest {
 
     @DependencyGraph.Factory
     interface Factory {
-      fun create(stringComponent: StringComponent): GraphDependingOnComponent
+      fun create(@Includes stringComponent: StringComponent): GraphDependingOnComponent
     }
   }
 

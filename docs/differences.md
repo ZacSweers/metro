@@ -10,6 +10,7 @@
 * There is no `@Subcomponent`.
 * Metro can inject private properties and functions.
 * There is no `@BindsInstance`. Use `@Provides` on `@DependencyGraph.Factory` function parameters instead
+* Component dependencies must be annotated with `@Includes`.
 
 #### …from Kotlin-Inject
 
@@ -19,6 +20,7 @@
 * No need for use-site targets for most annotations.
 * No need for `@get:Provides Impl.bind: Type get() = this` to achieve type bindings. See the docs on `@Provides`.
 * Metro can inject private properties and functions.
+* When extending parent graphs, they must be annotated with `@Extends` in the child graph's creator.
 
 #### …from Anvil
 

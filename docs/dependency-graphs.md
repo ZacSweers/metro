@@ -53,7 +53,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(messageGraph: MessageGraph): AppGraph
+    fun create(@Includes messageGraph: MessageGraph): AppGraph
   }
 
   @DependencyGraph interface MessageGraph {
@@ -73,7 +73,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(messageProvider: MessageProvider): AppGraph
+    fun create(@Includes messageProvider: MessageProvider): AppGraph
   }
 
   interface MessageProvider {
@@ -114,9 +114,9 @@ interface AppGraph
 
 Dependency graphs can be marked as _extendable_ to allow child graphs to extend them. These are similar in functionality to Dagger's `Subcomponents` but are detached in nature like in kotlin-inject.
 
-A graph most opt itself in via `@DependencyGraph(..., isExtendable = true)`, which will make the Metro compiler generate extra metadata for downstream child graphs.
+A graph must opt itself into extension in via `@DependencyGraph(..., isExtendable = true)`, which will make the Metro compiler generate extra metadata for downstream child graphs.
 
-Then, a graph parameter to a child graph's creator will be automatically recognized as an extended parent.
+Then, a child graph can add an `@Extends`-annotated parameter to its creator to extend that graph.
 
 ```kotlin
 @DependencyGraph(isExtendable = true)
@@ -128,7 +128,7 @@ interface AppGraph {
 interface UserGraph {
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(appGraph: AppGraph): UserGraph
+    fun create(@Extends appGraph: AppGraph): UserGraph
   }
 }
 ```
