@@ -745,6 +745,8 @@ internal class DependencyGraphTransformer(
       )
     }
     node.creator?.parameters?.valueParameters.orEmpty().forEach {
+      // Only expose the binding if it's a bound instance or extended graph. Included containers are
+      // not directly available
       if (it.isBindsInstance || it.isExtends) {
         graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
       }
@@ -1156,17 +1158,17 @@ internal class DependencyGraphTransformer(
             // It's a graph dep. Add all its accessors as available keys and point them at
             // this constructor parameter for provider field initialization
             val graphDep = node.dependencies.getValue(param.typeKey)
+            instanceFields[graphDep.typeKey] =
+              addSimpleInstanceField(
+                fieldNameAllocator.newName(
+                  graphDep.sourceGraph.name.asString().decapitalizeUS() + "Instance"
+                ),
+                graphDep.typeKey.type,
+                { irGet(irParam) },
+              )
             if (graphDep.isExtendable) {
               // Extended graphs
               addBoundInstanceField { irGet(irParam) }
-              instanceFields[graphDep.typeKey] =
-                addSimpleInstanceField(
-                  fieldNameAllocator.newName(
-                    graphDep.sourceGraph.name.asString().decapitalizeUS() + "Instance"
-                  ),
-                  graphDep.typeKey.type,
-                  { irGet(irParam) },
-                )
               // Check that the input parameter is an instance of the metrograph class
               val depMetroGraph = graphDep.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
               extraConstructorStatements.add {
@@ -2339,11 +2341,12 @@ internal class DependencyGraphTransformer(
       }
 
       is Binding.GraphDependency -> {
+        val ownerKey = TypeKey(binding.graph.defaultType)
         val graphInstanceField =
-          generationContext.instanceFields[binding.typeKey]
+          generationContext.instanceFields[ownerKey]
             ?: run {
               error(
-                "No matching dependency graph instance found for type ${binding.typeKey}. Available instance fields ${generationContext.instanceFields.keys}"
+                "No matching included type instance found for type ${ownerKey}. Available instance fields ${generationContext.instanceFields.keys}"
               )
             }
         val lambda =
