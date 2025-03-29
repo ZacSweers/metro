@@ -128,6 +128,11 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
 
   fun findBinding(key: TypeKey): Binding? = bindings[key]
 
+  // TODO
+  //  - multibindings that use that type, if any
+  //  - exclude types _in_ multibindings
+  //  - bindings of super/subtypes
+  //  - the location of similar bindings/how they’re provided
   fun findSimilarBindings(key: TypeKey): List<Binding> {
     return if (key.qualifier != null) {
       listOfNotNull(findBinding(key.copy(qualifier = null)))
