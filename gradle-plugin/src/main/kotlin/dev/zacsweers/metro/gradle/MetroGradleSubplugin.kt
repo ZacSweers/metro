@@ -112,6 +112,11 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               .takeUnless { it.isEmpty() }
               ?.let { SubpluginOption("custom-contributes-binding", value = it.joinToString(":")) }
               ?.let(::add)
+          contributesIntoSet
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
+              ?.let(::add)
           elementsIntoSet
               .getOrElse(emptySet())
               .takeUnless { it.isEmpty() }

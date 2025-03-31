@@ -228,6 +228,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
+  CUSTOM_CONTRIBUTES_INTO_SET(
+    RawMetroOption(
+      name = "custom-contributes-into-set",
+      defaultValue = emptySet(),
+      valueDescription = "ContributesIntoSet annotations",
+      description = "ContributesIntoSet annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
   CUSTOM_ELEMENTS_INTO_SET(
     RawMetroOption(
       name = "custom-elements-into-set",
@@ -389,6 +400,8 @@ public data class MetroOptions(
     MetroOption.CUSTOM_CONTRIBUTES_TO.raw.defaultValue.expectAs(),
   val customContributesBindingAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_CONTRIBUTES_BINDING.raw.defaultValue.expectAs(),
+  val customContributesIntoSetAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_CONTRIBUTES_INTO_SET.raw.defaultValue.expectAs(),
   val customElementsIntoSetAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue.expectAs(),
   val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
@@ -434,6 +447,7 @@ public data class MetroOptions(
       val customProvidesAnnotations = mutableSetOf<ClassId>()
       val customQualifierAnnotations = mutableSetOf<ClassId>()
       val customScopeAnnotations = mutableSetOf<ClassId>()
+      val customContributesIntoSetAnnotations = mutableSetOf<ClassId>()
 
       for (entry in MetroOption.entries) {
         when (entry) {
@@ -509,6 +523,8 @@ public data class MetroOptions(
           MetroOption.CUSTOM_QUALIFIER ->
             customQualifierAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
+            customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
         }
       }
 
@@ -538,6 +554,7 @@ public data class MetroOptions(
           customProvidesAnnotations = customProvidesAnnotations,
           customQualifierAnnotations = customQualifierAnnotations,
           customScopeAnnotations = customScopeAnnotations,
+          customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
         )
 
       return options

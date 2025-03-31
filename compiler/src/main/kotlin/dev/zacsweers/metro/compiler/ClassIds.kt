@@ -15,6 +15,7 @@ public class ClassIds(
   customBindsAnnotations: Set<ClassId> = emptySet(),
   customContributesToAnnotations: Set<ClassId> = emptySet(),
   customContributesBindingAnnotations: Set<ClassId> = emptySet(),
+  internal val customContributesIntoSetAnnotations: Set<ClassId> = emptySet(),
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
   customGraphAnnotations: Set<ClassId> = emptySet(),
   customGraphFactoryAnnotations: Set<ClassId> = emptySet(),
@@ -102,7 +103,8 @@ public class ClassIds(
     contributesToAnnotations +
       contributesBindingAnnotations +
       contributesIntoSetAnnotations +
-      contributesIntoMapAnnotations
+      contributesIntoMapAnnotations +
+      customContributesIntoSetAnnotations
 
   internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
   internal val lazyTypes = setOf(Symbols.ClassIds.lazy) + customLazyClasses

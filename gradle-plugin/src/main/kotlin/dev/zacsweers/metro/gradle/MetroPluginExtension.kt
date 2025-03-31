@@ -83,6 +83,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
     public val binds: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesTo: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesBinding: SetProperty<String> = objects.setProperty(String::class.java)
+    public val contributesIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val graph: SetProperty<String> = objects.setProperty(String::class.java)
     public val graphFactory: SetProperty<String> = objects.setProperty(String::class.java)
@@ -168,6 +169,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
         graphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
         contributesBinding.add("com/squareup/anvil/annotations/ContributesBinding")
+        contributesIntoSet.add("com/squareup/anvil/annotations/ContributesMultibinding")
       }
       if (includeKotlinInjectAnvil) {
         graph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")

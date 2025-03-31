@@ -129,6 +129,18 @@ internal class ContributionsFirGenerator(session: FirSession) :
               listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
             }
         }
+        in session.classIds.customContributesIntoSetAnnotations -> {
+          contributions +=
+            if (contributingSymbol.mapKeyAnnotation(session) != null) {
+              Contribution.ContributesIntoMapBinding(contributingSymbol, annotation) {
+                listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
+              }
+            } else {
+              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+                listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
+              }
+            }
+        }
       }
     }
 

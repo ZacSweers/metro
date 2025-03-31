@@ -34,6 +34,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         customBindsAnnotations = options.customBindsAnnotations,
         customContributesToAnnotations = options.customContributesToAnnotations,
         customContributesBindingAnnotations = options.customContributesBindingAnnotations,
+        customContributesIntoSetAnnotations = options.customContributesIntoSetAnnotations,
         customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
         customGraphAnnotations = options.customGraphAnnotations,
         customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,

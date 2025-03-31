@@ -1122,6 +1122,64 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `ContributesMultibinding interop annotations add binding to set or map with MapKey`() {
+    compile(
+      source(
+        packageName = "com.squareup.anvil.annotations",
+        source =
+          """
+            annotation class ContributesMultibinding(
+              val scope: KClass<*>,
+              val boundType: KClass<*> = Unit::class,
+            )
+            """
+            .trimIndent(),
+      ),
+      source(
+        """
+          import com.squareup.anvil.annotations.ContributesMultibinding
+          import dev.zacsweers.metro.Inject
+          import dev.zacsweers.metro.MapKey
+
+          interface ContributedInterface
+          interface SecondInterface
+
+          @ContributesMultibinding(AppScope::class, boundType = ContributedInterface::class)
+          @Inject class Impl : ContributedInterface, SecondInterface
+
+          @MapKey annotation class MyKey(val key: Int)
+
+          @MyKey(1)
+          @ContributesMultibinding(AppScope::class, boundType = SecondInterface::class)
+          @Inject class MapImpl : ContributedInterface, SecondInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedSet: Set<ContributedInterface>
+            val contributedMap: Map<Int, SecondInterface>
+          }
+        """
+          .trimIndent()
+      ),
+      options =
+        metroOptions.copy(
+          customContributesIntoSetAnnotations =
+            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
+        ),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      graph.callProperty<Set<Any>>("contributedSet").also { contributedSet ->
+        assertThat(contributedSet.single()::class.qualifiedName).isEqualTo("test.Impl")
+      }
+
+      graph.callProperty<Map<Int, Any>>("contributedMap").also { contributedMap ->
+        assertThat(contributedMap.keys.single()).isEqualTo(1)
+        assertThat(contributedMap.values.single()::class.qualifiedName).isEqualTo("test.MapImpl")
+      }
+    }
+  }
+
+  @Test
   fun `implicit bound types use class qualifier - ContributesBinding`() {
     compile(
       source(
