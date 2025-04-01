@@ -225,18 +225,11 @@ internal class ContributionsFirGenerator(session: FirSession) :
     if (!owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
     val origin = owner.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val contributions = findContributions(origin) ?: return emptyList()
-    val properties =
-      contributions.mapNotNull { contribution ->
-        when (contribution) {
-          is Contribution.ContributesBinding,
-          is Contribution.ContributesIntoSetBinding,
-          is Contribution.ContributesIntoMapBinding -> {
-            buildBindingProperty(owner, contribution)
-          }
-          is Contribution.ContributesTo -> null
-        }
-      }
-    return properties
+
+    return contributions
+      .filterIsInstance<Contribution.BindingContribution>()
+      .filter { it.callableName == callableId.callableName.identifier }
+      .map { contribution -> buildBindingProperty(owner, contribution) }
   }
 
   private fun buildBindingProperty(

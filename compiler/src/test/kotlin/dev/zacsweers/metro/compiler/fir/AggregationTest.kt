@@ -1122,6 +1122,44 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `single instance of a type can be annotated with both @ContributesIntoSet and @ContributesBinding`() {
+    compile(
+      source(
+        """
+          import dev.zacsweers.metro.AppScope
+          import dev.zacsweers.metro.ContributesBinding
+          import dev.zacsweers.metro.ContributesIntoSet
+          import dev.zacsweers.metro.DependencyGraph
+          import dev.zacsweers.metro.Inject
+          import dev.zacsweers.metro.binding
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedSet: Set<ContributedInterface>
+            val contributedInterface: SecondInterface
+          }
+
+          interface ContributedInterface
+          interface SecondInterface
+
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class, binding<SecondInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
+          @Inject class Impl : ContributedInterface, SecondInterface
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      graph.callProperty<Set<Any>>("contributedSet").also { contributedSet ->
+        assertThat(contributedSet.single()::class.qualifiedName).isEqualTo("test.Impl")
+        assertThat(contributedSet.single())
+          .isEqualTo(graph.callProperty<Any>("contributedInterface"))
+      }
+    }
+  }
+
+  @Test
   fun `ContributesMultibinding interop annotations add binding to set or map with MapKey`() {
     compile(
       source(
