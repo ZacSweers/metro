@@ -256,6 +256,8 @@ internal sealed interface Binding {
           append(' ')
         }
       }
+      append(aliasedType.render(short = true))
+      append('.')
       append(nameHint)
       append(": ")
       append(typeKey.render(short = true))
