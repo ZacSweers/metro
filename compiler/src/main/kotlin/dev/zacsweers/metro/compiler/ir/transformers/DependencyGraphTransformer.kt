@@ -1209,7 +1209,7 @@ internal class DependencyGraphTransformer(
       val thisGraphField =
         addSimpleInstanceField(
           fieldNameAllocator.newName("thisGraphInstance"),
-          thisReceiverParameter.type,
+          node.typeKey.type,
           { irGet(thisReceiverParameter) },
         )
 
