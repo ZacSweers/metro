@@ -46,6 +46,13 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
         val duplicate = binding
         appendLine("├─ Binding 1: ${existing.getContributionLocationOrDiagnosticInfo()}")
         appendLine("├─ Binding 2: ${duplicate.getContributionLocationOrDiagnosticInfo()}")
+        if (existing == duplicate) {
+          appendLine("├─ Bindings are equal ${bindingStack.graph.name}")
+          appendLine(Throwable().stackTraceToString().lineSequence().joinToString { "\n├─ $it" })
+        }
+        if (existing === duplicate) {
+          appendLine("├─ Bindings are the same: ${bindingStack.graph.name}")
+        }
         appendBindingStack(bindingStack)
       }
       val location = bindingStack.graph.location()
@@ -123,7 +130,13 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       // Or the fully-qualified contributing class name
       ?: dependencies.entries.firstOrNull()?.key?.toString()
       // Or print the full set of info we know about the binding
-      ?: "Unknown source location, this may be contributed. Here's some additional information we have for the binding: $this"
+      ?: buildString {
+        val binding = this@getContributionLocationOrDiagnosticInfo
+        appendLine("Unknown source location, this may be contributed.")
+        appendLine("└─ Here's some additional information we have for the binding:")
+        appendLine("   ├─ Binding type: ${binding.javaClass.simpleName}")
+        appendLine("   └─ Binding information: $binding")
+      }
   }
 
   fun findBinding(key: TypeKey): Binding? = bindings[key]
