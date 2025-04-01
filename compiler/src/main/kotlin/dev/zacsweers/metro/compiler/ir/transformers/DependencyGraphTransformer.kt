@@ -2023,10 +2023,12 @@ internal class DependencyGraphTransformer(
       val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
 
       // TODO consolidate this logic with generateBindingCode
-      generationContext.instanceFields[typeKey]?.let { instanceField ->
-        // If it's in instance field, invoke that field
-        return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField).let {
-          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+      if (!contextualTypeKey.requiresProviderInstance) {
+        // IFF the parameter can take a direct instance, try our instance fields
+        generationContext.instanceFields[typeKey]?.let { instanceField ->
+          return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField).let {
+            with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+          }
         }
       }
 
