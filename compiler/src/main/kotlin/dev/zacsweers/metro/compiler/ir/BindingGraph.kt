@@ -186,28 +186,31 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     typeKey: TypeKey,
     bindingStack: BindingStack,
   ): Binding.Multibinding {
-    val binding = bindings.getOrPut(typeKey) {
-      Binding.Multibinding.create(metroContext, typeKey, null).also {
-        addBinding(typeKey, it, bindingStack)
-        // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
-        if (it.isMap) {
-          val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
-          val valueType =
-            typeKey.type.arguments[1]
-              .typeOrNull!!
-              .wrapInProvider(this@BindingGraph.metroContext.symbols.metroProvider)
-          val providerTypeKey =
-            typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
-          addBinding(providerTypeKey, it, bindingStack)
+    val binding =
+      bindings.getOrPut(typeKey) {
+        Binding.Multibinding.create(metroContext, typeKey, null).also {
+          addBinding(typeKey, it, bindingStack)
+          // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
+          if (it.isMap) {
+            val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
+            val valueType =
+              typeKey.type.arguments[1]
+                .typeOrNull!!
+                .wrapInProvider(this@BindingGraph.metroContext.symbols.metroProvider)
+            val providerTypeKey =
+              typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+            addBinding(providerTypeKey, it, bindingStack)
+          }
         }
       }
-    }
 
-    return binding as? Binding.Multibinding ?: error(
-      """
+    return binding as? Binding.Multibinding
+      ?: error(
+        """
         Expected a multibinding but got $binding.
-      """.trimIndent()
-    )
+      """
+          .trimIndent()
+      )
   }
 
   fun getOrCreateBinding(contextKey: ContextualTypeKey, bindingStack: BindingStack): Binding {

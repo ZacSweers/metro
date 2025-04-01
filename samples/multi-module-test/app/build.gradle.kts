@@ -6,9 +6,7 @@ plugins {
   application
 }
 
-application {
-  mainClass.set("dev.zacsweers.metro.sample.multimodule.app.MainKt")
-}
+application { mainClass.set("dev.zacsweers.metro.sample.multimodule.app.MainKt") }
 
 dependencies {
   implementation(project(":multi-module-test:common"))

@@ -5,6 +5,4 @@ plugins {
   id("dev.zacsweers.metro")
 }
 
-dependencies {
-  implementation(project(":multi-module-test:common"))
-}
+dependencies { implementation(project(":multi-module-test:common")) }

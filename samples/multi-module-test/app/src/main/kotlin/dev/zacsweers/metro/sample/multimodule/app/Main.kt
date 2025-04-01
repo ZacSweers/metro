@@ -13,25 +13,22 @@ fun createAppGraph(): AppGraph {
   val parentGraph = createGraph<ParentGraph>()
 
   // Create the child graph, extending the parent graph
-  val childGraph = createGraphFactory<ChildGraph.Factory>()
-    .create(parentGraph)
+  val childGraph = createGraphFactory<ChildGraph.Factory>().create(parentGraph)
 
   // Create the aggregator graph
   val aggregatorGraph = createGraph<AggregatorGraph>()
 
   // Create the app graph, extending the parent graph and including the child and aggregator graphs
-  val appGraph = createGraphFactory<AppGraph.Factory>()
-    .create(
-      childGraph = childGraph,
-      aggregatorGraph = aggregatorGraph
-    )
+  val appGraph =
+    createGraphFactory<AppGraph.Factory>()
+      .create(childGraph = childGraph, aggregatorGraph = aggregatorGraph)
 
   return appGraph
 }
 
 /**
- * Main entry point for the multi-module Metro sample application.
- * This demonstrates how to create and use all the components together.
+ * Main entry point for the multi-module Metro sample application. This demonstrates how to create
+ * and use all the components together.
  */
 fun main() {
   val appGraph = createAppGraph()

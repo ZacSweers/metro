@@ -29,7 +29,7 @@ include(
   ":multi-module-test:child-graph",
   ":multi-module-test:contributor",
   ":multi-module-test:aggregator",
-  ":multi-module-test:app"
+  ":multi-module-test:app",
 )
 
 includeBuild("..")

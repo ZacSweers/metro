@@ -2000,7 +2000,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           └─ Here's some additional information we have for the binding:
              ├─ Binding type: Alias
              └─ Binding information: @Binds ExampleClass.<get-bindAsOtherClass>: OtherClass
-          
+
           ├─ Binding 2: Unknown source location, this may be contributed.
           └─ Here's some additional information we have for the binding:
              ├─ Binding type: Alias

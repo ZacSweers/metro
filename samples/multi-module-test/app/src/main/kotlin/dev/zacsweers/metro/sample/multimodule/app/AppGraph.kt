@@ -5,12 +5,9 @@ package dev.zacsweers.metro.sample.multimodule.app
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Extends
 import dev.zacsweers.metro.Includes
-import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.Named
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.sample.multimodule.AppScope
-import dev.zacsweers.metro.sample.multimodule.FeatureScope
 import dev.zacsweers.metro.sample.multimodule.aggregator.AggregatorGraph
 import dev.zacsweers.metro.sample.multimodule.child.ChildGraph
 import dev.zacsweers.metro.sample.multimodule.parent.ParentGraph
@@ -29,7 +26,7 @@ interface AppGraph {
   interface Factory {
     fun create(
       @Extends childGraph: ChildGraph,
-      @Includes aggregatorGraph: AggregatorGraph
+      @Includes aggregatorGraph: AggregatorGraph,
     ): AppGraph
   }
 }

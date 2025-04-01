@@ -366,9 +366,7 @@ internal class Symbols(
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
   }
 
-  val lazyGetValue: IrFunctionSymbol by lazy {
-    stdlibLazy.getPropertyGetter("get")!!
-  }
+  val lazyGetValue: IrFunctionSymbol by lazy { stdlibLazy.getPropertyGetter("get")!! }
 
   val stdlibErrorFunction: IrFunctionSymbol by lazy {
     pluginContext

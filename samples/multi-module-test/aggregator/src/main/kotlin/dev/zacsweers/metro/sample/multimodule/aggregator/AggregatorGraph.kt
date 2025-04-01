@@ -13,36 +13,29 @@ import dev.zacsweers.metro.sample.multimodule.MapService
 import dev.zacsweers.metro.sample.multimodule.MessageService
 
 /**
- * Aggregator graph that demonstrates how to aggregate multiple contributions.
- * This graph uses AppScope, so it will automatically include all contributions to AppScope.
+ * Aggregator graph that demonstrates how to aggregate multiple contributions. This graph uses
+ * AppScope, so it will automatically include all contributions to AppScope.
  */
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class)
 interface AggregatorGraph {
 
   /**
-   * Access the set of item services.
-   * This will include all ItemService implementations contributed via @ContributesIntoSet.
+   * Access the set of item services. This will include all ItemService implementations contributed
+   * via @ContributesIntoSet.
    */
-  @Multibinds
-  val itemServices: Set<ItemService>
+  @Multibinds val itemServices: Set<ItemService>
 
   /**
-   * Access the map of map services.
-   * This will include all MapService implementations contributed via @ContributesIntoMap.
+   * Access the map of map services. This will include all MapService implementations contributed
+   * via @ContributesIntoMap.
    */
-  @Multibinds
-  val mapServices: Map<String, MapService>
+  @Multibinds val mapServices: Map<String, MapService>
 
-  /**
-   * Access a summary of all aggregated contributions.
-   */
-  @Named("aggregation_summary")
-  val aggregationSummary: String
+  /** Access a summary of all aggregated contributions. */
+  @Named("aggregation_summary") val aggregationSummary: String
 
-  /**
-   * Provides a summary of all aggregated contributions.
-   */
+  /** Provides a summary of all aggregated contributions. */
   @Named("aggregation_summary")
   @Provides
   fun provideAggregationSummary(
@@ -50,7 +43,7 @@ interface AggregatorGraph {
     @Named("contributed") contributedMessageService: MessageService,
     @Named("contributed") contributedMessage: String,
     itemServices: Set<ItemService>,
-    mapServices: Map<String, MapService>
+    mapServices: Map<String, MapService>,
   ): String {
     return buildString {
       appendLine("Aggregation Summary:")
