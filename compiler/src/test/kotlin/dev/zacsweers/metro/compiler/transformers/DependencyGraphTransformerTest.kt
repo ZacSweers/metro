@@ -2181,7 +2181,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             val int: Int
-            
+
             @Provides @Named("qualified") fun provideInt(): Int = 0
           }
         """
@@ -2192,13 +2192,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
-          
+
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph.int
-          
+
           Similar bindings:
             - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -2211,7 +2212,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             @Named("qualified") val int: Int
-            
+
             @Provides fun provideInt(): Int = 0
           }
         """
@@ -2222,13 +2223,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("qualified") kotlin.Int
-          
+
               @Named("qualified") kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph.int
-          
+
           Similar bindings:
             - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -2241,7 +2243,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             val int: Int
-            
+
             @Provides @IntoSet fun provideInt(): Int = 0
           }
         """
@@ -2252,13 +2254,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
-          
+
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph.int
-          
+
           Similar bindings:
             - Set<Int> (Multibinding). Type: Multibinding.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -2271,7 +2274,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             val int: Int
-            
+
             @Provides @IntoMap @StringKey("hello") fun provideInt(): Int = 0
           }
         """
@@ -2282,13 +2285,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
-          
+
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph.int
-          
+
           Similar bindings:
             - Map<String, Int> (Multibinding). Type: Multibinding.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -2301,7 +2305,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             val int: Number
-            
+
             @Provides fun provideInt(): Int = 0
           }
         """
@@ -2312,13 +2316,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Number
-          
+
               kotlin.Number is requested at
                   [test.ExampleGraph] test.ExampleGraph.int
-          
+
           Similar bindings:
             - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:3
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -2331,7 +2336,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             val int: Int
-            
+
             @Provides fun provideNumber(): Number = 0
           }
         """
@@ -2342,13 +2347,14 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
-          
+
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph.int
-          
+
           Similar bindings:
             - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -2361,7 +2367,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ExampleGraph {
             val int: Int
-            
+
             @Provides fun provideNumber(): Number = 0
             @Provides @Named("qualified") fun provideInt(): Int = 0
             @Provides @IntoSet fun provideIntIntoSet(): Int = 0
@@ -2374,15 +2380,16 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
-          
+
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph.int
-          
+
           Similar bindings:
             - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
             - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
             - Set<Int> (Multibinding). Type: Multibinding.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }

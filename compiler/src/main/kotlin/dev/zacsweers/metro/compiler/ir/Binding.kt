@@ -492,7 +492,7 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
 internal fun Binding.getContributionLocationOrDiagnosticInfo(): String {
   // First check if we have the contributing file and line number
   return reportableLocation?.render()
-  // Or the fully-qualified contributing class name
+    // Or the fully-qualified contributing class name
     ?: dependencies.entries.firstOrNull()?.key?.toString()
     // Or print the full set of info we know about the binding
     ?: buildString {
