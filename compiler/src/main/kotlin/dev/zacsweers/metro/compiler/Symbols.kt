@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.explicitParametersCount
+import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.CallableId
@@ -363,6 +364,10 @@ internal class Symbols(
 
   val stdlibLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
+  }
+
+  val lazyGetValue: IrFunctionSymbol by lazy {
+    stdlibLazy.getPropertyGetter("get")!!
   }
 
   val stdlibErrorFunction: IrFunctionSymbol by lazy {
