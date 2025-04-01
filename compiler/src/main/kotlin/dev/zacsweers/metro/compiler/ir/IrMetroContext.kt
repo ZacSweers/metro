@@ -24,6 +24,8 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
@@ -44,6 +46,8 @@ internal interface IrMetroContext {
   val options: MetroOptions
   val debug: Boolean
     get() = options.debug
+
+  val irTypeSystemContext: IrTypeSystemContext
 
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
@@ -155,6 +159,7 @@ internal interface IrMetroContext {
       override val symbols: Symbols,
       override val options: MetroOptions,
     ) : IrMetroContext {
+      override val irTypeSystemContext: IrTypeSystemContext = IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
 
       override fun loggerFor(type: MetroLogger.Type): MetroLogger {

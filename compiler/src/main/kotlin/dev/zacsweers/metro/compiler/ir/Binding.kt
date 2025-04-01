@@ -488,3 +488,18 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
     null
   }
 }
+
+internal fun Binding.getContributionLocationOrDiagnosticInfo(): String {
+  // First check if we have the contributing file and line number
+  return reportableLocation?.render()
+  // Or the fully-qualified contributing class name
+    ?: dependencies.entries.firstOrNull()?.key?.toString()
+    // Or print the full set of info we know about the binding
+    ?: buildString {
+      val binding = this@getContributionLocationOrDiagnosticInfo
+      appendLine("Unknown source location, this may be contributed.")
+      appendLine("└─ Here's some additional information we have for the binding:")
+      appendLine("   ├─ Binding type: ${binding.javaClass.simpleName}")
+      appendLine("   └─ Binding information: $binding")
+    }
+}
