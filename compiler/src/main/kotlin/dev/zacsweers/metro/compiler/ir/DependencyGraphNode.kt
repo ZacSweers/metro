@@ -39,7 +39,7 @@ internal data class DependencyGraphNode(
       ?.let {
         val bitfield = it.multibinding_accessor_indices
         val multibindingCallableIds =
-          it.accessor_callable_ids.filterIndexedTo(mutableSetOf()) { index, _ ->
+          it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
             (bitfield shr index) and 1 == 1
           }
         accessors
