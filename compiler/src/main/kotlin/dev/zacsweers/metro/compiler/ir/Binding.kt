@@ -6,7 +6,10 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.ir.Binding.Absent
+import dev.zacsweers.metro.compiler.ir.Binding.Assisted
+import dev.zacsweers.metro.compiler.ir.Binding.ConstructorInjected
+import dev.zacsweers.metro.compiler.ir.Binding.ObjectClass
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -433,87 +436,55 @@ internal sealed interface Binding {
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
   }
+}
 
-  companion object {
-    /** Creates an expected class binding for the given [contextKey] or fails processing. */
-    fun IrMetroContext.createInjectedClassBindingOrFail(
-      contextKey: ContextualTypeKey,
-      bindingStack: BindingStack,
-      bindingGraph: BindingGraph,
-      allowAbsent: Boolean = true,
-    ): Binding {
-      val key = contextKey.typeKey
-      val irClass = key.type.rawType()
-      val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+/** Creates an expected class binding for the given [contextKey] or returns null. */
+internal fun IrMetroContext.injectedClassBindingOrNull(
+  contextKey: ContextualTypeKey,
+  bindingStack: BindingStack,
+  bindingGraph: BindingGraph,
+  allowAbsent: Boolean = true,
+): Binding? {
+  val key = contextKey.typeKey
+  val irClass = key.type.rawType()
+  val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
-      if (irClass.isObject) {
-        // TODO make these opt-in?
-        return ObjectClass(irClass, classAnnotations, key)
-      }
+  if (irClass.isObject) {
+    // TODO make these opt-in?
+    return ObjectClass(irClass, classAnnotations, key)
+  }
 
-      val injectableConstructor =
-        irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
-      val binding =
-        if (injectableConstructor != null) {
-          val parameters = injectableConstructor.parameters(metroContext)
-          ConstructorInjected(
-            type = irClass,
-            injectedConstructor = injectableConstructor,
-            annotations = classAnnotations,
-            isAssisted = parameters.valueParameters.any { it.isAssisted },
-            typeKey = key,
-            parameters = parameters,
-          )
-        } else if (classAnnotations.isAssistedFactory) {
-          val function = irClass.singleAbstractFunction(metroContext)
-          val targetContextualTypeKey =
-            ContextualTypeKey.from(metroContext, function, classAnnotations)
-          val bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, function)
-          val targetBinding =
-            bindingStack.withEntry(bindingStackEntry) {
-              bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
-            } as ConstructorInjected
-          Assisted(
-            type = irClass,
-            function = function,
-            annotations = classAnnotations,
-            typeKey = key,
-            parameters = function.parameters(metroContext),
-            target = targetBinding,
-          )
-        } else if (allowAbsent && contextKey.hasDefault) {
-          Absent(key)
-        } else {
-          // TODO if a key with a different qualifier exists, consider mentioning it?
-          val declarationToReport = bindingStack.lastEntryOrGraph
-          val message = buildString {
-            append(
-              "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
-            )
-            appendLine(key.render(short = false))
-            appendLine()
-            appendBindingStack(bindingStack, short = false)
-            val similarBindings = bindingGraph.findSimilarBindings(key)
-            if (similarBindings.isNotEmpty()) {
-              appendLine()
-              appendLine("Similar bindings:")
-              for (binding in similarBindings) {
-                appendLine("  - ${binding.typeKey.render(short = true)}")
-              }
-            }
-            if (metroContext.debug) {
-              appendLine(
-                bindingGraph.dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false)
-              )
-            }
-          }
-
-          declarationToReport.reportError(message)
-
-          exitProcessing()
-        }
-
-      return binding
-    }
+  val injectableConstructor =
+    irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
+  return if (injectableConstructor != null) {
+    val parameters = injectableConstructor.parameters(metroContext)
+    ConstructorInjected(
+      type = irClass,
+      injectedConstructor = injectableConstructor,
+      annotations = classAnnotations,
+      isAssisted = parameters.valueParameters.any { it.isAssisted },
+      typeKey = key,
+      parameters = parameters,
+    )
+  } else if (classAnnotations.isAssistedFactory) {
+    val function = irClass.singleAbstractFunction(metroContext)
+    val targetContextualTypeKey = ContextualTypeKey.from(metroContext, function, classAnnotations)
+    val bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, function)
+    val targetBinding =
+      bindingStack.withEntry(bindingStackEntry) {
+        bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
+      } as ConstructorInjected
+    Assisted(
+      type = irClass,
+      function = function,
+      annotations = classAnnotations,
+      typeKey = key,
+      parameters = function.parameters(metroContext),
+      target = targetBinding,
+    )
+  } else if (allowAbsent && contextKey.hasDefault) {
+    Absent(key)
+  } else {
+    null
   }
 }

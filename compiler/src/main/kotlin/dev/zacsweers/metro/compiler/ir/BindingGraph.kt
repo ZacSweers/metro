@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
-import dev.zacsweers.metro.compiler.ir.Binding.Companion.createInjectedClassBindingOrFail
+import dev.zacsweers.metro.compiler.ir.Binding.Companion.injectedClassBindingOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
 import java.util.concurrent.ConcurrentHashMap
@@ -141,20 +141,6 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
 
   fun findBinding(key: TypeKey): Binding? = bindings[key]
 
-  // TODO
-  //  - multibindings that use that type, if any
-  //  - exclude types _in_ multibindings
-  //  - bindings of super/subtypes
-  //  - the location of similar bindings/how they’re provided
-  fun findSimilarBindings(key: TypeKey): List<Binding> {
-    return if (key.qualifier != null) {
-      listOfNotNull(findBinding(key.copy(qualifier = null)))
-    } else {
-      // Little more involved, iterate the bindings for ones with the same type
-      bindings.values.filter { it.typeKey.type == key.type }
-    }
-  }
-
   // For bindings we expect to already be cached
   fun requireBinding(key: TypeKey, stack: BindingStack): Binding =
     bindings[key]
@@ -220,14 +206,17 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       return existingBinding
     }
 
-    return metroContext.createInjectedClassBindingOrFail(contextKey, bindingStack, this).also {
-      binding ->
-      if (binding is Binding.Absent) {
-        // Don't store this
-        return binding
+    val binding = metroContext.injectedClassBindingOrNull(contextKey, bindingStack, this)
+    when (binding) {
+      is Binding.Absent -> {
+        // Do nothing, don't store this
       }
-      addBinding(key, binding, bindingStack)
+      is Binding -> {
+        addBinding(key, binding, bindingStack)
+      }
+      null -> reportMissingBinding(key, bindingStack)
     }
+    return binding
   }
 
   operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
@@ -401,6 +390,47 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           appendLine("─".repeat(50))
           appendBinding(binding, short, isNested = false)
         }
+    }
+  }
+
+  private fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack): Nothing {
+    val declarationToReport = bindingStack.lastEntryOrGraph
+    val message = buildString {
+      append(
+        "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
+      )
+      appendLine(typeKey.render(short = false))
+      appendLine()
+      appendBindingStack(bindingStack, short = false)
+      val similarBindings = findSimilarBindings(typeKey)
+      if (similarBindings.isNotEmpty()) {
+        appendLine()
+        appendLine("Similar bindings:")
+        for (binding in similarBindings) {
+          appendLine("  - ${binding.typeKey.render(short = true)}")
+        }
+      }
+      if (metroContext.debug) {
+        appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
+      }
+    }
+
+    with(metroContext) { declarationToReport.reportError(message) }
+
+    exitProcessing()
+  }
+
+  // TODO
+  //  - multibindings that use that type, if any
+  //  - exclude types _in_ multibindings
+  //  - bindings of super/subtypes
+  //  - the location of similar bindings/how they’re provided
+  private fun findSimilarBindings(key: TypeKey): List<Binding> {
+    return if (key.qualifier != null) {
+      listOfNotNull(findBinding(key.copy(qualifier = null)))
+    } else {
+      // Little more involved, iterate the bindings for ones with the same type
+      bindings.values.filter { it.typeKey.type == key.type }
     }
   }
 
