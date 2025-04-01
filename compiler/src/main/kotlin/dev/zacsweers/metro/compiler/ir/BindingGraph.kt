@@ -392,9 +392,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       if (similarBindings.isNotEmpty()) {
         appendLine()
         appendLine("Similar bindings:")
-        for (similarBinding in similarBindings) {
-          appendLine("  - $similarBinding")
-        }
+        similarBindings.map { "  - $it" }.sorted().forEach(::appendLine)
       }
       if (metroContext.debug) {
         appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
