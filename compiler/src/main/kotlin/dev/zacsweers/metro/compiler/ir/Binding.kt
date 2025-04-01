@@ -324,6 +324,7 @@ internal sealed interface Binding {
   data class GraphDependency(
     val graph: IrClass,
     val getter: IrSimpleFunction,
+    val isProviderFieldAccessor: Boolean,
     override val typeKey: TypeKey,
   ) : Binding {
     override val scope: IrAnnotation? = null
