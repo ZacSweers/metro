@@ -16,4 +16,6 @@ dependencies {
   implementation(project(":multi-module-test:child-graph"))
   implementation(project(":multi-module-test:contributor"))
   implementation(project(":multi-module-test:aggregator"))
+  testImplementation(libs.junit)
+  testImplementation(libs.truth)
 }

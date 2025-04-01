@@ -20,51 +20,16 @@ import dev.zacsweers.metro.sample.multimodule.parent.ParentGraph
 interface AppGraph {
   val application: Application
 
+  // Exposed for testing
+  val parentGraph: ParentGraph
+  val childGraph: ChildGraph
+  @Named("aggregation_summary") val aggregationSummary: String
+
   @DependencyGraph.Factory
   interface Factory {
     fun create(
       @Extends childGraph: ChildGraph,
       @Includes aggregatorGraph: AggregatorGraph
     ): AppGraph
-  }
-}
-
-/**
- * Main application class that demonstrates how to use all the components.
- */
-@SingleIn(AppScope::class)
-@Inject
-class Application(
-  private val parentGraph: ParentGraph,
-  private val childGraph: ChildGraph,
-  @Named("aggregation_summary")
-  private val aggregationSummary: String,
-) {
-  /**
-   * Run the application and print information about all the components.
-   */
-  // TODO create a unit test that asserts all these
-  fun run() {
-    println("=== Multi-Module Metro Sample ===")
-    println()
-
-    // Parent graph
-    println("=== Parent Graph ===")
-    println("Message: ${parentGraph.messageService.getMessage()}")
-    println("Number: ${parentGraph.numberService.getNumber()}")
-    println()
-
-    // Child graph
-    println("=== Child Graph ===")
-    println("Message from parent: ${childGraph.messageService.getMessage()}")
-    println("Number from parent: ${childGraph.numberService.getNumber()}")
-    println("Items: ${childGraph.itemService.getItems()}")
-    println("Combined message: ${childGraph.combinedMessage}")
-    println()
-
-    // Aggregator graph
-    println("=== Aggregator Graph ===")
-    println(aggregationSummary)
-    println()
   }
 }

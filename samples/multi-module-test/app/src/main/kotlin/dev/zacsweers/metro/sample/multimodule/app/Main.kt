@@ -8,11 +8,7 @@ import dev.zacsweers.metro.sample.multimodule.aggregator.AggregatorGraph
 import dev.zacsweers.metro.sample.multimodule.child.ChildGraph
 import dev.zacsweers.metro.sample.multimodule.parent.ParentGraph
 
-/**
- * Main entry point for the multi-module Metro sample application.
- * This demonstrates how to create and use all the components together.
- */
-fun main() {
+fun createAppGraph(): AppGraph {
   // Create the parent graph
   val parentGraph = createGraph<ParentGraph>()
 
@@ -30,6 +26,14 @@ fun main() {
       aggregatorGraph = aggregatorGraph
     )
 
-  // Run the application
+  return appGraph
+}
+
+/**
+ * Main entry point for the multi-module Metro sample application.
+ * This demonstrates how to create and use all the components together.
+ */
+fun main() {
+  val appGraph = createAppGraph()
   appGraph.application.run()
 }
