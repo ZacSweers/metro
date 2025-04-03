@@ -123,8 +123,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       name = "generate-hint-properties",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description =
-        "Enable/disable generation of hint properties.",
+      description = "Enable/disable generation of hint properties.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -484,8 +483,7 @@ public data class MetroOptions(
               options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
 
           MetroOption.GENERATE_HINT_PROPERTIES ->
-            options =
-              options.copy(generateHintProperties = configuration.getAsBoolean(entry))
+            options = options.copy(generateHintProperties = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =
