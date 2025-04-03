@@ -67,6 +67,9 @@ interface TestNetworkProviders {
 }
 ```
 
+!!! warning
+    `@Contributes*.replaces` cannot replace classes in the _same compilation_ as the _graph that is merging them_.
+
 ## @ContributesBinding
 
 This annotation is used to contribute injected classes to a target scope as a given bound type.
