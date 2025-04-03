@@ -86,6 +86,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
+              MetroOption.GENERATE_HINT_PROPERTIES ->
+                processor.option(entry.raw.cliOption, generateHintProperties)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.LOGGING -> {

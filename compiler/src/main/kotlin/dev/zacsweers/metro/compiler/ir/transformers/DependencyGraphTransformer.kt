@@ -66,6 +66,7 @@ import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.BindsCallableId
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.unsafeLazy
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
@@ -156,7 +157,9 @@ internal class DependencyGraphTransformer(
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
-  private val contributionHintIrTransformer = ContributionHintIrTransformer(context, moduleFragment)
+  private val contributionHintIrTransformer by unsafeLazy {
+    ContributionHintIrTransformer(context, moduleFragment)
+  }
 
   // Keyed by the source declaration
   private val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
@@ -246,7 +249,7 @@ internal class DependencyGraphTransformer(
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
     // Native compilation hint gen can't be done until https://youtrack.jetbrains.com/issue/KT-75865
-    if (!pluginContext.platform.isNative()) {
+    if (options.generateHintProperties && !pluginContext.platform.isNative()) {
       contributionHintIrTransformer.visitClass(declaration)
     }
     membersInjectorTransformer.visitClass(declaration)

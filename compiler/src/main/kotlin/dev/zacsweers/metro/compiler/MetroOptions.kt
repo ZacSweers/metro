@@ -118,6 +118,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  GENERATE_HINT_PROPERTIES(
+    RawMetroOption.boolean(
+      name = "generate-hint-properties",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable generation of hint properties.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -378,6 +389,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   val enableTopLevelFunctionInjection: Boolean =
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
+  val generateHintProperties: Boolean =
+    MetroOption.GENERATE_HINT_PROPERTIES.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     MetroOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -469,6 +482,10 @@ public data class MetroOptions(
           MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
             options =
               options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
+
+          MetroOption.GENERATE_HINT_PROPERTIES ->
+            options =
+              options.copy(generateHintProperties = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =
