@@ -81,9 +81,10 @@ nav:
       - 'Validation & Error Reporting': validation-and-error-reporting.md
       - 'Interop': interop.md
       - 'Generating Custom Metro Code': generating-metro-code.md
+      - 'Adoption Strategies': adoption.md
   - 'Debugging': debugging.md
   - 'API': api/0.x/index.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
-#  - 'Contributing': contributing.md
+  - 'Contributing': contributing.md
 #  - 'CoC': code-of-conduct.md
