@@ -139,6 +139,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphData {
   val graphs = mutableMapOf<ClassId, DependencyGraphNode>()
@@ -244,7 +245,10 @@ internal class DependencyGraphTransformer(
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    contributionHintIrTransformer.visitClass(declaration)
+    // Native compilation hint gen can't be done until https://youtrack.jetbrains.com/issue/KT-75865
+    if (!pluginContext.platform.isNative()) {
+      contributionHintIrTransformer.visitClass(declaration)
+    }
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
