@@ -1076,15 +1076,17 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `repeated ContributesBinding annotations with different scopes and same bound types are ok2`() {
+  fun `repeated ContributesBinding anvil interop works for boundType and ignoreQualifier`() {
     compile(
       source(
         packageName = "com.squareup.anvil.annotations",
         source =
           """
+            @Repeatable
             annotation class ContributesBinding(
               val scope: KClass<*>,
               val boundType: KClass<*> = Unit::class,
+              val ignoreQualifier: Boolean = false
             )
             """
             .trimIndent(),
@@ -1097,13 +1099,17 @@ class AggregationTest : MetroCompilerTest() {
           interface ContributedInterface
           interface SecondInterface
 
-          @ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @SingleIn(AppScope::class)
+          @ForScope(AppScope::class)
+          @ContributesBinding(AppScope::class, boundType = SecondInterface::class)
+          @ContributesBinding(AppScope::class, boundType = ContributedInterface::class, ignoreQualifier = true)
           @Inject
           class Impl : ContributedInterface, SecondInterface
 
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val contributedInterface: ContributedInterface
+            @ForScope(AppScope::class) val secondInterface: SecondInterface
           }
         """
           .trimIndent()
@@ -1118,6 +1124,8 @@ class AggregationTest : MetroCompilerTest() {
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+      val secondInterface = graph.callProperty<Any>("secondInterface")
+      assertThat(contributedInterface).isEqualTo(secondInterface)
     }
   }
 

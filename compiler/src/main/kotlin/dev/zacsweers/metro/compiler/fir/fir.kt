@@ -32,6 +32,7 @@ import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
@@ -811,6 +812,10 @@ internal fun FirAnnotation.resolvedBindingArgument(session: FirSession): FirType
 
 internal fun FirAnnotation.anvilKClassBoundTypeArgument(session: FirSession): FirTypeRef? {
   return getAnnotationKClassArgument("boundType".asName(), session)?.toFirResolvedTypeRef()
+}
+
+internal fun FirAnnotation.anvilIgnoreQualifier(session: FirSession): Boolean {
+  return getBooleanArgument("ignoreQualifier".asName(), session) ?: false
 }
 
 internal fun FirAnnotation.getAnnotationKClassArgument(
