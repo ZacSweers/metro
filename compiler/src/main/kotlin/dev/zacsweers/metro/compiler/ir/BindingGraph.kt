@@ -102,10 +102,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           binding.sourceBindings.flatMapTo(mutableSetOf()) { sourceBinding ->
             when (sourceBinding) {
               is Binding.Provided -> {
-                getFunctionDependencies(
-                  sourceBinding.providerFactory.clazz.primaryConstructor!!,
-                  bindingStack,
-                )
+                sourceBinding.parameters.valueParameters.mapToSet { it.contextualTypeKey }
               }
               is Binding.Alias -> {
                 setOf(ContextualTypeKey(sourceBinding.aliasedType))
