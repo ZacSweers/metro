@@ -28,6 +28,32 @@ public class ClassIds(
   customQualifierAnnotations: Set<ClassId> = emptySet(),
   customScopeAnnotations: Set<ClassId> = emptySet(),
 ) {
+  public companion object {
+    public fun fromOptions(options: MetroOptions): ClassIds =
+      ClassIds(
+        customProviderClasses = options.customProviderTypes,
+        customLazyClasses = options.customLazyTypes,
+        customAssistedAnnotations = options.customAssistedAnnotations,
+        customAssistedFactoryAnnotations = options.customAssistedFactoryAnnotations,
+        customAssistedInjectAnnotations = options.customAssistedInjectAnnotations,
+        customBindsAnnotations = options.customBindsAnnotations,
+        customContributesToAnnotations = options.customContributesToAnnotations,
+        customContributesBindingAnnotations = options.customContributesBindingAnnotations,
+        customContributesIntoSetAnnotations = options.customContributesIntoSetAnnotations,
+        customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
+        customGraphAnnotations = options.customGraphAnnotations,
+        customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
+        customInjectAnnotations = options.customInjectAnnotations,
+        customIntoMapAnnotations = options.customIntoMapAnnotations,
+        customIntoSetAnnotations = options.customIntoSetAnnotations,
+        customMapKeyAnnotations = options.customMapKeyAnnotations,
+        customMultibindsAnnotations = options.customMultibindsAnnotations,
+        customProvidesAnnotations = options.customProvidesAnnotations,
+        customQualifierAnnotations = options.customQualifierAnnotations,
+        customScopeAnnotations = options.customScopeAnnotations,
+      )
+  }
+
   private fun FqName.classIdOf(simpleName: String): ClassId {
     return classIdOf(Name.identifier(simpleName))
   }

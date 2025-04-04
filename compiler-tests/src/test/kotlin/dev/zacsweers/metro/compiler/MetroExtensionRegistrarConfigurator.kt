@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
+import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -10,6 +11,7 @@ import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.messageCollector
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
 import org.jetbrains.kotlin.test.model.TestModule
@@ -17,13 +19,15 @@ import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.TestServices
 
 fun TestConfigurationBuilder.configurePlugin() {
-  useConfigurators(::MetroExtensionRegistrarConfigurator, ::RuntimeEnvironmentConfigurator)
+  useConfigurators(::MetroExtensionRegistrarConfigurator, ::MetroRuntimeEnvironmentConfigurator)
 
   useDirectives(MetroDirectives)
 
   useCustomRuntimeClasspathProviders(::MetroRuntimeClassPathProvider)
 
   useSourcePreprocessor(::MetroDefaultImportPreprocessor)
+
+  configureAnvilAnnotations()
 }
 
 class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
@@ -40,8 +44,38 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         publicProviderSeverity =
           module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
             ?: MetroOptions.DiagnosticSeverity.NONE,
+        customGraphAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/MergeComponent"))
+            }
+          },
+        customGraphFactoryAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/MergeComponent.Factory"))
+            }
+          },
+        customContributesToAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/ContributesTo"))
+            }
+          },
+        customContributesBindingAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
+            }
+          },
+        customContributesIntoSetAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
+            }
+          },
       )
-    val classIds = ClassIds()
+    val classIds = ClassIds.fromOptions(options)
     FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(configuration.messageCollector, classIds, options)

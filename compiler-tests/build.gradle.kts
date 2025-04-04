@@ -5,7 +5,8 @@ plugins {
   java
 }
 
-val metroRuntimeClasspath: Configuration by configurations.creating
+val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
+val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 
 dependencies {
   testImplementation(project(":compiler"))
@@ -15,6 +16,8 @@ dependencies {
   testImplementation(libs.kotlin.compiler)
 
   metroRuntimeClasspath(project(":runtime"))
+  anvilRuntimeClasspath(libs.anvil.annotations)
+  anvilRuntimeClasspath(libs.anvil.annotations.optional)
 
   // Dependencies required to run the internal test framework.
   testRuntimeOnly(libs.kotlin.reflect)
@@ -47,6 +50,7 @@ tasks.withType<Test> {
   useJUnitPlatform()
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
+  systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")

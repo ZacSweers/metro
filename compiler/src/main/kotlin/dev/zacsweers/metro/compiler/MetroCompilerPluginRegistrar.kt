@@ -24,29 +24,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     if (!options.enabled) return
 
-    val classIds =
-      ClassIds(
-        customProviderClasses = options.customProviderTypes,
-        customLazyClasses = options.customLazyTypes,
-        customAssistedAnnotations = options.customAssistedAnnotations,
-        customAssistedFactoryAnnotations = options.customAssistedFactoryAnnotations,
-        customAssistedInjectAnnotations = options.customAssistedInjectAnnotations,
-        customBindsAnnotations = options.customBindsAnnotations,
-        customContributesToAnnotations = options.customContributesToAnnotations,
-        customContributesBindingAnnotations = options.customContributesBindingAnnotations,
-        customContributesIntoSetAnnotations = options.customContributesIntoSetAnnotations,
-        customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
-        customGraphAnnotations = options.customGraphAnnotations,
-        customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
-        customInjectAnnotations = options.customInjectAnnotations,
-        customIntoMapAnnotations = options.customIntoMapAnnotations,
-        customIntoSetAnnotations = options.customIntoSetAnnotations,
-        customMapKeyAnnotations = options.customMapKeyAnnotations,
-        customMultibindsAnnotations = options.customMultibindsAnnotations,
-        customProvidesAnnotations = options.customProvidesAnnotations,
-        customQualifierAnnotations = options.customQualifierAnnotations,
-        customScopeAnnotations = options.customScopeAnnotations,
-      )
+    val classIds = ClassIds.fromOptions(options)
 
     if (options.debug) {
       configuration.messageCollector.report(

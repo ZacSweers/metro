@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertNotNull
-import org.jetbrains.kotlin.name.ClassId
 import org.junit.Ignore
 
 class AggregationTest : MetroCompilerTest() {
@@ -1076,60 +1075,6 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `repeated ContributesBinding anvil interop works for boundType and ignoreQualifier`() {
-    compile(
-      source(
-        packageName = "com.squareup.anvil.annotations",
-        source =
-          """
-            @Repeatable
-            annotation class ContributesBinding(
-              val scope: KClass<*>,
-              val boundType: KClass<*> = Unit::class,
-              val ignoreQualifier: Boolean = false
-            )
-            """
-            .trimIndent(),
-      ),
-      source(
-        """
-          import com.squareup.anvil.annotations.ContributesBinding
-          import dev.zacsweers.metro.Inject
-
-          interface ContributedInterface
-          interface SecondInterface
-
-          @SingleIn(AppScope::class)
-          @ForScope(AppScope::class)
-          @ContributesBinding(AppScope::class, boundType = SecondInterface::class)
-          @ContributesBinding(AppScope::class, boundType = ContributedInterface::class, ignoreQualifier = true)
-          @Inject
-          class Impl : ContributedInterface, SecondInterface
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-            @ForScope(AppScope::class) val secondInterface: SecondInterface
-          }
-        """
-          .trimIndent()
-      ),
-      options =
-        metroOptions.copy(
-          customContributesBindingAnnotations =
-            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
-        ),
-    ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      val contributedInterface = graph.callProperty<Any>("contributedInterface")
-      assertThat(contributedInterface).isNotNull()
-      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
-      val secondInterface = graph.callProperty<Any>("secondInterface")
-      assertThat(contributedInterface).isEqualTo(secondInterface)
-    }
-  }
-
-  @Test
   fun `single instance of a type can be annotated with both @ContributesIntoSet and @ContributesBinding`() {
     compile(
       source(
@@ -1163,64 +1108,6 @@ class AggregationTest : MetroCompilerTest() {
         assertThat(contributedSet.single()::class.qualifiedName).isEqualTo("test.Impl")
         assertThat(contributedSet.single())
           .isEqualTo(graph.callProperty<Any>("contributedInterface"))
-      }
-    }
-  }
-
-  @Test
-  fun `ContributesMultibinding interop annotations add binding to set or map with MapKey`() {
-    compile(
-      source(
-        packageName = "com.squareup.anvil.annotations",
-        source =
-          """
-            annotation class ContributesMultibinding(
-              val scope: KClass<*>,
-              val boundType: KClass<*> = Unit::class,
-            )
-            """
-            .trimIndent(),
-      ),
-      source(
-        """
-          import com.squareup.anvil.annotations.ContributesMultibinding
-          import dev.zacsweers.metro.Inject
-          import dev.zacsweers.metro.MapKey
-
-          interface ContributedInterface
-          interface SecondInterface
-
-          @ContributesMultibinding(AppScope::class, boundType = ContributedInterface::class)
-          @Inject class Impl : ContributedInterface, SecondInterface
-
-          @MapKey annotation class MyKey(val key: Int)
-
-          @MyKey(1)
-          @ContributesMultibinding(AppScope::class, boundType = SecondInterface::class)
-          @Inject class MapImpl : ContributedInterface, SecondInterface
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedSet: Set<ContributedInterface>
-            val contributedMap: Map<Int, SecondInterface>
-          }
-        """
-          .trimIndent()
-      ),
-      options =
-        metroOptions.copy(
-          customContributesIntoSetAnnotations =
-            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
-        ),
-    ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      graph.callProperty<Set<Any>>("contributedSet").also { contributedSet ->
-        assertThat(contributedSet.single()::class.qualifiedName).isEqualTo("test.Impl")
-      }
-
-      graph.callProperty<Map<Int, Any>>("contributedMap").also { contributedMap ->
-        assertThat(contributedMap.keys.single()).isEqualTo(1)
-        assertThat(contributedMap.values.single()::class.qualifiedName).isEqualTo("test.MapImpl")
       }
     }
   }

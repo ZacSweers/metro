@@ -8,4 +8,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val GENERATE_ASSISTED_FACTORIES by directive("Enable assisted factories generation.")
   val PUBLIC_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>("Enable assisted factories generation.")
+
+  // Dependency directives.
+  val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
 }

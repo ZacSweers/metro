@@ -23,6 +23,28 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/aggregation")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Aggregation {
+    @Test
+    public void testAllFilesPresentInAggregation() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
+    public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
+    }
+
+    @Test
+    @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
+    public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
+      runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/member")
   @TestDataPath("$PROJECT_ROOT")
   public class Member {
