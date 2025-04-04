@@ -109,12 +109,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("ProvidesCannotBeNullable.kt")
-    public void testProvidesCannotBeNullable() {
-      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesCannotBeNullable.kt");
-    }
-
-    @Test
     @TestMetadata("ProvidesCannotHaveReceivers_AbstractClass.kt")
     public void testProvidesCannotHaveReceivers_AbstractClass() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesCannotHaveReceivers_AbstractClass.kt");
