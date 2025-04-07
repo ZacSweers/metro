@@ -505,14 +505,14 @@ class ProvidesTransformerTest : MetroCompilerTest() {
           """
             import kotlin.annotation.AnnotationRetention.BINARY
             import javax.inject.Qualifier
-            
+
             interface EnabledProvider {
               @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
-              
+
               @FlipperEnabled
               @Provides
               private fun provideEnabled(): Boolean = true
-              
+
               @Provides
               private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
             }

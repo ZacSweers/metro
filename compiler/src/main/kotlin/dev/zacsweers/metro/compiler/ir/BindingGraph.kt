@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 
 // TODO would be great if this was standalone to more easily test.
 internal class BindingGraph(private val metroContext: IrMetroContext) {
