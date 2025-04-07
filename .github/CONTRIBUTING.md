@@ -1,6 +1,6 @@
 # Contributing to Metro
 
-Metro welcomes contributions! Small contributions like documentation improvements, small obvious fixes, etc are always good and don't need prior discussion. For larger functionality changes or features, please raise a discussion or issue first before starting work.
+Metro welcomes contributions! Small contributions like documentation improvements, small obvious fixes, etc are always good and don't need prior discussion. I liberally leave TODO comments in code that don't quite meet the standard of an issue but are still things worth improving :). For larger functionality changes or features, please raise a discussion or issue first before starting work.
 
 ## Development
 

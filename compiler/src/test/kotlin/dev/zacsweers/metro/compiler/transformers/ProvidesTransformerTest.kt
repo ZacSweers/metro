@@ -497,6 +497,44 @@ class ProvidesTransformerTest : MetroCompilerTest() {
       }
   }
 
+  @Test
+  fun `private qualifiers are propagated`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+            import kotlin.annotation.AnnotationRetention.BINARY
+            import javax.inject.Qualifier
+
+            interface EnabledProvider {
+              @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
+
+              @FlipperEnabled
+              @Provides
+              private fun provideEnabled(): Boolean = true
+
+              @Provides
+              private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
+            }
+          """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph : EnabledProvider {
+              val value: String
+            }
+          """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    )
+  }
+
   // TODO
   //  companion object with value params (missing receiver)
 }

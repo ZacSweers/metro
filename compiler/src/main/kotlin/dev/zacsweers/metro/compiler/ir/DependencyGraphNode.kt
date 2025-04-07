@@ -22,19 +22,22 @@ internal data class DependencyGraphNode(
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
   val bindsFunctions: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
-  val injectors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
+  // TypeKey key is the injected type wrapped in MembersInjector
+  val injectors: List<Pair<MetroSimpleFunction, TypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
   val typeKey: TypeKey,
   val proto: DependencyGraphProto? = null,
 ) {
 
+  val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
+
   val multibindingAccessors by unsafeLazy {
     proto
       ?.let {
         val bitfield = it.multibinding_accessor_indices
         val multibindingCallableIds =
-          it.accessor_callable_ids.filterIndexedTo(mutableSetOf()) { index, _ ->
+          it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
             (bitfield shr index) and 1 == 1
           }
         accessors

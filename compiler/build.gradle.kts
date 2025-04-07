@@ -32,6 +32,11 @@ buildConfig {
     }
   }
   sourceSets.named("main") {
+    buildConfigField(
+      "String",
+      "METRO_VERSION",
+      providers.gradleProperty("VERSION_NAME").map { "\"$it\"" },
+    )
     buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
   }
   sourceSets.named("test") {
@@ -96,4 +101,5 @@ dependencies {
   testImplementation(libs.coroutines.test)
   testImplementation(libs.dagger.compiler)
   testImplementation(libs.dagger.runtime)
+  testImplementation(libs.anvil.annotations)
 }

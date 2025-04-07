@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertNotNull
-import org.jetbrains.kotlin.name.ClassId
 import org.junit.Ignore
 
 class AggregationTest : MetroCompilerTest() {
@@ -1076,48 +1075,40 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `repeated ContributesBinding annotations with different scopes and same bound types are ok2`() {
+  fun `single instance of a type can be annotated with both @ContributesIntoSet and @ContributesBinding`() {
     compile(
       source(
-        packageName = "com.squareup.anvil.annotations",
-        source =
-          """
-            annotation class ContributesBinding(
-              val scope: KClass<*>,
-              val boundType: KClass<*> = Unit::class,
-            )
-            """
-            .trimIndent(),
-      ),
-      source(
         """
-          import com.squareup.anvil.annotations.ContributesBinding
+          import dev.zacsweers.metro.AppScope
+          import dev.zacsweers.metro.ContributesBinding
+          import dev.zacsweers.metro.ContributesIntoSet
+          import dev.zacsweers.metro.DependencyGraph
           import dev.zacsweers.metro.Inject
+          import dev.zacsweers.metro.binding
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedSet: Set<ContributedInterface>
+            val contributedInterface: SecondInterface
+          }
 
           interface ContributedInterface
           interface SecondInterface
 
-          @ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
-          @Inject
-          class Impl : ContributedInterface, SecondInterface
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph {
-            val contributedInterface: ContributedInterface
-          }
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class, binding<SecondInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
+          @Inject class Impl : ContributedInterface, SecondInterface
         """
           .trimIndent()
-      ),
-      options =
-        metroOptions.copy(
-          customContributesBindingAnnotations =
-            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
-        ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      val contributedInterface = graph.callProperty<Any>("contributedInterface")
-      assertThat(contributedInterface).isNotNull()
-      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+      graph.callProperty<Set<Any>>("contributedSet").also { contributedSet ->
+        assertThat(contributedSet.single()::class.qualifiedName).isEqualTo("test.Impl")
+        assertThat(contributedSet.single())
+          .isEqualTo(graph.callProperty<Any>("contributedInterface"))
+      }
     }
   }
 

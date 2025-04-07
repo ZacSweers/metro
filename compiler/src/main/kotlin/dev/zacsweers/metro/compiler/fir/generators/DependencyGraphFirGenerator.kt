@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.abstractFunctions
+import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.hasOrigin
@@ -431,6 +432,13 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
               val parameterToUpdate = valueParameters[i]
               parameterToUpdate.replaceAnnotationsSafe(parameter.annotations)
             }
+            // Add our marker annotation
+            replaceAnnotationsSafe(
+              annotations +
+                buildSimpleAnnotation {
+                  session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
+                }
+            )
           }
           .symbol
       }
@@ -449,15 +457,24 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           log("Creator was null, generating a default invoke. ")
           val generatedFunction =
             createMemberFunction(
-              owner,
-              Keys.MetroGraphCreatorsObjectInvokeDeclaration,
-              Symbols.Names.invoke,
-              returnTypeProvider = {
-                graphClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
-              },
-            ) {
-              status { isOperator = true }
-            }
+                owner,
+                Keys.MetroGraphCreatorsObjectInvokeDeclaration,
+                Symbols.Names.invoke,
+                returnTypeProvider = {
+                  graphClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
+                },
+              ) {
+                status { isOperator = true }
+              }
+              .apply {
+                // Add our marker annotation
+                replaceAnnotationsSafe(
+                  annotations +
+                    buildSimpleAnnotation {
+                      session.metroFirBuiltIns.graphFactoryInvokeFunctionMarkerClassSymbol
+                    }
+                )
+              }
           functions += generatedFunction.symbol
         } else if (creator.isInterface) {
           // It's an interface creator, generate the SAM function

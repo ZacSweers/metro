@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/ZacSweers/metro/discussions/new?category=q-a
     about: If you have a usage or debugging question, please use the Q&A feature of the repo's Discussions section.
   - name: Create an issue without template
-    url: https://github.com/zacsweers/metro/issues/new
+    url: https://github.com/ZacSweers/metro/issues/new?template=Blank+issue
     about: This option is only available for repository maintainers.

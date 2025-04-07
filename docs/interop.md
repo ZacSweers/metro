@@ -92,7 +92,7 @@ interface MessageGraph {
 }
 
 // Dagger
-@Component(dependencies = [MetroGraph::class])
+@Component(dependencies = [MessageGraph::class])
 interface DaggerComponent {
   val message: String
 

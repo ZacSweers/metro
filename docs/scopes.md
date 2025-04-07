@@ -1,18 +1,18 @@
 # Scopes
 
-Like Dagger and KI, Metro supports *scopes* to limit instances of types on the dependency graph. A scope is any annotation annotated with `@Scope`, with a convenience `@Singleton` scope available in Metro’s runtime.
+Like Dagger and KI, Metro supports *scopes* to limit instances of types on the dependency graph. A scope is any annotation annotated with `@Scope`, with a convenience `@SingleIn` scope available in Metro’s runtime.
 
 Scopes must be applied to either the injected class or the provider function providing that binding. They must also match the graph that they are used in.
 
 ```kotlin
-@Singleton
+@SingleIn(AppScope::class)
 @DependencyGraph
 abstract class AppGraph {
   private var counter = 0
 
   abstract val count: Int
 
-  @Singleton @Provides fun provideCount() = counter++
+  @SingleIn(AppScope::class) @Provides fun provideCount() = counter++
 }
 ```
 
@@ -27,7 +27,7 @@ interface AppGraph {
   val exampleClass: ExampleClass
 }
 
-@Singleton
+@SingleIn(AppScope::class)
 @Inject
 class ExampleClass
 ```
@@ -35,16 +35,14 @@ class ExampleClass
 It is also an error for a scoped graph to access scoped bindings whose scope does not match.
 
 ```kotlin
-@Scope annotation class UserScope
-
-@Singleton
+@SingleIn(AppScope::class)
 @DependencyGraph
 interface AppGraph {
   // This is an error!
   val exampleClass: ExampleClass
 }
 
-@UserScope
+@SingleIn(UserScope::class)
 @Inject
 class ExampleClass
 ```
@@ -52,7 +50,7 @@ class ExampleClass
 Like Dagger, graphs can have multiple scopes that they support.
 
 ```kotlin
-@Scope annotation class SingleIn(val scope: KClass<*>)
+@Scope annotation class Singleton
 
 @Singleton
 @SingleIn(AppScope::class)

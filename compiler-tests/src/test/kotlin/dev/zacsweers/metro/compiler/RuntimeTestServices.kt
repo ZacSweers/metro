@@ -14,7 +14,7 @@ private val metroRuntimeClasspath =
   System.getProperty("metroRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'metroRuntime.classpath' property")
 
-class RuntimeEnvironmentConfigurator(testServices: TestServices) :
+class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
   EnvironmentConfigurator(testServices) {
   override fun configureCompilerConfiguration(
     configuration: CompilerConfiguration,

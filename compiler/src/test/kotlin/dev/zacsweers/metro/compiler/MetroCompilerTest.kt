@@ -86,6 +86,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
+              MetroOption.GENERATE_HINT_PROPERTIES ->
+                processor.option(entry.raw.cliOption, generateHintProperties)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.LOGGING -> {
@@ -187,6 +189,16 @@ abstract class MetroCompilerTest {
               MetroOption.CUSTOM_SCOPE -> {
                 if (customScopeAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
+              }
+              MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
+                if (customContributesIntoSetAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customContributesIntoSetAnnotations.joinToString(":"),
+                )
+              }
+              MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
+                processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
             }
           yield(option)

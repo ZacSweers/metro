@@ -1996,8 +1996,15 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
-          ├─ Binding 1: Unknown source location, this may be contributed. Here's some additional information we have for the binding: @Binds <get-bindAsOtherClass>: OtherClass
-          ├─ Binding 2: Unknown source location, this may be contributed. Here's some additional information we have for the binding: @Binds <get-bindAsOtherClass>: OtherClass
+          ├─ Binding 1: Unknown source location, this may be contributed.
+          └─ Here's some additional information we have for the binding:
+             ├─ Binding type: Alias
+             └─ Binding information: @Binds ExampleClass.<get-bindAsOtherClass>: OtherClass
+
+          ├─ Binding 2: Unknown source location, this may be contributed.
+          └─ Here's some additional information we have for the binding:
+             ├─ Binding type: Alias
+             └─ Binding information: @Binds ExampleClass2.<get-bindAsOtherClass>: OtherClass
         """
           .trimIndent()
       )
@@ -2045,7 +2052,11 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
-          ├─ Binding 1: Unknown source location, this may be contributed. Here's some additional information we have for the binding: @Binds <get-bindAsOtherClass>: OtherClass
+          ├─ Binding 1: Unknown source location, this may be contributed.
+          └─ Here's some additional information we have for the binding:
+             ├─ Binding type: Alias
+             └─ Binding information: @Binds ExampleClass.<get-bindAsOtherClass>: OtherClass
+
           ├─ Binding 2: ExampleClass2.kt:7:1
         """
           .trimIndent()
@@ -2096,6 +2107,290 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
       // Calling again also respects scoping
       assertThat(graph.callProperty<Any>("impl2")).isSameInstanceAs(impl2)
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/250
+  @Test
+  fun `instantiating graphs is possible from separate compilations`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          @DependencyGraph
+          interface ExampleGraph
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          fun main() = createGraph<ExampleGraph>()
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    ) {
+      val graph = invokeMain<Any>()
+      assertNotNull(graph)
+      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/250
+  @Test
+  fun `instantiating graphs is possible from separate compilations - custom factory`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          @DependencyGraph
+          interface ExampleGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun createGraph(): ExampleGraph
+            }
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          fun main() = createGraphFactory<ExampleGraph.Factory>().createGraph()
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    ) {
+      val graph = invokeMain<Any>()
+      assertNotNull(graph)
+      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+    }
+  }
+
+  @Test
+  fun `similar bindings - different qualifiers`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides @Named("qualified") fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph.int
+
+          Similar bindings:
+            - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - different qualifiers - qualifier on requested`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Named("qualified") val int: Int
+
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("qualified") kotlin.Int
+
+              @Named("qualified") kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph.int
+
+          Similar bindings:
+            - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - multibinding - set`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides @IntoSet fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph.int
+
+          Similar bindings:
+            - Set<Int> (Multibinding). Type: Multibinding.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - multibinding - map`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides @IntoMap @StringKey("hello") fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph.int
+
+          Similar bindings:
+            - Map<String, Int> (Multibinding). Type: Multibinding.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - subtype`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Number
+
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Number
+
+              kotlin.Number is requested at
+                  [test.ExampleGraph] test.ExampleGraph.int
+
+          Similar bindings:
+            - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - supertype`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides fun provideNumber(): Number = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph.int
+
+          Similar bindings:
+            - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - multiple`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides fun provideNumber(): Number = 0
+            @Provides @Named("qualified") fun provideInt(): Int = 0
+            @Provides @IntoSet fun provideIntIntoSet(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph.int
+
+          Similar bindings:
+            - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
+            - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
+            - Set<Int> (Multibinding). Type: Multibinding.
+        """
+          .trimIndent()
+      )
     }
   }
 }

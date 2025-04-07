@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.PLUGIN_ID
@@ -114,11 +115,12 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     if (shouldGenerateMetadata) {
       val metroMetadata =
         MetroMetadata(
+          METRO_VERSION,
           DependencyGraphProto(
             is_graph = false,
             provider_factory_classes =
               generatedFactories.map { it.clazz.classIdOrFail.asString() }.sorted(),
-          )
+          ),
         )
       val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
       pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(

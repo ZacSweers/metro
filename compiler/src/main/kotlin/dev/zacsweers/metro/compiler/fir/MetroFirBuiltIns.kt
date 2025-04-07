@@ -27,6 +27,21 @@ internal class MetroFirBuiltIns(
     }
   }
 
+  val createGraph by unsafeLazy {
+    session.symbolProvider
+      .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, "createGraph".asName())
+      .first()
+  }
+
+  val createGraphFactory by unsafeLazy {
+    session.symbolProvider
+      .getTopLevelFunctionSymbols(
+        Symbols.FqNames.metroRuntimePackage,
+        "createGraphFactory".asName(),
+      )
+      .first()
+  }
+
   val injectedFunctionClassClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroInjectedFunctionClass)
       as FirRegularClassSymbol
@@ -35,6 +50,12 @@ internal class MetroFirBuiltIns(
   val providesCallableIdClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.providesCallableIdClass)
       as FirRegularClassSymbol
+  }
+
+  val graphFactoryInvokeFunctionMarkerClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(
+      Symbols.ClassIds.graphFactoryInvokeFunctionMarkerClass
+    ) as FirRegularClassSymbol
   }
 
   val composableClassSymbol by unsafeLazy {

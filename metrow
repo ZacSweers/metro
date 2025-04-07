@@ -34,8 +34,8 @@ case "$1" in
            ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
        else
            echo "Publishing version $version..."
-           ./gradlew -p gradle-plugin publish -x dokkaGeneratePublicationHtml
-           ./gradlew publish -x dokkaGeneratePublicationHtml
+           ./gradlew -p gradle-plugin publish -x dokkaGeneratePublicationHtml --no-configuration-cache
+           ./gradlew publish -x dokkaGeneratePublicationHtml --no-configuration-cache
        fi
        ;;
 

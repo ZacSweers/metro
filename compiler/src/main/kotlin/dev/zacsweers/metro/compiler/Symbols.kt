@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.explicitParametersCount
+import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.CallableId
@@ -66,6 +67,8 @@ internal class Symbols(
     val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
     val providesCallableIdClass = ClassIds.providesCallableIdClass.asSingleFqName()
+    val graphFactoryInvokeFunctionMarkerClass =
+      ClassIds.graphFactoryInvokeFunctionMarkerClass.asSingleFqName()
   }
 
   // TODO replace with StandardClassIds
@@ -88,6 +91,8 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "InjectedFunctionClass".asName())
     val providesCallableIdClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "ProvidesCallableId".asName())
+    val graphFactoryInvokeFunctionMarkerClass =
+      ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val membersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val lazy = StandardClassIds.byName("Lazy")
     val map = StandardClassIds.Map
@@ -257,6 +262,16 @@ internal class Symbols(
 
   val metroSingleInConstructor: IrConstructorSymbol by lazy { metroSingleIn.constructors.first() }
 
+  val graphFactoryInvokeFunctionMarkerClass: IrClassSymbol by lazy {
+    pluginContext.referenceClass(
+      ClassId(metroRuntime.packageFqName, Name.identifier("GraphFactoryInvokeFunctionMarker"))
+    )!!
+  }
+
+  val graphFactoryInvokeFunctionMarkerConstructor: IrConstructorSymbol by lazy {
+    graphFactoryInvokeFunctionMarkerClass.constructors.first()
+  }
+
   private val setFactory: IrClassSymbol by lazy {
     pluginContext.referenceClass(
       ClassId(metroRuntimeInternal.packageFqName, Name.identifier("SetFactory"))
@@ -350,6 +365,8 @@ internal class Symbols(
   val stdlibLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, Name.identifier("Lazy")))!!
   }
+
+  val lazyGetValue: IrFunctionSymbol by lazy { stdlibLazy.getPropertyGetter("get")!! }
 
   val stdlibErrorFunction: IrFunctionSymbol by lazy {
     pluginContext

@@ -363,7 +363,10 @@ fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
 
 fun Any.getInstanceMethod(name: String): Method {
   @Suppress("UNCHECKED_CAST")
-  return javaClass.methods.single { it.name == name && !Modifier.isStatic(it.modifiers) }
+  return javaClass.methods.singleOrNull { it.name == name && !Modifier.isStatic(it.modifiers) }
+    ?: error(
+      "No instance method with name '$name' found in $this. Available: ${javaClass.methods.filterNot { Modifier.isStatic(it.modifiers) }.joinToString { it.name }}"
+    )
 }
 
 suspend fun <T> Any.invokeSuspendInstanceFunction(name: String, vararg args: Any): T {

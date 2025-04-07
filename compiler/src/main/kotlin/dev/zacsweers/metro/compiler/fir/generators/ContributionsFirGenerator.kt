@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.anvilIgnoreQualifier
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
@@ -129,6 +130,18 @@ internal class ContributionsFirGenerator(session: FirSession) :
               listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
             }
         }
+        in session.classIds.customContributesIntoSetAnnotations -> {
+          contributions +=
+            if (contributingSymbol.mapKeyAnnotation(session) != null) {
+              Contribution.ContributesIntoMapBinding(contributingSymbol, annotation) {
+                listOf(buildIntoMapAnnotation(), buildBindsAnnotation())
+              }
+            } else {
+              Contribution.ContributesIntoSetBinding(contributingSymbol, annotation) {
+                listOf(buildIntoSetAnnotation(), buildBindsAnnotation())
+              }
+            }
+        }
       }
     }
 
@@ -192,17 +205,19 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .keys
   }
 
-  private fun FirAnnotation.bindingTypeOrNull(): FirTypeRef? {
+  // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
+  // checks for non-interop
+  private fun FirAnnotation.bindingTypeOrNull(): Pair<FirTypeRef?, Boolean> {
     // Return a binding defined using Metro's API
     argumentAsOrNull<FirFunctionCall>("binding".asName(), 1)?.let { bindingType ->
       return bindingType.typeArguments
         .getOrNull(0)
         ?.expectAsOrNull<FirTypeProjectionWithVariance>()
         ?.typeRef
-        ?.takeUnless { it == session.builtinTypes.nothingType }
+        ?.takeUnless { it == session.builtinTypes.nothingType } to false
     }
     // Return a boundType defined using anvil KClass
-    return anvilKClassBoundTypeArgument(session)
+    return anvilKClassBoundTypeArgument(session) to anvilIgnoreQualifier(session)
   }
 
   override fun generateProperties(
@@ -213,32 +228,29 @@ internal class ContributionsFirGenerator(session: FirSession) :
     if (!owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
     val origin = owner.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val contributions = findContributions(origin) ?: return emptyList()
-    val properties =
-      contributions.mapNotNull { contribution ->
-        when (contribution) {
-          is Contribution.ContributesBinding,
-          is Contribution.ContributesIntoSetBinding,
-          is Contribution.ContributesIntoMapBinding -> {
-            buildBindingProperty(owner, contribution)
-          }
-          is Contribution.ContributesTo -> null
-        }
-      }
-    return properties
+
+    return contributions
+      .filterIsInstance<Contribution.BindingContribution>()
+      .filter { it.callableName == callableId.callableName.identifier }
+      .map { contribution -> buildBindingProperty(owner, contribution) }
   }
 
   private fun buildBindingProperty(
     owner: FirClassSymbol<*>,
     contribution: Contribution.BindingContribution,
   ): FirPropertySymbol {
-    val bindingTypeRef = contribution.annotation.bindingTypeOrNull()
+    val (bindingTypeRef, ignoreQualifier) = contribution.annotation.bindingTypeOrNull()
     // Standard annotation on the class itself, look for a single bound type
     val bindingType =
       (bindingTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
 
     val qualifier =
-      bindingTypeRef?.annotations?.qualifierAnnotation(session)
-        ?: contribution.annotatedType.qualifierAnnotation(session)
+      if (!ignoreQualifier) {
+        bindingTypeRef?.annotations?.qualifierAnnotation(session)
+          ?: contribution.annotatedType.qualifierAnnotation(session)
+      } else {
+        null
+      }
 
     val mapKey =
       if (bindingTypeRef == null) {

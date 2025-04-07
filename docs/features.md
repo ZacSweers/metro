@@ -43,11 +43,36 @@ Like Anvil, Metro supports contributing types via aggregation with annotations l
 
 Metro is multiplatform and supports most major Kotlin multiplatform targets.
 
+!!! warning
+    Multi-module multiplatform targets cannot contribute dependencies (i.e. with `@Contributes*` annotations) from native targets until https://youtrack.jetbrains.com/issue/KT-75865.
+
 ## IDE Integration
 
 Most errors are reported in FIR, which should (eventually) be visible in the K2 IDE plugin as well.
 
-## Compelling interop
+## Helpful diagnostics
 
-* Metro supports component-level interop with Dagger and kotlin-inject. This means that Metro graphs can depend on Dagger and kotlin-inject components.
+Metro tries its best to give detailed-yet-readable error messages and diagnostics.
+
+```
+e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+    kotlin.Int is requested at
+        [test.ExampleGraph] test.ExampleGraph.int
+
+Similar bindings:
+  - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
+  - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
+  - Set<Int> (Multibinding). Type: Multibinding.
+```
+
+For more thorough debugging, Metro also has controls to enable debug logging controls and write graph reports to an output directory (configurable via the Gradle extension).
+
+## Advanced interop
+
+Metro has advanced interop with existing DI tools.
+
+* Metro supports component-level interop with Dagger and kotlin-inject. This means that Metro graphs can depend on Dagger and kotlin-inject components via `@Includes` dependencies.
 * Metro supports defining user-defined alternatives for common annotations in addition to its first-party options. This allows easier introduction to codebases using annotations from existing DI frameworks.
+* If Dagger interop is enabled, Metro can generate code that both interops with Dagger/Javax/Jakarta's types directly as well as reuse Dagger/Anvil's generated factories.
+* If Anvil interop is enabled, Metro's compiler can interpret Anvil's `@ContributesMultibinding` and `boundType` APIs.

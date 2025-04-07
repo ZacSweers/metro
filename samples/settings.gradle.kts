@@ -24,6 +24,12 @@ include(
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
   ":weather-app",
+  ":multi-module-test:common",
+  ":multi-module-test:parent-graph",
+  ":multi-module-test:child-graph",
+  ":multi-module-test:contributor",
+  ":multi-module-test:aggregator",
+  ":multi-module-test:app",
 )
 
 includeBuild("..")
