@@ -351,11 +351,16 @@ internal class DependencyGraphTransformer(
           }
           if (hasDefaultImplementation) continue
 
-          if (declaration.valueParameters.size == 1 && !annotations.isBinds && declaration.returnType.isUnit()) {
+          if (
+            declaration.valueParameters.size == 1 &&
+              !annotations.isBinds &&
+              declaration.returnType.isUnit()
+          ) {
             // It's an injector
             val metroFunction = metroFunctionOf(declaration, annotations)
             // key is the injected type wrapped in MembersInjector
-            val typeKey = TypeKey(symbols.metroMembersInjector.typeWith(declaration.valueParameters[0].type))
+            val typeKey =
+              TypeKey(symbols.metroMembersInjector.typeWith(declaration.valueParameters[0].type))
             injectors += (metroFunction to typeKey)
           } else {
             // Accessor or binds
@@ -749,10 +754,7 @@ internal class DependencyGraphTransformer(
       val contextKey = ContextualTypeKey(typeKey)
       val entry = BindingStack.Entry.requestedAt(contextKey, injector.ir)
 
-      graph.addInjector(
-        typeKey,
-        entry,
-      )
+      graph.addInjector(typeKey, entry)
 
       bindingStack.withEntry(entry) {
         val targetClass = injector.ir.valueParameters.single().type.rawType()
@@ -1210,8 +1212,7 @@ internal class DependencyGraphTransformer(
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = valueParameters[0]
         val binding =
-          context.graph.requireBinding(typeKey, context.bindingStack)
-            as Binding.MembersInjected
+          context.graph.requireBinding(typeKey, context.bindingStack) as Binding.MembersInjected
         context.bindingStack.push(BindingStack.Entry.requestedAt(ContextualTypeKey(typeKey), this))
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
