@@ -892,4 +892,34 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
     }
   }
+
+  @Test
+  fun `graph inject function - member's dependency bindings should be picked up by graph`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              fun inject(exampleClass: ExampleClass)
+            }
+            class ExampleClass {
+              var int: Int = 0
+              @Inject fun injectValues(dependency: Dependency) {
+                this.int = dependency.int
+              }
+            }
+            @Inject
+            class Dependency {
+              val int: Int = 3
+            }
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val instance = ExampleClass.newInstanceStrict()
+      graph.callInject(instance)
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+    }
+  }
 }

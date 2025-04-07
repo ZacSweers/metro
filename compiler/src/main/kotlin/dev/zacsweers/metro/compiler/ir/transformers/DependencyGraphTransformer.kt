@@ -111,6 +111,7 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -448,7 +449,7 @@ internal class DependencyGraphTransformer(
         hasDefault = false,
       )
 
-    val injectors = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
+    val injectors = mutableListOf<Pair<MetroSimpleFunction, TypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
@@ -469,17 +470,17 @@ internal class DependencyGraphTransformer(
           }
           if (hasDefaultImplementation) continue
 
-          if (declaration.valueParameters.isNotEmpty() && !annotations.isBinds) {
+          val isInjector =
+            declaration.valueParameters.size == 1 &&
+              !annotations.isBinds &&
+              declaration.returnType.isUnit()
+          if (isInjector) {
             // It's an injector
             val metroFunction = metroFunctionOf(declaration, annotations)
-            val contextKey =
-              ContextualTypeKey.from(
-                context = this,
-                function = declaration,
-                annotations = metroFunction.annotations,
-                type = declaration.valueParameters.first().type,
-              )
-            injectors += (metroFunction to contextKey)
+            // key is the injected type wrapped in MembersInjector
+            val typeKey =
+              TypeKey(symbols.metroMembersInjector.typeWith(declaration.valueParameters[0].type))
+            injectors += (metroFunction to typeKey)
           } else {
             // Accessor or binds
             val metroFunction = metroFunctionOf(declaration, annotations)
@@ -950,9 +951,11 @@ internal class DependencyGraphTransformer(
     }
 
     // Add MembersInjector bindings defined on injector functions
-    node.injectors.forEach { (injector, contextualTypeKey) ->
-      val entry = BindingStack.Entry.requestedAt(contextualTypeKey, injector.ir)
+    node.injectors.forEach { (injector, typeKey) ->
+      val contextKey = ContextualTypeKey(typeKey)
+      val entry = BindingStack.Entry.requestedAt(contextKey, injector.ir)
 
+      graph.addInjector(typeKey, entry)
       bindingStack.withEntry(entry) {
         val targetClass = injector.ir.valueParameters.single().type.rawType()
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
@@ -964,19 +967,9 @@ internal class DependencyGraphTransformer(
             else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
           }
 
-        val membersInjectorKey =
-          ContextualTypeKey(
-            typeKey =
-              TypeKey(symbols.metroMembersInjector.typeWith(contextualTypeKey.typeKey.type)),
-            isWrappedInProvider = false,
-            isWrappedInLazy = false,
-            isLazyWrappedInProvider = false,
-            hasDefault = false,
-          )
-
         val binding =
           Binding.MembersInjected(
-            membersInjectorKey,
+            contextKey,
             // Need to look up the injector class and gather all params
             parameters =
               Parameters(injector.callableId, null, null, parameters.valueParameters, null),
@@ -986,7 +979,7 @@ internal class DependencyGraphTransformer(
             targetClassId = targetClass.classIdOrFail,
           )
 
-        graph.addBinding(membersInjectorKey.typeKey, binding, bindingStack)
+        graph.addBinding(typeKey, binding, bindingStack)
       }
     }
 
@@ -1736,7 +1729,7 @@ internal class DependencyGraphTransformer(
   private fun implementOverrides(
     accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
     bindsFunctions: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
-    injectors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
+    injectors: List<Pair<MetroSimpleFunction, TypeKey>>,
     context: GraphGenerationContext,
   ) {
     // Implement abstract getters for accessors
@@ -1777,16 +1770,13 @@ internal class DependencyGraphTransformer(
     }
 
     // Implement abstract injectors
-    injectors.forEach { (overriddenFunction, contextualTypeKey) ->
+    injectors.forEach { (overriddenFunction, typeKey) ->
       overriddenFunction.ir.apply {
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = valueParameters[0]
-        val membersInjectorKey =
-          TypeKey(symbols.metroMembersInjector.typeWith(contextualTypeKey.typeKey.type))
         val binding =
-          context.graph.requireBinding(membersInjectorKey, context.bindingStack)
-            as Binding.MembersInjected
-        context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, this))
+          context.graph.requireBinding(typeKey, context.bindingStack) as Binding.MembersInjected
+        context.bindingStack.push(BindingStack.Entry.requestedAt(ContextualTypeKey(typeKey), this))
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly

@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix**: Fix class-private qualifiers on multibinding contributions in other modules not being recognized in downstream graphs.
+- **Fix**: Fix member injectors not getting properly visited in graph validation.
 
 0.1.1
 -----
