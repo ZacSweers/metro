@@ -1,5 +1,6 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JsModuleKind.MODULE_UMD
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -43,7 +44,7 @@ plugins {
  *  * `sizet64` for everything else
  */
 kotlin {
-  @Suppress("OPT_IN_USAGE")
+  @OptIn(ExperimentalKotlinGradlePluginApi::class)
   applyDefaultHierarchyTemplate {
     common {
       group("concurrentTest") {
