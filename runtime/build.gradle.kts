@@ -94,20 +94,22 @@ kotlin {
     nativeTest { dependsOn(concurrentTest) }
   }
 
-  targets
-    .configureEach {
-      val target = this
-      compilations.configureEach {
-        compileTaskProvider.configure {
-          compilerOptions {
-            freeCompilerArgs.add("-Xexpect-actual-classes")
-            if (target.platformType == KotlinPlatformType.js || target.platformType == KotlinPlatformType.wasm) {
-              freeCompilerArgs.add("-Xklib-duplicated-unique-name-strategy=allow-all-with-warning")
-            }
+  targets.configureEach {
+    val target = this
+    compilations.configureEach {
+      compileTaskProvider.configure {
+        compilerOptions {
+          freeCompilerArgs.add("-Xexpect-actual-classes")
+          if (
+            target.platformType == KotlinPlatformType.js ||
+              target.platformType == KotlinPlatformType.wasm
+          ) {
+            freeCompilerArgs.add("-Xklib-duplicated-unique-name-strategy=allow-all-with-warning")
           }
         }
       }
     }
+  }
 }
 
 // Sourced from https://kotlinlang.org/docs/native-target-support.html

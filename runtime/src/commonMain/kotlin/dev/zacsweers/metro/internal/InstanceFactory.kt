@@ -23,9 +23,12 @@ package dev.zacsweers.metro.internal
  * unnecessary. However, using this with [DoubleCheck.provider] is valid and may be desired for
  * testing or contractual guarantees.
  */
-public expect value class InstanceFactory<T : Any> private constructor(override val value: T) : Factory<T>, Lazy<T> {
+public expect value class InstanceFactory<T : Any> private constructor(override val value: T) :
+  Factory<T>, Lazy<T> {
   override fun invoke(): T
+
   override fun isInitialized(): Boolean
+
   override fun toString(): String
 
   public companion object {
