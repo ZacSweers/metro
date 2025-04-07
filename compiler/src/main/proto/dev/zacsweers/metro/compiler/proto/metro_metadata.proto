@@ -39,6 +39,8 @@ message BindsCallableId {
 }
 
 message MetroMetadata {
+  string version = 1;
+
   // Optional DependencyGraphProto field
-  optional DependencyGraphProto dependency_graph = 1;
+  optional DependencyGraphProto dependency_graph = 2;
 }

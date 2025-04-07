@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.ExitProcessingException
+import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
@@ -1501,7 +1502,7 @@ internal class DependencyGraphTransformer(
                   .map { it.name.asString() }
                   .sorted(),
             )
-          val metroMetadata = MetroMetadata(graphProto)
+          val metroMetadata = MetroMetadata(METRO_VERSION, graphProto)
           val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
           pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
             graphClass,
