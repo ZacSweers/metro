@@ -369,6 +369,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
+  ),
+  ENABLE_DAGGER_ANVIL_INTEROP(
+    RawMetroOption.boolean(
+      name = "enable-dagger-anvil-interop",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable interop with Dagger Anvil's additional functionality (currently for 'rank' support).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -433,6 +444,8 @@ public data class MetroOptions(
   val customQualifierAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_QUALIFIER.raw.defaultValue.expectAs(),
   val customScopeAnnotations: Set<ClassId> = MetroOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
+  val enableDaggerAnvilInterop: Boolean =
+    MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -540,6 +553,10 @@ public data class MetroOptions(
           MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
             customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
+
+          MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
+            options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
+          }
         }
       }
 

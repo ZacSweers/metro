@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankArgument
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
@@ -290,13 +291,16 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             context,
           )
           return false
-        } else if (annotation.rankArgument() != null) {
+        } else if (
+          session.metroFirBuiltIns.options.enableDaggerAnvilInterop &&
+            annotation.rankArgument() != null
+        ) {
           val errorMessage =
             """
               `@$kind`-annotated class ${declaration.symbol.classId.asSingleFqName()} sets a rank but doesn't declare its binding type.
               Bindings with non-default ranks must declare explicit binding types. This is because
               we're not able to resolve supertypes to get the implicit binding type when
-              processing ranked contributions. 
+              processing ranked contributions.
             """
               .trimIndent()
           reporter.reportOn(

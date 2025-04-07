@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
@@ -219,19 +220,20 @@ internal class ContributedInterfaceSupertypeGenerator(
       // TODO warn?
     }
 
-    // TODO(j) should short-circuit if interop isn't enabled
-    val unmatchedRankReplacements = mutableSetOf<ClassId>()
-    val pendingRankReplacements = processRankBasedReplacements(contributions, typeResolver)
+    if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
+      val unmatchedRankReplacements = mutableSetOf<ClassId>()
+      val pendingRankReplacements = processRankBasedReplacements(contributions, typeResolver)
 
-    pendingRankReplacements.distinct().forEach { replacedClassId ->
-      val removed = contributions.remove(replacedClassId)
-      if (removed != null) {
-        unmatchedRankReplacements += replacedClassId
+      pendingRankReplacements.distinct().forEach { replacedClassId ->
+        val removed = contributions.remove(replacedClassId)
+        if (removed != null) {
+          unmatchedRankReplacements += replacedClassId
+        }
       }
-    }
 
-    if (unmatchedRankReplacements.isNotEmpty()) {
-      // TODO we could report all rank based replacements here
+      if (unmatchedRankReplacements.isNotEmpty()) {
+        // TODO we could report all rank based replacements here
+      }
     }
 
     return contributions.values.toList()

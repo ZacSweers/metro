@@ -197,6 +197,9 @@ abstract class MetroCompilerTest {
                   customContributesIntoSetAnnotations.joinToString(":"),
                 )
               }
+              MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
+                processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
+              }
             }
           yield(option)
         }

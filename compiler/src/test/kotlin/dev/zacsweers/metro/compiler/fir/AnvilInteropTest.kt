@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
 import com.google.common.truth.Truth.assertThat
@@ -9,25 +11,26 @@ import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
-import org.jetbrains.kotlin.name.ClassId
 import kotlin.test.Test
+import org.jetbrains.kotlin.name.ClassId
 
 class AnvilInteropTest : MetroCompilerTest() {
 
   @Test
   fun `a library binding can outrank an upstream binding`() {
-    val previousCompilation = compile(
-      source(
-        """
+    val previousCompilation =
+      compile(
+        source(
+          """
           interface ContributedInterface
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
           object LibImpl : ContributedInterface
         """
-          .trimIndent()
-      ),
-      options = metroOptions.withAnvilContributesBinding(),
-    )
+            .trimIndent()
+        ),
+        options = metroOptions.withAnvilContributesBinding(),
+      )
 
     compile(
       source(
@@ -54,24 +57,25 @@ class AnvilInteropTest : MetroCompilerTest() {
 
   @Test
   fun `an upstream binding can outrank a library binding`() {
-    val libCompilation = compile(
-      source(
-        """
+    val libCompilation =
+      compile(
+        source(
+          """
           interface ContributedInterface
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 1)
           object LibImpl : ContributedInterface
         """
-          .trimIndent()
-      ),
-      options = metroOptions.withAnvilContributesBinding(),
-    )
+            .trimIndent()
+        ),
+        options = metroOptions.withAnvilContributesBinding(),
+      )
 
     compile(
       source(
         """
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
-          object AppImpl : ContributedInterface          
+          object AppImpl : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
@@ -90,11 +94,12 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
-  @Test fun `the binding with the highest rank is used when there are more than two`() {
+  @Test
+  fun `the binding with the highest rank is used when there are more than two`() {
     compile(
       source(
         """
-          interface ContributedInterface          
+          interface ContributedInterface
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
           object Impl1 : ContributedInterface
@@ -121,11 +126,12 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
-  @Test fun `rank requires an explicit binding type`() {
+  @Test
+  fun `rank requires an explicit binding type`() {
     compile(
       source(
         """
-          interface ContributedInterface          
+          interface ContributedInterface
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
           object Impl1 : ContributedInterface
@@ -155,11 +161,12 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
-  @Test fun `an outranked binding requires an explicit binding type`() {
+  @Test
+  fun `an outranked binding requires an explicit binding type`() {
     compile(
       source(
         """
-          interface ContributedInterface          
+          interface ContributedInterface
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
           object Impl1 : ContributedInterface
@@ -192,11 +199,12 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
-  @Test fun `rank cannot be used for bindings when there are differently qualified bindings for the same type`() {
+  @Test
+  fun `rank cannot be used for bindings when there are differently qualified bindings for the same type`() {
     compile(
       source(
         """
-          interface ContributedInterface          
+          interface ContributedInterface
 
           @Named("Bob")
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
@@ -208,7 +216,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val contributedInterface: ContributedInterface
-            
+
             @Named("Bob")
             val namedContributedInterface: ContributedInterface
           }
@@ -238,11 +246,12 @@ Similar bindings:
     }
   }
 
-  @Test fun `a lower ranked binding can use 'replaces' to replace a higher ranked binding`() {
+  @Test
+  fun `a lower ranked binding can use 'replaces' to replace a higher ranked binding`() {
     compile(
       source(
         """
-          interface ContributedInterface          
+          interface ContributedInterface
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, replaces = [Impl2::class], rank = 10)
           object Impl1 : ContributedInterface
@@ -266,11 +275,12 @@ Similar bindings:
     }
   }
 
-  @Test fun `bindings with the same rank are treated like normal duplicate bindings`() {
+  @Test
+  fun `bindings with the same rank are treated like normal duplicate bindings`() {
     compile(
       source(
         """
-          interface ContributedInterface          
+          interface ContributedInterface
 
           @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
           object Impl1 : ContributedInterface
@@ -302,10 +312,50 @@ Similar bindings:
     }
   }
 
+  @Test
+  fun `rank is ignored when dagger anvil interop is not enabled`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          object Impl1 : ContributedInterface
+
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
+          object Impl2 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      options =
+        metroOptions.copy(
+          customContributesBindingAnnotations =
+            setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
+          enableDaggerAnvilInterop = false,
+        ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ContributedInterface.kt:14:1 [Metro/DuplicateBinding] Duplicate binding for test.ContributedInterface
+          ├─ Binding 1: ContributedInterface.kt:8:1
+          ├─ Binding 2: ContributedInterface.kt:11:1
+        """
+          .trimIndent()
+      )
+    }
+  }
+
   private fun MetroOptions.withAnvilContributesBinding(): MetroOptions {
     return metroOptions.copy(
       customContributesBindingAnnotations =
-        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding"))
+        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
+      enableDaggerAnvilInterop = true,
     )
   }
 }

@@ -100,6 +100,9 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
     public val qualifier: SetProperty<String> = objects.setProperty(String::class.java)
     public val scope: SetProperty<String> = objects.setProperty(String::class.java)
 
+    // Interop markers
+    public val enableDaggerAnvilInterop: Property<Boolean> = objects.property(Boolean::class.java)
+
     /** Includes Javax annotations support. */
     public fun includeJavax() {
       provider.add("javax/inject/Provider")
@@ -168,6 +171,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
       check(includeDaggerAnvil || includeKotlinInjectAnvil) {
         "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
       }
+      enableDaggerAnvilInterop.set(includeDaggerAnvil)
       if (includeDaggerAnvil) {
         graph.add("com/squareup/anvil/annotations/MergeComponent")
         graphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")

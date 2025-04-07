@@ -173,6 +173,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               .takeUnless { it.isEmpty() }
               ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
               ?.let(::add)
+          add(
+              SubpluginOption(
+                  "enable-dagger-anvil-interop",
+                  value = enableDaggerAnvilInterop.getOrElse(false).toString()))
         }
       }
     }
