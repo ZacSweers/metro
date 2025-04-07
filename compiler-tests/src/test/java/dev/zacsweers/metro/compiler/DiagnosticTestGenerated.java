@@ -22,6 +22,40 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/createGraph")
+  @TestDataPath("$PROJECT_ROOT")
+  public class CreateGraph {
+    @Test
+    public void testAllFilesPresentInCreateGraph() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/createGraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_GraphHasFactory.kt")
+    public void testCreateGraph_GraphHasFactory() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_GraphHasFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_MustBeGraph.kt")
+    public void testCreateGraph_MustBeGraph() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_MustBeGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_MustBeGraphFactory.kt")
+    public void testCreateGraph_MustBeGraphFactory() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_MustBeGraphFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_OkCase.kt")
+    public void testCreateGraph_OkCase() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_OkCase.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/provides")
   @TestDataPath("$PROJECT_ROOT")
   public class Provides {

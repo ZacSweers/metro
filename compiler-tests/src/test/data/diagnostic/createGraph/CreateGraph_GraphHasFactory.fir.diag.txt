@@ -1,0 +1,3 @@
+/CreateGraph_GraphHasFactory.kt:(262,285): error: `createGraph` type argument 'ExampleGraphWithFactory' has a factory at 'ExampleGraphWithFactory.Factory'. Use `createGraphFactory` with that type instead.
+
+/CreateGraph_GraphHasFactory.kt:(336,347): error: `createGraph` type argument 'ExampleGraphWithFactory' has a factory at 'ExampleGraphWithFactory.Factory'. Use `createGraphFactory` with that type instead.
