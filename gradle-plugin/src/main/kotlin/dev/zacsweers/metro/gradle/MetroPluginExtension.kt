@@ -54,7 +54,10 @@ constructor(objects: ObjectFactory, providers: ProviderFactory) {
   public val generateHintProperties: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(true)
 
-  /** Enable/disable Kotlin version compatibility checks. */
+  /**
+   * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
+   * `metro.version.check` gradle property.
+   */
   public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
       objects
           .property(Boolean::class.javaObjectType)
