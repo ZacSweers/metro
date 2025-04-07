@@ -799,19 +799,35 @@ internal fun FirAnnotation.excludesArgument() =
 internal fun FirAnnotation.replacesArgument() =
   argumentAsOrNull<FirArrayLiteral>("replaces".asName(), index = 2)
 
+internal fun FirAnnotation.rankValue(): Long {
+  // Although the parameter is defined as an Int, the value we receive here may end up being
+  // an Int or a Long so we need to handle both
+  return rankArgument()?.value?.let { it as? Long ?: (it as? Int)?.toLong() } ?: Long.MIN_VALUE
+}
+
+internal fun FirAnnotation.rankArgument() =
+  argumentAsOrNull<FirLiteralExpression>("rank".asName(), index = 5)
+
 internal fun FirAnnotation.bindingArgument() = annotationArgument("binding".asName(), index = 1)
 
-internal fun FirAnnotation.resolvedBindingArgument(session: FirSession): FirTypeRef? {
+internal fun FirAnnotation.resolvedBindingArgument(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): FirTypeRef? {
   // Return a binding defined using Metro's API
   bindingArgument()?.let { binding ->
     return binding.typeArguments[0].expectAsOrNull<FirTypeProjectionWithVariance>()?.typeRef
   }
   // Anvil interop - try a boundType defined using anvil KClass
-  return anvilKClassBoundTypeArgument(session)
+  return anvilKClassBoundTypeArgument(session, typeResolver)
 }
 
-internal fun FirAnnotation.anvilKClassBoundTypeArgument(session: FirSession): FirTypeRef? {
-  return getAnnotationKClassArgument("boundType".asName(), session)?.toFirResolvedTypeRef()
+internal fun FirAnnotation.anvilKClassBoundTypeArgument(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): FirTypeRef? {
+  return getAnnotationKClassArgument("boundType".asName(), session, typeResolver)
+    ?.toFirResolvedTypeRef()
 }
 
 internal fun FirAnnotation.anvilIgnoreQualifier(session: FirSession): Boolean {
@@ -821,10 +837,11 @@ internal fun FirAnnotation.anvilIgnoreQualifier(session: FirSession): Boolean {
 internal fun FirAnnotation.getAnnotationKClassArgument(
   name: Name,
   session: FirSession,
+  typeResolver: TypeResolveService? = null,
 ): ConeKotlinType? {
   val argument = findArgumentByName(name) ?: return null
-  val getClassCall = argument.evaluateAs<FirGetClassCall>(session) ?: return null
-  return getClassCall.getTargetType()
+  return argument.evaluateAs<FirGetClassCall>(session)?.getTargetType()
+    ?: typeResolver?.let { (argument as FirGetClassCall).resolvedClassArgumentTarget(it) }
 }
 
 internal fun FirAnnotation.resolvedScopeClassId() = scopeArgument()?.resolvedClassId()

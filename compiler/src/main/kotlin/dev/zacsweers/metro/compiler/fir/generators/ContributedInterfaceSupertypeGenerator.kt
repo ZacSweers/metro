@@ -6,20 +6,21 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
+import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import java.util.TreeMap
-import kotlin.sequences.forEach
+import kotlin.collections.plusAssign
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
-import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
@@ -28,11 +29,14 @@ import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -215,6 +219,86 @@ internal class ContributedInterfaceSupertypeGenerator(
       // TODO warn?
     }
 
+    // TODO(j) should short-circuit if interop isn't enabled
+    val unmatchedRankReplacements = mutableSetOf<ClassId>()
+    val pendingRankReplacements = processRankBasedReplacements(contributions, typeResolver)
+
+    pendingRankReplacements.distinct().forEach { replacedClassId ->
+      val removed = contributions.remove(replacedClassId)
+      if (removed != null) {
+        unmatchedRankReplacements += replacedClassId
+      }
+    }
+
+    if (unmatchedRankReplacements.isNotEmpty()) {
+      // TODO we could report all rank based replacements here
+    }
+
     return contributions.values.toList()
   }
+
+  /**
+   * This is an imperfect solution to provide `rank` interop for users migrating from Dagger-Anvil.
+   * We're not able to get 1:1 parity due to some type restrictions but it should be enough to make
+   * the migration much more feasible in large projects that have a lot of ranked bindings.
+   *
+   * There are two important limitations to note here:
+   * 1. Ranked bindings and bindings that get outranked must both explicitly declare their binding
+   *    type in order for us to actually compare them, because supertypes are not resolvable here.
+   *    The user will end up getting a duplicate binding error if the outranked binding is using an
+   *    implicit type.
+   * 2. We can't check for qualifiers when comparing these bindings because those annotation calls
+   *    are not resolved at this point. E.g. a compiler critical annotation
+   *    like @ContributesBinding(..) will be resolved but @Named(..) will not. This means that
+   *    qualifiers are unsupported for rank interop support. Rank can only effectively be used for
+   *    binding types where all of them are unqualified or all use the same qualifier. Other
+   *    combinations will need to be migrated to instead use explicit replacements or exclusions.
+   *
+   * @return The bindings which have been outranked and should not be included in the merged graph.
+   */
+  private fun processRankBasedReplacements(
+    contributions: TreeMap<ClassId, ConeKotlinType>,
+    typeResolver: TypeResolveService,
+  ): Set<ClassId> {
+    val pendingRankReplacements = mutableSetOf<ClassId>()
+
+    val rankedBindings =
+      contributions.values
+        .filterIsInstance<ConeClassLikeType>()
+        .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
+        .flatMap { contributingType ->
+          contributingType.annotations
+            .annotationsIn(session, session.classIds.contributesBindingAnnotations)
+            .mapNotNull { annotation ->
+              annotation.resolvedBindingArgument(session, typeResolver)?.let { bindingArg ->
+                ContributedBinding(contributingType, bindingArg, annotation.rankValue())
+              }
+            }
+        }
+    val bindingGroups =
+      rankedBindings
+        .groupBy { binding -> binding.boundType?.coneType }
+        .filter { bindingGroup -> bindingGroup.value.size > 1 }
+
+    for (bindingGroup in bindingGroups.values) {
+      val topBindings =
+        bindingGroup
+          .groupBy { binding -> binding.rank }
+          .toSortedMap()
+          .let { it.getValue(it.lastKey()) }
+
+      // These are the bindings that were outranked and should not be processed further
+      bindingGroup.minus(topBindings).forEach {
+        pendingRankReplacements += it.contributingType.classId
+      }
+    }
+
+    return pendingRankReplacements
+  }
+
+  private data class ContributedBinding(
+    val contributingType: FirClassLikeSymbol<*>,
+    val boundType: FirTypeRef?,
+    val rank: Long,
+  )
 }

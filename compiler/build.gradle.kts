@@ -96,4 +96,5 @@ dependencies {
   testImplementation(libs.coroutines.test)
   testImplementation(libs.dagger.compiler)
   testImplementation(libs.dagger.runtime)
+  testImplementation(libs.anvil.annotations)
 }
