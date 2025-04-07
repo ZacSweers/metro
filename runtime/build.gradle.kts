@@ -43,6 +43,20 @@ plugins {
  *  * `sizet64` for everything else
  */
 kotlin {
+  @Suppress("OPT_IN_USAGE")
+  applyDefaultHierarchyTemplate {
+    common {
+      group("concurrentTest") {
+        withJvm()
+        withNative()
+      }
+      group("browserCommon") {
+        withJs()
+        withWasmJs()
+      }
+    }
+  }
+
   jvm()
   js(IR) {
     compilations.configureEach {
@@ -65,20 +79,6 @@ kotlin {
   }
 
   configureOrCreateNativePlatforms()
-
-  @Suppress("OPT_IN_USAGE")
-  applyDefaultHierarchyTemplate {
-    common {
-      group("concurrentTest") {
-        withJvm()
-        withNative()
-      }
-      group("browserCommon") {
-        withJs()
-        withWasmJs()
-      }
-    }
-  }
 
   sourceSets {
     commonTest {

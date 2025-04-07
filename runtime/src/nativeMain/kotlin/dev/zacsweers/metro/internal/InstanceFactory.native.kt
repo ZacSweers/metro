@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.zacsweers.metro.runtime.internal
-
-import dev.zacsweers.metro.internal.Factory
+package dev.zacsweers.metro.internal
 
 public actual value class InstanceFactory<T : Any> private constructor(override val value: T) : Factory<T>, Lazy<T> {
   actual override fun isInitialized(): Boolean = true
@@ -24,8 +22,8 @@ public actual value class InstanceFactory<T : Any> private constructor(override 
 
   actual override fun toString(): String = value.toString()
 
-  public companion object {
-    public fun <T : Any> create(instance: T): Factory<T> {
+  public actual companion object {
+    public actual fun <T : Any> create(instance: T): Factory<T> {
       return InstanceFactory(instance)
     }
   }
