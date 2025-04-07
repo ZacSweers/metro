@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Fix class-private qualifiers on multibinding contributions in other modules not being recognized in downstream graphs.
+
 0.1.1
 -----
 
