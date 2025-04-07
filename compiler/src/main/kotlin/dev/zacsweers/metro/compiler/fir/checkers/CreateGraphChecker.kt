@@ -33,8 +33,15 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
       context.session.metroFirBuiltIns.createGraph.callableId -> {
         // Check that the target is a graph and has no factory
         val typeArg = expression.typeArguments.singleOrNull() ?: return
-        val rawType = typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session) ?: return
-        if (!rawType.isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.dependencyGraphAnnotations)) {
+        val rawType =
+          typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session)
+            ?: return
+        if (
+          !rawType.isAnnotatedWithAny(
+            session,
+            session.metroFirBuiltIns.classIds.dependencyGraphAnnotations,
+          )
+        ) {
           reporter.reportOn(
             typeArg.source ?: source,
             CREATE_GRAPH_ERROR,
@@ -44,9 +51,13 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
           return
         }
         // Check that it doesn't have a factory
-        val creator = rawType.declarationSymbols
-          .filterIsInstance<FirClassSymbol<*>>()
-          .find { it.isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations) }
+        val creator =
+          rawType.declarationSymbols.filterIsInstance<FirClassSymbol<*>>().find {
+            it.isAnnotatedWithAny(
+              session,
+              session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations,
+            )
+          }
         if (creator != null) {
           reporter.reportOn(
             typeArg.source ?: source,
@@ -60,8 +71,15 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
       context.session.metroFirBuiltIns.createGraphFactory.callableId -> {
         // Check that the target is a graph factory
         val typeArg = expression.typeArguments.singleOrNull() ?: return
-        val rawType = typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session)
-        if (rawType != null && !rawType.isAnnotatedWithAny(session, session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations)) {
+        val rawType =
+          typeArg.toConeTypeProjection().type?.classLikeLookupTagIfAny?.toClassSymbol(session)
+        if (
+          rawType != null &&
+            !rawType.isAnnotatedWithAny(
+              session,
+              session.metroFirBuiltIns.classIds.dependencyGraphFactoryAnnotations,
+            )
+        ) {
           reporter.reportOn(
             typeArg.source ?: source,
             CREATE_GRAPH_ERROR,

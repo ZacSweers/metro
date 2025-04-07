@@ -37,8 +37,9 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
         get() = setOf(ProvidesChecker, MultibindsChecker)
     }
 
-  override val expressionCheckers: ExpressionCheckers = object : ExpressionCheckers() {
-    override val functionCallCheckers: Set<FirFunctionCallChecker>
-      get() = setOf(CreateGraphChecker)
-  }
+  override val expressionCheckers: ExpressionCheckers =
+    object : ExpressionCheckers() {
+      override val functionCallCheckers: Set<FirFunctionCallChecker>
+        get() = setOf(CreateGraphChecker)
+    }
 }

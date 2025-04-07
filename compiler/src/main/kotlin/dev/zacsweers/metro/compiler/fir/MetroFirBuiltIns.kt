@@ -28,11 +28,18 @@ internal class MetroFirBuiltIns(
   }
 
   val createGraph by unsafeLazy {
-    session.symbolProvider.getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, "createGraph".asName()).first()
+    session.symbolProvider
+      .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, "createGraph".asName())
+      .first()
   }
 
   val createGraphFactory by unsafeLazy {
-    session.symbolProvider.getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, "createGraphFactory".asName()).first()
+    session.symbolProvider
+      .getTopLevelFunctionSymbols(
+        Symbols.FqNames.metroRuntimePackage,
+        "createGraphFactory".asName(),
+      )
+      .first()
   }
 
   val injectedFunctionClassClassSymbol by unsafeLazy {
