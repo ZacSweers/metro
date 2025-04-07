@@ -176,15 +176,10 @@ internal class DependencyGraphTransformer(
       symbols.metroCreateGraphFactory -> {
         // Get the called type
         val type =
-          expression.getTypeArgument(0)
+          expression.typeArguments[0]
             ?: error("Missing type argument for ${symbols.metroCreateGraphFactory.owner.name}")
+        // Already checked in FIR
         val rawType = type.rawType()
-        if (!rawType.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations)) {
-          // TODO FIR error
-          error(
-            "Cannot create a graph factory instance of non-factory type ${rawType.kotlinFqName}"
-          )
-        }
         val parentDeclaration = rawType.parentAsClass
         val companion = parentDeclaration.companionObject()!!
 
@@ -202,8 +197,7 @@ internal class DependencyGraphTransformer(
             companion.functions.single {
               // Note we don't filter on Origins.MetroGraphFactoryCompanionGetter, because
               // sometimes a user may have already defined one. An FIR checker will validate that
-              // any such function is
-              // valid, so just trust it if one is found
+              // any such function is valid, so just trust it if one is found
               it.name == Symbols.Names.factoryFunctionName
             }
           // Replace it with a call directly to the factory function
@@ -218,15 +212,10 @@ internal class DependencyGraphTransformer(
       symbols.metroCreateGraph -> {
         // Get the called type
         val type =
-          expression.getTypeArgument(0)
+          expression.typeArguments[0]
             ?: error("Missing type argument for ${symbols.metroCreateGraph.owner.name}")
+        // Already checked in FIR
         val rawType = type.rawType()
-        if (!rawType.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)) {
-          // TODO FIR error
-          error(
-            "Cannot create an dependency graph instance of non-graph type ${rawType.kotlinFqName}"
-          )
-        }
         val companion = rawType.companionObject()!!
         val factoryFunction =
           companion.functions.singleOrNull {
