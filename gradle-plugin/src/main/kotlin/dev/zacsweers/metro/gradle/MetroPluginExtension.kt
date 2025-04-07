@@ -11,10 +11,9 @@ import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
 
 @MetroExtensionMarker
-public abstract class MetroPluginExtension @Inject constructor(
-  objects: ObjectFactory,
-  providers: ProviderFactory
-) {
+public abstract class MetroPluginExtension
+@Inject
+constructor(objects: ObjectFactory, providers: ProviderFactory) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
@@ -57,12 +56,10 @@ public abstract class MetroPluginExtension @Inject constructor(
 
   /** Enable/disable Kotlin version compatibility checks. */
   public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType)
-        .convention(
-          providers.gradleProperty("metro.version.check")
-            .map { it.toBoolean() }
-            .orElse(true)
-        )
+      objects
+          .property(Boolean::class.javaObjectType)
+          .convention(
+              providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true))
 
   /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
