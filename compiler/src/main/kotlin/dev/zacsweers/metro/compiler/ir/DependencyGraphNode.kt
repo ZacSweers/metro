@@ -18,7 +18,8 @@ internal data class DependencyGraphNode(
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
   val bindsFunctions: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
-  val injectors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
+  // TypeKey key is the injected type wrapped in MembersInjector
+  val injectors: List<Pair<MetroSimpleFunction, TypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
   val typeKey: TypeKey,

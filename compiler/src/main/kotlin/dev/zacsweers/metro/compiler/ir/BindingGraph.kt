@@ -21,14 +21,18 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   // Use ConcurrentHashMap to allow reentrant modification
   private val bindings = ConcurrentHashMap<TypeKey, Binding>()
   private val dependencies = ConcurrentHashMap<TypeKey, Lazy<Set<ContextualTypeKey>>>()
-  // TODO eventually add inject() targets too from member injection
   private val accessors = mutableMapOf<ContextualTypeKey, BindingStack.Entry>()
+  private val injectors = mutableMapOf<TypeKey, BindingStack.Entry>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<TypeKey, Binding> = bindings
 
   fun addAccessor(key: ContextualTypeKey, entry: BindingStack.Entry) {
     accessors[key] = entry
+  }
+
+  fun addInjector(key: TypeKey, entry: BindingStack.Entry) {
+    injectors[key] = entry
   }
 
   fun addBinding(key: TypeKey, binding: Binding, bindingStack: BindingStack) {
@@ -274,7 +278,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           "Visiting dependency ${contextDep.typeKey.render(short = true)} from ${key.render(short = true)}"
         )
         val dep = contextDep.typeKey
-        val dependencyBinding = requireBinding(dep, stack)
+        val dependencyBinding = getOrCreateBinding(contextDep, stack)
         val nextEntry =
           bindingStackEntryForDependency(
             binding = binding,
@@ -286,12 +290,21 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     }
 
     for ((key, entry) in accessors) {
-      stackLogger.log("Traversing from root: ${key.typeKey}")
+      stackLogger.log("Traversing from accessor root: ${key.typeKey}")
       stack.withEntry(entry) {
         val binding = getOrCreateBinding(key, stack)
         dfs(binding)
       }
-      stackLogger.log("End traversing from root: ${key.typeKey}")
+      stackLogger.log("End traversing from accessor root: ${key.typeKey}")
+    }
+
+    for ((key, entry) in injectors) {
+      stackLogger.log("Traversing from injector root: $key")
+      stack.withEntry(entry) {
+        val binding = getOrCreateBinding(ContextualTypeKey(key), stack)
+        dfs(binding)
+      }
+      stackLogger.log("End traversing from injector root: $key")
     }
     stackLogger.log(
       "End validation of ${node.sourceGraph.kotlinFqName.asString()}. Deferred types are $deferredTypes"
