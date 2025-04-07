@@ -7,10 +7,14 @@ import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
 
 @MetroExtensionMarker
-public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFactory) {
+public abstract class MetroPluginExtension @Inject constructor(
+  objects: ObjectFactory,
+  providers: ProviderFactory
+) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
@@ -50,6 +54,15 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
   /** Enable/disable hint property generation in IR for contributed types. Enabled by default. */
   public val generateHintProperties: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(true)
+
+  /** Enable/disable Kotlin version compatibility checks. */
+  public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
+      objects.property(Boolean::class.javaObjectType)
+        .convention(
+          providers.gradleProperty("metro.version.check")
+            .map { it.toBoolean() }
+            .orElse(true)
+        )
 
   /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
