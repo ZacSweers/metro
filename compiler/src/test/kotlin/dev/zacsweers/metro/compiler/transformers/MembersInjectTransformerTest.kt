@@ -869,12 +869,12 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
             class ExampleClass {
               var int: Int = 0
-              
+
               @Inject fun injectValues(dependency: Dependency) {
                 this.int = dependency.int
               }
             }
-            
+
             @Inject
             class Dependency {
               val int: Int = 3
