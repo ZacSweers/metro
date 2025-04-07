@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Enhancement**: Implement `createGraph` and `createGraphFactory` FIR checkers for better error diagnostics on erroneous type arguments.
+- **Enhancement**: Check Kotlin version compatibility. Use the `metro.version.check=false` Gradle property to disable these warnings if you're feeling adventurous.
 - **Fix**: Fix class-private qualifiers on multibinding contributions in other modules not being recognized in downstream graphs.
 - **Fix**: Fix member injectors not getting properly visited in graph validation.
 
