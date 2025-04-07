@@ -33,7 +33,6 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.getSingleConstBooleanArgumentOrNull
-import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
@@ -123,7 +122,6 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getValueArgument
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isFromJava
@@ -169,68 +167,8 @@ internal class DependencyGraphTransformer(
   private val metroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
   override fun visitCall(expression: IrCall, data: DependencyGraphData): IrElement {
-    // Covers replacing createGraphFactory() compiler intrinsics with calls to the real
-    // graph factory
-    val callee = expression.symbol.owner
-    when (callee.symbol) {
-      symbols.metroCreateGraphFactory -> {
-        // Get the called type
-        val type =
-          expression.typeArguments[0]
-            ?: error("Missing type argument for ${symbols.metroCreateGraphFactory.owner.name}")
-        // Already checked in FIR
-        val rawType = type.rawType()
-        val parentDeclaration = rawType.parentAsClass
-        val companion = parentDeclaration.companionObject()!!
-
-        // If there's no $$Impl class, the companion object is the impl
-        val companionIsTheFactory =
-          companion.implements(pluginContext, rawType.classIdOrFail) &&
-            rawType.nestedClasses.singleOrNull { it.name == Symbols.Names.metroImpl } == null
-
-        if (companionIsTheFactory) {
-          return pluginContext.createIrBuilder(expression.symbol).run {
-            irGetObject(companion.symbol)
-          }
-        } else {
-          val factoryFunction =
-            companion.functions.single {
-              // Note we don't filter on Origins.MetroGraphFactoryCompanionGetter, because
-              // sometimes a user may have already defined one. An FIR checker will validate that
-              // any such function is valid, so just trust it if one is found
-              it.name == Symbols.Names.factoryFunctionName
-            }
-          // Replace it with a call directly to the factory function
-          return pluginContext.createIrBuilder(expression.symbol).run {
-            irCall(callee = factoryFunction.symbol, type = type).apply {
-              dispatchReceiver = irGetObject(companion.symbol)
-            }
-          }
-        }
-      }
-
-      symbols.metroCreateGraph -> {
-        // Get the called type
-        val type =
-          expression.typeArguments[0]
-            ?: error("Missing type argument for ${symbols.metroCreateGraph.owner.name}")
-        // Already checked in FIR
-        val rawType = type.rawType()
-        val companion = rawType.companionObject()!!
-        val factoryFunction =
-          companion.functions.singleOrNull {
-            it.hasAnnotation(Symbols.FqNames.graphFactoryInvokeFunctionMarkerClass)
-          } ?: error("Cannot find a graph factory function for ${rawType.kotlinFqName}")
-        // Replace it with a call directly to the create function
-        return pluginContext.createIrBuilder(expression.symbol).run {
-          irCall(callee = factoryFunction.symbol, type = type).apply {
-            dispatchReceiver = irGetObject(companion.symbol)
-          }
-        }
-      }
-    }
-
-    return super.visitCall(expression, data)
+    return CreateGraphTransformer.visitCall(expression, metroContext)
+      ?: super.visitCall(expression, data)
   }
 
   override fun visitClass(declaration: IrClass, data: DependencyGraphData): IrStatement {
