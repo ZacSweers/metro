@@ -4,9 +4,12 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asFqNames
+import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
@@ -14,8 +17,8 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeMap
-import kotlin.collections.plusAssign
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -23,7 +26,9 @@ import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
+import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.moduleData
@@ -35,7 +40,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -55,9 +59,7 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   private val dependencyGraphPredicate =
-    LookupPredicate.create {
-      annotated(classIds.dependencyGraphAnnotations.map { it.asSingleFqName() })
-    }
+    LookupPredicate.create { annotated(classIds.dependencyGraphAnnotations.asFqNames()) }
 
   private val dependencyGraphs by lazy {
     session.predicateBasedProvider
@@ -67,9 +69,13 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   private val contributingTypesPredicate =
-    LookupPredicate.create {
-      annotated(classIds.allContributesAnnotations.map { it.asSingleFqName() })
+    LookupPredicate.create { annotated(classIds.allContributesAnnotations.asFqNames()) }
+
+  private val qualifiersPredicate by unsafeLazy {
+    DeclarationPredicate.create {
+      metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
     }
+  }
 
   private val inCompilationScopesToContributions:
     FirCache<FirSession, Map<ClassId, Set<ClassId>>, TypeResolveService> =
@@ -136,6 +142,13 @@ internal class ContributedInterfaceSupertypeGenerator(
     // TODO in an FIR checker, disallow omitting scope but defining additional scopes
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
     return graphAnnotation.scopeArgument() != null
+  }
+
+  override fun FirDeclarationPredicateRegistrar.registerPredicates() {
+    // Currently we only need to resolve qualifiers for dagger-anvil's 'rank' interop
+    if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
+      register(qualifiersPredicate)
+    }
   }
 
   override fun computeAdditionalSupertypes(
@@ -244,17 +257,10 @@ internal class ContributedInterfaceSupertypeGenerator(
    * We're not able to get 1:1 parity due to some type restrictions but it should be enough to make
    * the migration much more feasible in large projects that have a lot of ranked bindings.
    *
-   * There are two important limitations to note here:
-   * 1. Ranked bindings and bindings that get outranked must both explicitly declare their binding
-   *    type in order for us to actually compare them, because supertypes are not resolvable here.
-   *    The user will end up getting a duplicate binding error if the outranked binding is using an
-   *    implicit type.
-   * 2. We can't check for qualifiers when comparing these bindings because those annotation calls
-   *    are not resolved at this point. E.g. a compiler critical annotation
-   *    like @ContributesBinding(..) will be resolved but @Named(..) will not. This means that
-   *    qualifiers are unsupported for rank interop support. Rank can only effectively be used for
-   *    binding types where all of them are unqualified or all use the same qualifier. Other
-   *    combinations will need to be migrated to instead use explicit replacements or exclusions.
+   * The main limitation we have is that supertypes are not resolvable here. That means ranked
+   * bindings and bindings that get outranked must both explicitly declare their binding type for us
+   * to actually compare them. The user will end up getting a duplicate binding error if the
+   * outranked binding is using an implicit type.
    *
    * @return The bindings which have been outranked and should not be included in the merged graph.
    */
@@ -273,13 +279,20 @@ internal class ContributedInterfaceSupertypeGenerator(
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
             .mapNotNull { annotation ->
               annotation.resolvedBindingArgument(session, typeResolver)?.let { bindingArg ->
-                ContributedBinding(contributingType, bindingArg, annotation.rankValue())
+                ContributedBinding(
+                  contributingType,
+                  FirTypeKey(
+                    bindingArg.coneType,
+                    contributingType.annotations.qualifierAnnotation(session),
+                  ),
+                  annotation.rankValue(),
+                )
               }
             }
         }
     val bindingGroups =
       rankedBindings
-        .groupBy { binding -> binding.boundType?.coneType }
+        .groupBy { binding -> binding.typeKey }
         .filter { bindingGroup -> bindingGroup.value.size > 1 }
 
     for (bindingGroup in bindingGroups.values) {
@@ -300,7 +313,7 @@ internal class ContributedInterfaceSupertypeGenerator(
 
   private data class ContributedBinding(
     val contributingType: FirClassLikeSymbol<*>,
-    val boundType: FirTypeRef?,
+    val typeKey: FirTypeKey,
     val rank: Long,
   )
 }

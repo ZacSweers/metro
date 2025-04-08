@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.asFqNames
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -61,7 +62,7 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
   private val dependencyGraphCompanionPredicate by unsafeLazy {
-    parentAnnotated(session.classIds.dependencyGraphAnnotations.map { it.asSingleFqName() })
+    parentAnnotated(session.classIds.dependencyGraphAnnotations.asFqNames())
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
