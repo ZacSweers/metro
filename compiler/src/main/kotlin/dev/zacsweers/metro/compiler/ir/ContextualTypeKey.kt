@@ -198,8 +198,6 @@ internal fun IrType.asContextualTypeKey(
     TypeKey(
       when (wrappedType) {
         is WrappedType.Canonical -> wrappedType.type
-        // For Map types, we keep the original type in the TypeKey
-        is WrappedType.Map -> declaredType
         else -> wrappedType.canonicalType()
       },
       qualifierAnnotation,
@@ -233,13 +231,6 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
   // Check if this is a Provider type
   if (rawClassId in context.symbols.providerTypes) {
     val innerType = arguments[0].typeOrFail
-
-    // Check if the inner type is a Lazy type
-    val innerRawClassId = innerType.rawTypeOrNull()?.classId
-    if (innerRawClassId in context.symbols.lazyTypes) {
-      val lazyInnerType = innerType.expectAs<IrSimpleType>().arguments[0].typeOrFail
-      return WrappedType.Provider(WrappedType.Lazy(WrappedType.Canonical(lazyInnerType)))
-    }
 
     // Recursively analyze the inner type
     val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(context)

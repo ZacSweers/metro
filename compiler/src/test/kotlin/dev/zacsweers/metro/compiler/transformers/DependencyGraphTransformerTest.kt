@@ -2534,4 +2534,90 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         .containsExactly(0, 0)
     }
   }
+
+  // TODO providing a Map<String, Int> should not make it possible to get a Map<String,
+  // Provider<Int>> later
+  // TODO good candidate for a box test
+  @Test
+  fun `multibindings - map provider - different wrapping types`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            @IntoMap
+            @StringKey("a")
+            fun provideEntryA(): Int = 1
+
+            @Provides
+            @IntoMap
+            @StringKey("b")
+            fun provideEntryB(): Int = 2
+
+            @Provides
+            @IntoMap
+            @StringKey("c")
+            fun provideEntryC(): Int = 3
+
+            // Inject it with different formats
+            val directMap: Map<String, Int>
+            val providerValueMap: Map<String, Provider<Int>>
+            val providerMap: Provider<Map<String, Int>>
+            val providerOfProviderValueMap: Provider<Map<String, Provider<Int>>>
+            val lazyOfProviderValueMap: Lazy<Map<String, Provider<Int>>>
+            val providerOfLazyOfProviderValueMap: Provider<Lazy<Map<String, Provider<Int>>>>
+
+            // Class that injects the map with yet another format
+            val exampleClass: ExampleClass
+          }
+
+          @Inject
+          class ExampleClass(val map: Map<String, Provider<Int>>)
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      // Test direct map
+      val directMap = graph.callProperty<Map<String, Int>>("directMap")
+      assertThat(directMap).containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test map with provider values
+      val providerValueMap = graph.callProperty<Map<String, Provider<Int>>>("providerValueMap")
+      assertThat(providerValueMap.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test provider of map
+      val providerMap = graph.callProperty<Provider<Map<String, Int>>>("providerMap")
+      assertThat(providerMap()).containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test provider of map with provider values
+      val providerOfProviderValueMap =
+        graph.callProperty<Provider<Map<String, Provider<Int>>>>("providerOfProviderValueMap")
+      assertThat(providerOfProviderValueMap().mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test lazy of map with provider values
+      val lazyOfProviderValueMap =
+        graph.callProperty<Lazy<Map<String, Provider<Int>>>>("lazyOfProviderValueMap")
+      assertThat(lazyOfProviderValueMap.value.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test provider of lazy map with provider values
+      val providerOfLazyOfProviderValueMap =
+        graph.callProperty<Provider<Lazy<Map<String, Provider<Int>>>>>(
+          "providerOfLazyOfProviderValueMap"
+        )
+      assertThat(providerOfLazyOfProviderValueMap().value.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test injected class
+      val exampleClass = graph.callProperty<Any>("exampleClass")
+      val injectedMap = exampleClass.callProperty<Map<String, Provider<Int>>>("map")
+      assertThat(injectedMap.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+    }
+  }
 }
