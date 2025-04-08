@@ -218,14 +218,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
     val instanceParam =
       if (!reference.isInObject) {
-        val contextualTypeKey =
-          ContextualTypeKey(
-            typeKey = TypeKey(graphType),
-            isWrappedInProvider = false,
-            isWrappedInLazy = false,
-            isLazyWrappedInProvider = false,
-            hasDefault = false,
-          )
+        val contextualTypeKey = ContextualTypeKey.create(typeKey = TypeKey(graphType))
         ConstructorParameter(
           kind = Parameter.Kind.VALUE,
           name = Name.identifier("graph"),

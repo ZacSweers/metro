@@ -12,9 +12,6 @@ import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.renderer.ConeIdRendererForDiagnostics
-import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
-import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
@@ -41,7 +38,7 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
         append(" ")
       }
     }
-    renderType(short)
+    renderType(short, type)
   }
 
   companion object {
@@ -97,21 +94,5 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
       val qualifier = annotations.qualifierAnnotation(session)
       return FirTypeKey(coneType, qualifier)
     }
-  }
-
-  // Custom renderer that excludes annotations
-  private fun StringBuilder.renderType(short: Boolean) {
-    val renderer =
-      object :
-        ConeTypeRendererForReadability(
-          this,
-          null,
-          { if (short) ConeIdShortRenderer() else ConeIdRendererForDiagnostics() },
-        ) {
-        override fun ConeKotlinType.renderAttributes() {
-          // Do nothing, we don't want annotations
-        }
-      }
-    renderer.render(type)
   }
 }

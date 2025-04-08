@@ -131,17 +131,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   fun requireBinding(key: TypeKey, stack: BindingStack): Binding =
     bindings[key]
       ?: run {
-        stack.push(
-          BindingStack.Entry.simpleTypeRef(
-            ContextualTypeKey(
-              key,
-              isWrappedInProvider = false,
-              isWrappedInLazy = false,
-              isLazyWrappedInProvider = false,
-              hasDefault = false,
-            )
-          )
-        )
+        stack.push(BindingStack.Entry.simpleTypeRef(ContextualTypeKey.create(key)))
         val message = buildString {
           appendLine("No binding found for $key")
           appendBindingStack(stack)

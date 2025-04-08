@@ -24,6 +24,7 @@ import dev.zacsweers.metro.Provider
 public class MapProviderFactory<K : Any, V : Any>
 private constructor(contributingMap: Map<K, Provider<V>>) :
   AbstractMapFactory<K, V, Provider<V>>(contributingMap), Lazy<Map<K, Provider<V>>> {
+
   /**
    * Returns a `Map<K, Provider<V>>` whose iteration order is that of the elements given by each of
    * the providers, which are invoked in the order given at creation.
@@ -51,7 +52,7 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
     public fun build(): MapProviderFactory<K, V> = MapProviderFactory(map)
   }
 
-  public companion object {
+  public companion object MapProviderFactoryCompanion {
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
