@@ -52,7 +52,7 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
     public fun build(): MapProviderFactory<K, V> = MapProviderFactory(map)
   }
 
-  public companion object MapProviderFactoryCompanion {
+  public companion object {
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
