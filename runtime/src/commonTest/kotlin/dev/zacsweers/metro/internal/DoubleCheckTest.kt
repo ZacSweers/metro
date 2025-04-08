@@ -17,6 +17,7 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 import kotlinx.atomicfu.atomic
@@ -69,7 +70,8 @@ class DoubleCheckTest {
   @Test
   fun `instance factory as lazy does not wrap`() {
     val factory = InstanceFactory(Any())
-    assertSame<Any>(factory, DoubleCheck.lazy(factory))
+    // We use toString() here because on JVM the boxed type is used
+    assertEquals(factory.toString(), DoubleCheck.lazy(factory).toString())
   }
 
   companion object {
