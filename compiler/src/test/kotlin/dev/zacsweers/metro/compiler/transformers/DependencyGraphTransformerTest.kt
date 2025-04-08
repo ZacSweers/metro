@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.companionObjectInstance
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
 import java.util.concurrent.Callable
 import kotlin.test.Ignore
@@ -2391,6 +2392,146 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
           .trimIndent()
       )
+    }
+  }
+
+  @Test
+  fun `multibindings - map`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val ints: Map<Int, Int>
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val ints = graph.callProperty<Map<Int, Int>>("ints")
+      assertThat(ints).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - map provider`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val ints: Map<Int, Provider<Int>>
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val ints = graph.callProperty<Map<Int, Provider<Int>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Ignore("TODO is this a case we want to support?")
+  @Test
+  fun `multibindings - map providers of lazy`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val ints: Map<Int, Provider<Lazy<Int>>>
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val ints = graph.callProperty<Map<Int, Provider<Lazy<Int>>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value().value }).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - map provider - declared non-provider`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Multibinds
+            val ints: Map<Int, Int>
+
+            val exampleClass: ExampleClass
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+
+          @Inject class ExampleClass(val ints: Map<Int, Provider<Int>>)
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleClass = graph.callProperty<Any>("exampleClass")
+      val ints = exampleClass.callProperty<Map<Int, Provider<Int>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - map provider - declared non-provider - with class contributor`() {
+    compile(
+      source(
+        """
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph {
+            val exampleClass: ExampleClass
+          }
+
+          @ContributesTo(AppScope::class)
+          interface IntsBinding {
+            @Multibinds
+            val ints: Map<Int, Provider<Int>>
+          }
+
+          fun interface IntHolder {
+            fun value(): Int
+          }
+
+          @ContributesIntoMap(AppScope::class)
+          @IntKey(0)
+          @Inject
+          class ZeroHolder : IntHolder {
+            override fun value(): Int = 0
+          }
+
+          @Inject class ExampleClass(val ints: Map<Int, Provider<IntHolder>>)
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleClass = graph.callProperty<Any>("exampleClass")
+      val ints = exampleClass.callProperty<Map<Int, Provider<Any>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value().invokeInstanceMethod<Int>("value") })
+        .containsExactly(0, 0)
     }
   }
 }

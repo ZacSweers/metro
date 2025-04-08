@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.WrappedType
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -368,14 +369,7 @@ internal class DependencyGraphTransformer(
     val nonNullMetroGraph =
       metroGraph ?: graphDeclaration.requireNestedClass(Symbols.Names.metroGraph)
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
-    val graphContextKey =
-      ContextualTypeKey(
-        graphTypeKey,
-        isWrappedInProvider = false,
-        isWrappedInLazy = false,
-        isLazyWrappedInProvider = false,
-        hasDefault = false,
-      )
+    val graphContextKey = ContextualTypeKey.create(graphTypeKey)
 
     val injectors = mutableListOf<Pair<MetroSimpleFunction, TypeKey>>()
 
@@ -2575,6 +2569,8 @@ internal class DependencyGraphTransformer(
     //   .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
     //   .put(2, provideMapInt2Provider)
     //   .build()
+    val valueWrappedType = contextualTypeKey.wrappedType.findMapValueType()!!
+
     val mapTypeArgs = (contextualTypeKey.typeKey.type as IrSimpleType).arguments
     check(mapTypeArgs.size == 2) { "Unexpected map type args: ${mapTypeArgs.joinToString()}" }
     val keyType: IrType = mapTypeArgs[0].typeOrFail
@@ -2586,7 +2582,10 @@ internal class DependencyGraphTransformer(
         hasDefault = false,
         isIntoMultibinding = false,
       )
-    val useProviderFactory: Boolean = rawValueTypeMetadata.isWrappedInProvider
+
+    // TODO what about Map<String, Provider<Lazy<String>>>?
+    //  isDeferrable() but we need to be able to convert back to the middle type
+    val useProviderFactory: Boolean = valueWrappedType is WrappedType.Provider
     val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
     val targetCompanionObject =
@@ -2688,14 +2687,7 @@ internal class DependencyGraphTransformer(
     val bindingCode = generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)
     return typeAsProviderArgument(
       metroContext,
-      contextKey =
-        ContextualTypeKey(
-          provider.typeKey,
-          isWrappedInProvider = false,
-          isWrappedInLazy = false,
-          isLazyWrappedInProvider = false,
-          hasDefault = false,
-        ),
+      contextKey = ContextualTypeKey.create(provider.typeKey),
       bindingCode = bindingCode,
       isAssisted = false,
       isGraphInstance = false,

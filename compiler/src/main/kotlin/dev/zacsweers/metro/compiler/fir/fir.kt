@@ -71,6 +71,9 @@ import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.renderer.ConeIdRendererForDiagnostics
+import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
+import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
@@ -1002,3 +1005,23 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
 
 internal val FirValueParameterSymbol.containingFunctionSymbol: FirFunctionSymbol<*>?
   get() = containingDeclarationSymbol as? FirFunctionSymbol<*>
+
+internal fun ConeKotlinType.render(short: Boolean): String {
+  return buildString { renderType(short, this@render) }
+}
+
+// Custom renderer that excludes annotations
+internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
+  val renderer =
+    object :
+      ConeTypeRendererForReadability(
+        this,
+        null,
+        { if (short) ConeIdShortRenderer() else ConeIdRendererForDiagnostics() },
+      ) {
+      override fun ConeKotlinType.renderAttributes() {
+        // Do nothing, we don't want annotations
+      }
+    }
+  renderer.render(type)
+}

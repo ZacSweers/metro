@@ -71,14 +71,7 @@ internal sealed interface Binding {
       get() = annotations.scope
 
     override val nameHint: String = type.name.asString()
-    override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(
-        typeKey,
-        isWrappedInProvider = false,
-        isWrappedInLazy = false,
-        isLazyWrappedInProvider = false,
-        hasDefault = false,
-      )
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey.create(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation?
       get() = type.locationOrNull()
@@ -116,14 +109,7 @@ internal sealed interface Binding {
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
 
     override val nameHint: String = type.name.asString()
-    override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(
-        typeKey,
-        isWrappedInProvider = false,
-        isWrappedInLazy = false,
-        isLazyWrappedInProvider = false,
-        hasDefault = false,
-      )
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey.create(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation?
       get() = type.locationOrNull()

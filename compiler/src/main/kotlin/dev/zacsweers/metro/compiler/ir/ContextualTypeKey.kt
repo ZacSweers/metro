@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.WrappedType
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.letIf
 import org.jetbrains.kotlin.backend.jvm.JvmSymbols
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
@@ -18,63 +18,53 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isClassWithFqName
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
-import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.render
 
-// TODO refactor/merge with FirContextualTypeKey
+/** A class that represents a type with contextual information. */
 @Poko
 internal class ContextualTypeKey(
   val typeKey: TypeKey,
-  val isWrappedInProvider: Boolean = false,
-  val isWrappedInLazy: Boolean = false,
-  val isLazyWrappedInProvider: Boolean = false,
+  val wrappedType: WrappedType<IrType>,
   val hasDefault: Boolean = false,
-  val isDeferrable: Boolean = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider,
   val isIntoMultibinding: Boolean = false,
   @Poko.Skip val rawType: IrType? = null,
 ) {
+  val isDeferrable: Boolean = wrappedType.isDeferrable()
+  val requiresProviderInstance: Boolean = isDeferrable
 
-  val requiresProviderInstance: Boolean =
-    isWrappedInProvider || isLazyWrappedInProvider || isWrappedInLazy
+  val isWrappedInProvider: Boolean
+    get() = wrappedType is WrappedType.Provider
+
+  val isWrappedInLazy: Boolean
+    get() = wrappedType is WrappedType.Lazy
+
+  val isLazyWrappedInProvider: Boolean
+    get() = wrappedType is WrappedType.Provider && wrappedType.innerType is WrappedType.Lazy
 
   override fun toString(): String = render(short = true)
 
   fun withTypeKey(typeKey: TypeKey, rawType: IrType? = null): ContextualTypeKey {
-    return ContextualTypeKey(
-      typeKey,
-      isWrappedInProvider,
-      isWrappedInLazy,
-      isLazyWrappedInProvider,
-      hasDefault,
-      isDeferrable,
-      isIntoMultibinding,
-      rawType,
-    )
+    return ContextualTypeKey(typeKey, wrappedType, hasDefault, isIntoMultibinding, rawType)
   }
 
   fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
-    val wrapperType =
-      when {
-        isWrappedInProvider -> "Provider"
-        isWrappedInLazy -> "Lazy"
-        isLazyWrappedInProvider -> "Provider<Lazy<"
-        else -> null
+    append(
+      wrappedType.render { type ->
+        if (type == typeKey.type) {
+          typeKey.render(short, includeQualifier)
+        } else {
+          if (short) {
+            type.renderShort()
+          } else {
+            type.render()
+          }
+        }
       }
-    if (wrapperType != null) {
-      append(wrapperType)
-      append("<")
-    }
-    append(typeKey.render(short, includeQualifier))
-    if (wrapperType != null) {
-      append(">")
-      if (isLazyWrappedInProvider) {
-        // One more bracket
-        append(">")
-      }
-    }
+    )
     if (hasDefault) {
       append(" = ...")
     }
@@ -86,16 +76,31 @@ internal class ContextualTypeKey(
       return it
     }
 
-    val rawType = typeKey.type
-    return when {
-      isWrappedInProvider -> rawType.wrapInProvider(metroContext.symbols.metroProvider)
-      isWrappedInLazy -> rawType.wrapInProvider(metroContext.symbols.stdlibLazy)
-      isLazyWrappedInProvider -> {
-        rawType
-          .wrapInProvider(metroContext.symbols.stdlibLazy)
-          .wrapInProvider(metroContext.symbols.metroProvider)
+    return when (val wt = wrappedType) {
+      is WrappedType.Canonical -> wt.type
+      is WrappedType.Provider -> {
+        val innerType =
+          ContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
+            .toIrType(metroContext)
+        innerType.wrapInProvider(metroContext.symbols.metroProvider)
       }
-      else -> rawType
+      is WrappedType.Lazy -> {
+        val innerType =
+          ContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
+            .toIrType(metroContext)
+        innerType.wrapInProvider(metroContext.symbols.stdlibLazy)
+      }
+      is WrappedType.Map -> {
+        // For Map types, we need to create a Map<K, V> type
+        val keyType = wt.keyType
+        val valueType =
+          ContextualTypeKey(typeKey, wt.valueType, hasDefault, isIntoMultibinding)
+            .toIrType(metroContext)
+
+        // Create a Map type with the key type and the processed value type
+        val mapClass = metroContext.pluginContext.irBuiltIns.mapClass
+        return mapClass.typeWith(keyType, valueType)
+      }
     }
   }
 
@@ -128,6 +133,38 @@ internal class ContextualTypeKey(
         hasDefault = parameter.defaultValue != null,
         isIntoMultibinding = false,
       )
+
+    fun create(
+      typeKey: TypeKey,
+      isWrappedInProvider: Boolean = false,
+      isWrappedInLazy: Boolean = false,
+      isLazyWrappedInProvider: Boolean = false,
+      hasDefault: Boolean = false,
+      isIntoMultibinding: Boolean = false,
+      rawType: IrType? = null,
+    ): ContextualTypeKey {
+      val wrappedType =
+        when {
+          isLazyWrappedInProvider ->
+            WrappedType.Provider(WrappedType.Lazy(WrappedType.Canonical(typeKey.type)))
+          isWrappedInProvider -> WrappedType.Provider(WrappedType.Canonical(typeKey.type))
+          isWrappedInLazy -> WrappedType.Lazy(WrappedType.Canonical(typeKey.type))
+          else -> WrappedType.Canonical(typeKey.type)
+        }
+
+      return ContextualTypeKey(
+        typeKey = typeKey,
+        wrappedType = wrappedType,
+        hasDefault = hasDefault,
+        isIntoMultibinding = isIntoMultibinding,
+        rawType = rawType,
+      )
+    }
+
+    /** Left for backward compat */
+    operator fun invoke(typeKey: TypeKey): ContextualTypeKey {
+      return create(typeKey)
+    }
   }
 }
 
@@ -153,79 +190,96 @@ internal fun IrType.asContextualTypeKey(
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
   val declaredType = this
-  val rawClass = declaredType.rawTypeOrNull()
-  val rawClassId = rawClass?.classId
 
-  val isWrappedInProvider = rawClassId in context.symbols.providerTypes
-  val isWrappedInLazy = rawClassId in context.symbols.lazyTypes
-  val isLazyWrappedInProvider =
-    isWrappedInProvider &&
-      declaredType.arguments[0].typeOrFail.rawTypeOrNull()?.classId in context.symbols.lazyTypes
+  // Analyze the type to determine its wrapped structure
+  val wrappedType = declaredType.asWrappedType(context)
 
-  val type =
-    when {
-      isLazyWrappedInProvider ->
-        declaredType.arguments
-          .single()
-          .typeOrFail
-          .expectAs<IrSimpleType>()
-          .arguments
-          .single()
-          .typeOrFail
-      isWrappedInProvider || isWrappedInLazy -> declaredType.arguments.single().typeOrFail
-      else -> declaredType
-    }.letIf(isMarkedNullable()) { it.makeNullable() }
+  val typeKey =
+    TypeKey(
+      when (wrappedType) {
+        is WrappedType.Canonical -> wrappedType.type
+        // For Map types, we keep the original type in the TypeKey
+        is WrappedType.Map -> declaredType
+        else -> wrappedType.canonicalType()
+      },
+      qualifierAnnotation,
+    )
 
-  val isDeferrable =
-    isLazyWrappedInProvider ||
-      isWrappedInProvider ||
-      isWrappedInLazy ||
-      run {
-        // Check if this is a Map<Key, Provider<Value>>
-        // If it has no type args we can skip
-        if (declaredType.arguments.size != 2) return@run false
-        val isMap = rawClassId == Symbols.ClassIds.map
-        if (!isMap) return@run false
-        val valueTypeContextKey =
-          declaredType.arguments[1]
-            .typeOrFail
-            .asContextualTypeKey(
-              context,
-              // TODO could we actually support these?
-              qualifierAnnotation = null,
-              hasDefault = false,
-              isIntoMultibinding = false,
-            )
+  return ContextualTypeKey(
+    typeKey = typeKey,
+    wrappedType = wrappedType,
+    hasDefault = hasDefault,
+    isIntoMultibinding = isIntoMultibinding,
+    rawType = this,
+  )
+}
 
-        valueTypeContextKey.isDeferrable
-      }
+private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrType> {
+  val rawClassId = rawTypeOrNull()?.classId
 
-  // Java types may be "Flexible" nullable types, assume not null here
-  val adjustedType =
-    if (type.isWithFlexibleNullability()) {
-      type.makeNotNull().removeAnnotations {
-        it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME)
-      }
-    } else {
-      type
+  // Check if this is a Map type
+  if (rawClassId == Symbols.ClassIds.map && arguments.size == 2) {
+    val keyType = arguments[0].typeOrFail
+    val valueType = arguments[1].typeOrFail
+
+    // Recursively analyze the value type
+    val valueWrappedType = valueType.expectAs<IrSimpleType>().asWrappedType(context)
+
+    return WrappedType.Map(keyType, valueWrappedType) {
+      context.pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueWrappedType.canonicalType())
     }
-  val adjustedRawType =
-    if (type.isWithFlexibleNullability()) {
+  }
+
+  // Check if this is a Provider type
+  if (rawClassId in context.symbols.providerTypes) {
+    val innerType = arguments[0].typeOrFail
+
+    // Check if the inner type is a Lazy type
+    val innerRawClassId = innerType.rawTypeOrNull()?.classId
+    if (innerRawClassId in context.symbols.lazyTypes) {
+      val lazyInnerType = innerType.expectAs<IrSimpleType>().arguments[0].typeOrFail
+      return WrappedType.Provider(WrappedType.Lazy(WrappedType.Canonical(lazyInnerType)))
+    }
+
+    // Recursively analyze the inner type
+    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(context)
+
+    return WrappedType.Provider(innerWrappedType)
+  }
+
+  // Check if this is a Lazy type
+  if (rawClassId in context.symbols.lazyTypes) {
+    val innerType = arguments[0].typeOrFail
+
+    // Recursively analyze the inner type
+    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(context)
+
+    return WrappedType.Lazy(innerWrappedType)
+  }
+
+  // If it's not a special type, it's a canonical type
+  val adjustedType =
+    if (isWithFlexibleNullability()) {
+      // Java types may be "Flexible" nullable types, assume not null here
       makeNotNull().removeAnnotations {
         it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME)
       }
     } else {
       this
     }
-  val typeKey = TypeKey(adjustedType, qualifierAnnotation)
-  return ContextualTypeKey(
-    typeKey = typeKey,
-    isWrappedInProvider = isWrappedInProvider,
-    isWrappedInLazy = isWrappedInLazy,
-    isLazyWrappedInProvider = isLazyWrappedInProvider,
-    hasDefault = hasDefault,
-    isDeferrable = isDeferrable,
-    isIntoMultibinding = isIntoMultibinding,
-    rawType = adjustedRawType,
-  )
+
+  return WrappedType.Canonical(adjustedType)
+}
+
+private fun IrType.renderShort(): String = buildString {
+  append(simpleName)
+  if (isMarkedNullable()) {
+    append("?")
+  }
+  if (this@renderShort is IrSimpleType) {
+    arguments
+      .takeUnless { it.isEmpty() }
+      ?.joinToString(", ", prefix = "<", postfix = ">") { it.typeOrFail.renderShort() }
+      ?.let { append(it) }
+  }
 }
