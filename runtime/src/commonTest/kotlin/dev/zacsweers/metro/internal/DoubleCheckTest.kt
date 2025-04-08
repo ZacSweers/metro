@@ -68,7 +68,7 @@ class DoubleCheckTest {
 
   @Test
   fun `instance factory as lazy does not wrap`() {
-    val factory = InstanceFactory.create(Any())
+    val factory = InstanceFactory(Any())
     assertSame<Any>(factory, DoubleCheck.lazy(factory))
   }
 
