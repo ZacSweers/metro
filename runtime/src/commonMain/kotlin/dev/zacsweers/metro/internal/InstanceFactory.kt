@@ -15,6 +15,8 @@
  */
 package dev.zacsweers.metro.internal
 
+import kotlin.jvm.JvmInline
+
 /**
  * A [Factory] implementation that returns a single instance for all invocations of [get].
  *
@@ -23,11 +25,11 @@ package dev.zacsweers.metro.internal
  * unnecessary. However, using this with [DoubleCheck.provider] is valid and may be desired for
  * testing or contractual guarantees.
  */
-public class InstanceFactory<T : Any> private constructor(instance: T) : Factory<T>, Lazy<T> {
+@JvmInline
+public value class InstanceFactory<T : Any> private constructor(override val value: T) :
+  Factory<T>, Lazy<T> {
 
   override fun isInitialized(): Boolean = true
-
-  override val value: T = instance
 
   public override fun invoke(): T = value
 
