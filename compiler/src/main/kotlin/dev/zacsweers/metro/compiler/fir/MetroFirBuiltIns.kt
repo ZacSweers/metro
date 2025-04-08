@@ -104,10 +104,9 @@ internal class MetroFirBuiltIns(
   }
 
   companion object {
-    fun getFactory(classIds: ClassIds, predicates: ExtensionPredicates, options: MetroOptions) =
-      Factory { session ->
-        MetroFirBuiltIns(session, classIds, predicates, options)
-      }
+    fun getFactory(classIds: ClassIds, options: MetroOptions) = Factory { session ->
+      MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options)
+    }
   }
 }
 

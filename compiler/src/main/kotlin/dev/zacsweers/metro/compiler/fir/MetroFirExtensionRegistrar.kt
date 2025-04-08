@@ -23,11 +23,10 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 
 public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
-  private val predicates: ExtensionPredicates,
   private val options: MetroOptions,
 ) : FirExtensionRegistrar() {
   override fun ExtensionRegistrarContext.configurePlugin() {
-    +MetroFirBuiltIns.getFactory(classIds, predicates, options)
+    +MetroFirBuiltIns.getFactory(classIds, options)
     +::MetroFirCheckers
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(

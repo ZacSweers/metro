@@ -245,6 +245,23 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
    * to actually compare them. The user will end up getting a duplicate binding error if the
    * outranked binding is using an implicit type.
    *
+   * As a concrete example, let's look at:
+   * ```
+   *    interface ContributedInterface
+   *
+   *    @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
+   *    object Impl1 : ContributedInterface
+   *
+   *    @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
+   *    object Impl2 : ContributedInterface
+   * ```
+   *
+   * In this example, we can resolve ContributedInterface, Impl1, and Impl2 as declared types, but
+   * we cannot resolve ContributedInterface when looking at Impl1 or Impl2's supertypes. This is
+   * because Impl1's supertype may not be final at this stage until we're done with all FIR
+   * supertype merging. So in the absence of an explicit boundType, we have no way of knowing what
+   * type Impl1 is being bound to here and can't factor it into any rank comparisons.
+   *
    * @return The bindings which have been outranked and should not be included in the merged graph.
    */
   private fun processRankBasedReplacements(

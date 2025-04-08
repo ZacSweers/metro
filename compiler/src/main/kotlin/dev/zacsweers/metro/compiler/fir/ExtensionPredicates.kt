@@ -7,7 +7,7 @@ import dev.zacsweers.metro.compiler.asFqNames
 import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
 
-public class ExtensionPredicates(private val classIds: ClassIds) {
+internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   // Lets us register and resolve any annotations that are qualifiers
   internal val qualifiersPredicate =
