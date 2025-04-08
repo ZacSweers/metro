@@ -23,7 +23,6 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
@@ -174,7 +173,10 @@ internal class AssistedFactoryTransformer(
         pluginContext.createIrBuilder(symbol).run {
           irExprBodySafe(
             symbol,
-            instanceFactory(declaration.typeWith(), irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))))
+            instanceFactory(
+              declaration.typeWith(),
+              irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))),
+            ),
           )
         }
     }

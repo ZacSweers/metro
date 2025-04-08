@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
 import kotlin.system.measureTimeMillis
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -16,7 +15,6 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -137,10 +135,7 @@ internal interface IrMetroContext {
 
   // InstanceFactory(...)
   fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
-    return irCallConstructor(
-      symbols.instanceFactoryConstructorSymbol,
-      listOf(type)
-    ).apply {
+    return irCallConstructor(symbols.instanceFactoryConstructorSymbol, listOf(type)).apply {
       putValueArgument(0, arg)
     }
   }
