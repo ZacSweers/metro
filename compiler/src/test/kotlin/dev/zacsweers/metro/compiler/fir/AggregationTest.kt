@@ -15,6 +15,7 @@ import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import org.junit.Ignore
+import kotlin.test.assertEquals
 
 class AggregationTest : MetroCompilerTest() {
 
@@ -188,6 +189,62 @@ class AggregationTest : MetroCompilerTest() {
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
     }
   }
+
+    @Test
+    fun `ContributesBinding internal implementation with AppScope`() {
+            compile(
+                source(
+                    """
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @Inject
+          internal class Impl : ContributedInterface
+        """.trimIndent()
+                ),
+                expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+            ) {
+            assertDiagnostics("e: ContributedInterface.kt:11:16 Visibility mismatch: scope AppScope has broader visibility (public) than contributed implementation Impl (internal)")
+        }
+    }
+
+    @Test
+    fun `ContributesBinding internal implementation with public scope`() {
+            compile(
+                source(
+                    """
+          @Scope annotation class UserScope
+
+          interface ContributedInterface
+
+          @ContributesBinding(UserScope::class)
+          @Inject
+          internal class Impl : ContributedInterface
+        """.trimIndent()
+                ),
+                expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+            ) {
+                assertDiagnostics("e: UserScope.kt:13:16 Visibility mismatch: scope UserScope has broader visibility (public) than contributed implementation Impl (internal)")
+            }
+    }
+
+    @Test
+    fun `ContributesBinding internal implementation with internal scope`() {
+            compile(
+                source(
+                    """
+          @Scope internal annotation class UserScope
+
+          interface ContributedInterface
+
+          @ContributesBinding(UserScope::class)
+          @Inject
+          internal class Impl : ContributedInterface
+        """.trimIndent()
+                ),
+                expectedExitCode = KotlinCompilation.ExitCode.OK
+            )
+    }
 
   @Test
   fun `ContributesBinding with implicit qualified bound type`() {

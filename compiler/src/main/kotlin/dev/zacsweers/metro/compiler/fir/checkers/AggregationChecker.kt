@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.fir.*
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -27,10 +29,13 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.getKClassArgument
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -169,9 +174,31 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             }
           }
         }
+          if (!checkVisibility(declaration, annotation, session, context, reporter)) return
       }
     }
   }
+
+    private fun checkVisibility(
+        declaration: FirClass,
+        annotation: FirAnnotation,
+        session: FirSession,
+        context: CheckerContext,
+        reporter: DiagnosticReporter
+    ): Boolean {
+        val scopeVisibility =
+            annotation.getKClassArgument(name = "scope".asName(), session)?.toClassSymbol(session)?.visibility
+        val declarationVisibility = declaration.visibility
+        val visibilityComparison = scopeVisibility?.let { declarationVisibility.compareTo(it) }
+        val valid = (visibilityComparison == null || visibilityComparison >= 0)
+        if (!valid) {
+            reporter.reportOn(declaration.source,
+                FirMetroErrors.AGGREGATION_ERROR,
+                "Visibility mismatch: scope ${annotation.scopeArgument()?.resolvedClassId()?.shortClassName} has broader visibility ($scopeVisibility) than contributed implementation ${declaration.symbol.classId.shortClassName} ($declarationVisibility)",
+                context)
+        }
+        return valid
+    }
 
   @OptIn(UnexpandedTypeCheck::class)
   private fun <T : Contribution> checkBindingContribution(
