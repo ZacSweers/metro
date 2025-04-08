@@ -2535,8 +2535,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     }
   }
 
-  // TODO providing a Map<String, Int> should not make it possible to get a Map<String,
-  // Provider<Int>> later
+  // TODO
+  //  providing a Map<String, Int> should not make it possible to get a
+  //  Map<String, Provider<Int>> later
   // TODO good candidate for a box test
   @Test
   fun `multibindings - map provider - different wrapping types`() {
