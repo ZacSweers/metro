@@ -169,17 +169,12 @@ internal class AssistedFactoryTransformer(
     val companion = implClass.companionObject()!!
     companion.requireSimpleFunction(Symbols.StringNames.CREATE).owner.apply {
       val factoryParam = valueParameters.single()
-      // InstanceFactory.create(Impl(delegateFactory))
+      // InstanceFactory(Impl(delegateFactory))
       body =
         pluginContext.createIrBuilder(symbol).run {
           irExprBodySafe(
             symbol,
-            irInvoke(
-                dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-                callee = symbols.instanceFactoryCreate,
-                args = listOf(irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam)))),
-              )
-              .apply { putTypeArgument(0, declaration.typeWith()) },
+            instanceFactory(declaration.typeWith(), irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))))
           )
         }
     }

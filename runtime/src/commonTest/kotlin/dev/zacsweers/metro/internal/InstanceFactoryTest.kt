@@ -22,7 +22,7 @@ class InstanceFactoryTest {
   @Test
   fun instanceFactory() {
     val instance = Any()
-    val factory = InstanceFactory.create(instance)
+    val factory = InstanceFactory(instance)
     assertEquals(instance, factory())
     assertEquals(instance, factory())
     assertEquals(instance, factory())

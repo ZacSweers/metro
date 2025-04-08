@@ -55,7 +55,7 @@ public class MapFactory<K : Any, V : Any> private constructor(map: Map<K, Provid
   }
 
   public companion object {
-    private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory.create(emptyMap())
+    private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(emptyMap())
 
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
