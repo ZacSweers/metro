@@ -6,7 +6,7 @@ pluginManagement {
     mavenCentral()
     gradlePluginPortal()
   }
-  plugins { id("com.gradle.develocity") version "3.19.2" }
+  plugins { id("com.gradle.develocity") version "4.0" }
 }
 
 dependencyResolutionManagement {
