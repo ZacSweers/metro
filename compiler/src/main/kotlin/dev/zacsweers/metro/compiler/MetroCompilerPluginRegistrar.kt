@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import com.google.auto.service.AutoService
+import dev.zacsweers.metro.compiler.fir.ExtensionPredicates
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -25,6 +26,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     if (!options.enabled) return
 
     val classIds = ClassIds.fromOptions(options)
+    val predicates = ExtensionPredicates(classIds)
 
     if (options.debug) {
       configuration.messageCollector.report(
@@ -33,7 +35,9 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       )
     }
 
-    FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
+    FirExtensionRegistrarAdapter.registerExtension(
+      MetroFirExtensionRegistrar(classIds, predicates, options)
+    )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(configuration.messageCollector, classIds, options)
     )

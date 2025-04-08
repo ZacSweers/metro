@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.fir.ExtensionPredicates
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
@@ -76,7 +77,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           },
       )
     val classIds = ClassIds.fromOptions(options)
-    FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
+    val predicates = ExtensionPredicates(classIds)
+    FirExtensionRegistrarAdapter.registerExtension(
+      MetroFirExtensionRegistrar(classIds, predicates, options)
+    )
     IrGenerationExtension.registerExtension(
       MetroIrGenerationExtension(configuration.messageCollector, classIds, options)
     )

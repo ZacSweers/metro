@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asFqNames
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
@@ -17,7 +16,6 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
-import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
@@ -28,8 +26,6 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
-import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
-import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -48,33 +44,14 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.StandardClassIds
 
 // Toe-hold for contributed types
-internal class ContributedInterfaceSupertypeGenerator(
-  session: FirSession,
-  private val classIds: ClassIds,
-) : FirSupertypeGenerationExtension(session) {
-
-  class Factory(private val classIds: ClassIds) : FirSupertypeGenerationExtension.Factory {
-    override fun create(session: FirSession) =
-      ContributedInterfaceSupertypeGenerator(session, classIds)
-  }
-
-  private val dependencyGraphPredicate =
-    LookupPredicate.create { annotated(classIds.dependencyGraphAnnotations.asFqNames()) }
+internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
+  FirSupertypeGenerationExtension(session) {
 
   private val dependencyGraphs by lazy {
     session.predicateBasedProvider
-      .getSymbolsByPredicate(dependencyGraphPredicate)
+      .getSymbolsByPredicate(session.predicates.dependencyGraphPredicate)
       .filterIsInstance<FirRegularClassSymbol>()
       .toSet()
-  }
-
-  private val contributingTypesPredicate =
-    LookupPredicate.create { annotated(classIds.allContributesAnnotations.asFqNames()) }
-
-  private val qualifiersPredicate by unsafeLazy {
-    DeclarationPredicate.create {
-      metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
-    }
   }
 
   private val inCompilationScopesToContributions:
@@ -86,8 +63,13 @@ internal class ContributedInterfaceSupertypeGenerator(
       // commonMain.
       val allSessions =
         sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
+
       allSessions
-        .flatMap { it.predicateBasedProvider.getSymbolsByPredicate(contributingTypesPredicate) }
+        .flatMap {
+          it.predicateBasedProvider.getSymbolsByPredicate(
+            session.predicates.contributingTypesPredicate
+          )
+        }
         .filterIsInstance<FirRegularClassSymbol>()
         .forEach { clazz ->
           clazz.annotations
@@ -130,7 +112,9 @@ internal class ContributedInterfaceSupertypeGenerator(
     }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
-    return annotations.annotationsIn(session, classIds.dependencyGraphAnnotations).firstOrNull()
+    return annotations
+      .annotationsIn(session, session.classIds.dependencyGraphAnnotations)
+      .firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
@@ -145,9 +129,8 @@ internal class ContributedInterfaceSupertypeGenerator(
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    // Currently we only need to resolve qualifiers for dagger-anvil's 'rank' interop
-    if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
-      register(qualifiersPredicate)
+    with(session.predicates) {
+      register(dependencyGraphPredicate, contributingTypesPredicate, qualifiersPredicate)
     }
   }
 
