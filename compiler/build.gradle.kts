@@ -4,7 +4,6 @@ plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.dokka)
   alias(libs.plugins.mavenPublish)
-  alias(libs.plugins.ksp)
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
@@ -82,7 +81,6 @@ dependencies {
   implementation(libs.autoService)
   implementation(libs.picnic) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
   shadow(libs.wire.runtime) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
-  ksp(libs.autoService.ksp)
 
   testImplementation(project(":runtime"))
   testImplementation(project(":interop-dagger"))

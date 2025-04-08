@@ -9,6 +9,8 @@ Changelog
 - **Enhancement**: Check Kotlin version compatibility. Use the `metro.version.check=false` Gradle property to disable these warnings if you're feeling adventurous.
 - **Fix**: Fix class-private qualifiers on multibinding contributions in other modules not being recognized in downstream graphs.
 - **Fix**: Fix member injectors not getting properly visited in graph validation.
+- **Fix**: Fix a bug where `Map<Key, Provider<Value>>` multibindings weren't always unwrapped correctly.
+- **Fix**: Fix `Map<Key, Provider<Value>>` type keys not correctly interpreting the underlying type key as `Map<Key, Value>`.
 - **Change**: Change `InstanceFactory` to a value class.
 
 0.1.1
