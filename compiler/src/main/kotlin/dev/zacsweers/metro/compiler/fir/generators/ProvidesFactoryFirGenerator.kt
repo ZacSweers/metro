@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asFqNames
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
@@ -82,7 +83,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
   private val providesAnnotationPredicate by unsafeLazy {
-    annotated(session.classIds.providesAnnotations.map { it.asSingleFqName() })
+    annotated(session.classIds.providesAnnotations.asFqNames())
   }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {

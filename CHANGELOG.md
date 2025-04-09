@@ -19,7 +19,7 @@ _2025-04-08_
 - **Change**: Change `InstanceFactory` to a value class.
 - **Change**: Make `providerOf` use `InstanceFactory` under the hood.
 
-Special thanks to [@JoelWilcox](https://github.com/JoelWilcox), [@bnorm](https://github.com/bnorm), [@japplin](https://github.com/japplin), [@kevinguitar](https://github.com/kevinguitar), and [@erawhctim](https://github.com/erawhctim) for contributing to this release! 
+Special thanks to [@JoelWilcox](https://github.com/JoelWilcox), [@bnorm](https://github.com/bnorm), [@japplin](https://github.com/japplin), [@kevinguitar](https://github.com/kevinguitar), and [@erawhctim](https://github.com/erawhctim) for contributing to this release!
 
 0.1.1
 -----
