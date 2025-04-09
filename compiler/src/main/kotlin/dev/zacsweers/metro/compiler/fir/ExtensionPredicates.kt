@@ -5,7 +5,8 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.asFqNames
 import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
-import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
+import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
+import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.parentAnnotated
 
 internal class ExtensionPredicates(private val classIds: ClassIds) {
 
@@ -15,9 +16,28 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
       metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
     }
 
-  internal val dependencyGraphPredicate =
-    LookupPredicate.create { annotated(classIds.dependencyGraphAnnotations.asFqNames()) }
+  internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
 
-  internal val contributingTypesPredicate =
-    LookupPredicate.create { annotated(classIds.allContributesAnnotations.asFqNames()) }
+  internal val dependencyGraphAndFactoryPredicate =
+    annotated(
+      (classIds.dependencyGraphAnnotations + classIds.dependencyGraphFactoryAnnotations).asFqNames()
+    )
+
+  internal val dependencyGraphCompanionPredicate =
+    parentAnnotated(classIds.dependencyGraphAnnotations.asFqNames())
+
+  internal val contributesAnnotationPredicate =
+    annotated(classIds.allContributesAnnotations.asFqNames())
+
+  internal val providesAnnotationPredicate = annotated(classIds.providesAnnotations.asFqNames())
+
+  internal val injectAnnotationPredicate = annotated(classIds.injectAnnotations.asFqNames())
+
+  internal val assistedAnnotationPredicate = annotated(classIds.assistedAnnotations.asFqNames())
+
+  internal val injectAndAssistedAnnotationPredicate =
+    annotated((classIds.injectAnnotations + classIds.assistedAnnotations).asFqNames())
+
+  internal val assistedFactoryAnnotationPredicate =
+    annotated(classIds.assistedFactoryAnnotations.asFqNames())
 }

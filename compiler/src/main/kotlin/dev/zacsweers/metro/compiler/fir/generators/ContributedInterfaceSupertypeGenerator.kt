@@ -74,7 +74,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       allSessions
         .flatMap {
           it.predicateBasedProvider.getSymbolsByPredicate(
-            session.predicates.contributingTypesPredicate
+            session.predicates.contributesAnnotationPredicate
           )
         }
         .filterIsInstance<FirRegularClassSymbol>()
@@ -137,7 +137,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     with(session.predicates) {
-      register(dependencyGraphPredicate, contributingTypesPredicate, qualifiersPredicate)
+      register(dependencyGraphPredicate, contributesAnnotationPredicate, qualifiersPredicate)
     }
   }
 

@@ -3,15 +3,14 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asFqNames
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
@@ -23,7 +22,6 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
-import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -47,12 +45,11 @@ import org.jetbrains.kotlin.name.Name
 internal class AssistedFactoryFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
-  private val assistedInjectAnnotationPredicate by unsafeLazy {
-    annotated(session.classIds.injectAnnotations.asFqNames())
-  }
-
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(assistedInjectAnnotationPredicate)
+    register(
+      session.predicates.injectAnnotationPredicate,
+      session.predicates.assistedAnnotationPredicate,
+    )
   }
 
   private val assistedInjectClasses = mutableMapOf<FirClassLikeSymbol<*>, FirConstructorSymbol>()
@@ -89,14 +86,12 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
           // Collect assisted params, we need to potentially port their assisted annotations if they
           // have custom identifiers
           val assistedParams =
-            constructor.valueParameterSymbols
-              // TODO need a predicate?
-              .mapNotNull { param ->
-                if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
-                  return@mapNotNull null
-                }
-                MetroFirValueParameter(session, param)
+            constructor.valueParameterSymbols.mapNotNull { param ->
+              if (!param.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)) {
+                return@mapNotNull null
               }
+              MetroFirValueParameter(session, param)
+            }
           val createFunction = generateCreateFunction(assistedParams, targetClass, callableId)
           return listOf(createFunction.symbol)
         }

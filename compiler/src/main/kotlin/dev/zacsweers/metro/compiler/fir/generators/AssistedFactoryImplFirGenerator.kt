@@ -10,9 +10,9 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
-import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
-import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
@@ -50,17 +49,13 @@ import org.jetbrains.kotlin.name.SpecialNames
 internal class AssistedFactoryImplFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
-  private val assistedFactoryAnnotationPredicate by unsafeLazy {
-    annotated(session.classIds.assistedFactoryAnnotations.map(ClassId::asSingleFqName))
-  }
-
   private val FirClassSymbol<*>.isAssistedImplClass: Boolean
     get() =
       hasOrigin(Keys.AssistedFactoryImplClassDeclaration) ||
         hasOrigin(Keys.AssistedFactoryImplCompanionDeclaration)
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(assistedFactoryAnnotationPredicate)
+    register(session.predicates.assistedFactoryAnnotationPredicate)
   }
 
   class AssistedFactoryImpl(val source: FirClassSymbol<*>) {
