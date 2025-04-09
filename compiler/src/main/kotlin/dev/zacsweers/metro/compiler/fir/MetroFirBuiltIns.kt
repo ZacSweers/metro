@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
-import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent.Factory
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
@@ -18,6 +17,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 internal class MetroFirBuiltIns(
   session: FirSession,
   val classIds: ClassIds,
+  val predicates: ExtensionPredicates,
   val options: MetroOptions,
 ) : FirExtensionSessionComponent(session) {
 
@@ -105,7 +105,7 @@ internal class MetroFirBuiltIns(
 
   companion object {
     fun getFactory(classIds: ClassIds, options: MetroOptions) = Factory { session ->
-      MetroFirBuiltIns(session, classIds, options)
+      MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options)
     }
   }
 }
@@ -114,3 +114,6 @@ internal val FirSession.metroFirBuiltIns: MetroFirBuiltIns by FirSession.session
 
 internal val FirSession.classIds: ClassIds
   get() = metroFirBuiltIns.classIds
+
+internal val FirSession.predicates: ExtensionPredicates
+  get() = metroFirBuiltIns.predicates

@@ -808,7 +808,7 @@ internal fun FirAnnotation.rankValue(): Long {
   return rankArgument()?.value?.let { it as? Long ?: (it as? Int)?.toLong() } ?: Long.MIN_VALUE
 }
 
-internal fun FirAnnotation.rankArgument() =
+private fun FirAnnotation.rankArgument() =
   argumentAsOrNull<FirLiteralExpression>("rank".asName(), index = 5)
 
 internal fun FirAnnotation.bindingArgument() = annotationArgument("binding".asName(), index = 1)
@@ -842,7 +842,7 @@ internal fun FirAnnotation.getAnnotationKClassArgument(
   session: FirSession,
   typeResolver: TypeResolveService? = null,
 ): ConeKotlinType? {
-  val argument = findArgumentByName(name) ?: return null
+  val argument = findArgumentByNameSafe(name) ?: return null
   return argument.evaluateAs<FirGetClassCall>(session)?.getTargetType()
     ?: typeResolver?.let { (argument as FirGetClassCall).resolvedClassArgumentTarget(it) }
 }
@@ -943,13 +943,28 @@ internal fun FirAnnotation.annotationArgument(name: Name, index: Int) =
   argumentAsOrNull<FirFunctionCall>(name, index)
 
 internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
-  findArgumentByName(name)?.let {
+  findArgumentByNameSafe(name)?.let {
     return it as? T?
   }
   if (this !is FirAnnotationCall) return null
   // Fall back to the index if necessary
   return arguments.getOrNull(index) as? T?
 }
+
+/**
+ * In most cases if we're searching for an argument by name, we do not want to default to the first
+ * argument. E.g. when looking for 'boundType', if it's not explicitly defined, then receiving the
+ * first argument would mean receiving the 'scope' argument and it would still compile fine since
+ * those annotation params share the same type.
+ *
+ * ```
+ * Given `@ContributesBinding(scope = AppScope::class)`
+ * findArgumentByName("boundType")     returns AppScope::class
+ * findArgumentByNameSafe("boundType") returns null
+ * ```
+ */
+internal fun FirAnnotation.findArgumentByNameSafe(name: Name): FirExpression? =
+  findArgumentByName(name, returnFirstWhenNotFound = false)
 
 internal fun List<FirElement>.joinToRender(separator: String = ", "): String {
   return joinToString(separator) {

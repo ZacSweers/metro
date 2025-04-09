@@ -108,3 +108,16 @@ internal fun Boolean?.orElse(ifNull: Boolean): Boolean = this ?: ifNull
 internal fun String.split(index: Int): Pair<String, String> {
   return substring(0, index) to substring(index + 1)
 }
+
+/**
+ * Behaves essentially the same as `single()`, except if there is not a single element it will throw
+ * the provided error message instead of the generic error message. This can be really helpful for
+ * providing more targeted info about a use-case where normally mangled line numbers and a generic
+ * error message would make debugging painful in a consuming project.
+ */
+internal fun <T> Collection<T>.singleOrError(errorMessage: Collection<T>.() -> String): T {
+  if (size != 1) {
+    error(errorMessage())
+  }
+  return single()
+}

@@ -31,7 +31,7 @@ public class MetroFirExtensionRegistrar(
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",
-      ContributedInterfaceSupertypeGenerator.Factory(classIds)::create,
+      ::ContributedInterfaceSupertypeGenerator,
       false,
     )
     +supertypeGenerator(
