@@ -24,7 +24,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           """
           interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object LibImpl : ContributedInterface
         """
             .trimIndent()
@@ -35,7 +35,7 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
           object AppImpl : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -63,7 +63,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           """
           interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 1)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 1)
           object LibImpl : ContributedInterface
         """
             .trimIndent()
@@ -74,7 +74,7 @@ class AnvilInteropTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object AppImpl : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -101,13 +101,13 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
           object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
           object Impl2 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object Impl3 : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -127,7 +127,7 @@ class AnvilInteropTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `rank requires an explicit binding type`() {
+  fun `rank supports an explicit binding type on the outranked binding`() {
     compile(
       source(
         """
@@ -147,22 +147,16 @@ class AnvilInteropTest : MetroCompilerTest() {
           .trimIndent()
       ),
       options = metroOptions.withAnvilContributesBinding(),
-      expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:11:1 `@ContributesBinding`-annotated class test.Impl2 sets a rank but doesn't declare its binding type.
-          Bindings with non-default ranks must declare explicit binding types. This is because
-          we're not able to resolve supertypes to get the implicit binding type when
-          processing ranked contributions.
-        """
-          .trimIndent()
-      )
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
     }
   }
 
   @Test
-  fun `an outranked binding requires an explicit binding type`() {
+  fun `rank supports an explicit binding type on the higher-ranked binding`() {
     compile(
       source(
         """
@@ -182,20 +176,11 @@ class AnvilInteropTest : MetroCompilerTest() {
           .trimIndent()
       ),
       options = metroOptions.withAnvilContributesBinding(),
-      expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
-      // Duplicate bindings are reported in IR where we no longer have info about 'rank', so it's
-      // expected that this use-case results in a generic duplicate binding error. We could update
-      // to plumb the rank info down so it's not lost but as a feature that's only supported for
-      // interop and making migration easier, it seems better to minimize its code-level exposure.
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:14:1 [Metro/DuplicateBinding] Duplicate binding for test.ContributedInterface
-          ├─ Binding 1: ContributedInterface.kt:8:1
-          ├─ Binding 2: ContributedInterface.kt:11:1
-        """
-          .trimIndent()
-      )
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl1")
     }
   }
 
@@ -208,10 +193,10 @@ class AnvilInteropTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @Named("Bob")
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
           object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object Impl2 : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -264,10 +249,10 @@ class AnvilInteropTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @CompanyFeature
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
           object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object Impl2 : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -304,10 +289,10 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, replaces = [Impl2::class], rank = 10)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, replaces = [Impl2::class], rank = 10)
           object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object Impl2 : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -333,13 +318,13 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
           object Impl2 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 100)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
           object Impl3 : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -370,10 +355,10 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
           object Impl1 : ContributedInterface
 
-          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
           object Impl2 : ContributedInterface
 
           @DependencyGraph(scope = AppScope::class)
@@ -399,6 +384,39 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       )
+    }
+  }
+
+  // Technically this is an error even without rank, but it will get hit early by rank processing
+  // when a rank is involved.
+  @Test
+  fun `a ranked binding must have exactly one supertype if no binding type is specified`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+          interface ContributedInterface2
+
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 100)
+          object Impl1 : ContributedInterface, ContributedInterface2
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.withAnvilContributesBinding(),
+      expectedExitCode = ExitCode.INTERNAL_ERROR,
+    ) {
+      assertThat(messages)
+        .contains(
+          """
+          test.Impl1 has a ranked binding with no explicit bound type and 2 supertypes (test.ContributedInterface, test.ContributedInterface2). There must be exactly one supertype or an explicit bound type.
+        """
+            .trimIndent()
+        )
     }
   }
 

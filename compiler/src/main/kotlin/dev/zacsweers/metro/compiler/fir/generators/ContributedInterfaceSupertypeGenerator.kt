@@ -5,17 +5,18 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
-import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
@@ -23,6 +24,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
+import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
@@ -31,11 +34,14 @@ import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -44,6 +50,7 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.StandardClassIds
 
 // Toe-hold for contributed types
+@OptIn(SymbolInternals::class, ResolveStateAccess::class)
 internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
 
@@ -236,31 +243,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   }
 
   /**
-   * This is an imperfect solution to provide `rank` interop for users migrating from Dagger-Anvil.
-   * We're not able to get 1:1 parity due to some type restrictions but it should be enough to make
-   * the migration much more feasible in large projects that have a lot of ranked bindings.
-   *
-   * The main limitation we have is that supertypes are not resolvable here. That means ranked
-   * bindings and bindings that get outranked must both explicitly declare their binding type for us
-   * to actually compare them. The user will end up getting a duplicate binding error if the
-   * outranked binding is using an implicit type.
-   *
-   * As a concrete example, let's look at:
-   * ```
-   *    interface ContributedInterface
-   *
-   *    @com.squareup.anvil.annotations.ContributesBinding(AppScope::class)
-   *    object Impl1 : ContributedInterface
-   *
-   *    @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, boundType = ContributedInterface::class, rank = 10)
-   *    object Impl2 : ContributedInterface
-   * ```
-   *
-   * In this example, we can resolve ContributedInterface, Impl1, and Impl2 as declared types, but
-   * we cannot resolve ContributedInterface when looking at Impl1 or Impl2's supertypes. This is
-   * because Impl1's supertype may not be final at this stage until we're done with all FIR
-   * supertype merging. So in the absence of an explicit boundType, we have no way of knowing what
-   * type Impl1 is being bound to here and can't factor it into any rank comparisons.
+   * This provides ContributesBinding.rank interop for users migrating from Dagger-Anvil to make the
+   * migration to Metro more feasible.
    *
    * @return The bindings which have been outranked and should not be included in the merged graph.
    */
@@ -277,17 +261,16 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         .flatMap { contributingType ->
           contributingType.annotations
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
-            .mapNotNull { annotation ->
-              annotation.resolvedBindingArgument(session, typeResolver)?.let { bindingArg ->
-                ContributedBinding(
-                  contributingType,
-                  FirTypeKey(
-                    bindingArg.coneType,
-                    contributingType.annotations.qualifierAnnotation(session),
-                  ),
-                  annotation.rankValue(),
-                )
-              }
+            .map { annotation ->
+              val boundType =
+                annotation.anvilKClassBoundTypeArgument(session, typeResolver)?.coneType
+                  ?: contributingType.implicitBoundType(typeResolver)
+
+              ContributedBinding(
+                contributingType,
+                FirTypeKey(boundType, contributingType.annotations.qualifierAnnotation(session)),
+                annotation.rankValue(),
+              )
             }
         }
     val bindingGroups =
@@ -309,6 +292,24 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     }
 
     return pendingRankReplacements
+  }
+
+  private fun FirClassLikeSymbol<*>.implicitBoundType(
+    typeResolver: TypeResolveService
+  ): ConeKotlinType {
+    return if (fir.resolveState.resolvePhase == FirResolvePhase.RAW_FIR) {
+        // When processing bindings in the same module or compilation, we need to handle supertypes
+        // that have not been resolved yet
+        (this as FirClassSymbol<*>).fir.superTypeRefs.map {
+          typeResolver.resolveUserType(it as FirUserTypeRef).coneType
+        }
+      } else {
+        (this as FirClassSymbol<*>).resolvedSuperTypes
+      }
+      .singleOrError {
+        val superTypeFqNames = map { it.classId?.asSingleFqName() }.joinToString()
+        "${classId.asSingleFqName()} has a ranked binding with no explicit bound type and $size supertypes ($superTypeFqNames). There must be exactly one supertype or an explicit bound type."
+      }
   }
 
   private data class ContributedBinding(
