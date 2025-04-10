@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
@@ -24,9 +25,11 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirArrayLiteral
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
@@ -105,8 +108,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           val originClass =
             contribution.resolvedReturnType.toRegularClassSymbol(session) ?: continue
 
-          originClass.annotations
-            .annotationsIn(session, session.classIds.allContributesAnnotations)
+          originClass
+            .contributesAnnotations()
             .mapNotNull { it.resolvedScopeClassId(typeResolver) }
             .distinct()
             .forEach { scopeClassId ->
@@ -117,6 +120,30 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
       }
     }
+
+  private fun FirRegularClassSymbol.contributesAnnotations(): Sequence<FirAnnotation> {
+    return annotations.annotationsIn(session, session.classIds.allContributesAnnotations).ifEmpty {
+      if (origin == FirDeclarationOrigin.Library) {
+        // When there are multiple contribution annotations, they end up getting bundled into a
+        // 'Container' type that we need to unwrap. This behavior appears to only occur for
+        // contributions from other modules/compilations.
+        annotations
+          .firstOrNull()
+          ?.argumentMapping
+          ?.mapping
+          ?.values
+          ?.firstOrNull()
+          ?.expectAsOrNull<FirArrayLiteral>()
+          ?.argumentList
+          ?.arguments
+          ?.expectAsOrNull<List<FirAnnotation>>()
+          .orEmpty()
+          .annotationsIn(session, session.classIds.allContributesAnnotations)
+      } else {
+        emptySequence<FirAnnotation>()
+      }
+    }
+  }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
     return annotations

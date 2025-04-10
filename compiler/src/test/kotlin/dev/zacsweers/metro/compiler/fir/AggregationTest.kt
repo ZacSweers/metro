@@ -35,11 +35,7 @@ class AggregationTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -67,11 +63,7 @@ class AggregationTest : MetroCompilerTest() {
       previousCompilationResult = firstResult,
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -895,6 +887,110 @@ class AggregationTest : MetroCompilerTest() {
       assertThat(contributedInterfaces).hasSize(1)
       assertThat(contributedInterfaces.entries.first().key.java.name).isEqualTo("test.Impl")
       assertThat(contributedInterfaces.entries.first().value.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesTo can be repeated to contribute to multiple scopes in a downstream module`() {
+    val previousCompilation =
+      compile(
+        source(
+          """
+          abstract class AltScope private constructor()
+          abstract class ThirdScope private constructor()
+
+          @ContributesTo(AppScope::class)
+          @ContributesTo(AltScope::class)
+          @ContributesTo(ThirdScope::class)
+          interface ContributedInterface {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val myVal: String
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val altVal: String
+          }
+
+          @DependencyGraph(scope = ThirdScope::class)
+          interface ThirdGraph {
+            val thirdVal: String
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = previousCompilation,
+    ) {
+      val appGraphClass = ExampleGraph
+      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
+
+      val altGraphClass = classLoader.loadClass("test.AltGraph")
+      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      altGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
+
+      val thirdGraphClass = classLoader.loadClass("test.ThirdGraph")
+      val thirdGraph = thirdGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      thirdGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(thirdGraph.callProperty<String>("thirdVal")).isEqualTo("Hello, world!")
+    }
+  }
+
+  private fun Class<*>.assertHasContributedSupertype(superTypeFqName: String) {
+    assertThat(allSupertypes().map { it.name })
+      .containsExactly("$superTypeFqName$$\$MetroContribution", superTypeFqName)
+  }
+
+  @Test
+  fun `ContributesTo can be repeated to contribute to multiple scopes in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          @ContributesTo(AppScope::class)
+          @ContributesTo(AltScope::class)
+          interface ContributedInterface {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val myVal: String
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val altVal: String
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraphClass = ExampleGraph
+      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
+
+      val altGraphClass = classLoader.loadClass("test.AltGraph")
+      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      altGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
     }
   }
 
@@ -2475,11 +2571,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
