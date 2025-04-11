@@ -94,6 +94,7 @@ internal class Symbols(
     val graphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val membersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
+    val nonRestartableComposable = ClassId(FqNames.composeRuntime, "NonRestartableComposable".asName())
     val lazy = StandardClassIds.byName("Lazy")
     val map = StandardClassIds.Map
     val set = StandardClassIds.Set

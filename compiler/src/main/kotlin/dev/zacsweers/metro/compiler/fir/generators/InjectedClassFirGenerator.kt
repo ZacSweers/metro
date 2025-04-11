@@ -620,7 +620,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         }
         .apply {
           if (function.hasAnnotation(Symbols.ClassIds.composable, session)) {
-            replaceAnnotationsSafe(listOf(buildComposableAnnotation()))
+            replaceAnnotationsSafe(listOf(buildComposableAnnotation(), buildNonRestartableAnnotation()))
           }
         }
         .symbol
@@ -801,6 +801,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
   private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
+  }
+
+  private fun buildNonRestartableAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.nonRestartableComposable }
   }
 
   private fun buildInjectedFunctionClassAnnotation(callableId: CallableId): FirAnnotation {
