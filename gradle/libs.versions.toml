@@ -13,33 +13,40 @@
 # limitations under the License.
 
 [versions]
-autoService = "1.1.1"
+agp = "8.9.1"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
-wire = "5.3.1"
+autoService = "1.1.1"
+circuit = "0.27.0"
+compose-jb = "1.7.3"
 dagger = "2.56.1"
+gjf = "1.26.0"
+jdk = "23"
+jvmTarget = "11"
 kct = "0.7.0"
 kotlin = "2.1.20"
 kotlinInject = "0.7.2"
 kotlinInject-anvil = "0.1.3"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.8.1"
-ktor = "3.1.2"
-gjf = "1.26.0"
-jdk = "23"
-jvmTarget = "11"
 ksp = "2.1.20-2.0.0"
 ktfmt = "0.54"
+ktor = "3.1.2"
 okhttp = "5.0.0-alpha.14"
 okio = "3.11.0"
 pluginId = "dev.zacsweers.metro.compiler"
+wire = "5.3.1"
 
 [plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.17.0" }
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.2" }
@@ -61,6 +68,14 @@ autoService-ksp = { module = "dev.zacsweers.autoservice:auto-service-ksp", versi
 atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu" }
 
 clikt = "com.github.ajalt.clikt:clikt:5.0.3"
+
+circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
+
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
+compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "compose-jb" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-jb" }
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 
 coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
