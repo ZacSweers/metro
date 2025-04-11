@@ -4,6 +4,7 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
@@ -15,9 +16,7 @@ plugins {
 
 ksp { arg("circuit.codegen.mode", "metro") }
 
-metro {
-  enableTopLevelFunctionInjection.set(true)
-}
+metro { enableTopLevelFunctionInjection.set(true) }
 
 kotlin {
   jvm {
@@ -53,4 +52,12 @@ kotlin {
 
 dependencies { add("kspCommonMainMetadata", libs.circuit.codegen) }
 
-tasks.withType<KotlinCompilationTask<*>>().configureEach { dependsOn("kspCommonMainKotlinMetadata") }
+tasks.withType<KotlinCompilationTask<*>>().configureEach {
+  if (this is KotlinCompile) {
+    // Disable incremental in this project because we're generating top-level declarations
+    // TODO remove after Soon™️ (2.2?)
+    incremental = false
+  }
+
+  dependsOn("kspCommonMainKotlinMetadata")
+}
