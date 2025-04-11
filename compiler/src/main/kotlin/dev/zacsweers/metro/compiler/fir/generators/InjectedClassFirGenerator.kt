@@ -408,11 +408,8 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             Keys.InjectConstructorFactoryClassDeclaration,
             classKind = classKind,
           ) {
-            // TODO what about backward-referencing type params?
             injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
-              typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                copyTypeParametersFrom(injectedClass.classSymbol, session)
-              }
+              copyTypeParametersFrom(injectedClass.classSymbol, session)
             }
 
             if (!injectedClass.isAssisted) {
@@ -432,11 +429,8 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         val injectedClass = membersInjectorClassIdsToInjectedClass[classId] ?: return null
 
         createNestedClass(owner, name.capitalizeUS(), Keys.MembersInjectorClassDeclaration) {
-            // TODO what about backward-referencing type params?
             injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
-              typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                copyTypeParametersFrom(injectedClass.classSymbol, session)
-              }
+              copyTypeParametersFrom(injectedClass.classSymbol, session)
             }
 
             superType { typeParameterRefs ->
@@ -731,9 +725,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               ) {
                 // Add any type args if necessary
                 injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
-                  typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                    copyTypeParametersFrom(injectedClass.classSymbol, session)
-                  }
+                  copyTypeParametersFrom(injectedClass.classSymbol, session)
                 }
 
                 // Add instance param

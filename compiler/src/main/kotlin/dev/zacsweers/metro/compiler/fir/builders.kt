@@ -196,7 +196,7 @@ internal fun DeclarationBuildingContext<*>.copyTypeParametersFrom(
   for (parameter in classSymbol.typeParameterSymbols) {
     typeParameter(
       name = parameter.name,
-      variance = Variance.INVARIANT, // Type must always be invariant to support read and write access.
+      variance = parameter.variance,
     ) {
       for (bound in parameter.resolvedBounds) {
         bound { typeParameters ->

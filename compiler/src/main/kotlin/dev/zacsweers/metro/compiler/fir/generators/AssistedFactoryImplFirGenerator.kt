@@ -136,12 +136,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
       Symbols.Names.metroImpl -> {
         // TODO if there's no assisted params, we could optimize this to just be an object?
         createNestedClass(owner, name, Keys.AssistedFactoryImplClassDeclaration) {
-            for (typeParam in owner.typeParameterSymbols) {
-              typeParameter(typeParam.name, typeParam.variance, key = Keys.Default) {
-                copyTypeParametersFrom(owner, session)
-              }
-            }
-
+            copyTypeParametersFrom(owner, session)
             superType(owner::constructType)
           }
           .symbol
