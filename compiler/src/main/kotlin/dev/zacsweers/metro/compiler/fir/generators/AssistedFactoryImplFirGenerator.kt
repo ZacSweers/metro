@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.abstractFunctions
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -137,9 +138,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
         createNestedClass(owner, name, Keys.AssistedFactoryImplClassDeclaration) {
             for (typeParam in owner.typeParameterSymbols) {
               typeParameter(typeParam.name, typeParam.variance, key = Keys.Default) {
-                if (typeParam.isBound) {
-                  typeParam.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                }
+                copyTypeParametersFrom(owner, session)
               }
             }
 

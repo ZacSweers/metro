@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
@@ -410,9 +411,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             // TODO what about backward-referencing type params?
             injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
               typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                if (typeParameter.isBound) {
-                  typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                }
+                copyTypeParametersFrom(injectedClass.classSymbol, session)
               }
             }
 
@@ -436,9 +435,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             // TODO what about backward-referencing type params?
             injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
               typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                if (typeParameter.isBound) {
-                  typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                }
+                copyTypeParametersFrom(injectedClass.classSymbol, session)
               }
             }
 
@@ -735,9 +732,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 // Add any type args if necessary
                 injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
                   typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                    if (typeParameter.isBound) {
-                      typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                    }
+                    copyTypeParametersFrom(injectedClass.classSymbol, session)
                   }
                 }
 
