@@ -10,9 +10,7 @@ import com.slack.circuit.foundation.CircuitContent
 import dev.zacsweers.metro.Inject
 
 @Inject
-class CounterApp(private val circuit: Circuit) {
-  @Composable
-  operator fun invoke() {
-    MaterialTheme { CircuitCompositionLocals(circuit) { CircuitContent(screen = CounterScreen) } }
-  }
+@Composable
+fun CounterApp(circuit: Circuit) {
+  MaterialTheme { CircuitCompositionLocals(circuit) { CircuitContent(screen = CounterScreen) } }
 }

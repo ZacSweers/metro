@@ -12,7 +12,7 @@ import dev.zacsweers.metro.SingleIn
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val app: CounterApp
+  val app: CounterAppClass
 
   @Provides
   @SingleIn(AppScope::class)
