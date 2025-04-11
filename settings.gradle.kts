@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
   repositories {
-    google()
     mavenCentral()
+    google()
     gradlePluginPortal()
   }
   plugins { id("com.gradle.develocity") version "4.0" }
@@ -11,8 +11,8 @@ pluginManagement {
 
 dependencyResolutionManagement {
   repositories {
-    google()
     mavenCentral()
+    google()
   }
 }
 

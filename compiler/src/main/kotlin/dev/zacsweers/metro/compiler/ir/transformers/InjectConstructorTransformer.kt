@@ -319,8 +319,13 @@ internal class InjectConstructorTransformer(
       val constructorParametersToFields =
         assignConstructorParamsToFields(constructorParameters, declaration)
 
+      // TODO if compose compiler has already run, this origin matches the new function with composer/changed params
       val invokeFunction =
         declaration.functions.first { it.origin == Origins.TopLevelInjectFunctionClassFunction }
+
+      val hasComposeCompilerRun = invokeFunction.valueParameters.lastOrNull()?.name?.asString() == "\$changed"
+
+      // TODO if it's run, look up the function directly if it's in the same
 
       // TODO
       //  copy default values

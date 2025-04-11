@@ -68,6 +68,11 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val nonRestartableComposable by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.stable)
+      as FirRegularClassSymbol
+  }
+
   val kClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(StandardClassIds.KClass)
       as FirRegularClassSymbol
