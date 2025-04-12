@@ -19,7 +19,7 @@ import dev.zacsweers.metro.Provider
 
 /**
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
- * Provider<V>>` when calling [get] (as specified by [Factory]).
+ * Provider<V>>` when calling [invoke] (as specified by [Factory]).
  */
 public class MapProviderFactory<K : Any, V : Any>
 private constructor(contributingMap: Map<K, Provider<V>>) :
@@ -57,5 +57,10 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
+
+    /** Returns an empty map. */
+    @Suppress("UNCHECKED_CAST")
+    public fun <K : Any, V : Any> empty(): Provider<Map<K, Provider<V>>> =
+      EMPTY as Provider<Map<K, Provider<V>>>
   }
 }

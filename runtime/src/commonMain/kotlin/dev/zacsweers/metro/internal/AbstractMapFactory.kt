@@ -33,6 +33,10 @@ public sealed class AbstractMapFactory<K : Any, V : Any, V2>(map: Map<K, Provide
     return contributingMap
   }
 
+  protected companion object {
+    protected val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(emptyMap())
+  }
+
   /** A builder for [AbstractMapFactory]. */
   public sealed class Builder<K : Any, V : Any, V2>(size: Int) {
     internal val map: LinkedHashMap<K, Provider<V>> = newLinkedHashMapWithExpectedSize(size)

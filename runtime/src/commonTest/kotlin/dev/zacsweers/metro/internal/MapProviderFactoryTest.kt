@@ -19,6 +19,7 @@ import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.provider
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 
 class MapProviderFactoryTest {
   @Test
@@ -45,6 +46,14 @@ class MapProviderFactoryTest {
     expectedMap.put("one", p5)
     expectedMap.put("four", p4)
     assertEquals(factory().entries.toList(), expectedMap.entries.toList())
+  }
+
+
+  @Test
+  fun emptyFactoryAlwaysReturnsSameInstance() {
+    val empty1 = MapProviderFactory.empty<String, Int>()
+    val empty2 = MapProviderFactory.empty<String, Int>()
+    assertSame(empty1, empty2, "Empty factories should be the same instance")
   }
 
   companion object {

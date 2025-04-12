@@ -317,6 +317,10 @@ internal class Symbols(
     mapFactoryCompanionObject.requireSimpleFunction("builder")
   }
 
+  val mapFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
   val mapFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
     mapFactoryBuilder.requireSimpleFunction("put")
   }
@@ -345,6 +349,10 @@ internal class Symbols(
 
   val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapProviderFactoryCompanionObject.requireSimpleFunction("empty")
   }
 
   val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
