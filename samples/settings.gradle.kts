@@ -19,6 +19,7 @@ dependencyResolutionManagement {
 rootProject.name = "metro-samples"
 
 include(
+  ":android-app",
   ":circuit-app",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-kotlinInject",

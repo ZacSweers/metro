@@ -59,6 +59,12 @@ spotless = { id = "com.diffplug.spotless", version = "7.0.3" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
+androidx-appcompat = "androidx.appcompat:appcompat:1.7.0"
+androidx-core = "androidx.core:core-ktx:1.16.0"
+androidx-fragment = "androidx.fragment:fragment-ktx:1.8.6"
+androidx-material3 = "com.google.android.material:material:1.12.0"
+androidx-viewmodel = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7"
+
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
 

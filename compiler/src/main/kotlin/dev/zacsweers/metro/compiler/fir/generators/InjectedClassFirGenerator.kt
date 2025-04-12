@@ -620,7 +620,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         }
         .apply {
           if (function.hasAnnotation(Symbols.ClassIds.composable, session)) {
-            replaceAnnotationsSafe(listOf(buildComposableAnnotation(), buildNonRestartableAnnotation()))
+            replaceAnnotationsSafe(
+              listOf(buildComposableAnnotation(), buildNonRestartableAnnotation())
+            )
           }
         }
         .symbol

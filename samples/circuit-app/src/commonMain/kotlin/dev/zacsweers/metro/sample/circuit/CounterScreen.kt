@@ -17,4 +17,3 @@ sealed interface CounterEvent : CircuitUiEvent {
 
   data object Reset : CounterEvent
 }
-
