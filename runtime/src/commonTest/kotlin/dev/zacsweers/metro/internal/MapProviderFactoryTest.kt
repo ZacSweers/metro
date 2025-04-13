@@ -48,7 +48,6 @@ class MapProviderFactoryTest {
     assertEquals(factory().entries.toList(), expectedMap.entries.toList())
   }
 
-
   @Test
   fun emptyFactoryAlwaysReturnsSameInstance() {
     val empty1 = MapProviderFactory.empty<String, Int>()

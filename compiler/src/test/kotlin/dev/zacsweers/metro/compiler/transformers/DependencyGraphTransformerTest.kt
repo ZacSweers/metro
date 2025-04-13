@@ -2452,9 +2452,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           interface ExampleGraph {
             @Multibinds
             val ints: Map<Int, Int>
-            
+
             val intsProvider: Map<Int, Provider<Int>>
-            
+
             val providerOfInts: Provider<Map<Int, Int>>
           }
         """
