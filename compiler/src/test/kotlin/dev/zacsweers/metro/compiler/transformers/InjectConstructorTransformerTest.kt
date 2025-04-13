@@ -3,10 +3,12 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation
 import dev.zacsweers.metro.compiler.ExampleClass
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertCallableFactory
+import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.assertNoArgCallableFactory
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
@@ -333,6 +335,30 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
       assertThat(myClass).isNotNull()
       assertThat(myClassField).isNotNull()
       assertThat(myClassField.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `dagger reusable is unsupported`() {
+    compile(
+      source(
+        """
+         import dagger.Reusable
+
+         @Reusable
+         @Inject
+         class MyClass
+       """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq#why-doesnt-metro-support-reusable for more information.
+        """
+          .trimIndent()
+      )
     }
   }
 }

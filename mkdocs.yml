@@ -83,6 +83,7 @@ nav:
       - 'Generating Custom Metro Code': generating-metro-code.md
       - 'Adoption Strategies': adoption.md
   - 'Debugging': debugging.md
+  - 'FAQ': faq.md
   - 'API': api/0.x/index.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md

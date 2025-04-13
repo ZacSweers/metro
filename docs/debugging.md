@@ -12,7 +12,6 @@ metro {
 
 In the future, we could possibly explore including information in IR to synthesize call stack information similar to coroutines, but will save that for if/when it’s asked for.
 
-
 ## Reports
 
 Similar to Compose, Metro supports a `reportsDestination` property in its Gradle DSL and can output various graph reports to this destination if specified. This is very much a WIP, feedback is welcome!

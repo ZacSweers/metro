@@ -113,6 +113,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DaggerReusable_IsUnsupported.kt")
+    public void testDaggerReusable_IsUnsupported() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/DaggerReusable_IsUnsupported.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateProviderOption_Error.kt")
     public void testPrivateProviderOption_Error() {
       runTest("compiler-tests/src/test/data/diagnostic/provides/PrivateProviderOption_Error.kt");
