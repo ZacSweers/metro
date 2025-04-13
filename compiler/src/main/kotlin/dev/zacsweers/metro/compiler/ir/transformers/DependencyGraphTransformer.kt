@@ -141,6 +141,7 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphData {
@@ -178,8 +179,13 @@ internal class DependencyGraphTransformer(
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native compilation hint gen can't be done until https://youtrack.jetbrains.com/issue/KT-75865
-    if (options.generateHintProperties && !pluginContext.platform.isNative()) {
+    // Native/WASM compilation hint gen can't be done until
+    // https://youtrack.jetbrains.com/issue/KT-75865
+    val generateHints =
+      options.generateHintProperties &&
+        !pluginContext.platform.isNative() &&
+        !pluginContext.platform.isWasm()
+    if (generateHints) {
       contributionHintIrTransformer.visitClass(declaration)
     }
     membersInjectorTransformer.visitClass(declaration)
