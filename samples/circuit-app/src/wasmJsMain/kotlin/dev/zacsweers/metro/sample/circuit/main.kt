@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.sample.circuit
 
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -10,7 +12,7 @@ fun main() {
   try {
     val app = createGraph<AppGraph>().app
     CanvasBasedWindow { app() }
-  } catch(ex: Throwable) {
+  } catch (ex: Throwable) {
     ex.printStackTrace()
     throw ex
   }
