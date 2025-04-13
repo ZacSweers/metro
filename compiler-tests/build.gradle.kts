@@ -7,6 +7,8 @@ plugins {
 
 val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
+// include transitive in this case to grab jakarta and javax
+val daggerRuntimeClasspath: Configuration by configurations.creating {  }
 
 dependencies {
   testImplementation(project(":compiler"))
@@ -18,6 +20,7 @@ dependencies {
   metroRuntimeClasspath(project(":runtime"))
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
+  daggerRuntimeClasspath(libs.dagger.runtime)
 
   // Dependencies required to run the internal test framework.
   testRuntimeOnly(libs.kotlin.reflect)
@@ -51,6 +54,7 @@ tasks.withType<Test> {
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
+  systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")

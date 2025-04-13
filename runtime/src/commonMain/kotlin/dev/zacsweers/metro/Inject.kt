@@ -265,7 +265,7 @@ package dev.zacsweers.metro
  * }
  * ```
  *
- * @see <a href="https://zacsweers.github.io/metro/installation.md/#ide-support">Docs for how to
+ * @see <a href="https://zacsweers.github.io/metro/installation/#ide-support">Docs for how to
  *   enable IDE support</a>
  */
 @Target(

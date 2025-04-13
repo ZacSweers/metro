@@ -638,7 +638,9 @@ internal class Symbols(
     }
 
     object ClassIds {
-      val DAGGER_LAZY_CLASS_ID = ClassId(FqName("dagger"), Name.identifier("Lazy"))
+      private val daggerRuntimePackageFqName = FqName("dagger")
+      val DAGGER_LAZY_CLASS_ID = ClassId(daggerRuntimePackageFqName, Name.identifier("Lazy"))
+      val DAGGER_REUSABLE_CLASS_ID = ClassId(daggerRuntimePackageFqName, Name.identifier("Reusable"))
       val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
         ClassId(FqName("dagger.internal"), Name.identifier("Provider"))
       val JAVAX_PROVIDER_CLASS_ID = ClassId(FqName("javax.inject"), Name.identifier("Provider"))

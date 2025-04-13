@@ -4,6 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Report error diagnostic if Dagger's `@Reusable` is used on a provider or injected class.
+- Add FAQ docs: https://zacsweers.github.io/metro/faq
+
 0.1.2
 -----
 

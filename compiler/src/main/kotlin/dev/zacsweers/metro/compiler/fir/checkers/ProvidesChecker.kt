@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -26,6 +27,8 @@ import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
+import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
@@ -70,6 +73,15 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
 
     val annotations = declaration.symbol.metroAnnotations(session)
     if (!annotations.isProvides && !annotations.isBinds) {
+      return
+    }
+
+    declaration.getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)?.let {
+      reporter.reportOn(
+        it.source ?: source,
+        FirMetroErrors.DAGGER_REUSABLE_ERROR,
+        context,
+      )
       return
     }
 
@@ -241,8 +253,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           reporter.reportOn(
             source,
             FirMetroErrors.PROVIDES_COULD_BE_BINDS,
-            // TODO link a docsite link
-            "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these.",
+            "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
             context,
           )
           return
@@ -250,7 +261,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           reporter.reportOn(
             source,
             FirMetroErrors.BINDS_ERROR,
-            "`@Binds` declarations with bodies should just return `this`.",
+            "`@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
             context,
           )
           return
@@ -260,8 +271,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           reporter.reportOn(
             source,
             FirMetroErrors.PROVIDES_ERROR,
-            // TODO link a docsite link
-            "`@Provides` $name may not be extension $name. Use `@Binds` instead for these.",
+            "`@Provides` $name may not be extension $name. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
             context,
           )
           return
