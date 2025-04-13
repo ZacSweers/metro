@@ -204,7 +204,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       )
       put(
         DAGGER_REUSABLE_ERROR,
-        "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq for more information.",
+        "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq#why-doesnt-metro-support-reusable for more information.",
       )
     }
 

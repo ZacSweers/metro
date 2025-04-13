@@ -2,13 +2,13 @@
 
 This is a list of frequently asked questions about Metro. Consider also searching the issue tracker and discussions section of the Metro repo for anything not covered here!
 
-> Compiler plugins are not a stable API, is Metro safe to use?
+### **Compiler plugins are not a stable API, is Metro safe to use?**
 
 This is a fair question! Metro will often require new companion releases for each Kotlin release. This is a part of life when using compiler plugins. That said, Kotlin does extensive beta/RC cycles that Metro will test against and turn around new releases within a day or two barring any unexpected circumstances (or vacation!)
 
 The harder issue is going to be IDE support, as the Kotlin IDE plugin branches independently from regular Kotlin releases. Right now the answer is "YMMV", but we're exploring a couple solutions for this to ensure better stability.
 
-> Will Metro add support for Hilt features or Hilt interop?
+### **Will Metro add support for Hilt features or Hilt interop?**
 
 Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.
 
@@ -26,9 +26,10 @@ Some features are focused around injecting Android framework components. There a
 
 The rest of Hilt's features focus on gluing these pieces together and also supporting Java (which Metro doesn't support).
 
-> Why doesn't Metro support `@Reusable`?
+### **Why doesn't Metro support `@Reusable`?**
 
-_Quick pretext: this works almost identically in code gen as scoped types, it just uses `SingleCheck` instead of `DoubleCheck`. It's basically like using `lazy(NONE)` instead of `lazy(SYNCHRONIZED)`._
+!!! tip "Some technical context"
+    `@Reusable` works almost identically in code gen as scoped types, it just uses `SingleCheck` instead of `DoubleCheck`. It's basically like using `lazy(NONE)` instead of `lazy(SYNCHRONIZED)`.
 
 A few different reasons Metro doesn't have it
 
