@@ -202,7 +202,10 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
         PROVIDER_OVERRIDES,
         "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",
       )
-      put(DAGGER_REUSABLE_ERROR, "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq for more information.")
+      put(
+        DAGGER_REUSABLE_ERROR,
+        "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq for more information.",
+      )
     }
 
   init {

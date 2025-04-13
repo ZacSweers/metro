@@ -8,7 +8,7 @@ plugins {
 val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 // include transitive in this case to grab jakarta and javax
-val daggerRuntimeClasspath: Configuration by configurations.creating {  }
+val daggerRuntimeClasspath: Configuration by configurations.creating {}
 
 dependencies {
   testImplementation(project(":compiler"))

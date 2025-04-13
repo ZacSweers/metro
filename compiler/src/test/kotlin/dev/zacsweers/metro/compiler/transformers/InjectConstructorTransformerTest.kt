@@ -343,7 +343,7 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     compile(
       source(
         """
-         import dagger.Reusable          
+         import dagger.Reusable
 
          @Reusable
          @Inject
@@ -356,7 +356,8 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq for more information.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }

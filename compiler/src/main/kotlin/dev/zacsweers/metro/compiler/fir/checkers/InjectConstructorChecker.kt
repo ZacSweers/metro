@@ -35,14 +35,12 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     val isInjected = classInjectAnnotation.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
 
-    declaration.getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)?.let {
-      reporter.reportOn(
-        it.source ?: source,
-        FirMetroErrors.DAGGER_REUSABLE_ERROR,
-        context,
-      )
-      return
-    }
+    declaration
+      .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
+      ?.let {
+        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR, context)
+        return
+      }
 
     if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
       reporter.reportOn(

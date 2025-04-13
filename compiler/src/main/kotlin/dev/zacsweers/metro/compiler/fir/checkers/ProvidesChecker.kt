@@ -28,7 +28,6 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
@@ -76,14 +75,12 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
-    declaration.getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)?.let {
-      reporter.reportOn(
-        it.source ?: source,
-        FirMetroErrors.DAGGER_REUSABLE_ERROR,
-        context,
-      )
-      return
-    }
+    declaration
+      .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
+      ?.let {
+        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR, context)
+        return
+      }
 
     if (declaration.typeParameters.isNotEmpty()) {
       val type = if (annotations.isProvides) "Provides" else "Binds"
