@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Optimize empty map multibindings to reuse a singleton instance.
+
 0.1.2
 -----
 
