@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
@@ -22,9 +22,15 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     mainRun { mainClass.set("dev.zacsweers.metro.sample.circuit.MainKt") }
   }
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmJs {
+    outputModuleName.set("counterApp")
+    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
+    binaries.executable()
+  }
+  // TODO others?
   // macosArm64()
   // js { browser() }
-  @OptIn(ExperimentalWasmDsl::class) wasmJs { browser() }
   sourceSets {
     commonMain {
       kotlin {
@@ -33,9 +39,9 @@ kotlin {
       }
       dependencies {
         // Circuit dependencies
-        implementation("com.slack.circuit:circuit-foundation:0.27.0")
-        implementation("com.slack.circuit:circuit-runtime:0.27.0")
-        implementation("com.slack.circuit:circuit-codegen-annotations:0.27.0")
+        implementation(libs.circuit.foundation)
+        implementation(libs.circuit.runtime)
+        implementation(libs.circuit.codegenAnnotations)
 
         // Compose dependencies
         implementation(libs.compose.runtime)
@@ -46,13 +52,14 @@ kotlin {
     }
     commonTest { dependencies { implementation(libs.kotlin.test) } }
     jvmMain { dependencies { implementation(compose.desktop.currentOs) } }
+    wasmJsMain { dependencies { implementation(compose.components.resources) } }
   }
 }
 
 dependencies { add("kspCommonMainMetadata", libs.circuit.codegen) }
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach {
-  if (this is KotlinCompile) {
+  if (this is AbstractKotlinCompile<*>) {
     // Disable incremental in this project because we're generating top-level declarations
     // TODO remove after Soon™️ (2.2?)
     incremental = false

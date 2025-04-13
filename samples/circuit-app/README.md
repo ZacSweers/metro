@@ -19,4 +19,14 @@ Note that KSP's support for generating common code is slightly broken, so this u
 ./gradlew -p samples :circuit-app:jvmRun
 ```
 
+**WASM**
+
+> [!CAUTION]
+> This is not yet working at runtime due to [KT-76715](https://youtrack.jetbrains.com/issue/KT-76715)
+    
+
+```kotlin
+./gradlew -p samples :circuit-app:wasmJsBrowserDevelopmentRun --continuous
+```
+
 TODO others

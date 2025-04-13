@@ -76,6 +76,9 @@ atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu"
 clikt = "com.github.ajalt.clikt:clikt:5.0.3"
 
 circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
+circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.ref = "circuit" }
+circuit-runtime = { module = "com.slack.circuit:circuit-runtime", version.ref = "circuit" }
+circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annotations", version.ref = "circuit" }
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
 compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "compose-jb" }
