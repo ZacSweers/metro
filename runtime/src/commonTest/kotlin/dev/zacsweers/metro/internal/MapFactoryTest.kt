@@ -65,6 +65,14 @@ class MapFactoryTest {
   }
 
   @Test
+  fun `test builder putAll with empty map factory`() {
+    val provider = MapFactory.builder<String, Int>(0).build()
+    val mapFactory = MapFactory.builder<String, Int>(0).putAll(provider).build()
+    val result = mapFactory.invoke()
+    assertEquals(0, result.size)
+  }
+
+  @Test
   fun `test builder putAll with empty map`() {
     val provider = MapFactory.empty<String, Int>()
     val mapFactory = MapFactory.builder<String, Int>(0).putAll(provider).build()
