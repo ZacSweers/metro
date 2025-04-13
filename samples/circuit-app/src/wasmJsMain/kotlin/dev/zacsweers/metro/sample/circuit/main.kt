@@ -13,6 +13,7 @@ fun main() {
     val app = createGraph<AppGraph>().app
     CanvasBasedWindow { app() }
   } catch (ex: Throwable) {
+    // Annoyingly this is the only way to get a useful stacktrace in the web console
     ex.printStackTrace()
     throw ex
   }
