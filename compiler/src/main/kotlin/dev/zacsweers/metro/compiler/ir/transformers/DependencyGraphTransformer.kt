@@ -2594,6 +2594,39 @@ internal class DependencyGraphTransformer(
       } else {
         symbols.mapFactoryCompanionObject
       }
+
+    val size = binding.sourceBindings.size
+    val mapProviderType =
+      pluginContext.irBuiltIns.mapClass
+        .typeWith(
+          keyType,
+          if (useProviderFactory) {
+            rawValueType.wrapInProvider(symbols.metroProvider)
+          } else {
+            rawValueType
+          },
+        )
+        .wrapInProvider(symbols.metroProvider)
+
+    // TODO check if binding allows empty?
+    if (size == 0) {
+      // If it's empty then short-circuit here
+      val emptyCallee =
+        if (useProviderFactory) {
+          // MapProviderFactory.empty()
+          symbols.mapProviderFactoryEmptyFunction
+        } else {
+          // MapFactory.empty()
+          symbols.mapFactoryEmptyFunction
+        }
+
+      return irInvoke(
+        dispatchReceiver = irGetObject(targetCompanionObject),
+        callee = emptyCallee,
+        typeHint = mapProviderType,
+      )
+    }
+
     val builderFunction =
       if (useProviderFactory) {
         symbols.mapProviderFactoryBuilderFunction
@@ -2618,7 +2651,7 @@ internal class DependencyGraphTransformer(
         .apply {
           putTypeArgument(0, keyType)
           putTypeArgument(1, valueType)
-          putValueArgument(0, irInt(binding.sourceBindings.size))
+          putValueArgument(0, irInt(size))
         }
 
     val putFunction =
@@ -2672,10 +2705,7 @@ internal class DependencyGraphTransformer(
     return irInvoke(
       dispatchReceiver = withProviders,
       callee = buildFunction,
-      typeHint =
-        pluginContext.irBuiltIns.mapClass
-          .typeWith(keyType, rawValueType)
-          .wrapInProvider(symbols.metroProvider),
+      typeHint = mapProviderType,
     )
   }
 

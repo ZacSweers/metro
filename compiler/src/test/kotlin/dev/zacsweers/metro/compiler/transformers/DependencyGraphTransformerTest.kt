@@ -18,6 +18,8 @@ import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
+import dev.zacsweers.metro.internal.MapFactory
+import dev.zacsweers.metro.internal.MapProviderFactory
 import java.util.concurrent.Callable
 import kotlin.test.Ignore
 import kotlin.test.assertNotNull
@@ -2438,6 +2440,35 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val ints = graph.callProperty<Map<Int, Provider<Int>>>("ints")
       assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - maps - empty uses empty singleton`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Multibinds
+            val ints: Map<Int, Int>
+            
+            val intsProvider: Map<Int, Provider<Int>>
+            
+            val providerOfInts: Provider<Map<Int, Int>>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val intsProvider = graph.callProperty<Map<Int, Provider<Int>>>("intsProvider")
+      // Use toString() because on JVM this may be inlined
+      assertThat(intsProvider.toString()).isEqualTo(MapProviderFactory.empty<Int, Int>().toString())
+      val ints = graph.callProperty<Map<Int, Int>>("ints")
+      assertThat(ints.toString()).isEqualTo(MapFactory.empty<Int, Int>().toString())
+      val providerOfInts = graph.callProperty<Provider<Map<Int, Int>>>("providerOfInts")
+      assertThat(providerOfInts.toString()).isEqualTo(MapFactory.empty<Int, Int>().toString())
     }
   }
 
