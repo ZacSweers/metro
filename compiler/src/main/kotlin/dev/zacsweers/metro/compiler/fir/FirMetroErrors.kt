@@ -132,6 +132,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val MEMBERS_INJECT_STATUS_ERROR by error1<String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_RETURN_TYPE_WARNING by warning1<String>(DECLARATION_RETURN_TYPE)
+  val DAGGER_REUSABLE_ERROR by error0(NAME_IDENTIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("Metro").apply {
@@ -200,6 +201,10 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(
         PROVIDER_OVERRIDES,
         "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",
+      )
+      put(
+        DAGGER_REUSABLE_ERROR,
+        "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq#why-doesnt-metro-support-reusable for more information.",
       )
     }
 
