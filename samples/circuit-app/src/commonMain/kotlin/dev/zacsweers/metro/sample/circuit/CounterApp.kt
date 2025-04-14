@@ -9,7 +9,15 @@ import com.slack.circuit.foundation.CircuitCompositionLocals
 import com.slack.circuit.foundation.CircuitContent
 import dev.zacsweers.metro.Inject
 
+// TODO move back to function injection once non-JVM platforms work with top-level FIR injections
 @Inject
+class CounterAppClass(private val circuit: Circuit) {
+  @Composable
+  operator fun invoke() {
+    CounterApp(circuit)
+  }
+}
+
 @Composable
 fun CounterApp(circuit: Circuit) {
   MaterialTheme { CircuitCompositionLocals(circuit) { CircuitContent(screen = CounterScreen) } }

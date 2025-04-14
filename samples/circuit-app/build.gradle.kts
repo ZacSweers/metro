@@ -1,6 +1,7 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
@@ -14,7 +15,10 @@ plugins {
 
 ksp { arg("circuit.codegen.mode", "metro") }
 
-metro { enableTopLevelFunctionInjection.set(true) }
+// TODO broken for now until
+//  https://youtrack.jetbrains.com/issue/KT-76715
+//  https://youtrack.jetbrains.com/issue/KT-66735
+// metro { enableTopLevelFunctionInjection.set(true) }
 
 kotlin {
   jvm {
@@ -22,14 +26,14 @@ kotlin {
     mainRun { mainClass.set("dev.zacsweers.metro.sample.circuit.MainKt") }
   }
   // Second target for KSP's commonMain gen to work
-  macosArm64()
+  @OptIn(ExperimentalWasmDsl::class)
+  wasmJs {
+    outputModuleName.set("counterApp")
+    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
+    binaries.executable()
+  }
   // TODO others?
-  //  @OptIn(ExperimentalWasmDsl::class)
-  //  wasmJs {
-  //    outputModuleName.set("counterApp")
-  //    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
-  //    binaries.executable()
-  //  }
+  //  macosArm64()
   sourceSets {
     commonMain {
       kotlin {
@@ -51,7 +55,7 @@ kotlin {
     }
     commonTest { dependencies { implementation(libs.kotlin.test) } }
     jvmMain { dependencies { implementation(compose.desktop.currentOs) } }
-    // wasmJsMain { dependencies { implementation(compose.components.resources) } }
+    wasmJsMain { dependencies { implementation(compose.components.resources) } }
   }
 }
 

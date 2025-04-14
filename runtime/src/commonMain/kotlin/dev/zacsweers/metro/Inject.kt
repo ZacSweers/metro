@@ -251,10 +251,12 @@ package dev.zacsweers.metro
  *
  * ### Why opt-in?
  *
- * There are two reasons this is behind an opt-in option at the moment.
+ * There are three reasons this is behind an opt-in option at the moment.
  * 1. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
  *    currently compatible with incremental compilation.
- * 2. IDE support is rudimentary at best and currently requires enabling a custom registry flag.
+ * 2. Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not
+ *    currently compatible with non-JVM targets.
+ * 3. IDE support is rudimentary at best and currently requires enabling a custom registry flag.
  *
  * Because of this, it's likely better for now to just hand-write the equivalent class that Metro
  * generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.

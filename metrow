@@ -58,8 +58,7 @@ case "$1" in
        # Annoyingly, the apiDump task has some caching issues
        ./gradlew clean spotlessApply apiDump kotlinUpgradeYarnLock --rerun-tasks --no-build-cache
        ./gradlew -p gradle-plugin clean spotlessApply apiDump --rerun-tasks --no-build-cache
-       # TODO re-enable yarn locking once a sample with WASM is enabled
-       ./gradlew -p samples spotlessApply #kotlinUpgradeYarnLock
+       ./gradlew -p samples spotlessApply kotlinUpgradeYarnLock
        ;;
 
    *)
