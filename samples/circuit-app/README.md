@@ -24,7 +24,6 @@ Note that KSP's support for generating common code is slightly broken, so this u
 > [!CAUTION]
 > This is not yet working at runtime due to [KT-76715](https://youtrack.jetbrains.com/issue/KT-76715)
 
-
 ```kotlin
 ./gradlew -p samples :circuit-app:wasmJsBrowserDevelopmentRun --continuous
 ```
