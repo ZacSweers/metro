@@ -84,6 +84,7 @@ nav:
       - 'Adoption Strategies': adoption.md
   - 'Debugging': debugging.md
   - 'FAQ': faq.md
+  - 'Samples': samples.md
   - 'API': api/0.x/index.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
