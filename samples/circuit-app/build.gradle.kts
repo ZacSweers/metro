@@ -22,14 +22,13 @@ kotlin {
     mainRun { mainClass.set("dev.zacsweers.metro.sample.circuit.MainKt") }
   }
   // TODO others?
+  //  macosArm64()
   //  @OptIn(ExperimentalWasmDsl::class)
   //  wasmJs {
   //    outputModuleName.set("counterApp")
   //    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
   //    binaries.executable()
   //  }
-  //  macosArm64()
-  //  js { browser() }
   sourceSets {
     commonMain {
       kotlin {
