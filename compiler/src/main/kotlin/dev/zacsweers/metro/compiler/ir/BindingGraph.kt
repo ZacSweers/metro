@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.text.appendLine
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -200,6 +201,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   fun validate(node: DependencyGraphNode, onError: (String) -> Nothing): Set<TypeKey> {
     val deferredTypes = checkCycles(node, onError)
     checkMissingDependencies(onError)
+    checkEmptyMultibindings(onError)
     return deferredTypes
   }
 
@@ -321,7 +323,90 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     val allDeps = dependencies.values.map { it.value }.flatten().mapToSet { it.typeKey }
     val missing = allDeps - bindings.keys
     if (missing.isNotEmpty()) {
-      onError("Missing bindings for: $missing")
+      onError("[Metro/MissingBinding] Missing bindings for: $missing")
+    }
+  }
+
+  private fun checkEmptyMultibindings(onError: (String) -> Nothing) {
+    val multibindings = bindings.values.filterIsInstance<Binding.Multibinding>()
+    for (multibinding in multibindings) {
+      if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
+        val message = buildString {
+          appendLine(
+            "[Metro/EmptyMultibinding] Multibinding '${multibinding.typeKey}' was unexpectedly empty."
+          )
+          appendLine()
+          appendLine(
+            "If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`."
+          )
+
+          val similarBindings = findSimilarMultibindings(multibinding, multibindings).toList()
+          if (similarBindings.isNotEmpty()) {
+            appendLine()
+            appendLine("Similar multibindings:")
+            val reported = mutableSetOf<TypeKey>()
+            for (key in similarBindings) {
+              if (key in reported) continue
+              appendLine("- ${key.render(short = true)}")
+              reported += key
+            }
+          }
+        }
+        onError(message)
+      }
+    }
+  }
+
+  private fun findSimilarMultibindings(
+    multibinding: Binding.Multibinding,
+    multibindings: List<Binding.Multibinding>,
+  ): Sequence<TypeKey> = sequence {
+    if (multibinding.isMap) {
+      val keyType = multibinding.typeKey.requireMapKeyType()
+      val valueType = multibinding.typeKey.requireMapValueType()
+      val similarKeys =
+        multibindings
+          .filter { it.isMap && it != multibinding && it.typeKey.requireMapKeyType() == keyType }
+          .map { it.typeKey }
+
+      yieldAll(similarKeys)
+
+      val similarValues =
+        multibindings
+          .filter {
+            if (!it.isMap) return@filter false
+            if (it == multibinding) return@filter false
+            val otherValueType = it.typeKey.requireMapValueType()
+            if (valueType == otherValueType) return@filter true
+            if (valueType.isSubtypeOf(otherValueType, metroContext.irTypeSystemContext))
+              return@filter true
+            if (otherValueType.isSubtypeOf(valueType, metroContext.irTypeSystemContext))
+              return@filter true
+            false
+          }
+          .map { it.typeKey }
+
+      yieldAll(similarValues)
+    } else {
+      // Set binding
+      val elementType = multibinding.typeKey.requireSetElementType()
+
+      val similar =
+        multibindings
+          .filter {
+            if (!it.isSet) return@filter false
+            if (it == multibinding) return@filter false
+            val otherElementType = it.typeKey.requireSetElementType()
+            if (elementType == otherElementType) return@filter true
+            if (elementType.isSubtypeOf(otherElementType, metroContext.irTypeSystemContext))
+              return@filter true
+            if (otherElementType.isSubtypeOf(elementType, metroContext.irTypeSystemContext))
+              return@filter true
+            false
+          }
+          .map { it.typeKey }
+
+      yieldAll(similar)
     }
   }
 

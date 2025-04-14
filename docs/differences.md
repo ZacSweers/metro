@@ -12,6 +12,8 @@
 * There is no `@BindsInstance`. Use `@Provides` on `@DependencyGraph.Factory` function parameters instead
 * Component dependencies must be annotated with `@Includes`.
 * Metro does not process Java code.
+* `@Multibinds` declarations are implemented in Metro graphs to return the declared multibinding.
+* Empty multibindings are an error by default in Metro. To allow a multibinding to be empty, it must be declared with `@Multibinds(allowEmpty = true)`.
 
 #### …from Kotlin-Inject
 

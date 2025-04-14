@@ -137,7 +137,10 @@ open annotation class dev.zacsweers.metro/MapKey : kotlin/Annotation { // dev.za
 }
 
 open annotation class dev.zacsweers.metro/Multibinds : kotlin/Annotation { // dev.zacsweers.metro/Multibinds|null[0]
-    constructor <init>() // dev.zacsweers.metro/Multibinds.<init>|<init>(){}[0]
+    constructor <init>(kotlin/Boolean = ...) // dev.zacsweers.metro/Multibinds.<init>|<init>(kotlin.Boolean){}[0]
+
+    final val allowEmpty // dev.zacsweers.metro/Multibinds.allowEmpty|{}allowEmpty[0]
+        final fun <get-allowEmpty>(): kotlin/Boolean // dev.zacsweers.metro/Multibinds.allowEmpty.<get-allowEmpty>|<get-allowEmpty>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/Named : kotlin/Annotation { // dev.zacsweers.metro/Named|null[0]

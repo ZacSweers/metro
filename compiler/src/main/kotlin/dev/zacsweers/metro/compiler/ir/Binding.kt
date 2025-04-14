@@ -353,6 +353,7 @@ internal sealed interface Binding {
     @Poko.Skip val declaration: IrSimpleFunction?,
     val isSet: Boolean,
     val isMap: Boolean,
+    var allowEmpty: Boolean,
     // Reconcile this with dependencies?
     // Sorted for consistency
     val sourceBindings: MutableSet<BindingWithAnnotations> =
@@ -391,6 +392,7 @@ internal sealed interface Binding {
         metroContext: IrMetroContext,
         typeKey: TypeKey,
         declaration: IrSimpleFunction?,
+        allowEmpty: Boolean = false,
       ): Multibinding {
         val rawType = typeKey.type.rawType()
 
@@ -401,7 +403,13 @@ internal sealed interface Binding {
           )
         val isMap = !isSet
 
-        return Multibinding(typeKey, isSet = isSet, isMap = isMap, declaration = declaration)
+        return Multibinding(
+          typeKey,
+          isSet = isSet,
+          isMap = isMap,
+          allowEmpty = allowEmpty,
+          declaration = declaration,
+        )
       }
     }
   }

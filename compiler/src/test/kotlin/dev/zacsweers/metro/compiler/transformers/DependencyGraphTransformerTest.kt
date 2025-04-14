@@ -1605,14 +1605,104 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `simple explicit multibindings with no contributors is empty`() {
+  fun `empty multibinding with no opt-in is an error`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Set<String>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `empty multibinding with no opt-in is an error and reports similar types - set`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Set<String>
+
+              @IntoSet
+              @Provides
+              fun provideCharSequence(): CharSequence = "Hello, world!"
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          Similar multibindings:
+          - Set<CharSequence>
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `empty multibinding with no opt-in is an error and reports similar types - map`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Map<String, String>
+
+              @StringKey("Element")
+              @IntoMap
+              @Provides
+              fun provideCharSequence(): CharSequence = "Hello, world!"
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          Similar multibindings:
+          - Map<String, CharSequence>
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `simple explicit opted-in multibindings with no contributors is empty`() {
     val result =
       compile(
         source(
           """
             @DependencyGraph
             interface ExampleGraph {
-              @Multibinds val strings: Set<String>
+              @Multibinds(allowEmpty = true) val strings: Set<String>
             }
           """
             .trimIndent()
@@ -1817,7 +1907,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
             @DependencyGraph
             interface ExampleGraph {
-              @Multibinds
+              @Multibinds(allowEmpty = true)
               val ints: Set<Int>
 
               val exampleClass: ExampleClass
@@ -2450,7 +2540,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
           @DependencyGraph
           interface ExampleGraph {
-            @Multibinds
+            @Multibinds(allowEmpty = true)
             val ints: Map<Int, Int>
 
             val intsProvider: Map<Int, Provider<Int>>
@@ -2538,7 +2628,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           @ContributesTo(AppScope::class)
           interface IntsBinding {
-            @Multibinds
+            @Multibinds(allowEmpty = true)
             val ints: Map<Int, Provider<Int>>
           }
 

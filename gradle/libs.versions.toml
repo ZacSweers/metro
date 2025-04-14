@@ -60,6 +60,7 @@ wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.0"
+androidx-activity = "androidx.activity:activity-compose:1.10.1"
 androidx-core = "androidx.core:core-ktx:1.16.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.6"
 androidx-material3 = "com.google.android.material:material:1.12.0"

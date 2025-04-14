@@ -553,7 +553,7 @@ class DependencyGraphProcessingTest {
 
   @DependencyGraph
   interface MultibindingGraphWithEmptySet {
-    @Multibinds val ints: Set<Int>
+    @Multibinds(allowEmpty = true) val ints: Set<Int>
   }
 
   @Test
@@ -700,7 +700,7 @@ class DependencyGraphProcessingTest {
 
   @DependencyGraph
   interface MultibindingGraphWithEmptyMap {
-    @Multibinds val ints: Map<Int, Int>
+    @Multibinds(allowEmpty = true) val ints: Map<Int, Int>
   }
 
   @Test

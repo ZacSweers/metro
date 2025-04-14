@@ -3,10 +3,12 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.render
 
@@ -58,4 +60,16 @@ internal class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
         ?.let { append(it) }
     }
   }
+}
+
+internal fun TypeKey.requireSetElementType(): IrType {
+  return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
+}
+
+internal fun TypeKey.requireMapKeyType(): IrType {
+  return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
+}
+
+internal fun TypeKey.requireMapValueType(): IrType {
+  return type.expectAs<IrSimpleType>().arguments[1].typeOrFail
 }

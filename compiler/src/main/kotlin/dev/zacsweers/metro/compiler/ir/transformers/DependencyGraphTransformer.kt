@@ -775,7 +775,8 @@ internal class DependencyGraphTransformer(
     }
 
     node.accessors.forEach { (getter, contextualTypeKey) ->
-      val isMultibindingDeclaration = getter.annotations.isMultibinds
+      val multibinds = getter.annotations.multibinds
+      val isMultibindingDeclaration = multibinds != null
 
       if (isMultibindingDeclaration) {
         // Special case! Multibindings may be created under two conditions
@@ -783,10 +784,22 @@ internal class DependencyGraphTransformer(
         // 2. Implicitly via a `@Provides` callable that contributes into a multibinding
         // Because these may both happen, if the key already exists in the graph we won't try to add
         // it again
+        val allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
         val multibinding =
-          Binding.Multibinding.create(metroContext, contextualTypeKey.typeKey, getter.ir)
+          Binding.Multibinding.create(
+            metroContext,
+            contextualTypeKey.typeKey,
+            getter.ir,
+            allowEmpty,
+          )
         if (multibinding.typeKey !in graph) {
           graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
+        } else {
+          // If it is in the graph, ensure its allowEmpty is up to date
+          graph
+            .requireBinding(multibinding.typeKey, bindingStack)
+            .expectAs<Binding.Multibinding>()
+            .allowEmpty = allowEmpty
         }
       } else {
         graph.addAccessor(

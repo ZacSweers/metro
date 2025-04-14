@@ -42,14 +42,17 @@ internal class MetroAnnotations<T>(
   val isIntoSet: Boolean,
   val isElementsIntoSet: Boolean,
   val isIntoMap: Boolean,
-  val isMultibinds: Boolean,
   val isAssistedFactory: Boolean,
   val isComposable: Boolean,
+  val multibinds: T?,
   val assisted: T?,
   val scope: T?,
   val qualifier: T?,
   val mapKeys: Set<T>,
 ) {
+  val isMultibinds: Boolean
+    get() = multibinds != null
+
   val isAssisted
     get() = assisted != null
 
@@ -72,9 +75,9 @@ internal class MetroAnnotations<T>(
     isIntoSet: Boolean = this.isIntoSet,
     isElementsIntoSet: Boolean = this.isElementsIntoSet,
     isIntoMap: Boolean = this.isIntoMap,
-    isMultibinds: Boolean = this.isMultibinds,
     isAssistedFactory: Boolean = this.isAssistedFactory,
     isComposable: Boolean = this.isComposable,
+    multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
     qualifier: T? = this.qualifier,
@@ -90,9 +93,9 @@ internal class MetroAnnotations<T>(
       isIntoSet,
       isElementsIntoSet,
       isIntoMap,
-      isMultibinds,
       isAssistedFactory,
       isComposable,
+      multibinds,
       assisted,
       scope,
       qualifier,
@@ -111,8 +114,8 @@ internal class MetroAnnotations<T>(
       isIntoSet = isIntoSet || other.isIntoSet,
       isElementsIntoSet = isElementsIntoSet || other.isElementsIntoSet,
       isIntoMap = isIntoMap || other.isIntoMap,
-      isMultibinds = isMultibinds || other.isMultibinds,
       isAssistedFactory = isAssistedFactory || other.isAssistedFactory,
+      multibinds = multibinds ?: other.multibinds,
       assisted = assisted ?: other.assisted,
       scope = scope ?: other.scope,
       qualifier = qualifier ?: other.qualifier,
@@ -131,9 +134,9 @@ internal class MetroAnnotations<T>(
         isIntoSet = false,
         isElementsIntoSet = false,
         isIntoMap = false,
-        isMultibinds = false,
         isAssistedFactory = false,
         isComposable = false,
+        multibinds = null,
         assisted = false,
         scope = null,
         qualifier = null,
@@ -160,9 +163,9 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isIntoSet = false
   var isElementsIntoSet = false
   var isIntoMap = false
-  var isMultibinds = false
   var isAssistedFactory = false
   var isComposable = false
+  var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
   var qualifier: IrAnnotation? = null
@@ -212,7 +215,7 @@ private fun IrAnnotationContainer.metroAnnotations(
             continue
           }
           in ids.multibindsAnnotations -> {
-            isMultibinds = true
+            multibinds = expectNullAndSet("multibindings", multibinds, annotation.asIrAnnotation())
             continue
           }
           Symbols.ClassIds.composable -> {
@@ -271,9 +274,9 @@ private fun IrAnnotationContainer.metroAnnotations(
       isIntoSet = isIntoSet,
       isElementsIntoSet = isElementsIntoSet,
       isIntoMap = isIntoMap,
-      isMultibinds = isMultibinds,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
+      multibinds = multibinds,
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
@@ -344,9 +347,9 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var isIntoSet = false
   var isElementsIntoSet = false
   var isIntoMap = false
-  var isMultibinds = false
   var isAssistedFactory = false
   var isComposable = false
+  var multibinds: MetroFirAnnotation? = null
   var assisted: MetroFirAnnotation? = null
   var scope: MetroFirAnnotation? = null
   var qualifier: MetroFirAnnotation? = null
@@ -399,7 +402,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             continue
           }
           in ids.multibindsAnnotations -> {
-            isMultibinds = true
+            multibinds = expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation))
             continue
           }
           Symbols.ClassIds.composable -> {
@@ -454,9 +457,9 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       isIntoSet = isIntoSet,
       isElementsIntoSet = isElementsIntoSet,
       isIntoMap = isIntoMap,
-      isMultibinds = isMultibinds,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
+      multibinds = multibinds,
       assisted = assisted,
       scope = scope,
       qualifier = qualifier,
