@@ -21,8 +21,9 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     mainRun { mainClass.set("dev.zacsweers.metro.sample.circuit.MainKt") }
   }
+  // Second target for KSP's commonMain gen to work
+  macosArm64()
   // TODO others?
-  //  macosArm64()
   //  @OptIn(ExperimentalWasmDsl::class)
   //  wasmJs {
   //    outputModuleName.set("counterApp")
