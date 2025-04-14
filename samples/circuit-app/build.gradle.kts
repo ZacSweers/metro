@@ -1,7 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
@@ -22,15 +21,15 @@ kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     mainRun { mainClass.set("dev.zacsweers.metro.sample.circuit.MainKt") }
   }
-  @OptIn(ExperimentalWasmDsl::class)
-  wasmJs {
-    outputModuleName.set("counterApp")
-    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
-    binaries.executable()
-  }
   // TODO others?
-  // macosArm64()
-  // js { browser() }
+  //  @OptIn(ExperimentalWasmDsl::class)
+  //  wasmJs {
+  //    outputModuleName.set("counterApp")
+  //    browser { commonWebpackConfig { outputFileName = "counterApp.js" } }
+  //    binaries.executable()
+  //  }
+  //  macosArm64()
+  //  js { browser() }
   sourceSets {
     commonMain {
       kotlin {
@@ -52,7 +51,7 @@ kotlin {
     }
     commonTest { dependencies { implementation(libs.kotlin.test) } }
     jvmMain { dependencies { implementation(compose.desktop.currentOs) } }
-    wasmJsMain { dependencies { implementation(compose.components.resources) } }
+    // wasmJsMain { dependencies { implementation(compose.components.resources) } }
   }
 }
 

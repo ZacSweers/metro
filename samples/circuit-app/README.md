@@ -27,5 +27,3 @@ Note that KSP's support for generating common code is slightly broken, so this u
 ```kotlin
 ./gradlew -p samples :circuit-app:wasmJsBrowserDevelopmentRun --continuous
 ```
-
-TODO others
