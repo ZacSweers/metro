@@ -2742,4 +2742,21 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         .containsExactly("a", 1, "b", 2, "c", 3)
     }
   }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/312
+  @Test
+  fun `where clauses`() {
+    compile(
+      source(
+        """
+          class LocationAvailabilityManager<F>
+          @Inject
+          constructor() where F : CharSequence
+        """
+          .trimIndent()
+      ),
+    ) {
+      TODO()
+    }
+  }
 }
