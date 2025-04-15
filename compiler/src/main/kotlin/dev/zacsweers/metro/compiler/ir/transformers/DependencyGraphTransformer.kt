@@ -464,8 +464,8 @@ internal class DependencyGraphTransformer(
           .getValueArgument("additionalScopes".asName())
           ?.expectAs<IrVararg>()
           ?.elements
-          ?.forEach {
-            val scopeClassExpression = it.expectAs<IrExpression>()
+          ?.forEach { scopeArg ->
+            val scopeClassExpression = scopeArg.expectAs<IrExpression>()
             val newAnno =
               pluginContext.createIrBuilder(graphDeclaration.symbol).run {
                 irCall(symbols.metroSingleInConstructor).apply {
@@ -535,12 +535,6 @@ internal class DependencyGraphTransformer(
           it.typeKey to node
         }
 
-    for ((_, depNode) in graphDependencies) {
-      if (depNode.isExtendable) {
-        scopes += depNode.scopes
-      }
-    }
-
     val dependencyGraphNode =
       DependencyGraphNode(
         sourceGraph = graphDeclaration,
@@ -555,6 +549,52 @@ internal class DependencyGraphTransformer(
         creator = creator,
         typeKey = graphTypeKey,
       )
+
+    // Check after creating a node for access to recursive allDependencies
+    val overlapErrors = mutableSetOf<String>()
+    val seenAncestorScopes = mutableMapOf<IrAnnotation, DependencyGraphNode>()
+    for (depNode in dependencyGraphNode.allDependencies) {
+      if (depNode.isExtendable) {
+        // If any intersect, report an error to onError with the intersecting types (including
+        // which parent it is coming from)
+        val overlaps = scopes.intersect(depNode.scopes)
+        if (overlaps.isNotEmpty()) {
+          for (overlap in overlaps) {
+            overlapErrors +=
+              "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
+          }
+        }
+        for (parentScope in depNode.scopes) {
+          seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
+            graphDeclaration.reportError(
+              buildString {
+                appendLine("Graph extensions (@Extends) may not have multiple ancestors with the same scopes:")
+                appendLine(
+                  "Scope: ${parentScope.render(short = false)}"
+                )
+                appendLine("Ancestor 1: ${previous.sourceGraph.kotlinFqName}")
+                appendLine("Ancestor 2: ${depNode.sourceGraph.kotlinFqName}")
+              }
+            )
+            exitProcessing()
+          }
+        }
+      }
+    }
+    if (overlapErrors.isNotEmpty()) {
+      graphDeclaration.reportError(
+        buildString {
+          appendLine(
+            "Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:"
+          )
+          for (overlap in overlapErrors) {
+            appendLine(overlap)
+          }
+        }
+      )
+      exitProcessing()
+    }
+
     dependencyGraphNodesByClass[graphClassId] = dependencyGraphNode
     return dependencyGraphNode
   }

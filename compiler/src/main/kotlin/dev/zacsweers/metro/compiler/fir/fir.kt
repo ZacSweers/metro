@@ -591,21 +591,27 @@ internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAn
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
 
-internal fun List<FirAnnotation>.scopeAnnotation(session: FirSession): MetroFirAnnotation? =
-  asSequence().scopeAnnotation(session)
+internal fun List<FirAnnotation>.scopeAnnotations(session: FirSession): Sequence<MetroFirAnnotation> =
+  asSequence().scopeAnnotations(session)
 
-internal fun Sequence<FirAnnotation>.scopeAnnotation(session: FirSession): MetroFirAnnotation? =
-  annotationAnnotatedWithAny(session, session.classIds.scopeAnnotations)
+internal fun Sequence<FirAnnotation>.scopeAnnotations(session: FirSession): Sequence<MetroFirAnnotation> =
+  annotationsAnnotatedWithAny(session, session.classIds.scopeAnnotations)
 
 // TODO add a single = true|false param? How would we propagate errors
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): MetroFirAnnotation? {
+  return annotationsAnnotatedWithAny(session, names).firstOrNull()
+}
+internal fun Sequence<FirAnnotation>.annotationsAnnotatedWithAny(
+  session: FirSession,
+  names: Set<ClassId>,
+): Sequence<MetroFirAnnotation> {
   return filter { it.isResolved }
     .filterIsInstance<FirAnnotationCall>()
-    .firstOrNull { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
-    ?.let { MetroFirAnnotation(it) }
+    .filter { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
+    .map { MetroFirAnnotation(it) }
 }
 
 internal fun FirAnnotationCall.isQualifier(session: FirSession): Boolean {
@@ -795,6 +801,11 @@ internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), ind
 
 internal fun FirAnnotation.additionalScopesArgument() =
   argumentAsOrNull<FirArrayLiteral>("additionalScopes".asName(), index = 1)
+
+internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> = buildSet {
+  resolvedScopeClassId()?.let(::add)
+  resolvedAdditionalScopesClassIds()?.let(::addAll)
+}.filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
 internal fun FirAnnotation.excludesArgument() =
   argumentAsOrNull<FirArrayLiteral>("excludes".asName(), index = 2)

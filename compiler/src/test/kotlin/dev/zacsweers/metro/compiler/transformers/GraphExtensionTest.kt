@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ChildGraph
 import dev.zacsweers.metro.compiler.ExampleGraph
@@ -11,6 +12,7 @@ import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.Parent1Graph
 import dev.zacsweers.metro.compiler.Parent2Graph
 import dev.zacsweers.metro.compiler.ParentGraph
+import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.assertThrows
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
@@ -609,6 +611,313 @@ class GraphExtensionTest : MetroCompilerTest() {
 
       assertThat(parentGraph.callProperty<Set<String>>("parentSet")).containsExactly("parent")
       assertThat(childGraph.callProperty<Set<String>>("strings")).containsExactly("parent", "child")
+    }
+  }
+
+  @Test
+  fun `child graphs cannot have the same aggregation scope as parent - direct`() {
+    compile(
+      source(
+        """
+          @DependencyGraph(AppScope::class, isExtendable = true)
+          interface ParentGraph {
+            @Provides
+            fun provideString(): String = "parent"
+          }
+
+          @DependencyGraph(AppScope::class)
+          interface ChildGraph {
+            val string: String
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends parent: ParentGraph): ChildGraph
+            }
+          }
+        """
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ParentGraph.kt:19:35 Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:
+          - dev.zacsweers.metro.AppScope
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `child graphs cannot have the same scope annotations as parent - direct`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface ParentGraph {
+            @Provides
+            fun provideString(): String = "parent"
+          }
+
+          @SingleIn(AppScope::class)
+          @DependencyGraph
+          interface ChildGraph {
+            val string: String
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends parent: ParentGraph): ChildGraph
+            }
+          }
+        """
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ParentGraph.kt:21:35 Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:
+          - @SingleIn(dev.zacsweers.metro.AppScope::class)
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `child graphs parents cannot have the same aggregation scope - direct`() {
+    compile(
+      source(
+        """
+          @DependencyGraph(AppScope::class, isExtendable = true)
+          interface ParentGraph {
+            @Provides
+            fun provideString(): String = "parent"
+          }
+
+          @DependencyGraph(AppScope::class, isExtendable = true)
+          interface OtherParentGraph
+
+          @DependencyGraph(Unit::class)
+          interface ChildGraph {
+            val string: String
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends parent: ParentGraph, @Extends other: OtherParentGraph): ChildGraph
+            }
+          }
+        """
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ParentGraph.kt:22:65 Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:
+          Scope: dev.zacsweers.metro.AppScope
+          Parent 1: test.ParentGraph
+          Parent 2: test.OtherParentGraph
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `child graphs parents cannot have the same scope annotations - direct`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface ParentGraph {
+            @Provides
+            fun provideString(): String = "parent"
+          }
+
+          @SingleIn(AppScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface OtherParentGraph
+
+          @SingleIn(Unit::class)
+          @DependencyGraph
+          interface ChildGraph {
+            val string: String
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends parent: ParentGraph, @Extends other: OtherParentGraph): ChildGraph
+            }
+          }
+        """
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: ParentGraph.kt:25:65 Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:
+          Scope: @SingleIn(dev.zacsweers.metro.AppScope::class)
+          Parent 1: test.ParentGraph
+          Parent 2: test.OtherParentGraph
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `child graphs cannot have the same scope annotations as ancestor - indirect`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface GrandParentGraph {
+            @Provides
+            fun provideString(): String = "grandParent"
+          }
+
+          abstract class UserScope private constructor()
+
+          @SingleIn(UserScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface ParentGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends grandParent: GrandParentGraph): ParentGraph
+            }
+          }
+
+          @SingleIn(AppScope::class)
+          @DependencyGraph
+          interface ChildGraph {
+            val string: String
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends parent: ParentGraph): ChildGraph
+            }
+          }
+        """
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: GrandParentGraph.kt:25:11 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
+          - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `child graphs cannot have the same scope annotations as multiple ancestors - indirect`() {
+    compile(
+      source(
+        """
+          @SingleIn(Scope1::class)
+          @DependencyGraph(isExtendable = true)
+          interface GrandParentGraph {
+            @Provides
+            fun provideString(): String = "grandParent"
+          }
+
+          @SingleIn(Scope2::class)
+          @DependencyGraph(isExtendable = true)
+          interface OtherGrandParentGraph
+
+          abstract class Scope1 private constructor()
+          abstract class Scope2 private constructor()
+
+          @SingleIn(AppScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface ParentGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends grandParent: GrandParentGraph, @Extends other: OtherGrandParentGraph): ParentGraph
+            }
+          }
+
+          @SingleIn(Scope1::class)
+          @SingleIn(Scope2::class)
+          @DependencyGraph
+          interface ChildGraph {
+            val string: String
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends parent: ParentGraph): ChildGraph
+            }
+          }
+        """
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: GrandParentGraph.kt:30:11 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
+          - @dev.zacsweers.metro.SingleIn(test.Scope1::class) (from ancestor 'test.GrandParentGraph')
+          - @dev.zacsweers.metro.SingleIn(test.Scope2::class) (from ancestor 'test.OtherGrandParentGraph')
+        """.trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `child graphs ancestors cannot have the same scope annotations - indirect`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface GrandParentGraph {
+            @Provides
+            fun provideString(): String = "grandParent"
+          }
+
+          @SingleIn(AppScope::class)
+          @DependencyGraph(isExtendable = true)
+          interface OtherGrandParentGraph
+
+          abstract class Scope1 private constructor()
+          abstract class Scope2 private constructor()
+
+          @SingleIn(Scope1::class)
+          @DependencyGraph(isExtendable = true)
+          interface ParentGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends grandParent: GrandParentGraph): ParentGraph
+            }
+          }
+
+          @SingleIn(Scope2::class)
+          @DependencyGraph(isExtendable = true)
+          interface ParentGraph2 {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends other: OtherGrandParentGraph): ParentGraph2
+            }
+          }
+
+          @DependencyGraph(Unit::class)
+          interface ChildGraph {
+            val string: String
+
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun create(@Extends parent: ParentGraph, @Extends parent2: ParentGraph2): ChildGraph
+            }
+          }
+        """
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+    ) {
+      assertDiagnostics(
+        """
+          e: GrandParentGraph.kt:39:11 Graph extensions (@Extends) may not have multiple ancestors with the same scopes:
+          Scope: @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)
+          Ancestor 1: test.GrandParentGraph
+          Ancestor 2: test.OtherGrandParentGraph
+        """.trimIndent()
+      )
     }
   }
 }
