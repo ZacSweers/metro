@@ -53,8 +53,11 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       }
 
     val targetGraph = createFunction.resolvedReturnType.toClassSymbol(session)
-    val targetGraphAnnotation = targetGraph?.annotations?.annotationsIn(session, classIds.dependencyGraphAnnotations)
-      ?.single()
+    val targetGraphAnnotation =
+      targetGraph
+        ?.annotations
+        ?.annotationsIn(session, classIds.dependencyGraphAnnotations)
+        ?.singleOrNull()
     targetGraph?.let {
       if (targetGraphAnnotation == null) {
         reporter.reportOn(
@@ -68,7 +71,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     }
 
     val targetGraphScopes = targetGraphAnnotation?.allScopeClassIds().orEmpty()
-    val targetGraphScopeAnnotations = targetGraph?.annotations?.scopeAnnotations(session).orEmpty().toSet()
+    val targetGraphScopeAnnotations =
+      targetGraph?.annotations?.scopeAnnotations(session).orEmpty().toSet()
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 
@@ -151,8 +155,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
               )
             }
 
-            dependencyGraphAnno.getBooleanArgument("isExtendable".asName(), session) != true
-              -> {
+            dependencyGraphAnno.getBooleanArgument("isExtendable".asName(), session) != true -> {
               reporter.reportOn(
                 param.source,
                 FirMetroErrors.GRAPH_CREATORS_ERROR,
@@ -169,7 +172,9 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                   param.source,
                   FirMetroErrors.GRAPH_CREATORS_ERROR,
                   buildString {
-                    appendLine("Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:")
+                    appendLine(
+                      "Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:"
+                    )
                     for (overlap in overlaps) {
                       appendLine("- ${overlap.asSingleFqName().asString()}")
                     }
@@ -184,10 +189,10 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                     param.source,
                     FirMetroErrors.GRAPH_CREATORS_ERROR,
                     buildString {
-                      appendLine("Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:")
                       appendLine(
-                        "Scope: ${parentScope.asSingleFqName()}"
+                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
                       )
+                      appendLine("Scope: ${parentScope.asSingleFqName()}")
                       appendLine("Parent 1: ${previous.asSingleFqName()}")
                       appendLine("Parent 2: ${parentClassId.asSingleFqName()}")
                     },
@@ -199,14 +204,16 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             }
 
             targetGraphScopeAnnotations.isNotEmpty() -> {
-              val parentScopeAnnotations =  type.annotations.scopeAnnotations(session).toSet()
+              val parentScopeAnnotations = type.annotations.scopeAnnotations(session).toSet()
               val overlaps = parentScopeAnnotations.intersect(targetGraphScopeAnnotations)
               if (overlaps.isNotEmpty()) {
                 reporter.reportOn(
                   param.source,
                   FirMetroErrors.GRAPH_CREATORS_ERROR,
                   buildString {
-                    appendLine("Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:")
+                    appendLine(
+                      "Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:"
+                    )
                     for (overlap in overlaps) {
                       appendLine("- ${overlap.simpleString()}")
                     }
@@ -218,15 +225,16 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
               for (parentScope in parentScopeAnnotations) {
                 val parentClassId = type.classId
-                seenParentScopeAnnotationsToParent.put(parentScope, parentClassId)?.let { previous ->
+                seenParentScopeAnnotationsToParent.put(parentScope, parentClassId)?.let { previous
+                  ->
                   reporter.reportOn(
                     param.source,
                     FirMetroErrors.GRAPH_CREATORS_ERROR,
                     buildString {
-                      appendLine("Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:")
                       appendLine(
-                        "Scope: ${parentScope.simpleString()}"
+                        "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
                       )
+                      appendLine("Scope: ${parentScope.simpleString()}")
                       appendLine("Parent 1: ${previous.asSingleFqName()}")
                       appendLine("Parent 2: ${parentClassId.asSingleFqName()}")
                     },

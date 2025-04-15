@@ -568,10 +568,10 @@ internal class DependencyGraphTransformer(
           seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
             graphDeclaration.reportError(
               buildString {
-                appendLine("Graph extensions (@Extends) may not have multiple ancestors with the same scopes:")
                 appendLine(
-                  "Scope: ${parentScope.render(short = false)}"
+                  "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
                 )
+                appendLine("Scope: ${parentScope.render(short = false)}")
                 appendLine("Ancestor 1: ${previous.sourceGraph.kotlinFqName}")
                 appendLine("Ancestor 2: ${depNode.sourceGraph.kotlinFqName}")
               }
@@ -751,8 +751,19 @@ internal class DependencyGraphTransformer(
 
     val providerFactoriesToAdd = buildList {
       addAll(node.providerFactories)
-      addAll(node.allDependencies.filter { it.isExtendable }.flatMap { it.providerFactories })
+      addAll(
+        node.allDependencies
+          .filter { it.isExtendable }
+          .flatMap { depNode ->
+            depNode.providerFactories.filterNot {
+              // Do not include scoped providers as these should _only_ come from this graph
+              // instance
+              it.second.annotations.isScoped
+            }
+          }
+      )
     }
+
     providerFactoriesToAdd.forEach { (typeKey, providerFactory) ->
       val parameters = providerFactory.parameters
       val contextKey = ContextualTypeKey(typeKey)
@@ -1853,6 +1864,25 @@ internal class DependencyGraphTransformer(
         visitedBindings = visitedBindings,
       )
     }
+
+    if (node.isExtendable) {
+      // Ensure all scoped providers have fields in extendable graphs, even if they are not used in
+      // this graph
+      graph.bindingsSnapshot().forEach { (_, binding) ->
+        if (binding is Binding.Provided && binding.annotations.isScoped) {
+          processBinding(
+            binding,
+            node,
+            graph,
+            bindingStack,
+            bindingDependencies,
+            usedUnscopedBindings,
+            visitedBindings,
+          )
+        }
+      }
+    }
+
     return bindingDependencies
   }
 

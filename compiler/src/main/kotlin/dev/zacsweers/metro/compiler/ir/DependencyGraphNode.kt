@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.name.ClassId
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(

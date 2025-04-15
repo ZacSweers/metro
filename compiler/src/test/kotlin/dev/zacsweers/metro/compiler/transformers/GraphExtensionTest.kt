@@ -134,7 +134,7 @@ class GraphExtensionTest : MetroCompilerTest() {
               fun provideInt(): Int = count++
             }
 
-            @SingleIn(AppScope::class)
+            @SingleIn(Unit::class)
             @DependencyGraph
             interface ChildGraph {
               val int: Int
@@ -169,7 +169,7 @@ class GraphExtensionTest : MetroCompilerTest() {
               fun provideInt(): Int = count++
             }
 
-            @SingleIn(AppScope::class)
+            @SingleIn(Unit::class)
             @DependencyGraph
             interface ChildGraph {
               val int: Provider<Int>
@@ -190,7 +190,7 @@ class GraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `scopes are inherited - implicit`() {
+  fun `scoped bindings are inherited - implicit`() {
     compile(
       source(
         """
@@ -636,13 +636,14 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
         """
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
           e: ParentGraph.kt:19:35 Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:
           - dev.zacsweers.metro.AppScope
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -671,13 +672,14 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
         """
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
           e: ParentGraph.kt:21:35 Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:
           - @SingleIn(dev.zacsweers.metro.AppScope::class)
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -707,7 +709,7 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
         """
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
@@ -715,7 +717,8 @@ class GraphExtensionTest : MetroCompilerTest() {
           Scope: dev.zacsweers.metro.AppScope
           Parent 1: test.ParentGraph
           Parent 2: test.OtherParentGraph
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -748,7 +751,7 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
         """
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
@@ -756,7 +759,8 @@ class GraphExtensionTest : MetroCompilerTest() {
           Scope: @SingleIn(dev.zacsweers.metro.AppScope::class)
           Parent 1: test.ParentGraph
           Parent 2: test.OtherParentGraph
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -796,13 +800,14 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
         """
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
           e: GrandParentGraph.kt:25:11 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
           - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -848,14 +853,15 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
         """
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
           e: GrandParentGraph.kt:30:11 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
           - @dev.zacsweers.metro.SingleIn(test.Scope1::class) (from ancestor 'test.GrandParentGraph')
           - @dev.zacsweers.metro.SingleIn(test.Scope2::class) (from ancestor 'test.OtherGrandParentGraph')
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -908,7 +914,7 @@ class GraphExtensionTest : MetroCompilerTest() {
           }
         """
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
@@ -916,7 +922,8 @@ class GraphExtensionTest : MetroCompilerTest() {
           Scope: @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)
           Ancestor 1: test.GrandParentGraph
           Ancestor 2: test.OtherGrandParentGraph
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
