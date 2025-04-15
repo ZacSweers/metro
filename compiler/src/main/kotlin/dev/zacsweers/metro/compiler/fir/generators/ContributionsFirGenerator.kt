@@ -7,20 +7,22 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilIgnoreQualifier
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
-import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
+import dev.zacsweers.metro.compiler.fir.scopeName
 import dev.zacsweers.metro.compiler.joinSimpleNames
+import dev.zacsweers.metro.compiler.plus
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
@@ -151,10 +153,20 @@ internal class ContributionsFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    return if (
-      classSymbol.isAnnotatedWithAny(session, session.classIds.allContributesAnnotations)
-    ) {
-      setOf(Symbols.Names.metroContribution)
+    val contributionAnnotations =
+      classSymbol.annotations
+        .annotationsIn(session, session.classIds.allContributesAnnotations)
+        .toList()
+
+    return if (contributionAnnotations.isNotEmpty()) {
+      // Encode the scope into the nested contribution class name. When there are contributions for
+      // multiple scopes we'll end up with a nested class for each.
+      // E.g. $$MetroContributionAppScope and $$MetroContributionLibScope
+      contributionAnnotations
+        .mapNotNull { it.scopeName(session) }
+        .distinct()
+        .map { Symbols.Names.metroContribution.plus(it) }
+        .toSet()
     } else {
       emptySet()
     }
@@ -165,7 +177,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     name: Name,
     context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
-    if (name != Symbols.Names.metroContribution) return null
+    if (!name.identifier.startsWith(Symbols.Names.metroContribution.identifier)) return null
     val contributions = findContributions(owner) ?: return null
     return createNestedClass(
         owner,
@@ -192,10 +204,12 @@ internal class ContributionsFirGenerator(session: FirSession) :
     if (!classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptySet()
     val origin = classSymbol.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptySet()
     val contributions = findContributions(origin) ?: return emptySet()
+    val scope = classSymbol.name.parseEncodedContributionScope()
     // Note the names we supply here are not final, we just need to know if we're going to generate
     // _any_ names for this type. We will return n >= 1 properties in generateProperties later.
     return contributions
       .filterIsInstance<Contribution.BindingContribution>()
+      .filter { it.annotation.scopeName(session) == scope }
       .groupBy { it.callableName.asName() }
       .keys
   }
@@ -223,11 +237,17 @@ internal class ContributionsFirGenerator(session: FirSession) :
     if (!owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
     val origin = owner.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val contributions = findContributions(origin) ?: return emptyList()
+    val scope = owner.name.parseEncodedContributionScope()
 
     return contributions
       .filterIsInstance<Contribution.BindingContribution>()
       .filter { it.callableName == callableId.callableName.identifier }
+      .filter { it.annotation.scopeName(session) == scope }
       .map { contribution -> buildBindingProperty(owner, contribution) }
+  }
+
+  private fun Name.parseEncodedContributionScope(): String {
+    return identifier.substringAfter(Symbols.Names.metroContribution.identifier)
   }
 
   private fun buildBindingProperty(

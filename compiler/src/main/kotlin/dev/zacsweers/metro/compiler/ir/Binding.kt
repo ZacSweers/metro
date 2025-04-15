@@ -219,8 +219,8 @@ internal sealed interface Binding {
         return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
           if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
             // If it's a contribution, the source is
-            // SourceClass.$$MetroContribution.bindingFunction
-            //                                 ^^^
+            // SourceClass.$$MetroContributionScopeName.bindingFunction
+            //                                          ^^^
             it.parentAsClass.parentAsClass.locationOrNull()
           } else {
             it.locationOrNull()

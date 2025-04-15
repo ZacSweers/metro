@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.plus
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -88,7 +89,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             .forEach { scopeClassId ->
               scopesToContributingClass
                 .getOrPut(scopeClassId, ::mutableSetOf)
-                .add(clazz.classId.createNestedClassId(Symbols.Names.metroContribution))
+                .add(clazz.nestedContributionClassId(scopeClassId))
             }
         }
       scopesToContributingClass
@@ -113,13 +114,18 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             .mapNotNull { it.resolvedScopeClassId(typeResolver) }
             .distinct()
             .forEach { scopeClassId ->
-              val metroContribution =
-                originClass.classId.createNestedClassId(Symbols.Names.metroContribution)
+              val metroContribution = originClass.nestedContributionClassId(scopeClassId)
               getOrPut(scopeClassId, ::mutableSetOf).add(metroContribution)
             }
         }
       }
     }
+
+  private fun FirRegularClassSymbol.nestedContributionClassId(scopeClassId: ClassId): ClassId {
+    return classId.createNestedClassId(
+      Symbols.Names.metroContribution.plus(scopeClassId.shortClassName.identifier)
+    )
+  }
 
   private fun FirRegularClassSymbol.contributesAnnotations(): Sequence<FirAnnotation> {
     return annotations.annotationsIn(session, session.classIds.allContributesAnnotations).ifEmpty {
