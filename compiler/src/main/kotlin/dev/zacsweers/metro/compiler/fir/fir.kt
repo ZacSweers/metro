@@ -785,19 +785,6 @@ internal fun FirCallableSymbol<*>.findAnnotation(
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
   getContainingClassSymbol() ?: error("No containing class symbol found for $this")
 
-internal val ClassId.hintCallableId: CallableId
-  get() {
-    val simpleName =
-      sequence {
-          yieldAll(packageFqName.pathSegments())
-          yieldAll(relativeClassName.pathSegments())
-        }
-        .joinToString(separator = "") { it.asString().capitalizeUS() }
-        .decapitalizeUS()
-        .asName()
-    return CallableId(Symbols.FqNames.metroHintsPackage, simpleName)
-  }
-
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 

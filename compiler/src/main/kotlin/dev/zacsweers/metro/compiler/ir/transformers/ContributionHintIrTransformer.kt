@@ -4,7 +4,8 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.fir.hintCallableId
+import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
@@ -32,13 +33,15 @@ import org.jetbrains.kotlin.ir.util.fileEntry
  * A transformer that generates hint marker functions for _downstream_ compilations. In-compilation
  * contributions are looked up directly. This works by generating hints into a synthetic
  * [IrFileImpl] in the [Symbols.FqNames.metroHintsPackage] package. The signature of the function is
- * simply a generated name (via [hintCallableId]) and return type pointing at the contributing
+ * simply a generated name ([Symbols.CallableIds.hint]) and return type pointing at the contributing
  * class. This class is then looked up separately.
  *
  * Example of a generated synthetic function:
  * ```
- * fun ComExampleMyClass(): MyClass = error("Stub!")
+ * fun hint(): MyClass = error("Stub!")
  * ```
+ *
+ * This takes advantage of the fact that IR can generate overloads with different return types.
  *
  * Importantly, this transformer also adds these generated functions to metadata via
  * [IrGeneratedDeclarationsRegistrar.registerFunctionAsMetadataVisible], which ensures they are
@@ -53,17 +56,24 @@ internal class ContributionHintIrTransformer(
 ) : IrMetroContext by context {
   fun visitClass(declaration: IrClass) {
     if (declaration.isAnnotatedWithAny(symbols.classIds.allContributesAnnotations)) {
-      val hintCallableId = declaration.classIdOrFail.hintCallableId
       val function =
         pluginContext.irFactory
           .buildFun {
-            name = hintCallableId.callableName
+            name = Symbols.CallableIds.hint.callableName
             origin = Origins.Default
             returnType = declaration.defaultType
           }
           .apply { body = stubExpressionBody(metroContext) }
 
-      val fileName = "${hintCallableId.callableName}.kt"
+      val fileNameWithoutExtension =
+        sequence {
+            yieldAll(Symbols.FqNames.metroHintsPackage.pathSegments())
+            yieldAll(declaration.classIdOrFail.relativeClassName.pathSegments())
+          }
+          .joinToString(separator = "") { it.asString().capitalizeUS() }
+          .decapitalizeUS()
+
+      val fileName = "${fileNameWithoutExtension}.kt"
       val firFile = buildFile {
         moduleData = (declaration.metadata as FirMetadataSource.Class).fir.moduleData
         origin = FirDeclarationOrigin.Synthetic.PluginFile

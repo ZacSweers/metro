@@ -98,10 +98,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     FirCache<FqName, Map<ClassId, Set<ClassId>>, TypeResolveService> =
     session.firCachesFactory.createCache { hintsPackage, typeResolver ->
       val functionsInPackage =
-        session.symbolProvider.symbolNamesProvider
-          .getTopLevelCallableNamesInPackage(hintsPackage)
-          .orEmpty()
-          .flatMap { name -> session.symbolProvider.getTopLevelFunctionSymbols(hintsPackage, name) }
+        session.symbolProvider.getTopLevelFunctionSymbols(hintsPackage, Symbols.Names.metroHint)
 
       buildMap<ClassId, MutableSet<ClassId>> {
         for (contribution in functionsInPackage) {

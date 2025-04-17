@@ -71,6 +71,10 @@ internal class Symbols(
       ClassIds.graphFactoryInvokeFunctionMarkerClass.asSingleFqName()
   }
 
+  object CallableIds {
+    val hint = CallableId(FqNames.metroHintsPackage, Names.metroHint)
+  }
+
   // TODO replace with StandardClassIds
   object ClassIds {
     val anyClass = StandardClassIds.Any
@@ -116,6 +120,7 @@ internal class Symbols(
     val metroFactory = Name.identifier(StringNames.METRO_FACTORY)
     val metroContribution = Name.identifier("$\$MetroContribution")
     val metroGraph = Name.identifier("$\$MetroGraph")
+    val metroHint = Name.identifier("hint")
     val metroImpl = StringNames.METRO_IMPL.asName()
     val metroMembersInjector = Name.identifier("$\$MetroMembersInjector")
     val membersInjector = Name.identifier("MembersInjector")
