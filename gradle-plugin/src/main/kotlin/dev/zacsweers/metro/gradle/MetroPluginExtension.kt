@@ -5,6 +5,7 @@ package dev.zacsweers.metro.gradle
 import javax.inject.Inject
 import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
@@ -13,24 +14,30 @@ import org.gradle.api.provider.SetProperty
 @MetroExtensionMarker
 public abstract class MetroPluginExtension
 @Inject
-constructor(objects: ObjectFactory, providers: ProviderFactory) {
+constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFactory) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
-  /** If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging. */
+  /**
+   * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
+   *
+   * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
+   */
   public val debug: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+    objects
+      .property(Boolean::class.javaObjectType)
+      .convention(providers.gradleProperty("metro.debug").map { it.toBoolean() }.orElse(false))
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
    * provider callables. See the kdoc on `Provides` for more details.
    */
   public val publicProviderSeverity: Property<DiagnosticSeverity> =
-      objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
    * Enables whether the Metro compiler plugin will automatically generate assisted factories for
@@ -38,7 +45,7 @@ constructor(objects: ObjectFactory, providers: ProviderFactory) {
    * details.
    */
   public val generateAssistedFactories: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
@@ -48,29 +55,40 @@ constructor(objects: ObjectFactory, providers: ProviderFactory) {
    * incremental compilation!
    */
   public val enableTopLevelFunctionInjection: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 
   /** Enable/disable hint property generation in IR for contributed types. Enabled by default. */
   public val generateHintProperties: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
    * `metro.version.check` gradle property.
    */
   public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
-      objects
-          .property(Boolean::class.javaObjectType)
-          .convention(
-              providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true))
+    objects
+      .property(Boolean::class.javaObjectType)
+      .convention(
+        providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true)
+      )
 
   /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
    * given destination.
    *
    * This behaves similar to the compose-compiler's option of the same name.
+   *
+   * Optionally, you can specify a `metro.reportsDestination` gradle property whose value is a
+   * _relative_ path from the project's **build** directory.
    */
-  public abstract val reportsDestination: DirectoryProperty
+  public val reportsDestination: DirectoryProperty =
+    objects
+      .directoryProperty()
+      .convention(
+        providers.gradleProperty("metro.reportsDestination").flatMap {
+          layout.buildDirectory.dir(it)
+        }
+      )
 
   /**
    * Configures interop to support in generated code, usually from another DI framework.
@@ -154,7 +172,8 @@ constructor(objects: ObjectFactory, providers: ProviderFactory) {
 
       if (!includeJavax && !includeJakarta) {
         System.err.println(
-            "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true")
+          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true"
+        )
       }
       if (includeJavax) {
         includeJavax()
@@ -178,8 +197,8 @@ constructor(objects: ObjectFactory, providers: ProviderFactory) {
 
     @JvmOverloads
     public fun includeAnvil(
-        includeDaggerAnvil: Boolean = true,
-        includeKotlinInjectAnvil: Boolean = true,
+      includeDaggerAnvil: Boolean = true,
+      includeKotlinInjectAnvil: Boolean = true,
     ) {
       check(includeDaggerAnvil || includeKotlinInjectAnvil) {
         "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
