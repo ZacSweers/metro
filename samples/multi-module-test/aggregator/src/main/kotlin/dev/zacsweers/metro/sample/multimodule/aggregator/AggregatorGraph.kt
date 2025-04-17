@@ -11,13 +11,14 @@ import dev.zacsweers.metro.sample.multimodule.AppScope
 import dev.zacsweers.metro.sample.multimodule.ItemService
 import dev.zacsweers.metro.sample.multimodule.MapService
 import dev.zacsweers.metro.sample.multimodule.MessageService
+import dev.zacsweers.metro.sample.multimodule.ParentScope
 
 /**
  * Aggregator graph that demonstrates how to aggregate multiple contributions. This graph uses
- * AppScope, so it will automatically include all contributions to AppScope.
+ * [AppScope] and [ParentScope], so it will automatically include all contributions to AppScope.
  */
 @SingleIn(AppScope::class)
-@DependencyGraph(AppScope::class)
+@DependencyGraph(AppScope::class, additionalScopes = [ParentScope::class])
 interface AggregatorGraph {
 
   /**
