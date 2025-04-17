@@ -210,7 +210,7 @@ internal fun FirExtension.buildNewInstanceFunction(
         // Will be copied in IR
         copyParameterDefaults = false,
       ) { original ->
-        this.returnTypeRef = original.contextKey.originalType(session).toFirResolvedTypeRef()
+        this.returnTypeRef = original.symbol.resolvedReturnTypeRef
       }
     }
     .symbol

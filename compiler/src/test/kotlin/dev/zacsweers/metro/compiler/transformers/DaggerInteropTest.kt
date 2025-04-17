@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
+import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.configureKsp
 import dagger.internal.codegen.KspComponentProcessor
@@ -12,6 +13,7 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
+import javax.inject.Provider
 import kotlin.test.assertNotNull
 import org.jetbrains.kotlin.name.ClassId
 import org.junit.Test
@@ -383,6 +385,33 @@ class DaggerInteropTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val factory = assertNotNull(graph.callProperty("exampleClassFactory"))
       assertNotNull(factory.invokeInstanceMethod("create", 1))
+    }
+  }
+
+  @Test
+  fun `injected javax provider interop works`() {
+    compile(
+      source(
+        """
+          import javax.inject.Inject
+          import javax.inject.Provider
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val fooBar: FooBar
+          }
+          class Foo @Inject constructor()
+
+          class FooBar @Inject constructor(
+            val provider: Provider<Foo>
+          )
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Provider<*>>("provider")
+      assertThat(fooInstance).isNotNull()
     }
   }
 }
