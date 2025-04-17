@@ -2742,4 +2742,48 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         .containsExactly("a", 1, "b", 2, "c", 3)
     }
   }
+
+  // Regression test
+  @Test
+  fun `scoped provider with declared accessor still works`() {
+    val first = compile(
+      source(
+        """
+          interface Base
+         
+          class Impl : Base
+
+          @DependencyGraph(Unit::class, isExtendable = true)
+          interface ParentGraph {
+            val base: Base
+          
+            @Provides
+            @SingleIn(Unit::class)
+            fun provideBase(): Base = Impl()
+
+            @Provides
+            fun provideMessage(base: Base): String = base.toString()
+          }
+        """
+          .trimIndent()
+      )
+    )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ChildGraph {
+            val message: String
+            
+            @DependencyGraph.Factory
+            interface Factory {
+              fun create(@Extends parent: ParentGraph): ChildGraph
+            }
+          }
+        """.trimIndent()
+      ),
+      previousCompilationResult = first
+    )
+  }
 }
