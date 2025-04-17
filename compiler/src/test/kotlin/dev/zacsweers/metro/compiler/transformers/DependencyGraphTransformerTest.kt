@@ -1036,7 +1036,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 [test.CharSequenceGraph] test.StringGraph.Factory#create()
             test.CharSequenceGraph is requested at
                 [test.CharSequenceGraph] test.CharSequenceGraph.Factory#create()
-        
+
         e: ExampleGraph.kt:20:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected!
             test.CharSequenceGraph is requested at
                 [test.StringGraph] test.CharSequenceGraph.Factory#create()
@@ -2409,10 +2409,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Number
-          
+
               kotlin.Number is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:3
         """
@@ -2473,10 +2473,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
-          
+
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
             - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
@@ -2746,17 +2746,18 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   // Regression test
   @Test
   fun `scoped provider with declared accessor still works`() {
-    val first = compile(
-      source(
-        """
+    val first =
+      compile(
+        source(
+          """
           interface Base
-         
+
           class Impl : Base
 
           @DependencyGraph(Unit::class, isExtendable = true)
           interface ParentGraph {
             val base: Base
-          
+
             @Provides
             @SingleIn(Unit::class)
             fun provideBase(): Base = Impl()
@@ -2765,9 +2766,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             fun provideMessage(base: Base): String = base.toString()
           }
         """
-          .trimIndent()
+            .trimIndent()
+        )
       )
-    )
 
     compile(
       source(
@@ -2775,15 +2776,16 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @DependencyGraph
           interface ChildGraph {
             val message: String
-            
+
             @DependencyGraph.Factory
             interface Factory {
               fun create(@Extends parent: ParentGraph): ChildGraph
             }
           }
-        """.trimIndent()
+        """
+          .trimIndent()
       ),
-      previousCompilationResult = first
+      previousCompilationResult = first,
     )
   }
 }

@@ -49,18 +49,9 @@ internal data class DependencyGraphNode(
       .orEmpty()
   }
 
-  val allSupertypeNodes by lazy {
-    buildMap { recurseSupertypeNodes(this) }
-      .values
-      .toSet()
-  }
+  val allSupertypeNodes by lazy { buildMap { recurseSupertypeNodes(this) }.values.toSet() }
 
-  val allParents by lazy {
-    buildMap {
-      recurseParents(this)
-    }
-      .keys
-  }
+  val allParents by lazy { buildMap { recurseParents(this) }.keys }
 
   override fun toString(): String = typeKey.render(short = true)
 
@@ -72,7 +63,7 @@ internal data class DependencyGraphNode(
 }
 
 private fun DependencyGraphNode.recurseSupertypeNodes(
-  builder: MutableMap<TypeKey, DependencyGraphNode>,
+  builder: MutableMap<TypeKey, DependencyGraphNode>
 ) {
   for ((key, node) in supertypeNodes) {
     if (key !in builder) {
