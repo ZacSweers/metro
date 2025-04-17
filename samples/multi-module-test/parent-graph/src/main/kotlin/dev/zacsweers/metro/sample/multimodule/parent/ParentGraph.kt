@@ -7,16 +7,16 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.sample.multimodule.AppScope
 import dev.zacsweers.metro.sample.multimodule.MessageService
 import dev.zacsweers.metro.sample.multimodule.NumberService
+import dev.zacsweers.metro.sample.multimodule.ParentScope
 
 /**
  * Parent graph that provides basic services. This graph is extendable, allowing child graphs to
  * extend it.
  */
-@SingleIn(AppScope::class)
-@DependencyGraph(AppScope::class, isExtendable = true)
+@SingleIn(ParentScope::class)
+@DependencyGraph(ParentScope::class, isExtendable = true)
 interface ParentGraph {
   val messageService: MessageService
 
@@ -29,8 +29,8 @@ interface ParentGraph {
 
 /** Implementation of MessageService for the parent graph. */
 @Inject
-@SingleIn(AppScope::class)
-@ContributesBinding(AppScope::class)
+@SingleIn(ParentScope::class)
+@ContributesBinding(ParentScope::class)
 class ParentMessageService : MessageService {
   override fun getMessage(): String = "Message from parent"
 }
