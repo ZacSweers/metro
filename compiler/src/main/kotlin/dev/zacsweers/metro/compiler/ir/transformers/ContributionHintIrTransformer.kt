@@ -4,11 +4,15 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.joinSimpleNames
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
@@ -19,29 +23,31 @@ import org.jetbrains.kotlin.fir.builder.buildPackageDirective
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.builder.buildFile
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.declarations.buildValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFile
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
+import org.jetbrains.kotlin.ir.util.getValueArgument
 
 /**
  * A transformer that generates hint marker functions for _downstream_ compilations. In-compilation
  * contributions are looked up directly. This works by generating hints into a synthetic
  * [IrFileImpl] in the [Symbols.FqNames.metroHintsPackage] package. The signature of the function is
- * simply a generated name ([Symbols.CallableIds.hint]) and return type pointing at the contributing
- * class. This class is then looked up separately.
+ * simply a generated name (the snake_cased name of the scope) and return type pointing at the
+ * contributing class. This class is then looked up separately.
  *
  * Example of a generated synthetic function:
  * ```
- * fun hint(): MyClass = error("Stub!")
+ * fun com_example_AppScope(contributed: MyClass) = error("Stub!")
  * ```
- *
- * This takes advantage of the fact that IR can generate overloads with different return types.
  *
  * Importantly, this transformer also adds these generated functions to metadata via
  * [IrGeneratedDeclarationsRegistrar.registerFunctionAsMetadataVisible], which ensures they are
@@ -55,20 +61,40 @@ internal class ContributionHintIrTransformer(
   private val moduleFragment: IrModuleFragment,
 ) : IrMetroContext by context {
   fun visitClass(declaration: IrClass) {
-    if (declaration.isAnnotatedWithAny(symbols.classIds.allContributesAnnotations)) {
+    val contributionScopes =
+      declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNull {
+        it
+          .getValueArgument("scope".asName())
+          ?.expectAsOrNull<IrClassReference>()
+          ?.classType
+          ?.rawTypeOrNull()
+          ?.classIdOrFail
+      }
+    for (contributionScope in contributionScopes) {
+      val callableName = contributionScope.joinSimpleNames().shortClassName
+
       val function =
         pluginContext.irFactory
           .buildFun {
-            name = Symbols.CallableIds.hint.callableName
+            name = callableName
             origin = Origins.Default
-            returnType = declaration.defaultType
+            returnType = pluginContext.irBuiltIns.unitType
           }
-          .apply { body = stubExpressionBody(metroContext) }
+          .apply {
+            parameters +=
+              buildValueParameter(this) {
+                name = "contributed".asName()
+                type = declaration.defaultType
+                kind = IrParameterKind.Regular
+              }
+            body = stubExpressionBody(metroContext)
+          }
 
       val fileNameWithoutExtension =
         sequence {
             yieldAll(Symbols.FqNames.metroHintsPackage.pathSegments())
             yieldAll(declaration.classIdOrFail.relativeClassName.pathSegments())
+            yield(callableName)
           }
           .joinToString(separator = "") { it.asString().capitalizeUS() }
           .decapitalizeUS()

@@ -7,6 +7,7 @@ Changelog
 - **New**: Multibindings may not be empty by default. To allow an empty multibinding, `@Multibinds(allowEmpty = true)` must be explicitly declared now.
 - **New**: Write graph metadata to reports (if enabled).
 - **New**: Support configuring debug and reports globally via `metro.debug` and `metro.reportsDestination` Gradle properties (respectively).
+- **Enhancement**: Change how aggregation hints are generated to improve incremental compilation. Externally contributed hints are now looked up lazily per-scope instead of all at once.
 - **Enhancement**: Optimize empty map multibindings to reuse a singleton instance.
 - **Enhancement**: Report error diagnostic if Dagger's `@Reusable` is used on a provider or injected class.
 - **Enhancement**: Tweak diagnostic error strings for members so that IDE terminals auto-link them better. i.e., instead of printing `example.AppGraph.provideString`, Metro will print `example.AppGraph#provideString` instead.
