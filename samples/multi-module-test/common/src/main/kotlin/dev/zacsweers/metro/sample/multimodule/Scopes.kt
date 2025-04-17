@@ -5,5 +5,8 @@ package dev.zacsweers.metro.sample.multimodule
 /** Scope for the application. */
 abstract class AppScope private constructor()
 
+/** Scope for the parent. */
+abstract class ParentScope private constructor()
+
 /** Scope for the child. */
-abstract class FeatureScope private constructor()
+abstract class ChildScope private constructor()
