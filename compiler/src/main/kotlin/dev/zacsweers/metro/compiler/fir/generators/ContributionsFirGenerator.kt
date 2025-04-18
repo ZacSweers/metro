@@ -29,6 +29,8 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.caches.FirCache
+import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -61,8 +63,32 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
   // For each contributing class, track its nested contribution classes and their scope arguments
   private val contributingClassToScopedContributions:
-    MutableMap<FirClassSymbol<*>, MutableMap<Name, FirGetClassCall?>> =
-    mutableMapOf()
+    FirCache<FirClassSymbol<*>, Map<Name, FirGetClassCall?>, Unit> =
+    session.firCachesFactory.createCache { contributingClassSymbol, _ ->
+      val contributionAnnotations =
+        contributingClassSymbol.annotations
+          .annotationsIn(session, session.classIds.allContributesAnnotations)
+          .toList()
+
+      val contributionNamesToScopeArgs = mutableMapOf<Name, FirGetClassCall?>()
+
+      if (contributionAnnotations.isNotEmpty()) {
+        // We create a contribution class for each scope being contributed to. E.g. if there are
+        // contributions for AppScope and LibScope we'll create $$MetroContribution and
+        // $$MetroContribution2
+        val nameAllocator = NameAllocator(mode = Mode.COUNT)
+        contributionAnnotations
+          .mapNotNull { it.scopeArgument() }
+          .distinctBy { it.scopeName(session) }
+          .forEach { scopeArgument ->
+            val nestedContributionName =
+              nameAllocator.newName(Symbols.Names.metroContribution.identifier).asName()
+
+            contributionNamesToScopeArgs.put(nestedContributionName, scopeArgument)
+          }
+      }
+      contributionNamesToScopeArgs
+    }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.contributesAnnotationPredicate)
@@ -165,34 +191,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    val contributionAnnotations =
-      classSymbol.annotations
-        .annotationsIn(session, session.classIds.allContributesAnnotations)
-        .toList()
-
-    val contributionNamesToScopeArgs =
-      contributingClassToScopedContributions.getOrPut(classSymbol) { mutableMapOf() }
-
-    return if (contributionAnnotations.isNotEmpty()) {
-      // We create a contribution class for each scope being contributed to. E.g. if there are
-      // contributions for AppScope and LibScope we'll create $$MetroContribution and
-      // $$MetroContribution2
-      val nameAllocator = NameAllocator(mode = Mode.COUNT)
-      contributionAnnotations
-        .mapNotNull { it.scopeArgument() }
-        .distinctBy { it.scopeName(session) }
-        .map { scopeArgument ->
-          val nestedContributionName =
-            nameAllocator.newName(Symbols.Names.metroContribution.identifier).asName()
-
-          contributionNamesToScopeArgs.put(nestedContributionName, scopeArgument)
-
-          nestedContributionName
-        }
-        .toSet()
-    } else {
-      emptySet()
-    }
+    return contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
   }
 
   /**
@@ -235,7 +234,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
             replaceArgumentMapping(
               buildAnnotationArgumentMapping {
                 val originalScopeArg =
-                  contributingClassToScopedContributions[owner]?.get(name)
+                  contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
                     ?: error("Could not find a contribution scope for ${owner.classId}.$name")
                 this.mapping.put("scope".asName(), originalScopeArg)
               }
