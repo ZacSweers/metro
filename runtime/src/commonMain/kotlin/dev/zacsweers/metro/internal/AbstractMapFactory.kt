@@ -16,6 +16,7 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import dev.zacsweers.metro.providerOf
 
 /**
  * An `abstract` [Factory] implementation used to implement [Map] bindings.
@@ -31,6 +32,10 @@ public sealed class AbstractMapFactory<K : Any, V : Any, V2>(map: Map<K, Provide
   /** The map of [Provider]s that contribute to this map binding. */
   public fun contributingMap(): Map<K, Provider<V>> {
     return contributingMap
+  }
+
+  protected companion object {
+    protected val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(emptyMap())
   }
 
   /** A builder for [AbstractMapFactory]. */
@@ -50,13 +55,27 @@ public sealed class AbstractMapFactory<K : Any, V : Any, V2>(map: Map<K, Provide
     }
 
     public open fun putAll(mapOfProviders: Provider<Map<K, V2>>): Builder<K, V, V2> = apply {
-      if (mapOfProviders is DelegateFactory) {
-        val asDelegateFactory: DelegateFactory<Map<K, V2>> = mapOfProviders
-        return putAll(asDelegateFactory.getDelegate())
+      when (mapOfProviders) {
+        is DelegateFactory -> {
+          val asDelegateFactory: DelegateFactory<Map<K, V2>> = mapOfProviders
+          return putAll(asDelegateFactory.getDelegate())
+        }
+        is AbstractMapFactory<*, *, *> -> {
+          @Suppress("UNCHECKED_CAST")
+          map.putAll((mapOfProviders as AbstractMapFactory<K, V, *>).contributingMap)
+        }
+        else -> {
+          for ((key, value) in mapOfProviders()) {
+            @Suppress("UNCHECKED_CAST")
+            map[key] =
+              if (value is Provider<*>) {
+                value as Provider<V>
+              } else {
+                providerOf(value as V)
+              }
+          }
+        }
       }
-      @Suppress("UNCHECKED_CAST")
-      val asAbstractMapFactory = (mapOfProviders as AbstractMapFactory<K, V, *>)
-      map.putAll(asAbstractMapFactory.contributingMap)
     }
   }
 }

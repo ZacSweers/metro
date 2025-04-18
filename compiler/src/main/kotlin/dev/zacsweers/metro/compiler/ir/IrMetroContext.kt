@@ -6,15 +6,23 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
+import java.nio.file.Path
+import kotlin.io.path.appendText
+import kotlin.io.path.createDirectories
+import kotlin.io.path.createFile
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.writeText
+import kotlin.system.measureTimeMillis
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -23,6 +31,8 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
@@ -44,10 +54,26 @@ internal interface IrMetroContext {
   val debug: Boolean
     get() = options.debug
 
+  val lookupTracker: LookupTracker?
+
+  val irTypeSystemContext: IrTypeSystemContext
+
+  val platformName: String?
+
+  val reportsDir: Path?
+
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
+  val logFile: Path?
+
   fun IrMetroContext.log(message: String) {
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    if (debug) {
+      // Print directly because STRONG_WARNING may fail the build instead since it's a warning
+      println(message)
+    } else {
+      messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    }
+    logFile?.appendText("\n$LOG_PREFIX $message")
   }
 
   fun IrMetroContext.logVerbose(message: String) {
@@ -129,15 +155,11 @@ internal interface IrMetroContext {
     }
   }
 
-  // InstanceFactory.create(...)
+  // InstanceFactory(...)
   fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
-    return irInvoke(
-        dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-        callee = symbols.instanceFactoryCreate,
-        args = listOf(arg),
-        typeHint = type.wrapInProvider(symbols.metroFactory),
-      )
-      .apply { putTypeArgument(0, type) }
+    return irCallConstructor(symbols.instanceFactoryConstructorSymbol, listOf(type)).apply {
+      putValueArgument(0, arg)
+    }
   }
 
   companion object {
@@ -146,15 +168,41 @@ internal interface IrMetroContext {
       messageCollector: MessageCollector,
       symbols: Symbols,
       options: MetroOptions,
-    ): IrMetroContext = SimpleIrMetroContext(pluginContext, messageCollector, symbols, options)
+      lookupTracker: LookupTracker?,
+    ): IrMetroContext =
+      SimpleIrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
 
     private class SimpleIrMetroContext(
       override val pluginContext: IrPluginContext,
       override val messageCollector: MessageCollector,
       override val symbols: Symbols,
       override val options: MetroOptions,
+      override val lookupTracker: LookupTracker?,
     ) : IrMetroContext {
+      override val irTypeSystemContext: IrTypeSystemContext =
+        IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
+
+      override val platformName: String? by lazy {
+        pluginContext.platform?.let { platform ->
+          platform.componentPlatforms.joinToString("-") { it.platformName }
+        }
+      }
+
+      override val reportsDir: Path? by lazy {
+        options.reportsDestination
+          ?.letIf(platformName != null) { it.resolve(platformName!!) }
+          ?.createDirectories()
+      }
+
+      override val logFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("log.txt").apply {
+            deleteIfExists()
+            createFile()
+          }
+        }
+      }
 
       override fun loggerFor(type: MetroLogger.Type): MetroLogger {
         return loggerCache.getOrPut(type) {
@@ -167,4 +215,17 @@ internal interface IrMetroContext {
       }
     }
   }
+}
+
+internal fun IrMetroContext.writeDiagnostic(fileName: String, text: () -> String) {
+  writeDiagnostic({ fileName }, text)
+}
+
+internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> String) {
+  reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
+}
+
+internal inline fun IrMetroContext.timedComputation(name: String, block: () -> Unit) {
+  val result = measureTimeMillis(block)
+  log("$name took ${result}ms")
 }

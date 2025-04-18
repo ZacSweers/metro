@@ -1,0 +1,2 @@
+compiler-tests/**/*.java linguist-generated=true
+**/yarn.lock linguist-generated=true

@@ -16,7 +16,10 @@ import dev.zacsweers.metro.compiler.companionObjectInstance
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
+import dev.zacsweers.metro.internal.MapFactory
+import dev.zacsweers.metro.internal.MapProviderFactory
 import java.util.concurrent.Callable
 import kotlin.test.Ignore
 import kotlin.test.assertNotNull
@@ -104,7 +107,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text
+                [test.ExampleGraph] test.ExampleGraph#text
         """
           .trimIndent()
       )
@@ -143,7 +146,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         ExampleGraph.kt:11:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text
+                [test.ExampleGraph] test.ExampleGraph#text
         """
           .trimIndent()
       )
@@ -182,7 +185,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         ExampleGraph.kt:11:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text
+                [test.ExampleGraph] test.ExampleGraph#text
         """
           .trimIndent()
       )
@@ -219,7 +222,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text()
+                [test.ExampleGraph] test.ExampleGraph#text()
         """
           .trimIndent()
       )
@@ -258,7 +261,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         ExampleGraph.kt:11:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
 
             @Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.text()
+                [test.ExampleGraph] test.ExampleGraph#text()
         """
           .trimIndent()
       )
@@ -300,7 +303,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             kotlin.String is injected at
                 [test.ExampleGraph] test.ExampleClass(…, text)
             test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph.exampleClass()
+                [test.ExampleGraph] test.ExampleGraph#exampleClass()
         """
           .trimIndent()
       )
@@ -343,7 +346,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @Named("hello") kotlin.String is injected at
                 [test.ExampleGraph] test.ExampleClass(…, text)
             test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph.exampleClass()
+                [test.ExampleGraph] test.ExampleGraph#exampleClass()
         """
           .trimIndent()
       )
@@ -429,7 +432,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@Singleton') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
-                [test.ExampleGraph] test.ExampleGraph.intValue
+                [test.ExampleGraph] test.ExampleGraph#intValue
       """
         .trimIndent()
     )
@@ -666,7 +669,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
             kotlin.String (scoped to '@SingleIn(AppScope::class)')
             kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph.value
+                [test.ExampleGraph] test.ExampleGraph#value
       """
         .trimIndent()
     )
@@ -708,7 +711,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
 
               kotlin.CharSequence is requested at
-                  [test.ExampleGraph] test.ExampleGraph.value2
+                  [test.ExampleGraph] test.ExampleGraph#value2
         """
           .trimIndent()
       )
@@ -848,9 +851,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           Trace:
               kotlin.Int is injected at
-                  [test.ExampleGraph] test.ExampleGraph.provideInt(…, value)
+                  [test.ExampleGraph] test.ExampleGraph#provideInt(…, value)
               kotlin.Int is injected at
-                  [test.ExampleGraph] test.ExampleGraph.provideInt(…, value)
+                  [test.ExampleGraph] test.ExampleGraph#provideInt(…, value)
               ...
         """
           .trimIndent()
@@ -905,13 +908,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
           Trace:
               kotlin.Int is injected at
-                  [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
+                  [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
               kotlin.Double is injected at
-                  [test.ExampleGraph] test.ExampleGraph.provideInt(…, double)
+                  [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
               kotlin.String is injected at
-                  [test.ExampleGraph] test.ExampleGraph.provideDouble(…, string)
+                  [test.ExampleGraph] test.ExampleGraph#provideDouble(…, string)
               kotlin.Int is injected at
-                  [test.ExampleGraph] test.ExampleGraph.provideString(…, int)
+                  [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
               ...
         """
           .trimIndent()
@@ -953,14 +956,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   fun `self referencing graph dependency cycle should fail`() {
     val result =
       compile(
-        kotlin(
-          "ExampleGraph.kt",
+        source(
           """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-
             @DependencyGraph
             interface CharSequenceGraph {
 
@@ -971,21 +968,20 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(graph: CharSequenceGraph): CharSequenceGraph
+                fun create(@Includes graph: CharSequenceGraph): CharSequenceGraph
               }
             }
-
           """
-            .trimIndent(),
+            .trimIndent()
         ),
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
+    result.assertDiagnostics(
       """
-        ExampleGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself.
-            test.CharSequenceGraph is requested at
-                [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
+      e: CharSequenceGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself.
+          test.CharSequenceGraph is requested at
+              [test.CharSequenceGraph] test.CharSequenceGraph.Factory#create()
       """
         .trimIndent()
     )
@@ -1009,7 +1005,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(stringGraph: StringGraph): CharSequenceGraph
+                fun create(@Includes stringGraph: StringGraph): CharSequenceGraph
               }
             }
 
@@ -1023,7 +1019,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @DependencyGraph.Factory
               fun interface Factory {
-                fun create(charSequenceGraph: CharSequenceGraph): StringGraph
+                fun create(@Includes charSequenceGraph: CharSequenceGraph): StringGraph
               }
             }
 
@@ -1037,15 +1033,15 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       """
         e: ExampleGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected!
             test.StringGraph is requested at
-                [test.CharSequenceGraph] test.StringGraph.Factory.create()
+                [test.CharSequenceGraph] test.StringGraph.Factory#create()
             test.CharSequenceGraph is requested at
-                [test.CharSequenceGraph] test.CharSequenceGraph.Factory.create()
+                [test.CharSequenceGraph] test.CharSequenceGraph.Factory#create()
 
         e: ExampleGraph.kt:20:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected!
             test.CharSequenceGraph is requested at
-                [test.StringGraph] test.CharSequenceGraph.Factory.create()
+                [test.StringGraph] test.CharSequenceGraph.Factory#create()
             test.StringGraph is requested at
-                [test.StringGraph] test.StringGraph.Factory.create()
+                [test.StringGraph] test.StringGraph.Factory#create()
       """
         .trimIndent()
     )
@@ -1609,14 +1605,104 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `simple explicit multibindings with no contributors is empty`() {
+  fun `empty multibinding with no opt-in is an error`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Set<String>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `empty multibinding with no opt-in is an error and reports similar types - set`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Set<String>
+
+              @IntoSet
+              @Provides
+              fun provideCharSequence(): CharSequence = "Hello, world!"
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          Similar multibindings:
+          - Set<CharSequence>
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `empty multibinding with no opt-in is an error and reports similar types - map`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              @Multibinds val strings: Map<String, String>
+
+              @StringKey("Element")
+              @IntoMap
+              @Provides
+              fun provideCharSequence(): CharSequence = "Hello, world!"
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          Similar multibindings:
+          - Map<String, CharSequence>
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `simple explicit opted-in multibindings with no contributors is empty`() {
     val result =
       compile(
         source(
           """
             @DependencyGraph
             interface ExampleGraph {
-              @Multibinds val strings: Set<String>
+              @Multibinds(allowEmpty = true) val strings: Set<String>
             }
           """
             .trimIndent()
@@ -1748,7 +1834,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             abstract class ExampleGraph {
               abstract val count: Int
 
-              @get:Provides private val countProvider: Int = 3
+              @get:Provides val countProvider: Int = 3
             }
           """
           .trimIndent()
@@ -1821,7 +1907,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
             @DependencyGraph
             interface ExampleGraph {
-              @Multibinds
+              @Multibinds(allowEmpty = true)
               val ints: Set<Int>
 
               val exampleClass: ExampleClass
@@ -1836,5 +1922,870 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("exampleClass"))
     }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double provides`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Provides fun provideExampleClass1(): ExampleClass = ExampleClass()
+              @Provides fun provideExampleClass2(): ExampleClass = ExampleClass()
+            }
+
+            class ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double provides and binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Provides fun provideExampleClass1(): ExampleClass = Impl1()
+              @Binds fun Impl2.provideExampleClass2(): ExampleClass
+            }
+
+            interface ExampleClass
+            class Impl1 : ExampleClass
+            @Inject class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+
+              @Binds fun Impl1.provideExampleClass1(): ExampleClass
+              @Binds fun Impl2.provideExampleClass2(): ExampleClass
+            }
+
+            interface ExampleClass
+            @Inject class Impl1 : ExampleClass
+            @Inject class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:10:3
+          ├─ Binding 2: ExampleGraph.kt:11:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `duplicate bindings are reported - double contributed binds`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val exampleClass: ExampleClass
+            }
+
+            interface ExampleClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class Impl1 : ExampleClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class Impl2 : ExampleClass
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
+          ├─ Binding 1: ExampleGraph.kt:13:1
+          ├─ Binding 2: ExampleGraph.kt:17:1
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `the fully qualified contributing class names are reported when there are duplicated bindings but both are missing location info`() {
+    val otherResult =
+      compile(
+        source(
+          """
+            interface OtherClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class ExampleClass : OtherClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class ExampleClass2 : OtherClass
+          """
+            .trimIndent(),
+          packageName = "other",
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph
+        """
+          .trimIndent(),
+        extraImports = arrayOf("other.OtherClass"),
+      ),
+      previousCompilationResult = otherResult,
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
+          ├─ Binding 1: Unknown source location, this may be contributed.
+          └─ Here's some additional information we have for the binding:
+             ├─ Binding type: Alias
+             └─ Binding information: @Binds ExampleClass.<get-bindAsOtherClass>: OtherClass
+
+          ├─ Binding 2: Unknown source location, this may be contributed.
+          └─ Here's some additional information we have for the binding:
+             ├─ Binding type: Alias
+             └─ Binding information: @Binds ExampleClass2.<get-bindAsOtherClass>: OtherClass
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `the fully qualified contributing class name is reported when there are duplicated bindings but one is missing location info`() {
+    val otherResult =
+      compile(
+        source(
+          """
+            interface OtherClass
+
+            @ContributesBinding(AppScope::class)
+            @Inject
+            class ExampleClass : OtherClass
+          """
+            .trimIndent(),
+          packageName = "other",
+        )
+      )
+
+    compile(
+      source(
+        """
+          @ContributesBinding(AppScope::class)
+          @Inject
+          class ExampleClass2 : OtherClass
+        """
+          .trimIndent(),
+        extraImports = arrayOf("other.OtherClass"),
+      ),
+      source(
+        """
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph
+        """
+          .trimIndent(),
+        extraImports = arrayOf("other.OtherClass"),
+      ),
+      previousCompilationResult = otherResult,
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
+          ├─ Binding 1: Unknown source location, this may be contributed.
+          └─ Here's some additional information we have for the binding:
+             ├─ Binding type: Alias
+             └─ Binding information: @Binds ExampleClass.<get-bindAsOtherClass>: OtherClass
+
+          ├─ Binding 2: ExampleClass2.kt:7:1
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `transitive scoped bindings are ordered correctly`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          class Impl1 : ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          class Impl2(val contributedInterface: ContributedInterface)
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+            val impl1: Impl1
+            val impl2: Impl2
+
+            @Binds val Impl1.bind: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      // Impl1 is correctly scoped and bound
+      val impl1 = graph.callProperty<Any>("impl1")
+      val contributed = graph.callProperty<Any>("contributedInterface")
+      assertThat(impl1.javaClass.simpleName).isEqualTo("Impl1")
+      assertThat(impl1).isSameInstanceAs(contributed)
+
+      // Impl2 correctly uses the bound type
+      val impl2 = graph.callProperty<Any>("impl2")
+      val impl1FromImpl2 = impl2.callProperty<Any>("contributedInterface")
+      assertThat(impl1FromImpl2).isSameInstanceAs(impl1)
+      assertThat(impl1FromImpl2).isSameInstanceAs(contributed)
+
+      // Calling again also respects scoping
+      assertThat(graph.callProperty<Any>("impl2")).isSameInstanceAs(impl2)
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/250
+  @Test
+  fun `instantiating graphs is possible from separate compilations`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          @DependencyGraph
+          interface ExampleGraph
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          fun main() = createGraph<ExampleGraph>()
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    ) {
+      val graph = invokeMain<Any>()
+      assertNotNull(graph)
+      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/250
+  @Test
+  fun `instantiating graphs is possible from separate compilations - custom factory`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          @DependencyGraph
+          interface ExampleGraph {
+            @DependencyGraph.Factory
+            fun interface Factory {
+              fun createGraph(): ExampleGraph
+            }
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          fun main() = createGraphFactory<ExampleGraph.Factory>().createGraph()
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    ) {
+      val graph = invokeMain<Any>()
+      assertNotNull(graph)
+      assertThat(graph.javaClass.simpleName).isEqualTo("$\$MetroGraph")
+    }
+  }
+
+  @Test
+  fun `similar bindings - different qualifiers`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides @Named("qualified") fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph#int
+
+          Similar bindings:
+            - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - different qualifiers - qualifier on requested`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Named("qualified") val int: Int
+
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("qualified") kotlin.Int
+
+              @Named("qualified") kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph#int
+
+          Similar bindings:
+            - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - multibinding - set`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides @IntoSet fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph#int
+
+          Similar bindings:
+            - Set<Int> (Multibinding). Type: Multibinding.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - multibinding - map`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides @IntoMap @StringKey("hello") fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph#int
+
+          Similar bindings:
+            - Map<String, Int> (Multibinding). Type: Multibinding.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - subtype`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Number
+
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Number
+
+              kotlin.Number is requested at
+                  [test.ExampleGraph] test.ExampleGraph#int
+
+          Similar bindings:
+            - Int (Subtype). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - supertype`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides fun provideNumber(): Number = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph#int
+
+          Similar bindings:
+            - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `similar bindings - multiple`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @Provides fun provideNumber(): Number = 0
+            @Provides @Named("qualified") fun provideInt(): Int = 0
+            @Provides @IntoSet fun provideIntIntoSet(): Int = 0
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph#int
+
+          Similar bindings:
+            - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
+            - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
+            - Set<Int> (Multibinding). Type: Multibinding.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `multibindings - map`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val ints: Map<Int, Int>
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val ints = graph.callProperty<Map<Int, Int>>("ints")
+      assertThat(ints).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - map provider`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val ints: Map<Int, Provider<Int>>
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val ints = graph.callProperty<Map<Int, Provider<Int>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - maps - empty uses empty singleton`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Multibinds(allowEmpty = true)
+            val ints: Map<Int, Int>
+
+            val intsProvider: Map<Int, Provider<Int>>
+
+            val providerOfInts: Provider<Map<Int, Int>>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val intsProvider = graph.callProperty<Map<Int, Provider<Int>>>("intsProvider")
+      // Use toString() because on JVM this may be inlined
+      assertThat(intsProvider.toString()).isEqualTo(MapProviderFactory.empty<Int, Int>().toString())
+      val ints = graph.callProperty<Map<Int, Int>>("ints")
+      assertThat(ints.toString()).isEqualTo(MapFactory.empty<Int, Int>().toString())
+      val providerOfInts = graph.callProperty<Provider<Map<Int, Int>>>("providerOfInts")
+      assertThat(providerOfInts.toString()).isEqualTo(MapFactory.empty<Int, Int>().toString())
+    }
+  }
+
+  @Ignore("TODO is this a case we want to support?")
+  @Test
+  fun `multibindings - map providers of lazy`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            val ints: Map<Int, Provider<Lazy<Int>>>
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val ints = graph.callProperty<Map<Int, Provider<Lazy<Int>>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value().value }).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - map provider - declared non-provider`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Multibinds
+            val ints: Map<Int, Int>
+
+            val exampleClass: ExampleClass
+
+            @Provides @IntoMap @IntKey(0) fun provideInt0(): Int = 0
+            @Provides @IntoMap @IntKey(1) fun provideInt1(): Int = 1
+            @Provides @IntoMap @IntKey(2) fun provideInt2(): Int = 2
+          }
+
+          @Inject class ExampleClass(val ints: Map<Int, Provider<Int>>)
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleClass = graph.callProperty<Any>("exampleClass")
+      val ints = exampleClass.callProperty<Map<Int, Provider<Int>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value() }).containsExactly(0, 0, 1, 1, 2, 2)
+    }
+  }
+
+  @Test
+  fun `multibindings - map provider - declared non-provider - with class contributor`() {
+    compile(
+      source(
+        """
+          @DependencyGraph(AppScope::class)
+          interface ExampleGraph {
+            val exampleClass: ExampleClass
+          }
+
+          @ContributesTo(AppScope::class)
+          interface IntsBinding {
+            @Multibinds(allowEmpty = true)
+            val ints: Map<Int, Provider<Int>>
+          }
+
+          fun interface IntHolder {
+            fun value(): Int
+          }
+
+          @ContributesIntoMap(AppScope::class)
+          @IntKey(0)
+          @Inject
+          class ZeroHolder : IntHolder {
+            override fun value(): Int = 0
+          }
+
+          @Inject class ExampleClass(val ints: Map<Int, Provider<IntHolder>>)
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val exampleClass = graph.callProperty<Any>("exampleClass")
+      val ints = exampleClass.callProperty<Map<Int, Provider<Any>>>("ints")
+      assertThat(ints.mapValues { (_, value) -> value().invokeInstanceMethod<Int>("value") })
+        .containsExactly(0, 0)
+    }
+  }
+
+  // TODO
+  //  providing a Map<String, Int> should not make it possible to get a
+  //  Map<String, Provider<Int>> later
+  // TODO good candidate for a box test
+  @Test
+  fun `multibindings - map provider - different wrapping types`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+            @Provides
+            @IntoMap
+            @StringKey("a")
+            fun provideEntryA(): Int = 1
+
+            @Provides
+            @IntoMap
+            @StringKey("b")
+            fun provideEntryB(): Int = 2
+
+            @Provides
+            @IntoMap
+            @StringKey("c")
+            fun provideEntryC(): Int = 3
+
+            // Inject it with different formats
+            val directMap: Map<String, Int>
+            val providerValueMap: Map<String, Provider<Int>>
+            val providerMap: Provider<Map<String, Int>>
+            val providerOfProviderValueMap: Provider<Map<String, Provider<Int>>>
+            val lazyOfProviderValueMap: Lazy<Map<String, Provider<Int>>>
+            val providerOfLazyOfProviderValueMap: Provider<Lazy<Map<String, Provider<Int>>>>
+
+            // Class that injects the map with yet another format
+            val exampleClass: ExampleClass
+          }
+
+          @Inject
+          class ExampleClass(val map: Map<String, Provider<Int>>)
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      // Test direct map
+      val directMap = graph.callProperty<Map<String, Int>>("directMap")
+      assertThat(directMap).containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test map with provider values
+      val providerValueMap = graph.callProperty<Map<String, Provider<Int>>>("providerValueMap")
+      assertThat(providerValueMap.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test provider of map
+      val providerMap = graph.callProperty<Provider<Map<String, Int>>>("providerMap")
+      assertThat(providerMap()).containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test provider of map with provider values
+      val providerOfProviderValueMap =
+        graph.callProperty<Provider<Map<String, Provider<Int>>>>("providerOfProviderValueMap")
+      assertThat(providerOfProviderValueMap().mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test lazy of map with provider values
+      val lazyOfProviderValueMap =
+        graph.callProperty<Lazy<Map<String, Provider<Int>>>>("lazyOfProviderValueMap")
+      assertThat(lazyOfProviderValueMap.value.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test provider of lazy map with provider values
+      val providerOfLazyOfProviderValueMap =
+        graph.callProperty<Provider<Lazy<Map<String, Provider<Int>>>>>(
+          "providerOfLazyOfProviderValueMap"
+        )
+      assertThat(providerOfLazyOfProviderValueMap().value.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+
+      // Test injected class
+      val exampleClass = graph.callProperty<Any>("exampleClass")
+      val injectedMap = exampleClass.callProperty<Map<String, Provider<Int>>>("map")
+      assertThat(injectedMap.mapValues { (_, value) -> value() })
+        .containsExactly("a", 1, "b", 2, "c", 3)
+    }
+  }
+
+  // Regression test
+  @Test
+  fun `scoped provider with declared accessor still works`() {
+    val first =
+      compile(
+        source(
+          """
+          interface Base
+
+          class Impl : Base
+
+          @DependencyGraph(Unit::class, isExtendable = true)
+          interface ParentGraph {
+            val base: Base
+
+            @Provides
+            @SingleIn(Unit::class)
+            fun provideBase(): Base = Impl()
+
+            @Provides
+            fun provideMessage(base: Base): String = base.toString()
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ChildGraph {
+            val message: String
+
+            @DependencyGraph.Factory
+            interface Factory {
+              fun create(@Extends parent: ParentGraph): ChildGraph
+            }
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = first,
+    )
   }
 }

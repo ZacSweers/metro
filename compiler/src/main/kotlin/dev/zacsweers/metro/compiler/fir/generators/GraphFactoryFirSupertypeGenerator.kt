@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
-import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.fir.predicates
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
-import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.parentAnnotated
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getContainingDeclaration
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
@@ -60,12 +59,9 @@ import org.jetbrains.kotlin.fir.types.coneTypeOrNull
  */
 internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
-  private val dependencyGraphCompanionPredicate by unsafeLazy {
-    parentAnnotated(session.classIds.dependencyGraphAnnotations.map { it.asSingleFqName() })
-  }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(dependencyGraphCompanionPredicate)
+    register(session.predicates.dependencyGraphCompanionPredicate)
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {

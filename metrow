@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 case "$1" in
    "publish")
        version=""
@@ -22,6 +24,7 @@ case "$1" in
            esac
        done
 
+       export PUBLISHING=true
        if [[ "$local" = true ]]; then
            if [[ -z "$version" ]]; then
                echo "Version required for local publish"
@@ -33,8 +36,8 @@ case "$1" in
            ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
        else
            echo "Publishing version $version..."
-           ./gradlew -p gradle-plugin publish -x dokkaGeneratePublicationHtml
-           ./gradlew publish -x dokkaGeneratePublicationHtml
+           ./gradlew -p gradle-plugin publish -x dokkaGeneratePublicationHtml --no-configuration-cache
+           ./gradlew publish -x dokkaGeneratePublicationHtml --no-configuration-cache
        fi
        ;;
 
@@ -55,16 +58,16 @@ case "$1" in
    "regen")
        echo "Applying formatting and API gen..."
        # Annoyingly, the apiDump task has some caching issues
-       ./gradlew clean spotlessApply apiDump --rerun-tasks --no-build-cache
+       ./gradlew clean spotlessApply apiDump kotlinUpgradeYarnLock --rerun-tasks --no-build-cache
        ./gradlew -p gradle-plugin clean spotlessApply apiDump --rerun-tasks --no-build-cache
-       ./gradlew -p samples spotlessApply
+       ./gradlew -p samples spotlessApply kotlinUpgradeYarnLock
        ;;
 
    *)
        echo "Usage: metrow (publish|check|clean|regen)"
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
-       echo "  --local             Publish locally"
+       echo "  --local              Publish locally"
        exit 1
        ;;
 esac

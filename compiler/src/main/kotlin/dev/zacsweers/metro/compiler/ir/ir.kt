@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.metroAnnotations
+import java.io.File
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
@@ -84,6 +85,7 @@ import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isObject
@@ -118,6 +120,17 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
     columnEnd = sourceRangeInfo.endColumnNumber + 1,
     lineContent = null,
   )!!
+}
+
+internal fun CompilerMessageSourceLocation.render(): String {
+  return buildString {
+    val fileUri = File(path).toPath().toUri()
+    append("$fileUri")
+    if (line > 0 && column > 0) {
+      append(":$line:$column")
+    }
+    append(' ')
+  }
 }
 
 /** Returns the raw [IrClass] of this [IrType] or throws. */
@@ -618,7 +631,14 @@ internal fun IrClass.implementsAny(
 internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? =
   (getValueArgument(0) as IrConst?)?.value as Boolean?
 
+internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
+  (getValueArgument(name) as IrConst?)?.value as Boolean?
+
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
+  return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
+}
+
+internal fun Sequence<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
   return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
 }
 
@@ -701,6 +721,7 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
 ) {
   check(isFakeOverride) { "Function $name is not a fake override!" }
   isFakeOverride = false
+  origin = IrDeclarationOrigin.DEFINED
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
     this.dispatchReceiverParameter =

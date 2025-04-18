@@ -15,7 +15,6 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.provider
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.PrintStream
 import java.lang.reflect.Field
 import java.lang.reflect.Method
@@ -57,6 +56,9 @@ fun <T> JvmCompilationResult.invokeMain(vararg args: Any?, mainClass: String = "
 
 val JvmCompilationResult.ExampleClass: Class<*>
   get() = classLoader.loadClass("test.ExampleClass")
+
+val JvmCompilationResult.ExampleClass2: Class<*>
+  get() = classLoader.loadClass("test.ExampleClass2")
 
 val JvmCompilationResult.ExampleClassFactory: Class<*>
   get() = classLoader.loadClass("test.ExampleClassFactory")
@@ -309,6 +311,21 @@ fun <T> Class<Factory<*>>.provideValueAs(providerName: String, vararg args: Any)
 val JvmCompilationResult.ExampleGraph: Class<*>
   get() = classLoader.loadClass("test.ExampleGraph")
 
+val JvmCompilationResult.ParentGraph: Class<*>
+  get() = classLoader.loadClass("test.ParentGraph")
+
+val JvmCompilationResult.GrandParentGraph: Class<*>
+  get() = classLoader.loadClass("test.GrandParentGraph")
+
+val JvmCompilationResult.ChildGraph: Class<*>
+  get() = classLoader.loadClass("test.ChildGraph")
+
+val JvmCompilationResult.Parent1Graph: Class<*>
+  get() = classLoader.loadClass("test.Parent1Graph")
+
+val JvmCompilationResult.Parent2Graph: Class<*>
+  get() = classLoader.loadClass("test.Parent2Graph")
+
 fun Class<*>.generatedMetroGraphClass(): Class<*> {
   return classes.singleOrNull { it.simpleName == Symbols.Names.metroGraph.asString() }
     ?: error(
@@ -346,7 +363,10 @@ fun <T> Any.invokeInstanceMethod(name: String, vararg args: Any): T {
 
 fun Any.getInstanceMethod(name: String): Method {
   @Suppress("UNCHECKED_CAST")
-  return javaClass.methods.single { it.name == name && !Modifier.isStatic(it.modifiers) }
+  return javaClass.methods.singleOrNull { it.name == name && !Modifier.isStatic(it.modifiers) }
+    ?: error(
+      "No instance method with name '$name' found in $this. Available: ${javaClass.methods.filterNot { Modifier.isStatic(it.modifiers) }.joinToString { it.name }}"
+    )
 }
 
 suspend fun <T> Any.invokeSuspendInstanceFunction(name: String, vararg args: Any): T {
@@ -483,7 +503,7 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     }
     .groupBy { it.severity }
     .mapValues { (_, messages) ->
-      messages.map { it.message.cleanOutputLine(includeSeverity = false) }
+      messages.map { it.message.lineSequence().map(String::cleanOutputLine).joinToString("\n") }
     }
     .let { parsed ->
       buildMap {
@@ -493,23 +513,9 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     }
 }
 
-fun String.cleanOutputLine(includeSeverity: Boolean): String {
-  val trimmed = trimEnd()
-  val sourceFileIndex = trimmed.indexOf(".kt")
-  if (sourceFileIndex == -1) return trimmed
-  val startIndex =
-    trimmed.withIndex().indexOfLast { (i, char) ->
-      i < sourceFileIndex && char == File.separatorChar
-    }
-  if (startIndex == -1) return trimmed
-  val severity =
-    if (includeSeverity) {
-      "${trimmed.substringBefore(": ", "")}: "
-    } else {
-      ""
-    }
-  return "$severity${trimmed.substring(startIndex + 1)}"
-}
+private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
+
+fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 
 inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {
   val throwable = assertFailsWith(T::class, block)

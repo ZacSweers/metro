@@ -35,11 +35,7 @@ class AggregationTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -67,11 +63,7 @@ class AggregationTest : MetroCompilerTest() {
       previousCompilationResult = firstResult,
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -226,7 +218,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<ContributedInterface>()
+            binding<ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -256,11 +248,11 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<ContributedInterface>()
+            binding<ContributedInterface>()
           )
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<AnotherInterface>()
+            binding<AnotherInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -294,7 +286,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<@Named("hello") ContributedInterface>()
+            binding<@Named("hello") ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -324,7 +316,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<ContributedInterface<String>>()
+            binding<ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -354,7 +346,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesBinding(
             AppScope::class,
-            boundType = BoundType<@Named("named") ContributedInterface<String>>()
+            binding<@Named("named") ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -512,7 +504,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<ContributedInterface>()
+            binding<ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -543,7 +535,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<@Named("hello") ContributedInterface>()
+            binding<@Named("hello") ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -574,7 +566,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<ContributedInterface<String>>()
+            binding<ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -605,7 +597,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoSet(
             AppScope::class,
-            boundType = BoundType<@Named("named") ContributedInterface<String>>()
+            binding<@Named("named") ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -772,7 +764,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>()
+            binding<@ClassKey(Impl::class) ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -804,7 +796,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) @Named("hello") ContributedInterface>()
+            binding<@ClassKey(Impl::class) @Named("hello") ContributedInterface>()
           )
           @Inject
           class Impl : ContributedInterface, AnotherInterface
@@ -836,7 +828,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) ContributedInterface<String>>()
+            binding<@ClassKey(Impl::class) ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -868,7 +860,7 @@ class AggregationTest : MetroCompilerTest() {
 
           @ContributesIntoMap(
             AppScope::class,
-            boundType = BoundType<@ClassKey(Impl::class) @Named("named") ContributedInterface<String>>()
+            binding<@ClassKey(Impl::class) @Named("named") ContributedInterface<String>>()
           )
           @Inject
           class Impl : ContributedInterface<String>
@@ -895,6 +887,135 @@ class AggregationTest : MetroCompilerTest() {
       assertThat(contributedInterfaces).hasSize(1)
       assertThat(contributedInterfaces.entries.first().key.java.name).isEqualTo("test.Impl")
       assertThat(contributedInterfaces.entries.first().value.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `ContributesTo can be repeated to contribute to multiple scopes in a downstream module`() {
+    val previousCompilation =
+      compile(
+        source(
+          """
+          abstract class AltScope private constructor()
+          abstract class ThirdScope private constructor()
+
+          @ContributesTo(AppScope::class)
+          @ContributesTo(AltScope::class)
+          @ContributesTo(ThirdScope::class)
+          interface ContributedInterface {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val myVal: String
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val altVal: String
+          }
+
+          @DependencyGraph(scope = ThirdScope::class)
+          interface ThirdGraph {
+            val thirdVal: String
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = previousCompilation,
+    ) {
+      val appGraphClass = ExampleGraph
+      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
+
+      val altGraphClass = classLoader.loadClass("test.AltGraph")
+      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      altGraphClass.assertHasContributedSupertype(
+        "test.ContributedInterface",
+        contributionNumber = 2,
+      )
+      assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
+
+      val thirdGraphClass = classLoader.loadClass("test.ThirdGraph")
+      val thirdGraph = thirdGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      thirdGraphClass.assertHasContributedSupertype(
+        "test.ContributedInterface",
+        contributionNumber = 3,
+      )
+      assertThat(thirdGraph.callProperty<String>("thirdVal")).isEqualTo("Hello, world!")
+    }
+  }
+
+  /**
+   * @param contributionNumber Represents which nested class is expected. Each nested contribution
+   *   class is suffixed with a number when it's created depending on how many scopes are
+   *   contributed to. E.g.
+   *
+   * ```
+   * @ContributesBinding(AppScope::class) // This maps to $$MetroContribution (technically number 1)
+   * @ContributesBinding(AltScope::class) // This maps to $$MetroContribution2
+   * @Inject
+   * class ContributingClass : SomeInterface
+   * ```
+   */
+  private fun Class<*>.assertHasContributedSupertype(
+    superTypeFqName: String,
+    contributionNumber: Int = 1,
+  ) {
+    val contributionSuffix = if (contributionNumber == 1) "" else contributionNumber.toString()
+    assertThat(allSupertypes().map { it.name })
+      .containsExactly("$superTypeFqName$$\$MetroContribution$contributionSuffix", superTypeFqName)
+  }
+
+  @Test
+  fun `ContributesTo can be repeated to contribute to multiple scopes in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          @ContributesTo(AppScope::class)
+          @ContributesTo(AltScope::class)
+          interface ContributedInterface {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val myVal: String
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val altVal: String
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraphClass = ExampleGraph
+      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
+
+      val altGraphClass = classLoader.loadClass("test.AltGraph")
+      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      altGraphClass.assertHasContributedSupertype(
+        "test.ContributedInterface",
+        contributionNumber = 2,
+      )
+      assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
     }
   }
 
@@ -960,8 +1081,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -989,8 +1110,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("1") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1018,8 +1139,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1050,7 +1171,7 @@ class AggregationTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @ContributesBinding(AppScope::class)
-          @ContributesBinding(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1114,6 +1235,44 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `single instance of a type can be annotated with both @ContributesIntoSet and @ContributesBinding`() {
+    compile(
+      source(
+        """
+          import dev.zacsweers.metro.AppScope
+          import dev.zacsweers.metro.ContributesBinding
+          import dev.zacsweers.metro.ContributesIntoSet
+          import dev.zacsweers.metro.DependencyGraph
+          import dev.zacsweers.metro.Inject
+          import dev.zacsweers.metro.binding
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedSet: Set<ContributedInterface>
+            val contributedInterface: SecondInterface
+          }
+
+          interface ContributedInterface
+          interface SecondInterface
+
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class, binding<SecondInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
+          @Inject class Impl : ContributedInterface, SecondInterface
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      graph.callProperty<Set<Any>>("contributedSet").also { contributedSet ->
+        assertThat(contributedSet.single()::class.qualifiedName).isEqualTo("test.Impl")
+        assertThat(contributedSet.single())
+          .isEqualTo(graph.callProperty<Any>("contributedInterface"))
+      }
+    }
+  }
+
+  @Test
   fun `implicit bound types use class qualifier - ContributesBinding`() {
     compile(
       source(
@@ -1141,13 +1300,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `explicit bound types don't use class qualifier - ContributesBinding`() {
+  fun `ContributesBinding supports explicit bound type with class-level qualifier`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1158,18 +1317,12 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:16:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") test.ContributedInterface
-
-              @Named("1") test.ContributedInterface is requested at
-                  [test.ExampleGraph] test.ExampleGraph.contributedInterface1
-        """
-          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface1")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
     }
   }
 
@@ -1180,7 +1333,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
           @ContributesBinding(AppScope::class)
           @Inject
           class Impl : ContributedInterface
@@ -1203,13 +1356,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType as Nothing is an error - ContributesBinding`() {
+  fun `binding as Nothing is an error - ContributesBinding`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Nothing>())
+          @ContributesBinding(AppScope::class, binding<Nothing>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1221,19 +1374,19 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
       )
     }
   }
 
   @Test
-  fun `boundType can be Any - ContributesBinding`() {
+  fun `binding can be Any - ContributesBinding`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Any>())
+          @ContributesBinding(AppScope::class, binding<Any>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1246,13 +1399,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType is not assignable - ContributesBinding`() {
+  fun `binding is not assignable - ContributesBinding`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Unit>())
+          @ContributesBinding(AppScope::class, binding<Unit>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1264,13 +1417,13 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
       )
     }
   }
 
   @Test
-  fun `boundType can be ancestor - ContributesBinding`() {
+  fun `binding can be ancestor - ContributesBinding`() {
     compile(
       source(
         """
@@ -1278,7 +1431,7 @@ class AggregationTest : MetroCompilerTest() {
 
           interface ContributedInterface : BaseContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<BaseContributedInterface>())
+          @ContributesBinding(AppScope::class, binding<BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1406,7 +1559,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesBinding(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesBinding(AppScope::class, binding<Impl>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1418,7 +1571,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -1428,7 +1581,7 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @ContributesBinding(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesBinding(AppScope::class, binding<Impl>())
           @Inject
           class Impl
 
@@ -1440,7 +1593,273 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+      )
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a single type in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @ContributesBinding(AltScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("contributedInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a single type in a downstream module`() {
+    val previousCompilation =
+      compile(
+        source(
+          """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @ContributesBinding(AltScope::class)
+          @Inject
+          class Impl : ContributedInterface
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = previousCompilation,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("contributedInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a different type in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+          interface OtherInterface
+
+          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+          @ContributesBinding(AltScope::class, binding = binding<OtherInterface>())
+          @Inject
+          class Impl : ContributedInterface, OtherInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val otherInterface: OtherInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a different type in a downstream module`() {
+    val previousCompilation =
+      compile(
+        source(
+          """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+          interface OtherInterface
+
+          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+          @ContributesBinding(AltScope::class, binding = binding<OtherInterface>())
+          @Inject
+          class Impl : ContributedInterface, OtherInterface
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val otherInterface: OtherInterface
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = previousCompilation,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes with a qualifier difference in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @ContributesBinding(AltScope::class, binding = binding<@Named("Alt") ContributedInterface>())
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            @Named("Alt")
+            val otherInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a different type without leaking the bindings`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+          interface OtherInterface
+
+          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+          @ContributesBinding(AltScope::class, binding = binding<OtherInterface>())
+          @Inject
+          class Impl : ContributedInterface, OtherInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val contributedInterface: ContributedInterface
+            val otherInterface: OtherInterface
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
+
+        test.ContributedInterface is requested at
+            [test.AltGraph] test.AltGraph#contributedInterface
+
+    Similar bindings:
+      - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
+        """
+          .trimIndent()
       )
     }
   }
@@ -1478,8 +1897,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1504,8 +1923,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("1") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1530,8 +1949,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("1") ContributedInterface>())
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("1") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1564,7 +1983,7 @@ class AggregationTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @ContributesIntoSet(AppScope::class)
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<@Named("2") ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<@Named("2") ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1619,13 +2038,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `explicit bound types don't use class qualifier - ContributesIntoSet`() {
+  fun `ContributesIntoSet supports explicit bound type with class-level qualifier`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -1636,18 +2055,13 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:16:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") kotlin.collections.Set<test.ContributedInterface>
-
-              @Named("1") kotlin.collections.Set<test.ContributedInterface> is requested at
-                  [test.ExampleGraph] test.ExampleGraph.contributedInterfaces1
-        """
-          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Set<Any>>("contributedInterfaces1")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces.size).isEqualTo(1)
+      assertThat(contributedInterfaces.single().javaClass.name).isEqualTo("test.Impl")
     }
   }
 
@@ -1658,7 +2072,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<ContributedInterface>())
           @ContributesIntoSet(AppScope::class)
           @Inject
           class Impl : ContributedInterface
@@ -1678,13 +2092,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType as Nothing is an error - ContributesIntoSet`() {
+  fun `binding as Nothing is an error - ContributesIntoSet`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Nothing>())
+          @ContributesIntoSet(AppScope::class, binding<Nothing>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1693,19 +2107,19 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
       )
     }
   }
 
   @Test
-  fun `boundType can be Any - ContributesIntoSet`() {
+  fun `binding can be Any - ContributesIntoSet`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Any>())
+          @ContributesIntoSet(AppScope::class, binding<Any>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1715,13 +2129,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType is not assignable - ContributesIntoSet`() {
+  fun `binding is not assignable - ContributesIntoSet`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Unit>())
+          @ContributesIntoSet(AppScope::class, binding<Unit>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1730,13 +2144,13 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
       )
     }
   }
 
   @Test
-  fun `boundType can be ancestor - ContributesIntoSet`() {
+  fun `binding can be ancestor - ContributesIntoSet`() {
     compile(
       source(
         """
@@ -1744,7 +2158,7 @@ class AggregationTest : MetroCompilerTest() {
 
           interface ContributedInterface : BaseContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<BaseContributedInterface>())
+          @ContributesIntoSet(AppScope::class, binding<BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -1870,7 +2284,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoSet(AppScope::class, binding<Impl>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1879,7 +2293,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -1889,7 +2303,7 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @ContributesIntoSet(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoSet(AppScope::class, binding<Impl>())
           @Inject
           class Impl
         """
@@ -1898,7 +2312,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -1937,8 +2351,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1963,8 +2377,8 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -1983,14 +2397,43 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `ContributesTo annotations on a class, abstract class and object type are an error`() {
+    compile(
+      source(
+        """
+          @ContributesTo(AppScope::class)
+          interface ContributedInterface
+          @ContributesTo(AppScope::class)
+          class ContributedClass
+          @ContributesTo(AppScope::class)
+          abstract class ContributedAbstractClass
+          @ContributesTo(AppScope::class)
+          object ContributedObject
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ContributedInterface.kt:9:1 `@ContributesTo` annotations only permitted on interfaces. However ContributedClass is a CLASS.
+          e: ContributedInterface.kt:11:1 `@ContributesTo` annotations only permitted on interfaces. However ContributedAbstractClass is a CLASS.
+          e: ContributedInterface.kt:13:1 `@ContributesTo` annotations only permitted on interfaces. However ContributedObject is a OBJECT.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
   fun `duplicate ContributesIntoMap annotations with different qualifiers are ok - explicit`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("1") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -2025,7 +2468,7 @@ class AggregationTest : MetroCompilerTest() {
           interface ContributedInterface
 
           @ContributesIntoMap(AppScope::class)
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) @Named("2") ContributedInterface>())
           @Named("1")
           @ClassKey(Impl::class)
           @Inject
@@ -2085,13 +2528,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `explicit bound types don't use class qualifier - ContributesIntoMap`() {
+  fun `ContributesIntoMap supports explicit bound type with class-level qualifier`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
           @Named("1")
           @Inject
           class Impl : ContributedInterface
@@ -2102,18 +2545,13 @@ class AggregationTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-          e: ContributedInterface.kt:16:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("1") kotlin.collections.Map<kotlin.reflect.KClass<*>, test.ContributedInterface>
-
-              @Named("1") kotlin.collections.Map<kotlin.reflect.KClass<*>, test.ContributedInterface> is requested at
-                  [test.ExampleGraph] test.ExampleGraph.contributedInterfaces1
-        """
-          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterfaces = graph.callProperty<Map<KClass<*>, Any>>("contributedInterfaces1")
+      assertThat(contributedInterfaces).isNotNull()
+      assertThat(contributedInterfaces.size).isEqualTo(1)
+      assertThat(contributedInterfaces.entries.single().value.javaClass.name).isEqualTo("test.Impl")
     }
   }
 
@@ -2124,7 +2562,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<ContributedInterface>())
           @ClassKey(Impl::class) // Class key is ignored if bound is explicit
           @Inject
           class Impl : ContributedInterface
@@ -2141,7 +2579,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<ContributedInterface>())
           @Inject
           class Impl : ContributedInterface
         """
@@ -2150,7 +2588,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class."
+        "e: ContributedInterface.kt:9:46 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class."
       )
     }
   }
@@ -2183,7 +2621,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) ContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) ContributedInterface>())
           @ContributesIntoMap(AppScope::class)
           @ClassKey(Impl::class)
           @Inject
@@ -2204,13 +2642,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType as Nothing is an error - ContributesIntoMap`() {
+  fun `binding as Nothing is an error - ContributesIntoMap`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Nothing>())
+          @ContributesIntoMap(AppScope::class, binding<Nothing>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2220,19 +2658,19 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Explicit bound types should not be `Nothing` or `Nothing?`."
+        "e: ContributedInterface.kt:9:46 Explicit bound types should not be `Nothing` or `Nothing?`."
       )
     }
   }
 
   @Test
-  fun `boundType can be Any - ContributesIntoMap`() {
+  fun `binding can be Any - ContributesIntoMap`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) Any>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) Any>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2243,13 +2681,13 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `boundType is not assignable - ContributesIntoMap`() {
+  fun `binding is not assignable - ContributesIntoMap`() {
     compile(
       source(
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Unit>())
+          @ContributesIntoMap(AppScope::class, binding<Unit>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2259,13 +2697,13 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Class test.Impl does not implement explicit bound type kotlin.Unit"
+        "e: ContributedInterface.kt:9:46 Class test.Impl does not implement explicit bound type kotlin.Unit"
       )
     }
   }
 
   @Test
-  fun `boundType can be ancestor - ContributesIntoMap`() {
+  fun `binding can be ancestor - ContributesIntoMap`() {
     compile(
       source(
         """
@@ -2273,7 +2711,7 @@ class AggregationTest : MetroCompilerTest() {
 
           interface ContributedInterface : BaseContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<@ClassKey(Impl::class) BaseContributedInterface>())
+          @ContributesIntoMap(AppScope::class, binding<@ClassKey(Impl::class) BaseContributedInterface>())
           @Inject
           class Impl : ContributedInterface
 
@@ -2401,7 +2839,7 @@ class AggregationTest : MetroCompilerTest() {
         """
           interface ContributedInterface
 
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoMap(AppScope::class, binding<Impl>())
           @ClassKey(Impl::class)
           @Inject
           class Impl : ContributedInterface
@@ -2411,7 +2849,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ContributedInterface.kt:9:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: ContributedInterface.kt:9:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -2421,7 +2859,7 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @ContributesIntoMap(AppScope::class, boundType = BoundType<Impl>())
+          @ContributesIntoMap(AppScope::class, binding<Impl>())
           @ClassKey(Impl::class)
           @Inject
           class Impl
@@ -2431,7 +2869,7 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: Impl.kt:7:60 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+        "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
       )
     }
   }
@@ -2463,11 +2901,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -2612,11 +3046,7 @@ class AggregationTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface2",
-          "test.ContributedInterface2$$\$MetroContribution",
-        )
+      assertThat(graph.assertHasContributedSupertype("test.ContributedInterface2"))
     }
   }
 
@@ -2724,6 +3154,69 @@ class AggregationTest : MetroCompilerTest() {
         .contains(
           "Some replaced types were not matched. These can be removed from test.ExampleGraph: [test/Impl1]"
         )
+    }
+  }
+
+  @Test
+  fun `scoped binding is still scoped`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class)
+          class Impl1 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Any>("contributedInterface"))
+        .isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
+    }
+  }
+
+  @Test
+  fun `replaced scoped binding is still scoped`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class)
+          class Impl1 : ContributedInterface
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class, replaces = [Impl1::class])
+          class Impl2(
+            val impl1: Impl1
+          ) : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+            val impl1: Impl1
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val impl2 = graph.callProperty<Any>("contributedInterface")
+      assertThat(impl2.javaClass.simpleName).isEqualTo("Impl2")
+      assertThat(impl2).isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
+      val impl1 = impl2.callProperty<Any>("impl1")
+      assertThat(impl1).isSameInstanceAs(graph.callProperty<Any>("impl1"))
     }
   }
 }

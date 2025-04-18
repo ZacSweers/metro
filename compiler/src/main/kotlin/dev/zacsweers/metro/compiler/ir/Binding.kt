@@ -4,27 +4,35 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.ir.Binding.Absent
+import dev.zacsweers.metro.compiler.ir.Binding.Assisted
+import dev.zacsweers.metro.compiler.ir.Binding.ConstructorInjected
+import dev.zacsweers.metro.compiler.ir.Binding.ObjectClass
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.render
 import java.util.TreeSet
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
 internal sealed interface Binding {
@@ -64,17 +72,10 @@ internal sealed interface Binding {
       get() = annotations.scope
 
     override val nameHint: String = type.name.asString()
-    override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(
-        typeKey,
-        isWrappedInProvider = false,
-        isWrappedInLazy = false,
-        isLazyWrappedInProvider = false,
-        hasDefault = false,
-      )
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey.create(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = type.locationOrNull()
 
     fun parameterFor(typeKey: TypeKey) =
       injectedConstructor.valueParameters[
@@ -99,8 +100,6 @@ internal sealed interface Binding {
     }
   }
 
-  // TODO
-  //  - scopes not allowed
   class ObjectClass(
     @Poko.Skip override val type: IrClass,
     override val annotations: MetroAnnotations<IrAnnotation>,
@@ -111,17 +110,10 @@ internal sealed interface Binding {
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
 
     override val nameHint: String = type.name.asString()
-    override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(
-        typeKey,
-        isWrappedInProvider = false,
-        isWrappedInLazy = false,
-        isLazyWrappedInProvider = false,
-        hasDefault = false,
-      )
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey.create(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = type.locationOrNull()
 
     override fun toString() = buildString {
       append("@Inject ")
@@ -136,15 +128,15 @@ internal sealed interface Binding {
 
   @Poko
   class Provided(
-    @Poko.Skip val providerFunction: IrSimpleFunction,
+    @Poko.Skip val providerFactory: ProviderFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val contextualTypeKey: ContextualTypeKey,
     override val parameters: Parameters<ConstructorParameter>,
-    override val dependencies: Map<TypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey },
-    val aliasedType: ContextualTypeKey?,
-    val callableId: CallableId = providerFunction.callableId,
   ) : Binding, BindingWithAnnotations {
+
+    override val dependencies: Map<TypeKey, Parameter> =
+      parameters.nonInstanceParameters.associateBy { it.typeKey }
+
     override val scope: IrAnnotation?
       get() = annotations.scope
 
@@ -164,24 +156,20 @@ internal sealed interface Binding {
     val isIntoMultibinding
       get() = annotations.isIntoMultibinding
 
-    override val nameHint: String = providerFunction.name.asString()
+    override val nameHint: String = providerFactory.callableId.callableName.asString()
 
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = providerFunction.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = providerFactory.providesFunction.locationOrNull()
 
     fun parameterFor(typeKey: TypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
         ?: error(
-          "No value parameter found for key $typeKey in ${providerFunction.kotlinFqName.asString()}."
+          "No value parameter found for key $typeKey in ${providerFactory.callableId.asSingleFqName().asString()}."
         )
     }
 
     override fun toString() = buildString {
-      if (annotations.isBinds) {
-        append("@Binds ")
-      } else {
-        append("@Provides ")
-      }
+      append("@Provides ")
       if (intoSet) {
         append("@IntoSet ")
       } else if (elementsIntoSet) {
@@ -193,7 +181,79 @@ internal sealed interface Binding {
           append(' ')
         }
       }
-      append(providerFunction.kotlinFqName.asString())
+      append(
+        providerFactory.callableId.render(
+          short = false,
+          isProperty = providerFactory.isPropertyAccessor,
+        )
+      )
+      append(": ")
+      append(typeKey.render(short = false))
+    }
+  }
+
+  /** Represents an aliased binding, i.e. `@Binds`. Can be a multibinding. */
+  @Poko
+  class Alias(
+    override val typeKey: TypeKey,
+    val aliasedType: TypeKey,
+    @Poko.Skip val ir: IrSimpleFunction?,
+    override val parameters: Parameters<out Parameter>,
+    override val annotations: MetroAnnotations<IrAnnotation>,
+  ) : Binding, BindingWithAnnotations {
+    private var aliasedBinding: Binding? = null
+
+    fun aliasedBinding(graph: BindingGraph, stack: BindingStack): Binding {
+      val optionalBinding = aliasedBinding
+      return if (optionalBinding == null) {
+        val binding = graph.getOrCreateBinding(contextualTypeKey.withTypeKey(aliasedType), stack)
+        aliasedBinding = binding
+        binding
+      } else {
+        optionalBinding
+      }
+    }
+
+    override val scope: IrAnnotation? = null
+    override val dependencies: Map<TypeKey, Parameter> =
+      parameters.valueParameters.associateBy { it.typeKey }
+    override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey)
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() {
+        if (ir == null) return null
+        return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
+          if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
+            // If it's a contribution, the source is
+            // SourceClass.$$MetroContributionScopeName.bindingFunction
+            //                                          ^^^
+            it.parentAsClass.parentAsClass.locationOrNull()
+          } else {
+            it.locationOrNull()
+          }
+        }
+      }
+
+    override fun toString() = buildString {
+      if (annotations.isBinds) {
+        append("@Binds ")
+      } else {
+        append("@Provides ")
+      }
+      if (annotations.isIntoSet) {
+        append("@IntoSet ")
+      } else if (annotations.isElementsIntoSet) {
+        append("@ElementsIntoSet ")
+      } else if (annotations.isIntoMap || annotations.mapKeys.isNotEmpty()) {
+        append("@IntoMap ")
+        annotations.mapKeys.firstOrNull()?.let {
+          append(it.toString())
+          append(' ')
+        }
+      }
+      append(aliasedType.render(short = true))
+      append('.')
+      append(nameHint)
       append(": ")
       append(typeKey.render(short = true))
     }
@@ -213,8 +273,8 @@ internal sealed interface Binding {
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey)
-    override val reportableLocation: CompilerMessageSourceLocation
-      get() = type.location()
+    override val reportableLocation: CompilerMessageSourceLocation?
+      get() = type.locationOrNull()
 
     override fun withMapKey(mapKey: IrAnnotation?): Assisted {
       if (mapKey == null) return this
@@ -259,6 +319,7 @@ internal sealed interface Binding {
   data class GraphDependency(
     val graph: IrClass,
     val getter: IrSimpleFunction,
+    val isProviderFieldAccessor: Boolean,
     override val typeKey: TypeKey,
   ) : Binding {
     override val scope: IrAnnotation? = null
@@ -280,7 +341,11 @@ internal sealed interface Binding {
     override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation?
-      get() = getter.locationOrNull()
+      get() = getter.propertyIfAccessor.locationOrNull()
+
+    override fun toString(): String {
+      return "${graph.kotlinFqName}#${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
+    }
   }
 
   // TODO sets
@@ -294,9 +359,10 @@ internal sealed interface Binding {
     @Poko.Skip val declaration: IrSimpleFunction?,
     val isSet: Boolean,
     val isMap: Boolean,
+    var allowEmpty: Boolean,
     // Reconcile this with dependencies?
     // Sorted for consistency
-    val sourceBindings: MutableSet<Provided> =
+    val sourceBindings: MutableSet<BindingWithAnnotations> =
       TreeSet(
         compareBy<Binding> { it.typeKey }
           .thenBy { it.nameHint }
@@ -332,6 +398,7 @@ internal sealed interface Binding {
         metroContext: IrMetroContext,
         typeKey: TypeKey,
         declaration: IrSimpleFunction?,
+        allowEmpty: Boolean = false,
       ): Multibinding {
         val rawType = typeKey.type.rawType()
 
@@ -342,7 +409,13 @@ internal sealed interface Binding {
           )
         val isMap = !isSet
 
-        return Multibinding(typeKey, isSet = isSet, isMap = isMap, declaration = declaration)
+        return Multibinding(
+          typeKey,
+          isSet = isSet,
+          isMap = isMap,
+          allowEmpty = allowEmpty,
+          declaration = declaration,
+        )
       }
     }
   }
@@ -363,79 +436,70 @@ internal sealed interface Binding {
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
   }
+}
 
-  companion object {
-    /** Creates an expected class binding for the given [contextKey] or fails processing. */
-    fun IrMetroContext.createInjectedClassBindingOrFail(
-      contextKey: ContextualTypeKey,
-      bindingStack: BindingStack,
-      bindingGraph: BindingGraph,
-      allowAbsent: Boolean = true,
-    ): Binding {
-      val key = contextKey.typeKey
-      val irClass = key.type.rawType()
-      val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+/** Creates an expected class binding for the given [contextKey] or returns null. */
+internal fun IrMetroContext.injectedClassBindingOrNull(
+  contextKey: ContextualTypeKey,
+  bindingStack: BindingStack,
+  bindingGraph: BindingGraph,
+  allowAbsent: Boolean = true,
+): Binding? {
+  val key = contextKey.typeKey
+  val irClass = key.type.rawType()
+  val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
-      if (irClass.isObject) {
-        // TODO make these opt-in?
-        return ObjectClass(irClass, classAnnotations, key)
-      }
-
-      val injectableConstructor =
-        irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
-      val binding =
-        if (injectableConstructor != null) {
-          val parameters = injectableConstructor.parameters(metroContext)
-          ConstructorInjected(
-            type = irClass,
-            injectedConstructor = injectableConstructor,
-            annotations = classAnnotations,
-            isAssisted = parameters.valueParameters.any { it.isAssisted },
-            typeKey = key,
-            parameters = parameters,
-          )
-        } else if (classAnnotations.isAssistedFactory) {
-          val function = irClass.singleAbstractFunction(metroContext)
-          val targetContextualTypeKey =
-            ContextualTypeKey.from(metroContext, function, classAnnotations)
-          val bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, function)
-          val targetBinding =
-            bindingStack.withEntry(bindingStackEntry) {
-              bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
-            } as ConstructorInjected
-          Assisted(
-            type = irClass,
-            function = function,
-            annotations = classAnnotations,
-            typeKey = key,
-            parameters = function.parameters(metroContext),
-            target = targetBinding,
-          )
-        } else if (allowAbsent && contextKey.hasDefault) {
-          Absent(key)
-        } else {
-          // TODO if a key with a different qualifier exists, consider mentioning it?
-          val declarationToReport = bindingStack.lastEntryOrGraph
-          val message = buildString {
-            append(
-              "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
-            )
-            appendLine(key.render(short = false))
-            appendLine()
-            appendBindingStack(bindingStack, short = false)
-            if (metroContext.debug) {
-              appendLine(
-                bindingGraph.dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false)
-              )
-            }
-          }
-
-          declarationToReport.reportError(message)
-
-          exitProcessing()
-        }
-
-      return binding
-    }
+  if (irClass.isObject) {
+    // TODO make these opt-in?
+    return ObjectClass(irClass, classAnnotations, key)
   }
+
+  val injectableConstructor =
+    irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
+  return if (injectableConstructor != null) {
+    val parameters = injectableConstructor.parameters(metroContext)
+    ConstructorInjected(
+      type = irClass,
+      injectedConstructor = injectableConstructor,
+      annotations = classAnnotations,
+      isAssisted = parameters.valueParameters.any { it.isAssisted },
+      typeKey = key,
+      parameters = parameters,
+    )
+  } else if (classAnnotations.isAssistedFactory) {
+    val function = irClass.singleAbstractFunction(metroContext)
+    val targetContextualTypeKey = ContextualTypeKey.from(metroContext, function, classAnnotations)
+    val bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, function)
+    val targetBinding =
+      bindingStack.withEntry(bindingStackEntry) {
+        bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
+      } as ConstructorInjected
+    Assisted(
+      type = irClass,
+      function = function,
+      annotations = classAnnotations,
+      typeKey = key,
+      parameters = function.parameters(metroContext),
+      target = targetBinding,
+    )
+  } else if (allowAbsent && contextKey.hasDefault) {
+    Absent(key)
+  } else {
+    null
+  }
+}
+
+internal fun Binding.getContributionLocationOrDiagnosticInfo(): String {
+  // First check if we have the contributing file and line number
+  return reportableLocation?.render()
+    // Or the fully-qualified contributing class name
+    ?: dependencies.entries.firstOrNull()?.key?.toString()
+    // Or print the full set of info we know about the binding
+    ?: buildString {
+      val binding = this@getContributionLocationOrDiagnosticInfo
+      appendLine("Unknown source location, this may be contributed.")
+      appendLine("└─ Here's some additional information we have for the binding:")
+      appendLine("   ├─ Binding type: ${binding.javaClass.simpleName}")
+      appendLine("   └─ Binding information: $binding")
+    }
 }

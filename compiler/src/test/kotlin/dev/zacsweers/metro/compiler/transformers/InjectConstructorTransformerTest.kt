@@ -3,13 +3,16 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation
 import dev.zacsweers.metro.compiler.ExampleClass
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertCallableFactory
+import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.assertNoArgCallableFactory
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
+import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.createNewInstanceAs
 import dev.zacsweers.metro.compiler.generatedFactoryClass
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
@@ -256,6 +259,106 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(2)
       assertThat(graph.callProperty<Callable<Int>>("exampleClass").call()).isEqualTo(2)
+    }
+  }
+
+  @Test
+  fun `a constructor can be injected with a parameter annotated with a qualifier with a class argument (satisfied by a provider)`() {
+    compile(
+      source(
+        """
+         @DependencyGraph(AppScope::class)
+         interface ExampleGraph {
+           // This is fine
+           @ForScope(AppScope::class)
+           val int: Int
+
+           val myClass: MyClass
+         }
+
+         @ContributesTo(AppScope::class)
+         interface ContributedInterface {
+           @Provides @ForScope(AppScope::class) fun provideInt(): Int = 2
+         }
+
+         class MyClass @Inject constructor(
+           // This fails
+           @ForScope(AppScope::class)
+           val int: Int
+         )
+       """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
+      assertThat(graph.callProperty<Any>("myClass").callProperty<Int>("int")).isEqualTo(2)
+    }
+  }
+
+  @Test
+  fun `a constructor can be injected with a parameter annotated with a qualifier with a class argument (satisfied by a binding)`() {
+    compile(
+      source(
+        """
+         @DependencyGraph(scope = AppScope::class)
+         interface ExampleGraph {
+           // This is fine
+           @ForScope(AppScope::class)
+           val contributedInterface: ContributedInterface
+
+           val myClass: MyClass
+         }
+
+         interface ContributedInterface
+
+         @ContributesBinding(AppScope::class, binding<@ForScope(AppScope::class) ContributedInterface>())
+         @Inject
+         class Impl : ContributedInterface
+
+         class MyClass @Inject constructor(
+           // This fails
+           @ForScope(AppScope::class)
+           val contributedInterface: ContributedInterface
+         )
+       """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val myClass = graph.callProperty<Any>("myClass")
+      val myClassField = myClass.callProperty<Any>("contributedInterface")
+      assertThat(myClass).isNotNull()
+      assertThat(myClassField).isNotNull()
+      assertThat(myClassField.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `dagger reusable is unsupported`() {
+    compile(
+      source(
+        """
+         import dagger.Reusable
+
+         @Reusable
+         @Inject
+         class MyClass
+       """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: MyClass.kt:8:1 Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq#why-doesnt-metro-support-reusable for more information.
+        """
+          .trimIndent()
+      )
     }
   }
 }

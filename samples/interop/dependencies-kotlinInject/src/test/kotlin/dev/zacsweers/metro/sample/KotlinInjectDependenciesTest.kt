@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.sample
 
 import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.Includes
 import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,7 +18,7 @@ class KotlinInjectDependenciesTest {
 
     @DependencyGraph.Factory
     interface Factory {
-      fun create(stringComponent: StringComponent): GraphDependingOnComponent
+      fun create(@Includes stringComponent: StringComponent): GraphDependingOnComponent
     }
   }
 

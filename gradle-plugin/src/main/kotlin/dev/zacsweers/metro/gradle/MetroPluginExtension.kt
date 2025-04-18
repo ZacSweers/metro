@@ -5,12 +5,16 @@ package dev.zacsweers.metro.gradle
 import javax.inject.Inject
 import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
 
 @MetroExtensionMarker
-public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFactory) {
+public abstract class MetroPluginExtension
+@Inject
+constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFactory) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
@@ -18,9 +22,15 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
   public val enabled: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(true)
 
-  /** If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging. */
+  /**
+   * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
+   *
+   * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
+   */
   public val debug: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+      objects
+          .property(Boolean::class.javaObjectType)
+          .convention(providers.gradleProperty("metro.debug").map { it.toBoolean() }.orElse(false))
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
@@ -47,13 +57,36 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
   public val enableTopLevelFunctionInjection: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(false)
 
+  /** Enable/disable hint property generation in IR for contributed types. Enabled by default. */
+  public val generateHintProperties: Property<Boolean> =
+      objects.property(Boolean::class.javaObjectType).convention(true)
+
+  /**
+   * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
+   * `metro.version.check` gradle property.
+   */
+  public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
+      objects
+          .property(Boolean::class.javaObjectType)
+          .convention(
+              providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true))
+
   /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
    * given destination.
    *
    * This behaves similar to the compose-compiler's option of the same name.
+   *
+   * Optionally, you can specify a `metro.reportsDestination` gradle property whose value is a
+   * _relative_ path from the project's **build** directory.
    */
-  public abstract val reportsDestination: DirectoryProperty
+  public val reportsDestination: DirectoryProperty =
+      objects
+          .directoryProperty()
+          .convention(
+              providers.gradleProperty("metro.reportsDestination").flatMap {
+                layout.buildDirectory.dir(it)
+              })
 
   /**
    * Configures interop to support in generated code, usually from another DI framework.
@@ -83,6 +116,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
     public val binds: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesTo: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesBinding: SetProperty<String> = objects.setProperty(String::class.java)
+    public val contributesIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val graph: SetProperty<String> = objects.setProperty(String::class.java)
     public val graphFactory: SetProperty<String> = objects.setProperty(String::class.java)
@@ -94,6 +128,9 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
     public val provides: SetProperty<String> = objects.setProperty(String::class.java)
     public val qualifier: SetProperty<String> = objects.setProperty(String::class.java)
     public val scope: SetProperty<String> = objects.setProperty(String::class.java)
+
+    // Interop markers
+    public val enableDaggerAnvilInterop: Property<Boolean> = objects.property(Boolean::class.java)
 
     /** Includes Javax annotations support. */
     public fun includeJavax() {
@@ -129,6 +166,7 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
       mapKey.add("dagger/MapKey")
       multibinds.add("dagger/multibindings/Multibinds")
       provides.addAll("dagger/Provides", "dagger/BindsInstance")
+      provider.add("dagger/internal/Provider")
 
       if (!includeJavax && !includeJakarta) {
         System.err.println(
@@ -162,11 +200,13 @@ public abstract class MetroPluginExtension @Inject constructor(objects: ObjectFa
       check(includeDaggerAnvil || includeKotlinInjectAnvil) {
         "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
       }
+      enableDaggerAnvilInterop.set(includeDaggerAnvil)
       if (includeDaggerAnvil) {
         graph.add("com/squareup/anvil/annotations/MergeComponent")
         graphFactory.add("com/squareup/anvil/annotations/MergeComponent.Factory")
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
         contributesBinding.add("com/squareup/anvil/annotations/ContributesBinding")
+        contributesIntoSet.add("com/squareup/anvil/annotations/ContributesMultibinding")
       }
       if (includeKotlinInjectAnvil) {
         graph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")

@@ -10,10 +10,14 @@ plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
   alias(libs.plugins.kotlin.kapt) apply false
+  alias(libs.plugins.kotlin.android) apply false
+  alias(libs.plugins.android.application) apply false
+  alias(libs.plugins.kotlin.plugin.compose) apply false
   alias(libs.plugins.ksp) apply false
   id("dev.zacsweers.metro") apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.mavenPublish) apply false // wat
+  alias(libs.plugins.compose) apply false
   alias(libs.plugins.kotlin.plugin.serialization) apply false
 }
 
@@ -68,7 +72,11 @@ subprojects {
         progressiveMode.set(true)
         if (this is KotlinJvmCompilerOptions) {
           jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
-          freeCompilerArgs.addAll("-Xjvm-default=all")
+          freeCompilerArgs.addAll(
+            "-Xjvm-default=all",
+            // Big yikes in how this was rolled out as noisy compiler warnings
+            "-Xannotation-default-target=param-property",
+          )
         }
       }
     }

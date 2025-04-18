@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.Binding
 import dev.zacsweers.metro.compiler.ir.BindingStack
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
@@ -19,8 +21,10 @@ import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -30,18 +34,27 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
+import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
+import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
+import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -50,40 +63,73 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.synthetic.isVisibleOutside
 
 internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by context {
 
   private val references = mutableMapOf<FqName, CallableReference>()
-  private val generatedFactories = mutableMapOf<FqName, IrClass>()
+  private val generatedFactories = mutableMapOf<FqName, ProviderFactory>()
+  private val generatedFactoriesByClass = mutableMapOf<FqName, MutableList<ProviderFactory>>()
 
-  fun visitClass(declaration: IrClass) {
-    // Defensive copy because we add to this class in some factories!
-    val sourceDeclarations =
-      declaration.declarations
-        .asSequence()
-        // Skip fake overrides, we care only about the original declaration because those have
-        // default values
-        .filterNot { it.isFakeOverride }
-        .toList()
-    sourceDeclarations.forEach { nestedDeclaration ->
-      when (nestedDeclaration) {
-        is IrProperty -> visitProperty(nestedDeclaration)
-        is IrSimpleFunction -> visitFunction(nestedDeclaration)
-        is IrClass -> {
-          if (nestedDeclaration.isCompanionObject) {
-            // Include companion object refs
-            visitClass(nestedDeclaration)
+  // TODO this class is a little wonky now because we support looking up sort of two different ways
+  //  we should streamline this now that we speak solely ProviderFactories
+  fun visitClass(declaration: IrClass): List<ProviderFactory> {
+    val declarationFqName = declaration.kotlinFqName
+
+    generatedFactoriesByClass[declarationFqName]?.let {
+      return it
+    }
+
+    // Skip fake overrides, we care only about the original declaration because those have
+    // default values
+    declaration.declarations
+      .filterNot { it.isFakeOverride }
+      .forEach { nestedDeclaration ->
+        when (nestedDeclaration) {
+          is IrProperty -> visitProperty(nestedDeclaration)
+          is IrSimpleFunction -> visitFunction(nestedDeclaration)
+          is IrClass -> {
+            if (nestedDeclaration.isCompanionObject) {
+              // Include companion object refs
+              visitClass(nestedDeclaration)
+            }
           }
         }
       }
+
+    // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
+    // class's metadata. This allows consumers in downstream compilations to know if there are
+    // providers to consume here even if they are private.
+    val generatedFactories = generatedFactoriesByClass[declarationFqName].orEmpty()
+    val shouldGenerateMetadata =
+      generatedFactories.isNotEmpty() &&
+        !declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations)
+    if (shouldGenerateMetadata) {
+      val metroMetadata =
+        MetroMetadata(
+          METRO_VERSION,
+          DependencyGraphProto(
+            is_graph = false,
+            provider_factory_classes =
+              generatedFactories.map { it.clazz.classIdOrFail.asString() }.sorted(),
+          ),
+        )
+      val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
+      pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
+        declaration,
+        PLUGIN_ID,
+        serialized,
+      )
     }
+    return generatedFactories
   }
 
   private fun visitProperty(declaration: IrProperty) {
@@ -92,7 +138,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       return
     }
 
-    getOrGenerateFactoryClass(getOrPutCallableReference(declaration, annotations))
+    getOrLookupFactoryClass(getOrPutCallableReference(declaration, annotations))
   }
 
   private fun visitFunction(declaration: IrSimpleFunction) {
@@ -100,54 +146,58 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     if (!annotations.isProvides) {
       return
     }
-    getOrGenerateFactoryClass(getOrPutCallableReference(declaration, annotations))
+    getOrLookupFactoryClass(
+      getOrPutCallableReference(declaration, declaration.parentAsClass, annotations)
+    )
   }
 
-  fun getOrGenerateFactoryClass(binding: Binding.Provided): IrClass? {
-    val reference =
-      binding.providerFunction.correspondingPropertySymbol?.owner?.let {
-        getOrPutCallableReference(it)
-      } ?: getOrPutCallableReference(binding.providerFunction)
-
-    // If it's from another module, look up its already-generated factory
-    // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
-    //  external but no factory is found?
-    if (binding.providerFunction.parentAsClass.isExternalParent) {
-      // Look up the external class
-      // TODO do we generate it here + warn like dagger does?
-      val generatedClass =
-        binding.providerFunction.parentAsClass.nestedClasses.find {
-          it.name == reference.generatedClassId.shortClassName
-        }
-      if (generatedClass == null) {
-        reference.callee.owner.reportError(
-          "Could not find generated factory for ${reference.fqName} in upstream module where it's defined. Run the Metro compiler over that module too."
-        )
-        return null
-      }
-      generatedFactories[reference.fqName] = generatedClass
-    }
-    return getOrGenerateFactoryClass(reference)
-  }
-
-  fun getOrGenerateFactoryClass(reference: CallableReference): IrClass {
-    generatedFactories[reference.fqName]?.let {
+  fun getOrLookupFactoryClass(binding: Binding.Provided): ProviderFactory? {
+    // Eager cache check using the factory's callable ID
+    val fqName = binding.providerFactory.callableId.asSingleFqName()
+    generatedFactories[fqName]?.let {
       return it
     }
 
-    // TODO FIR check function is not abstract
-    // TODO FIR check for duplicate functions (by name, params don't count). Does this matter in FIR
-    //  tho
+    // If it's from another module, look up its already-generated factory
+    if (binding.providerFactory.clazz.isExternalParent) {
+      val providerFactory = externalProviderFactoryFor(binding.providerFactory.clazz)
+      generatedFactories[fqName] = providerFactory
+      generatedFactoriesByClass.getOrPut(fqName, ::mutableListOf).add(providerFactory)
+      return providerFactory
+    }
 
-    // TODO Private functions need to be visible downstream. To do this we use a new API to add
-    //  custom metadata
-    if (!reference.callee.owner.visibility.isVisibleOutside()) {
-      // TODO properties?
-      // TODO registerFunctionAsMetadataVisible doesn't appear to work unless the function is public
-      //  ... so I don't understand what it's for
-      //      pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
-      //        reference.callee.owner as IrSimpleFunction
-      //      )
+    // For factories in the current module, we need to get or create the factory
+    val function =
+      if (binding.providerFactory.isPropertyAccessor) {
+        metroContext.pluginContext
+          .referenceProperties(binding.providerFactory.callableId)
+          .firstOrNull()
+          ?.owner
+          ?.getter
+      } else {
+        metroContext.pluginContext
+          .referenceFunctions(binding.providerFactory.callableId)
+          .firstOrNull()
+          ?.owner
+      }
+
+    checkNotNull(function) {
+      "Could not find (getter) function for ${binding.providerFactory.callableId}"
+    }
+
+    val reference =
+      getOrPutCallableReference(
+        function,
+        binding.providerFactory.clazz.parentAsClass,
+        binding.providerFactory.clazz.metroAnnotations(symbols.classIds),
+      )
+
+    return getOrLookupFactoryClass(reference)
+  }
+
+  fun getOrLookupFactoryClass(reference: CallableReference): ProviderFactory {
+    generatedFactories[reference.fqName]?.let {
+      return it
     }
 
     val sourceValueParameters = reference.parameters.valueParameters
@@ -168,14 +218,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
     val instanceParam =
       if (!reference.isInObject) {
-        val contextualTypeKey =
-          ContextualTypeKey(
-            typeKey = TypeKey(graphType),
-            isWrappedInProvider = false,
-            isWrappedInLazy = false,
-            isLazyWrappedInProvider = false,
-            hasDefault = false,
-          )
+        val contextualTypeKey = ContextualTypeKey.create(typeKey = TypeKey(graphType))
         ConstructorParameter(
           kind = Parameter.Kind.VALUE,
           name = Name.identifier("graph"),
@@ -188,7 +231,12 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           assistedIdentifier = "",
           symbols = symbols,
           isGraphInstance = true,
-          // TODO is this right/ever going to happen?
+          isExtends = false,
+          isIncludes = false,
+          // This creates a binding stack entry for the graph instance parameter.
+          // This is used for cycle detection in the dependency graph.
+          // This code path is executed when a provider function is not in an object
+          // and needs access to the graph instance.
           bindingStackEntry = BindingStack.Entry.simpleTypeRef(contextualTypeKey),
           isBindsInstance = false,
           hasDefault = false,
@@ -261,32 +309,67 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         )
       }
 
+    val providesFunction = reference.callee.owner
+    if (providesFunction.isEffectivelyPrivate()) {
+      // If any annotations have IrClassReference arguments, the compiler barfs
+      var hasErrors = false
+      for (annotation in providesFunction.annotations) {
+        for (arg in annotation.valueArguments) {
+          if (arg is IrClassReference) {
+            val message =
+              "Private provider functions with KClass arguments are not supported: " +
+                "${providesFunction.kotlinFqName}. Make this function public to work around this for now."
+            // TODO link bug
+            reportError(message, providesFunction.location())
+            hasErrors = true
+          }
+        }
+      }
+
+      if (!hasErrors) {
+        pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
+          providesFunction as IrSimpleFunction
+        )
+      }
+    }
+
+    val providerFactory =
+      ProviderFactory(
+        metroContext,
+        reference.typeKey,
+        factoryCls,
+        providesFunction as IrSimpleFunction,
+        reference.annotations,
+      )
+
     factoryCls.dumpToMetroLog()
 
-    generatedFactories[reference.fqName] = factoryCls
-    return factoryCls
+    generatedFactories[reference.fqName] = providerFactory
+    generatedFactoriesByClass
+      .getOrPut(reference.graphParent.kotlinFqName, ::mutableListOf)
+      .add(providerFactory)
+
+    return providerFactory
   }
 
   private fun getOrPutCallableReference(
     function: IrSimpleFunction,
-    annotations: MetroAnnotations<IrAnnotation> = metroAnnotationsOf(function),
+    parent: IrClass,
+    annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
-    // TODO report in FIR
-    if (function.typeParameters.isNotEmpty()) {
-      function.reportError("@Provides functions may not have type parameters")
-      exitProcessing()
-    }
-
     return references.getOrPut(function.kotlinFqName) {
-      // TODO FIR error if it has a receiver param
-      // TODO FIR error if it is top-level/not in graph
-
-      val parent = function.parentAsClass
       val typeKey = ContextualTypeKey.from(this, function, annotations).typeKey
+      val isPropertyAccessor = function.isPropertyAccessor
+      val fqName =
+        if (isPropertyAccessor) {
+          function.propertyIfAccessor.expectAs<IrProperty>().fqNameWhenAvailable!!
+        } else {
+          function.kotlinFqName
+        }
       CallableReference(
-        fqName = function.kotlinFqName,
+        fqName = fqName,
         name = function.name,
-        isProperty = false,
+        isPropertyAccessor = isPropertyAccessor,
         parameters = function.parameters(this),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
@@ -303,11 +386,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
   ): CallableReference {
     val fqName = property.fqNameWhenAvailable ?: error("No FqName for property ${property.name}")
     return references.getOrPut(fqName) {
-      // TODO FIR error if it has a receiver param
-      // TODO FIR check property is not var
-      // TODO enforce get:? enforce no site target?
-      // TODO FIR error if it is top-level/not in graph
-
       val getter =
         property.getter
           ?: error(
@@ -320,7 +398,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       return CallableReference(
         fqName = fqName,
         name = property.name,
-        isProperty = true,
+        isPropertyAccessor = true,
         parameters = property.getter?.parameters(this) ?: Parameters.empty(),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
@@ -393,7 +471,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
   internal class CallableReference(
     val fqName: FqName,
     val name: Name,
-    val isProperty: Boolean,
+    val isPropertyAccessor: Boolean,
     val parameters: Parameters<ConstructorParameter>,
     val typeKey: TypeKey,
     val isNullable: Boolean,
@@ -415,7 +493,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     // but not for names which just start with those letters, like `issues`.
     // TODO still necessary in IR?
     private val useGetPrefix by unsafeLazy {
-      isProperty && !isWordPrefixRegex.matches(name.asString())
+      isPropertyAccessor && !isWordPrefixRegex.matches(name.asString())
     }
 
     private val simpleName by lazy {
@@ -435,7 +513,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     private val cachedToString by lazy {
       buildString {
         append(fqName.asString())
-        if (!isProperty) {
+        if (!isPropertyAccessor) {
           append('(')
           for (parameter in parameters.allParameters) {
             append('(')
@@ -455,5 +533,68 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     override fun toString(): String = cachedToString
 
     companion object // For extension
+  }
+
+  fun factoryClassesFor(parent: IrClass): List<Pair<TypeKey, ProviderFactory>> {
+    // Eager cache check
+    val parentFqName = parent.kotlinFqName
+    generatedFactoriesByClass[parentFqName]?.let { cachedFactories ->
+      return cachedFactories.map { it.typeKey to it }
+    }
+
+    val metadataBytes =
+      if (parent.isExternalParent) {
+        // Look up the external class metadata
+        pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(parent, PLUGIN_ID)
+      } else {
+        null
+      }
+
+    val providerFactories: List<ProviderFactory> =
+      if (metadataBytes == null) {
+        if (parent.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)) {
+          if (parent.isExternalParent) {
+            error(
+              "No metadata found for ${parent.kotlinFqName} from " +
+                "another module. This is likely a bug in the Metro compiler."
+            )
+          } else {
+            // Current module, not a dependency graph, unvisited
+            visitClass(parent)
+          }
+        } else {
+          if (parent.isExternalParent) {
+            // Just no data in this
+            return emptyList()
+          } else {
+            // Current module, a dependency graph, unvisited
+            visitClass(parent)
+          }
+        }
+      } else {
+        val metadata = MetroMetadata.ADAPTER.decode(metadataBytes)
+        metadata.dependency_graph
+          ?.provider_factory_classes
+          .orEmpty()
+          .map { ClassId.fromString(it) }
+          .map { classId ->
+            val factoryClass = pluginContext.referenceClass(classId)!!.owner
+            externalProviderFactoryFor(factoryClass)
+          }
+          .also { providerFactories ->
+            // Cache the results
+            generatedFactoriesByClass[parent.kotlinFqName] = providerFactories.toMutableList()
+          }
+      }
+
+    return providerFactories.map { providerFactory -> providerFactory.typeKey to providerFactory }
+  }
+
+  fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
+    val factoryType = factoryCls.superTypes.first { it.classOrNull == symbols.metroFactory }
+    // Extract TypeKey from Factory supertype
+    // Qualifier will be populated in ProviderFactory construction
+    val typeKey = TypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
+    return ProviderFactory(metroContext, typeKey, factoryCls, null, null)
   }
 }

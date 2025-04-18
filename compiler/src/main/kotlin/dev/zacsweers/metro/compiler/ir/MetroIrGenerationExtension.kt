@@ -10,17 +10,19 @@ import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
-internal class MetroIrGenerationExtension(
+public class MetroIrGenerationExtension(
   private val messageCollector: MessageCollector,
   private val classIds: ClassIds,
   private val options: MetroOptions,
+  private val lookupTracker: LookupTracker?,
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = Symbols(moduleFragment, pluginContext, classIds, options)
-    val context = IrMetroContext(pluginContext, messageCollector, symbols, options)
+    val context = IrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
     val dependencyGraphTransformer = DependencyGraphTransformer(context, moduleFragment)
     // TODO is this really necessary?
     val dependencyGraphData = DependencyGraphData()

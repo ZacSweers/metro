@@ -49,7 +49,9 @@ metro {
 
 `@DependencyGraph` is replaceable but your mileage may vary if you use Anvil or modules, since Metro’s annotation unifies Anvil’s `@MergeComponent` functionality and doesn’t support modules.
 
-Similarly, `@ContributesBinding` is replaceable but there are not direct analogues for Anvil’s `@ContributesMultibinding` or kotlin-inject-anvil’s `@ContributesBinding(multibinding = …)` as these annotations are implemented as `@ContributesInto*` annotations in Metro. Also - `boundType` in metro uses a more flexible mechanism to support generics.
+Similarly, `@ContributesBinding` is replaceable but there are not direct analogues for Anvil’s `@ContributesMultibinding` or kotlin-inject-anvil’s `@ContributesBinding(multibinding = …)` as these annotations are implemented as `@ContributesInto*` annotations in Metro.
+
+`binding` in Metro uses a more flexible mechanism to support generics, but interop with Anvil's `boundType: KClass<*>` property is supported.
 
 ## Components
 
@@ -63,7 +65,7 @@ interface MetroGraph {
   @DependencyGraph.Factory
   fun interface Factory {
     fun create(
-      daggerComponent: DaggerComponent
+      @Includes daggerComponent: DaggerComponent
     ): MetroGraph
   }
 }
@@ -90,7 +92,7 @@ interface MessageGraph {
 }
 
 // Dagger
-@Component(dependencies = [MetroGraph::class])
+@Component(dependencies = [MessageGraph::class])
 interface DaggerComponent {
   val message: String
 

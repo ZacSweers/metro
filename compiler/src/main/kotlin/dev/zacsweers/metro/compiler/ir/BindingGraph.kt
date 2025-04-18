@@ -4,16 +4,18 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
-import dev.zacsweers.metro.compiler.ir.Binding.Companion.createInjectedClassBindingOrFail
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.mapToSet
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.text.appendLine
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 // TODO would be great if this was standalone to more easily test.
@@ -21,11 +23,18 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   // Use ConcurrentHashMap to allow reentrant modification
   private val bindings = ConcurrentHashMap<TypeKey, Binding>()
   private val dependencies = ConcurrentHashMap<TypeKey, Lazy<Set<ContextualTypeKey>>>()
-  // TODO eventually add inject() targets too from member injection
   private val accessors = mutableMapOf<ContextualTypeKey, BindingStack.Entry>()
+  private val injectors = mutableMapOf<TypeKey, BindingStack.Entry>()
+
+  // Thin immutable view over the internal bindings
+  fun bindingsSnapshot(): Map<TypeKey, Binding> = bindings
 
   fun addAccessor(key: ContextualTypeKey, entry: BindingStack.Entry) {
     accessors[key] = entry
+  }
+
+  fun addInjector(key: TypeKey, entry: BindingStack.Entry) {
+    injectors[key] = entry
   }
 
   fun addBinding(key: TypeKey, binding: Binding, bindingStack: BindingStack) {
@@ -35,10 +44,23 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     }
     if (bindings.containsKey(key)) {
       val message = buildString {
-        appendLine("Duplicate binding for ${key.render(short = false, includeQualifier = true)}")
+        appendLine(
+          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+        )
+        val existing = bindings.getValue(key)
+        val duplicate = binding
+        appendLine("├─ Binding 1: ${existing.getContributionLocationOrDiagnosticInfo()}")
+        appendLine("├─ Binding 2: ${duplicate.getContributionLocationOrDiagnosticInfo()}")
+        if (existing == duplicate) {
+          appendLine("├─ Bindings are equal ${bindingStack.graph.name}")
+          appendLine(Throwable().stackTraceToString().lineSequence().joinToString { "\n├─ $it" })
+        }
+        if (existing === duplicate) {
+          appendLine("├─ Bindings are the same: ${bindingStack.graph.name}")
+        }
         appendBindingStack(bindingStack)
       }
-      val location = binding.reportableLocation ?: bindingStack.graph.location()
+      val location = bindingStack.graph.location()
       metroContext.reportError(message, location)
       exitProcessing()
     }
@@ -67,8 +89,11 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           // Recursively follow deps from its constructor params
           getConstructorDependencies(bindingStack, binding.injectedConstructor)
         }
+        is Binding.Alias -> {
+          setOf(ContextualTypeKey(binding.aliasedType))
+        }
         is Binding.Provided -> {
-          getFunctionDependencies(binding.providerFunction, bindingStack)
+          getFunctionDependencies(binding.providerFactory.providesFunction, bindingStack)
         }
         is Binding.Assisted -> {
           val targetConstructor = binding.target.injectedConstructor
@@ -79,7 +104,15 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           // This type's dependencies are just its providers' dependencies
           // TODO dedupe logic with above
           binding.sourceBindings.flatMapTo(mutableSetOf()) { sourceBinding ->
-            getFunctionDependencies(sourceBinding.providerFunction, bindingStack)
+            when (sourceBinding) {
+              is Binding.Provided -> {
+                sourceBinding.parameters.valueParameters.mapToSet { it.contextualTypeKey }
+              }
+              is Binding.Alias -> {
+                setOf(ContextualTypeKey(sourceBinding.aliasedType))
+              }
+              else -> error("Not possible")
+            }
           }
         }
         is Binding.MembersInjected -> {
@@ -93,21 +126,13 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     }
   }
 
+  fun findBinding(key: TypeKey): Binding? = bindings[key]
+
   // For bindings we expect to already be cached
   fun requireBinding(key: TypeKey, stack: BindingStack): Binding =
     bindings[key]
       ?: run {
-        stack.push(
-          BindingStack.Entry.simpleTypeRef(
-            ContextualTypeKey(
-              key,
-              isWrappedInProvider = false,
-              isWrappedInLazy = false,
-              isLazyWrappedInProvider = false,
-              hasDefault = false,
-            )
-          )
-        )
+        stack.push(BindingStack.Entry.simpleTypeRef(ContextualTypeKey.create(key)))
         val message = buildString {
           appendLine("No binding found for $key")
           appendBindingStack(stack)
@@ -124,22 +149,31 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     typeKey: TypeKey,
     bindingStack: BindingStack,
   ): Binding.Multibinding {
-    return bindings.getOrPut(typeKey) {
-      Binding.Multibinding.create(metroContext, typeKey, null).also {
-        addBinding(typeKey, it, bindingStack)
-        // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
-        if (it.isMap) {
-          val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
-          val valueType =
-            typeKey.type.arguments[1]
-              .typeOrNull!!
-              .wrapInProvider(this@BindingGraph.metroContext.symbols.metroProvider)
-          val providerTypeKey =
-            typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
-          addBinding(providerTypeKey, it, bindingStack)
+    val binding =
+      bindings.getOrPut(typeKey) {
+        Binding.Multibinding.create(metroContext, typeKey, null).also {
+          addBinding(typeKey, it, bindingStack)
+          // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
+          if (it.isMap) {
+            val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
+            val valueType =
+              typeKey.type.arguments[1]
+                .typeOrNull!!
+                .wrapInProvider(this@BindingGraph.metroContext.symbols.metroProvider)
+            val providerTypeKey =
+              typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+            addBinding(providerTypeKey, it, bindingStack)
+          }
         }
       }
-    } as Binding.Multibinding
+
+    return binding as? Binding.Multibinding
+      ?: error(
+        """
+        Expected a multibinding but got $binding.
+      """
+          .trimIndent()
+      )
   }
 
   fun getOrCreateBinding(contextKey: ContextualTypeKey, bindingStack: BindingStack): Binding {
@@ -149,14 +183,17 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       return existingBinding
     }
 
-    return metroContext.createInjectedClassBindingOrFail(contextKey, bindingStack, this).also {
-      binding ->
-      if (binding is Binding.Absent) {
-        // Don't store this
-        return binding
+    val binding = metroContext.injectedClassBindingOrNull(contextKey, bindingStack, this)
+    when (binding) {
+      is Binding.Absent -> {
+        // Do nothing, don't store this
       }
-      addBinding(key, binding, bindingStack)
+      is Binding -> {
+        addBinding(key, binding, bindingStack)
+      }
+      null -> reportMissingBinding(key, bindingStack)
     }
+    return binding
   }
 
   operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
@@ -164,6 +201,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
   fun validate(node: DependencyGraphNode, onError: (String) -> Nothing): Set<TypeKey> {
     val deferredTypes = checkCycles(node, onError)
     checkMissingDependencies(onError)
+    checkEmptyMultibindings(onError)
     return deferredTypes
   }
 
@@ -247,7 +285,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           "Visiting dependency ${contextDep.typeKey.render(short = true)} from ${key.render(short = true)}"
         )
         val dep = contextDep.typeKey
-        val dependencyBinding = requireBinding(dep, stack)
+        val dependencyBinding = getOrCreateBinding(contextDep, stack)
         val nextEntry =
           bindingStackEntryForDependency(
             binding = binding,
@@ -259,12 +297,21 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     }
 
     for ((key, entry) in accessors) {
-      stackLogger.log("Traversing from root: ${key.typeKey}")
+      stackLogger.log("Traversing from accessor root: ${key.typeKey}")
       stack.withEntry(entry) {
         val binding = getOrCreateBinding(key, stack)
         dfs(binding)
       }
-      stackLogger.log("End traversing from root: ${key.typeKey}")
+      stackLogger.log("End traversing from accessor root: ${key.typeKey}")
+    }
+
+    for ((key, entry) in injectors) {
+      stackLogger.log("Traversing from injector root: $key")
+      stack.withEntry(entry) {
+        val binding = getOrCreateBinding(ContextualTypeKey(key), stack)
+        dfs(binding)
+      }
+      stackLogger.log("End traversing from injector root: $key")
     }
     stackLogger.log(
       "End validation of ${node.sourceGraph.kotlinFqName.asString()}. Deferred types are $deferredTypes"
@@ -276,7 +323,90 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     val allDeps = dependencies.values.map { it.value }.flatten().mapToSet { it.typeKey }
     val missing = allDeps - bindings.keys
     if (missing.isNotEmpty()) {
-      onError("Missing bindings for: $missing")
+      onError("[Metro/MissingBinding] Missing bindings for: $missing")
+    }
+  }
+
+  private fun checkEmptyMultibindings(onError: (String) -> Nothing) {
+    val multibindings = bindings.values.filterIsInstance<Binding.Multibinding>()
+    for (multibinding in multibindings) {
+      if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
+        val message = buildString {
+          appendLine(
+            "[Metro/EmptyMultibinding] Multibinding '${multibinding.typeKey}' was unexpectedly empty."
+          )
+          appendLine()
+          appendLine(
+            "If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`."
+          )
+
+          val similarBindings = findSimilarMultibindings(multibinding, multibindings).toList()
+          if (similarBindings.isNotEmpty()) {
+            appendLine()
+            appendLine("Similar multibindings:")
+            val reported = mutableSetOf<TypeKey>()
+            for (key in similarBindings) {
+              if (key in reported) continue
+              appendLine("- ${key.render(short = true)}")
+              reported += key
+            }
+          }
+        }
+        onError(message)
+      }
+    }
+  }
+
+  private fun findSimilarMultibindings(
+    multibinding: Binding.Multibinding,
+    multibindings: List<Binding.Multibinding>,
+  ): Sequence<TypeKey> = sequence {
+    if (multibinding.isMap) {
+      val keyType = multibinding.typeKey.requireMapKeyType()
+      val valueType = multibinding.typeKey.requireMapValueType()
+      val similarKeys =
+        multibindings
+          .filter { it.isMap && it != multibinding && it.typeKey.requireMapKeyType() == keyType }
+          .map { it.typeKey }
+
+      yieldAll(similarKeys)
+
+      val similarValues =
+        multibindings
+          .filter {
+            if (!it.isMap) return@filter false
+            if (it == multibinding) return@filter false
+            val otherValueType = it.typeKey.requireMapValueType()
+            if (valueType == otherValueType) return@filter true
+            if (valueType.isSubtypeOf(otherValueType, metroContext.irTypeSystemContext))
+              return@filter true
+            if (otherValueType.isSubtypeOf(valueType, metroContext.irTypeSystemContext))
+              return@filter true
+            false
+          }
+          .map { it.typeKey }
+
+      yieldAll(similarValues)
+    } else {
+      // Set binding
+      val elementType = multibinding.typeKey.requireSetElementType()
+
+      val similar =
+        multibindings
+          .filter {
+            if (!it.isSet) return@filter false
+            if (it == multibinding) return@filter false
+            val otherElementType = it.typeKey.requireSetElementType()
+            if (elementType == otherElementType) return@filter true
+            if (elementType.isSubtypeOf(otherElementType, metroContext.irTypeSystemContext))
+              return@filter true
+            if (otherElementType.isSubtypeOf(elementType, metroContext.irTypeSystemContext))
+              return@filter true
+            false
+          }
+          .map { it.typeKey }
+
+      yieldAll(similar)
     }
   }
 
@@ -333,12 +463,89 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
     }
   }
 
+  private fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack): Nothing {
+    val declarationToReport = bindingStack.lastEntryOrGraph
+    val message = buildString {
+      append(
+        "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
+      )
+      appendLine(typeKey.render(short = false))
+      appendLine()
+      appendBindingStack(bindingStack, short = false)
+      val similarBindings = findSimilarBindings(typeKey)
+      if (similarBindings.isNotEmpty()) {
+        appendLine()
+        appendLine("Similar bindings:")
+        similarBindings.map { "  - $it" }.sorted().forEach(::appendLine)
+      }
+      if (metroContext.debug) {
+        appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
+      }
+    }
+
+    with(metroContext) { declarationToReport.reportError(message) }
+
+    exitProcessing()
+  }
+
+  // TODO
+  //  - exclude types _in_ multibindings
+  //  - same type with diff nullability
+  private fun findSimilarBindings(key: TypeKey): List<SimilarBinding> {
+    val similarBindings = mutableListOf<SimilarBinding>()
+
+    // Same type with different qualifier
+    if (key.qualifier != null) {
+      findBinding(key.copy(qualifier = null))?.let {
+        similarBindings.add(SimilarBinding(it, "Different qualifier"))
+      }
+    }
+
+    // Little more involved, iterate the bindings for ones with the same type
+    bindings.forEach { (bindingKey, binding) ->
+      when {
+        key.qualifier == null && bindingKey.type == key.type -> {
+          similarBindings.add(SimilarBinding(binding, "Different qualifier"))
+        }
+        binding is Binding.Multibinding -> {
+          val valueType =
+            if (binding.isSet) {
+              (bindingKey.type.type as IrSimpleType).arguments[0].typeOrFail
+            } else {
+              // Map binding
+              (bindingKey.type.type as IrSimpleType).arguments[1].typeOrFail
+            }
+          if (valueType == key.type) {
+            similarBindings.add(SimilarBinding(binding, "Multibinding"))
+          }
+        }
+        bindingKey.type == key.type -> {
+          // Already covered above but here to avoid falling through to the subtype checks
+          // below as they would always return true for this
+        }
+        bindingKey.type.isSubtypeOf(key.type, metroContext.irTypeSystemContext) -> {
+          similarBindings.add(SimilarBinding(binding, "Subtype"))
+        }
+        key.type.type.isSubtypeOf(bindingKey.type, metroContext.irTypeSystemContext) -> {
+          similarBindings.add(SimilarBinding(binding, "Supertype"))
+        }
+      }
+    }
+
+    // TODO filter out source bindings in multibindings? Should be covered though
+    return similarBindings
+  }
+
   private fun Appendable.appendBinding(binding: Binding, short: Boolean, isNested: Boolean) {
     appendLine("Type: ${binding.typeKey.render(short)}")
     appendLine("├─ Binding: ${binding::class.simpleName}")
     appendLine("├─ Contextual Type: ${binding.contextualTypeKey.render(short)}")
 
     binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
+
+    if (binding is Binding.Alias) {
+      appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
+    }
 
     if (binding.dependencies.isNotEmpty()) {
       appendLine("├─ Dependencies:")
@@ -365,6 +572,23 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       }
     }
 
-    binding.reportableLocation?.let { location -> appendLine("└─ Location: $location") }
+    binding.reportableLocation?.let { location -> appendLine("└─ Location: ${location.render()}") }
+  }
+
+  data class SimilarBinding(val binding: Binding, val description: String) {
+    override fun toString(): String {
+      return buildString {
+        append(binding.typeKey.render(short = true))
+        append(" (")
+        append(description)
+        append("). Type: ")
+        append(binding.javaClass.simpleName)
+        append('.')
+        binding.reportableLocation?.render()?.let {
+          append(" Source: ")
+          append(it)
+        }
+      }
+    }
   }
 }

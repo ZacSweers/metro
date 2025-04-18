@@ -12,6 +12,9 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.predicates
+import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -24,13 +27,16 @@ import org.jetbrains.kotlin.fir.computeTypeAttributes
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
-import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.java.FirCliSession
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
@@ -45,6 +51,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.CompilerConeAttributes
@@ -67,17 +74,14 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.types.ConstantValueKind
 
 /** Generates factory declarations for `@Provides`-annotated members. */
 internal class ProvidesFactoryFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
-  private val providesAnnotationPredicate by unsafeLazy {
-    annotated(session.classIds.providesAnnotations.map { it.asSingleFqName() })
-  }
-
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(providesAnnotationPredicate)
+    register(session.predicates.providesAnnotationPredicate)
   }
 
   // TODO apparently writing these types of caches is bad and
@@ -233,7 +237,13 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           Keys.ProviderFactoryClassDeclaration,
           classKind = classKind,
         )
-        .apply { markAsDeprecatedHidden(session) }
+        .apply {
+          markAsDeprecatedHidden(session)
+          // Add the source callable info
+          replaceAnnotationsSafe(
+            annotations + listOf(buildProvidesCallableIdAnnotation(sourceCallable))
+          )
+        }
         .symbol
         .also { providerFactoryClassIdsToSymbols[it.classId] = it }
     } else {
@@ -251,6 +261,40 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
         else -> return null
       }
     return ProviderCallable(owner, this, instanceReceiver, params)
+  }
+
+  private fun buildProvidesCallableIdAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
+    return buildAnnotation {
+      val anno = session.metroFirBuiltIns.providesCallableIdClassSymbol
+
+      annotationTypeRef = anno.defaultType().toFirResolvedTypeRef()
+
+      argumentMapping = buildAnnotationArgumentMapping {
+        mapping[Name.identifier("callableName")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.String,
+            value = sourceCallable.callableId.callableName.asString(),
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+        mapping[Name.identifier("isPropertyAccessor")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Boolean,
+            value =
+              when (sourceCallable.symbol) {
+                is FirPropertyAccessorSymbol,
+                is FirPropertySymbol -> true
+                else -> false
+              },
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+      }
+    }
   }
 
   class ProviderCallable(
@@ -383,10 +427,10 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     typeResolver: TypeResolveService,
   ): ConeClassLikeType? {
     val parametersWithNulls =
-      typeRef.contextReceiverTypeRefs.map { it.coneTypeLayered(typeResolver) } +
+      typeRef.contextParameterTypeRefs.map { it.coneTypeLayered(typeResolver) } +
         listOfNotNull(typeRef.receiverTypeRef?.coneTypeLayered(typeResolver)) +
         typeRef.parameters.map {
-          it.returnTypeRef.coneTypeLayered(typeResolver)?.withParameterNameAnnotation(it, session)
+          it.returnTypeRef.coneTypeLayered(typeResolver)?.withParameterNameAnnotation(it)
         } +
         listOf(typeRef.returnTypeRef.coneTypeLayered(typeResolver))
     val parameters = parametersWithNulls.filterNotNull()
@@ -424,10 +468,10 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
               add(CompilerConeAttributes.ExtensionFunctionType)
             }
 
-            if (typeRef.contextReceiverTypeRefs.isNotEmpty()) {
+            if (typeRef.contextParameterTypeRefs.isNotEmpty()) {
               add(
                 CompilerConeAttributes.ContextFunctionTypeParams(
-                  typeRef.contextReceiverTypeRefs.size
+                  typeRef.contextParameterTypeRefs.size
                 )
               )
             }

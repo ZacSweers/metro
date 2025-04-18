@@ -6,6 +6,7 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.MembersInjector
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleClass
+import dev.zacsweers.metro.compiler.ExampleClass2
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.callFunction
@@ -564,6 +565,41 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `multiple members injection on a single graph are permitted`() {
+    compile(
+      source(
+        """
+        @DependencyGraph
+        interface ExampleGraph {
+          @DependencyGraph.Factory
+          fun interface Factory {
+            fun create(@Provides value: Any): ExampleGraph
+          }
+          fun inject(exampleClass1: ExampleClass)
+          fun inject(exampleClass2: ExampleClass2)
+        }
+
+        class ExampleClass {
+          @Inject lateinit var value: Any
+        }
+        class ExampleClass2 {
+          @Inject lateinit var value: Any
+        }
+      """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3)
+      val instance = ExampleClass.newInstanceStrict()
+      val instance2 = ExampleClass2.newInstanceStrict()
+      graph.callInject(instance)
+      graph.callInject(instance2)
+      assertThat(instance.callProperty<Any>("value")).isEqualTo(3)
+      assertThat(instance2.callProperty<Any>("value")).isEqualTo(3)
+    }
+  }
+
+  @Test
   fun `graph empty inject function`() {
     compile(
       source(
@@ -854,6 +890,36 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
       assertThat(instance.callProperty<Long>("long")).isEqualTo(4L)
+    }
+  }
+
+  @Test
+  fun `graph inject function - member's dependency bindings should be picked up by graph`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              fun inject(exampleClass: ExampleClass)
+            }
+            class ExampleClass {
+              var int: Int = 0
+              @Inject fun injectValues(dependency: Dependency) {
+                this.int = dependency.int
+              }
+            }
+            @Inject
+            class Dependency {
+              val int: Int = 3
+            }
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val instance = ExampleClass.newInstanceStrict()
+      graph.callInject(instance)
+      assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
     }
   }
 }

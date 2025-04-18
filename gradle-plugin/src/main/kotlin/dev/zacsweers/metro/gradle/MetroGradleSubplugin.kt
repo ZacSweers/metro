@@ -10,11 +10,12 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
+import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
 
 public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun apply(target: Project) {
-    target.extensions.create("metro", MetroPluginExtension::class.java)
+    target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
   }
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
@@ -22,7 +23,31 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   override fun getPluginArtifact(): SubpluginArtifact =
       SubpluginArtifact(groupId = "dev.zacsweers.metro", artifactId = "compiler", version = VERSION)
 
-  override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean = true
+  override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
+    val project = kotlinCompilation.target.project
+
+    // Check version and show warning by default.
+    val checkVersions =
+        project.extensions
+            .getByType(MetroPluginExtension::class.java)
+            .enableKotlinVersionCompatibilityChecks
+            .getOrElse(true)
+    if (checkVersions) {
+      val metroVersion = VersionNumber.parse(BASE_KOTLIN_VERSION)
+      val kotlinVersion = VersionNumber.parse(project.getKotlinPluginVersion())
+      if (metroVersion < kotlinVersion) {
+        project.logger.warn(
+            "Metro '$VERSION' is too old for Kotlin '$kotlinVersion'. " +
+                "Please upgrade Metro or downgrade Kotlin to '$BASE_KOTLIN_VERSION'.")
+      } else if (metroVersion > kotlinVersion) {
+        project.logger.warn(
+            "Metro '$VERSION' is too new for Kotlin '$kotlinVersion'. " +
+                "Please upgrade Kotlin to '$BASE_KOTLIN_VERSION'.")
+      }
+    }
+
+    return true
+  }
 
   override fun applyToCompilation(
       kotlinCompilation: KotlinCompilation<*>
@@ -35,10 +60,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         "dev.zacsweers.metro:runtime:$VERSION",
     )
     if (kotlinCompilation.implementationConfigurationName == "metadataCompilationImplementation") {
-      project.dependencies.add(
-          "commonMainImplementation",
-          "dev.zacsweers.metro:runtime:$VERSION",
-      )
+      project.dependencies.add("commonMainImplementation", "dev.zacsweers.metro:runtime:$VERSION")
     }
 
     val isJvmTarget =
@@ -57,9 +79,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("debug", extension.debug))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
+        add(lazyOption("generate-hint-properties", extension.generateHintProperties))
         add(
             lazyOption(
-                "enable-top-level-function-injection", extension.enableTopLevelFunctionInjection))
+                "enable-top-level-function-injection",
+                extension.enableTopLevelFunctionInjection,
+            ))
         extension.reportsDestination.orNull
             ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
             ?.let(::add)
@@ -68,7 +93,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
           add(
               SubpluginOption(
                   "enable-dagger-runtime-interop",
-                  extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString()))
+                  extension.interop.enableDaggerRuntimeInterop.getOrElse(false).toString(),
+              ))
         }
 
         with(extension.interop) {
@@ -111,6 +137,11 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               .getOrElse(emptySet())
               .takeUnless { it.isEmpty() }
               ?.let { SubpluginOption("custom-contributes-binding", value = it.joinToString(":")) }
+              ?.let(::add)
+          contributesIntoSet
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
               ?.let(::add)
           elementsIntoSet
               .getOrElse(emptySet())
@@ -167,6 +198,11 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               .takeUnless { it.isEmpty() }
               ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
               ?.let(::add)
+          add(
+              SubpluginOption(
+                  "enable-dagger-anvil-interop",
+                  value = enableDaggerAnvilInterop.getOrElse(false).toString(),
+              ))
         }
       }
     }

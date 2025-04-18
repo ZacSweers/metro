@@ -13,41 +13,59 @@
 # limitations under the License.
 
 [versions]
-autoService = "1.1.1"
+agp = "8.9.1"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
-dagger = "2.55"
-kct = "0.7.0"
-kotlin = "2.1.10"
-kotlinInject = "0.7.2"
-kotlinInject-anvil = "0.1.2"
-kotlinx-coroutines = "1.10.1"
-kotlinx-serialization = "1.8.0"
-ktor = "3.1.1"
+autoService = "1.1.1"
+circuit = "0.27.1"
+compose-jb = "1.7.3"
+dagger = "2.56.2"
+gjf = "1.26.0"
 jdk = "23"
 jvmTarget = "11"
-ksp = "2.1.10-1.0.31"
+kct = "0.7.0"
+kotlin = "2.1.20"
+kotlinInject = "0.7.2"
+kotlinInject-anvil = "0.1.4"
+kotlinx-coroutines = "1.10.2"
+kotlinx-serialization = "1.8.1"
+ksp = "2.1.20-2.0.0"
 ktfmt = "0.54"
+ktor = "3.1.2"
 okhttp = "5.0.0-alpha.14"
-okio = "3.10.2"
+okio = "3.11.0"
 pluginId = "dev.zacsweers.metro.compiler"
+wire = "5.3.1"
 
 [plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.17.0" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.5.1" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.2" }
 dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.30.0" }
-poko = { id = "dev.drewhamilton.poko", version = "0.18.2" }
-spotless = { id = "com.diffplug.spotless", version = "7.0.2" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.31.0" }
+poko = { id = "dev.drewhamilton.poko", version = "0.18.6" }
+shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta12" }
+spotless = { id = "com.diffplug.spotless", version = "7.0.3" }
+wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
+androidx-appcompat = "androidx.appcompat:appcompat:1.7.0"
+androidx-activity = "androidx.activity:activity-compose:1.10.1"
+androidx-core = "androidx.core:core-ktx:1.16.0"
+androidx-fragment = "androidx.fragment:fragment-ktx:1.8.6"
+androidx-material3 = "com.google.android.material:material:1.12.0"
+androidx-viewmodel = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7"
+
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
 
@@ -57,6 +75,17 @@ autoService-ksp = { module = "dev.zacsweers.autoservice:auto-service-ksp", versi
 atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu" }
 
 clikt = "com.github.ajalt.clikt:clikt:5.0.3"
+
+circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
+circuit-foundation = { module = "com.slack.circuit:circuit-foundation", version.ref = "circuit" }
+circuit-runtime = { module = "com.slack.circuit:circuit-runtime", version.ref = "circuit" }
+circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annotations", version.ref = "circuit" }
+
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
+compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "compose-jb" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-jb" }
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 
 coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
@@ -71,19 +100,25 @@ kotlinInject-anvil-runtime = { module = "software.amazon.lastmile.kotlin.inject.
 kotlinInject-anvil-runtime-optional = { module = "software.amazon.lastmile.kotlin.inject.anvil:runtime-optional", version.ref = "kotlinInject-anvil" }
 
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
+kotlin-annotationsJvm = { module = "org.jetbrains.kotlin:kotlin-annotations-jvm", version.ref = "kotlin" }
+kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler", version.ref = "kotlin" }
 kotlin-compilerEmbeddable = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin" }
+kotlin-compilerTestFramework = { module = "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework", version.ref = "kotlin" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-gradlePlugin-api = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin-api", version.ref = "kotlin" }
 kotlin-aptEmbeddable = { module = "org.jetbrains.kotlin:kotlin-annotation-processing-embeddable", version.ref = "kotlin" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-scriptRuntime = { module = "org.jetbrains.kotlin:kotlin-script-runtime", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-testJunit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
 
 kotlinx-serialization-json-okio = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-okio", version.ref = "kotlinx-serialization" }
 kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.6.2"
 
 # Only present to trigger automatic renovate updates
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
+gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
 
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
@@ -106,3 +141,5 @@ junit = { module = "junit:junit", version = "4.13.2" }
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
 kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }
+
+wire-runtime = { module = "com.squareup.wire:wire-runtime-jvm", version.ref = "wire" }

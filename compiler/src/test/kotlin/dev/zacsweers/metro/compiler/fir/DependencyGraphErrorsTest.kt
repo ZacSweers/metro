@@ -362,4 +362,111 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics("sdaf")
   }
+
+  @Test
+  fun `all factory parameters must be annotated with Provides XOR Includes XOR Extends`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Provides value: String, value2: Int): ExampleGraph
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:41 DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends."
+    )
+  }
+
+  @Test
+  fun `Includes cannot be platform types enums or annotation classes`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              annotation class AnnotationClass
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(
+                  @Includes value: SomeEnum,
+                  @Includes value2: Int,
+                  @Includes value3: AnnotationClass,
+                ): ExampleGraph
+              }
+            }
+
+            enum class SomeEnum { VALUE1 }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:13:17 @Includes cannot be applied to enums, annotations, or platform types.
+        e: ExampleGraph.kt:15:17 @Includes cannot be applied to enums, annotations, or platform types.
+      """
+        .trimIndent()
+    )
+  }
+
+  @Test
+  fun `Extends type must be a DependencyGraph-annotated type`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Extends value: String): ExampleGraph
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:25 @Extends types must be annotated with @DependencyGraph."
+    )
+  }
+
+  @Test
+  fun `Extends type must be a DependencyGraph isExtendable`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Extends value: FinalClassGraph): ExampleGraph
+              }
+            }
+
+            @DependencyGraph
+            interface FinalClassGraph
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:25 @Extends graphs must be extendable (set DependencyGraph.isExtendable to true)."
+    )
+  }
 }

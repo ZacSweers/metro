@@ -1,0 +1,3 @@
+/CreateGraph_MustBeGraphFactory.kt:(253,276): error: `createGraphFactory` type argument 'ExampleGraphWithFactory' must be annotated with a `@DependencyGraph.Factory` annotation.
+
+/CreateGraph_MustBeGraphFactory.kt:(333,351): error: `createGraphFactory` type argument 'ExampleGraphWithFactory' must be annotated with a `@DependencyGraph.Factory` annotation.

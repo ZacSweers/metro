@@ -1,0 +1,1 @@
+/ProvidedInjectedClassesWithMatchingTypeKeysAreReportedAsWarnings.kt:(154,173): warning: Provided type 'ExampleClass' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.

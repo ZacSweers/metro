@@ -57,8 +57,8 @@ public fun <T : Any> MetroProvider<T>.asJakartaProvider(): JakartaProvider<T> =
  *
  * @return A [dagger.Lazy] that delegates its invocation to the source [Lazy].
  */
-public fun <T : Any> Lazy<T>.asKotlinLazy(): dagger.Lazy<T> =
-  dagger.Lazy<T> { this@asKotlinLazy.value }
+public fun <T : Any> Lazy<T>.asDaggerLazy(): dagger.Lazy<T> =
+  dagger.Lazy<T> { this@asDaggerLazy.value }
 
 /**
  * Converts a Metro [MetroMembersInjector] into a Dagger [DaggerMembersInjector].
@@ -76,4 +76,6 @@ public fun <T : Any> MetroMembersInjector<T>.asDaggerMembersInjector(): DaggerMe
  *   [DaggerMembersInjector].
  */
 public fun <T : Any> DaggerMembersInjector<T>.asMetroMembersInjector(): MetroMembersInjector<T> =
-  MetroMembersInjector<T> { instance -> this@asMetroMembersInjector.injectMembers(instance) }
+  MetroMembersInjector { instance ->
+    this@asMetroMembersInjector.injectMembers(instance)
+  }

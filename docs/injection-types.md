@@ -220,7 +220,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(message: String): AppGraph
+    fun create(@Provides message: String): AppGraph
   }
 }
 
@@ -306,4 +306,5 @@ metro {
 
 ### Implementation notes
 
-This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
+- This is fairly different from kotlin-inject’s typealias approach. This is necessary because Metro doesn’t use higher order function types or typealiases as qualifiers.
+- Since the compose-compiler's IR transformer may run _before_ Metro's, we check for this during implementation body generation and look up the transformed target composable function as needed.

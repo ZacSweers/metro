@@ -28,18 +28,23 @@ kotlin {
     }
   }
 
-  targets
-    .matching { it.platformType == KotlinPlatformType.js }
-    .configureEach {
-      compilations.configureEach {
-        compileTaskProvider.configure {
-          // These are all read at compile-time
+  targets.configureEach {
+    val target = this
+    compilations.configureEach {
+      compileTaskProvider.configure {
+        compilerOptions.freeCompilerArgs.add(
+          // Big yikes in how this was rolled out as noisy compiler warnings
+          "-Xannotation-default-target=param-property"
+        )
+        if (target.platformType == KotlinPlatformType.js) {
           compilerOptions.freeCompilerArgs.add(
+            // These are all read at compile-time
             "-Xsuppress-warning=RUNTIME_ANNOTATION_NOT_SUPPORTED"
           )
         }
       }
     }
+  }
 }
 
 metro { debug.set(false) }

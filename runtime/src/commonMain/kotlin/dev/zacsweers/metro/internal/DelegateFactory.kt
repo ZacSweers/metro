@@ -43,7 +43,7 @@ public class DelegateFactory<T : Any> : Factory<T> {
      */
     public fun <T : Any> setDelegate(delegateFactory: Provider<T>, delegate: Provider<T>) {
       val asDelegateFactory = delegateFactory as DelegateFactory<T>
-      setDelegateInternal<T>(asDelegateFactory, delegate)
+      setDelegateInternal(asDelegateFactory, delegate)
     }
 
     private fun <T : Any> setDelegateInternal(

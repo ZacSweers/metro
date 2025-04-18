@@ -29,10 +29,11 @@ plugins {
   alias(libs.plugins.spotless)
   alias(libs.plugins.binaryCompatibilityValidator)
   alias(libs.plugins.poko) apply false
+  alias(libs.plugins.wire) apply false
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "integration-tests")
+  ignoredProjects += listOf("compiler", "compiler-tests", "integration-tests")
   ignoredPackages += listOf("dev.zacsweers.metro.internal")
   @OptIn(ExperimentalBCVApi::class)
   klib {
@@ -58,12 +59,22 @@ allprojects {
       leadingTabsToSpaces(2)
       endWithNewline()
     }
+    java {
+      target("src/**/*.java")
+      googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true)
+      trimTrailingWhitespace()
+      endWithNewline()
+      targetExclude("**/spotless.java")
+      targetExclude("**/src/test/data/**")
+      targetExclude("**/*Generated.java")
+    }
     kotlin {
       target("src/**/*.kt")
       ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
+      targetExclude("**/src/test/data/**")
     }
     kotlinGradle {
       target("*.kts")
@@ -77,10 +88,11 @@ allprojects {
     }
     // Apply license formatting separately for kotlin files so we can prevent it from overwriting
     // copied files
-    format("license") {
+    format("licenseKotlin") {
       licenseHeaderFile(rootProject.file("spotless/spotless.kt"), "(package|@file:)")
       target("src/**/*.kt")
       targetExclude(
+        "**/src/test/data/**",
         "**/AbstractMapFactory.kt",
         "**/Assisted.kt",
         "**/AssistedFactory.kt",
@@ -104,6 +116,7 @@ allprojects {
         "**/Multibinds.kt",
         "**/NameAllocator.kt",
         "**/NameAllocatorTest.kt",
+        "**/MemoizedSequence.kt",
         "**/ProviderOfLazy.kt",
         "**/SetFactory.kt",
         "**/SetFactoryTest.kt",
@@ -111,6 +124,11 @@ allprojects {
         "**/cycles/CyclesTest.kt",
         "**/cycles/LongCycle.kt",
       )
+    }
+    format("licenseJava") {
+      licenseHeaderFile(rootProject.file("spotless/spotless.java"), "package")
+      target("src/**/*.java")
+      targetExclude("**/*Generated.java")
     }
   }
 }

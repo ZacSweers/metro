@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 
-internal class MetroFirExtensionRegistrar(
+public class MetroFirExtensionRegistrar(
   private val classIds: ClassIds,
   private val options: MetroOptions,
 ) : FirExtensionRegistrar() {
@@ -31,7 +31,7 @@ internal class MetroFirExtensionRegistrar(
     +supertypeGenerator("Supertypes - graph factory", ::GraphFactoryFirSupertypeGenerator, false)
     +supertypeGenerator(
       "Supertypes - contributed interfaces",
-      ContributedInterfaceSupertypeGenerator.Factory(classIds)::create,
+      ::ContributedInterfaceSupertypeGenerator,
       false,
     )
     +supertypeGenerator(

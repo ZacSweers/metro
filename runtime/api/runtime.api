@@ -11,15 +11,12 @@ public abstract interface annotation class dev/zacsweers/metro/AssistedFactory :
 public abstract interface annotation class dev/zacsweers/metro/Binds : java/lang/annotation/Annotation {
 }
 
-public abstract interface annotation class dev/zacsweers/metro/BoundType : java/lang/annotation/Annotation {
-}
-
 public abstract interface annotation class dev/zacsweers/metro/ClassKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/Class;
 }
 
 public abstract interface annotation class dev/zacsweers/metro/ContributesBinding : java/lang/annotation/Annotation {
-	public abstract fun boundType ()Ldev/zacsweers/metro/BoundType;
+	public abstract fun binding ()Ldev/zacsweers/metro/binding;
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
@@ -29,7 +26,7 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesBindin
 }
 
 public abstract interface annotation class dev/zacsweers/metro/ContributesIntoMap : java/lang/annotation/Annotation {
-	public abstract fun boundType ()Ldev/zacsweers/metro/BoundType;
+	public abstract fun binding ()Ldev/zacsweers/metro/binding;
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
@@ -39,7 +36,7 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesIntoMa
 }
 
 public abstract interface annotation class dev/zacsweers/metro/ContributesIntoSet : java/lang/annotation/Annotation {
-	public abstract fun boundType ()Ldev/zacsweers/metro/BoundType;
+	public abstract fun binding ()Ldev/zacsweers/metro/binding;
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
@@ -60,6 +57,7 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesTo$Con
 public abstract interface annotation class dev/zacsweers/metro/DependencyGraph : java/lang/annotation/Annotation {
 	public abstract fun additionalScopes ()[Ljava/lang/Class;
 	public abstract fun excludes ()[Ljava/lang/Class;
+	public abstract fun isExtendable ()Z
 	public abstract fun scope ()Ljava/lang/Class;
 }
 
@@ -69,8 +67,14 @@ public abstract interface annotation class dev/zacsweers/metro/DependencyGraph$F
 public abstract interface annotation class dev/zacsweers/metro/ElementsIntoSet : java/lang/annotation/Annotation {
 }
 
+public abstract interface annotation class dev/zacsweers/metro/Extends : java/lang/annotation/Annotation {
+}
+
 public abstract interface annotation class dev/zacsweers/metro/ForScope : java/lang/annotation/Annotation {
 	public abstract fun scope ()Ljava/lang/Class;
+}
+
+public abstract interface annotation class dev/zacsweers/metro/Includes : java/lang/annotation/Annotation {
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Inject : java/lang/annotation/Annotation {
@@ -95,6 +99,7 @@ public abstract interface class dev/zacsweers/metro/MembersInjector {
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Multibinds : java/lang/annotation/Annotation {
+	public abstract fun allowEmpty ()Z
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Named : java/lang/annotation/Annotation {
@@ -129,5 +134,8 @@ public abstract interface annotation class dev/zacsweers/metro/SingleIn$Containe
 
 public abstract interface annotation class dev/zacsweers/metro/StringKey : java/lang/annotation/Annotation {
 	public abstract fun value ()Ljava/lang/String;
+}
+
+public abstract interface annotation class dev/zacsweers/metro/binding : java/lang/annotation/Annotation {
 }
 

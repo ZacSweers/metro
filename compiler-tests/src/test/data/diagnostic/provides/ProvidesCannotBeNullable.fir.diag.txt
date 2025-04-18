@@ -1,0 +1,5 @@
+/ProvidesCannotBeNullable.kt:(110,123): error: Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+
+/ProvidesCannotBeNullable.kt:(158,169): error: Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153
+
+/ProvidesCannotBeNullable.kt:(228,238): error: Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153

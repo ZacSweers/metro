@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -14,11 +15,12 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 
 internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
-    declaration.source ?: return
+    val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
 
@@ -32,6 +34,13 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
 
     val isInjected = classInjectAnnotation.isNotEmpty() || injectedConstructor != null
     if (!isInjected) return
+
+    declaration
+      .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
+      ?.let {
+        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR, context)
+        return
+      }
 
     if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
       reporter.reportOn(

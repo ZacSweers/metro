@@ -17,13 +17,13 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.unsafeLazy
-import kotlin.collections.set
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -44,7 +44,6 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
-import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
@@ -76,22 +75,14 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 internal class InjectedClassFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
-  private val injectAnnotationPredicate by unsafeLazy {
-    annotated(
-      session.classIds.injectAnnotations
-        .plus(session.classIds.assistedAnnotations)
-        .map(ClassId::asSingleFqName)
-    )
-  }
-
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(injectAnnotationPredicate)
+    register(session.predicates.injectAndAssistedAnnotationPredicate)
   }
 
   private val symbols: FirCache<Unit, Map<ClassId, FirNamedFunctionSymbol>, TypeResolveService?> =
     session.firCachesFactory.createCache { _, _ ->
       session.predicateBasedProvider
-        .getSymbolsByPredicate(injectAnnotationPredicate)
+        .getSymbolsByPredicate(session.predicates.injectAndAssistedAnnotationPredicate)
         .filterIsInstance<FirNamedFunctionSymbol>()
         .filter { it.callableId.classId == null }
         .associateBy {
@@ -629,7 +620,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         }
         .apply {
           if (function.hasAnnotation(Symbols.ClassIds.composable, session)) {
-            replaceAnnotationsSafe(listOf(buildComposableAnnotation()))
+            replaceAnnotationsSafe(
+              listOf(buildComposableAnnotation(), buildNonRestartableAnnotation())
+            )
           }
         }
         .symbol
@@ -810,6 +803,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
   private fun buildStableAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.stableClassSymbol }
+  }
+
+  private fun buildNonRestartableAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.nonRestartableComposable }
   }
 
   private fun buildInjectedFunctionClassAnnotation(callableId: CallableId): FirAnnotation {

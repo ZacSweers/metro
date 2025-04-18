@@ -6,8 +6,8 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.metro:runtime>
-open annotation class <#A: kotlin/Any> dev.zacsweers.metro/BoundType : kotlin/Annotation { // dev.zacsweers.metro/BoundType|null[0]
-    constructor <init>() // dev.zacsweers.metro/BoundType.<init>|<init>(){}[0]
+open annotation class <#A: kotlin/Any> dev.zacsweers.metro/binding : kotlin/Annotation { // dev.zacsweers.metro/binding|null[0]
+    constructor <init>() // dev.zacsweers.metro/binding.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/Assisted : kotlin/Annotation { // dev.zacsweers.metro/Assisted|null[0]
@@ -33,10 +33,10 @@ open annotation class dev.zacsweers.metro/ClassKey : kotlin/Annotation { // dev.
 }
 
 open annotation class dev.zacsweers.metro/ContributesBinding : kotlin/Annotation { // dev.zacsweers.metro/ContributesBinding|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.metro/BoundType<*> = ...) // dev.zacsweers.metro/ContributesBinding.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.metro.BoundType<*>){}[0]
+    constructor <init>(kotlin.reflect/KClass<*>, dev.zacsweers.metro/binding<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesBinding.<init>|<init>(kotlin.reflect.KClass<*>;dev.zacsweers.metro.binding<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
-    final val boundType // dev.zacsweers.metro/ContributesBinding.boundType|{}boundType[0]
-        final fun <get-boundType>(): dev.zacsweers.metro/BoundType<*> // dev.zacsweers.metro/ContributesBinding.boundType.<get-boundType>|<get-boundType>(){}[0]
+    final val binding // dev.zacsweers.metro/ContributesBinding.binding|{}binding[0]
+        final fun <get-binding>(): dev.zacsweers.metro/binding<*> // dev.zacsweers.metro/ContributesBinding.binding.<get-binding>|<get-binding>(){}[0]
     final val replaces // dev.zacsweers.metro/ContributesBinding.replaces|{}replaces[0]
         final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesBinding.replaces.<get-replaces>|<get-replaces>(){}[0]
     final val scope // dev.zacsweers.metro/ContributesBinding.scope|{}scope[0]
@@ -44,10 +44,10 @@ open annotation class dev.zacsweers.metro/ContributesBinding : kotlin/Annotation
 }
 
 open annotation class dev.zacsweers.metro/ContributesIntoMap : kotlin/Annotation { // dev.zacsweers.metro/ContributesIntoMap|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.metro/BoundType<*> = ...) // dev.zacsweers.metro/ContributesIntoMap.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.metro.BoundType<*>){}[0]
+    constructor <init>(kotlin.reflect/KClass<*>, dev.zacsweers.metro/binding<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesIntoMap.<init>|<init>(kotlin.reflect.KClass<*>;dev.zacsweers.metro.binding<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
-    final val boundType // dev.zacsweers.metro/ContributesIntoMap.boundType|{}boundType[0]
-        final fun <get-boundType>(): dev.zacsweers.metro/BoundType<*> // dev.zacsweers.metro/ContributesIntoMap.boundType.<get-boundType>|<get-boundType>(){}[0]
+    final val binding // dev.zacsweers.metro/ContributesIntoMap.binding|{}binding[0]
+        final fun <get-binding>(): dev.zacsweers.metro/binding<*> // dev.zacsweers.metro/ContributesIntoMap.binding.<get-binding>|<get-binding>(){}[0]
     final val replaces // dev.zacsweers.metro/ContributesIntoMap.replaces|{}replaces[0]
         final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesIntoMap.replaces.<get-replaces>|<get-replaces>(){}[0]
     final val scope // dev.zacsweers.metro/ContributesIntoMap.scope|{}scope[0]
@@ -55,10 +55,10 @@ open annotation class dev.zacsweers.metro/ContributesIntoMap : kotlin/Annotation
 }
 
 open annotation class dev.zacsweers.metro/ContributesIntoSet : kotlin/Annotation { // dev.zacsweers.metro/ContributesIntoSet|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Array<kotlin.reflect/KClass<*>> = ..., dev.zacsweers.metro/BoundType<*> = ...) // dev.zacsweers.metro/ContributesIntoSet.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;dev.zacsweers.metro.BoundType<*>){}[0]
+    constructor <init>(kotlin.reflect/KClass<*>, dev.zacsweers.metro/binding<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesIntoSet.<init>|<init>(kotlin.reflect.KClass<*>;dev.zacsweers.metro.binding<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
-    final val boundType // dev.zacsweers.metro/ContributesIntoSet.boundType|{}boundType[0]
-        final fun <get-boundType>(): dev.zacsweers.metro/BoundType<*> // dev.zacsweers.metro/ContributesIntoSet.boundType.<get-boundType>|<get-boundType>(){}[0]
+    final val binding // dev.zacsweers.metro/ContributesIntoSet.binding|{}binding[0]
+        final fun <get-binding>(): dev.zacsweers.metro/binding<*> // dev.zacsweers.metro/ContributesIntoSet.binding.<get-binding>|<get-binding>(){}[0]
     final val replaces // dev.zacsweers.metro/ContributesIntoSet.replaces|{}replaces[0]
         final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesIntoSet.replaces.<get-replaces>|<get-replaces>(){}[0]
     final val scope // dev.zacsweers.metro/ContributesIntoSet.scope|{}scope[0]
@@ -75,12 +75,14 @@ open annotation class dev.zacsweers.metro/ContributesTo : kotlin/Annotation { //
 }
 
 open annotation class dev.zacsweers.metro/DependencyGraph : kotlin/Annotation { // dev.zacsweers.metro/DependencyGraph|null[0]
-    constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/DependencyGraph.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+    constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Boolean = ...) // dev.zacsweers.metro/DependencyGraph.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Boolean){}[0]
 
     final val additionalScopes // dev.zacsweers.metro/DependencyGraph.additionalScopes|{}additionalScopes[0]
         final fun <get-additionalScopes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.additionalScopes.<get-additionalScopes>|<get-additionalScopes>(){}[0]
     final val excludes // dev.zacsweers.metro/DependencyGraph.excludes|{}excludes[0]
         final fun <get-excludes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.excludes.<get-excludes>|<get-excludes>(){}[0]
+    final val isExtendable // dev.zacsweers.metro/DependencyGraph.isExtendable|{}isExtendable[0]
+        final fun <get-isExtendable>(): kotlin/Boolean // dev.zacsweers.metro/DependencyGraph.isExtendable.<get-isExtendable>|<get-isExtendable>(){}[0]
     final val scope // dev.zacsweers.metro/DependencyGraph.scope|{}scope[0]
         final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/DependencyGraph.scope.<get-scope>|<get-scope>(){}[0]
 
@@ -93,11 +95,19 @@ open annotation class dev.zacsweers.metro/ElementsIntoSet : kotlin/Annotation { 
     constructor <init>() // dev.zacsweers.metro/ElementsIntoSet.<init>|<init>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/Extends : kotlin/Annotation { // dev.zacsweers.metro/Extends|null[0]
+    constructor <init>() // dev.zacsweers.metro/Extends.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/ForScope : kotlin/Annotation { // dev.zacsweers.metro/ForScope|null[0]
     constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ForScope.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
 
     final val scope // dev.zacsweers.metro/ForScope.scope|{}scope[0]
         final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ForScope.scope.<get-scope>|<get-scope>(){}[0]
+}
+
+open annotation class dev.zacsweers.metro/Includes : kotlin/Annotation { // dev.zacsweers.metro/Includes|null[0]
+    constructor <init>() // dev.zacsweers.metro/Includes.<init>|<init>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/Inject : kotlin/Annotation { // dev.zacsweers.metro/Inject|null[0]
@@ -127,7 +137,10 @@ open annotation class dev.zacsweers.metro/MapKey : kotlin/Annotation { // dev.za
 }
 
 open annotation class dev.zacsweers.metro/Multibinds : kotlin/Annotation { // dev.zacsweers.metro/Multibinds|null[0]
-    constructor <init>() // dev.zacsweers.metro/Multibinds.<init>|<init>(){}[0]
+    constructor <init>(kotlin/Boolean = ...) // dev.zacsweers.metro/Multibinds.<init>|<init>(kotlin.Boolean){}[0]
+
+    final val allowEmpty // dev.zacsweers.metro/Multibinds.allowEmpty|{}allowEmpty[0]
+        final fun <get-allowEmpty>(): kotlin/Boolean // dev.zacsweers.metro/Multibinds.allowEmpty.<get-allowEmpty>|<get-allowEmpty>(){}[0]
 }
 
 open annotation class dev.zacsweers.metro/Named : kotlin/Annotation { // dev.zacsweers.metro/Named|null[0]

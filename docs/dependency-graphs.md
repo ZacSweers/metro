@@ -32,7 +32,11 @@ Graphs are relatively cheap and should be used freely.
 
 ## Inputs
 
-Instance parameters and graph dependencies can be provided via a `@DependencyGraph.Factory` interface that returns the target graph.
+Runtime inputs can be provided via a `@DependencyGraph.Factory` interface that returns the target graph. These parameters must be annotated with exactly one of `@Provides`, `@Includes`, or `@Extends`.
+
+### Provides
+
+The simplest input is an instance parameter annotated with `@Provides`. This provides this instance as an available binding on the graph.
 
 ```kotlin
 @DependencyGraph
@@ -46,6 +50,17 @@ interface AppGraph {
 }
 ```
 
+Provided parameters may be any type.
+
+!!! tip
+    This is analogous to Dagger's `@BindsInstance`.
+
+### Includes
+
+`@Includes`-annotated parameters are treated as containers of available bindings. Metro will treat _accessors_ of these types as usable dependencies.
+
+They are commonly other graph types whose' dependencies you want to consume via explicit API.
+
 ```kotlin
 @DependencyGraph
 interface AppGraph {
@@ -53,7 +68,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(messageGraph: MessageGraph): AppGraph
+    fun create(@Includes messageGraph: MessageGraph): AppGraph
   }
 
   @DependencyGraph interface MessageGraph {
@@ -64,7 +79,7 @@ interface AppGraph {
 }
 ```
 
-Like Dagger, non- `@Provides` instance dependencies can be any type. Metro will treat accessor candidates of these types as usable dependencies.
+`@Includes` instance dependencies do not _need_ to be other graphs though! They can be any regular class type. They _cannot_ be enums or annotation classes.
 
 ```kotlin
 @DependencyGraph
@@ -73,7 +88,7 @@ interface AppGraph {
 
   @DependencyGraph.Factory
   fun interface Factory {
-    fun create(messageProvider: MessageProvider): AppGraph
+    fun create(@Includes messageProvider: MessageProvider): AppGraph
   }
 
   interface MessageProvider {
@@ -81,6 +96,15 @@ interface AppGraph {
   }
 }
 ```
+
+!!! warning
+    Includes parameters cannot be injected from the graph.
+
+### Extends
+
+`@Extends`-annotated parameters are for extending parent graphs. See _Graph Extensions_ at the bottom of this doc for more information.
+
+### Creating factories
 
 Graph factories can be created with the `createGraphFactory()` intrinsic.
 
@@ -110,6 +134,33 @@ Is functionally equivalent to writing the below.
 interface AppGraph
 ```
 
+## Graph Extensions
+
+Dependency graphs can be marked as _extendable_ to allow child graphs to extend them. These are similar in functionality to Dagger's `Subcomponents` but are detached in nature like in kotlin-inject.
+
+A graph must opt itself into extension in via `@DependencyGraph(..., isExtendable = true)`, which will make the Metro compiler generate extra metadata for downstream child graphs.
+
+Then, a child graph can add an `@Extends`-annotated parameter to its creator to extend that graph.
+
+```kotlin
+@DependencyGraph(isExtendable = true)
+interface AppGraph {
+  @Provides fun provideHttpClient(): HttpClient { ... }
+}
+
+@DependencyGraph
+interface UserGraph {
+  @DependencyGraph.Factory
+  fun interface Factory {
+    fun create(@Extends appGraph: AppGraph): UserGraph
+  }
+}
+```
+
+Child graphs then contain a _superset_ of bindings they can inject, including both their bindings and their parents'. Graph extensions can be chained as well.
+
+Child graphs also implicitly inherit their parents' _scopes_.
+
 ## Implementation Notes
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
@@ -124,3 +175,8 @@ Dependency graph code gen is designed to largely match how Dagger components are
 * `@Provides` factory parameters are stored in a field backed by `InstanceFactory`.
 * Multibindings create new collection instances every time.
 * Multibinding providers are not accessible as standalone bindings.
+* Graph extensions are implemented via combination of things
+    * Custom `MetroMetadata` is generated and serialized into Kotlin's `Metadata` annotations.
+    * Extendable parent graphs opt-in to generating this metadata. They write information about their available provider and instance fields, binds callable IDs, parent graphs, and provides callable IDs.
+    * Extendable parent graphs generate `_metroAccessor`-suffixed `internal` functions that expose instance fields and provider fields.
+    * Child graphs read this metadata and look up the relevant callable symbols, then incorporating these when building its own binding graph.

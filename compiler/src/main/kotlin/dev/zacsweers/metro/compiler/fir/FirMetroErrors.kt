@@ -107,7 +107,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0(NAME_IDENTIFIER)
   val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0(NAME_IDENTIFIER)
   val ONLY_CLASSES_CAN_BE_INJECTED by error0(NAME_IDENTIFIER)
-  val ONLY_FINAL_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
+  val ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error0(VISIBILITY_MODIFIER)
 
@@ -117,18 +117,22 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   // Provides errors
   val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR by error1<String>(VISIBILITY_MODIFIER)
   val PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING by warning1<String>(VISIBILITY_MODIFIER)
+  val PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE by error1<String>(VISIBILITY_MODIFIER)
   // TODO make this severity configurable
   val PROVIDES_COULD_BE_BINDS by warning1<String>(NAME_IDENTIFIER)
   val PROVIDER_OVERRIDES by error0(MODALITY_MODIFIER)
   val PROVIDES_ERROR by error1<String>(NAME_IDENTIFIER)
+  val PROVIDES_WARNING by warning1<String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<String>(NAME_IDENTIFIER)
+  val CREATE_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)
   val MULTIBINDS_ERROR by error1<String>(NAME_IDENTIFIER)
   val MULTIBINDS_OVERRIDE_ERROR by error1<String>(OVERRIDE_MODIFIER)
   val MEMBERS_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_STATUS_ERROR by error1<String>(MODALITY_MODIFIER)
   val MEMBERS_INJECT_WARNING by warning1<String>(NAME_IDENTIFIER)
   val MEMBERS_INJECT_RETURN_TYPE_WARNING by warning1<String>(DECLARATION_RETURN_TYPE)
+  val DAGGER_REUSABLE_ERROR by error0(NAME_IDENTIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("Metro").apply {
@@ -171,8 +175,8 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
         "Only classes can be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(
-        ONLY_FINAL_CLASSES_CAN_BE_INJECTED,
-        "Only final classes be annotated with @Inject or have @Inject-annotated constructors.",
+        ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
+        "Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(
         INJECTED_CLASSES_MUST_BE_VISIBLE,
@@ -180,7 +184,9 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       )
       put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
+      put(PROVIDES_WARNING, "{0}", STRING)
       put(AGGREGATION_ERROR, "{0}", STRING)
+      put(CREATE_GRAPH_ERROR, "{0}", STRING)
       put(MEMBERS_INJECT_ERROR, "{0}", STRING)
       put(MEMBERS_INJECT_STATUS_ERROR, "{0}", STRING)
       put(MEMBERS_INJECT_WARNING, "{0}", STRING)
@@ -191,9 +197,14 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(PROVIDES_COULD_BE_BINDS, "{0}", STRING)
       put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR, "{0}", STRING)
       put(PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING, "{0}", STRING)
+      put(PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE, "{0}", STRING)
       put(
         PROVIDER_OVERRIDES,
         "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",
+      )
+      put(
+        DAGGER_REUSABLE_ERROR,
+        "Dagger's `@Reusable` is not supported in Metro. See https://zacsweers.github.io/metro/faq#why-doesnt-metro-support-reusable for more information.",
       )
     }
 

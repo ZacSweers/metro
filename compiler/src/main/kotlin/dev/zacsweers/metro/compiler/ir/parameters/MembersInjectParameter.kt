@@ -42,7 +42,8 @@ internal class MembersInjectParameter(
     Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier)
   override val isBindsInstance: Boolean = false
   override val isGraphInstance: Boolean = false
-
+  override val isIncludes: Boolean = false
+  override val isExtends: Boolean = false
   private val cachedToString by unsafeLazy {
     buildString {
       contextualTypeKey.typeKey.qualifier?.let {

@@ -198,3 +198,5 @@ public fun ClassId.mergedClassId(): ClassId {
 public fun ClassId.generatedClass(suffix: String): ClassId {
   return joinSimpleNames(separator = "_", suffix = suffix)
 }
+
+public fun Collection<ClassId>.asFqNames(): Collection<FqName> = map { it.asSingleFqName() }

@@ -86,6 +86,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
+              MetroOption.GENERATE_HINT_PROPERTIES ->
+                processor.option(entry.raw.cliOption, generateHintProperties)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.LOGGING -> {
@@ -188,6 +190,16 @@ abstract class MetroCompilerTest {
                 if (customScopeAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
               }
+              MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
+                if (customContributesIntoSetAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customContributesIntoSetAnnotations.joinToString(":"),
+                )
+              }
+              MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
+                processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
+              }
             }
           yield(option)
         }
@@ -250,7 +262,7 @@ abstract class MetroCompilerTest {
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
     val cleaningOutput = Buffer()
-    val result =
+    val compilation =
       prepareCompilation(
           sourceFiles = sourceFiles,
           debug = debug,
@@ -259,11 +271,28 @@ abstract class MetroCompilerTest {
         )
         .apply(compilationBlock)
         .apply { this.messageOutputStream = cleaningOutput.outputStream() }
-        .compile()
+
+    val result = compilation.compile()
 
     // Print cleaned output
     while (!cleaningOutput.exhausted()) {
-      println(cleaningOutput.readUtf8Line()?.cleanOutputLine(includeSeverity = true))
+      println(cleaningOutput.readUtf8Line()?.cleanOutputLine())
+    }
+
+    // Print generated files if debug is enabled
+    if (debug) {
+      compilation.workingDir
+        .walkTopDown()
+        .filter { file -> file.extension.let { it == "kt" || it == "java" } }
+        .filterNot {
+          // Don't print test sources
+          it.absolutePath.contains("sources")
+        }
+        .forEach { file ->
+          println("Generated source file: ${file.name}")
+          println(file.readText())
+          println()
+        }
     }
 
     return result

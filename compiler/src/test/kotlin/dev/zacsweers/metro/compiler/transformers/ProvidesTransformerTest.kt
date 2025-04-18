@@ -18,7 +18,6 @@ import dev.zacsweers.metro.compiler.providesFactoryClass
 import dev.zacsweers.metro.internal.Factory
 import dev.zacsweers.metro.provider
 import kotlinx.coroutines.test.runTest
-import org.junit.Ignore
 import org.junit.Test
 
 class ProvidesTransformerTest : MetroCompilerTest() {
@@ -331,7 +330,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these.
+        e: ExampleGraph.kt:9:22 `@Provides` functions may not be extension functions. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.
       """
         .trimIndent()
     )
@@ -431,7 +430,6 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("Won't work until we support propagating metadata info")
   @Test
   fun `a private provider is visible from a supertype in another module`() {
     val otherModuleResult =
@@ -497,6 +495,44 @@ class ProvidesTransformerTest : MetroCompilerTest() {
         assertThat(graph.callProperty<suspend () -> Boolean>("suspendBooleanFunction").invoke())
           .isEqualTo(true)
       }
+  }
+
+  @Test
+  fun `private qualifiers are propagated`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+            import kotlin.annotation.AnnotationRetention.BINARY
+            import javax.inject.Qualifier
+
+            interface EnabledProvider {
+              @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
+
+              @FlipperEnabled
+              @Provides
+              private fun provideEnabled(): Boolean = true
+
+              @Provides
+              private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
+            }
+          """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph : EnabledProvider {
+              val value: String
+            }
+          """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    )
   }
 
   // TODO

@@ -9,6 +9,7 @@ import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.ClassKey
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.ElementsIntoSet
+import dev.zacsweers.metro.Includes
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntKey
 import dev.zacsweers.metro.IntoMap
@@ -101,7 +102,7 @@ class DependencyGraphProcessingTest {
   abstract class ProvidersWithSiteTargetsGraph {
     abstract val count: Int
 
-    @get:Provides private val countProvider: Int = 3
+    @get:Provides val countProvider: Int = 3
   }
 
   @Test
@@ -171,7 +172,7 @@ class DependencyGraphProcessingTest {
 
     @DependencyGraph.Factory
     fun interface Factory {
-      fun create(stringGraph: StringGraph): GraphWithDependencies
+      fun create(@Includes stringGraph: StringGraph): GraphWithDependencies
     }
   }
 
@@ -208,10 +209,10 @@ class DependencyGraphProcessingTest {
     @DependencyGraph.Factory
     fun interface Factory {
       fun create(
-        intProvider: IntProvider,
-        longProvider: LongProvider,
-        doubleProvider: DoubleProvider,
-        stringProvider: StringProvider,
+        @Includes intProvider: IntProvider,
+        @Includes longProvider: LongProvider,
+        @Includes doubleProvider: DoubleProvider,
+        @Includes stringProvider: StringProvider,
       ): GraphWithNonGraphDependencies
     }
 
@@ -500,7 +501,7 @@ class DependencyGraphProcessingTest {
 
     @DependencyGraph.Factory
     interface Factory {
-      fun create(dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
+      fun create(@Includes dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
     }
 
     class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {
@@ -552,7 +553,7 @@ class DependencyGraphProcessingTest {
 
   @DependencyGraph
   interface MultibindingGraphWithEmptySet {
-    @Multibinds val ints: Set<Int>
+    @Multibinds(allowEmpty = true) val ints: Set<Int>
   }
 
   @Test
@@ -699,7 +700,7 @@ class DependencyGraphProcessingTest {
 
   @DependencyGraph
   interface MultibindingGraphWithEmptyMap {
-    @Multibinds val ints: Map<Int, Int>
+    @Multibinds(allowEmpty = true) val ints: Map<Int, Int>
   }
 
   @Test
@@ -786,9 +787,9 @@ class DependencyGraphProcessingTest {
   interface MultibindingGraphWithKClassMap {
     val ints: Map<KClass<*>, Int>
 
-    @Provides @IntoMap @ClassKey(Int::class) private fun provideMapInt1(): Int = 1
+    @Provides @IntoMap @ClassKey(Int::class) fun provideMapInt1(): Int = 1
 
-    @Provides @IntoMap @Singleton @ClassKey(Float::class) private fun provideMapInt2(): Int = 2
+    @Provides @IntoMap @Singleton @ClassKey(Float::class) fun provideMapInt2(): Int = 2
   }
 
   @Test
@@ -1117,7 +1118,7 @@ class DependencyGraphProcessingTest {
 
     @Provides @Singleton private fun provideInt(): Int = intCounter++
 
-    @Provides @SingleIn(AppScope::class) private fun provideLong(): Long = longCounter++
+    @Provides @SingleIn(AppScope::class) fun provideLong(): Long = longCounter++
   }
 
   @Test
@@ -1145,7 +1146,7 @@ class DependencyGraphProcessingTest {
 
     @Provides @Singleton private fun provideInt(): Int = intCounter++
 
-    @Provides @SingleIn(AppScope::class) private fun provideLong(): Long = longCounter++
+    @Provides @SingleIn(AppScope::class) fun provideLong(): Long = longCounter++
   }
 
   @Test
@@ -1159,7 +1160,7 @@ class DependencyGraphProcessingTest {
     val number: Number
 
     @Provides
-    private val provideInt: Int
+    val provideInt: Int
       get() = 3
 
     @Binds val Int.provideNumber: Number

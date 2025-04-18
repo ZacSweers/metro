@@ -11,16 +11,12 @@ import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation> {
   private val cachedHashKey by unsafeLazy { ir.computeAnnotationHash() }
-  private val cachedToString by unsafeLazy {
-    buildString {
-      append('@')
-      renderAsAnnotation(ir)
-    }
-  }
+  private val cachedToString by unsafeLazy { render(short = true) }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -36,13 +32,24 @@ internal class IrAnnotation(val ir: IrConstructorCall) : Comparable<IrAnnotation
   override fun toString() = cachedToString
 
   override fun compareTo(other: IrAnnotation): Int = cachedToString.compareTo(other.cachedToString)
+
+  fun render(short: Boolean = true): String {
+    return buildString {
+      append('@')
+      renderAsAnnotation(ir, short)
+    }
+  }
 }
 
 internal fun IrConstructorCall.asIrAnnotation() = IrAnnotation(this)
 
-private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall) {
+private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall, short: Boolean) {
   val annotationClassName =
-    irAnnotation.symbol.takeIf { it.isBound }?.owner?.parentAsClass?.name?.asString() ?: "<unbound>"
+    irAnnotation.symbol
+      .takeIf { it.isBound }
+      ?.owner
+      ?.parentAsClass
+      ?.let { if (short) it.name.asString() else it.kotlinFqName.asString() } ?: "<unbound>"
   append(annotationClassName)
 
   // TODO type args not supported
@@ -55,24 +62,28 @@ private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall) {
     prefix = "(",
     postfix = ")",
   ) { index ->
-    renderAsAnnotationArgument(irAnnotation.getValueArgument(index))
+    renderAsAnnotationArgument(irAnnotation.getValueArgument(index), short)
   }
 }
 
-private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?) {
+private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, short: Boolean) {
   when (irElement) {
     null -> append("<null>")
-    is IrConstructorCall -> renderAsAnnotation(irElement)
+    is IrConstructorCall -> renderAsAnnotation(irElement, short)
     is IrConst -> {
       renderIrConstAsAnnotationArgument(irElement)
     }
     is IrVararg -> {
       appendIterableWith(irElement.elements, prefix = "[", postfix = "]", separator = ", ") {
-        renderAsAnnotationArgument(it)
+        renderAsAnnotationArgument(it, short)
       }
     }
     is IrClassReference -> {
-      append(irElement.classType.rawType().classId?.shortClassName?.asString() ?: "<error>")
+      append(
+        irElement.classType.rawType().classId?.let {
+          if (short) it.shortClassName.asString() else it.asSingleFqName().asString()
+        } ?: "<error>"
+      )
       append("::class")
     }
     else -> append("...")

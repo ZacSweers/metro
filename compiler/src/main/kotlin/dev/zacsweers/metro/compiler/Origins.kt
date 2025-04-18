@@ -19,12 +19,18 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplCreatorFunctionDeclaration)
   val MetroGraphCreatorsObjectInvokeDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphCreatorsObjectInvokeDeclaration)
+  val MetroGraphDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphDeclaration)
   val MetroGraphAccessorCallableOverride: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphAccessorCallableOverride)
   val MetroGraphInjectorCallableOverride: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphInjectorCallableOverride)
   val MetroGraphFactoryCompanionGetter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphFactoryCompanionGetter)
+  val MetroContributionClassDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroContributionClassDeclaration)
+  val MetroContributionCallableDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroContributionCallableDeclaration)
   val InjectConstructorFactoryClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.InjectConstructorFactoryClassDeclaration)
   val MembersInjectorClassDeclaration: IrDeclarationOrigin =
@@ -37,4 +43,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ProviderFactoryClassDeclaration)
   val TopLevelInjectFunctionClassFunction: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.TopLevelInjectFunctionClassFunction)
+  val ProviderFieldAccessor: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ProviderFieldAccessor)
+  val InstanceFieldAccessor: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.InstanceFieldAccessor)
 }

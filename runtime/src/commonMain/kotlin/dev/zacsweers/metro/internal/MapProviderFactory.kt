@@ -19,11 +19,12 @@ import dev.zacsweers.metro.Provider
 
 /**
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
- * Provider<V>>` when calling [get] (as specified by [Factory]).
+ * Provider<V>>` when calling [invoke] (as specified by [Factory]).
  */
 public class MapProviderFactory<K : Any, V : Any>
 private constructor(contributingMap: Map<K, Provider<V>>) :
   AbstractMapFactory<K, V, Provider<V>>(contributingMap), Lazy<Map<K, Provider<V>>> {
+
   /**
    * Returns a `Map<K, Provider<V>>` whose iteration order is that of the elements given by each of
    * the providers, which are invoked in the order given at creation.
@@ -48,13 +49,18 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
       }
 
     /** Returns a new [MapProviderFactory]. */
-    public fun build(): MapProviderFactory<K, V> = MapProviderFactory<K, V>(map)
+    public fun build(): MapProviderFactory<K, V> = MapProviderFactory(map)
   }
 
   public companion object {
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
-      return Builder<K, V>(size)
+      return Builder(size)
     }
+
+    /** Returns an empty map. */
+    @Suppress("UNCHECKED_CAST")
+    public fun <K : Any, V : Any> empty(): Provider<Map<K, Provider<V>>> =
+      EMPTY as Provider<Map<K, Provider<V>>>
   }
 }

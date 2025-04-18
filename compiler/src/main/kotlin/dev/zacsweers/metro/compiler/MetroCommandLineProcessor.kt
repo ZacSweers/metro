@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import com.google.auto.service.AutoService
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
+import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.jetbrains.kotlin.config.CompilerConfiguration
 
@@ -21,7 +22,7 @@ public class MetroCommandLineProcessor : CommandLineProcessor {
     configuration: CompilerConfiguration,
   ) {
     when (val metroOption = MetroOption.entriesByOptionName[option.optionName]) {
-      null -> error("Unknown plugin option: ${option.optionName}")
+      null -> throw CliOptionProcessingException("Unknown plugin option: ${option.optionName}")
       else -> with(metroOption.raw) { configuration.put(value) }
     }
   }

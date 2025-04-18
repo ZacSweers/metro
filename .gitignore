@@ -1,5 +1,6 @@
 **/build
-.idea
+**/.idea/*
+!.idea/kotlinTestDataPluginTestDataPaths.xml
 .gradle
 .kotlin/
 .iml
@@ -12,6 +13,7 @@ local.properties
 docs/code-of-conduct.md
 docs/contributing.md
 docs/changelog.md
+docs/samples.md
 docs/api/
 site/
 temp-clone/

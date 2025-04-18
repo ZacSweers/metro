@@ -118,6 +118,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  GENERATE_HINT_PROPERTIES(
+    RawMetroOption.boolean(
+      name = "generate-hint-properties",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description = "Enable/disable generation of hint properties.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -223,6 +233,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       defaultValue = emptySet(),
       valueDescription = "ContributesBinding annotations",
       description = "ContributesBinding annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
+  CUSTOM_CONTRIBUTES_INTO_SET(
+    RawMetroOption(
+      name = "custom-contributes-into-set",
+      defaultValue = emptySet(),
+      valueDescription = "ContributesIntoSet annotations",
+      description = "ContributesIntoSet annotations",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
@@ -348,6 +369,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
+  ),
+  ENABLE_DAGGER_ANVIL_INTEROP(
+    RawMetroOption.boolean(
+      name = "enable-dagger-anvil-interop",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable interop with Dagger Anvil's additional functionality (currently for 'rank' support).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -367,6 +399,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   val enableTopLevelFunctionInjection: Boolean =
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
+  val generateHintProperties: Boolean =
+    MetroOption.GENERATE_HINT_PROPERTIES.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     MetroOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -389,6 +423,8 @@ public data class MetroOptions(
     MetroOption.CUSTOM_CONTRIBUTES_TO.raw.defaultValue.expectAs(),
   val customContributesBindingAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_CONTRIBUTES_BINDING.raw.defaultValue.expectAs(),
+  val customContributesIntoSetAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_CONTRIBUTES_INTO_SET.raw.defaultValue.expectAs(),
   val customElementsIntoSetAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_ELEMENTS_INTO_SET.raw.defaultValue.expectAs(),
   val customGraphAnnotations: Set<ClassId> = MetroOption.CUSTOM_GRAPH.raw.defaultValue.expectAs(),
@@ -408,6 +444,8 @@ public data class MetroOptions(
   val customQualifierAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_QUALIFIER.raw.defaultValue.expectAs(),
   val customScopeAnnotations: Set<ClassId> = MetroOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
+  val enableDaggerAnvilInterop: Boolean =
+    MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -434,6 +472,7 @@ public data class MetroOptions(
       val customProvidesAnnotations = mutableSetOf<ClassId>()
       val customQualifierAnnotations = mutableSetOf<ClassId>()
       val customScopeAnnotations = mutableSetOf<ClassId>()
+      val customContributesIntoSetAnnotations = mutableSetOf<ClassId>()
 
       for (entry in MetroOption.entries) {
         when (entry) {
@@ -455,6 +494,9 @@ public data class MetroOptions(
           MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
             options =
               options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
+
+          MetroOption.GENERATE_HINT_PROPERTIES ->
+            options = options.copy(generateHintProperties = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =
@@ -509,6 +551,12 @@ public data class MetroOptions(
           MetroOption.CUSTOM_QUALIFIER ->
             customQualifierAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
+            customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
+
+          MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
+            options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
+          }
         }
       }
 
@@ -538,6 +586,7 @@ public data class MetroOptions(
           customProvidesAnnotations = customProvidesAnnotations,
           customQualifierAnnotations = customQualifierAnnotations,
           customScopeAnnotations = customScopeAnnotations,
+          customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
         )
 
       return options

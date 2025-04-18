@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.ir.BindingStack.Entry
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -38,7 +38,7 @@ internal interface BindingStack {
     val contextKey: ContextualTypeKey,
     val usage: String?,
     val graphContext: String?,
-    val declaration: IrDeclaration?,
+    val declaration: IrDeclarationWithName?,
     val displayTypeKey: TypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
@@ -92,7 +92,7 @@ internal interface BindingStack {
         return Entry(
           contextKey = contextKey,
           usage = "is requested at",
-          graphContext = "$targetFqName.$accessorString",
+          graphContext = "$targetFqName#$accessorString",
           declaration = declaration,
           isSynthetic = true,
         )
@@ -103,7 +103,7 @@ internal interface BindingStack {
        */
       fun contributedToMultibinding(
         contextKey: ContextualTypeKey,
-        declaration: IrDeclaration?,
+        declaration: IrDeclarationWithName?,
       ): Entry =
         Entry(
           contextKey = contextKey,
@@ -131,22 +131,27 @@ internal interface BindingStack {
       */
       fun injectedAt(
         contextKey: ContextualTypeKey,
-        function: IrFunction,
+        function: IrFunction?,
         param: IrValueParameter? = null,
-        declaration: IrDeclaration? = param,
+        declaration: IrDeclarationWithName? = param,
         displayTypeKey: TypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
-        val targetFqName = function.parent.kotlinFqName
-        val middle =
-          when {
-            function is IrConstructor -> ""
-            function.isPropertyAccessor ->
-              ".${(function.propertyIfAccessor as IrProperty).name.asString()}"
-            else -> ".${function.name.asString()}"
+        val context =
+          if (function == null) {
+            "<intrinsic>"
+          } else {
+            val targetFqName = function.parent.kotlinFqName
+            val middle =
+              when {
+                function is IrConstructor -> ""
+                function.isPropertyAccessor ->
+                  "#${(function.propertyIfAccessor as IrProperty).name.asString()}"
+                else -> "#${function.name.asString()}"
+              }
+            val end = if (param == null) "()" else "(…, ${param.name.asString()})"
+            "$targetFqName$middle$end"
           }
-        val end = if (param == null) "()" else "(…, ${param.name.asString()})"
-        val context = "$targetFqName$middle$end"
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,
@@ -362,10 +367,18 @@ internal fun bindingStackEntryForDependency(
         displayTypeKey = targetKey,
       )
     }
+    is Binding.Alias -> {
+      Entry.injectedAt(
+        contextKey,
+        binding.ir,
+        binding.parameters.extensionOrFirstParameter?.ir,
+        displayTypeKey = targetKey,
+      )
+    }
     is Binding.Provided -> {
       Entry.injectedAt(
         contextKey,
-        binding.providerFunction,
+        binding.providerFactory.providesFunction,
         binding.parameterFor(targetKey),
         displayTypeKey = targetKey,
       )
