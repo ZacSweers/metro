@@ -6,12 +6,15 @@ import dev.zacsweers.metro.compiler.Symbols.FqNames.kotlinCollectionsPackageFqn
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import kotlin.collections.contains
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -26,6 +29,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
+import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.explicitParametersCount
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
@@ -164,7 +168,11 @@ internal class Symbols(
   fun providerSymbolsFor(type: IrType?): ProviderSymbols {
     val useDaggerInterop =
       options.enableDaggerRuntimeInterop &&
-        type?.classOrNull?.owner?.classId in daggerSymbols.providerPrimitives
+        run {
+          val classId = type?.classOrNull?.owner?.classId
+          classId in daggerSymbols.providerPrimitives ||
+            classId == DaggerSymbols.ClassIds.DAGGER_LAZY_CLASS_ID
+        }
     return if (useDaggerInterop) daggerSymbols else metroProviderSymbols
   }
 
@@ -476,7 +484,22 @@ internal class Symbols(
 
     val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
     val doubleCheckProvider by lazy { doubleCheckCompanionObject.requireSimpleFunction("provider") }
-    val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+
+    protected abstract fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol
+
+    fun IrBuilderWithScope.invokeDoubleCheckLazy(
+      metroContext: IrMetroContext,
+      contextKey: ContextualTypeKey,
+      arg: IrExpression,
+    ): IrExpression {
+      val lazySymbol = lazyFor(arg.type)
+      return irInvoke(
+        dispatchReceiver = irGetObject(doubleCheckCompanionObject),
+        callee = lazySymbol,
+        args = listOf(arg),
+        typeHint = contextKey.toIrType(metroContext),
+      )
+    }
 
     /** Transforms a given [metroProvider] into the [target] type's provider equivalent. */
     abstract fun IrBuilderWithScope.transformMetroProvider(
@@ -501,6 +524,8 @@ internal class Symbols(
       )!!
     }
 
+    private val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+
     override fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
       target: ContextualTypeKey,
@@ -515,6 +540,11 @@ internal class Symbols(
     ): IrExpression {
       // Nothing to do here!
       return provider
+    }
+
+    override fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol {
+      // Nothing to do here!
+      return doubleCheckLazy
     }
   }
 
@@ -561,6 +591,19 @@ internal class Symbols(
           Name.identifier("DaggerInteropDoubleCheck"),
         )
       )!!
+    }
+
+    private val lazyFromDaggerProvider by lazy {
+      doubleCheckCompanionObject.requireSimpleFunction("lazyFromDaggerProvider")
+    }
+    private val lazyFromJavaxProvider by lazy {
+      doubleCheckCompanionObject.requireSimpleFunction("lazyFromJavaxProvider")
+    }
+    private val lazyFromJakartaProvider by lazy {
+      doubleCheckCompanionObject.requireSimpleFunction("lazyFromJakartaProvider")
+    }
+    private val lazyFromMetroProvider by lazy {
+      doubleCheckCompanionObject.requireSimpleFunction("lazyFromMetroProvider")
     }
 
     override fun IrBuilderWithScope.transformMetroProvider(
@@ -652,6 +695,16 @@ internal class Symbols(
           CallableId(daggerInteropRuntime.packageFqName, "asMetroMembersInjector".asName())
         )
         .first()
+    }
+
+    override fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol {
+      return when (providerType.rawTypeOrNull()?.classId) {
+        ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> lazyFromDaggerProvider
+        ClassIds.JAVAX_PROVIDER_CLASS_ID -> lazyFromJavaxProvider
+        ClassIds.JAKARTA_PROVIDER_CLASS_ID -> lazyFromJakartaProvider
+        Symbols.ClassIds.metroProvider -> lazyFromMetroProvider
+        else -> error("Unexpected provider type: ${providerType.dumpKotlinLike()}")
+      }
     }
 
     object ClassIds {

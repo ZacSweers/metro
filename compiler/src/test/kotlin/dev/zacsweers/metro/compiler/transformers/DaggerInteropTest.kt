@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
+import dev.zacsweers.metro.interop.dagger.internal.DaggerInteropDoubleCheck
 import javax.inject.Provider
 import kotlin.test.assertNotNull
 import org.jetbrains.kotlin.name.ClassId
@@ -436,12 +437,13 @@ class DaggerInteropTest : MetroCompilerTest() {
           )
         """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Lazy<Any>>("lazy")
       assertThat(fooInstance).isNotNull()
-      assertThat(fooInstance.get().javaClass.name).isEqualTo("asdf")
+      assertThat(fooInstance).isInstanceOf(DaggerInteropDoubleCheck::class.java)
+      assertThat(fooInstance.get().javaClass.name).isEqualTo("test.Foo")
     }
   }
 }
