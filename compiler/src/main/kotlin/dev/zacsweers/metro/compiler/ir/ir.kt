@@ -780,9 +780,11 @@ internal fun IrMetroContext.trackFunctionCall(
     // Not every declaration has a file parent, for example IR-generated accessors
     val filePath =
       ktFile?.virtualFile?.path ?: callingDeclaration.fileParentOrNull?.fileEntry?.name ?: return
+    val declaration =
+      (calleeFunction as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: calleeFunction
     trackLookup(
       container = calleeFunction.parentAsClass.kotlinFqName,
-      functionName = calleeFunction.name.asString(),
+      functionName = declaration.name.asString(),
       location =
         object : LocationInfo {
           override val filePath = filePath
