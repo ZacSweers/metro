@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -52,6 +53,8 @@ internal interface IrMetroContext {
   val options: MetroOptions
   val debug: Boolean
     get() = options.debug
+
+  val lookupTracker: LookupTracker?
 
   val irTypeSystemContext: IrTypeSystemContext
 
@@ -165,13 +168,16 @@ internal interface IrMetroContext {
       messageCollector: MessageCollector,
       symbols: Symbols,
       options: MetroOptions,
-    ): IrMetroContext = SimpleIrMetroContext(pluginContext, messageCollector, symbols, options)
+      lookupTracker: LookupTracker?,
+    ): IrMetroContext =
+      SimpleIrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
 
     private class SimpleIrMetroContext(
       override val pluginContext: IrPluginContext,
       override val messageCollector: MessageCollector,
       override val symbols: Symbols,
       override val options: MetroOptions,
+      override val lookupTracker: LookupTracker?,
     ) : IrMetroContext {
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
