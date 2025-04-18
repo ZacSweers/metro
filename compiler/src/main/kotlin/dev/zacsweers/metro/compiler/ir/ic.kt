@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.incremental.components.LocationInfo
+import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -15,6 +16,13 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.doNotAnalyze
 
+/**
+ * Tracks a call from one [callingDeclaration] to a [calleeFunction] to inform incremental
+ * compilation.
+ *
+ * If the [calleeFunction] is a property getter, the corresponding property will be recorded
+ * instead.
+ */
 internal fun IrMetroContext.trackFunctionCall(
   callingDeclaration: IrDeclaration,
   calleeFunction: IrFunction,
@@ -43,15 +51,17 @@ internal fun IrMetroContext.trackLookup(
   functionName: String,
   location: LocationInfo,
 ) {
-  lookupTracker?.let { tracker ->
-    synchronized(tracker) {
-      tracker.record(
-        filePath = location.filePath,
-        position = if (tracker.requiresPosition) location.position else Position.NO_POSITION,
-        scopeFqName = container.asString(),
-        scopeKind = ScopeKind.CLASSIFIER,
-        name = functionName,
-      )
-    }
+  withLookupTracker {
+    record(
+      filePath = location.filePath,
+      position = if (requiresPosition) location.position else Position.NO_POSITION,
+      scopeFqName = container.asString(),
+      scopeKind = ScopeKind.CLASSIFIER,
+      name = functionName,
+    )
   }
+}
+
+internal inline fun IrMetroContext.withLookupTracker(body: LookupTracker.() -> Unit) {
+  lookupTracker?.let { tracker -> synchronized(tracker) { tracker.body() } }
 }
