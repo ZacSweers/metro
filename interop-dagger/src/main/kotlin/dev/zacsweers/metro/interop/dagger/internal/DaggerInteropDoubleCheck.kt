@@ -56,7 +56,9 @@ public class DaggerInteropDoubleCheck<T : Any>(provider: MetroProvider<T>) :
       return DaggerInteropDoubleCheck(provider.asMetroProvider())
     }
 
-    public fun <P : JakartaProvider<T>, T : Any> lazyFromJakartaProvider(provider: P): DaggerLazy<T> {
+    public fun <P : JakartaProvider<T>, T : Any> lazyFromJakartaProvider(
+      provider: P
+    ): DaggerLazy<T> {
       if (provider is DaggerLazy<*>) {
         @Suppress("UNCHECKED_CAST")
         return provider as DaggerLazy<T>
