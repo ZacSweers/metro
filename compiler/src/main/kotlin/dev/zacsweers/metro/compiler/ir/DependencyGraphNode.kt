@@ -16,7 +16,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val isExtendable: Boolean,
-  val supertypeNodes: Map<TypeKey, DependencyGraphNode>,
+  val includedGraphNodes: Map<TypeKey, DependencyGraphNode>,
   val scopes: Set<IrAnnotation>,
   val providerFactories: List<Pair<TypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
@@ -27,7 +27,7 @@ internal data class DependencyGraphNode(
   val injectors: List<Pair<MetroSimpleFunction, TypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
-  val parentGraphNodes: Map<TypeKey, DependencyGraphNode>,
+  val extendedGraphNodes: Map<TypeKey, DependencyGraphNode>,
   val typeKey: TypeKey = TypeKey(sourceGraph.typeWith()),
   val proto: DependencyGraphProto? = null,
 ) {
@@ -49,9 +49,9 @@ internal data class DependencyGraphNode(
       .orEmpty()
   }
 
-  val allSupertypeNodes by lazy { buildMap { recurseSupertypeNodes(this) }.values.toSet() }
+  val allIncludedNodes by lazy { buildMap { recurseIncludedNodes(this) }.values.toSet() }
 
-  val allParents by lazy { buildMap { recurseParents(this) }.keys }
+  val allExtendedNodes by lazy { buildMap { recurseParents(this) } }
 
   override fun toString(): String = typeKey.render(short = true)
 
@@ -62,19 +62,19 @@ internal data class DependencyGraphNode(
   )
 }
 
-private fun DependencyGraphNode.recurseSupertypeNodes(
+private fun DependencyGraphNode.recurseIncludedNodes(
   builder: MutableMap<TypeKey, DependencyGraphNode>
 ) {
-  for ((key, node) in supertypeNodes) {
+  for ((key, node) in includedGraphNodes) {
     if (key !in builder) {
       builder.put(key, node)
-      node.recurseSupertypeNodes(builder)
+      node.recurseIncludedNodes(builder)
     }
   }
 }
 
 private fun DependencyGraphNode.recurseParents(builder: MutableMap<TypeKey, DependencyGraphNode>) {
-  for ((key, value) in parentGraphNodes) {
+  for ((key, value) in extendedGraphNodes) {
     builder.put(key, value)
     value.recurseParents(builder)
   }

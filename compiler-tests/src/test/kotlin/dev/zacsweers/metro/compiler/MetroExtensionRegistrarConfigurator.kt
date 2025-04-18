@@ -119,7 +119,13 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     val classIds = ClassIds.fromOptions(options)
     FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
     IrGenerationExtension.registerExtension(
-      MetroIrGenerationExtension(configuration.messageCollector, classIds, options)
+      MetroIrGenerationExtension(
+        messageCollector = configuration.messageCollector,
+        classIds = classIds,
+        options = options,
+        // TODO ever support this in tests?
+        lookupTracker = null,
+      )
     )
   }
 }

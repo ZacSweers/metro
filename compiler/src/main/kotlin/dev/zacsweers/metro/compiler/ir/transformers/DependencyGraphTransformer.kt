@@ -59,6 +59,7 @@ import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.timedComputation
+import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -228,7 +229,7 @@ internal class DependencyGraphTransformer(
     val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
     val scopes = mutableSetOf<IrAnnotation>()
     val providerFactories = mutableListOf<Pair<TypeKey, ProviderFactory>>()
-    val parentGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
+    val extendedGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
 
     val isExtendable =
       dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
@@ -267,7 +268,7 @@ internal class DependencyGraphTransformer(
           .map { it to ContextualTypeKey.from(metroContext, it.ir, it.annotations) }
 
       // Read metadata if this is an extendable graph
-      val supertypeNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
+      val includedGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
       var graphProto: DependencyGraphProto? = null
       if (isExtendable) {
         val serialized =
@@ -338,9 +339,9 @@ internal class DependencyGraphTransformer(
         // to copy once
         scopes.addAll(graphDeclaration.scopeAnnotations())
 
-        supertypeNodes.putAll(
+        includedGraphNodes.putAll(
           // TODO dedupe logic with below
-          graphProto.supertype_classes.associate { graphClassId ->
+          graphProto.included_classes.associate { graphClassId ->
             val clazz =
               pluginContext.referenceClass(ClassId.fromString(graphClassId))
                 ?: error("Could not find graph class $graphClassId.")
@@ -350,7 +351,7 @@ internal class DependencyGraphTransformer(
           }
         )
 
-        parentGraphNodes.putAll(
+        extendedGraphNodes.putAll(
           graphProto.parent_graph_classes.associate { graphClassId ->
             val clazz =
               pluginContext.referenceClass(ClassId.fromString(graphClassId))
@@ -367,14 +368,14 @@ internal class DependencyGraphTransformer(
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
           isExtendable = isExtendable,
-          supertypeNodes = supertypeNodes,
+          includedGraphNodes = includedGraphNodes,
           scopes = scopes,
           providerFactories = providerFactories,
           accessors = accessors,
           bindsFunctions = bindsFunctions,
           isExternal = true,
           proto = graphProto,
-          parentGraphNodes = parentGraphNodes,
+          extendedGraphNodes = extendedGraphNodes,
           // Following aren't necessary to see in external graphs
           injectors = emptyList(),
           creator = null,
@@ -532,31 +533,33 @@ internal class DependencyGraphTransformer(
       throw e
     }
 
-    val graphDependencies =
-      creator
-        ?.parameters
-        ?.valueParameters
-        .orEmpty()
-        .filter { it.isIncludes || it.isExtends }
-        .associate {
-          val type = it.typeKey.type.rawType()
-          val node =
-            bindingStack.withEntry(
-              BindingStack.Entry.requestedAt(graphContextKey, creator!!.createFunction)
-            ) {
-              getOrComputeDependencyGraphNode(type, bindingStack)
-            }
-          if (it.isExtends) {
-            parentGraphNodes[it.typeKey] = node
+    val includedGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
+    creator
+      ?.parameters
+      ?.valueParameters
+      .orEmpty()
+      .filter { it.isIncludes || it.isExtends }
+      .forEach {
+        val type = it.typeKey.type.rawType()
+        val node =
+          bindingStack.withEntry(
+            BindingStack.Entry.requestedAt(graphContextKey, creator!!.createFunction)
+          ) {
+            getOrComputeDependencyGraphNode(type, bindingStack)
           }
-          it.typeKey to node
+        if (it.isExtends) {
+          extendedGraphNodes[it.typeKey] = node
+        } else {
+          // it.isIncludes
+          includedGraphNodes[it.typeKey] = node
         }
+      }
 
     val dependencyGraphNode =
       DependencyGraphNode(
         sourceGraph = graphDeclaration,
         isExtendable = isExtendable,
-        supertypeNodes = graphDependencies,
+        includedGraphNodes = includedGraphNodes,
         scopes = scopes,
         bindsFunctions = bindsFunctions,
         providerFactories = providerFactories,
@@ -564,38 +567,36 @@ internal class DependencyGraphTransformer(
         injectors = injectors,
         isExternal = false,
         creator = creator,
-        parentGraphNodes = parentGraphNodes,
+        extendedGraphNodes = extendedGraphNodes,
         typeKey = graphTypeKey,
       )
 
     // Check after creating a node for access to recursive allDependencies
     val overlapErrors = mutableSetOf<String>()
     val seenAncestorScopes = mutableMapOf<IrAnnotation, DependencyGraphNode>()
-    for (depNode in dependencyGraphNode.allSupertypeNodes) {
-      if (depNode.isExtendable) {
-        // If any intersect, report an error to onError with the intersecting types (including
-        // which parent it is coming from)
-        val overlaps = scopes.intersect(depNode.scopes)
-        if (overlaps.isNotEmpty()) {
-          for (overlap in overlaps) {
-            overlapErrors +=
-              "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
-          }
+    for (depNode in dependencyGraphNode.allExtendedNodes.values) {
+      // If any intersect, report an error to onError with the intersecting types (including
+      // which parent it is coming from)
+      val overlaps = scopes.intersect(depNode.scopes)
+      if (overlaps.isNotEmpty()) {
+        for (overlap in overlaps) {
+          overlapErrors +=
+            "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
         }
-        for (parentScope in depNode.scopes) {
-          seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
-            graphDeclaration.reportError(
-              buildString {
-                appendLine(
-                  "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
-                )
-                appendLine("Scope: ${parentScope.render(short = false)}")
-                appendLine("Ancestor 1: ${previous.sourceGraph.kotlinFqName}")
-                appendLine("Ancestor 2: ${depNode.sourceGraph.kotlinFqName}")
-              }
-            )
-            exitProcessing()
-          }
+      }
+      for (parentScope in depNode.scopes) {
+        seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
+          graphDeclaration.reportError(
+            buildString {
+              appendLine(
+                "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
+              )
+              appendLine("Scope: ${parentScope.render(short = false)}")
+              appendLine("Ancestor 1: ${previous.sourceGraph.kotlinFqName}")
+              appendLine("Ancestor 2: ${depNode.sourceGraph.kotlinFqName}")
+            }
+          )
+          exitProcessing()
         }
       }
     }
@@ -762,15 +763,13 @@ internal class DependencyGraphTransformer(
     val providerFactoriesToAdd = buildList {
       addAll(node.providerFactories)
       addAll(
-        node.allSupertypeNodes
-          .filter { it.isExtendable && it.typeKey in node.allParents }
-          .flatMap { depNode ->
-            depNode.providerFactories.filterNot {
-              // Do not include scoped providers as these should _only_ come from this graph
-              // instance
-              it.second.annotations.isScoped
-            }
+        node.allExtendedNodes.flatMap { (_, extendedNode) ->
+          extendedNode.providerFactories.filterNot {
+            // Do not include scoped providers as these should _only_ come from this graph
+            // instance
+            it.second.annotations.isScoped
           }
+        }
       )
     }
 
@@ -873,38 +872,34 @@ internal class DependencyGraphTransformer(
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen
     // TODO try to make accessors in this single-pass
-    val includesDeps =
-      node.creator
-        ?.parameters
-        ?.valueParameters
-        .orEmpty()
-        .filter { it.isIncludes }
-        .mapToSet { it.typeKey }
-    node.allSupertypeNodes.forEach { depNode ->
+    node.allIncludedNodes.forEach { depNode ->
       val accessorNames =
         depNode.proto?.provider_field_names?.toSet().orEmpty() +
           depNode.proto?.instance_field_names?.toSet().orEmpty()
       // Only add accessors for included types. If they're an accessor to a scoped provider, they
       // will be handled by the provider field accessor later
-      if (depNode.typeKey in includesDeps) {
-        for ((getter, contextualTypeKey) in depNode.accessors) {
-          val name = getter.ir.name.asString()
-          if (name.removeSuffix(Symbols.StringNames.METRO_ACCESSOR) in accessorNames) {
-            // We'll handle this farther down
-            continue
-          }
-          graph.addBinding(
-            contextualTypeKey.typeKey,
-            Binding.GraphDependency(
-              graph = depNode.sourceGraph,
-              getter = getter.ir,
-              isProviderFieldAccessor = false,
-              typeKey = contextualTypeKey.typeKey,
-            ),
-            bindingStack,
-          )
+      for ((getter, contextualTypeKey) in depNode.accessors) {
+        val name = getter.ir.name.asString()
+        if (name.removeSuffix(Symbols.StringNames.METRO_ACCESSOR) in accessorNames) {
+          // We'll handle this farther down
+          continue
         }
+        graph.addBinding(
+          contextualTypeKey.typeKey,
+          Binding.GraphDependency(
+            graph = depNode.sourceGraph,
+            getter = getter.ir,
+            isProviderFieldAccessor = false,
+            typeKey = contextualTypeKey.typeKey,
+          ),
+          bindingStack,
+        )
+        // Record a lookup for IC
+        trackFunctionCall(node.sourceGraph, getter.ir)
       }
+    }
+
+    node.allExtendedNodes.forEach { (key, depNode) ->
       if (depNode.isExtendable && depNode.proto != null) {
         val providerFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
         val instanceFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
@@ -951,6 +946,8 @@ internal class DependencyGraphTransformer(
             ),
             bindingStack,
           )
+          // Record a lookup for IC
+          trackFunctionCall(node.sourceGraph, accessor.ir)
         }
 
         depNode.proto.instance_field_names.forEach { instanceField ->
@@ -977,6 +974,8 @@ internal class DependencyGraphTransformer(
             ),
             bindingStack,
           )
+          // Record a lookup for IC
+          trackFunctionCall(node.sourceGraph, accessor.ir)
         }
       }
     }
@@ -1018,11 +1017,7 @@ internal class DependencyGraphTransformer(
     val bindsFunctionsToAdd = buildList {
       addAll(node.bindsFunctions)
       // Exclude scoped Binds, those will be exposed via provider field accessor
-      addAll(
-        node.allSupertypeNodes
-          .filter { it.isExtendable && it.typeKey in node.allParents }
-          .flatMap { it.bindsFunctions }
-      )
+      addAll(node.allExtendedNodes.values.filter { it.isExtendable }.flatMap { it.bindsFunctions })
     }
     bindsFunctionsToAdd.forEach { (bindingCallable, contextKey) ->
       val annotations = bindingCallable.annotations
@@ -1227,7 +1222,10 @@ internal class DependencyGraphTransformer(
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
             // this constructor parameter for provider field initialization
-            val graphDep = node.supertypeNodes.getValue(param.typeKey)
+            val graphDep =
+              node.includedGraphNodes[param.typeKey]
+                ?: node.extendedGraphNodes[param.typeKey]
+                ?: error("Undefined graph node ${param.typeKey}")
             instanceFields[graphDep.typeKey] =
               addSimpleInstanceField(
                 fieldNameAllocator.newName(
@@ -1313,7 +1311,7 @@ internal class DependencyGraphTransformer(
           }
 
       // Add instance fields for all the parent graphs
-      for (parent in node.allSupertypeNodes) {
+      for (parent in node.allExtendedNodes.values) {
         if (!parent.isExtendable) continue
         val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
         val proto =
@@ -1588,11 +1586,11 @@ internal class DependencyGraphTransformer(
             node.toProto(
               bindingGraph = bindingGraph,
               supertypeClasses =
-                node.allSupertypeNodes
+                node.allIncludedNodes
                   .filter { it.isExtendable }
                   .mapToSet { it.sourceGraph.classIdOrFail.asString() },
               parentGraphClasses =
-                node.allParents.mapToSet { it.type.classOrFail.owner.classIdOrFail.asString() },
+                node.allExtendedNodes.values.mapToSet { it.sourceGraph.classIdOrFail.asString() },
               providerFields =
                 providerFields
                   .filterKeys { typeKey -> typeKey != node.typeKey }
@@ -1758,7 +1756,7 @@ internal class DependencyGraphTransformer(
             .thenBy { it.is_property }
         ),
       accessor_callable_names = accessorNames,
-      supertype_classes = supertypeClasses.sorted(),
+      included_classes = supertypeClasses.sorted(),
       parent_graph_classes = parentGraphClasses.sorted(),
       multibinding_accessor_indices = multibindingAccessors,
     )

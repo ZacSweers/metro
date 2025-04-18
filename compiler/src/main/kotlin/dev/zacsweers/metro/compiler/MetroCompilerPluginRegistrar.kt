@@ -31,8 +31,9 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     }
 
     FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
+    val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
     IrGenerationExtension.registerExtension(
-      MetroIrGenerationExtension(configuration.messageCollector, classIds, options)
+      MetroIrGenerationExtension(configuration.messageCollector, classIds, options, lookupTracker)
     )
   }
 }

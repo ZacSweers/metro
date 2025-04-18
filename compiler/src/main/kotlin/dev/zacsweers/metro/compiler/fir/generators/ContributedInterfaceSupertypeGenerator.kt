@@ -16,7 +16,6 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
-import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -31,7 +30,9 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
@@ -64,8 +65,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   }
 
   private val inCompilationScopesToContributions:
-    FirCache<FirSession, Map<ClassId, Set<ClassId>>, TypeResolveService> =
-    session.firCachesFactory.createCache { session, typeResolver ->
+    FirCache<ClassId, Set<ClassId>, TypeResolveService> =
+    session.firCachesFactory.createCache { scopeClassId, typeResolver ->
       // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
       // generating supertypes for a graph in jvmMain, we want to capture contributions declared in
       // commonMain.
@@ -85,17 +86,17 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           .filterIsInstance<FirRegularClassSymbol>()
           .toList()
 
-      getScopedContributions(contributingClasses, typeResolver)
+      getScopedContributions(contributingClasses, typeResolver)[scopeClassId].orEmpty()
     }
 
   private val generatedScopesToContributions:
     FirCache<ClassId, Map<ClassId, Set<ClassId>>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
-      val scopeSimpleName = scopeClassId.joinSimpleNames().shortClassName
+      val scopeHintFqName = Symbols.FqNames.scopeHint(scopeClassId)
       val functionsInPackage =
         session.symbolProvider.getTopLevelFunctionSymbols(
-          Symbols.FqNames.metroHintsPackage,
-          scopeSimpleName,
+          scopeHintFqName.parent(),
+          scopeHintFqName.shortName(),
         )
 
       val contributingClasses =
@@ -117,7 +118,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   private fun getScopedContributions(
     contributingClasses: List<FirRegularClassSymbol>,
     typeResolver: TypeResolveService,
-  ): Map<ClassId, MutableSet<ClassId>> {
+  ): Map<ClassId, Set<ClassId>> {
     val scopesToNestedContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
 
     contributingClasses.forEach { originClass ->
@@ -187,6 +188,16 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         }
         .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
+    for (classId in scopes) {
+      session.lookupTracker?.recordFqNameLookup(
+        Symbols.FqNames.scopeHint(classId),
+        classLikeDeclaration.source,
+        // The class source is the closest we can get to the file source,
+        // and the file path lookup is cached internally.
+        classLikeDeclaration.source,
+      )
+    }
+
     val contributions =
       scopes
         .flatMap { scopeClassId ->
@@ -196,9 +207,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               .orEmpty()
 
           val inCompilationContributions =
-            inCompilationScopesToContributions
-              .getValue(session, typeResolver)[scopeClassId]
-              .orEmpty()
+            inCompilationScopesToContributions.getValue(scopeClassId, typeResolver)
 
           (inCompilationContributions + classPathContributions).map {
             it.constructClassLikeType(emptyArray())

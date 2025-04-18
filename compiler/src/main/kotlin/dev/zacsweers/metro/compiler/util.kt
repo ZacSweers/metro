@@ -46,6 +46,14 @@ internal fun <T, R> Sequence<T>.mapToSet(transform: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), transform)
 }
 
+internal fun <T, R> Iterable<T>.flatMapToSet(transform: (T) -> Iterable<R>): Set<R> {
+  return flatMapTo(mutableSetOf(), transform)
+}
+
+internal fun <T, R> Sequence<T>.flatMapToSet(transform: (T) -> Sequence<R>): Set<R> {
+  return flatMapTo(mutableSetOf(), transform)
+}
+
 internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
   return mapNotNullTo(mutableSetOf(), transform)
 }

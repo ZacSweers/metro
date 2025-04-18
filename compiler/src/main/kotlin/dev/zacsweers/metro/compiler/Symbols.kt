@@ -69,6 +69,10 @@ internal class Symbols(
     val providesCallableIdClass = ClassIds.providesCallableIdClass.asSingleFqName()
     val graphFactoryInvokeFunctionMarkerClass =
       ClassIds.graphFactoryInvokeFunctionMarkerClass.asSingleFqName()
+
+    fun scopeHint(scopeClassId: ClassId): FqName {
+      return metroHintsPackage.child(scopeClassId.joinSimpleNames().shortClassName)
+    }
   }
 
   // TODO replace with StandardClassIds

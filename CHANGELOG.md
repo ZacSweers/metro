@@ -12,6 +12,7 @@ Changelog
 - **Enhancement**: Report error diagnostic if Dagger's `@Reusable` is used on a provider or injected class.
 - **Enhancement**: Tweak diagnostic error strings for members so that IDE terminals auto-link them better. i.e., instead of printing `example.AppGraph.provideString`, Metro will print `example.AppGraph#provideString` instead.
 - **Enhancement**: Support repeatable @ContributesBinding annotations with different scopes.
+- **Fix**: Fix incremental compilation when `@Includes`-annotated graph parameters change accessor signatures.
 - **Fix**: Don't allow graph extensions to use the same scope as any extended ancestor graphs.
 - **Fix**: Don't allow multiple ancestor graphs of graph extensions to use the same scope.
 - **Fix**: Handle scenarios where the compose-compiler plugin runs _before_ Metro's when generating wrapper classes for top-level `@Composable` functions.
