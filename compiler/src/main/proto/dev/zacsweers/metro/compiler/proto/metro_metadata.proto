@@ -22,8 +22,8 @@ message DependencyGraphProto {
   // Set of accessor callable names (strings)
   repeated string accessor_callable_names = 5;
 
-  // Set of supertype class IDs (strings). Only present if is_graph is true
-  repeated string supertype_classes = 6;
+  // Set of included class IDs (strings). Only present if is_graph is true
+  repeated string included_classes = 6;
 
   // Set of instance field names (strings). Only present if is_graph is true
   repeated string instance_field_names = 7;
