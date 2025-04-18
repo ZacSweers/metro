@@ -14,11 +14,16 @@ import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.addExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
+import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
+import org.jetbrains.kotlin.incremental.components.LocationInfo
+import org.jetbrains.kotlin.incremental.components.Position
+import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
@@ -89,11 +94,14 @@ import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.psi.doNotAnalyze
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -762,3 +770,42 @@ internal fun IrFunction.stubExpressionBody(context: IrMetroContext) =
 
 internal fun IrBuilderWithScope.stubExpression(context: IrMetroContext) =
   irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))
+
+internal fun IrMetroContext.trackFunctionCall(
+  callingDeclaration: IrDeclaration,
+  calleeFunction: IrFunction,
+) {
+  val ktFile = callingDeclaration.fileParentOrNull?.getKtFile()
+  if ((ktFile != null && ktFile.doNotAnalyze == null) || ktFile == null) {
+    // Not every declaration has a file parent, for example IR-generated accessors
+    val filePath =
+      ktFile?.virtualFile?.path ?: callingDeclaration.fileParentOrNull?.fileEntry?.name ?: return
+    trackLookup(
+      container = calleeFunction.parentAsClass.kotlinFqName,
+      functionName = calleeFunction.name.asString(),
+      location =
+        object : LocationInfo {
+          override val filePath = filePath
+          override val position: Position = Position.NO_POSITION
+        },
+    )
+  }
+}
+
+internal fun IrMetroContext.trackLookup(
+  container: FqName,
+  functionName: String,
+  location: LocationInfo,
+) {
+  lookupTracker?.let { tracker ->
+    synchronized(tracker) {
+      tracker.record(
+        filePath = location.filePath,
+        position = if (tracker.requiresPosition) location.position else Position.NO_POSITION,
+        scopeFqName = container.asString(),
+        scopeKind = ScopeKind.CLASSIFIER,
+        name = functionName,
+      )
+    }
+  }
+}

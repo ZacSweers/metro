@@ -59,6 +59,7 @@ import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.timedComputation
+import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -903,6 +904,8 @@ internal class DependencyGraphTransformer(
           ),
           bindingStack,
         )
+        // Record a lookup for IC
+        trackFunctionCall(node.sourceGraph, getter.ir)
       }
     }
 
@@ -953,6 +956,8 @@ internal class DependencyGraphTransformer(
             ),
             bindingStack,
           )
+          // Record a lookup for IC
+          trackFunctionCall(node.sourceGraph, accessor.ir)
         }
 
         depNode.proto.instance_field_names.forEach { instanceField ->
@@ -979,6 +984,8 @@ internal class DependencyGraphTransformer(
             ),
             bindingStack,
           )
+          // Record a lookup for IC
+          trackFunctionCall(node.sourceGraph, accessor.ir)
         }
       }
     }
