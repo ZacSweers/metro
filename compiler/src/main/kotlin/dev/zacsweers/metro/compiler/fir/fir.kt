@@ -4,8 +4,6 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.mapToArray
 import java.util.Objects
@@ -108,7 +106,6 @@ import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.type
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -591,21 +588,31 @@ internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAn
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
 
-internal fun List<FirAnnotation>.scopeAnnotation(session: FirSession): MetroFirAnnotation? =
-  asSequence().scopeAnnotation(session)
+internal fun List<FirAnnotation>.scopeAnnotations(
+  session: FirSession
+): Sequence<MetroFirAnnotation> = asSequence().scopeAnnotations(session)
 
-internal fun Sequence<FirAnnotation>.scopeAnnotation(session: FirSession): MetroFirAnnotation? =
-  annotationAnnotatedWithAny(session, session.classIds.scopeAnnotations)
+internal fun Sequence<FirAnnotation>.scopeAnnotations(
+  session: FirSession
+): Sequence<MetroFirAnnotation> =
+  annotationsAnnotatedWithAny(session, session.classIds.scopeAnnotations)
 
 // TODO add a single = true|false param? How would we propagate errors
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): MetroFirAnnotation? {
+  return annotationsAnnotatedWithAny(session, names).firstOrNull()
+}
+
+internal fun Sequence<FirAnnotation>.annotationsAnnotatedWithAny(
+  session: FirSession,
+  names: Set<ClassId>,
+): Sequence<MetroFirAnnotation> {
   return filter { it.isResolved }
     .filterIsInstance<FirAnnotationCall>()
-    .firstOrNull { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
-    ?.let { MetroFirAnnotation(it) }
+    .filter { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
+    .map { MetroFirAnnotation(it) }
 }
 
 internal fun FirAnnotationCall.isQualifier(session: FirSession): Boolean {
@@ -775,19 +782,6 @@ internal fun FirCallableSymbol<*>.findAnnotation(
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
   getContainingClassSymbol() ?: error("No containing class symbol found for $this")
 
-internal val ClassId.hintCallableId: CallableId
-  get() {
-    val simpleName =
-      sequence {
-          yieldAll(packageFqName.pathSegments())
-          yieldAll(relativeClassName.pathSegments())
-        }
-        .joinToString(separator = "") { it.asString().capitalizeUS() }
-        .decapitalizeUS()
-        .asName()
-    return CallableId(Symbols.FqNames.metroHintsPackage, simpleName)
-  }
-
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 
@@ -795,6 +789,13 @@ internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), ind
 
 internal fun FirAnnotation.additionalScopesArgument() =
   argumentAsOrNull<FirArrayLiteral>("additionalScopes".asName(), index = 1)
+
+internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
+  buildSet {
+      resolvedScopeClassId()?.let(::add)
+      resolvedAdditionalScopesClassIds()?.let(::addAll)
+    }
+    .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
 internal fun FirAnnotation.excludesArgument() =
   argumentAsOrNull<FirArrayLiteral>("excludes".asName(), index = 2)

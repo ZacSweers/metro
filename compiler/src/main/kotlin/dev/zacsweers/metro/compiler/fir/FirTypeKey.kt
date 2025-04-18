@@ -33,7 +33,6 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
   fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
     if (includeQualifier) {
       qualifier?.let {
-        append("@")
         append(it.simpleString())
         append(" ")
       }

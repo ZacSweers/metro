@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import java.util.Locale
 import kotlin.contracts.contract
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
 internal const val LOG_PREFIX = "[METRO]"
@@ -120,4 +121,22 @@ internal fun <T> Collection<T>.singleOrError(errorMessage: Collection<T>.() -> S
     error(errorMessage())
   }
   return single()
+}
+
+internal fun CallableId.render(short: Boolean, isProperty: Boolean): String {
+  // Render like so: dev.zacsweers.metro.sample.multimodule.parent.ParentGraph#provideNumberService
+  return buildString {
+    classId?.let {
+      if (short) {
+        append(it.shortClassName.asString())
+      } else {
+        append(it.asSingleFqName().asString())
+      }
+      append("#")
+    }
+    append(callableName.asString())
+    if (!isProperty) {
+      append("()")
+    }
+  }
 }

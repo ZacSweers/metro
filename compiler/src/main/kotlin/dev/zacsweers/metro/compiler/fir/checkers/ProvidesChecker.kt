@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
-import dev.zacsweers.metro.compiler.fir.scopeAnnotation
+import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -297,9 +297,9 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           val providerTypeKey = FirTypeKey.from(session, returnType, declaration.annotations)
           if (classTypeKey == providerTypeKey) {
             val providerScope = annotations.scope
-            val classScope = returnClass.annotations.scopeAnnotation(session)
+            val classScope = returnClass.annotations.scopeAnnotations(session).singleOrNull()
             // TODO maybe we should report matching keys but different scopes? Feels like it could
-            // be confusing at best
+            //  be confusing at best
             if (providerScope == classScope) {
               reporter.reportOn(
                 source,

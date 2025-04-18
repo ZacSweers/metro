@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -48,7 +49,6 @@ import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.StandardClassIds
 
 // Toe-hold for contributed types
@@ -89,17 +89,22 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     }
 
   private val generatedScopesToContributions:
-    FirCache<FqName, Map<ClassId, Set<ClassId>>, TypeResolveService> =
-    session.firCachesFactory.createCache { hintsPackage, typeResolver ->
+    FirCache<ClassId, Map<ClassId, Set<ClassId>>, TypeResolveService> =
+    session.firCachesFactory.createCache { scopeClassId, typeResolver ->
+      val scopeSimpleName = scopeClassId.joinSimpleNames().shortClassName
       val functionsInPackage =
-        session.symbolProvider.symbolNamesProvider
-          .getTopLevelCallableNamesInPackage(hintsPackage)
-          .orEmpty()
-          .flatMap { name -> session.symbolProvider.getTopLevelFunctionSymbols(hintsPackage, name) }
+        session.symbolProvider.getTopLevelFunctionSymbols(
+          Symbols.FqNames.metroHintsPackage,
+          scopeSimpleName,
+        )
 
       val contributingClasses =
         functionsInPackage.mapNotNull { contribution ->
-          contribution.resolvedReturnType.toRegularClassSymbol(session)
+          // This is the single value param
+          contribution.valueParameterSymbols
+            .single()
+            .resolvedReturnType
+            .toRegularClassSymbol(session)
         }
 
       getScopedContributions(contributingClasses, typeResolver)
@@ -187,7 +192,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         .flatMap { scopeClassId ->
           val classPathContributions =
             generatedScopesToContributions
-              .getValue(Symbols.FqNames.metroHintsPackage, typeResolver)[scopeClassId]
+              .getValue(scopeClassId, typeResolver)[scopeClassId]
               .orEmpty()
 
           val inCompilationContributions =

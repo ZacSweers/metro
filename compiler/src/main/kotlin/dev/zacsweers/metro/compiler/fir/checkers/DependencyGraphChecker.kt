@@ -7,7 +7,7 @@ import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.fir.scopeAnnotation
+import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -92,8 +92,8 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           continue
         }
 
-        val scopeAnnotation = callable.allAnnotations().scopeAnnotation(session)
-        if (scopeAnnotation != null) {
+        val scopeAnnotations = callable.allAnnotations().scopeAnnotations(session)
+        for (scopeAnnotation in scopeAnnotations) {
           reporter.reportOn(
             scopeAnnotation.fir.source,
             FirMetroErrors.DEPENDENCY_GRAPH_ERROR,

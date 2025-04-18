@@ -5,6 +5,7 @@ package dev.zacsweers.metro.gradle
 import javax.inject.Inject
 import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.ProviderFactory
@@ -13,7 +14,7 @@ import org.gradle.api.provider.SetProperty
 @MetroExtensionMarker
 public abstract class MetroPluginExtension
 @Inject
-constructor(objects: ObjectFactory, providers: ProviderFactory) {
+constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFactory) {
 
   public val interop: InteropHandler = objects.newInstance(InteropHandler::class.java)
 
@@ -21,9 +22,15 @@ constructor(objects: ObjectFactory, providers: ProviderFactory) {
   public val enabled: Property<Boolean> =
       objects.property(Boolean::class.javaObjectType).convention(true)
 
-  /** If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging. */
+  /**
+   * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
+   *
+   * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
+   */
   public val debug: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+      objects
+          .property(Boolean::class.javaObjectType)
+          .convention(providers.gradleProperty("metro.debug").map { it.toBoolean() }.orElse(false))
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
@@ -69,8 +76,17 @@ constructor(objects: ObjectFactory, providers: ProviderFactory) {
    * given destination.
    *
    * This behaves similar to the compose-compiler's option of the same name.
+   *
+   * Optionally, you can specify a `metro.reportsDestination` gradle property whose value is a
+   * _relative_ path from the project's **build** directory.
    */
-  public abstract val reportsDestination: DirectoryProperty
+  public val reportsDestination: DirectoryProperty =
+      objects
+          .directoryProperty()
+          .convention(
+              providers.gradleProperty("metro.reportsDestination").flatMap {
+                layout.buildDirectory.dir(it)
+              })
 
   /**
    * Configures interop to support in generated code, usually from another DI framework.

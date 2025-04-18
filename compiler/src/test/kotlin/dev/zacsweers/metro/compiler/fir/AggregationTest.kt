@@ -1814,11 +1814,11 @@ class AggregationTest : MetroCompilerTest() {
         """
           e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
 
-    test.ContributedInterface is requested at
-        [test.AltGraph] test.AltGraph.contributedInterface
+        test.ContributedInterface is requested at
+            [test.AltGraph] test.AltGraph#contributedInterface
 
-Similar bindings:
-  - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
+    Similar bindings:
+      - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
         """
           .trimIndent()
       )

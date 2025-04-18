@@ -6,7 +6,14 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
+import java.nio.file.Path
+import kotlin.io.path.appendText
+import kotlin.io.path.createDirectories
+import kotlin.io.path.createFile
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.writeText
 import kotlin.system.measureTimeMillis
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -48,10 +55,22 @@ internal interface IrMetroContext {
 
   val irTypeSystemContext: IrTypeSystemContext
 
+  val platformName: String?
+
+  val reportsDir: Path?
+
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
+  val logFile: Path?
+
   fun IrMetroContext.log(message: String) {
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    if (debug) {
+      // Print directly because STRONG_WARNING may fail the build instead since it's a warning
+      println(message)
+    } else {
+      messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    }
+    logFile?.appendText("\n$LOG_PREFIX $message")
   }
 
   fun IrMetroContext.logVerbose(message: String) {
@@ -158,6 +177,27 @@ internal interface IrMetroContext {
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
 
+      override val platformName: String? by lazy {
+        pluginContext.platform?.let { platform ->
+          platform.componentPlatforms.joinToString("-") { it.platformName }
+        }
+      }
+
+      override val reportsDir: Path? by lazy {
+        options.reportsDestination
+          ?.letIf(platformName != null) { it.resolve(platformName!!) }
+          ?.createDirectories()
+      }
+
+      override val logFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("log.txt").apply {
+            deleteIfExists()
+            createFile()
+          }
+        }
+      }
+
       override fun loggerFor(type: MetroLogger.Type): MetroLogger {
         return loggerCache.getOrPut(type) {
           if (type in options.enabledLoggers) {
@@ -169,6 +209,14 @@ internal interface IrMetroContext {
       }
     }
   }
+}
+
+internal fun IrMetroContext.writeDiagnostic(fileName: String, text: () -> String) {
+  writeDiagnostic({ fileName }, text)
+}
+
+internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> String) {
+  reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
 }
 
 internal inline fun IrMetroContext.timedComputation(name: String, block: () -> Unit) {
