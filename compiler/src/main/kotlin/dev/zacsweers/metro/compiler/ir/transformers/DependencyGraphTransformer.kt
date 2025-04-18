@@ -574,31 +574,29 @@ internal class DependencyGraphTransformer(
     // Check after creating a node for access to recursive allDependencies
     val overlapErrors = mutableSetOf<String>()
     val seenAncestorScopes = mutableMapOf<IrAnnotation, DependencyGraphNode>()
-    for (depNode in dependencyGraphNode.allIncludedNodes) {
-      if (depNode.isExtendable) {
-        // If any intersect, report an error to onError with the intersecting types (including
-        // which parent it is coming from)
-        val overlaps = scopes.intersect(depNode.scopes)
-        if (overlaps.isNotEmpty()) {
-          for (overlap in overlaps) {
-            overlapErrors +=
-              "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
-          }
+    for (depNode in dependencyGraphNode.allExtendedNodes.values) {
+      // If any intersect, report an error to onError with the intersecting types (including
+      // which parent it is coming from)
+      val overlaps = scopes.intersect(depNode.scopes)
+      if (overlaps.isNotEmpty()) {
+        for (overlap in overlaps) {
+          overlapErrors +=
+            "- ${overlap.render(short = false)} (from ancestor '${depNode.sourceGraph.kotlinFqName}')"
         }
-        for (parentScope in depNode.scopes) {
-          seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
-            graphDeclaration.reportError(
-              buildString {
-                appendLine(
-                  "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
-                )
-                appendLine("Scope: ${parentScope.render(short = false)}")
-                appendLine("Ancestor 1: ${previous.sourceGraph.kotlinFqName}")
-                appendLine("Ancestor 2: ${depNode.sourceGraph.kotlinFqName}")
-              }
-            )
-            exitProcessing()
-          }
+      }
+      for (parentScope in depNode.scopes) {
+        seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
+          graphDeclaration.reportError(
+            buildString {
+              appendLine(
+                "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
+              )
+              appendLine("Scope: ${parentScope.render(short = false)}")
+              appendLine("Ancestor 1: ${previous.sourceGraph.kotlinFqName}")
+              appendLine("Ancestor 2: ${depNode.sourceGraph.kotlinFqName}")
+            }
+          )
+          exitProcessing()
         }
       }
     }
@@ -874,14 +872,6 @@ internal class DependencyGraphTransformer(
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen
     // TODO try to make accessors in this single-pass
-    val includesDeps =
-      node.creator
-        ?.parameters
-        ?.valueParameters
-        .orEmpty()
-        .filter { it.isIncludes }
-        .mapToSet { it.typeKey }
-
     node.allIncludedNodes.forEach { depNode ->
       val accessorNames =
         depNode.proto?.provider_field_names?.toSet().orEmpty() +
@@ -1027,11 +1017,7 @@ internal class DependencyGraphTransformer(
     val bindsFunctionsToAdd = buildList {
       addAll(node.bindsFunctions)
       // Exclude scoped Binds, those will be exposed via provider field accessor
-      addAll(
-        node.allIncludedNodes
-          .filter { it.isExtendable && it.typeKey in node.allExtendedNodes }
-          .flatMap { it.bindsFunctions }
-      )
+      addAll(node.allExtendedNodes.values.filter { it.isExtendable }.flatMap { it.bindsFunctions })
     }
     bindsFunctionsToAdd.forEach { (bindingCallable, contextKey) ->
       val annotations = bindingCallable.annotations
@@ -1325,7 +1311,7 @@ internal class DependencyGraphTransformer(
           }
 
       // Add instance fields for all the parent graphs
-      for (parent in node.allIncludedNodes) {
+      for (parent in node.allExtendedNodes.values) {
         if (!parent.isExtendable) continue
         val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
         val proto =
