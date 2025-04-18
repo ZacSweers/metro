@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -66,9 +67,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   }
 
   private val inCompilationScopesToContributions:
-    FirCache<FirSession, Map<ClassId, Set<ClassId>>, TypeResolveService> =
-    session.firCachesFactory.createCache { session, typeResolver ->
-      val scopesToContributingClass = mutableMapOf<ClassId, MutableSet<ClassId>>()
+    FirCache<ClassId, Set<ClassId>, TypeResolveService> =
+    session.firCachesFactory.createCache { scopeClassId, typeResolver ->
       // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
       // generating supertypes for a graph in jvmMain, we want to capture contributions declared in
       // commonMain.
@@ -82,17 +82,13 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           )
         }
         .filterIsInstance<FirRegularClassSymbol>()
-        .forEach { clazz ->
+        .flatMapToSet { clazz ->
           clazz.annotations
             .annotationsIn(session, session.classIds.allContributesAnnotations)
             .mapNotNull { it.resolvedScopeClassId(typeResolver) }
-            .forEach { scopeClassId ->
-              scopesToContributingClass
-                .getOrPut(scopeClassId, ::mutableSetOf)
-                .add(clazz.classId.createNestedClassId(Symbols.Names.metroContribution))
-            }
+            .filter { it == scopeClassId }
+            .map { clazz.classId.createNestedClassId(Symbols.Names.metroContribution) }
         }
-      scopesToContributingClass
     }
 
   private val generatedScopesToContributions:
@@ -207,9 +203,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               .orEmpty()
 
           val inCompilationContributions =
-            inCompilationScopesToContributions
-              .getValue(session, typeResolver)[scopeClassId]
-              .orEmpty()
+            inCompilationScopesToContributions.getValue(scopeClassId, typeResolver)
 
           (inCompilationContributions + classPathContributions).map {
             it.constructClassLikeType(emptyArray())
