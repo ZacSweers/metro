@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.transformers
 import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.configureKsp
+import dagger.Lazy
 import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
@@ -412,6 +413,35 @@ class DaggerInteropTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Provider<*>>("provider")
       assertThat(fooInstance).isNotNull()
+      assertThat(fooInstance.get().javaClass.name).isEqualTo("test.Foo")
+    }
+  }
+
+  @Test
+  fun `injected dagger lazy interop works`() {
+    compile(
+      source(
+        """
+          import javax.inject.Inject
+          import dagger.Lazy
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val fooBar: FooBar
+          }
+          class Foo @Inject constructor()
+
+          class FooBar @Inject constructor(
+            val lazy: Lazy<Foo>
+          )
+        """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Lazy<Any>>("lazy")
+      assertThat(fooInstance).isNotNull()
+      assertThat(fooInstance.get().javaClass.name).isEqualTo("asdf")
     }
   }
 }
