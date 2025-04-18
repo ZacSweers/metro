@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.mapToArray
 import java.util.Objects
@@ -64,7 +63,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMappi
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
-import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.buildUserTypeFromQualifierParts
@@ -857,16 +855,6 @@ internal fun FirAnnotation.resolvedScopeClassId(typeResolver: TypeResolveService
   // try to resolve within the enclosing scope
   return scopeArgument.resolvedClassId()
     ?: scopeArgument.resolvedClassArgumentTarget(typeResolver)?.classId
-}
-
-internal fun FirAnnotation.scopeName(session: FirSession): String? {
-  return resolvedScopeClassId()?.shortClassName?.identifier
-    ?: scopeArgument()
-      ?.argument
-      ?.toReference(session)
-      ?.expectAs<FirSimpleNamedReference>()
-      ?.name
-      ?.identifier
 }
 
 internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =

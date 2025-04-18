@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.NameAllocator
+import dev.zacsweers.metro.compiler.NameAllocator.Mode
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
@@ -20,22 +22,27 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.fir.scopeName
+import dev.zacsweers.metro.compiler.fir.resolvedClassId
+import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.joinSimpleNames
-import dev.zacsweers.metro.compiler.plus
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
+import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createMemberProperty
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -51,6 +58,11 @@ import org.jetbrains.kotlin.name.Name
 
 internal class ContributionsFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
+
+  // For each contributing class, track its nested contribution classes and their scope arguments
+  private val contributingClassToScopedContributions:
+    MutableMap<FirClassSymbol<*>, MutableMap<Name, FirGetClassCall?>> =
+    mutableMapOf()
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.contributesAnnotationPredicate)
@@ -158,18 +170,41 @@ internal class ContributionsFirGenerator(session: FirSession) :
         .annotationsIn(session, session.classIds.allContributesAnnotations)
         .toList()
 
+    val contributionNamesToScopeArgs =
+      contributingClassToScopedContributions.getOrPut(classSymbol) { mutableMapOf() }
+
     return if (contributionAnnotations.isNotEmpty()) {
-      // Encode the scope into the nested contribution class name. When there are contributions for
-      // multiple scopes we'll end up with a nested class for each.
-      // E.g. $$MetroContributionAppScope and $$MetroContributionLibScope
+      // We create a contribution class for each scope being contributed to. E.g. if there are
+      // contributions for AppScope and LibScope we'll create $$MetroContribution and
+      // $$MetroContribution2
+      val nameAllocator = NameAllocator(mode = Mode.COUNT)
       contributionAnnotations
-        .mapNotNull { it.scopeName(session) }
-        .distinct()
-        .map { Symbols.Names.metroContribution.plus(it) }
+        .mapNotNull { it.scopeArgument() }
+        .distinctBy { it.scopeName(session) }
+        .map { scopeArgument ->
+          val nestedContributionName =
+            nameAllocator.newName(Symbols.Names.metroContribution.identifier).asName()
+
+          contributionNamesToScopeArgs.put(nestedContributionName, scopeArgument)
+
+          nestedContributionName
+        }
         .toSet()
     } else {
       emptySet()
     }
+  }
+
+  /**
+   * Assumes we are calling this on an annotation's 'scope' argument value -- used in contexts where
+   * we can't resolve the scope argument to get the full classId
+   */
+  private fun FirGetClassCall?.scopeName(session: FirSession): String? {
+    return this?.argument
+      ?.toReference(session)
+      ?.expectAsOrNull<FirSimpleNamedReference>()
+      ?.name
+      ?.identifier
   }
 
   override fun generateNestedClassLikeDeclaration(
@@ -193,7 +228,21 @@ internal class ContributionsFirGenerator(session: FirSession) :
           }
         }
       }
-      .apply { markAsDeprecatedHidden(session) }
+      .apply {
+        markAsDeprecatedHidden(session)
+        val metroContributionAnnotation =
+          buildMetroContributionAnnotation().apply {
+            replaceArgumentMapping(
+              buildAnnotationArgumentMapping {
+                val originalScopeArg =
+                  contributingClassToScopedContributions[owner]?.get(name)
+                    ?: error("Could not find a contribution scope for ${owner.classId}.$name")
+                this.mapping.put("scope".asName(), originalScopeArg)
+              }
+            )
+          }
+        replaceAnnotations(annotations + listOf(metroContributionAnnotation))
+      }
       .symbol
   }
 
@@ -204,12 +253,15 @@ internal class ContributionsFirGenerator(session: FirSession) :
     if (!classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptySet()
     val origin = classSymbol.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptySet()
     val contributions = findContributions(origin) ?: return emptySet()
-    val scope = classSymbol.name.parseEncodedContributionScope()
+    val scopeArg =
+      classSymbol.annotations
+        .single { it.toAnnotationClassId(session) == Symbols.ClassIds.metroContribution }
+        .scopeArgument()
     // Note the names we supply here are not final, we just need to know if we're going to generate
     // _any_ names for this type. We will return n >= 1 properties in generateProperties later.
     return contributions
       .filterIsInstance<Contribution.BindingContribution>()
-      .filter { it.annotation.scopeName(session) == scope }
+      .filter { it.annotation.scopeArgument().scopeName(session) == scopeArg.scopeName(session) }
       .groupBy { it.callableName.asName() }
       .keys
   }
@@ -237,17 +289,17 @@ internal class ContributionsFirGenerator(session: FirSession) :
     if (!owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
     val origin = owner.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val contributions = findContributions(origin) ?: return emptyList()
-    val scope = owner.name.parseEncodedContributionScope()
+    val scopeId =
+      owner.annotations
+        .single { it.toAnnotationClassId(session) == Symbols.ClassIds.metroContribution }
+        .scopeArgument()
+        ?.resolvedClassId() ?: error("Could not find a contribution scope for ${owner.classId}")
 
     return contributions
       .filterIsInstance<Contribution.BindingContribution>()
       .filter { it.callableName == callableId.callableName.identifier }
-      .filter { it.annotation.scopeName(session) == scope }
+      .filter { it.annotation.scopeArgument()?.resolvedClassId() == scopeId }
       .map { contribution -> buildBindingProperty(owner, contribution) }
-  }
-
-  private fun Name.parseEncodedContributionScope(): String {
-    return identifier.substringAfter(Symbols.Names.metroContribution.identifier)
   }
 
   private fun buildBindingProperty(
@@ -316,5 +368,9 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
   private fun buildIntoMapAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.intoMapClassSymbol }
+  }
+
+  private fun buildMetroContributionAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.metroContributionClassSymbol }
   }
 }

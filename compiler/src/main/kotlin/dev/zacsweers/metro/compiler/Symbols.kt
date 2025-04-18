@@ -78,6 +78,8 @@ internal class Symbols(
     val composable = ClassId(FqNames.composeRuntime, "Composable".asName())
     val stable = ClassId(FqNames.composeRuntime, "Stable".asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.bindsClassName)
+    val metroContribution =
+      ClassId(FqNames.metroRuntimeInternalPackage, "MetroContribution".asName())
     val metroExtends = ClassId(FqNames.metroRuntimePackage, "Extends".asName())
     val metroFactory = ClassId(FqNames.metroRuntimeInternalPackage, Names.factoryClassName)
     val metroIncludes = ClassId(FqNames.metroRuntimePackage, "Includes".asName())

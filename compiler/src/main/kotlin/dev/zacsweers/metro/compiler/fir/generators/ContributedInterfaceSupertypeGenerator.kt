@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
@@ -17,7 +16,6 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
-import dev.zacsweers.metro.compiler.plus
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -26,11 +24,9 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirArrayLiteral
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
@@ -38,6 +34,8 @@ import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.scopes.getSingleClassifier
+import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -68,31 +66,26 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   private val inCompilationScopesToContributions:
     FirCache<FirSession, Map<ClassId, Set<ClassId>>, TypeResolveService> =
     session.firCachesFactory.createCache { session, typeResolver ->
-      val scopesToContributingClass = mutableMapOf<ClassId, MutableSet<ClassId>>()
       // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
       // generating supertypes for a graph in jvmMain, we want to capture contributions declared in
       // commonMain.
       val allSessions =
         sequenceOf(session).plus(session.moduleData.allDependsOnDependencies.map { it.session })
 
-      allSessions
-        .flatMap {
-          it.predicateBasedProvider.getSymbolsByPredicate(
-            session.predicates.contributesAnnotationPredicate
-          )
-        }
-        .filterIsInstance<FirRegularClassSymbol>()
-        .forEach { clazz ->
-          clazz.annotations
-            .annotationsIn(session, session.classIds.allContributesAnnotations)
-            .mapNotNull { it.resolvedScopeClassId(typeResolver) }
-            .forEach { scopeClassId ->
-              scopesToContributingClass
-                .getOrPut(scopeClassId, ::mutableSetOf)
-                .add(clazz.nestedContributionClassId(scopeClassId))
-            }
-        }
-      scopesToContributingClass
+      // Predicates can't see the generated $$MetroContribution classes, but we can access them
+      // by first querying the top level @ContributeX-annotated source symbols and then checking
+      // their declaration scopes
+      val contributingClasses =
+        allSessions
+          .flatMap {
+            it.predicateBasedProvider.getSymbolsByPredicate(
+              session.predicates.contributesAnnotationPredicate
+            )
+          }
+          .filterIsInstance<FirRegularClassSymbol>()
+          .toList()
+
+      getScopedContributions(contributingClasses, typeResolver)
     }
 
   private val generatedScopesToContributions:
@@ -104,51 +97,52 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           .orEmpty()
           .flatMap { name -> session.symbolProvider.getTopLevelFunctionSymbols(hintsPackage, name) }
 
-      buildMap<ClassId, MutableSet<ClassId>> {
-        for (contribution in functionsInPackage) {
-          val originClass =
-            contribution.resolvedReturnType.toRegularClassSymbol(session) ?: continue
-
-          originClass
-            .contributesAnnotations()
-            .mapNotNull { it.resolvedScopeClassId(typeResolver) }
-            .distinct()
-            .forEach { scopeClassId ->
-              val metroContribution = originClass.nestedContributionClassId(scopeClassId)
-              getOrPut(scopeClassId, ::mutableSetOf).add(metroContribution)
-            }
+      val contributingClasses =
+        functionsInPackage.mapNotNull { contribution ->
+          contribution.resolvedReturnType.toRegularClassSymbol(session)
         }
-      }
+
+      getScopedContributions(contributingClasses, typeResolver)
     }
 
-  private fun FirRegularClassSymbol.nestedContributionClassId(scopeClassId: ClassId): ClassId {
-    return classId.createNestedClassId(
-      Symbols.Names.metroContribution.plus(scopeClassId.shortClassName.identifier)
-    )
-  }
+  /**
+   * @param contributingClasses The classes annotated with some number of @ContributesX annotations.
+   * @return A mapping of scope ids to @MetroContribution-annotated nested classes.
+   */
+  private fun getScopedContributions(
+    contributingClasses: List<FirRegularClassSymbol>,
+    typeResolver: TypeResolveService,
+  ): Map<ClassId, MutableSet<ClassId>> {
+    val scopesToNestedContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
 
-  private fun FirRegularClassSymbol.contributesAnnotations(): Sequence<FirAnnotation> {
-    return annotations.annotationsIn(session, session.classIds.allContributesAnnotations).ifEmpty {
-      if (origin == FirDeclarationOrigin.Library) {
-        // When there are multiple contribution annotations, they end up getting bundled into a
-        // 'Container' type that we need to unwrap. This behavior appears to only occur for
-        // contributions from other modules/compilations.
-        annotations
-          .firstOrNull()
-          ?.argumentMapping
-          ?.mapping
-          ?.values
-          ?.firstOrNull()
-          ?.expectAsOrNull<FirArrayLiteral>()
-          ?.argumentList
-          ?.arguments
-          ?.expectAsOrNull<List<FirAnnotation>>()
-          .orEmpty()
-          .annotationsIn(session, session.classIds.allContributesAnnotations)
-      } else {
-        emptySequence<FirAnnotation>()
-      }
+    contributingClasses.forEach { originClass ->
+      val classDeclarationContainer =
+        originClass.fir.symbol.declaredMemberScope(session, memberRequiredPhase = null)
+
+      val contributionNames =
+        classDeclarationContainer.getClassifierNames().filter {
+          it.identifier.startsWith(Symbols.Names.metroContribution.identifier)
+        }
+
+      contributionNames
+        .mapNotNull { nestedClassName ->
+          val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
+
+          nestedClass
+            ?.annotations
+            ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
+            ?.single()
+            ?.resolvedScopeClassId(typeResolver)
+            ?.let { scopeId -> scopeId to originClass.classId.createNestedClassId(nestedClassName) }
+        }
+        .forEach { (scopeClassId, nestedContributionId) ->
+          scopesToNestedContributions
+            .getOrPut(scopeClassId, ::mutableSetOf)
+            .add(nestedContributionId)
+        }
     }
+
+    return scopesToNestedContributions
   }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {

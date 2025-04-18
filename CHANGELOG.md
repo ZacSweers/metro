@@ -7,6 +7,7 @@ Changelog
 - **Enhancement**: Optimize empty map multibindings to reuse a singleton instance.
 - **Enhancement**: Report error diagnostic if Dagger's `@Reusable` is used on a provider or injected class.
 - **Enhancement**: Multibindings may not be empty by default. To allow an empty multibinding, `@Multibinds(allowEmpty = true)` must be explicitly declared now.
+- **Enhancement**: Support repeatable @ContributesBinding annotations with different scopes
 - **Fix**: Handle scenarios where the compose-compiler plugin runs _before_ Metro's when generating wrapper classes for top-level `@Composable` functions.
 - Temporarily disable hint generation in WASM targets to avoid file count mismatches until [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - Add an Android sample: https://github.com/ZacSweers/metro/tree/main/samples/android-app

@@ -108,6 +108,11 @@ internal class MetroFirBuiltIns(
       as FirRegularClassSymbol
   }
 
+  val metroContributionClassSymbol by unsafeLazy {
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.metroContribution)
+      as FirRegularClassSymbol
+  }
+
   companion object {
     fun getFactory(classIds: ClassIds, options: MetroOptions) = Factory { session ->
       MetroFirBuiltIns(session, classIds, ExtensionPredicates(classIds), options)
