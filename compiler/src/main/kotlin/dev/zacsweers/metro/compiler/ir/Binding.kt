@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.render
 import java.util.TreeSet
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -180,9 +181,14 @@ internal sealed interface Binding {
           append(' ')
         }
       }
-      append(providerFactory.callableId.asSingleFqName().asString())
+      append(
+        providerFactory.callableId.render(
+          short = false,
+          isProperty = providerFactory.isPropertyAccessor,
+        )
+      )
       append(": ")
-      append(typeKey.render(short = true))
+      append(typeKey.render(short = false))
     }
   }
 
@@ -219,8 +225,8 @@ internal sealed interface Binding {
         return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
           if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
             // If it's a contribution, the source is
-            // SourceClass.$$MetroContribution.bindingFunction
-            //                                 ^^^
+            // SourceClass.$$MetroContributionScopeName.bindingFunction
+            //                                          ^^^
             it.parentAsClass.parentAsClass.locationOrNull()
           } else {
             it.locationOrNull()
@@ -338,7 +344,7 @@ internal sealed interface Binding {
       get() = getter.propertyIfAccessor.locationOrNull()
 
     override fun toString(): String {
-      return "${graph.kotlinFqName}.${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
+      return "${graph.kotlinFqName}#${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
     }
   }
 

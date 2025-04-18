@@ -8,7 +8,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.sample.multimodule.FeatureScope
+import dev.zacsweers.metro.sample.multimodule.ChildScope
 import dev.zacsweers.metro.sample.multimodule.ItemService
 import dev.zacsweers.metro.sample.multimodule.MessageService
 import dev.zacsweers.metro.sample.multimodule.NumberService
@@ -18,8 +18,8 @@ import dev.zacsweers.metro.sample.multimodule.parent.ParentGraph
  * Child graph that extends the parent graph. This graph demonstrates graph extension by extending
  * the parent graph.
  */
-@SingleIn(FeatureScope::class)
-@DependencyGraph(FeatureScope::class, isExtendable = true)
+@SingleIn(ChildScope::class)
+@DependencyGraph(ChildScope::class, isExtendable = true)
 interface ChildGraph {
   /** Access the message service from the parent graph. */
   val messageService: MessageService
@@ -41,9 +41,7 @@ interface ChildGraph {
   }
 
   /** Provides an item service implementation. */
-  @Provides
-  @SingleIn(FeatureScope::class)
-  fun provideItemService(): ItemService = ChildItemService()
+  @Provides @SingleIn(ChildScope::class) fun provideItemService(): ItemService = ChildItemService()
 
   /** Provides a combined message using both parent and child services. */
   @Named("combined")

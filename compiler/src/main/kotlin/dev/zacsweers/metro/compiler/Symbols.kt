@@ -69,6 +69,10 @@ internal class Symbols(
     val providesCallableIdClass = ClassIds.providesCallableIdClass.asSingleFqName()
     val graphFactoryInvokeFunctionMarkerClass =
       ClassIds.graphFactoryInvokeFunctionMarkerClass.asSingleFqName()
+
+    fun scopeHint(scopeClassId: ClassId): FqName {
+      return metroHintsPackage.child(scopeClassId.joinSimpleNames().shortClassName)
+    }
   }
 
   // TODO replace with StandardClassIds
@@ -78,6 +82,8 @@ internal class Symbols(
     val composable = ClassId(FqNames.composeRuntime, "Composable".asName())
     val stable = ClassId(FqNames.composeRuntime, "Stable".asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.bindsClassName)
+    val metroContribution =
+      ClassId(FqNames.metroRuntimeInternalPackage, "MetroContribution".asName())
     val metroExtends = ClassId(FqNames.metroRuntimePackage, "Extends".asName())
     val metroFactory = ClassId(FqNames.metroRuntimeInternalPackage, Names.factoryClassName)
     val metroIncludes = ClassId(FqNames.metroRuntimePackage, "Includes".asName())
@@ -116,6 +122,7 @@ internal class Symbols(
     val metroFactory = Name.identifier(StringNames.METRO_FACTORY)
     val metroContribution = Name.identifier("$\$MetroContribution")
     val metroGraph = Name.identifier("$\$MetroGraph")
+    val metroHint = Name.identifier("hint")
     val metroImpl = StringNames.METRO_IMPL.asName()
     val metroMembersInjector = Name.identifier("$\$MetroMembersInjector")
     val membersInjector = Name.identifier("MembersInjector")

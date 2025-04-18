@@ -92,7 +92,7 @@ internal interface BindingStack {
         return Entry(
           contextKey = contextKey,
           usage = "is requested at",
-          graphContext = "$targetFqName.$accessorString",
+          graphContext = "$targetFqName#$accessorString",
           declaration = declaration,
           isSynthetic = true,
         )
@@ -146,8 +146,8 @@ internal interface BindingStack {
               when {
                 function is IrConstructor -> ""
                 function.isPropertyAccessor ->
-                  ".${(function.propertyIfAccessor as IrProperty).name.asString()}"
-                else -> ".${function.name.asString()}"
+                  "#${(function.propertyIfAccessor as IrProperty).name.asString()}"
+                else -> "#${function.name.asString()}"
               }
             val end = if (param == null) "()" else "(…, ${param.name.asString()})"
             "$targetFqName$middle$end"

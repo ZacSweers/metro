@@ -4,10 +4,19 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Multibindings may not be empty by default. To allow an empty multibinding, `@Multibinds(allowEmpty = true)` must be explicitly declared now.
+- **New**: Write graph metadata to reports (if enabled).
+- **New**: Support configuring debug and reports globally via `metro.debug` and `metro.reportsDestination` Gradle properties (respectively).
+- **Enhancement**: Change how aggregation hints are generated to improve incremental compilation. Externally contributed hints are now looked up lazily per-scope instead of all at once.
 - **Enhancement**: Optimize empty map multibindings to reuse a singleton instance.
 - **Enhancement**: Report error diagnostic if Dagger's `@Reusable` is used on a provider or injected class.
-- **Enhancement**: Multibindings may not be empty by default. To allow an empty multibinding, `@Multibinds(allowEmpty = true)` must be explicitly declared now.
+- **Enhancement**: Tweak diagnostic error strings for members so that IDE terminals auto-link them better. i.e., instead of printing `example.AppGraph.provideString`, Metro will print `example.AppGraph#provideString` instead.
+- **Enhancement**: Support repeatable @ContributesBinding annotations with different scopes.
+- **Fix**: Fix incremental compilation when `@Includes`-annotated graph parameters change accessor signatures.
+- **Fix**: Don't allow graph extensions to use the same scope as any extended ancestor graphs.
+- **Fix**: Don't allow multiple ancestor graphs of graph extensions to use the same scope.
 - **Fix**: Handle scenarios where the compose-compiler plugin runs _before_ Metro's when generating wrapper classes for top-level `@Composable` functions.
+- **Fix**: Fix an edge case in graph extensions where child graphs would miss a provided scoped binding in a parent graph that was also exposed as an accessor.
 - Temporarily disable hint generation in WASM targets to avoid file count mismatches until [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - Add an Android sample: https://github.com/ZacSweers/metro/tree/main/samples/android-app
 - Add a multiplatform Circuit sample: https://github.com/ZacSweers/metro/tree/main/samples/circuit-app

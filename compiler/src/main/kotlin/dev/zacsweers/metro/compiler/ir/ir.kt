@@ -638,6 +638,10 @@ internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): 
   return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
 }
 
+internal fun Sequence<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
+  return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
+}
+
 internal val IrDeclarationParent.isExternalParent: Boolean
   get() = this is Fir2IrLazyClass || this is IrExternalPackageFragment
 
