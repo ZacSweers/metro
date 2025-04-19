@@ -27,6 +27,7 @@ plugins {
   alias(libs.plugins.spotless)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.binaryCompatibilityValidator)
+  alias(libs.plugins.testkit)
 }
 
 java { toolchain { languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of)) } }
@@ -115,6 +116,19 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
+
+  functionalTestImplementation(libs.junit)
+  functionalTestImplementation(libs.truth)
+  functionalTestImplementation(libs.kotlin.stdlib)
+  functionalTestImplementation(libs.testkit.support)
+  functionalTestImplementation(libs.testkit.truth)
+  functionalTestImplementation(project(":"))
+}
+
+tasks.withType<Test>().configureEach {
+  jvmArgs(
+    "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}"
+  )
 }
 
 configure<MavenPublishBaseExtension> { publishToMavenCentral(automaticRelease = true) }
@@ -123,3 +137,11 @@ configure<MavenPublishBaseExtension> { publishToMavenCentral(automaticRelease = 
 tasks.withType<KotlinCompile>().configureEach {
   compilerOptions { moduleName.set(project.property("POM_ARTIFACT_ID") as String) }
 }
+
+tasks
+  .named { it == "publishPluginMavenPublicationToFunctionalTestRepository" }
+  .configureEach { mustRunAfter("signTestKitSupportForJavaPublication") }
+
+tasks
+  .named { it == "publishTestKitSupportForJavaPublicationToFunctionalTestRepository" }
+  .configureEach { mustRunAfter("signPluginMavenPublication") }
