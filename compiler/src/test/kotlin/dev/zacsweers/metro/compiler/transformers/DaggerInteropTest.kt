@@ -43,6 +43,7 @@ class DaggerInteropTest : MetroCompilerTest() {
           setOf(ClassId.fromString("dagger/assisted/AssistedFactory")),
         customAssistedInjectAnnotations =
           setOf(ClassId.fromString("dagger/assisted/AssistedInject")),
+        customMultibindsAnnotations = setOf(ClassId.fromString("dagger/multibindings/Multibinds")),
       )
 
   @Test
@@ -447,6 +448,27 @@ class DaggerInteropTest : MetroCompilerTest() {
       assertThat(fooInstance).isNotNull()
       assertThat(fooInstance).isInstanceOf(DaggerInteropDoubleCheck::class.java)
       assertThat(fooInstance.get().javaClass.name).isEqualTo("test.Foo")
+    }
+  }
+
+  @Test
+  fun `multibinds dagger interop works`() {
+    compile(
+      source(
+        """
+          import dagger.multibindings.Multibinds
+          @DependencyGraph
+          interface ExampleGraph {
+            val intSet: Set<Int>
+            @Multibinds fun emptyFoo(): Set<Int>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val intSet = graph.callProperty<Set<Int>>("intSet")
+      assertThat(intSet).isEqualTo(emptySet<Int>())
     }
   }
 }

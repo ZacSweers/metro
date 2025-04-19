@@ -844,7 +844,14 @@ internal class DependencyGraphTransformer(
         // 2. Implicitly via a `@Provides` callable that contributes into a multibinding
         // Because these may both happen, if the key already exists in the graph we won't try to add
         // it again
-        val allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
+        // If value argument count is 0 then this is an interop Multibinds definition, so allowEmpty
+        // by default.
+        val allowEmpty =
+          if (multibinds.ir.valueArgumentsCount > 0) {
+            multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
+          } else {
+            true
+          }
         val multibinding =
           Binding.Multibinding.create(
             metroContext,
