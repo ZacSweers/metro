@@ -535,6 +535,36 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     )
   }
 
+  @Test
+  fun `nullable types do not conflict with non-nullable types`() {
+    compile(
+      source(
+        """
+          interface Base {
+            @Provides fun provideInt(): Int = 2
+            @Provides fun provideNullNullableInt(): Int? = null
+            @Provides fun provideString(): String = "Hello"
+            @Provides fun provideNotNullNullableString(): String? = "NullableHello"
+          }
+          @DependencyGraph
+          interface ExampleGraph : Base {
+            val int: Int
+            val nullableInt: Int?
+            val string: String
+            val nullableString: String?
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<Int>("int")).isEqualTo(2)
+      assertThat(graph.callProperty<Int?>("nullableInt")).isEqualTo(null)
+      assertThat(graph.callProperty<String>("string")).isEqualTo("Hello")
+      assertThat(graph.callProperty<String?>("nullableString")).isEqualTo("NullableHello")
+    }
+  }
+
   // TODO
   //  companion object with value params (missing receiver)
 }
