@@ -623,8 +623,15 @@ internal fun IrClass.implementsAny(
   }
 }
 
-internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? =
-  (getValueArgument(0) as IrConst?)?.value as Boolean?
+/**
+ * Returns the single const boolean argument of this constructor call or null if...
+ * - The number of arguments is not 1
+ * - The argument is not a const boolean
+ */
+internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? {
+  if (valueArgumentsCount != 1) return null
+  return (getValueArgument(0) as IrConst?)?.value as Boolean?
+}
 
 internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
   (getValueArgument(name) as IrConst?)?.value as Boolean?
