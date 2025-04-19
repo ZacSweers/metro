@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
+import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.configureKsp
+import dagger.Lazy
 import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
@@ -12,6 +14,8 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
+import dev.zacsweers.metro.interop.dagger.internal.DaggerInteropDoubleCheck
+import javax.inject.Provider
 import kotlin.test.assertNotNull
 import org.jetbrains.kotlin.name.ClassId
 import org.junit.Test
@@ -383,6 +387,66 @@ class DaggerInteropTest : MetroCompilerTest() {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val factory = assertNotNull(graph.callProperty("exampleClassFactory"))
       assertNotNull(factory.invokeInstanceMethod("create", 1))
+    }
+  }
+
+  @Test
+  fun `injected javax provider interop works`() {
+    compile(
+      source(
+        """
+          import javax.inject.Inject
+          import javax.inject.Provider
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val fooBar: FooBar
+          }
+
+          class Foo @Inject constructor()
+
+          class FooBar @Inject constructor(
+            val provider: Provider<Foo>
+          )
+        """
+          .trimIndent()
+      ),
+      debug = true,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Provider<*>>("provider")
+      assertThat(fooInstance).isNotNull()
+      assertThat(fooInstance.get().javaClass.name).isEqualTo("test.Foo")
+    }
+  }
+
+  @Test
+  fun `injected dagger lazy interop works`() {
+    compile(
+      source(
+        """
+          import javax.inject.Inject
+          import dagger.Lazy
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val fooBar: FooBar
+          }
+
+          class Foo @Inject constructor()
+
+          class FooBar @Inject constructor(
+            val lazy: Lazy<Foo>
+          )
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Lazy<Any>>("lazy")
+      assertThat(fooInstance).isNotNull()
+      assertThat(fooInstance).isInstanceOf(DaggerInteropDoubleCheck::class.java)
+      assertThat(fooInstance.get().javaClass.name).isEqualTo("test.Foo")
     }
   }
 }

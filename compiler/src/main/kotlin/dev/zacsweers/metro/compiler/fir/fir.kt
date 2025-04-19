@@ -4,8 +4,6 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.capitalizeUS
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.mapToArray
 import java.util.Objects
@@ -71,6 +69,9 @@ import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.renderer.ConeIdRendererForDiagnostics
+import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
+import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
@@ -105,7 +106,6 @@ import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.type
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -588,21 +588,31 @@ internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAn
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
 
-internal fun List<FirAnnotation>.scopeAnnotation(session: FirSession): MetroFirAnnotation? =
-  asSequence().scopeAnnotation(session)
+internal fun List<FirAnnotation>.scopeAnnotations(
+  session: FirSession
+): Sequence<MetroFirAnnotation> = asSequence().scopeAnnotations(session)
 
-internal fun Sequence<FirAnnotation>.scopeAnnotation(session: FirSession): MetroFirAnnotation? =
-  annotationAnnotatedWithAny(session, session.classIds.scopeAnnotations)
+internal fun Sequence<FirAnnotation>.scopeAnnotations(
+  session: FirSession
+): Sequence<MetroFirAnnotation> =
+  annotationsAnnotatedWithAny(session, session.classIds.scopeAnnotations)
 
 // TODO add a single = true|false param? How would we propagate errors
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): MetroFirAnnotation? {
+  return annotationsAnnotatedWithAny(session, names).firstOrNull()
+}
+
+internal fun Sequence<FirAnnotation>.annotationsAnnotatedWithAny(
+  session: FirSession,
+  names: Set<ClassId>,
+): Sequence<MetroFirAnnotation> {
   return filter { it.isResolved }
     .filterIsInstance<FirAnnotationCall>()
-    .firstOrNull { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
-    ?.let { MetroFirAnnotation(it) }
+    .filter { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
+    .map { MetroFirAnnotation(it) }
 }
 
 internal fun FirAnnotationCall.isQualifier(session: FirSession): Boolean {
@@ -680,7 +690,10 @@ internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession)
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }
 
-internal fun ConeTypeProjection.wrapInProviderIfNecessary(session: FirSession): ConeClassLikeType {
+internal fun ConeTypeProjection.wrapInProviderIfNecessary(
+  session: FirSession,
+  providerClassId: ClassId,
+): ConeClassLikeType {
   val type = this.type
   if (type is ConeClassLikeType) {
     val classId = type.lookupTag.classId
@@ -689,10 +702,13 @@ internal fun ConeTypeProjection.wrapInProviderIfNecessary(session: FirSession): 
       return type
     }
   }
-  return Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(this))
+  return providerClassId.constructClassLikeType(arrayOf(this))
 }
 
-internal fun ConeTypeProjection.wrapInLazyIfNecessary(session: FirSession): ConeClassLikeType {
+internal fun ConeTypeProjection.wrapInLazyIfNecessary(
+  session: FirSession,
+  lazyClassId: ClassId,
+): ConeClassLikeType {
   val type = this.type
   if (type is ConeClassLikeType) {
     val classId = type.lookupTag.classId
@@ -701,7 +717,7 @@ internal fun ConeTypeProjection.wrapInLazyIfNecessary(session: FirSession): Cone
       return type
     }
   }
-  return Symbols.ClassIds.lazy.constructClassLikeType(arrayOf(this))
+  return lazyClassId.constructClassLikeType(arrayOf(this))
 }
 
 internal fun FirClassSymbol<*>.constructType(
@@ -772,19 +788,6 @@ internal fun FirCallableSymbol<*>.findAnnotation(
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
   getContainingClassSymbol() ?: error("No containing class symbol found for $this")
 
-internal val ClassId.hintCallableId: CallableId
-  get() {
-    val simpleName =
-      sequence {
-          yieldAll(packageFqName.pathSegments())
-          yieldAll(relativeClassName.pathSegments())
-        }
-        .joinToString(separator = "") { it.asString().capitalizeUS() }
-        .decapitalizeUS()
-        .asName()
-    return CallableId(Symbols.FqNames.metroHintsPackage, simpleName)
-  }
-
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 
@@ -792,6 +795,13 @@ internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), ind
 
 internal fun FirAnnotation.additionalScopesArgument() =
   argumentAsOrNull<FirArrayLiteral>("additionalScopes".asName(), index = 1)
+
+internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
+  buildSet {
+      resolvedScopeClassId()?.let(::add)
+      resolvedAdditionalScopesClassIds()?.let(::addAll)
+    }
+    .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
 internal fun FirAnnotation.excludesArgument() =
   argumentAsOrNull<FirArrayLiteral>("excludes".asName(), index = 2)
@@ -805,7 +815,7 @@ internal fun FirAnnotation.rankValue(): Long {
   return rankArgument()?.value?.let { it as? Long ?: (it as? Int)?.toLong() } ?: Long.MIN_VALUE
 }
 
-internal fun FirAnnotation.rankArgument() =
+private fun FirAnnotation.rankArgument() =
   argumentAsOrNull<FirLiteralExpression>("rank".asName(), index = 5)
 
 internal fun FirAnnotation.bindingArgument() = annotationArgument("binding".asName(), index = 1)
@@ -839,7 +849,7 @@ internal fun FirAnnotation.getAnnotationKClassArgument(
   session: FirSession,
   typeResolver: TypeResolveService? = null,
 ): ConeKotlinType? {
-  val argument = findArgumentByName(name) ?: return null
+  val argument = findArgumentByNameSafe(name) ?: return null
   return argument.evaluateAs<FirGetClassCall>(session)?.getTargetType()
     ?: typeResolver?.let { (argument as FirGetClassCall).resolvedClassArgumentTarget(it) }
 }
@@ -940,13 +950,28 @@ internal fun FirAnnotation.annotationArgument(name: Name, index: Int) =
   argumentAsOrNull<FirFunctionCall>(name, index)
 
 internal inline fun <reified T> FirAnnotation.argumentAsOrNull(name: Name, index: Int): T? {
-  findArgumentByName(name)?.let {
+  findArgumentByNameSafe(name)?.let {
     return it as? T?
   }
   if (this !is FirAnnotationCall) return null
   // Fall back to the index if necessary
   return arguments.getOrNull(index) as? T?
 }
+
+/**
+ * In most cases if we're searching for an argument by name, we do not want to default to the first
+ * argument. E.g. when looking for 'boundType', if it's not explicitly defined, then receiving the
+ * first argument would mean receiving the 'scope' argument and it would still compile fine since
+ * those annotation params share the same type.
+ *
+ * ```
+ * Given `@ContributesBinding(scope = AppScope::class)`
+ * findArgumentByName("boundType")     returns AppScope::class
+ * findArgumentByNameSafe("boundType") returns null
+ * ```
+ */
+internal fun FirAnnotation.findArgumentByNameSafe(name: Name): FirExpression? =
+  findArgumentByName(name, returnFirstWhenNotFound = false)
 
 internal fun List<FirElement>.joinToRender(separator: String = ", "): String {
   return joinToString(separator) {
@@ -1002,3 +1027,23 @@ internal fun FirClassSymbol<*>.implements(supertype: ClassId, session: FirSessio
 
 internal val FirValueParameterSymbol.containingFunctionSymbol: FirFunctionSymbol<*>?
   get() = containingDeclarationSymbol as? FirFunctionSymbol<*>
+
+internal fun ConeKotlinType.render(short: Boolean): String {
+  return buildString { renderType(short, this@render) }
+}
+
+// Custom renderer that excludes annotations
+internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
+  val renderer =
+    object :
+      ConeTypeRendererForReadability(
+        this,
+        null,
+        { if (short) ConeIdShortRenderer() else ConeIdRendererForDiagnostics() },
+      ) {
+      override fun ConeKotlinType.renderAttributes() {
+        // Do nothing, we don't want annotations
+      }
+    }
+  renderer.render(type)
+}

@@ -36,11 +36,7 @@ class AggregationTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -68,11 +64,7 @@ class AggregationTest : MetroCompilerTest() {
       previousCompilationResult = firstResult,
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -956,6 +948,135 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `ContributesTo can be repeated to contribute to multiple scopes in a downstream module`() {
+    val previousCompilation =
+      compile(
+        source(
+          """
+          abstract class AltScope private constructor()
+          abstract class ThirdScope private constructor()
+
+          @ContributesTo(AppScope::class)
+          @ContributesTo(AltScope::class)
+          @ContributesTo(ThirdScope::class)
+          interface ContributedInterface {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val myVal: String
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val altVal: String
+          }
+
+          @DependencyGraph(scope = ThirdScope::class)
+          interface ThirdGraph {
+            val thirdVal: String
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = previousCompilation,
+    ) {
+      val appGraphClass = ExampleGraph
+      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
+
+      val altGraphClass = classLoader.loadClass("test.AltGraph")
+      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      altGraphClass.assertHasContributedSupertype(
+        "test.ContributedInterface",
+        contributionNumber = 2,
+      )
+      assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
+
+      val thirdGraphClass = classLoader.loadClass("test.ThirdGraph")
+      val thirdGraph = thirdGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      thirdGraphClass.assertHasContributedSupertype(
+        "test.ContributedInterface",
+        contributionNumber = 3,
+      )
+      assertThat(thirdGraph.callProperty<String>("thirdVal")).isEqualTo("Hello, world!")
+    }
+  }
+
+  /**
+   * @param contributionNumber Represents which nested class is expected. Each nested contribution
+   *   class is suffixed with a number when it's created depending on how many scopes are
+   *   contributed to. E.g.
+   *
+   * ```
+   * @ContributesBinding(AppScope::class) // This maps to $$MetroContribution (technically number 1)
+   * @ContributesBinding(AltScope::class) // This maps to $$MetroContribution2
+   * @Inject
+   * class ContributingClass : SomeInterface
+   * ```
+   */
+  private fun Class<*>.assertHasContributedSupertype(
+    superTypeFqName: String,
+    contributionNumber: Int = 1,
+  ) {
+    val contributionSuffix = if (contributionNumber == 1) "" else contributionNumber.toString()
+    assertThat(allSupertypes().map { it.name })
+      .containsExactly("$superTypeFqName$$\$MetroContribution$contributionSuffix", superTypeFqName)
+  }
+
+  @Test
+  fun `ContributesTo can be repeated to contribute to multiple scopes in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          @ContributesTo(AppScope::class)
+          @ContributesTo(AltScope::class)
+          interface ContributedInterface {
+            @Provides
+            fun provideValue(): String = "Hello, world!"
+          }
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val myVal: String
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val altVal: String
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraphClass = ExampleGraph
+      val appGraph = appGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      appGraphClass.assertHasContributedSupertype("test.ContributedInterface")
+      assertThat(appGraph.callProperty<String>("myVal")).isEqualTo("Hello, world!")
+
+      val altGraphClass = classLoader.loadClass("test.AltGraph")
+      val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
+      altGraphClass.assertHasContributedSupertype(
+        "test.ContributedInterface",
+        contributionNumber = 2,
+      )
+      assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
+    }
+  }
+
+  @Test
   fun `duplicate ContributesTo annotations are an error - scope only`() {
     compile(
       source(
@@ -1491,6 +1612,272 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         "e: Impl.kt:7:46 Redundant explicit bound type test.Impl is the same as the annotated class test.Impl."
+      )
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a single type in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @ContributesBinding(AltScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("contributedInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a single type in a downstream module`() {
+    val previousCompilation =
+      compile(
+        source(
+          """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @ContributesBinding(AltScope::class)
+          @Inject
+          class Impl : ContributedInterface
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = previousCompilation,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("contributedInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a different type in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+          interface OtherInterface
+
+          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+          @ContributesBinding(AltScope::class, binding = binding<OtherInterface>())
+          @Inject
+          class Impl : ContributedInterface, OtherInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val otherInterface: OtherInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a different type in a downstream module`() {
+    val previousCompilation =
+      compile(
+        source(
+          """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+          interface OtherInterface
+
+          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+          @ContributesBinding(AltScope::class, binding = binding<OtherInterface>())
+          @Inject
+          class Impl : ContributedInterface, OtherInterface
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val otherInterface: OtherInterface
+          }
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = previousCompilation,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes with a qualifier difference in a merging module`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+
+          @ContributesBinding(AppScope::class)
+          @ContributesBinding(AltScope::class, binding = binding<@Named("Alt") ContributedInterface>())
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            @Named("Alt")
+            val otherInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+
+      val altGraph =
+        classLoader.loadClass("test.AltGraph").generatedMetroGraphClass().createGraphWithNoArgs()
+      val altContributedInterface = altGraph.callProperty<Any>("otherInterface")
+      assertThat(altContributedInterface).isNotNull()
+      assertThat(altContributedInterface.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
+  fun `repeated ContributesBinding supports multiple scopes for a different type without leaking the bindings`() {
+    compile(
+      source(
+        """
+          abstract class AltScope private constructor()
+
+          interface ContributedInterface
+          interface OtherInterface
+
+          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+          @ContributesBinding(AltScope::class, binding = binding<OtherInterface>())
+          @Inject
+          class Impl : ContributedInterface, OtherInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = AltScope::class)
+          interface AltGraph {
+            val contributedInterface: ContributedInterface
+            val otherInterface: OtherInterface
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
+
+        test.ContributedInterface is requested at
+            [test.AltGraph] test.AltGraph#contributedInterface
+
+    Similar bindings:
+      - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
+        """
+          .trimIndent()
       )
     }
   }
@@ -2532,11 +2919,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface$$\$MetroContribution",
-          "test.ContributedInterface",
-        )
+      graph.assertHasContributedSupertype("test.ContributedInterface")
     }
   }
 
@@ -2681,11 +3064,7 @@ class AggregationTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph
-      assertThat(graph.allSupertypes().map { it.name })
-        .containsExactly(
-          "test.ContributedInterface2",
-          "test.ContributedInterface2$$\$MetroContribution",
-        )
+      assertThat(graph.assertHasContributedSupertype("test.ContributedInterface2"))
     }
   }
 

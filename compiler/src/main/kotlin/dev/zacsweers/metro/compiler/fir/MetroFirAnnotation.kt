@@ -41,6 +41,7 @@ internal class MetroFirAnnotation(val fir: FirAnnotationCall) {
 }
 
 private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotationCall, simple: Boolean) {
+  append('@')
   val annotationClassName =
     if (simple) {
       firAnnotation.resolvedType.renderReadable()

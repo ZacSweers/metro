@@ -444,12 +444,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
     contextKey.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
-      irInvoke(
-        dispatchReceiver = irGetObject(providerSymbols.doubleCheckCompanionObject),
-        callee = providerSymbols.doubleCheckLazy,
-        args = listOf(providerExpression),
-        typeHint = contextKey.toIrType(context),
-      )
+      with(providerSymbols) { invokeDoubleCheckLazy(context, contextKey, providerExpression) }
     }
 
     isAssisted || isGraphInstance -> {
@@ -635,6 +630,10 @@ internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolea
   (getValueArgument(name) as IrConst?)?.value as Boolean?
 
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
+  return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
+}
+
+internal fun Sequence<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
   return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
 }
 

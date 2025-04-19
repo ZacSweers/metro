@@ -79,7 +79,7 @@ private constructor(
   }
 
   public companion object {
-    private val EMPTY_FACTORY: Factory<Set<Any>> = InstanceFactory.create(emptySet())
+    private val EMPTY_FACTORY: Factory<Set<Any>> = InstanceFactory(emptySet())
 
     public fun <T> empty(): Factory<Set<T>> {
       @Suppress("UNCHECKED_CAST")

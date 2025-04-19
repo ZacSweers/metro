@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.render
 import java.util.TreeSet
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -71,14 +72,7 @@ internal sealed interface Binding {
       get() = annotations.scope
 
     override val nameHint: String = type.name.asString()
-    override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(
-        typeKey,
-        isWrappedInProvider = false,
-        isWrappedInLazy = false,
-        isLazyWrappedInProvider = false,
-        hasDefault = false,
-      )
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey.create(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation?
       get() = type.locationOrNull()
@@ -116,14 +110,7 @@ internal sealed interface Binding {
     override val dependencies: Map<TypeKey, Parameter> = emptyMap()
 
     override val nameHint: String = type.name.asString()
-    override val contextualTypeKey: ContextualTypeKey =
-      ContextualTypeKey(
-        typeKey,
-        isWrappedInProvider = false,
-        isWrappedInLazy = false,
-        isLazyWrappedInProvider = false,
-        hasDefault = false,
-      )
+    override val contextualTypeKey: ContextualTypeKey = ContextualTypeKey.create(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation?
       get() = type.locationOrNull()
@@ -194,9 +181,14 @@ internal sealed interface Binding {
           append(' ')
         }
       }
-      append(providerFactory.callableId.asSingleFqName().asString())
+      append(
+        providerFactory.callableId.render(
+          short = false,
+          isProperty = providerFactory.isPropertyAccessor,
+        )
+      )
       append(": ")
-      append(typeKey.render(short = true))
+      append(typeKey.render(short = false))
     }
   }
 
@@ -233,8 +225,8 @@ internal sealed interface Binding {
         return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
           if (it.propertyIfAccessor.origin == Origins.MetroContributionCallableDeclaration) {
             // If it's a contribution, the source is
-            // SourceClass.$$MetroContribution.bindingFunction
-            //                                 ^^^
+            // SourceClass.$$MetroContributionScopeName.bindingFunction
+            //                                          ^^^
             it.parentAsClass.parentAsClass.locationOrNull()
           } else {
             it.locationOrNull()
@@ -352,7 +344,7 @@ internal sealed interface Binding {
       get() = getter.propertyIfAccessor.locationOrNull()
 
     override fun toString(): String {
-      return "${graph.kotlinFqName}.${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
+      return "${graph.kotlinFqName}#${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
     }
   }
 
@@ -367,6 +359,7 @@ internal sealed interface Binding {
     @Poko.Skip val declaration: IrSimpleFunction?,
     val isSet: Boolean,
     val isMap: Boolean,
+    var allowEmpty: Boolean,
     // Reconcile this with dependencies?
     // Sorted for consistency
     val sourceBindings: MutableSet<BindingWithAnnotations> =
@@ -405,6 +398,7 @@ internal sealed interface Binding {
         metroContext: IrMetroContext,
         typeKey: TypeKey,
         declaration: IrSimpleFunction?,
+        allowEmpty: Boolean = false,
       ): Multibinding {
         val rawType = typeKey.type.rawType()
 
@@ -415,7 +409,13 @@ internal sealed interface Binding {
           )
         val isMap = !isSet
 
-        return Multibinding(typeKey, isSet = isSet, isMap = isMap, declaration = declaration)
+        return Multibinding(
+          typeKey,
+          isSet = isSet,
+          isMap = isMap,
+          allowEmpty = allowEmpty,
+          declaration = declaration,
+        )
       }
     }
   }

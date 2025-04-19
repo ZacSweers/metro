@@ -55,15 +55,13 @@ public class MapFactory<K : Any, V : Any> private constructor(map: Map<K, Provid
   }
 
   public companion object {
-    private val EMPTY: Provider<Map<Any, Any>> = InstanceFactory.create(emptyMap())
-
     /** Returns a new [Builder] */
     public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
-    /** Returns a factory of an empty map. */
-    public fun <K, V> emptyMapProvider(): Provider<Map<K, V>> {
+    /** Returns a provider of an empty map. */
+    public fun <K, V> empty(): Provider<Map<K, V>> {
       @Suppress("UNCHECKED_CAST") // safe contravariant cast
       return EMPTY as Provider<Map<K, V>>
     }

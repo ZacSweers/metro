@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
 public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
 
   override fun apply(target: Project) {
-    target.extensions.create("metro", MetroPluginExtension::class.java)
+    target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
   }
 
   override fun getCompilerPluginId(): String = PLUGIN_ID
@@ -201,7 +201,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
           add(
               SubpluginOption(
                   "enable-dagger-anvil-interop",
-                  value = enableDaggerAnvilInterop.getOrElse(false).toString()))
+                  value = enableDaggerAnvilInterop.getOrElse(false).toString(),
+              ))
         }
       }
     }

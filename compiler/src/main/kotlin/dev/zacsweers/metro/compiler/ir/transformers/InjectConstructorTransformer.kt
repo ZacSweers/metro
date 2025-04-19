@@ -43,9 +43,11 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
@@ -313,7 +315,7 @@ internal class InjectConstructorTransformer(
     if (injectedFunctionClass != null) {
       val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
       val callableId = CallableId(declaration.packageFqName!!, callableName)
-      val targetCallable = pluginContext.referenceFunctions(callableId).single()
+      var targetCallable = pluginContext.referenceFunctions(callableId).single()
 
       // Assign fields
       val constructorParametersToFields =
@@ -321,6 +323,19 @@ internal class InjectConstructorTransformer(
 
       val invokeFunction =
         declaration.functions.first { it.origin == Origins.TopLevelInjectFunctionClassFunction }
+
+      // If compose compiler has already run, the looked up function may be the _old_ function
+      // and we need to update the reference to the newly transformed one
+      val hasComposeCompilerRun =
+        invokeFunction.valueParameters.lastOrNull()?.name?.asString() == "\$changed"
+      if (hasComposeCompilerRun) {
+        val originalParent = targetCallable.owner.file
+        targetCallable =
+          originalParent.declarations
+            .filterIsInstance<IrSimpleFunction>()
+            .first { it.callableId == callableId }
+            .symbol
+      }
 
       // TODO
       //  copy default values

@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import java.util.Locale
 import kotlin.contracts.contract
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
 internal const val LOG_PREFIX = "[METRO]"
@@ -43,6 +44,14 @@ internal fun <T, R> Iterable<T>.mapToSet(transform: (T) -> R): Set<R> {
 
 internal fun <T, R> Sequence<T>.mapToSet(transform: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), transform)
+}
+
+internal fun <T, R> Iterable<T>.flatMapToSet(transform: (T) -> Iterable<R>): Set<R> {
+  return flatMapTo(mutableSetOf(), transform)
+}
+
+internal fun <T, R> Sequence<T>.flatMapToSet(transform: (T) -> Sequence<R>): Set<R> {
+  return flatMapTo(mutableSetOf(), transform)
 }
 
 internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
@@ -107,4 +116,35 @@ internal fun Boolean?.orElse(ifNull: Boolean): Boolean = this ?: ifNull
 
 internal fun String.split(index: Int): Pair<String, String> {
   return substring(0, index) to substring(index + 1)
+}
+
+/**
+ * Behaves essentially the same as `single()`, except if there is not a single element it will throw
+ * the provided error message instead of the generic error message. This can be really helpful for
+ * providing more targeted info about a use-case where normally mangled line numbers and a generic
+ * error message would make debugging painful in a consuming project.
+ */
+internal fun <T> Collection<T>.singleOrError(errorMessage: Collection<T>.() -> String): T {
+  if (size != 1) {
+    error(errorMessage())
+  }
+  return single()
+}
+
+internal fun CallableId.render(short: Boolean, isProperty: Boolean): String {
+  // Render like so: dev.zacsweers.metro.sample.multimodule.parent.ParentGraph#provideNumberService
+  return buildString {
+    classId?.let {
+      if (short) {
+        append(it.shortClassName.asString())
+      } else {
+        append(it.asSingleFqName().asString())
+      }
+      append("#")
+    }
+    append(callableName.asString())
+    if (!isProperty) {
+      append("()")
+    }
+  }
 }

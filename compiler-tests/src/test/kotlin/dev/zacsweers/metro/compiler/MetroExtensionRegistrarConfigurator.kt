@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
+import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -28,6 +29,7 @@ fun TestConfigurationBuilder.configurePlugin() {
   useSourcePreprocessor(::MetroDefaultImportPreprocessor)
 
   configureAnvilAnnotations()
+  configureDaggerAnnotations()
 }
 
 class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
@@ -49,11 +51,17 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             if (MetroDirectives.WITH_ANVIL in module.directives) {
               add(ClassId.fromString("com/squareup/anvil/annotations/MergeComponent"))
             }
+            if (MetroDirectives.WITH_DAGGER in module.directives) {
+              add(ClassId.fromString("dagger/Component"))
+            }
           },
         customGraphFactoryAnnotations =
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {
               add(ClassId.fromString("com/squareup/anvil/annotations/MergeComponent.Factory"))
+            }
+            if (MetroDirectives.WITH_DAGGER in module.directives) {
+              add(ClassId.fromString("dagger/Component.Factory"))
             }
           },
         customContributesToAnnotations =
@@ -74,11 +82,50 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
             }
           },
+        customInjectAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_DAGGER in module.directives) {
+              add(ClassId.fromString("javax/inject/Inject"))
+              add(ClassId.fromString("jakarta/inject/Inject"))
+            }
+          },
+        customProviderTypes =
+          buildSet {
+            if (MetroDirectives.WITH_DAGGER in module.directives) {
+              add(ClassId.fromString("javax/inject/Provider"))
+              add(ClassId.fromString("jakarta/inject/Provider"))
+            }
+          },
+        customProvidesAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_DAGGER in module.directives) {
+              add(ClassId.fromString("dagger/Provides"))
+            }
+          },
+        customBindsAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_DAGGER in module.directives) {
+              add(ClassId.fromString("dagger/Binds"))
+            }
+          },
+        customLazyTypes =
+          buildSet {
+            if (MetroDirectives.WITH_DAGGER in module.directives) {
+              add(ClassId.fromString("dagger/Lazy"))
+            }
+          },
+        // TODO other dagger annotations/types not yet implemented
       )
     val classIds = ClassIds.fromOptions(options)
     FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
     IrGenerationExtension.registerExtension(
-      MetroIrGenerationExtension(configuration.messageCollector, classIds, options)
+      MetroIrGenerationExtension(
+        messageCollector = configuration.messageCollector,
+        classIds = classIds,
+        options = options,
+        // TODO ever support this in tests?
+        lookupTracker = null,
+      )
     )
   }
 }

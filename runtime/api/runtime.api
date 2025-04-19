@@ -99,6 +99,7 @@ public abstract interface class dev/zacsweers/metro/MembersInjector {
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Multibinds : java/lang/annotation/Annotation {
+	public abstract fun allowEmpty ()Z
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Named : java/lang/annotation/Annotation {

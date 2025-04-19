@@ -23,7 +23,6 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
-import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
@@ -169,17 +168,15 @@ internal class AssistedFactoryTransformer(
     val companion = implClass.companionObject()!!
     companion.requireSimpleFunction(Symbols.StringNames.CREATE).owner.apply {
       val factoryParam = valueParameters.single()
-      // InstanceFactory.create(Impl(delegateFactory))
+      // InstanceFactory(Impl(delegateFactory))
       body =
         pluginContext.createIrBuilder(symbol).run {
           irExprBodySafe(
             symbol,
-            irInvoke(
-                dispatchReceiver = irGetObject(symbols.instanceFactoryCompanionObject),
-                callee = symbols.instanceFactoryCreate,
-                args = listOf(irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam)))),
-              )
-              .apply { putTypeArgument(0, declaration.typeWith()) },
+            instanceFactory(
+              declaration.typeWith(),
+              irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))),
+            ),
           )
         }
     }

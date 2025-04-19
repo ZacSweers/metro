@@ -12,10 +12,11 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.sample.multimodule.AppScope
-import dev.zacsweers.metro.sample.multimodule.FeatureScope
+import dev.zacsweers.metro.sample.multimodule.ChildScope
 import dev.zacsweers.metro.sample.multimodule.ItemService
 import dev.zacsweers.metro.sample.multimodule.MapService
 import dev.zacsweers.metro.sample.multimodule.MessageService
+import dev.zacsweers.metro.sample.multimodule.ParentScope
 
 /**
  * Contributes providers to the AppScope. This interface will be merged into any graph that uses
@@ -32,7 +33,7 @@ interface AppContributor {
  * Contributes providers to the FeatureScope. This interface will be merged into any graph that uses
  * FeatureScope.
  */
-@ContributesTo(FeatureScope::class)
+@ContributesTo(ChildScope::class)
 interface FeatureContributor {
   @Provides
   @Named("feature")
@@ -40,11 +41,11 @@ interface FeatureContributor {
 }
 
 /**
- * Implementation of a qualified MessageService that is contributed to AppScope. This will be
- * available as a MessageService binding in any graph that uses AppScope.
+ * Implementation of a qualified MessageService that is contributed to [ParentScope]. This will be
+ * available as a MessageService binding in any graph that uses [ParentScope].
  */
 @ContributesBinding(
-  scope = AppScope::class,
+  scope = ParentScope::class,
   binding = binding<@Named("contributed") MessageService>(),
 )
 @Inject
@@ -53,21 +54,21 @@ class ContributedMessageService : MessageService {
 }
 
 /**
- * Implementation of ItemService that is contributed to a Set multibinding in AppScope. This will be
- * available as part of a Set<ItemService> in any graph that uses AppScope.
+ * Implementation of ItemService that is contributed to a Set multibinding in [ParentScope]. This
+ * will be available as part of a Set<ItemService> in any graph that uses [ParentScope].
  */
-@ContributesIntoSet(AppScope::class)
+@ContributesIntoSet(ParentScope::class)
 @Inject
 class ContributedItemService : ItemService {
   override fun getItems(): List<String> = listOf("Contributed Item 1", "Contributed Item 2")
 }
 
 /**
- * Implementation of MapService that is contributed to a Map multibinding in AppScope. This will be
- * available as part of a Map<String, MapService> in any graph that uses AppScope.
+ * Implementation of MapService that is contributed to a Map multibinding in [ParentScope]. This
+ * will be available as part of a Map<String, MapService> in any graph that uses [ParentScope].
  */
 @ContributesIntoMap(
-  scope = AppScope::class,
+  scope = ParentScope::class,
   binding = binding<@StringKey("contributor") MapService>(),
 )
 @Inject
