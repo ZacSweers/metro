@@ -32,7 +32,7 @@ private val UNINITIALIZED = Any()
  * - The [_value] will eagerly return if initialized
  * - [_value] is [@Volatile][Volatile]
  */
-public abstract class BaseDoubleCheck<T : Any>(provider: Provider<T>) :
+public abstract class BaseDoubleCheck<T>(provider: Provider<T>) :
   SynchronizedObject(), Provider<T>, Lazy<T> {
   private var provider: Provider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED

@@ -26,11 +26,25 @@ import kotlin.jvm.JvmInline
  * testing or contractual guarantees.
  */
 @JvmInline
-public value class InstanceFactory<T : Any>(override val value: T) : Factory<T>, Lazy<T> {
+public value class InstanceFactory<T> private constructor(override val value: T) :
+  Factory<T>, Lazy<T> {
 
   override fun isInitialized(): Boolean = true
 
   public override fun invoke(): T = value
 
   override fun toString(): String = value.toString()
+
+  public companion object {
+    private val EMPTY = InstanceFactory<Any?>(null)
+
+    public operator fun <T> invoke(value: T): InstanceFactory<T> {
+      return if (value == null) {
+        @Suppress("UNCHECKED_CAST")
+        EMPTY as InstanceFactory<T>
+      } else {
+        InstanceFactory(value)
+      }
+    }
+  }
 }

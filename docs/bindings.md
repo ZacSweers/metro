@@ -147,6 +147,28 @@ Dagger supports a similar feature via `@BindsOptionalOf`, but requires a separat
 
 KI supports the same feature.
 
+## Nullability
+
+As nullability is a first-class concept in Kotlin, Metro supports it too. Bindings in Metro graphs may be nullable, but it's important to understand how Metro treats them!
+
+In short, Metro will treat nullable types as different type keys than their non-nullable analogues. That is to say, `String` and `String?` are treated as distinct types in Metro.
+
+Furthermore, a `String` binding cannot satisfy a `String?` automatically. You _may_ however `@Binds` a `String` to a `String?` and Metro will treat it as a valid binding.
+
+```kotlin
+@DependencyGraph(Unit::class, isExtendable = true)
+interface ExampleGraph {
+  val int: Int
+  val nullableInt: Int?
+  
+  @Provides
+  fun provideInt(): Int = 1
+  
+  @Binds
+  val Int.bindAsNullable: Int?
+}
+```
+
 #### Implementation notes
 
 While kotlin-inject can support this by simply invoking functions with omitted arguments, Metro has to support this in generated factories.

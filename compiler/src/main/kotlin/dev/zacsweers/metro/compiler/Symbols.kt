@@ -214,7 +214,10 @@ internal class Symbols(
       ClassId(metroRuntimeInternal.packageFqName, Name.identifier("InstanceFactory"))
     )!!
   }
-  val instanceFactoryConstructorSymbol by lazy { instanceFactory.constructors.single() }
+  val instanceFactoryCompanionObject by lazy { instanceFactory.owner.companionObject()!!.symbol }
+  val instanceFactoryInvoke: IrFunctionSymbol by lazy {
+    instanceFactoryCompanionObject.requireSimpleFunction(StringNames.INVOKE)
+  }
 
   val metroProvider: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, Name.identifier("Provider")))!!

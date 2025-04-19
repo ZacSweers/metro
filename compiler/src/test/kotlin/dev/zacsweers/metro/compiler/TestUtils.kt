@@ -167,8 +167,9 @@ fun Class<Factory<*>>.invokeCreateAsFactory(vararg args: Any): Factory<*> {
 }
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
-fun Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<*> {
-  return invokeCreate(*args) as Provider<*>
+fun <T> Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<T> {
+  @Suppress("UNCHECKED_CAST")
+  return invokeCreate(*args) as Provider<T>
 }
 
 val Class<*>.companionObjectClass: Class<*>
@@ -277,7 +278,7 @@ fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
  * Exercises the whole generated factory creation flow by first creating with
  * [invokeCreateAsFactory] and then calling [Factory.invoke] to exercise its `newInstance()`.
  */
-fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
+fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any? {
   val factory = invokeCreateAsFactory(*args)
   return factory()
 }
@@ -286,7 +287,7 @@ fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
  * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
  * then calling the graph's provider
  */
-fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any {
+fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any? {
   return invokeProvider(providerName, *args)
 }
 

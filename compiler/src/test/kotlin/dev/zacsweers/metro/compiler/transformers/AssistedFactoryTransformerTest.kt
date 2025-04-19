@@ -74,7 +74,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
       val factoryImplClass = ExampleClassFactory.generatedAssistedFactoryImpl()
-      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider<Any>(exampleClassFactory)
       val factoryImpl = factoryImplProvider()
       val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
       assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
@@ -107,7 +107,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
       val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
-      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider<Any>(exampleClassFactory)
       val factoryImpl = factoryImplProvider()
       val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
       assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
@@ -144,7 +144,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
       val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
-      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider<Any>(exampleClassFactory)
       val factoryImpl = factoryImplProvider()
       val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2)
       assertThat(exampleClass2.call()).isEqualTo("Hello, 2")
@@ -182,7 +182,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
 
       val factoryImplClass = ExampleClass.Factory.generatedAssistedFactoryImpl()
-      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider(exampleClassFactory)
+      val factoryImplProvider = factoryImplClass.invokeCreateAsProvider<Any>(exampleClassFactory)
       val factoryImpl = factoryImplProvider()
       val exampleClass2 = factoryImpl.invokeInstanceMethod<Callable<String>>("create", 2, 3)
       assertThat(exampleClass2.call()).isEqualTo("Hello, 2 3")

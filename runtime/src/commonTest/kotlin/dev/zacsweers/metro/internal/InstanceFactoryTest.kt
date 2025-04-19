@@ -27,4 +27,11 @@ class InstanceFactoryTest {
     assertEquals(instance, factory())
     assertEquals(instance, factory())
   }
+
+  // Since this is actually an unboxed value class at runtime, we can't actually assert same
+  // instance here
+  @Test
+  fun nullableAlwaysReturnSameInstance() {
+    assertEquals(InstanceFactory(null), InstanceFactory(null))
+  }
 }
