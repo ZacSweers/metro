@@ -1226,7 +1226,11 @@ class AggregationTest : MetroCompilerTest() {
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface).isNotNull()
       assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
-      val graph2 = classLoader.loadClass("test.ExampleGraph2")
+      val graph2 =
+        classLoader
+          .loadClass("test.ExampleGraph2")
+          .generatedMetroGraphClass()
+          .createGraphWithNoArgs()
       val contributedInterface2 = graph2.callProperty<Any>("contributedInterface")
       assertThat(contributedInterface2).isNotNull()
       assertThat(contributedInterface2.javaClass.name).isEqualTo("test.Impl")
