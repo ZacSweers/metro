@@ -98,7 +98,8 @@ class TopLevelInjectTest : MetroCompilerTest() {
             }
           """
             .trimIndent()
-        )
+        ),
+        debug = true,
       )
 
     val graph =

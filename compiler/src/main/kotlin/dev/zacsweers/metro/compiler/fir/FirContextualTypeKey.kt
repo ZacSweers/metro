@@ -41,13 +41,13 @@ internal class FirContextualTypeKey(
         val innerType =
           FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
             .originalType(session)
-        innerType.wrapInProviderIfNecessary(session)
+        innerType.wrapInProviderIfNecessary(session, wt.providerType)
       }
       is WrappedType.Lazy -> {
         val innerType =
           FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
             .originalType(session)
-        innerType.wrapInLazyIfNecessary(session)
+        innerType.wrapInLazyIfNecessary(session, wt.lazyType)
       }
       is WrappedType.Map -> {
         wt.type()
@@ -81,7 +81,9 @@ internal class FirContextualTypeKey(
       wrapInProvider: Boolean = false,
     ): FirContextualTypeKey {
       return type
-        .letIf(wrapInProvider) { it.wrapInProviderIfNecessary(session) }
+        .letIf(wrapInProvider) {
+          it.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+        }
         .asFirContextualTypeKey(
           session = session,
           qualifierAnnotation =
@@ -98,7 +100,6 @@ internal fun ConeKotlinType.asFirContextualTypeKey(
   hasDefault: Boolean,
 ): FirContextualTypeKey {
   val declaredType = this
-  val rawClassId = declaredType.classId
 
   // Analyze the type to determine its wrapped structure
   val wrappedType = declaredType.asWrappedType(session)
@@ -148,13 +149,16 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
     val innerRawClassId = innerType.classId
     if (innerRawClassId in session.classIds.lazyTypes) {
       val lazyInnerType = innerType.typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
-      return WrappedType.Provider(WrappedType.Lazy(WrappedType.Canonical(lazyInnerType)))
+      return WrappedType.Provider(
+        WrappedType.Lazy(WrappedType.Canonical(lazyInnerType), innerRawClassId!!),
+        rawClassId!!,
+      )
     }
 
     // Recursively analyze the inner type
     val innerWrappedType = innerType.asWrappedType(session)
 
-    return WrappedType.Provider(innerWrappedType)
+    return WrappedType.Provider(innerWrappedType, rawClassId!!)
   }
 
   // Check if this is a Lazy type
@@ -164,7 +168,7 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
     // Recursively analyze the inner type
     val innerWrappedType = innerType.asWrappedType(session)
 
-    return WrappedType.Lazy(innerWrappedType)
+    return WrappedType.Lazy(innerWrappedType, rawClassId!!)
   }
 
   // If it's not a special type, it's a canonical type

@@ -19,9 +19,10 @@ public final class dev/zacsweers/metro/interop/dagger/internal/DaggerInteropDoub
 	public final fun daggerProvider (Ljavax/inject/Provider;)Ldagger/internal/Provider;
 	public final fun jakartaProvider (Ljavax/inject/Provider;)Ljakarta/inject/Provider;
 	public final fun javaxProvider (Ljavax/inject/Provider;)Ljavax/inject/Provider;
-	public final fun lazy (Ldagger/internal/Provider;)Ldagger/Lazy;
-	public final fun lazy (Ljakarta/inject/Provider;)Ldagger/Lazy;
-	public final fun lazy (Ljavax/inject/Provider;)Ldagger/Lazy;
+	public final fun lazyFromDaggerProvider (Ldagger/internal/Provider;)Ldagger/Lazy;
+	public final fun lazyFromJakartaProvider (Ljakarta/inject/Provider;)Ldagger/Lazy;
+	public final fun lazyFromJavaxProvider (Ljavax/inject/Provider;)Ldagger/Lazy;
+	public final fun lazyFromMetroProvider (Ldev/zacsweers/metro/Provider;)Ldagger/Lazy;
 }
 
 public final class dev/zacsweers/metro/interop/dagger/internal/InternalDaggerInteropKt {

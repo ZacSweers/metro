@@ -229,7 +229,9 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
           Keys.Default,
           Symbols.Names.create,
           returnTypeProvider = {
-            implClass.source.constructType(it).wrapInProviderIfNecessary(session)
+            implClass.source
+              .constructType(it)
+              .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
           },
         ) {
           // Delegate factory

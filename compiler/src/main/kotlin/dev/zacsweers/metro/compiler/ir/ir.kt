@@ -444,12 +444,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
     contextKey.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
-      irInvoke(
-        dispatchReceiver = irGetObject(providerSymbols.doubleCheckCompanionObject),
-        callee = providerSymbols.doubleCheckLazy,
-        args = listOf(providerExpression),
-        typeHint = contextKey.toIrType(context),
-      )
+      with(providerSymbols) { invokeDoubleCheckLazy(context, contextKey, providerExpression) }
     }
 
     isAssisted || isGraphInstance -> {

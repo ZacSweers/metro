@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.drewhamilton.poko.Poko
+import org.jetbrains.kotlin.name.ClassId
 
 /**
  * A sealed class hierarchy representing the different types of wrapping for a type. This is useful
@@ -22,10 +23,11 @@ internal sealed interface WrappedType<T : Any> {
   data class Canonical<T : Any>(val type: T) : WrappedType<T>
 
   /** A type wrapped in a Provider. */
-  data class Provider<T : Any>(val innerType: WrappedType<T>) : WrappedType<T>
+  data class Provider<T : Any>(val innerType: WrappedType<T>, val providerType: ClassId) :
+    WrappedType<T>
 
   /** A type wrapped in a Lazy. */
-  data class Lazy<T : Any>(val innerType: WrappedType<T>) : WrappedType<T>
+  data class Lazy<T : Any>(val innerType: WrappedType<T>, val lazyType: ClassId) : WrappedType<T>
 
   /** A map type with special handling for the value type. */
   @Poko
