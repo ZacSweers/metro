@@ -148,8 +148,18 @@ internal class ContextualTypeKey(
       val wrappedType =
         when {
           isLazyWrappedInProvider -> {
-            val lazyType = rawType!!.expectAs<IrSimpleType>().arguments.single().typeOrFail.rawType().classIdOrFail
-            WrappedType.Provider(WrappedType.Lazy(WrappedType.Canonical(typeKey.type), lazyType), rawClassId!!)
+            val lazyType =
+              rawType!!
+                .expectAs<IrSimpleType>()
+                .arguments
+                .single()
+                .typeOrFail
+                .rawType()
+                .classIdOrFail
+            WrappedType.Provider(
+              WrappedType.Lazy(WrappedType.Canonical(typeKey.type), lazyType),
+              rawClassId!!,
+            )
           }
           isWrappedInProvider -> {
             WrappedType.Provider(WrappedType.Canonical(typeKey.type), rawClassId!!)

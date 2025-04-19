@@ -411,7 +411,7 @@ class DaggerInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      debug = true
+      debug = true,
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Provider<*>>("provider")

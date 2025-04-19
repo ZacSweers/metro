@@ -63,7 +63,10 @@ internal fun FirExtension.buildFactoryConstructor(
         }
         valueParameter(
           valueParameter.name,
-          valueParameter.contextKey.typeKey.type.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
+          valueParameter.contextKey.typeKey.type.wrapInProviderIfNecessary(
+            session,
+            Symbols.ClassIds.metroProvider,
+          ),
           key = Keys.ValueParameter,
         )
       }
@@ -131,7 +134,10 @@ internal fun FirExtension.buildFactoryCreateFunction(
         this.valueParameters +=
           buildSimpleValueParameter(
             name = Symbols.Names.receiver,
-            type = it.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider).toFirResolvedTypeRef(),
+            type =
+              it
+                .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+                .toFirResolvedTypeRef(),
             containingFunctionSymbol = thisFunctionSymbol,
             origin = Keys.ReceiverParameter.origin,
           )
@@ -147,7 +153,9 @@ internal fun FirExtension.buildFactoryCreateFunction(
         copyParameterDefaults = false,
       ) { original ->
         this.returnTypeRef =
-          original.contextKey.typeKey.type.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider).toFirResolvedTypeRef()
+          original.contextKey.typeKey.type
+            .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+            .toFirResolvedTypeRef()
       }
     }
     .symbol
