@@ -1195,7 +1195,6 @@ class AggregationTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("https://github.com/ZacSweers/metro/issues/210")
   @Test
   fun `repeated ContributesBinding annotations with different scopes and same bound types are ok`() {
     compile(
