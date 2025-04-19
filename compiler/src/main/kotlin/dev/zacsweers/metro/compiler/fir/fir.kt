@@ -690,7 +690,10 @@ internal fun FirClassLikeDeclaration.markAsDeprecatedHidden(session: FirSession)
   replaceDeprecationsProvider(this.getDeprecationsProvider(session))
 }
 
-internal fun ConeTypeProjection.wrapInProviderIfNecessary(session: FirSession): ConeClassLikeType {
+internal fun ConeTypeProjection.wrapInProviderIfNecessary(
+  session: FirSession,
+  providerClassId: ClassId,
+): ConeClassLikeType {
   val type = this.type
   if (type is ConeClassLikeType) {
     val classId = type.lookupTag.classId
@@ -699,10 +702,13 @@ internal fun ConeTypeProjection.wrapInProviderIfNecessary(session: FirSession): 
       return type
     }
   }
-  return Symbols.ClassIds.metroProvider.constructClassLikeType(arrayOf(this))
+  return providerClassId.constructClassLikeType(arrayOf(this))
 }
 
-internal fun ConeTypeProjection.wrapInLazyIfNecessary(session: FirSession): ConeClassLikeType {
+internal fun ConeTypeProjection.wrapInLazyIfNecessary(
+  session: FirSession,
+  lazyClassId: ClassId,
+): ConeClassLikeType {
   val type = this.type
   if (type is ConeClassLikeType) {
     val classId = type.lookupTag.classId
@@ -711,7 +717,7 @@ internal fun ConeTypeProjection.wrapInLazyIfNecessary(session: FirSession): Cone
       return type
     }
   }
-  return Symbols.ClassIds.lazy.constructClassLikeType(arrayOf(this))
+  return lazyClassId.constructClassLikeType(arrayOf(this))
 }
 
 internal fun FirClassSymbol<*>.constructType(

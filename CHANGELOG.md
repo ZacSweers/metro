@@ -17,6 +17,9 @@ Changelog
 - **Fix**: Don't allow multiple ancestor graphs of graph extensions to use the same scope.
 - **Fix**: Handle scenarios where the compose-compiler plugin runs _before_ Metro's when generating wrapper classes for top-level `@Composable` functions.
 - **Fix**: Fix an edge case in graph extensions where child graphs would miss a provided scoped binding in a parent graph that was also exposed as an accessor.
+- **Fix**: Fix Dagger interop issue when calling Javax/Jakarta/Dagger providers from Metro factories.
+- **Fix**: Fix Dagger interop issue when calling `dagger.Lazy` from Metro factories.
+- **Fix**: Preserve the original `Provider` or `Lazy` type used in injected types when generating factory creators.
 - Temporarily disable hint generation in WASM targets to avoid file count mismatches until [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - Add an Android sample: https://github.com/ZacSweers/metro/tree/main/samples/android-app
 - Add a multiplatform Circuit sample: https://github.com/ZacSweers/metro/tree/main/samples/circuit-app

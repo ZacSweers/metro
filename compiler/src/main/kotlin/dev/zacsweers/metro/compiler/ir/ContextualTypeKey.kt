@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
 
 /** A class that represents a type with contextual information. */
@@ -82,13 +83,13 @@ internal class ContextualTypeKey(
         val innerType =
           ContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
             .toIrType(metroContext)
-        innerType.wrapInProvider(metroContext.symbols.metroProvider)
+        innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.providerType)!!)
       }
       is WrappedType.Lazy -> {
         val innerType =
           ContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
             .toIrType(metroContext)
-        innerType.wrapInProvider(metroContext.symbols.stdlibLazy)
+        innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.lazyType)!!)
       }
       is WrappedType.Map -> {
         // For Map types, we need to create a Map<K, V> type
@@ -143,13 +144,22 @@ internal class ContextualTypeKey(
       isIntoMultibinding: Boolean = false,
       rawType: IrType? = null,
     ): ContextualTypeKey {
+      val rawClassId = rawType?.rawTypeOrNull()?.classId
       val wrappedType =
         when {
-          isLazyWrappedInProvider ->
-            WrappedType.Provider(WrappedType.Lazy(WrappedType.Canonical(typeKey.type)))
-          isWrappedInProvider -> WrappedType.Provider(WrappedType.Canonical(typeKey.type))
-          isWrappedInLazy -> WrappedType.Lazy(WrappedType.Canonical(typeKey.type))
-          else -> WrappedType.Canonical(typeKey.type)
+          isLazyWrappedInProvider -> {
+            val lazyType = rawType!!.expectAs<IrSimpleType>().arguments.single().typeOrFail.rawType().classIdOrFail
+            WrappedType.Provider(WrappedType.Lazy(WrappedType.Canonical(typeKey.type), lazyType), rawClassId!!)
+          }
+          isWrappedInProvider -> {
+            WrappedType.Provider(WrappedType.Canonical(typeKey.type), rawClassId!!)
+          }
+          isWrappedInLazy -> {
+            WrappedType.Lazy(WrappedType.Canonical(typeKey.type), rawClassId!!)
+          }
+          else -> {
+            WrappedType.Canonical(typeKey.type)
+          }
         }
 
       return ContextualTypeKey(
@@ -235,7 +245,7 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
     // Recursively analyze the inner type
     val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(context)
 
-    return WrappedType.Provider(innerWrappedType)
+    return WrappedType.Provider(innerWrappedType, rawClassId!!)
   }
 
   // Check if this is a Lazy type
@@ -245,7 +255,7 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
     // Recursively analyze the inner type
     val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(context)
 
-    return WrappedType.Lazy(innerWrappedType)
+    return WrappedType.Lazy(innerWrappedType, rawClassId!!)
   }
 
   // If it's not a special type, it's a canonical type

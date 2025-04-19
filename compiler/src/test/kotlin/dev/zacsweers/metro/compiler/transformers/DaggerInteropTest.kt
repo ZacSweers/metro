@@ -402,6 +402,7 @@ class DaggerInteropTest : MetroCompilerTest() {
           interface ExampleGraph {
             val fooBar: FooBar
           }
+
           class Foo @Inject constructor()
 
           class FooBar @Inject constructor(
@@ -409,7 +410,8 @@ class DaggerInteropTest : MetroCompilerTest() {
           )
         """
           .trimIndent()
-      )
+      ),
+      debug = true
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Provider<*>>("provider")
@@ -430,6 +432,7 @@ class DaggerInteropTest : MetroCompilerTest() {
           interface ExampleGraph {
             val fooBar: FooBar
           }
+
           class Foo @Inject constructor()
 
           class FooBar @Inject constructor(

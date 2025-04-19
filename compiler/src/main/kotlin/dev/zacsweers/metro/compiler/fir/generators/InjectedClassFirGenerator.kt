@@ -537,7 +537,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 param.contextKey.typeKey.type
                   // TODO need to remap these
                   //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
-                  .wrapInProviderIfNecessary(session)
+                  .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
               },
               key = Keys.ValueParameter,
             )

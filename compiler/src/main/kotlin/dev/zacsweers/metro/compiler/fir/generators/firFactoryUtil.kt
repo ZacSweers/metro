@@ -49,7 +49,7 @@ internal fun FirExtension.buildFactoryConstructor(
       extensionReceiver?.let {
         valueParameter(
           Symbols.Names.receiver,
-          it.wrapInProviderIfNecessary(session),
+          it.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
           key = Keys.ReceiverParameter,
         )
       }
@@ -63,7 +63,7 @@ internal fun FirExtension.buildFactoryConstructor(
         }
         valueParameter(
           valueParameter.name,
-          valueParameter.contextKey.typeKey.type.wrapInProviderIfNecessary(session),
+          valueParameter.contextKey.typeKey.type.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
           key = Keys.ValueParameter,
         )
       }
@@ -131,7 +131,7 @@ internal fun FirExtension.buildFactoryCreateFunction(
         this.valueParameters +=
           buildSimpleValueParameter(
             name = Symbols.Names.receiver,
-            type = it.wrapInProviderIfNecessary(session).toFirResolvedTypeRef(),
+            type = it.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider).toFirResolvedTypeRef(),
             containingFunctionSymbol = thisFunctionSymbol,
             origin = Keys.ReceiverParameter.origin,
           )
@@ -147,7 +147,7 @@ internal fun FirExtension.buildFactoryCreateFunction(
         copyParameterDefaults = false,
       ) { original ->
         this.returnTypeRef =
-          original.contextKey.typeKey.type.wrapInProviderIfNecessary(session).toFirResolvedTypeRef()
+          original.contextKey.typeKey.type.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider).toFirResolvedTypeRef()
       }
     }
     .symbol
@@ -210,7 +210,7 @@ internal fun FirExtension.buildNewInstanceFunction(
         // Will be copied in IR
         copyParameterDefaults = false,
       ) { original ->
-        this.returnTypeRef = original.symbol.resolvedReturnTypeRef
+        this.returnTypeRef = original.contextKey.originalType(session).toFirResolvedTypeRef()
       }
     }
     .symbol
