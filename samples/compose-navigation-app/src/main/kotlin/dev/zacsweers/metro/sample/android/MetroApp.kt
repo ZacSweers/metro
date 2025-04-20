@@ -4,6 +4,7 @@ package dev.zacsweers.metro.sample.android
 
 import android.app.Application
 import dev.zacsweers.metro.createGraph
+import dev.zacsweers.metro.sample.android.components.AppGraph
 
 class MetroApp : Application() {
   /**

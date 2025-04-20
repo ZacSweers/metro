@@ -13,7 +13,7 @@ import dev.zacsweers.metro.Extends
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.sample.android.AppGraph
+import dev.zacsweers.metro.sample.android.components.AppGraph
 import kotlin.reflect.KClass
 
 @DependencyGraph(ViewModelScope::class)

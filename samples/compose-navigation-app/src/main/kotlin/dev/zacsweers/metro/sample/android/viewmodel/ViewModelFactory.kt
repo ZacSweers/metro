@@ -10,7 +10,7 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.createGraphFactory
-import dev.zacsweers.metro.sample.android.AppGraph
+import dev.zacsweers.metro.sample.android.components.AppGraph
 import kotlin.reflect.KClass
 
 /**
@@ -28,10 +28,6 @@ class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory 
       viewModelGraph.viewModelProviders[modelClass.kotlin]
         ?: throw IllegalArgumentException("Unknown model class $modelClass")
 
-    return try {
-      provider() as T
-    } catch (e: Exception) {
-      throw RuntimeException(e)
-    }
+    return modelClass.cast(provider())
   }
 }
