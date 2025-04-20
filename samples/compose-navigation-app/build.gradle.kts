@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-  namespace = "dev.zacsweers.metro.sample.android"
+  namespace = "dev.zacsweers.metro.sample.viewmodel"
   compileSdk = 35
 
   defaultConfig {
-    applicationId = "dev.zacsweers.metro.sample.android"
+    applicationId = "dev.zacsweers.metro.sample.viewmodel"
     minSdk = 28
     targetSdk = 35
     versionCode = 1
