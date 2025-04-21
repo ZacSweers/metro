@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
@@ -635,6 +637,14 @@ internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? {
 
 internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
   (getValueArgument(name) as IrConst?)?.value as Boolean?
+
+internal fun IrConstructorCall.scopeOrNull(): ClassId? {
+  return getValueArgument("scope".asName())
+    ?.expectAsOrNull<IrClassReference>()
+    ?.classType
+    ?.rawTypeOrNull()
+    ?.classIdOrFail
+}
 
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
   return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
