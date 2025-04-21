@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ClassIds
+import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
@@ -26,7 +27,12 @@ public class MetroIrGenerationExtension(
 
     // First - collect all the contributions in this round
     val contributionData = IrContributionData(context)
-    moduleFragment.accept(IrContributionVisitor, contributionData)
+    try {
+      moduleFragment.accept(IrContributionVisitor(context), contributionData)
+    } catch (_: ExitProcessingException) {
+      // Reported internally
+      return
+    }
 
     val dependencyGraphTransformer = DependencyGraphTransformer(context, moduleFragment)
     moduleFragment.transform(dependencyGraphTransformer, null)

@@ -14,7 +14,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private val contributions = mutableMapOf<ClassId, MutableSet<IrType>>()
   private val externalContributions = mutableMapOf<ClassId, Set<IrType>>()
 
-  fun put(scope: ClassId, contribution: IrType) {
+  fun addContribution(scope: ClassId, contribution: IrType) {
     contributions.getOrPut(scope) { mutableSetOf() }.add(contribution)
   }
 
