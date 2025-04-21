@@ -9,10 +9,13 @@ FILE: ContributingGraphExtensions.kt
         @R|dev/zacsweers/metro/ContributesGraphExtension.Factory|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface Factory : R|kotlin/Any| {
             public abstract fun createLoggedInGraph(): R|kotlin/Unit|
 
+            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface $$MetroContribution : R|LoggedInGraph.Factory| {
+            }
+
         }
 
     }
-    @R|dev/zacsweers/metro/DependencyGraph|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface ExampleGraph : R|kotlin/Any| {
+    @R|dev/zacsweers/metro/DependencyGraph|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface ExampleGraph : R|kotlin/Any|, R|LoggedInGraph.Factory.$$MetroContribution| {
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) public final class $$MetroGraph : R|ExampleGraph| {
             public constructor(): R|ExampleGraph.$$MetroGraph| {
                 super<R|kotlin/Any|>()

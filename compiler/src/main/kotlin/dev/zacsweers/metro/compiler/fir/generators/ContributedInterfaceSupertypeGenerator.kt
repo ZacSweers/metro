@@ -88,17 +88,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           .filterIsInstance<FirRegularClassSymbol>()
           .toList()
 
-      buildSet {
-        addAll(getScopedContributions(contributingClasses, scopeClassId, typeResolver))
-        // If it's just a `@ContributesTo`, contribute it directly
-        addAll(
-          contributingClasses
-            .filter { originClass ->
-              originClass.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations)
-            }
-            .map { it.classId }
-        )
-      }
+      getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
 
   private val generatedScopesToContributions: FirCache<ClassId, Set<ClassId>, TypeResolveService> =
