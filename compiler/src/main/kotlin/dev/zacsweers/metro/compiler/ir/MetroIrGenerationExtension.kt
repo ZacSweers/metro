@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphData
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.IrContributionData
+import dev.zacsweers.metro.compiler.ir.transformers.IrContributionVisitor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -23,6 +25,11 @@ public class MetroIrGenerationExtension(
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = Symbols(moduleFragment, pluginContext, classIds, options)
     val context = IrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
+
+    // First - collect all the contributions in this round
+    val contributionData = IrContributionData(context)
+    moduleFragment.accept(IrContributionVisitor, contributionData)
+
     val dependencyGraphTransformer = DependencyGraphTransformer(context, moduleFragment)
     // TODO is this really necessary?
     val dependencyGraphData = DependencyGraphData()
