@@ -20,6 +20,7 @@ rootProject.name = "metro-samples"
 
 include(
   ":android-app",
+  ":compose-navigation-app",
   ":circuit-app",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-kotlinInject",
