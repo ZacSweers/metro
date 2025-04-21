@@ -1633,77 +1633,58 @@ internal class DependencyGraphTransformer(
             node.copy(proto = graphProto)
         }
 
-        val exposedFields = mutableSetOf<IrField>()
-
-        // TODO dedup logic below
-        // Expose getters for provider fields and expose them to metadata
-        for ((key, field) in providerFields) {
-          if (key == node.typeKey) continue // Skip the graph instance field
-
-          if (!exposedFields.add(field)) {
-            // We've already generated an accessor for this field. Can happen for cases
-            // where we add convenience keys for graph instance supertypes.
-            continue
-          }
-
-          val binding = bindingGraph.requireBinding(key, bindingStack)
-          if (binding is Binding.GraphDependency && binding.isProviderFieldAccessor) {
-            // This'll get looked up directly by child graphs
-            continue
-          } else if (binding.scope == null) {
-            // Don't expose redundant accessors for unscoped bindings
-            continue
-          }
-          val getter =
-            addFunction(
-                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
-                returnType = field.type,
-                // TODO is this... ok?
-                visibility = DescriptorVisibilities.INTERNAL,
-                origin = Origins.ProviderFieldAccessor,
-              )
-              .apply {
-                // TODO add deprecation + hidden annotation to hide? Not sure if necessary
-                body =
-                  pluginContext.createIrBuilder(symbol).run {
-                    irExprBodySafe(
-                      symbol,
-                      generateBindingCode(
-                        binding,
-                        baseGenerationContext.withReceiver(dispatchReceiverParameter!!),
-                      ),
-                    )
-                  }
+        // Expose getters for provider and instance fields and expose them to metadata
+        sequence {
+            for (entry in providerFields) {
+              val binding = bindingGraph.requireBinding(entry.key, bindingStack)
+              if (binding is Binding.GraphDependency && binding.isProviderFieldAccessor) {
+                // This'll get looked up directly by child graphs
+                continue
+              } else if (binding.scope == null) {
+                // Don't expose redundant accessors for unscoped bindings
+                continue
               }
-          pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(getter)
-        }
-
-        for ((key, field) in instanceFields) {
-          if (key == node.typeKey) continue // Skip this graph instance field
-
-          if (!exposedFields.add(field)) {
-            // We've already generated an accessor for this field. Can happen for cases
-            // where we add convenience keys for graph instance supertypes.
-            continue
+              yield(entry)
+            }
+            yieldAll(instanceFields.entries)
           }
-
-          val getter =
-            addFunction(
-                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
-                returnType = field.type,
-                // TODO is this... ok?
-                visibility = DescriptorVisibilities.INTERNAL,
-                origin = Origins.InstanceFieldAccessor,
-              )
-              .apply {
-                // TODO add deprecation + hidden annotation to hide? Not sure if necessary
-                body =
-                  pluginContext.createIrBuilder(symbol).run {
-                    irExprBodySafe(symbol, irGetField(irGet(dispatchReceiverParameter!!), field))
-                  }
-              }
-          pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(getter)
-        }
+          .filter {
+            // Skip the graph instance field
+            it.key != node.typeKey
+          }
+          .distinctBy {
+            // Only generate once per field. Can happen for cases
+            // where we add convenience keys for graph instance supertypes.
+            it.value
+          }
+          .forEach { (key, field) ->
+            val getter =
+              addFunction(
+                  name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
+                  returnType = field.type,
+                  // TODO is this... ok?
+                  visibility = DescriptorVisibilities.INTERNAL,
+                  origin = Origins.InstanceFieldAccessor,
+                )
+                .apply {
+                  // TODO add deprecation + hidden annotation to hide? Not sure if necessary
+                  body =
+                    pluginContext.createIrBuilder(symbol).run {
+                      val expression =
+                        if (key in instanceFields) {
+                          irGetField(irGet(dispatchReceiverParameter!!), field)
+                        } else {
+                          val binding = bindingGraph.requireBinding(key, bindingStack)
+                          generateBindingCode(
+                            binding,
+                            baseGenerationContext.withReceiver(dispatchReceiverParameter!!),
+                          )
+                        }
+                      irExprBodySafe(symbol, expression)
+                    }
+                }
+            pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(getter)
+          }
       }
     }
 
