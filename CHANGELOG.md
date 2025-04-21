@@ -7,6 +7,8 @@ Changelog
 - **New**: Nullable bindings are now allowed! See the [nullability docs](https://zacsweers.github.io/metro/bindings#nullability) for more info.
 - **Enhancement**: Add diagnostics for multibindings with star projections.
 - **Enhancement**: Add diagnostic for map multibindings with nullable keys.
+- **Fix**: Fix duplicate field accessors generated for graph supertypes.
+- Add [compose navigation sample](https://github.com/ZacSweers/metro/tree/main/samples/compose-navigation-app).
 
 0.1.3
 -----
