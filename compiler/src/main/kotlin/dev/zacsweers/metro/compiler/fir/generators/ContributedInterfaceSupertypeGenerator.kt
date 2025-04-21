@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -16,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -86,11 +88,20 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           .filterIsInstance<FirRegularClassSymbol>()
           .toList()
 
-      getScopedContributions(contributingClasses, typeResolver)[scopeClassId].orEmpty()
+      buildSet {
+        addAll(getScopedContributions(contributingClasses, scopeClassId, typeResolver))
+        // If it's just a `@ContributesTo`, contribute it directly
+        addAll(
+          contributingClasses
+            .filter { originClass ->
+              originClass.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations)
+            }
+            .map { it.classId }
+        )
+      }
     }
 
-  private val generatedScopesToContributions:
-    FirCache<ClassId, Map<ClassId, Set<ClassId>>, TypeResolveService> =
+  private val generatedScopesToContributions: FirCache<ClassId, Set<ClassId>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
       val scopeHintFqName = Symbols.FqNames.scopeHint(scopeClassId)
       val functionsInPackage =
@@ -108,7 +119,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             .toRegularClassSymbol(session)
         }
 
-      getScopedContributions(contributingClasses, typeResolver)
+      getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
 
   /**
@@ -117,38 +128,35 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
    */
   private fun getScopedContributions(
     contributingClasses: List<FirRegularClassSymbol>,
+    scopeClassId: ClassId,
     typeResolver: TypeResolveService,
-  ): Map<ClassId, Set<ClassId>> {
-    val scopesToNestedContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+  ): Set<ClassId> {
+    return contributingClasses
+      .flatMap { originClass ->
+        val classDeclarationContainer =
+          originClass.fir.symbol.declaredMemberScope(session, memberRequiredPhase = null)
 
-    contributingClasses.forEach { originClass ->
-      val classDeclarationContainer =
-        originClass.fir.symbol.declaredMemberScope(session, memberRequiredPhase = null)
+        val contributionNames =
+          classDeclarationContainer.getClassifierNames().filter {
+            it.identifier.startsWith(Symbols.Names.metroContribution.identifier)
+          }
 
-      val contributionNames =
-        classDeclarationContainer.getClassifierNames().filter {
-          it.identifier.startsWith(Symbols.Names.metroContribution.identifier)
-        }
+        contributionNames
+          .mapNotNull { nestedClassName ->
+            val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
 
-      contributionNames
-        .mapNotNull { nestedClassName ->
-          val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
-
-          nestedClass
-            ?.annotations
-            ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
-            ?.single()
-            ?.resolvedScopeClassId(typeResolver)
-            ?.let { scopeId -> scopeId to originClass.classId.createNestedClassId(nestedClassName) }
-        }
-        .forEach { (scopeClassId, nestedContributionId) ->
-          scopesToNestedContributions
-            .getOrPut(scopeClassId, ::mutableSetOf)
-            .add(nestedContributionId)
-        }
-    }
-
-    return scopesToNestedContributions
+            nestedClass
+              ?.annotations
+              ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
+              ?.single()
+              ?.resolvedScopeClassId(typeResolver)
+              ?.let { scopeId ->
+                scopeId to originClass.classId.createNestedClassId(nestedClassName)
+              }
+          }
+          .filter { it.first == scopeClassId }
+      }
+      .mapToSet { (_, nestedContributionId) -> nestedContributionId }
   }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
@@ -202,9 +210,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       scopes
         .flatMap { scopeClassId ->
           val classPathContributions =
-            generatedScopesToContributions
-              .getValue(scopeClassId, typeResolver)[scopeClassId]
-              .orEmpty()
+            generatedScopesToContributions.getValue(scopeClassId, typeResolver)
 
           val inCompilationContributions =
             inCompilationScopesToContributions.getValue(scopeClassId, typeResolver)
