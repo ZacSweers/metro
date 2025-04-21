@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphData
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.IrContributionData
 import dev.zacsweers.metro.compiler.ir.transformers.IrContributionVisitor
@@ -31,8 +30,6 @@ public class MetroIrGenerationExtension(
     moduleFragment.accept(IrContributionVisitor, contributionData)
 
     val dependencyGraphTransformer = DependencyGraphTransformer(context, moduleFragment)
-    // TODO is this really necessary?
-    val dependencyGraphData = DependencyGraphData()
-    moduleFragment.transform(dependencyGraphTransformer, dependencyGraphData)
+    moduleFragment.transform(dependencyGraphTransformer, null)
   }
 }

@@ -73,7 +73,6 @@ import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
-import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addField
@@ -101,7 +100,6 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
@@ -136,21 +134,18 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
-import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
+import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.konan.isNative
 
-internal class DependencyGraphData {
-  val graphs = mutableMapOf<ClassId, DependencyGraphNode>()
-}
 
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   moduleFragment: IrModuleFragment,
-) : IrElementTransformer<DependencyGraphData>, IrMetroContext by context {
+) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
   private val injectConstructorTransformer =
@@ -168,12 +163,7 @@ internal class DependencyGraphTransformer(
   // Keyed by the source declaration
   private val metroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
-  override fun visitCall(expression: IrCall, data: DependencyGraphData): IrElement {
-    return CreateGraphTransformer.visitCall(expression, metroContext)
-      ?: super.visitCall(expression, data)
-  }
-
-  override fun visitClass(declaration: IrClass, data: DependencyGraphData): IrStatement {
+  override fun visitClass(declaration: IrClass): IrStatement {
     log("Reading ${declaration.kotlinFqName}")
 
     // TODO need to better divvy these
@@ -194,7 +184,7 @@ internal class DependencyGraphTransformer(
 
     val dependencyGraphAnno =
       declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
-    if (dependencyGraphAnno == null) return super.visitClass(declaration, data)
+    if (dependencyGraphAnno == null) return super.visitClass(declaration)
 
     try {
       getOrBuildDependencyGraph(declaration, dependencyGraphAnno)
@@ -204,7 +194,7 @@ internal class DependencyGraphTransformer(
 
     // TODO dump option to detect unused
 
-    return super.visitClass(declaration, data)
+    return super.visitClass(declaration)
   }
 
   private fun getOrComputeDependencyGraphNode(
