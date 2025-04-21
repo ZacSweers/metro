@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [versions]
-agp = "8.9.1"
+agp = "8.9.2"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
 autoService = "1.1.1"
