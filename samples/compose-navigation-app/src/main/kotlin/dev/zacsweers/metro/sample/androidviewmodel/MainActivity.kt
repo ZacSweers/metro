@@ -31,52 +31,48 @@ import kotlinx.serialization.Serializable
 @ActivityKey(MainActivity::class)
 @Inject
 class MainActivity(private val viewModelFactory: ViewModelProvider.Factory) : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
 
-        setContent {
-            val navController = rememberNavController()
-            val onNavigate: (Any) -> Unit = { navController.navigate(it) }
+    setContent {
+      val navController = rememberNavController()
+      val onNavigate: (Any) -> Unit = { navController.navigate(it) }
 
-            val appOwner = LocalViewModelStoreOwner.current
-            val appViewModelActivity = metroViewModel<AppViewModel>()
+      val appOwner = LocalViewModelStoreOwner.current
+      val appViewModelActivity = metroViewModel<AppViewModel>()
 
-            NavHost(
-                navController,
-                startDestination = Menu,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeContentPadding()
-            ) {
-                composable<Menu> {
-                    val routeOwner = LocalViewModelStoreOwner.current
-                    val routeViewModel = metroViewModel<AppViewModel>()
+      NavHost(
+        navController,
+        startDestination = Menu,
+        modifier = Modifier.fillMaxSize().safeContentPadding(),
+      ) {
+        composable<Menu> {
+          val routeOwner = LocalViewModelStoreOwner.current
+          val routeViewModel = metroViewModel<AppViewModel>()
 
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text("App Owner: ${appOwner?.javaClass?.simpleName}")
-                        Text("App View Model Instance: ${appViewModelActivity.instance}")
-                        Text("Route Owner: ${routeOwner?.javaClass?.simpleName}")
-                        Text("Route View Model Instance: ${routeViewModel.instance}")
-                        Button(onClick = { onNavigate(Counter("One")) }) { Text("Counter One") }
-                        Button(onClick = { onNavigate(Counter("Two")) }) { Text("Counter Two") }
-                    }
-                }
-                composable<Counter> { CounterScreen(onNavigate) }
-            }
+          Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+          ) {
+            Text("App Owner: ${appOwner?.javaClass?.simpleName}")
+            Text("App View Model Instance: ${appViewModelActivity.instance}")
+            Text("Route Owner: ${routeOwner?.javaClass?.simpleName}")
+            Text("Route View Model Instance: ${routeViewModel.instance}")
+            Button(onClick = { onNavigate(Counter("One")) }) { Text("Counter One") }
+            Button(onClick = { onNavigate(Counter("Two")) }) { Text("Counter Two") }
+          }
         }
+        composable<Counter> { CounterScreen(onNavigate) }
+      }
     }
+  }
 
-    // Use ComponentActivity/HasDefaultViewModelProviderFactory to provide an injected
-    // ViewModel Factory
-    override val defaultViewModelProviderFactory: ViewModelProvider.Factory
-        get() = viewModelFactory
+  // Use ComponentActivity/HasDefaultViewModelProviderFactory to provide an injected
+  // ViewModel Factory
+  override val defaultViewModelProviderFactory: ViewModelProvider.Factory
+    get() = viewModelFactory
 }
 
-@Serializable
-data object Menu
+@Serializable data object Menu
 
-@Serializable
-data class Counter(val name: String)
+@Serializable data class Counter(val name: String)

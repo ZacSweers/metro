@@ -5,7 +5,6 @@
 package dev.zacsweers.metro.sample.androidviewmodel
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
@@ -19,7 +18,6 @@ import kotlin.concurrent.atomics.fetchAndIncrement
 @ContributesIntoMap(ViewModelScope::class)
 @ViewModelKey(AppViewModel::class)
 @Inject
-class AppViewModel(application: Application, viewModelCounter: AtomicInt) :
-  ViewModel() {
+class AppViewModel(application: Application, viewModelCounter: AtomicInt) : ViewModel() {
   val instance = viewModelCounter.fetchAndIncrement()
 }
