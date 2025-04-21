@@ -136,6 +136,8 @@ public class ClassIds(
     setOf(contributesGraphExtensionAnnotation) + customContributesGraphExtensionAnnotations
   internal val contributesGraphExtensionFactoryAnnotations =
     setOf(contributesGraphExtensionFactoryAnnotation) + customContributesGraphExtensionFactoryAnnotations
+  internal val contributesToLikeAnnotations =
+    contributesToAnnotations + contributesGraphExtensionFactoryAnnotations
   internal val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +

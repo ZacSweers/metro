@@ -29,7 +29,7 @@ internal class IrContributionVisitor(private val metroContext: IrMetroContext) :
 
     // Check if it's a plain old ContributesTo
     for (contributesToAnno in
-      declaration.annotationsIn(metroContext.symbols.classIds.contributesToAnnotations)) {
+      declaration.annotationsIn(metroContext.symbols.classIds.contributesToLikeAnnotations)) {
       val scope =
         contributesToAnno.scopeOrNull()
           ?: with(metroContext) {
