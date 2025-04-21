@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.Symbols.FqNames.kotlinCollectionsPackageFqn
+import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
@@ -75,7 +76,13 @@ internal class Symbols(
       ClassIds.graphFactoryInvokeFunctionMarkerClass.asSingleFqName()
 
     fun scopeHint(scopeClassId: ClassId): FqName {
-      return metroHintsPackage.child(scopeClassId.joinSimpleNames().shortClassName)
+      return CallableIds.scopeHint(scopeClassId).asSingleFqName()
+    }
+  }
+
+  object CallableIds {
+    fun scopeHint(scopeClassId: ClassId): CallableId {
+      return CallableId(metroHintsPackage, scopeClassId.joinSimpleNames().shortClassName)
     }
   }
 
