@@ -1,9 +1,6 @@
-package dev.zacsweers.metro.compiler.ir.transformers
+package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.findAnnotations
-import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import kotlin.collections.flatMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
