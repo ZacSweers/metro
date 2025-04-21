@@ -158,6 +158,10 @@ internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<
   return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
 }
 
+internal fun IrAnnotationContainer.findAnnotations(classId: ClassId): Sequence<IrConstructorCall> {
+  return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId == classId }
+}
+
 internal fun <T> IrConstructorCall.constArgumentOfTypeAt(position: Int): T? {
   if (valueArgumentsCount == 0) return null
   return (getValueArgument(position) as? IrConst?)?.valueAs()
