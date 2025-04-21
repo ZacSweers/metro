@@ -30,15 +30,15 @@ android {
 }
 
 dependencies {
+  implementation(libs.androidx.activity)
   implementation(libs.androidx.appcompat)
+  implementation(libs.androidx.compose.material3)
+  implementation(libs.androidx.compose.materialNavigation)
   implementation(libs.androidx.core)
   implementation(libs.androidx.fragment)
+  implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.material3)
+  implementation(libs.androidx.navigationCompose)
   implementation(libs.androidx.viewmodel)
-  implementation("androidx.navigation:navigation-compose:2.8.9")
-  implementation("androidx.compose.material:material-navigation:1.7.8")
-  implementation("androidx.compose.material3:material3:1.3.2")
-  implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-  implementation("androidx.activity:activity-compose:1.10.1")
-  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+  implementation(libs.kotlinx.serialization.json)
 }
