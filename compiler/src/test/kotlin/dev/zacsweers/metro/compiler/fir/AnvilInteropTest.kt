@@ -126,6 +126,43 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
+  // Covers a bug where the codebase has a Dagger-Anvil-ContributesBinding usage that outranks a
+  // Metro-ContributesBinding usage with an explicit type and multiple supertypes. Basically ensures
+  // that rank processing doesn't rely on the outranked binding using the Dagger-Anvil annotation.
+  @Test
+  fun `ranked binding processing supports outranked bindings using Metro's @ContributesBinding`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          interface OtherInterface
+
+          // Having two supertypes and an explicit binding type with Metro's @ContributesBinding
+          // annotation is the key piece of this repro
+          @ContributesBinding(AppScope::class, binding = binding<ContributedInterface>())
+          object Impl1 : ContributedInterface, OtherInterface
+
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
+          object Impl2 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.withAnvilContributesBinding(),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
+    }
+  }
+
   @Test
   fun `rank supports an explicit binding type on the outranked binding`() {
     compile(

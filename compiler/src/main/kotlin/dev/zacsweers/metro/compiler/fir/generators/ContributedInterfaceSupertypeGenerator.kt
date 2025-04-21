@@ -5,13 +5,13 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
+import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
@@ -304,8 +304,16 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
             .map { annotation ->
               val boundType =
-                annotation.anvilKClassBoundTypeArgument(session, typeResolver)?.coneType
-                  ?: contributingType.implicitBoundType(typeResolver)
+                annotation.resolvedBindingArgument(session, typeResolver)?.let { explicitBinding ->
+                  // @ContributesBinding.binding may not be resolved yet, while an interop
+                  // 'boundType' should be okay already
+                  if (explicitBinding is FirUserTypeRef) {
+                      typeResolver.resolveUserType(explicitBinding)
+                    } else {
+                      explicitBinding
+                    }
+                    .coneType
+                } ?: contributingType.implicitBoundType(typeResolver)
 
               ContributedBinding(
                 contributingType,
