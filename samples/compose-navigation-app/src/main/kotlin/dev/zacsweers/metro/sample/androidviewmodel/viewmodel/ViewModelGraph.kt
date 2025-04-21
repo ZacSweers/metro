@@ -21,11 +21,11 @@ interface ViewModelGraph {
   @Multibinds val viewModelProviders: Map<KClass<out ViewModel>, Provider<ViewModel>>
 
   @Provides
-  fun providesApplication(creationExtras: CreationExtras): Application =
+  fun provideApplication(creationExtras: CreationExtras): Application =
     creationExtras[APPLICATION_KEY]!!
 
   @Provides
-  fun providesSavedStateHandle(creationExtras: CreationExtras): SavedStateHandle =
+  fun provideSavedStateHandle(creationExtras: CreationExtras): SavedStateHandle =
     creationExtras.createSavedStateHandle()
 
   @DependencyGraph.Factory

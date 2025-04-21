@@ -19,9 +19,9 @@ import kotlin.reflect.KClass
 interface AppGraph {
   /**
    * A multibinding map of activity classes to their providers accessible for
-   * [dev.zacsweers.metro.sample.android.components.MetroAppComponentFactory].
+   * [MetroAppComponentFactory].
    */
   @Multibinds val activityProviders: Map<KClass<out Activity>, Provider<Activity>>
 
-  @Provides @SingleIn(AppScope::class) fun providesViewModelCounter(): AtomicInt = AtomicInt(0)
+  @Provides @SingleIn(AppScope::class) fun provideViewModelCounter(): AtomicInt = AtomicInt(0)
 }

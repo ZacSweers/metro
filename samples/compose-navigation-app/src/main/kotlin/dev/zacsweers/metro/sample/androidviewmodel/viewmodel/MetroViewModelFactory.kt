@@ -30,6 +30,7 @@ class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory 
       viewModelGraph.viewModelProviders[modelClass.kotlin]
         ?: throw IllegalArgumentException("Unknown model class $modelClass")
 
+    @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
     return modelClass.cast(provider())
   }
 }
