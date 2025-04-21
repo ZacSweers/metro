@@ -100,6 +100,7 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
@@ -141,7 +142,6 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.konan.isNative
 
-
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   moduleFragment: IrModuleFragment,
@@ -162,6 +162,10 @@ internal class DependencyGraphTransformer(
 
   // Keyed by the source declaration
   private val metroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
+
+  override fun visitCall(expression: IrCall): IrExpression {
+    return CreateGraphTransformer.visitCall(expression, metroContext) ?: super.visitCall(expression)
+  }
 
   override fun visitClass(declaration: IrClass): IrStatement {
     log("Reading ${declaration.kotlinFqName}")
