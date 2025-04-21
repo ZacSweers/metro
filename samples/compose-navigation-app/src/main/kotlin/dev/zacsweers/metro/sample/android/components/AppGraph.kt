@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalAtomicApi::class)
 
 package dev.zacsweers.metro.sample.android.components
@@ -19,9 +21,7 @@ interface AppGraph {
    * A multibinding map of activity classes to their providers accessible for
    * [dev.zacsweers.metro.sample.android.components.MetroAppComponentFactory].
    */
-  @Multibinds
-  val activityProviders: Map<KClass<out Activity>, Provider<Activity>>
+  @Multibinds val activityProviders: Map<KClass<out Activity>, Provider<Activity>>
 
-  @Provides
-  @SingleIn(AppScope::class) fun providesViewModelCounter(): AtomicInt = AtomicInt(0)
+  @Provides @SingleIn(AppScope::class) fun providesViewModelCounter(): AtomicInt = AtomicInt(0)
 }
