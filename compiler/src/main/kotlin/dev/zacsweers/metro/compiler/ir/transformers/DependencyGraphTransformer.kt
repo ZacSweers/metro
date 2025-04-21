@@ -122,6 +122,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
@@ -1670,9 +1671,11 @@ internal class DependencyGraphTransformer(
         }
         for ((key, field) in instanceFields) {
           if (key == node.typeKey) continue // Skip this graph instance field
+          val accessorName = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}"
+          if (this.getSimpleFunction(accessorName) != null) continue
           val getter =
             addFunction(
-                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
+                name = accessorName,
                 returnType = field.type,
                 // TODO is this... ok?
                 visibility = DescriptorVisibilities.INTERNAL,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalAtomicApi::class)
 
-package dev.zacsweers.metro.sample.android.components
+package dev.zacsweers.metro.sample.androidviewmodel.components
 
 import android.app.Activity
 import dev.zacsweers.metro.AppScope

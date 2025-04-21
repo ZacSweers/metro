@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.sample.android.viewmodel
+package dev.zacsweers.metro.sample.androidviewmodel.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -10,7 +10,7 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.createGraphFactory
-import dev.zacsweers.metro.sample.android.components.AppGraph
+import dev.zacsweers.metro.sample.androidviewmodel.components.AppGraph
 import kotlin.reflect.KClass
 
 /**
@@ -23,6 +23,8 @@ class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory 
 
   override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
     val viewModelGraph = createGraphFactory<ViewModelGraph.Factory>().create(appGraph, extras)
+
+    println(viewModelGraph.viewModelProviders)
 
     val provider =
       viewModelGraph.viewModelProviders[modelClass.kotlin]

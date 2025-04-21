@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalAtomicApi::class)
 
-package dev.zacsweers.metro.sample.android
+package dev.zacsweers.metro.sample.androidviewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.sample.android.viewmodel.ViewModelKey
-import dev.zacsweers.metro.sample.android.viewmodel.ViewModelScope
+import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.ViewModelKey
+import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.ViewModelScope
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.fetchAndIncrement
@@ -19,6 +20,6 @@ import kotlin.concurrent.atomics.fetchAndIncrement
 @ViewModelKey(AppViewModel::class)
 @Inject
 class AppViewModel(application: Application, viewModelCounter: AtomicInt) :
-  AndroidViewModel(application) {
+  ViewModel() {
   val instance = viewModelCounter.fetchAndIncrement()
 }

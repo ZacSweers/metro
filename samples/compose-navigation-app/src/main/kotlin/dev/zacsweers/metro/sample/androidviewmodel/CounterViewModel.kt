@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalAtomicApi::class)
 
-package dev.zacsweers.metro.sample.android
+package dev.zacsweers.metro.sample.androidviewmodel
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.navigation.toRoute
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
-import dev.zacsweers.metro.sample.android.viewmodel.ViewModelKey
-import dev.zacsweers.metro.sample.android.viewmodel.ViewModelScope
+import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.ViewModelKey
+import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.ViewModelScope
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.fetchAndIncrement
@@ -25,7 +25,7 @@ class CounterViewModel(savedStateHandle: SavedStateHandle, viewModelCounter: Ato
   ViewModel() {
   val instance = viewModelCounter.fetchAndIncrement()
 
-  private val route = savedStateHandle.toRoute<Counter>()
+  val route = savedStateHandle.toRoute<Counter>()
 
   val name: String
     get() = route.name

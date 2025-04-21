@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.sample.android.components
+package dev.zacsweers.metro.sample.androidviewmodel.components
 
 import android.app.Activity
 import android.app.Application
@@ -8,12 +8,11 @@ import android.content.Intent
 import androidx.annotation.Keep
 import androidx.core.app.AppComponentFactory
 import dev.zacsweers.metro.Provider
-import dev.zacsweers.metro.sample.android.MetroApp
+import dev.zacsweers.metro.sample.androidviewmodel.MetroApp
 import kotlin.reflect.KClass
 
 /**
- * An [androidx.core.app.AppComponentFactory] that uses Metro for constructor injection of
- * Activities.
+ * An [AppComponentFactory] that uses Metro for constructor injection of Activities.
  *
  * If you have minSdk < 28, you can fall back to using member injection on Activities or (better)
  * use an architecture that abstracts the Android framework components away.

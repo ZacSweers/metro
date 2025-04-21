@@ -1,6 +1,6 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.sample.android.viewmodel
+package dev.zacsweers.metro.sample.androidviewmodel.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.SavedStateHandle
@@ -13,7 +13,7 @@ import dev.zacsweers.metro.Extends
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.sample.android.components.AppGraph
+import dev.zacsweers.metro.sample.androidviewmodel.components.AppGraph
 import kotlin.reflect.KClass
 
 @DependencyGraph(ViewModelScope::class)
