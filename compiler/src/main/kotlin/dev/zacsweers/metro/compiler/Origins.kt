@@ -47,4 +47,6 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ProviderFieldAccessor)
   val InstanceFieldAccessor: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.InstanceFieldAccessor)
+  val ContributedGraph: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributedGraph)
 }
