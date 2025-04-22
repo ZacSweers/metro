@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.test.integration
 
 import dev.zacsweers.metro.AppScope
@@ -31,7 +33,6 @@ class ContributesGraphExtensionTest {
 
   @DependencyGraph(scope = AppScope::class, isExtendable = true)
   interface ExampleGraph {
-    @Provides
-    fun provideInt(): Int = 0
+    @Provides fun provideInt(): Int = 0
   }
 }

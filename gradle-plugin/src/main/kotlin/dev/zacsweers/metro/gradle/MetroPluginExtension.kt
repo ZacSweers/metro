@@ -117,8 +117,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val contributesTo: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesBinding: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
-    public val contributesGraphExtension: SetProperty<String> = objects.setProperty(String::class.java)
-    public val contributesGraphExtensionFactory: SetProperty<String> = objects.setProperty(String::class.java)
+    public val contributesGraphExtension: SetProperty<String> =
+        objects.setProperty(String::class.java)
+    public val contributesGraphExtensionFactory: SetProperty<String> =
+        objects.setProperty(String::class.java)
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val graph: SetProperty<String> = objects.setProperty(String::class.java)
     public val graphFactory: SetProperty<String> = objects.setProperty(String::class.java)
@@ -216,8 +218,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
         graph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")
         contributesTo.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesTo")
         contributesBinding.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesBinding")
-        contributesGraphExtension.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent")
-        contributesGraphExtensionFactory.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent.Factory")
+        contributesGraphExtension.add(
+            "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent")
+        contributesGraphExtensionFactory.add(
+            "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent.Factory")
       }
     }
   }

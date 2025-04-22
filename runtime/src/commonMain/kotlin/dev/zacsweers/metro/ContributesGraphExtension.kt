@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro
 
 import kotlin.annotation.AnnotationTarget.CLASS
@@ -26,9 +28,9 @@ import kotlin.reflect.KClass
  * ## The Solution
  *
  * Instead, `:login` can use `@ContributesGraphExtension(AppScope::class)` to say: "I want to
- * contribute a new graph extension to the app graph." The extension will be generated in
- * `:app`, which already depends on both `:login` and `:user-data`. Now `UserRepository` can be
- * injected in `LoggedInGraph`.
+ * contribute a new graph extension to the app graph." The extension will be generated in `:app`,
+ * which already depends on both `:login` and `:user-data`. Now `UserRepository` can be injected in
+ * `LoggedInGraph`.
  *
  * ```
  * @ContributesGraphExtension(LoggedInScope::class)
@@ -67,7 +69,8 @@ import kotlin.reflect.KClass
  * }
  * ```
  *
- * Finally, you can obtain a `LoggedInGraph` instance from `AppGraph` since it now implements `LoggedInGraph.Factory`:
+ * Finally, you can obtain a `LoggedInGraph` instance from `AppGraph` since it now implements
+ * `LoggedInGraph.Factory`:
  * ```
  * val loggedInGraph = appGraph.createLoggedInGraph()
  * ```
@@ -101,7 +104,6 @@ import kotlin.reflect.KClass
  *   return LoggedInGraph$$MetroGraph(this, userId)
  * }
  * ```
- *
  * > Note: Abstract factory classes cannot be used as graph contributions.
  */
 @Target(CLASS)
@@ -112,8 +114,8 @@ public annotation class ContributesGraphExtension(
   /**
    * A factory for the contributed graph extension.
    *
-   * Each contributed graph extension must have a factory interface as an inner class. The body of the
-   * factory function will be generated when the parent graph is merged.
+   * Each contributed graph extension must have a factory interface as an inner class. The body of
+   * the factory function will be generated when the parent graph is merged.
    *
    * The factory interface must have a single function with the contributed graph extension as its
    * return type. Parameters are supported as mentioned in [ContributesGraphExtension].

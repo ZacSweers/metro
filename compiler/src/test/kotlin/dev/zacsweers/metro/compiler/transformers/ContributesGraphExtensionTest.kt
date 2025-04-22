@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
@@ -18,17 +20,17 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       source(
         """
           abstract class LoggedInScope
-          
+
           @ContributesGraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val int: Int
-          
+
             @ContributesGraphExtension.Factory(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
             }
           }
-          
+
           @DependencyGraph(scope = AppScope::class, isExtendable = true)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
@@ -50,11 +52,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         source(
           """
           abstract class LoggedInScope
-          
+
           @ContributesGraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val int: Int
-          
+
             @ContributesGraphExtension.Factory(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
@@ -102,7 +104,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @ContributesGraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
             val string: String
-          
+
             @ContributesGraphExtension.Factory(AppScope::class)
             interface Factory {
               fun createLoggedInGraph(): LoggedInGraph
