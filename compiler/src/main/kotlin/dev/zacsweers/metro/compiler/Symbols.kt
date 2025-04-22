@@ -59,6 +59,7 @@ internal class Symbols(
     const val METRO_FACTORY = "$\$MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
     const val METRO_IMPL = "$\$Impl"
+    const val METRO_GRAPH = "$\$MetroGraph"
     const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
     const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
     const val NEW_INSTANCE = "newInstance"
@@ -132,7 +133,7 @@ internal class Symbols(
     val metroAccessor = StringNames.METRO_ACCESSOR.asName()
     val metroFactory = Name.identifier(StringNames.METRO_FACTORY)
     val metroContribution = Name.identifier("$\$MetroContribution")
-    val metroGraph = Name.identifier("$\$MetroGraph")
+    val metroGraph = StringNames.METRO_GRAPH.asName()
     val metroHint = Name.identifier("hint")
     val metroImpl = StringNames.METRO_IMPL.asName()
     val metroMembersInjector = Name.identifier("$\$MetroMembersInjector")
