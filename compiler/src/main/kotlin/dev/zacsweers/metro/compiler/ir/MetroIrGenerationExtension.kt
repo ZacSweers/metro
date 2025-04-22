@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
-import dev.zacsweers.metro.compiler.ir.IrContributionVisitor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -34,7 +33,8 @@ public class MetroIrGenerationExtension(
       return
     }
 
-    val dependencyGraphTransformer = DependencyGraphTransformer(context, moduleFragment)
+    val dependencyGraphTransformer =
+      DependencyGraphTransformer(context, moduleFragment, contributionData)
     moduleFragment.transform(dependencyGraphTransformer, null)
   }
 }

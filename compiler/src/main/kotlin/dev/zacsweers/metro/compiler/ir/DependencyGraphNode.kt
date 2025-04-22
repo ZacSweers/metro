@@ -19,6 +19,7 @@ internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val isExtendable: Boolean,
   val includedGraphNodes: Map<TypeKey, DependencyGraphNode>,
+  val contributedGraphs: Map<TypeKey, MetroSimpleFunction>,
   val scopes: Set<IrAnnotation>,
   val providerFactories: List<Pair<TypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)

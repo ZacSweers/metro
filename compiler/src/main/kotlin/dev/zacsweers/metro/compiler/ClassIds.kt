@@ -67,7 +67,7 @@ public class ClassIds(
   }
 
   // Graphs
-  private val dependencyGraphAnnotation =
+  internal val dependencyGraphAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("DependencyGraph")
   internal val dependencyGraphAnnotations =
     setOf(dependencyGraphAnnotation) + customGraphAnnotations

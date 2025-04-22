@@ -21,6 +21,8 @@ import dev.zacsweers.metro.compiler.ir.BindingStack
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrContributedGraphGenerator
+import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.TypeKey
@@ -131,6 +133,7 @@ import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
@@ -145,6 +148,7 @@ import org.jetbrains.kotlin.platform.konan.isNative
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   moduleFragment: IrModuleFragment,
+  private val contributionData: IrContributionData,
 ) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -190,8 +194,17 @@ internal class DependencyGraphTransformer(
       declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
     if (dependencyGraphAnno == null) return super.visitClass(declaration)
 
+    val metroGraph =
+      if (declaration.origin === Origins.ContributedGraph) {
+        // If it's a contributed graph, there is no inner generated graph
+        declaration
+      } else {
+        declaration.nestedClasses.singleOrNull { it.name == Symbols.Names.metroGraph }
+          ?: error("Expected generated dependency graph for ${declaration.classIdOrFail}")
+      }
+
     try {
-      getOrBuildDependencyGraph(declaration, dependencyGraphAnno)
+      getOrBuildDependencyGraph(declaration, dependencyGraphAnno, metroGraph)
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
     }
@@ -224,6 +237,7 @@ internal class DependencyGraphTransformer(
     val scopes = mutableSetOf<IrAnnotation>()
     val providerFactories = mutableListOf<Pair<TypeKey, ProviderFactory>>()
     val extendedGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
+    val contributedGraphs = mutableMapOf<TypeKey, MetroSimpleFunction>()
 
     val isExtendable =
       dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
@@ -371,6 +385,7 @@ internal class DependencyGraphTransformer(
           proto = graphProto,
           extendedGraphNodes = extendedGraphNodes,
           // Following aren't necessary to see in external graphs
+          contributedGraphs = contributedGraphs,
           injectors = emptyList(),
           creator = null,
         )
@@ -394,7 +409,8 @@ internal class DependencyGraphTransformer(
       if (annotations.isProvides) continue
       when (declaration) {
         is IrSimpleFunction -> {
-          // Could be an injector or accessor
+          // Could be an injector, accessor, or contributed graph
+          var isContributedGraph = false
 
           // If the overridden symbol has a default getter/value then skip
           var hasDefaultImplementation = false
@@ -402,15 +418,27 @@ internal class DependencyGraphTransformer(
             if (overridden.owner.body != null) {
               hasDefaultImplementation = true
               break
+            } else if (
+              overridden.owner.parentClassOrNull?.isAnnotatedWithAny(
+                symbols.classIds.contributesGraphExtensionFactoryAnnotations
+              ) == true
+            ) {
+              isContributedGraph = true
+              break
             }
           }
           if (hasDefaultImplementation) continue
 
           val isInjector =
-            declaration.valueParameters.size == 1 &&
+            !isContributedGraph &&
+              declaration.valueParameters.size == 1 &&
               !annotations.isBinds &&
               declaration.returnType.isUnit()
-          if (isInjector) {
+          if (isContributedGraph) {
+            val metroFunction = metroFunctionOf(declaration, annotations)
+            val contextKey = ContextualTypeKey.from(this, declaration, metroFunction.annotations)
+            contributedGraphs[contextKey.typeKey] = metroFunction
+          } else if (isInjector) {
             // It's an injector
             val metroFunction = metroFunctionOf(declaration, annotations)
             // key is the injected type wrapped in MembersInjector
@@ -432,13 +460,21 @@ internal class DependencyGraphTransformer(
         }
 
         is IrProperty -> {
-          // Can only be an accessor or binds
+          // Can only be an accessor, binds, or contributed graph
+          var isContributedGraph = false
 
           // If the overridden symbol has a default getter/value then skip
           var hasDefaultImplementation = false
           for (overridden in declaration.overriddenSymbolsSequence()) {
             if (overridden.owner.getter?.body != null) {
               hasDefaultImplementation = true
+              break
+            } else if (
+              overridden.owner.parentClassOrNull?.isAnnotatedWithAny(
+                symbols.classIds.contributesGraphExtensionFactoryAnnotations
+              ) == true
+            ) {
+              isContributedGraph = true
               break
             }
           }
@@ -447,13 +483,17 @@ internal class DependencyGraphTransformer(
           val getter = declaration.getter!!
           val metroFunction = metroFunctionOf(getter, annotations)
           val contextKey = ContextualTypeKey.from(this, getter, metroFunction.annotations)
-          val collection =
-            if (metroFunction.annotations.isBinds) {
-              bindsFunctions
-            } else {
-              accessors
-            }
-          collection += (metroFunction to contextKey)
+          if (isContributedGraph) {
+            contributedGraphs[contextKey.typeKey] = metroFunction
+          } else {
+            val collection =
+              if (metroFunction.annotations.isBinds) {
+                bindsFunctions
+              } else {
+                accessors
+              }
+            collection += (metroFunction to contextKey)
+          }
         }
       }
     }
@@ -508,17 +548,27 @@ internal class DependencyGraphTransformer(
       )
     }
 
-    // TODO since we already check this in FIR can we leave a more specific breadcrumb somewhere
     val creator =
-      graphDeclaration.nestedClasses
-        .singleOrNull { klass ->
-          klass.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations)
-        }
-        ?.let { factory ->
-          // Validated in FIR so we can assume we'll find just one here
-          val createFunction = factory.singleAbstractFunction(this)
-          DependencyGraphNode.Creator(factory, createFunction, createFunction.parameters(this))
-        }
+      if (graphDeclaration.origin === Origins.ContributedGraph) {
+        val ctor = graphDeclaration.primaryConstructor!!
+        val ctorParams = ctor.parameters(metroContext)
+        DependencyGraphNode.Creator.Constructor(graphDeclaration.primaryConstructor!!, ctorParams)
+      } else {
+        // TODO since we already check this in FIR can we leave a more specific breadcrumb somewhere
+        graphDeclaration.nestedClasses
+          .singleOrNull { klass ->
+            klass.isAnnotatedWithAny(symbols.dependencyGraphFactoryAnnotations)
+          }
+          ?.let { factory ->
+            // Validated in FIR so we can assume we'll find just one here
+            val createFunction = factory.singleAbstractFunction(this)
+            DependencyGraphNode.Creator.Factory(
+              factory,
+              createFunction,
+              createFunction.parameters(this),
+            )
+          }
+      }
 
     try {
       checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
@@ -537,7 +587,7 @@ internal class DependencyGraphTransformer(
         val type = it.typeKey.type.rawType()
         val node =
           bindingStack.withEntry(
-            BindingStack.Entry.requestedAt(graphContextKey, creator!!.createFunction)
+            BindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
           ) {
             getOrComputeDependencyGraphNode(type, bindingStack)
           }
@@ -554,6 +604,7 @@ internal class DependencyGraphTransformer(
         sourceGraph = graphDeclaration,
         isExtendable = isExtendable,
         includedGraphNodes = includedGraphNodes,
+        contributedGraphs = contributedGraphs,
         scopes = scopes,
         bindsFunctions = bindsFunctions,
         providerFactories = providerFactories,
@@ -615,15 +666,12 @@ internal class DependencyGraphTransformer(
   private fun getOrBuildDependencyGraph(
     dependencyGraphDeclaration: IrClass,
     dependencyGraphAnno: IrConstructorCall,
+    metroGraph: IrClass,
   ): IrClass {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
     metroDependencyGraphsByClass[graphClassId]?.let {
       return it
     }
-
-    val metroGraph =
-      dependencyGraphDeclaration.nestedClasses.singleOrNull { it.name == Symbols.Names.metroGraph }
-        ?: error("Expected generated dependency graph for $graphClassId")
 
     if (dependencyGraphDeclaration.isExternalParent) {
       // Externally compiled, look up its generated class
@@ -1099,10 +1147,13 @@ internal class DependencyGraphTransformer(
     creator: DependencyGraphNode.Creator?,
     metroGraph: IrClass,
   ) {
-    val companionObject = sourceGraph.companionObject()!!
-    if (creator != null) {
+    // NOTE: may not have a companion object if this graph is a contributed graph, which has no
+    // static creators
+    val companionObject = sourceGraph.companionObject() ?: return
+    val factoryCreator = creator?.expectAsOrNull<DependencyGraphNode.Creator.Factory>()
+    if (factoryCreator != null) {
       val implementFactoryFunction: IrClass.() -> Unit = {
-        requireSimpleFunction(creator.createFunction.name.asString()).owner.apply {
+        requireSimpleFunction(factoryCreator.function.name.asString()).owner.apply {
           if (isFakeOverride) {
             finalizeFakeOverride(metroGraph.thisReceiverOrFail)
           }
@@ -1122,13 +1173,15 @@ internal class DependencyGraphTransformer(
       }
 
       companionObject.apply {
-        if (creator.type.isInterface) {
+        if (factoryCreator.type.isInterface) {
           // Implement the interface creator function directly in this companion object
           implementFactoryFunction()
         } else {
           // Implement the factory's $$Impl class
           val factoryClass =
-            creator.type.requireNestedClass(Symbols.Names.metroImpl).apply(implementFactoryFunction)
+            factoryCreator.type
+              .requireNestedClass(Symbols.Names.metroImpl)
+              .apply(implementFactoryFunction)
 
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
@@ -1232,34 +1285,38 @@ internal class DependencyGraphTransformer(
               // Extended graphs
               addBoundInstanceField { irGet(irParam) }
               // Check that the input parameter is an instance of the metrograph class
-              val depMetroGraph = graphDep.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
-              extraConstructorStatements.add {
-                irIfThen(
-                  condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
-                  type = pluginContext.irBuiltIns.unitType,
-                  thenPart =
-                    irThrow(
-                      irInvoke(
-                        callee = context.irBuiltIns.illegalArgumentExceptionSymbol,
-                        args =
-                          listOf(
-                            irConcat().apply {
-                              addArgument(
-                                irString(
-                                  "Constructor parameter ${irParam.name} _must_ be a Metro-compiler-generated instance of ${graphDep.sourceGraph.kotlinFqName.asString()} but was "
+              // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
+              if (graphDep.sourceGraph != graphClass) {
+                val depMetroGraph =
+                  graphDep.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+                extraConstructorStatements.add {
+                  irIfThen(
+                    condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
+                    type = pluginContext.irBuiltIns.unitType,
+                    thenPart =
+                      irThrow(
+                        irInvoke(
+                          callee = context.irBuiltIns.illegalArgumentExceptionSymbol,
+                          args =
+                            listOf(
+                              irConcat().apply {
+                                addArgument(
+                                  irString(
+                                    "Constructor parameter ${irParam.name} _must_ be a Metro-compiler-generated instance of ${graphDep.sourceGraph.kotlinFqName.asString()} but was "
+                                  )
                                 )
-                              )
-                              addArgument(
-                                irInvoke(
-                                  dispatchReceiver = irGet(irParam),
-                                  callee = context.irBuiltIns.memberToString,
+                                addArgument(
+                                  irInvoke(
+                                    dispatchReceiver = irGet(irParam),
+                                    callee = context.irBuiltIns.memberToString,
+                                  )
                                 )
-                              )
-                            }
-                          ),
-                      )
-                    ),
-                )
+                              }
+                            ),
+                        )
+                      ),
+                  )
+                }
               }
             }
           }
@@ -1571,7 +1628,7 @@ internal class DependencyGraphTransformer(
         }
       }
 
-      implementOverrides(node.accessors, node.bindsFunctions, node.injectors, baseGenerationContext)
+      node.implementOverrides(baseGenerationContext)
 
       if (node.isExtendable) {
         timedComputation("Generating Metro metadata") {
@@ -1767,12 +1824,7 @@ internal class DependencyGraphTransformer(
           pluginContext.createIrBuilder(symbol).run { irExprBody(initializerExpression()) }
       }
 
-  private fun implementOverrides(
-    accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
-    bindsFunctions: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
-    injectors: List<Pair<MetroSimpleFunction, TypeKey>>,
-    context: GraphGenerationContext,
-  ) {
+  private fun DependencyGraphNode.implementOverrides(context: GraphGenerationContext) {
     // Implement abstract getters for accessors
     accessors.forEach { (function, contextualTypeKey) ->
       function.ir.apply {
@@ -1887,6 +1939,60 @@ internal class DependencyGraphTransformer(
         body = stubExpressionBody(metroContext)
       }
     }
+
+    // Implement no-op bodies for contributed graphs
+    contributedGraphs.forEach { (typeKey, function) ->
+      function.ir.apply {
+        val declarationToFinalize =
+          function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+        if (declarationToFinalize.isFakeOverride) {
+          declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
+        }
+        val irFunction = this
+        // TODO getOrBuildContributedGraph
+        //  - cache of contributed graph class IDs to nodes
+        //  - upon miss, build it + visit it + build node
+        //  - returns a node
+        val contributedGraph = getOrBuildContributedGraph(typeKey, sourceGraph, function)
+        val ctor = contributedGraph.primaryConstructor!!
+        body =
+          pluginContext.createIrBuilder(symbol).run {
+            irExprBodySafe(
+              symbol,
+              irCallConstructor(ctor.symbol, emptyList()).apply {
+                // First arg is always the graph instance
+                putValueArgument(0, irGet(irFunction.dispatchReceiverParameter!!))
+                for (i in 0 until valueParameters.size) {
+                  putValueArgument(i + 1, irGet(ctor.valueParameters[i]))
+                }
+              },
+            )
+          }
+      }
+    }
+  }
+
+  private fun getOrBuildContributedGraph(
+    typeKey: TypeKey,
+    parentGraph: IrClass,
+    contributedAccessor: MetroSimpleFunction,
+  ): IrClass {
+    // TODO getOrBuildContributedGraph
+    //  - upon miss, build it + visit it + build node
+    //  - returns a node
+    val classId = typeKey.type.rawType().classIdOrFail
+    return parentGraph.nestedClasses.firstOrNull { it.classId == classId }
+      ?: run {
+        val generator = IrContributedGraphGenerator(metroContext, contributionData)
+        val sourceFunction =
+          contributedAccessor.ir.overriddenSymbolsSequence().lastOrNull()?.owner
+            ?: contributedAccessor.ir
+        generator.generateContributedGraph(
+          parentGraph = parentGraph,
+          sourceFactory = sourceFunction.parentAsClass,
+          factoryFunction = sourceFunction,
+        )
+      }
   }
 
   private fun collectBindings(
