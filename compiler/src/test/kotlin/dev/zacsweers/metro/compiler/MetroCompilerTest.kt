@@ -10,6 +10,8 @@ import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
+import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import okio.Buffer
 import org.intellij.lang.annotations.Language
@@ -21,6 +23,7 @@ import org.junit.rules.TemporaryFolder
 abstract class MetroCompilerTest {
 
   @Rule @JvmField val temporaryFolder: TemporaryFolder = TemporaryFolder()
+  @Rule @JvmField val testInfo: TestInfoRule = TestInfoRule()
 
   // TODO every time we update this a ton of tests fail because their line numbers change
   //  would be nice to make this more flexible
@@ -37,6 +40,15 @@ abstract class MetroCompilerTest {
 
   protected open val metroOptions: MetroOptions
     get() = MetroOptions()
+
+  protected val debugOutputDir: Path
+    get() =
+      Paths.get(System.getProperty("metro.buildDir"))
+        .resolve("metroDebug")
+        .resolve(testInfo.currentClassName.substringAfterLast('.'))
+        .resolve(testInfo.currentMethodName.replace(" ", "_"))
+
+  private var compilationCount = 0
 
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
@@ -273,6 +285,7 @@ abstract class MetroCompilerTest {
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
     compilationBlock: KotlinCompilation.() -> Unit = {},
     previousCompilationResult: JvmCompilationResult? = null,
+    compilationName: String = "compilation${compilationCount++}",
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
     val cleaningOutput = Buffer()
@@ -307,6 +320,9 @@ abstract class MetroCompilerTest {
           println(file.readText())
           println()
         }
+
+      val targetDir = debugOutputDir.resolve(compilationName).toFile()
+      compilation.workingDir.copyRecursively(targetDir, overwrite = true)
     }
 
     return result

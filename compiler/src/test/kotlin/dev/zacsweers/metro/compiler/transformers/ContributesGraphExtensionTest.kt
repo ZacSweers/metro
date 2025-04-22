@@ -128,27 +128,23 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         previousCompilationResult = loggedInScope,
       )
 
-    val compilation =
-      prepareCompilation(
-          source(
-            """
+    compile(
+      source(
+        """
           @DependencyGraph(scope = AppScope::class, isExtendable = true)
           interface ExampleGraph {
             @Provides fun provideInt(): Int = 0
           }
         """
-              .trimIndent()
-          ),
-          debug = true,
-        )
-        .apply {
-          addPreviousResultToClasspath(loggedInScope)
-          addPreviousResultToClasspath(loggedInGraph)
-          addPreviousResultToClasspath(contributor)
-        }
-
-    val result = compilation.compile()
-    with(result) {
+          .trimIndent()
+      ),
+      compilationBlock = {
+        addPreviousResultToClasspath(loggedInScope)
+        addPreviousResultToClasspath(loggedInGraph)
+        addPreviousResultToClasspath(contributor)
+      },
+      debug = true,
+    ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
       val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
