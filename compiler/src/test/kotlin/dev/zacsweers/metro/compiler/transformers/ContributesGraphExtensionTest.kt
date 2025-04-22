@@ -152,4 +152,83 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("0")
     }
   }
+
+  @Test
+  fun `single complex module with contributed`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val string: String
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @ContributesTo(LoggedInScope::class)
+          interface LoggedInStringProvider {
+            @Provides fun provideString(int: Int): String = int.toString()
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("0")
+    }
+  }
+
+  @Test
+  fun `contributed graph copies scope annotations`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          
+          @SingleIn(Unit::class)
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val string: String
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @ContributesTo(LoggedInScope::class)
+          interface LoggedInStringProvider {
+            @Provides
+            @SingleIn(Unit::class)
+            fun provideString(int: Int): String = int.toString()
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("0")
+    }
+  }
+
+  // TODO multiple scopes to same graph. Need disambiguating names
 }
