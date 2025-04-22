@@ -1949,10 +1949,6 @@ internal class DependencyGraphTransformer(
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
         val irFunction = this
-        // TODO getOrBuildContributedGraph
-        //  - cache of contributed graph class IDs to nodes
-        //  - upon miss, build it + visit it + build node
-        //  - returns a node
         val contributedGraph = getOrBuildContributedGraph(typeKey, sourceGraph, function)
         val ctor = contributedGraph.primaryConstructor!!
         body =
@@ -1963,7 +1959,7 @@ internal class DependencyGraphTransformer(
                 // First arg is always the graph instance
                 putValueArgument(0, irGet(irFunction.dispatchReceiverParameter!!))
                 for (i in 0 until valueParameters.size) {
-                  putValueArgument(i + 1, irGet(ctor.valueParameters[i]))
+                  putValueArgument(i + 1, irGet(irFunction.valueParameters[i]))
                 }
               },
             )
