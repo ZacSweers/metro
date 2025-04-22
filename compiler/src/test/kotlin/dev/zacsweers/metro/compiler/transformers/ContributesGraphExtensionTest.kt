@@ -7,12 +7,14 @@ import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.allSupertypes
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.newInstanceStrict
+import kotlin.test.assertNotNull
 import org.junit.Test
 
 class ContributesGraphExtensionTest : MetroCompilerTest() {
@@ -271,6 +273,44 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `params are forwarded - qualified provides`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val string: String
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(@Provides @Named("long") long: Long): LoggedInGraph
+            }
+          }
+
+          @ContributesTo(LoggedInScope::class)
+          interface LoggedInStringProvider {
+            @Provides
+            fun provideString(int: Int, @Named("long") long: Long): String = (int + long).toString()
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph", 2L)
+      assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("2")
+    }
+  }
+
+  @Test
   fun `params are forwarded - includes`() {
     compile(
       source(
@@ -345,9 +385,80 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `contributed graph factories can be excluded`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @DependencyGraph(
+            scope = AppScope::class,
+            isExtendable = true,
+            excludes = [LoggedInGraph.Factory::class]
+          )
+          interface ExampleGraph
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      assertNotNull(ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs())
+      // Assert no $$ContributedLoggedInGraph or createLoggedInGraph method or parent interface
+      assertThat(ExampleGraph.allSupertypes().map { it.name })
+        .doesNotContain("test.LoggedInGraph\$Factory")
+      assertThat(ExampleGraph.classes.map { it.simpleName })
+        .doesNotContain("$\$ContributedLoggedInGraph")
+    }
+  }
+
+  @Test
+  fun `contributed graph can be excluded`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @DependencyGraph(
+            scope = AppScope::class,
+            isExtendable = true,
+            excludes = [LoggedInGraph::class]
+          )
+          interface ExampleGraph
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      assertNotNull(ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs())
+      // Assert no $$ContributedLoggedInGraph or createLoggedInGraph method or parent interface
+      assertThat(ExampleGraph.allSupertypes().map { it.name })
+        .doesNotContain("test.LoggedInGraph\$Factory")
+      assertThat(ExampleGraph.classes.map { it.simpleName })
+        .doesNotContain("$\$ContributedLoggedInGraph")
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
   //  - abstract classes not allowed
   //  - chained contributed graph extensions
-  //  - exclusions
+  //  - qualified accessors should propagate qualifiers
+  //  - contributed factories must be nested classes of contributed graph
 }
