@@ -1651,8 +1651,8 @@ internal class DependencyGraphTransformer(
                       // Don't re-expose existing accessors
                       binding is Binding.GraphDependency && binding.isProviderFieldAccessor -> false
                       // Only expose scoped bindings. Some provider fields may be for non-scoped
-                      // bindings just for reuse
-                      binding.scope == null -> false
+                      // bindings just for reuse. BoundInstance bindings still need to be passed on
+                      binding.scope == null && binding !is Binding.BoundInstance -> false
                       else -> true
                     }
                   }
@@ -1691,8 +1691,9 @@ internal class DependencyGraphTransformer(
               if (binding is Binding.GraphDependency && binding.isProviderFieldAccessor) {
                 // This'll get looked up directly by child graphs
                 continue
-              } else if (binding.scope == null) {
-                // Don't expose redundant accessors for unscoped bindings
+              } else if (binding.scope == null && binding !is Binding.BoundInstance) {
+                // Don't expose redundant accessors for unscoped bindings. BoundInstance bindings
+                // still get passed on
                 continue
               }
               yield(entry)

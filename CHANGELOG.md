@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
+
 0.2.0
 -----
 
