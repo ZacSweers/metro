@@ -941,7 +941,7 @@ internal class DependencyGraphTransformer(
       }
     }
 
-    node.allExtendedNodes.forEach { (key, depNode) ->
+    node.allExtendedNodes.forEach { (_, depNode) ->
       if (depNode.isExtendable && depNode.proto != null) {
         val providerFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
         val instanceFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
@@ -1977,9 +1977,6 @@ internal class DependencyGraphTransformer(
     parentGraph: IrClass,
     contributedAccessor: MetroSimpleFunction,
   ): IrClass {
-    // TODO getOrBuildContributedGraph
-    //  - upon miss, build it + visit it + build node
-    //  - returns a node
     val classId = typeKey.type.rawType().classIdOrFail
     return parentGraph.nestedClasses.firstOrNull { it.classId == classId }
       ?: run {
