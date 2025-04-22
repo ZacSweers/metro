@@ -32,6 +32,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -82,6 +83,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -643,11 +645,14 @@ internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolea
   (getValueArgument(name) as IrConst?)?.value as Boolean?
 
 internal fun IrConstructorCall.scopeOrNull(): ClassId? {
+  return scopeClassOrNull()?.classIdOrFail
+}
+
+internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
   return getValueArgument("scope".asName())
     ?.expectAsOrNull<IrClassReference>()
     ?.classType
     ?.rawTypeOrNull()
-    ?.classIdOrFail
 }
 
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
@@ -778,3 +783,13 @@ internal fun IrFunction.stubExpressionBody(context: IrMetroContext) =
 
 internal fun IrBuilderWithScope.stubExpression(context: IrMetroContext) =
   irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))
+
+internal fun IrPluginContext.buildAnnotation(
+  symbol: IrSymbol,
+  callee: IrConstructorSymbol,
+  body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
+): IrConstructorCall {
+  return createIrBuilder(symbol).run {
+    irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+  }
+}
