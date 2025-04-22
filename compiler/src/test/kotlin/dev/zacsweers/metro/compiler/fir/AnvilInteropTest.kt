@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import kotlin.test.Test
 import org.jetbrains.kotlin.name.ClassId
+import org.junit.Ignore
 
 class AnvilInteropTest : MetroCompilerTest() {
 
@@ -154,6 +155,52 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
+      options = metroOptions.withAnvilContributesBinding(),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl2")
+    }
+  }
+
+  @Ignore("Can enable once type arguments are saved to metadata")
+  @Test
+  fun `ranked binding processing supports outranked bindings using Metro's @ContributesBinding from downstream module`() {
+    val libCompilation =
+      compile(
+        source(
+          """
+          interface ContributedInterface
+
+          interface OtherInterface
+
+          // Having two supertypes and an explicit binding type with Metro's @ContributesBinding
+          // annotation is the key piece of this repro
+          @ContributesBinding(AppScope::class, binding<ContributedInterface>())
+          @Inject
+          class Impl1 : ContributedInterface, OtherInterface
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @com.squareup.anvil.annotations.ContributesBinding(AppScope::class, rank = 10)
+          @Inject
+          class Impl2 : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = libCompilation,
       options = metroOptions.withAnvilContributesBinding(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()

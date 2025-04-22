@@ -3,8 +3,10 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
+import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -302,24 +304,34 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         .flatMap { contributingType ->
           contributingType.annotations
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
-            .map { annotation ->
-              val boundType =
-                annotation.resolvedBindingArgument(session, typeResolver)?.let { explicitBinding ->
-                  // @ContributesBinding.binding may not be resolved yet, while an interop
-                  // 'boundType' should be okay already
-                  if (explicitBinding is FirUserTypeRef) {
-                      typeResolver.resolveUserType(explicitBinding)
-                    } else {
-                      explicitBinding
-                    }
-                    .coneType
-                } ?: contributingType.implicitBoundType(typeResolver)
+            // TODO Can enforce non-null boundTypes here once type arguments are saved to metadata
+            .mapNotNull { annotation ->
+              val explicitBindingMissingMetadata =
+                annotation.argumentAsOrNull<FirAnnotation>("binding".asName(), index = 1)
 
-              ContributedBinding(
-                contributingType,
-                FirTypeKey(boundType, contributingType.annotations.qualifierAnnotation(session)),
-                annotation.rankValue(),
-              )
+              if (explicitBindingMissingMetadata != null) {
+                // This is a case where an explicit binding is specified but we receive the argument
+                // as FirAnnotationImpl without the metadata containing the type arguments so we
+                // short-circuit since we lack the info to compare it against other bindings.
+                null
+              } else {
+                val boundType =
+                  annotation.resolvedBindingArgument(session, typeResolver)?.let { explicitBinding
+                    ->
+                    if (explicitBinding is FirUserTypeRef) {
+                        typeResolver.resolveUserType(explicitBinding)
+                      } else {
+                        explicitBinding
+                      }
+                      .coneType
+                  } ?: contributingType.implicitBoundType(typeResolver)
+
+                ContributedBinding(
+                  contributingType,
+                  FirTypeKey(boundType, contributingType.annotations.qualifierAnnotation(session)),
+                  annotation.rankValue(),
+                )
+              }
             }
         }
     val bindingGroups =
