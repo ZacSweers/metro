@@ -164,7 +164,9 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("Can enable once type arguments are saved to metadata")
+  @Ignore(
+    "Can enable once type arguments are saved to metadata - https://youtrack.jetbrains.com/issue/KT-76954/Some-type-arguments-are-not-saved-to-metadata-in-FIR"
+  )
   @Test
   fun `ranked binding processing supports outranked bindings using Metro's @ContributesBinding from downstream module`() {
     val libCompilation =
