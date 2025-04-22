@@ -1208,6 +1208,31 @@ class DependencyGraphProcessingTest {
     val self: SelfRequestingGraph
   }
 
+  // Regression test for https://github.com/ZacSweers/metro/issues/342
+  @Test
+  fun `assisted injection with scoped dependencies`() {
+    val graph = createGraph<AssistedInjectGraphWithScopedDependencies>()
+    val exampleClass1 = graph.factory.create(0)
+    val exampleClass2 = graph.factory.create(1)
+    assertSame(exampleClass1.singleton, exampleClass2.singleton)
+  }
+
+  @SingleIn(AppScope::class)
+  @DependencyGraph
+  interface AssistedInjectGraphWithScopedDependencies {
+    val factory: ExampleClass.Factory
+
+    @Inject @SingleIn(AppScope::class) class ExampleSingleton
+
+    @Inject
+    class ExampleClass(@Assisted val intValue: Int, val singleton: ExampleSingleton) {
+      @AssistedFactory
+      fun interface Factory {
+        fun create(intValue: Int): ExampleClass
+      }
+    }
+  }
+
   enum class Seasoning {
     SPICY,
     REGULAR,

@@ -4,12 +4,20 @@ Changelog
 **Unreleased**
 --------------
 
+0.2.0
+-----
+
+_2025-04-21_
+
 - **New**: Nullable bindings are now allowed! See the [nullability docs](https://zacsweers.github.io/metro/bindings#nullability) for more info.
 - **Enhancement**: Add diagnostics for multibindings with star projections.
 - **Enhancement**: Add diagnostic for map multibindings with nullable keys.
+- **Fix**: Ensure assisted factories' target bindings' parameters are processed in MetroGraph creation. Previously, these weren't processed and could result in scoped bindings not being cached.
 - **Fix**: Fix duplicate field accessors generated for graph supertypes.
 - **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
 - Add [compose navigation sample](https://github.com/ZacSweers/metro/tree/main/samples/compose-navigation-app).
+
+Special thanks to  [@bnorm](https://github.com/bnorm) and [@yschimke](https://github.com/yschimke) for contributing to this release!
 
 0.1.3
 -----

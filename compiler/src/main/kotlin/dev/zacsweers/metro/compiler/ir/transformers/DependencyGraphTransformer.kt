@@ -2155,7 +2155,17 @@ internal class DependencyGraphTransformer(
         //  provided by a provider that depends on the assisted factory? I suspect
         //  yes, so in that case we should probably track a separate field mapping
         usedUnscopedBindings += binding.target.typeKey
-        // By definition, these parameters are not available on the graph
+        // By definition, assisted parameters are not available on the graph
+        // But we _do_ need to process the target type's parameters!
+        processBinding(
+          binding = binding.target,
+          node = node,
+          graph = graph,
+          bindingStack = bindingStack,
+          bindingDependencies = bindingDependencies,
+          usedUnscopedBindings = usedUnscopedBindings,
+          visitedBindings = visitedBindings,
+        )
         return
       }
 
