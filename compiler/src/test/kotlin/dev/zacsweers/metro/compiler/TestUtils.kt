@@ -341,7 +341,18 @@ fun Class<*>.graphImpl(): Class<*> {
 fun <T> Any.callFunction(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass
-    .getMethod(name, *args.mapToArray { it.javaClass.unboxIfPrimitive })
+    .getMethod(
+      name,
+      *args
+        .map { it.javaClass.unboxIfPrimitive }
+        .mapToArray {
+          if (it.simpleName == Symbols.StringNames.METRO_GRAPH) {
+            it.enclosingClass
+          } else {
+            it
+          }
+        },
+    )
     .invoke(this, *args) as T
 }
 
