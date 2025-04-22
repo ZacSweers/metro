@@ -4,16 +4,24 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import org.jetbrains.kotlin.backend.jvm.ir.kClassReference
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addGetter
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.irBlockBody
+import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
@@ -23,6 +31,7 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 
 internal class IrContributedGraphGenerator(
   context: IrMetroContext,
@@ -35,59 +44,108 @@ internal class IrContributedGraphGenerator(
     factoryFunction: IrSimpleFunction,
   ): IrClass {
     val sourceGraph = sourceFactory.parentAsClass
+    val sourceScope =
+      sourceGraph
+        .annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations)
+        .firstOrNull()
+        ?.scopeClassOrNull()
+        ?: error("No scope found for ${sourceGraph.name}: ${sourceGraph.dumpKotlinLike()}")
+
     // Source is a `@ContributesGraphExtension`-annotated class, we want to generate a header impl
     // class
-    val contributedClass =
+    val contributedGraph =
       pluginContext.irFactory
         .buildClass {
           name = "$\$Contributed${sourceGraph.name.capitalizeUS()}".asName()
-          origin = Origins.Default
+          origin = Origins.ContributedGraph
           kind = ClassKind.CLASS
         }
         .apply {
-          sourceGraph.addChild(this)
+          parentGraph.addChild(this)
           createThisReceiverParameter()
+          // Add a @DependencyGraph(...) annotation
+          annotations +=
+            pluginContext.buildAnnotation(
+              symbol,
+              symbols.metroDependencyGraphAnnotationConstructor,
+            ) {
+              // Copy over the scope annotation
+              it.putValueArgument(0, kClassReference(classType = sourceScope.defaultType))
+            }
+          superTypes += sourceGraph.defaultType
         }
 
-    val ctor =
-      sourceFactory
-        .addConstructor {
-          isPrimary = true
-          origin = Origins.Default
-          // This will be finalized in DependencyGraphTransformer
-          isFakeOverride = true
-        }
-        .apply {
-          // Add the parent type
-          addValueParameter(parentGraph.name.asString().decapitalizeUS(), parentGraph.defaultType)
-          // Copy over any creator params
-          factoryFunction.valueParameters.forEach { param -> param.copyTo(this) }
-        }
+    contributedGraph
+      .addConstructor {
+        isPrimary = true
+        origin = Origins.Default
+        // This will be finalized in DependencyGraphTransformer
+        isFakeOverride = true
+      }
+      .apply {
+        // Add the parent type
+        addValueParameter(parentGraph.name.asString().decapitalizeUS(), parentGraph.defaultType)
+          .apply {
+            // Add `@Extends` annotation
+            this.annotations +=
+              pluginContext.buildAnnotation(symbol, symbols.metroExtendsAnnotationConstructor)
+          }
+        // Copy over any creator params
+        factoryFunction.valueParameters.forEach { param -> param.copyTo(this) }
+
+        body = generateDefaultConstructorBody(this)
+      }
 
     // Merge contributed types
     val scope =
       sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first().let {
         it.scopeOrNull() ?: error("No scope found for ${sourceGraph.name}: ${it.dumpKotlinLike()}")
       }
-    contributedClass.superTypes += contributionData[scope]
-    contributedClass.addFakeOverrides()
+    contributedGraph.superTypes += contributionData[scope]
+    contributedGraph.addFakeOverrides()
 
-    parentGraph.addChild(contributedClass)
+    parentGraph.addChild(contributedGraph)
 
-    return contributedClass
+    return contributedGraph
+  }
+
+  private fun generateDefaultConstructorBody(declaration: IrConstructor): IrBody? {
+    val returnType = declaration.returnType as? IrSimpleType ?: return null
+    val parentClass = declaration.parent as? IrClass ?: return null
+    val anySymbol =
+      metroContext.pluginContext.irBuiltIns.anyClass.owner.primaryConstructor ?: return null
+
+    return metroContext.pluginContext.createIrBuilder(declaration.symbol).irBlockBody {
+      // Call the super constructor
+      +irDelegatingConstructorCall(anySymbol)
+      // Initialize the instance
+      +IrInstanceInitializerCallImpl(
+        UNDEFINED_OFFSET,
+        UNDEFINED_OFFSET,
+        parentClass.symbol,
+        returnType,
+      )
+    }
   }
 
   private fun IrClass.addFakeOverrides() {
     // Iterate all abstract functions/properties from parents and add fake overrides of them here
     // TODO need to merge colliding overrides
     val abstractMembers =
-      allCallableMembers(
-          metroContext,
-          excludeCompanionObjectMembers = true,
-          // For interfaces do we need to just check if the parent is an interface?
-          propertyFilter = { it.modality == Modality.ABSTRACT },
-          functionFilter = { it.modality == Modality.ABSTRACT },
-        )
+      superTypes
+        .asSequence()
+        .flatMap {
+          it
+            .rawType()
+            .allCallableMembers(
+              metroContext,
+              excludeInheritedMembers = true,
+              excludeCompanionObjectMembers = true,
+              // For interfaces do we need to just check if the parent is an interface?
+              propertyFilter = { it.modality == Modality.ABSTRACT },
+              functionFilter = { it.modality == Modality.ABSTRACT },
+            )
+        }
         .distinctBy { it.ir.name }
     for (member in abstractMembers) {
       if (member.ir.isPropertyAccessor) {
@@ -107,6 +165,7 @@ internal class IrContributedGraphGenerator(
                 visibility = originalGetter.visibility
                 origin = Origins.Default
                 isFakeOverride = true
+                returnType = member.ir.returnType
               }
               .apply {
                 overriddenSymbols += originalGetter.symbol
