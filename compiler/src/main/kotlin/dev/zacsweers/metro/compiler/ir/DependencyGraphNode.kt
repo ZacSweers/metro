@@ -9,6 +9,8 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.typeWith
 
@@ -55,11 +57,21 @@ internal data class DependencyGraphNode(
 
   override fun toString(): String = typeKey.render(short = true)
 
-  data class Creator(
-    val type: IrClass,
-    val createFunction: IrSimpleFunction,
-    val parameters: Parameters<ConstructorParameter>,
-  )
+  sealed interface Creator {
+    val function: IrFunction
+    val parameters: Parameters<ConstructorParameter>
+
+    data class Constructor(
+      override val function: IrConstructor,
+      override val parameters: Parameters<ConstructorParameter>,
+    ) : Creator
+
+    data class Factory(
+      val type: IrClass,
+      override val function: IrSimpleFunction,
+      override val parameters: Parameters<ConstructorParameter>,
+    ) : Creator
+  }
 }
 
 private fun DependencyGraphNode.recurseIncludedNodes(
