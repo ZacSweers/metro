@@ -3,10 +3,12 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -37,6 +39,7 @@ import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.scopes.getSingleClassifier
 import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
@@ -230,6 +233,31 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       val removed = contributions.remove(excludedClassId)
       if (removed == null) {
         unmatchedExclusions += excludedClassId
+      }
+
+      // If the target is `@ContributesGraphExtension`, also implicitly exclude its nested factory
+      // TODO this is finicky and the target class's annotations aren't resolved.
+      //  Ideally we also && targetClass.isAnnotatedWithAny(session,
+      //  session.classIds.contributesGraphExtensionAnnotations)
+      val targetClass = excludedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+      if (targetClass != null) {
+        for (nestedClassName in
+          targetClass.declaredMemberScope(session, null).getClassifierNames()) {
+          val nestedClassId = excludedClassId.createNestedClassId(nestedClassName)
+          if (nestedClassId in contributions) {
+            nestedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()?.let {
+              if (
+                it.isAnnotatedWithAny(
+                  session,
+                  session.classIds.contributesGraphExtensionFactoryAnnotations,
+                )
+              ) {
+                // Exclude its factory class too
+                contributions.remove(nestedClassId)
+              }
+            }
+          }
+        }
       }
     }
 
