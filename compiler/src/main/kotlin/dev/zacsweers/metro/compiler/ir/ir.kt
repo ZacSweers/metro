@@ -63,6 +63,7 @@ import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -83,7 +84,6 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -653,6 +653,18 @@ internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
     ?.expectAsOrNull<IrClassReference>()
     ?.classType
     ?.rawTypeOrNull()
+}
+
+internal fun IrBuilderWithScope.kClassReference(symbol: IrClassSymbol): IrClassReference {
+  return IrClassReferenceImpl(
+    startOffset,
+    endOffset,
+    // KClass<T>
+    context.irBuiltIns.kClassClass.typeWith(symbol.defaultType),
+    symbol,
+    // T
+    symbol.defaultType,
+  )
 }
 
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {

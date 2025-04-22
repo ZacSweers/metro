@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import org.jetbrains.kotlin.backend.jvm.ir.kClassReference
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -72,7 +71,7 @@ internal class IrContributedGraphGenerator(
               symbols.metroDependencyGraphAnnotationConstructor,
             ) {
               // Copy over the scope annotation
-              it.putValueArgument(0, kClassReference(classType = sourceScope.defaultType))
+              it.putValueArgument(0, kClassReference(sourceScope.symbol))
             }
           superTypes += sourceGraph.defaultType
         }
