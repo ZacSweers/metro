@@ -226,6 +226,14 @@ internal class Symbols(
     instanceFactoryCompanionObject.requireSimpleFunction(StringNames.INVOKE)
   }
 
+  val metroDependencyGraphAnnotationConstructor: IrConstructorSymbol by lazy {
+    pluginContext.referenceClass(classIds.dependencyGraphAnnotation)!!.constructors.first()
+  }
+
+  val metroExtendsAnnotationConstructor: IrConstructorSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.metroExtends)!!.constructors.first()
+  }
+
   val metroProvider: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(metroRuntime.packageFqName, Name.identifier("Provider")))!!
   }
