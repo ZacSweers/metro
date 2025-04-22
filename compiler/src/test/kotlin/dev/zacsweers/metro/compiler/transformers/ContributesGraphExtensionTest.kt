@@ -145,7 +145,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         addPreviousResultToClasspath(loggedInGraph)
         addPreviousResultToClasspath(contributor)
       },
-      debug = true,
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
       val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
