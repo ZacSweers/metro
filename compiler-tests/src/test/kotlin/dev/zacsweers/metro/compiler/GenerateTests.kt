@@ -13,6 +13,7 @@ fun main() {
       testClass<AbstractBoxTest> { model("box") }
       testClass<AbstractDiagnosticTest> { model("diagnostic") }
       testClass<AbstractFirDumpTest> { model("dump/fir") }
+      testClass<AbstractIrDumpTest> { model("dump/ir") }
     }
   }
 }
