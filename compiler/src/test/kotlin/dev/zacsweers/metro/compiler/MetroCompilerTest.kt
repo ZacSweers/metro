@@ -58,9 +58,10 @@ abstract class MetroCompilerTest {
     options: MetroOptions =
       metroOptions.copy(debug = debug, generateAssistedFactories = generateAssistedFactories),
     previousCompilationResult: JvmCompilationResult? = null,
+    compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
     return KotlinCompilation().apply {
-      workingDir = temporaryFolder.root
+      workingDir = temporaryFolder.newFolder(compilationName)
       compilerPluginRegistrars = listOf(MetroCompilerPluginRegistrar())
       val processor = MetroCommandLineProcessor()
       commandLineProcessors = listOf(processor)
@@ -295,6 +296,7 @@ abstract class MetroCompilerTest {
           debug = debug,
           options = options,
           previousCompilationResult = previousCompilationResult,
+          compilationName = compilationName,
         )
         .apply(compilationBlock)
         .apply { this.messageOutputStream = cleaningOutput.outputStream() }
