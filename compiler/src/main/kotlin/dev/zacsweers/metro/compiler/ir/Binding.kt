@@ -27,12 +27,14 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
 internal sealed interface Binding {
@@ -316,11 +318,13 @@ internal sealed interface Binding {
     override val reportableLocation: CompilerMessageSourceLocation? = null
   }
 
-  data class GraphDependency(
-    val graph: IrClass,
-    val getter: IrSimpleFunction,
+  @Poko
+  class GraphDependency(
+    @Poko.Skip val graph: IrClass,
+    @Poko.Skip val getter: IrSimpleFunction,
     val isProviderFieldAccessor: Boolean,
     override val typeKey: TypeKey,
+    val callableId: CallableId = getter.callableId,
   ) : Binding {
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
