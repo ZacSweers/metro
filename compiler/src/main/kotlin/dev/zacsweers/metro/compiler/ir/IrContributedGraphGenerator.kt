@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
+import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -26,7 +27,6 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -39,6 +39,7 @@ internal class IrContributedGraphGenerator(
   private val contributionData: IrContributionData,
 ) : IrMetroContext by context {
 
+  @OptIn(DelicateIrParameterIndexSetter::class)
   fun generateContributedGraph(
     parentGraph: IrClass,
     sourceFactory: IrClass,
@@ -92,7 +93,9 @@ internal class IrContributedGraphGenerator(
               pluginContext.buildAnnotation(symbol, symbols.metroExtendsAnnotationConstructor)
           }
         // Copy over any creator params
-        factoryFunction.valueParameters.forEach { param -> param.copyTo(this) }
+        factoryFunction.valueParameters.forEach { param ->
+          addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }
+        }
 
         body = generateDefaultConstructorBody(this)
       }
