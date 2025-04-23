@@ -51,6 +51,37 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `simple - abstract class`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          abstract class LoggedInGraph {
+            abstract val int: Int
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
+    }
+  }
+
+  @Test
   fun `multiple modules`() {
     val firstCompilation =
       compile(
@@ -590,7 +621,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
-  //  - abstract class graph
   //  Checkers
   //  - abstract classes not allowed
   //  - contributed factories must be nested classes of contributed graph

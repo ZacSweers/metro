@@ -38,6 +38,7 @@ import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.superClass
 
 internal class IrContributedGraphGenerator(
   context: IrMetroContext,
@@ -170,12 +171,12 @@ internal class IrContributedGraphGenerator(
   private fun generateDefaultConstructorBody(declaration: IrConstructor): IrBody? {
     val returnType = declaration.returnType as? IrSimpleType ?: return null
     val parentClass = declaration.parent as? IrClass ?: return null
-    val anySymbol =
-      metroContext.pluginContext.irBuiltIns.anyClass.owner.primaryConstructor ?: return null
+    val superClassConstructor = parentClass.superClass?.primaryConstructor
+      ?: return null
 
     return metroContext.pluginContext.createIrBuilder(declaration.symbol).irBlockBody {
       // Call the super constructor
-      +irDelegatingConstructorCall(anySymbol)
+      +irDelegatingConstructorCall(superClassConstructor)
       // Initialize the instance
       +IrInstanceInitializerCallImpl(
         UNDEFINED_OFFSET,
