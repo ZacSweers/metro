@@ -150,6 +150,11 @@ public class ClassIds(
       customContributesIntoSetAnnotations +
       contributesGraphExtensionFactoryAnnotations
 
+  internal val graphLikeAnnotations =
+    dependencyGraphAnnotations + contributesGraphExtensionAnnotations
+  internal val graphFactoryLikeAnnotations =
+    dependencyGraphFactoryAnnotations + contributesGraphExtensionFactoryAnnotations
+
   internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
   internal val lazyTypes = setOf(Symbols.ClassIds.lazy) + customLazyClasses
 

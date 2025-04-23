@@ -63,7 +63,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
   private val dependencyGraphs by lazy {
     session.predicateBasedProvider
-      .getSymbolsByPredicate(session.predicates.dependencyGraphPredicate)
+      .getSymbolsByPredicate(session.predicates.aggregatingAnnotationsPredicate)
       .filterIsInstance<FirRegularClassSymbol>()
       .toSet()
   }
@@ -151,17 +151,15 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .mapToSet { (_, nestedContributionId) -> nestedContributionId }
   }
 
-  private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
-    return annotations
-      .annotationsIn(session, session.classIds.dependencyGraphAnnotations)
-      .firstOrNull()
+  private fun FirAnnotationContainer.graphLikeAnnotation(): FirAnnotation? {
+    return annotations.annotationsIn(session, session.classIds.graphLikeAnnotations).firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
     if (declaration.symbol !in dependencyGraphs) {
       return false
     }
-    val graphAnnotation = declaration.graphAnnotation() ?: return false
+    val graphAnnotation = declaration.graphLikeAnnotation() ?: return false
 
     // TODO in an FIR checker, disallow omitting scope but defining additional scopes
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
@@ -170,7 +168,12 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     with(session.predicates) {
-      register(dependencyGraphPredicate, contributesAnnotationPredicate, qualifiersPredicate)
+      register(
+        dependencyGraphPredicate,
+        contributesAnnotationPredicate,
+        contributesGraphExtensionPredicate,
+        qualifiersPredicate,
+      )
     }
   }
 
@@ -179,7 +182,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    val graphAnnotation = classLikeDeclaration.graphAnnotation()!!
+    val graphAnnotation = classLikeDeclaration.graphLikeAnnotation()!!
 
     val scopes =
       buildSet {
