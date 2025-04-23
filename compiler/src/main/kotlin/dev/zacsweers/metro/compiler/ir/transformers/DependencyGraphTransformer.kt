@@ -46,6 +46,7 @@ import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
+import dev.zacsweers.metro.compiler.ir.metroGraph
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -122,8 +123,6 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
-import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
@@ -140,7 +139,6 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.ir.util.shallowCopy
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
@@ -252,7 +250,7 @@ internal class DependencyGraphTransformer(
         if (isGraph) {
           // It's just an external graph, just read the declared types from it
           graphDeclaration
-            .requireNestedClass(Symbols.Names.metroGraph)
+            .metroGraph // Doesn't cover contributed graphs but they're not visible anyway
             .allCallableMembers(
               metroContext,
               excludeInheritedMembers = false,
@@ -400,8 +398,7 @@ internal class DependencyGraphTransformer(
       return dependentNode
     }
 
-    val nonNullMetroGraph =
-      metroGraph ?: graphDeclaration.requireNestedClass(Symbols.Names.metroGraph)
+    val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraph
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
     val graphContextKey = ContextualTypeKey.create(graphTypeKey)
 
@@ -546,11 +543,17 @@ internal class DependencyGraphTransformer(
     if (isExtendable) {
       // Copy inherited scopes onto this graph for faster lookups downstream
       // Note this is only for scopes inherited from supertypes, not from extended parent graphs
-      val inheritedScopes = scopes - scopesOnType
-      pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
-        graphDeclaration,
-        inheritedScopes.map { it.ir },
-      )
+      val inheritedScopes = (scopes - scopesOnType).map { it.ir }
+      if (graphDeclaration.origin === Origins.ContributedGraph) {
+        // If it's a contributed graph, just add it directly as these are not visible to metadata
+        // anyway
+        graphDeclaration.annotations += inheritedScopes
+      } else {
+        pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+          graphDeclaration,
+          inheritedScopes,
+        )
+      }
     }
 
     val creator =
@@ -799,11 +802,33 @@ internal class DependencyGraphTransformer(
         bindingStack,
       )
     }
-    node.creator?.parameters?.valueParameters.orEmpty().forEach {
+    node.creator?.parameters?.valueParameters.orEmpty().forEach { creatorParam ->
       // Only expose the binding if it's a bound instance or extended graph. Included containers are
       // not directly available
-      if (it.isBindsInstance || it.isExtends) {
-        graph.addBinding(it.typeKey, Binding.BoundInstance(it), bindingStack)
+      if (creatorParam.isBindsInstance || creatorParam.isExtends) {
+        val paramTypeKey = creatorParam.typeKey
+        graph.addBinding(paramTypeKey, Binding.BoundInstance(creatorParam), bindingStack)
+
+        if (creatorParam.isExtends) {
+          val parentType = paramTypeKey.type.rawTypeOrNull()
+          if (parentType?.origin === Origins.ContributedGraph) {
+            // If it's a contributed graph, add an alias for the parent type since that's what
+            // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph
+            // TODO for chained children, how will they know this?
+            val parentTypeKey = TypeKey(parentType.superTypes.first())
+            graph.addBinding(
+              parentTypeKey,
+              Binding.Alias(
+                parentTypeKey,
+                paramTypeKey,
+                null,
+                Parameters.empty(),
+                MetroAnnotations.none(),
+              ),
+              bindingStack,
+            )
+          }
+        }
       }
     }
 
@@ -954,7 +979,7 @@ internal class DependencyGraphTransformer(
         val providerFieldsSet = depNode.proto.provider_field_names.toSet()
         val instanceFieldsSet = depNode.proto.instance_field_names.toSet()
 
-        val graphImpl = depNode.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+        val graphImpl = depNode.sourceGraph.metroGraph
         for (accessor in graphImpl.functions) {
           // TODO exclude toString/equals/hashCode or use marker annotation?
           when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
@@ -1292,8 +1317,7 @@ internal class DependencyGraphTransformer(
               // Check that the input parameter is an instance of the metrograph class
               // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
               if (graphDep.sourceGraph != graphClass) {
-                val depMetroGraph =
-                  graphDep.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+                val depMetroGraph = graphDep.sourceGraph.metroGraph
                 extraConstructorStatements.add {
                   irIfThen(
                     condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
@@ -1369,7 +1393,7 @@ internal class DependencyGraphTransformer(
       // Add instance fields for all the parent graphs
       for (parent in node.allExtendedNodes.values) {
         if (!parent.isExtendable) continue
-        val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+        val parentMetroGraph = parent.sourceGraph.metroGraph
         val proto =
           parent.proto
             ?: run {
@@ -1679,12 +1703,15 @@ internal class DependencyGraphTransformer(
             metroMetadata.toString()
           }
 
-          val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
-          pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-            graphClass,
-            PLUGIN_ID,
-            serialized,
-          )
+          // IR-generated types do not have metadata
+          if (graphClass.origin !== Origins.ContributedGraph) {
+            val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
+            pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
+              graphClass,
+              PLUGIN_ID,
+              serialized,
+            )
+          }
           dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail] =
             node.copy(proto = graphProto)
         }
@@ -1725,7 +1752,9 @@ internal class DependencyGraphTransformer(
                 )
                 .apply {
                   key.qualifier?.let {
-                    annotations += it.ir.transform(DeepCopyIrTreeWithSymbols(SymbolRemapper.EMPTY), null) as IrConstructorCall
+                    annotations +=
+                      it.ir.transform(DeepCopyIrTreeWithSymbols(SymbolRemapper.EMPTY), null)
+                        as IrConstructorCall
                   }
                   // TODO add deprecation + hidden annotation to hide? Not sure if necessary
                   body =

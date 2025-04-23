@@ -6,6 +6,8 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.exitProcessing
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -16,6 +18,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
+import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -30,7 +33,9 @@ import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 
@@ -46,11 +51,42 @@ internal class IrContributedGraphGenerator(
     factoryFunction: IrSimpleFunction,
   ): IrClass {
     val sourceGraph = sourceFactory.parentAsClass
+    val contributesGraphExtensionAnno =
+      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).firstOrNull()
+
+    // If the parent graph is not extendable, error out here
+    val parentIsContributed = parentGraph.origin === Origins.ContributedGraph
+    val realParent = if (parentIsContributed) {
+      parentGraph.superTypes.first().rawType()
+    } else {
+      parentGraph
+    }
+    val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations)
+      .single()
+    val parentIsExtendable = parentGraphAnno
+      .getConstBooleanArgumentOrNull("isExtendable".asName()) ?: false
+    if (!parentIsExtendable) {
+      with(metroContext) {
+        val message = buildString {
+          append("Contributed graph extension '${sourceGraph.kotlinFqName}' contributes to parent graph ")
+          append("'${realParent.kotlinFqName}' (scope '${parentGraphAnno.scopeOrNull()!!.asSingleFqName()}') ")
+          append("but ${realParent.name} is not extendable.")
+          if (!parentIsContributed) {
+            appendLine()
+            appendLine()
+            append("Either mark ${realParent.name} as extendable ")
+            append("(`@${parentGraphAnno.annotationClass.name}(isExtendable = true)`) or ")
+            append("exclude it from ${realParent.name} ")
+            append("(`@${parentGraphAnno.annotationClass.name}(excludes = [${sourceGraph.name}::class])`)")
+          }
+        }
+        sourceGraph.reportError(message)
+        exitProcessing()
+      }
+    }
+
     val sourceScope =
-      sourceGraph
-        .annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations)
-        .firstOrNull()
-        ?.scopeClassOrNull()
+      contributesGraphExtensionAnno?.scopeClassOrNull()
         ?: error("No scope found for ${sourceGraph.name}: ${sourceGraph.dumpKotlinLike()}")
 
     // Source is a `@ContributesGraphExtension`-annotated class, we want to generate a header impl
@@ -73,6 +109,15 @@ internal class IrContributedGraphGenerator(
             ) {
               // Copy over the scope annotation
               it.putValueArgument(0, kClassReference(sourceScope.symbol))
+              // Pass on if it's extendable
+              it.putValueArgument(
+                3,
+                irBoolean(
+                  contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
+                    "isExtendable".asName()
+                  ) ?: false
+                ),
+              )
             }
           superTypes += sourceGraph.defaultType
         }
@@ -86,7 +131,16 @@ internal class IrContributedGraphGenerator(
       }
       .apply {
         // Add the parent type
-        addValueParameter(parentGraph.name.asString().decapitalizeUS(), parentGraph.defaultType)
+        val actualParentType =
+          if (parentGraph.origin === Origins.ContributedGraph) {
+            parentGraph.superTypes.first().type.rawType()
+          } else {
+            parentGraph
+          }
+        addValueParameter(
+            actualParentType.name.asString().decapitalizeUS(),
+            parentGraph.defaultType,
+          )
           .apply {
             // Add `@Extends` annotation
             this.annotations +=
@@ -133,10 +187,10 @@ internal class IrContributedGraphGenerator(
   }
 
   private fun IrClass.addFakeOverrides() {
-    // Iterate all abstract functions/properties from parents and add fake overrides of them here
+    // Iterate all abstract functions/properties from supertypes and add fake overrides of them here
     // TODO need to merge colliding overrides
     val abstractMembers =
-      superTypes
+      getAllSuperTypes(metroContext.pluginContext, excludeSelf = true, excludeAny = true)
         .asSequence()
         .flatMap {
           it

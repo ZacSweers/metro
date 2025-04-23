@@ -104,7 +104,6 @@ import kotlin.reflect.KClass
  *   return LoggedInGraph$$MetroGraph(this, userId)
  * }
  * ```
- *
  * > Note: Abstract factory classes cannot be used as graph contributions.
  *
  * Contributed graphs may also be chained, but note that [isExtendable] must be true to do so!

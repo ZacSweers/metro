@@ -8,6 +8,7 @@ import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.allSupertypes
+import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphViaFactory
@@ -455,10 +456,142 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `contributed graphs can be chained`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+        abstract class ProfileScope
+
+        @ContributesGraphExtension(ProfileScope::class) 
+        interface ProfileGraph {
+          val string: String
+
+          @ContributesGraphExtension.Factory(LoggedInScope::class)
+          interface Factory {
+            fun createProfileGraph(): ProfileGraph
+          }
+        }
+
+        @ContributesGraphExtension(LoggedInScope::class, isExtendable = true)
+        interface LoggedInGraph {
+          val int: Int
+          
+          @Provides fun provideString(int: Int): String = int.toString()
+
+          @ContributesGraphExtension.Factory(AppScope::class)
+          interface Factory {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+
+        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+        }
+      """
+          .trimIndent()
+      )
+    ) {
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
+
+      val profileGraph = loggedInGraph.callFunction<Any>("createProfileGraph")
+      assertThat(profileGraph.callProperty<String>("string")).isEqualTo("0")
+    }
+  }
+
+  @Test
+  fun `chained contributed graphs must be extendable`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+        abstract class ProfileScope
+
+        @ContributesGraphExtension(ProfileScope::class) 
+        interface ProfileGraph {
+          val string: String
+
+          @ContributesGraphExtension.Factory(LoggedInScope::class)
+          interface Factory {
+            fun createProfileGraph(): ProfileGraph
+          }
+        }
+
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val int: Int
+          
+          @Provides fun provideString(int: Int): String = int.toString()
+
+          @ContributesGraphExtension.Factory(AppScope::class)
+          interface Factory {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+
+        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt:9:1 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope') but LoggedInGraph is not extendable.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `contributed graph target must be extendable`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val int: Int
+          
+          @ContributesGraphExtension.Factory(AppScope::class)
+          interface Factory {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+
+        @DependencyGraph(scope = AppScope::class)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt:8:1 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope') but ExampleGraph is not extendable.
+
+          Either mark ExampleGraph as extendable (`@DependencyGraph(isExtendable = true)`) or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`)
+        """
+          .trimIndent()
+      )
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
+  //  - abstract class graph
+  //  Checkers
   //  - abstract classes not allowed
-  //  - chained contributed graph extensions
-  //  - qualified accessors should propagate qualifiers
   //  - contributed factories must be nested classes of contributed graph
 }
