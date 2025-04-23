@@ -270,7 +270,7 @@ override fun create(userId: String): LoggedInGraph {
 !!! warning
     Abstract factory classes cannot be used as graph contributions.
 
-Contributed graphs may also be chained, but note that `isExtendable` must be true to do so!
+Contributed graphs may also be chained, but note that `@ContributesGraphExtension.isExtendable` must be true to do so!
 
 ## Implementation Notes
 
