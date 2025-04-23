@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
+- **Fix**: Fix qualifiers on bindings not getting seen by extended child graphs.
 
 0.2.0
 -----
