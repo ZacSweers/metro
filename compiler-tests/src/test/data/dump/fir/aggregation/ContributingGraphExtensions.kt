@@ -8,5 +8,5 @@ interface LoggedInGraph {
   }
 }
 
-@DependencyGraph(scope = AppScope::class)
+@DependencyGraph(scope = AppScope::class, isExtendable = true)
 interface ExampleGraph
