@@ -259,7 +259,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     ) {
-      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
       val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<String>("string")).isEqualTo("0")
@@ -619,9 +618,176 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `contributed graph factories must be interfaces`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val int: Int
+          
+          @ContributesGraphExtension.Factory(AppScope::class)
+          abstract class Factory {
+            abstract fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+
+        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt:13:18 ContributesGraphExtension.Factory declarations can only be interfaces.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `contributed factories must be nested classes of contributed graph - top level`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val int: Int
+          
+        }
+        @ContributesGraphExtension.Factory(AppScope::class)
+        interface Factory {
+          fun createLoggedInGraph(): LoggedInGraph
+        }
+
+        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory declarations must be nested within the contributed graph they create but was top-level.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `contributed factories must be nested classes of contributed graph - wrong class`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val int: Int
+        }
+
+        interface SomewhereElse {
+          @ContributesGraphExtension.Factory(AppScope::class)
+          interface Factory {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+
+        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory declarations must be nested within the contributed graph they create but was test.SomewhereElse.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `contributed factories must only contribute contributed graphs`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+
+        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+          @ContributesGraphExtension.Factory(LoggedInScope::class)
+          interface Factory {
+            fun createExampleGraph(): ExampleGraph
+          }
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory abstract function 'createExampleGraph' must return a contributed graph extension but found test.ExampleGraph.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `contributed factories must contribute to a different scope`() {
+    compile(
+      source(
+        """
+        abstract class LoggedInScope
+
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val int: Int
+          @ContributesGraphExtension.Factory(LoggedInScope::class)
+          interface Factory {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+
+        @DependencyGraph(scope = AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          @Provides fun provideInt(): Int = 0
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt:11:3 ContributesGraphExtension.Factory declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to 'test.LoggedInScope'.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
-  //  Checkers
-  //  - abstract classes not allowed
-  //  - contributed factories must be nested classes of contributed graph
 }

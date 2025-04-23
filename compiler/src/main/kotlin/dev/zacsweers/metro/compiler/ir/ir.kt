@@ -537,15 +537,18 @@ internal fun IrClass.getAllSuperTypes(
   excludeAny: Boolean = true,
 ): Sequence<IrType> {
   val self = this
+  // Cover for cases where a subtype explicitly redeclares an inherited supertype
+  val visitedClasses = mutableSetOf<ClassId>()
 
-  // TODO are there ever cases where superTypes includes the current class?
   suspend fun SequenceScope<IrType>.allSuperInterfacesImpl(currentClass: IrClass) {
     for (superType in currentClass.superTypes) {
       if (excludeAny && superType == pluginContext.irBuiltIns.anyType) continue
       val clazz = superType.classifierOrFail.owner as IrClass
       if (excludeSelf && clazz == self) continue
-      yield(superType)
-      allSuperInterfacesImpl(clazz)
+      if (visitedClasses.add(clazz.classIdOrFail)) {
+        yield(superType)
+        allSuperInterfacesImpl(clazz)
+      }
     }
   }
 
@@ -810,8 +813,10 @@ internal fun IrPluginContext.buildAnnotation(
   }
 }
 
-internal val IrClass.metroGraph: IrClass get() = if (origin === Origins.ContributedGraph) {
-  this
-} else {
-  requireNestedClass(Symbols.Names.metroGraph)
-}
+internal val IrClass.metroGraph: IrClass
+  get() =
+    if (origin === Origins.ContributedGraph) {
+      this
+    } else {
+      requireNestedClass(Symbols.Names.metroGraph)
+    }

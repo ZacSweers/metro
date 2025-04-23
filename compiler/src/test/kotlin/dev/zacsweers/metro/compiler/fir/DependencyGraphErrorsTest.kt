@@ -38,14 +38,14 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        e: graphs.kt:11:24 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:12:29 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:13:35 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:14:29 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:15:31 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:16:35 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:17:18 DependencyGraph must be public or internal.
-        e: graphs.kt:18:57 DependencyGraph classes' primary constructor must be public or internal.
+        e: graphs.kt:11:24 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:12:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:13:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:14:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:15:31 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:16:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:17:18 DependencyGraph declarations must be public or internal.
+        e: graphs.kt:18:57 DependencyGraph declarations' primary constructor must be public or internal.
       """
         .trimIndent()
     )
@@ -467,6 +467,29 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       "e: ExampleGraph.kt:10:25 @Extends graphs must be extendable (set DependencyGraph.isExtendable to true)."
+    )
+  }
+
+  @Test
+  fun `target graph type cannot be a factory parameter`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Provides graph: ExampleGraph): ExampleGraph
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters."
     )
   }
 }

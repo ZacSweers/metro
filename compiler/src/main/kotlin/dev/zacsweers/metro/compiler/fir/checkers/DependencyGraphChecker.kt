@@ -39,7 +39,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
     if (!isDependencyGraph) return
 
-    declaration.validateApiDeclaration(context, reporter, "DependencyGraph") {
+    declaration.validateApiDeclaration(context, reporter, "DependencyGraph declarations") {
       return
     }
 

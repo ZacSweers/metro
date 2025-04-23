@@ -6,10 +6,8 @@ import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.metro.Provider
-import dev.zacsweers.metro.compiler.ChildGraph
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
-import dev.zacsweers.metro.compiler.ParentGraph
 import dev.zacsweers.metro.compiler.assertContainsAll
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
@@ -982,9 +980,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-      e: CharSequenceGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself.
-          test.CharSequenceGraph is requested at
-              [test.CharSequenceGraph] test.CharSequenceGraph.Factory#create()
+      e: CharSequenceGraph.kt:16:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters.
       """
         .trimIndent()
     )
@@ -1137,12 +1133,15 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContainsAll(
-      "ExampleGraph.kt:35:14 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:43:14 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:53:9 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:63:20 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
-      "ExampleGraph.kt:71:16 DependencyGraph factory classes should be non-sealed abstract classes or interfaces.",
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:35:14 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+        e: ExampleGraph.kt:43:14 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+        e: ExampleGraph.kt:53:9 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+        e: ExampleGraph.kt:63:20 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+        e: ExampleGraph.kt:71:16 DependencyGraph.Factory declarations should be non-sealed abstract classes or interfaces.
+      """
+        .trimIndent()
     )
   }
 
@@ -1164,7 +1163,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
                 @DependencyGraph.Factory
                 abstract class Factory {
                   fun create(): GraphWithAbstractClass {
-                    error()
+                    error("noop")
                   }
                 }
               }
@@ -1175,11 +1174,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContains(
-      """
-        ExampleGraph.kt:10:20 DependencyGraph factory classes cannot be local classes.
-      """
-        .trimIndent()
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:20 DependencyGraph.Factory declarations cannot be local classes."
     )
   }
 
@@ -1241,8 +1237,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: graphs.kt:36:3 DependencyGraph factory must be public or internal.
-        e: graphs.kt:44:3 DependencyGraph factory must be public or internal.
+        e: graphs.kt:36:3 DependencyGraph.Factory declarations must be public or internal.
+        e: graphs.kt:44:3 DependencyGraph.Factory declarations must be public or internal.
       """
         .trimIndent()
     )
@@ -1276,7 +1272,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertContains(
       """
-        ExampleGraph.kt:8:13 @DependencyGraph.Factory classes must have exactly one abstract function but found none.
+        ExampleGraph.kt:8:13 @DependencyGraph.Factory declarations must have exactly one abstract function but found none.
       """
         .trimIndent()
     )
@@ -1308,8 +1304,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
 
     result.assertContainsAll(
-      "ExampleGraph.kt:9:9 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
-      "ExampleGraph.kt:10:9 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:9:9 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.",
+      "ExampleGraph.kt:10:9 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.",
     )
   }
 
@@ -1343,9 +1339,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         expectedExitCode = ExitCode.COMPILATION_ERROR,
       )
 
-    result.assertContainsAll(
-      "ExampleGraph.kt:6:7 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
-      "ExampleGraph.kt:10:7 @DependencyGraph.Factory classes must have exactly one abstract function but found 2.",
+    result.assertDiagnostics(
+      """
+        e: ExampleGraph.kt:6:7 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
+        e: ExampleGraph.kt:10:7 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
+      """
+        .trimIndent()
     )
   }
 
@@ -2092,12 +2091,12 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
-          ├─ Binding 1: Unknown source location, this generated by the compiler.
+          ├─ Binding 1: Unknown source location, this may be generated by the compiler.
           └─ Here's some additional information we have for the binding:
              ├─ Binding type: Alias
              └─ Binding information: @Binds ExampleClass.<get-bindAsOtherClass>: OtherClass
-
-          ├─ Binding 2: Unknown source location, this generated by the compiler.
+          
+          ├─ Binding 2: Unknown source location, this may be generated by the compiler.
           └─ Here's some additional information we have for the binding:
              ├─ Binding type: Alias
              └─ Binding information: @Binds ExampleClass2.<get-bindAsOtherClass>: OtherClass
@@ -2148,7 +2147,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:7:1 [Metro/DuplicateBinding] Duplicate binding for other.OtherClass
-          ├─ Binding 1: Unknown source location, this generated by the compiler.
+          ├─ Binding 1: Unknown source location, this may be generated by the compiler.
           └─ Here's some additional information we have for the binding:
              ├─ Binding type: Alias
              └─ Binding information: @Binds ExampleClass.<get-bindAsOtherClass>: OtherClass
@@ -2820,7 +2819,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     ) {
       val numberProviders = classLoader.loadClass("test.NumberProviders").newInstanceStrict()
-      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(numberProviders)
+      val exampleGraph =
+        ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(numberProviders)
       assertThat(exampleGraph.callProperty<Int>("int")).isEqualTo(1)
       assertThat(exampleGraph.callProperty<Int>("qualifiedInt")).isEqualTo(2)
       assertThat(exampleGraph.callProperty<Long>("scopedLong")).isEqualTo(3L)

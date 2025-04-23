@@ -57,20 +57,24 @@ internal class IrContributedGraphGenerator(
 
     // If the parent graph is not extendable, error out here
     val parentIsContributed = parentGraph.origin === Origins.ContributedGraph
-    val realParent = if (parentIsContributed) {
-      parentGraph.superTypes.first().rawType()
-    } else {
-      parentGraph
-    }
-    val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations)
-      .single()
-    val parentIsExtendable = parentGraphAnno
-      .getConstBooleanArgumentOrNull("isExtendable".asName()) ?: false
+    val realParent =
+      if (parentIsContributed) {
+        parentGraph.superTypes.first().rawType()
+      } else {
+        parentGraph
+      }
+    val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations).single()
+    val parentIsExtendable =
+      parentGraphAnno.getConstBooleanArgumentOrNull("isExtendable".asName()) ?: false
     if (!parentIsExtendable) {
       with(metroContext) {
         val message = buildString {
-          append("Contributed graph extension '${sourceGraph.kotlinFqName}' contributes to parent graph ")
-          append("'${realParent.kotlinFqName}' (scope '${parentGraphAnno.scopeOrNull()!!.asSingleFqName()}') ")
+          append(
+            "Contributed graph extension '${sourceGraph.kotlinFqName}' contributes to parent graph "
+          )
+          append(
+            "'${realParent.kotlinFqName}' (scope '${parentGraphAnno.scopeOrNull()!!.asSingleFqName()}') "
+          )
           append("but ${realParent.name} is not extendable.")
           if (!parentIsContributed) {
             appendLine()
@@ -78,7 +82,9 @@ internal class IrContributedGraphGenerator(
             append("Either mark ${realParent.name} as extendable ")
             append("(`@${parentGraphAnno.annotationClass.name}(isExtendable = true)`) or ")
             append("exclude it from ${realParent.name} ")
-            append("(`@${parentGraphAnno.annotationClass.name}(excludes = [${sourceGraph.name}::class])`)")
+            append(
+              "(`@${parentGraphAnno.annotationClass.name}(excludes = [${sourceGraph.name}::class])`)"
+            )
           }
         }
         sourceGraph.reportError(message)
@@ -171,8 +177,10 @@ internal class IrContributedGraphGenerator(
   private fun generateDefaultConstructorBody(declaration: IrConstructor): IrBody? {
     val returnType = declaration.returnType as? IrSimpleType ?: return null
     val parentClass = declaration.parent as? IrClass ?: return null
-    val superClassConstructor = parentClass.superClass?.primaryConstructor
-      ?: return null
+    val superClassConstructor =
+      parentClass.superClass?.primaryConstructor
+        ?: metroContext.pluginContext.irBuiltIns.anyClass.owner.primaryConstructor
+        ?: return null
 
     return metroContext.pluginContext.createIrBuilder(declaration.symbol).irBlockBody {
       // Call the super constructor

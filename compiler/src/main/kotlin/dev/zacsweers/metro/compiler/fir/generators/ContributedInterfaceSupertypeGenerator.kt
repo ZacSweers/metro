@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
@@ -306,7 +307,13 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       }
     }
 
-    return contributions.values.toList()
+    val declarationClassId = classLikeDeclaration.classId
+    return contributions.values.filterNot { metroContribution ->
+      // We'll check this in a separate checker, but for now just avoid this as it's not legal in
+      // kotlin
+      // Check two levels up. ID is something like LoggedInGraph.Factory.$$MetroContribution
+      metroContribution.classId?.parentClassId?.parentClassId == declarationClassId
+    }
   }
 
   /**

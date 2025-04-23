@@ -139,7 +139,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       // Common errors
       put(
         FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
-        "{0} classes must have exactly one abstract function but found {1}.",
+        "{0} must have exactly one abstract function but found {1}.",
         TO_STRING,
         TO_STRING,
       )
