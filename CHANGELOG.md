@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **New**: Add support for `@ContributesGraphExtension`! See the [docs](https://zacsweers.github.io/metro/dependency-graphs#contributed-graph-extensions) for more info.
+- **New**: Add a `asContribution()` compiler intrinsic to upcast graphs to expected contribution types. For example: `val contributedInterface = appGraph.asContribution<ContributedInterface>()`. This is validated at compile-time.
 - **Enhancement**: Add diagnostic to check that graph factories don't provide their target graphs as parameters.
 - **Enhancement**: Optimize supertype lookups when building binding classes by avoiding previously visited classes.
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.

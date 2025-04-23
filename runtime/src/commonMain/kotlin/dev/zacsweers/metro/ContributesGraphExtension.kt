@@ -27,7 +27,7 @@ import kotlin.reflect.KClass
  *
  * ## The Solution
  *
- * Instead, `:login` can use `@ContributesGraphExtension(AppScope::class)` to say: "I want to
+ * Instead, `:login` can use `@ContributesGraphExtension(LoggedInScope::class)` to say: "I want to
  * contribute a new graph extension to the app graph." The extension will be generated in `:app`,
  * which already depends on both `:login` and `:user-data`. Now `UserRepository` can be injected in
  * `LoggedInGraph`.
@@ -47,13 +47,13 @@ import kotlin.reflect.KClass
  *
  * In the `:app` module:
  * ```
- * @DependencyGraph(AppScope::class)
+ * @DependencyGraph(AppScope::class, isExtendable = true)
  * interface AppGraph
  * ```
  *
- * The generated code will modify AppGraph to extend `LoggedInGraph.Factory` and implement
- * `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` that includes all
- * contributed bindings, including `UserRepository` from `:user-data`.
+ * The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement
+ * `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` class that includes
+ * all contributed bindings, including `UserRepository` from `:user-data`.
  *
  * ```
  * // modifications generated during compile-time
@@ -72,6 +72,10 @@ import kotlin.reflect.KClass
  * Finally, you can obtain a `LoggedInGraph` instance from `AppGraph` since it now implements
  * `LoggedInGraph.Factory`:
  * ```
+ * // Using the asContribution() intrinsic
+ * val loggedInGraph = appGraph.asContribution<LoggedInGraph.Factory>().createLoggedInGraph()
+ *
+ * // Or if you have IDE support enabled
  * val loggedInGraph = appGraph.createLoggedInGraph()
  * ```
  *

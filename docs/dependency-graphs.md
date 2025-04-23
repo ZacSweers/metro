@@ -161,6 +161,117 @@ Child graphs then contain a _superset_ of bindings they can inject, including bo
 
 Child graphs also implicitly inherit their parents' _scopes_.
 
+### Contributed Graph Extensions
+
+`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
+
+#### The Problem
+
+Imagine this module dependency tree:
+
+```
+        :app
+      /     \
+     v       v
+  :login   :user-data
+```
+
+`:app` defines the main dependency graph with `@DependencyGraph`. The `:login` module defines a graph extension for authenticated user flows, and `:user-data` provides some core functionality like `UserRepository`.
+
+If `:login` defines its own graph directly with `@DependencyGraph`, it won't see contributions from `:user-data` _unless_ `:login` depends on it directly.
+
+#### The Solution
+
+Instead, `:login` can use `@ContributesGraphExtension(LoggedInScope::class)` + an associated `@ContributesGraphExtension.Factory(AppScope::class)` to say: "I want to contribute a new graph extension _to_ a future `AppScope` parent graph."
+
+The graph extension will then be generated in `:app`, which already depends on both `:login` and `:user-data`. Now `UserRepository` can be injected in `LoggedInGraph`.
+
+```kotlin
+@ContributesGraphExtension(LoggedInScope::class)
+interface LoggedInGraph {
+
+  val userRepository: UserRepository
+
+  @ContributesGraphExtension.Factory(AppScope::class)
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+```
+
+In the `:app` module:
+
+```
+@DependencyGraph(AppScope::class, isExtendable = true)
+interface AppGraph
+```
+
+The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` and implement `createLoggedInGraph()` using a generated final `$$ContributedLoggedInGraph` class that includes all contributed bindings, including `UserRepository` from `:user-data`.
+
+```kotlin
+interface AppGraph 
+  // modifications generated during compile-time
+  : LoggedInGraph.Factory {
+  override fun createLoggedInGraph(): LoggedInGraph {
+    return $$ContributedLoggedInGraph(this)
+  }
+
+  // Generated in IR
+  @DependencyGraph(LoggedInScope::class)
+  class LoggedInGraph$$MetroGraph(appGraph: AppGraph) : LoggedInGraph {
+    // ...
+  }
+}
+```
+
+Finally, you can obtain a `LoggedInGraph` instance from `AppGraph` since it now implements `LoggedInGraph.Factory`:
+
+```kotlin
+// Using the asContribution() intrinsic
+val loggedInGraph = appGraph.asContribution<LoggedInGraph.Factory>().createLoggedInGraph()
+
+// Or if you have IDE support enabled
+val loggedInGraph = appGraph.createLoggedInGraph()
+```
+
+#### Graph arguments
+
+You can pass arguments to the graph via the factory:
+
+```kotlin
+@ContributesGraphExtension.Factory(AppScope::class)
+interface Factory {
+  fun create(@Provides userId: String): LoggedInGraph
+}
+```
+
+This maps to:
+
+```kotlin
+// Generated in IR
+@DependencyGraph(LoggedInScope::class)
+class $$ContributedLoggedInGraph(
+  @Extends parent: AppGraph,
+  @Provides userId: String
+): LoggedInGraph {
+  // ...
+}
+```
+
+In `AppGraph`, the generated factory method looks like:
+
+```kotlin
+// Generated in IR
+override fun create(userId: String): LoggedInGraph {
+  return LoggedInGraph$$MetroGraph(this, userId)
+}
+```
+
+!!! warning
+    Abstract factory classes cannot be used as graph contributions.
+
+Contributed graphs may also be chained, but note that `isExtendable` must be true to do so!
+
 ## Implementation Notes
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
