@@ -26,6 +26,7 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesBindin
 }
 
 public abstract interface annotation class dev/zacsweers/metro/ContributesGraphExtension : java/lang/annotation/Annotation {
+	public abstract fun isExtendable ()Z
 	public abstract fun scope ()Ljava/lang/Class;
 }
 

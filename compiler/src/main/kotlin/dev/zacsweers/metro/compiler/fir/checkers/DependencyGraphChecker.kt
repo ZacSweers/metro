@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.constructors
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.resolve.firClassLike
@@ -38,8 +37,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val classIds = session.classIds
 
     val dependencyGraphAnno =
-      declaration.annotationsIn(session, classIds.graphLikeAnnotations)
-        .firstOrNull()
+      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull()
 
     if (dependencyGraphAnno == null) return
 
@@ -67,7 +65,11 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       }
     }
 
-    declaration.validateApiDeclaration(context, reporter, "${graphAnnotationClassId.shortClassName.asString()} declarations") {
+    declaration.validateApiDeclaration(
+      context,
+      reporter,
+      "${graphAnnotationClassId.shortClassName.asString()} declarations",
+    ) {
       return
     }
 
