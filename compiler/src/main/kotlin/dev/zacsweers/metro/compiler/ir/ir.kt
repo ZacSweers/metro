@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -807,4 +808,10 @@ internal fun IrPluginContext.buildAnnotation(
   return createIrBuilder(symbol).run {
     irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
   }
+}
+
+internal val IrClass.metroGraph: IrClass get() = if (origin === Origins.ContributedGraph) {
+  this
+} else {
+  requireNestedClass(Symbols.Names.metroGraph)
 }
