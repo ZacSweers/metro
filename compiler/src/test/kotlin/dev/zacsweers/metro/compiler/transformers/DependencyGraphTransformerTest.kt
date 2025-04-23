@@ -6,8 +6,10 @@ import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import dev.zacsweers.metro.Provider
+import dev.zacsweers.metro.compiler.ChildGraph
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.ParentGraph
 import dev.zacsweers.metro.compiler.assertContainsAll
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
@@ -18,6 +20,7 @@ import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
+import dev.zacsweers.metro.compiler.newInstanceStrict
 import dev.zacsweers.metro.internal.MapFactory
 import dev.zacsweers.metro.internal.MapProviderFactory
 import java.util.concurrent.Callable
@@ -2787,5 +2790,41 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       ),
       previousCompilationResult = first,
     )
+  }
+
+  @Test
+  fun `qualifiers are propagated in includes accessors`() {
+    compile(
+      source(
+        """
+            class NumberProviders {
+              fun provideInt(): Int = 1
+              @Named("int") fun provideQualifiedInt(): Int = 2
+              @SingleIn(AppScope::class) fun provideScopedLong(): Long = 3L
+              @SingleIn(AppScope::class) @Named("long") fun provideScopedQualifiedLong(): Long = 4L
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val int: Int
+              @Named("int") val qualifiedInt: Int
+              val scopedLong: Long
+              @Named("long") val qualifiedScopedLong: Long
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Includes parent: NumberProviders): ExampleGraph
+              }
+            }
+        """
+      )
+    ) {
+      val numberProviders = classLoader.loadClass("test.NumberProviders").newInstanceStrict()
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(numberProviders)
+      assertThat(exampleGraph.callProperty<Int>("int")).isEqualTo(1)
+      assertThat(exampleGraph.callProperty<Int>("qualifiedInt")).isEqualTo(2)
+      assertThat(exampleGraph.callProperty<Long>("scopedLong")).isEqualTo(3L)
+      assertThat(exampleGraph.callProperty<Long>("qualifiedScopedLong")).isEqualTo(4L)
+    }
   }
 }
