@@ -8,6 +8,7 @@ Changelog
 - **New**: Add a `asContribution()` compiler intrinsic to upcast graphs to expected contribution types. For example: `val contributedInterface = appGraph.asContribution<ContributedInterface>()`. This is validated at compile-time.
 - **Enhancement**: Add diagnostic to check that graph factories don't provide their target graphs as parameters.
 - **Enhancement**: Optimize supertype lookups when building binding classes by avoiding previously visited classes.
+- **Fix**: Fix rank processing error when the outranked binding is contributed using Metro's ContributesBinding annotation.
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
 - **Fix**: Fix qualifiers on bindings not getting seen by extended child graphs.
 - **Fix**: Fix qualifiers getting ignored on accessors from `@Includes` dependencies.
