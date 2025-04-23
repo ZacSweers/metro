@@ -104,12 +104,19 @@ import kotlin.reflect.KClass
  *   return LoggedInGraph$$MetroGraph(this, userId)
  * }
  * ```
+ *
  * > Note: Abstract factory classes cannot be used as graph contributions.
+ *
+ * Contributed graphs may also be chained, but note that [isExtendable] must be true to do so!
+ *
+ * @property scope The scope in which to include this contributed graph interface.
+ * @property isExtendable If enabled, marks this graph as available for extension and generates
+ *   extra metadata about this graph's available bindings for child graphs to read.
  */
 @Target(CLASS)
 public annotation class ContributesGraphExtension(
-  /** The scope in which to include this contributed graph interface. */
-  val scope: KClass<*>
+  val scope: KClass<*>,
+  val isExtendable: Boolean = false,
 ) {
   /**
    * A factory for the contributed graph extension.
@@ -119,9 +126,9 @@ public annotation class ContributesGraphExtension(
    *
    * The factory interface must have a single function with the contributed graph extension as its
    * return type. Parameters are supported as mentioned in [ContributesGraphExtension].
+   *
+   * @property scope The parent scope in which to include this contributed graph interface. The
+   *   graph that this is contributed to _must_ be extendable.
    */
-  public annotation class Factory(
-    /** The scope in which to include this contributed graph interface. */
-    val scope: KClass<*>
-  )
+  public annotation class Factory(val scope: KClass<*>)
 }
