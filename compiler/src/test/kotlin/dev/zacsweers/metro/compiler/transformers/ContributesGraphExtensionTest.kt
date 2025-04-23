@@ -682,6 +682,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory declarations must be nested within the contributed graph they create but was top-level.
+          e: LoggedInScope.kt:9:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory.
         """
           .trimIndent()
       )
@@ -719,6 +720,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: LoggedInScope.kt:8:1 ContributesGraphExtension.Factory declarations must be nested within the contributed graph they create but was test.SomewhereElse.
+          e: LoggedInScope.kt:9:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory.
         """
           .trimIndent()
       )

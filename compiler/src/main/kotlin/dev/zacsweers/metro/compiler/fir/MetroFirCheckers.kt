@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.fir.checkers.AggregationChecker
+import dev.zacsweers.metro.compiler.fir.checkers.AsContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker
 import dev.zacsweers.metro.compiler.fir.checkers.CreateGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphChecker
@@ -40,6 +41,6 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
   override val expressionCheckers: ExpressionCheckers =
     object : ExpressionCheckers() {
       override val functionCallCheckers: Set<FirFunctionCallChecker>
-        get() = setOf(CreateGraphChecker)
+        get() = setOf(CreateGraphChecker, AsContributionChecker)
     }
 }

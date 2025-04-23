@@ -184,6 +184,12 @@ internal class Symbols(
     return if (useDaggerInterop) daggerSymbols else metroProviderSymbols
   }
 
+  val asContribution: IrSimpleFunctionSymbol by lazy {
+    pluginContext
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, Name.identifier("asContribution")))
+      .single()
+  }
+
   val metroCreateGraph: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, Name.identifier("createGraph")))

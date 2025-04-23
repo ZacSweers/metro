@@ -171,7 +171,9 @@ internal class DependencyGraphTransformer(
   private val metroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
   override fun visitCall(expression: IrCall): IrExpression {
-    return CreateGraphTransformer.visitCall(expression, metroContext) ?: super.visitCall(expression)
+    return CreateGraphTransformer.visitCall(expression, metroContext)
+      ?: AsContributionTransformer.visitCall(expression, metroContext)
+      ?: super.visitCall(expression)
   }
 
   override fun visitClass(declaration: IrClass): IrStatement {
