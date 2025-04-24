@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
@@ -65,7 +66,7 @@ internal class IrContributedGraphGenerator(
       }
     val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations).single()
     val parentIsExtendable =
-      parentGraphAnno.getConstBooleanArgumentOrNull("isExtendable".asName()) ?: false
+      parentGraphAnno.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) ?: false
     if (!parentIsExtendable) {
       with(metroContext) {
         val message = buildString {
@@ -121,7 +122,7 @@ internal class IrContributedGraphGenerator(
                 3,
                 irBoolean(
                   contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
-                    "isExtendable".asName()
+                    Symbols.Names.isExtendable
                   ) ?: false
                 ),
               )
