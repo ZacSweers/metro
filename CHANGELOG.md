@@ -12,6 +12,7 @@ Changelog
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
 - **Fix**: Fix qualifiers on bindings not getting seen by extended child graphs.
 - **Fix**: Fix qualifiers getting ignored on accessors from `@Includes` dependencies.
+- **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
 
 0.2.0
 -----
@@ -23,7 +24,6 @@ _2025-04-21_
 - **Enhancement**: Add diagnostic for map multibindings with nullable keys.
 - **Fix**: Ensure assisted factories' target bindings' parameters are processed in MetroGraph creation. Previously, these weren't processed and could result in scoped bindings not being cached.
 - **Fix**: Fix duplicate field accessors generated for graph supertypes.
-- **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
 - Add [compose navigation sample](https://github.com/ZacSweers/metro/tree/main/samples/compose-navigation-app).
 
 Special thanks to  [@bnorm](https://github.com/bnorm) and [@yschimke](https://github.com/yschimke) for contributing to this release!
