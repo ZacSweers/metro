@@ -27,12 +27,17 @@ plugins {
   alias(libs.plugins.spotless)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.binaryCompatibilityValidator)
+  alias(libs.plugins.android.lint)
 }
 
 java { toolchain { languageVersion.set(libs.versions.jdk.map(JavaLanguageVersion::of)) } }
 
 tasks.withType<JavaCompile>().configureEach {
   options.release.set(libs.versions.jvmTarget.map(String::toInt))
+}
+
+tasks.withType<ValidatePlugins>().configureEach {
+  enableStricterValidation = true
 }
 
 buildConfig {
@@ -115,6 +120,7 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
+  lintChecks(libs.androidx.lint.gradle)
 }
 
 configure<MavenPublishBaseExtension> { publishToMavenCentral(automaticRelease = true) }

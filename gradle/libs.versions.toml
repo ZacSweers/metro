@@ -14,6 +14,7 @@
 
 [versions]
 agp = "8.9.2"
+androidx-lint-gradle = "1.0.0-alpha04"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
 autoService = "1.1.1"
@@ -39,6 +40,7 @@ wire = "5.3.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-lint = { id = "com.android.lint", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
@@ -66,6 +68,7 @@ androidx-compose-materialNavigation = "androidx.compose.material:material-naviga
 androidx-core = "androidx.core:core-ktx:1.16.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.6"
 androidx-lifecycle-runtime-compose = "androidx.lifecycle:lifecycle-runtime-compose:2.8.7"
+androidx-lint-gradle = {  module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.12.0"
 androidx-navigationCompose = "androidx.navigation:navigation-compose:2.8.9"
 androidx-viewmodel = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7"
