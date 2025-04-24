@@ -136,7 +136,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
   }
 
   private fun findContributions(contributingSymbol: FirClassSymbol<*>): Set<Contribution>? {
-    val contributesToAnnotations = session.classIds.contributesToAnnotations
+    val contributesToAnnotations = session.classIds.contributesToLikeAnnotations
     val contributesBindingAnnotations = session.classIds.contributesBindingAnnotations
     val contributesIntoSetAnnotations = session.classIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = session.classIds.contributesIntoMapAnnotations

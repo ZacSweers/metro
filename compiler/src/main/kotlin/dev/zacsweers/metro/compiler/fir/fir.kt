@@ -497,7 +497,7 @@ internal inline fun FirClass.validateApiDeclaration(
     reporter.reportOn(
       source,
       FirMetroErrors.METRO_DECLARATION_ERROR,
-      "$type classes cannot be local classes.",
+      "$type cannot be local classes.",
       context,
     )
     onError()
@@ -511,7 +511,7 @@ internal inline fun FirClass.validateApiDeclaration(
           reporter.reportOn(
             source,
             FirMetroErrors.METRO_DECLARATION_ERROR,
-            "$type classes should be non-sealed abstract classes or interfaces.",
+            "$type should be non-sealed abstract classes or interfaces.",
             context,
           )
           onError()
@@ -531,7 +531,7 @@ internal inline fun FirClass.validateApiDeclaration(
           reporter.reportOn(
             source,
             FirMetroErrors.METRO_DECLARATION_ERROR,
-            "$type classes should be non-sealed abstract classes or interfaces.",
+            "$type should be non-sealed abstract classes or interfaces.",
             context,
           )
           onError()
@@ -542,7 +542,7 @@ internal inline fun FirClass.validateApiDeclaration(
       reporter.reportOn(
         source,
         FirMetroErrors.METRO_DECLARATION_ERROR,
-        "$type classes should be non-sealed abstract classes or interfaces.",
+        "$type should be non-sealed abstract classes or interfaces.",
         context,
       )
       onError()
@@ -557,7 +557,7 @@ internal inline fun FirClass.validateApiDeclaration(
     primaryConstructorIfAny(context.session)?.validateVisibility(
       context,
       reporter,
-      "$type classes' primary constructor",
+      "$type' primary constructor",
     ) {
       onError()
     }

@@ -37,13 +37,18 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     if (!isAssistedFactory) return
 
-    declaration.validateApiDeclaration(context, reporter, "Assisted factory") {
+    declaration.validateApiDeclaration(context, reporter, "@Assisted.Factory declarations") {
       return
     }
 
     // Get single abstract function
     val function =
-      declaration.singleAbstractFunction(session, context, reporter, "@AssistedFactory") {
+      declaration.singleAbstractFunction(
+        session,
+        context,
+        reporter,
+        "@AssistedFactory declarations",
+      ) {
         return
       }
 

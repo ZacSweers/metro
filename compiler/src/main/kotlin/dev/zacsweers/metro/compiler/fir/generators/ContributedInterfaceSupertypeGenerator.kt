@@ -3,19 +3,24 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
+import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
+import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
@@ -26,6 +31,7 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
@@ -36,6 +42,7 @@ import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.scopes.getSingleClassifier
 import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
@@ -59,7 +66,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
   private val dependencyGraphs by lazy {
     session.predicateBasedProvider
-      .getSymbolsByPredicate(session.predicates.dependencyGraphPredicate)
+      .getSymbolsByPredicate(session.predicates.aggregatingAnnotationsPredicate)
       .filterIsInstance<FirRegularClassSymbol>()
       .toSet()
   }
@@ -86,11 +93,10 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           .filterIsInstance<FirRegularClassSymbol>()
           .toList()
 
-      getScopedContributions(contributingClasses, typeResolver)[scopeClassId].orEmpty()
+      getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
 
-  private val generatedScopesToContributions:
-    FirCache<ClassId, Map<ClassId, Set<ClassId>>, TypeResolveService> =
+  private val generatedScopesToContributions: FirCache<ClassId, Set<ClassId>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
       val scopeHintFqName = Symbols.FqNames.scopeHint(scopeClassId)
       val functionsInPackage =
@@ -108,7 +114,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             .toRegularClassSymbol(session)
         }
 
-      getScopedContributions(contributingClasses, typeResolver)
+      getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
 
   /**
@@ -117,51 +123,46 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
    */
   private fun getScopedContributions(
     contributingClasses: List<FirRegularClassSymbol>,
+    scopeClassId: ClassId,
     typeResolver: TypeResolveService,
-  ): Map<ClassId, Set<ClassId>> {
-    val scopesToNestedContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+  ): Set<ClassId> {
+    return contributingClasses
+      .flatMap { originClass ->
+        val classDeclarationContainer =
+          originClass.fir.symbol.declaredMemberScope(session, memberRequiredPhase = null)
 
-    contributingClasses.forEach { originClass ->
-      val classDeclarationContainer =
-        originClass.fir.symbol.declaredMemberScope(session, memberRequiredPhase = null)
+        val contributionNames =
+          classDeclarationContainer.getClassifierNames().filter {
+            it.identifier.startsWith(Symbols.Names.MetroContribution.identifier)
+          }
 
-      val contributionNames =
-        classDeclarationContainer.getClassifierNames().filter {
-          it.identifier.startsWith(Symbols.Names.MetroContribution.identifier)
-        }
+        contributionNames
+          .mapNotNull { nestedClassName ->
+            val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
 
-      contributionNames
-        .mapNotNull { nestedClassName ->
-          val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
-
-          nestedClass
-            ?.annotations
-            ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
-            ?.single()
-            ?.resolvedScopeClassId(typeResolver)
-            ?.let { scopeId -> scopeId to originClass.classId.createNestedClassId(nestedClassName) }
-        }
-        .forEach { (scopeClassId, nestedContributionId) ->
-          scopesToNestedContributions
-            .getOrPut(scopeClassId, ::mutableSetOf)
-            .add(nestedContributionId)
-        }
-    }
-
-    return scopesToNestedContributions
+            nestedClass
+              ?.annotations
+              ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
+              ?.single()
+              ?.resolvedScopeClassId(typeResolver)
+              ?.let { scopeId ->
+                scopeId to originClass.classId.createNestedClassId(nestedClassName)
+              }
+          }
+          .filter { it.first == scopeClassId }
+      }
+      .mapToSet { (_, nestedContributionId) -> nestedContributionId }
   }
 
-  private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
-    return annotations
-      .annotationsIn(session, session.classIds.dependencyGraphAnnotations)
-      .firstOrNull()
+  private fun FirAnnotationContainer.graphLikeAnnotation(): FirAnnotation? {
+    return annotations.annotationsIn(session, session.classIds.graphLikeAnnotations).firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
     if (declaration.symbol !in dependencyGraphs) {
       return false
     }
-    val graphAnnotation = declaration.graphAnnotation() ?: return false
+    val graphAnnotation = declaration.graphLikeAnnotation() ?: return false
 
     // TODO in an FIR checker, disallow omitting scope but defining additional scopes
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
@@ -170,7 +171,12 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     with(session.predicates) {
-      register(dependencyGraphPredicate, contributesAnnotationPredicate, qualifiersPredicate)
+      register(
+        dependencyGraphPredicate,
+        contributesAnnotationPredicate,
+        contributesGraphExtensionPredicate,
+        qualifiersPredicate,
+      )
     }
   }
 
@@ -179,7 +185,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    val graphAnnotation = classLikeDeclaration.graphAnnotation()!!
+    val graphAnnotation = classLikeDeclaration.graphLikeAnnotation()!!
 
     val scopes =
       buildSet {
@@ -202,9 +208,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       scopes
         .flatMap { scopeClassId ->
           val classPathContributions =
-            generatedScopesToContributions
-              .getValue(scopeClassId, typeResolver)[scopeClassId]
-              .orEmpty()
+            generatedScopesToContributions.getValue(scopeClassId, typeResolver)
 
           val inCompilationContributions =
             inCompilationScopesToContributions.getValue(scopeClassId, typeResolver)
@@ -235,6 +239,31 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       val removed = contributions.remove(excludedClassId)
       if (removed == null) {
         unmatchedExclusions += excludedClassId
+      }
+
+      // If the target is `@ContributesGraphExtension`, also implicitly exclude its nested factory
+      // TODO this is finicky and the target class's annotations aren't resolved.
+      //  Ideally we also && targetClass.isAnnotatedWithAny(session,
+      //  session.classIds.contributesGraphExtensionAnnotations)
+      val targetClass = excludedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
+      if (targetClass != null) {
+        for (nestedClassName in
+          targetClass.declaredMemberScope(session, null).getClassifierNames()) {
+          val nestedClassId = excludedClassId.createNestedClassId(nestedClassName)
+          if (nestedClassId in contributions) {
+            nestedClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()?.let {
+              if (
+                it.isAnnotatedWithAny(
+                  session,
+                  session.classIds.contributesGraphExtensionFactoryAnnotations,
+                )
+              ) {
+                // Exclude its factory class too
+                contributions.remove(nestedClassId)
+              }
+            }
+          }
+        }
       }
     }
 
@@ -280,7 +309,13 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       }
     }
 
-    return contributions.values.toList()
+    val declarationClassId = classLikeDeclaration.classId
+    return contributions.values.filterNot { metroContribution ->
+      // We'll check this in a separate checker, but for now just avoid this as it's not legal in
+      // kotlin
+      // Check two levels up. ID is something like LoggedInGraph.Factory.$$MetroContribution
+      metroContribution.classId?.parentClassId?.parentClassId == declarationClassId
+    }
   }
 
   /**
@@ -302,16 +337,35 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         .flatMap { contributingType ->
           contributingType.annotations
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
-            .map { annotation ->
-              val boundType =
-                annotation.anvilKClassBoundTypeArgument(session, typeResolver)?.coneType
-                  ?: contributingType.implicitBoundType(typeResolver)
+            // TODO Can enforce non-null boundTypes here once type arguments are saved to metadata
+            // https://youtrack.jetbrains.com/issue/KT-76954/Some-type-arguments-are-not-saved-to-metadata-in-FIR
+            .mapNotNull { annotation ->
+              val explicitBindingMissingMetadata =
+                annotation.argumentAsOrNull<FirAnnotation>("binding".asName(), index = 1)
 
-              ContributedBinding(
-                contributingType,
-                FirTypeKey(boundType, contributingType.annotations.qualifierAnnotation(session)),
-                annotation.rankValue(),
-              )
+              if (explicitBindingMissingMetadata != null) {
+                // This is a case where an explicit binding is specified but we receive the argument
+                // as FirAnnotationImpl without the metadata containing the type arguments so we
+                // short-circuit since we lack the info to compare it against other bindings.
+                null
+              } else {
+                val boundType =
+                  annotation.resolvedBindingArgument(session, typeResolver)?.let { explicitBinding
+                    ->
+                    if (explicitBinding is FirUserTypeRef) {
+                        typeResolver.resolveUserType(explicitBinding)
+                      } else {
+                        explicitBinding
+                      }
+                      .coneType
+                  } ?: contributingType.implicitBoundType(typeResolver)
+
+                ContributedBinding(
+                  contributingType,
+                  FirTypeKey(boundType, contributingType.annotations.qualifierAnnotation(session)),
+                  annotation.rankValue(),
+                )
+              }
             }
         }
     val bindingGroups =

@@ -43,6 +43,22 @@ open annotation class dev.zacsweers.metro/ContributesBinding : kotlin/Annotation
         final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesBinding.scope.<get-scope>|<get-scope>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/ContributesGraphExtension : kotlin/Annotation { // dev.zacsweers.metro/ContributesGraphExtension|null[0]
+    constructor <init>(kotlin.reflect/KClass<*>, kotlin/Boolean = ...) // dev.zacsweers.metro/ContributesGraphExtension.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Boolean){}[0]
+
+    final val isExtendable // dev.zacsweers.metro/ContributesGraphExtension.isExtendable|{}isExtendable[0]
+        final fun <get-isExtendable>(): kotlin/Boolean // dev.zacsweers.metro/ContributesGraphExtension.isExtendable.<get-isExtendable>|<get-isExtendable>(){}[0]
+    final val scope // dev.zacsweers.metro/ContributesGraphExtension.scope|{}scope[0]
+        final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesGraphExtension.scope.<get-scope>|<get-scope>(){}[0]
+
+    open annotation class Factory : kotlin/Annotation { // dev.zacsweers.metro/ContributesGraphExtension.Factory|null[0]
+        constructor <init>(kotlin.reflect/KClass<*>) // dev.zacsweers.metro/ContributesGraphExtension.Factory.<init>|<init>(kotlin.reflect.KClass<*>){}[0]
+
+        final val scope // dev.zacsweers.metro/ContributesGraphExtension.Factory.scope|{}scope[0]
+            final fun <get-scope>(): kotlin.reflect/KClass<*> // dev.zacsweers.metro/ContributesGraphExtension.Factory.scope.<get-scope>|<get-scope>(){}[0]
+    }
+}
+
 open annotation class dev.zacsweers.metro/ContributesIntoMap : kotlin/Annotation { // dev.zacsweers.metro/ContributesIntoMap|null[0]
     constructor <init>(kotlin.reflect/KClass<*>, dev.zacsweers.metro/binding<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesIntoMap.<init>|<init>(kotlin.reflect.KClass<*>;dev.zacsweers.metro.binding<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
@@ -188,5 +204,6 @@ abstract class dev.zacsweers.metro/AppScope // dev.zacsweers.metro/AppScope|null
 
 final fun <#A: kotlin/Any?> dev.zacsweers.metro/providerOf(#A): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/providerOf|providerOf(0:0){0§<kotlin.Any?>}[0]
 final inline fun <#A: kotlin/Any?> dev.zacsweers.metro/provider(crossinline kotlin/Function0<#A>): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/provider|provider(kotlin.Function0<0:0>){0§<kotlin.Any?>}[0]
+final inline fun <#A: reified kotlin/Any> (kotlin/Any).dev.zacsweers.metro/asContribution(): #A // dev.zacsweers.metro/asContribution|asContribution@kotlin.Any(){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraph(): #A // dev.zacsweers.metro/createGraph|createGraph(){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> dev.zacsweers.metro/createGraphFactory(): #A // dev.zacsweers.metro/createGraphFactory|createGraphFactory(){0§<kotlin.Any>}[0]

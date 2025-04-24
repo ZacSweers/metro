@@ -6,10 +6,9 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import kotlin.io.path.Path
@@ -27,14 +26,12 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFile
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
-import org.jetbrains.kotlin.ir.util.getValueArgument
 
 /**
  * A transformer that generates hint marker functions for _downstream_ compilations. In-compilation
@@ -62,12 +59,7 @@ internal class ContributionHintIrTransformer(
   fun visitClass(declaration: IrClass) {
     val contributionScopes =
       declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNull {
-        it
-          .getValueArgument(Symbols.Names.scope)
-          ?.expectAsOrNull<IrClassReference>()
-          ?.classType
-          ?.rawTypeOrNull()
-          ?.classIdOrFail
+        it.scopeOrNull()
       }
     for (contributionScope in contributionScopes) {
       val callableName = contributionScope.joinSimpleNames().shortClassName

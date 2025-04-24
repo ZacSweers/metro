@@ -143,6 +143,21 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
               .takeUnless { it.isEmpty() }
               ?.let { SubpluginOption("custom-contributes-into-set", value = it.joinToString(":")) }
               ?.let(::add)
+          contributesGraphExtension
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let {
+                SubpluginOption("custom-contributes-graph-extension", value = it.joinToString(":"))
+              }
+              ?.let(::add)
+          contributesGraphExtensionFactory
+              .getOrElse(emptySet())
+              .takeUnless { it.isEmpty() }
+              ?.let {
+                SubpluginOption(
+                    "custom-contributes-graph-extension-factory", value = it.joinToString(":"))
+              }
+              ?.let(::add)
           elementsIntoSet
               .getOrElse(emptySet())
               .takeUnless { it.isEmpty() }

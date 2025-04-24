@@ -42,6 +42,8 @@ public abstract class dev/zacsweers/metro/gradle/MetroPluginExtension$InteropHan
 	public final fun getAssistedInject ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getBinds ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesBinding ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getContributesGraphExtension ()Lorg/gradle/api/provider/SetProperty;
+	public final fun getContributesGraphExtensionFactory ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesIntoSet ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getContributesTo ()Lorg/gradle/api/provider/SetProperty;
 	public final fun getElementsIntoSet ()Lorg/gradle/api/provider/SetProperty;

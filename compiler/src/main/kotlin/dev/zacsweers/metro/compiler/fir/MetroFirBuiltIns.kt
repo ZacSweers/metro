@@ -26,6 +26,12 @@ internal class MetroFirBuiltIns(
     }
   }
 
+  val asContribution by unsafeLazy {
+    session.symbolProvider
+      .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, "asContribution".asName())
+      .first()
+  }
+
   val createGraph by unsafeLazy {
     session.symbolProvider
       .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, Symbols.Names.createGraph)

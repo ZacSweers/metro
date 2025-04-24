@@ -259,7 +259,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:18 Assisted factory classes cannot be local classes."
+        "e: ExampleClass.kt:10:18 @Assisted.Factory declarations cannot be local classes."
       )
     }
   }
@@ -283,10 +283,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-            e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
-          """
-          .trimIndent()
+        "e: ExampleClass.kt:10:3 @Assisted.Factory declarations must be public or internal."
       )
     }
   }
@@ -310,10 +307,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-            e: ExampleClass.kt:10:3 Assisted factory must be public or internal.
-          """
-          .trimIndent()
+        "e: ExampleClass.kt:10:3 @Assisted.Factory declarations must be public or internal."
       )
     }
   }
@@ -339,7 +333,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:9 Assisted factory classes should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:9 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -363,7 +357,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:16 Assisted factory classes should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:16 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -387,7 +381,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:20 Assisted factory classes should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:20 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -416,7 +410,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:14 Assisted factory classes should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:14 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -430,11 +424,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
               @Assisted val count: Int,
             ) {
               @AssistedFactory
-              annotation class Factory {
-                fun create(count: Int): ExampleClass {
-                  throw NotImplementedError()
-                }
-              }
+              annotation class Factory
             }
           """
           .trimIndent()
@@ -443,8 +433,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:10:20 Assisted factory classes should be non-sealed abstract classes or interfaces.
-            e: ExampleClass.kt:11:5 Members are prohibited in annotation classes.
+            e: ExampleClass.kt:10:20 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces.
           """
           .trimIndent()
       )
@@ -472,7 +461,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:10 Assisted factory classes should be non-sealed abstract classes or interfaces."
+        "e: ExampleClass.kt:10:10 @Assisted.Factory declarations should be non-sealed abstract classes or interfaces."
       )
     }
   }
@@ -494,7 +483,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:13 @AssistedFactory classes must have exactly one abstract function but found none."
+        "e: ExampleClass.kt:10:13 @AssistedFactory declarations must have exactly one abstract function but found none."
       )
     }
   }
@@ -520,8 +509,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:11:9 @AssistedFactory classes must have exactly one abstract function but found 2.
-            e: ExampleClass.kt:12:9 @AssistedFactory classes must have exactly one abstract function but found 2.
+            e: ExampleClass.kt:11:9 @AssistedFactory declarations must have exactly one abstract function but found 2.
+            e: ExampleClass.kt:12:9 @AssistedFactory declarations must have exactly one abstract function but found 2.
           """
           .trimIndent()
       )
@@ -552,7 +541,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:13:13 @AssistedFactory classes must have exactly one abstract function but found none."
+        "e: ExampleClass.kt:13:13 @AssistedFactory declarations must have exactly one abstract function but found none."
       )
     }
   }
@@ -582,7 +571,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:18:13 @AssistedFactory classes must have exactly one abstract function but found none."
+        "e: ExampleClass.kt:18:13 @AssistedFactory declarations must have exactly one abstract function but found none."
       )
     }
   }

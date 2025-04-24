@@ -7,10 +7,10 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.rawType
-import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.expressions.IrCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.functions
@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
  * Covers replacing createGraphFactory() compiler intrinsics with calls to the real graph factory.
  */
 internal object CreateGraphTransformer {
-  fun visitCall(expression: IrCall, metroContext: IrMetroContext): IrElement? {
+  fun visitCall(expression: IrCall, metroContext: IrMetroContext): IrExpression? {
     val callee = expression.symbol.owner
     when (callee.symbol) {
       metroContext.symbols.metroCreateGraphFactory -> {
