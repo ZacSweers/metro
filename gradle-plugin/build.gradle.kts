@@ -7,7 +7,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
   alias(libs.plugins.kotlin.jvm)
   `java-gradle-plugin`
-  alias(libs.plugins.dokka)
   alias(libs.plugins.mavenPublish)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.testkit)
@@ -59,7 +58,8 @@ dependencies {
   functionalTestImplementation(libs.kotlin.stdlib)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
-  functionalTestImplementation(project(":"))
+  functionalTestRuntimeOnly(project(":compiler"))
+  functionalTestRuntimeOnly(project(":runtime"))
 }
 
 tasks.withType<Test>().configureEach {

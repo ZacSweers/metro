@@ -154,6 +154,18 @@ subprojects {
     }
   }
 
+  plugins.withId("com.vanniktech.maven.publish") {
+    if (project.path != ":compiler") {
+      apply(plugin = "org.jetbrains.dokka")
+    }
+    configure<MavenPublishBaseExtension> { publishToMavenCentral(automaticRelease = true) }
+
+    // configuration required to produce unique META-INF/*.kotlin_module file names
+    tasks.withType<KotlinCompile>().configureEach {
+      compilerOptions { moduleName.set(project.property("POM_ARTIFACT_ID") as String) }
+    }
+  }
+
   pluginManager.withPlugin("org.jetbrains.dokka") {
     configure<DokkaExtension> {
       basePublicationsDirectory.set(layout.buildDirectory.dir("dokkaDir"))
@@ -173,15 +185,10 @@ subprojects {
       }
     }
   }
-
-  plugins.withId("com.vanniktech.maven.publish") {
-    configure<MavenPublishBaseExtension> { publishToMavenCentral(automaticRelease = true) }
-
-    // configuration required to produce unique META-INF/*.kotlin_module file names
-    tasks.withType<KotlinCompile>().configureEach {
-      compilerOptions { moduleName.set(project.property("POM_ARTIFACT_ID") as String) }
-    }
-  }
 }
 
-dependencies { dokka(project(":runtime")) }
+dependencies {
+  dokka(project(":gradle-plugin"))
+  dokka(project(":interop-dagger"))
+  dokka(project(":runtime"))
+}
