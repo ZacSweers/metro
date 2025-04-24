@@ -70,14 +70,15 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     }
 
     // Ensure scope is defined if any additionalScopes are defined
-    val scope = dependencyGraphAnno.resolvedScopeClassId()?.takeUnless { it == StandardClassIds.Nothing }
+    val scope =
+      dependencyGraphAnno.resolvedScopeClassId()?.takeUnless { it == StandardClassIds.Nothing }
     val additionalScopes = dependencyGraphAnno.resolvedAdditionalScopesClassIds().orEmpty()
     if (additionalScopes.isNotEmpty() && scope == null) {
       reporter.reportOn(
         dependencyGraphAnno.additionalScopesArgument()?.source ?: dependencyGraphAnno.source,
         FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
         "@${graphAnnotationClassId.shortClassName.asString()} should have a primary `scope` defined if `additionalScopes` are defined.",
-        context
+        context,
       )
     }
 
