@@ -268,6 +268,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .build()
   }
 
+  // TODO accessor change isn't being detected
   @Test
   fun extendingGraphChangesDetected() {
     val fixture = FixtureExtends()
@@ -309,7 +310,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     private fun build(): GradleProject {
       return newGradleProjectBuilder(DslKind.KOTLIN)
         .withRootProject {
-          sources = listOf(baseGraph, extendedGraph, target)
+          sources = listOf(childGraph, appGraph, target)
           withBuildScript {
             plugins(
               Plugin("org.jetbrains.kotlin.jvm", "2.1.20"),
@@ -320,7 +321,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .write()
     }
 
-    private val baseGraph =
+    private val childGraph =
       kotlin(
           """
       package com.example
@@ -342,7 +343,7 @@ class ICTests : BaseIncrementalCompilationTest() {
         .withPath("com.example", "ChildGraph")
         .build()
 
-    private val extendedGraph =
+    private val appGraph =
       kotlin(
           """
       package com.example
