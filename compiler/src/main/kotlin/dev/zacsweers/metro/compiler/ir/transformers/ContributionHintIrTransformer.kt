@@ -57,6 +57,9 @@ internal class ContributionHintIrTransformer(
   private val moduleFragment: IrModuleFragment,
 ) : IrMetroContext by context {
   fun visitClass(declaration: IrClass) {
+    // Don't generate hints for non-public APIs
+    if (!declaration.visibility.isPublicAPI) return
+
     val contributionScopes =
       declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNull {
         it.scopeOrNull()

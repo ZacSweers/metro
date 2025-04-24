@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.allSupertypes
 import dev.zacsweers.metro.compiler.assertDiagnostics
+import kotlin.test.fail
 import org.junit.Ignore
 import org.junit.Test
 
@@ -662,6 +663,41 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       assertDiagnostics(
         "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface.Factory' is effectively internal but graph declaration 'test.ExampleGraph' is public."
       )
+    }
+  }
+
+  @Test
+  fun `non-public contributions do not have hints and are not merged`() {
+    val firstResult =
+      compile(
+        source(
+          """
+            @ContributesTo(AppScope::class)
+            internal interface ContributedInterface
+          """
+            .trimIndent()
+        )
+      ) {
+        // Assert no hint is generated
+        // metro/hints/MetroHintsContributedInterfaceAppScopeKt.class
+        try {
+          classLoader.loadClass("metro.hints.MetroHintsContributedInterfaceAppScopeKt")
+          fail()
+        } catch (_: ClassNotFoundException) {}
+      }
+
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph
+          """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstResult,
+    ) {
+      assertThat(ExampleGraph.allSupertypes().map { it.simpleName })
+        .doesNotContain("ContributedInterface")
     }
   }
 }

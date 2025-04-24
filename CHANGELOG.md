@@ -10,6 +10,7 @@ Changelog
 - **Enhancement**: Add diagnostic to check that a primary scope is defined if any additionalScopes are also defined on a graph annotation.
 - **Enhancement**: Add diagnostic to validate that contributed types do not have narrower visibility that aggregating graphs. i.e. detect if you accidentally try to contribute an `internal` type to a `public` graph.
 - **Enhancement**: Optimize supertype lookups when building binding classes by avoiding previously visited classes.
+- **Enhancement**: Don't generate hints for contributed types with non-public API visibility.
 - **Fix**: Fix rank processing error when the outranked binding is contributed using Metro's ContributesBinding annotation.
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
 - **Fix**: Fix qualifiers on bindings not getting seen by extended child graphs.
