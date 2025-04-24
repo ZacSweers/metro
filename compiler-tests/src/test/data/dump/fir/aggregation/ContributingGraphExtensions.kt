@@ -4,7 +4,7 @@ abstract class LoggedInScope
 interface LoggedInGraph {
   @ContributesGraphExtension.Factory(AppScope::class)
   interface Factory {
-    fun createLoggedInGraph()
+    fun createLoggedInGraph(): LoggedInGraph
   }
 }
 

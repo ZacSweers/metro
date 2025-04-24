@@ -7,7 +7,7 @@ FILE: ContributingGraphExtensions.kt
     }
     @R|dev/zacsweers/metro/ContributesGraphExtension|(scope = <getClass>(Q|LoggedInScope|)) public abstract interface LoggedInGraph : R|kotlin/Any| {
         @R|dev/zacsweers/metro/ContributesGraphExtension.Factory|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface Factory : R|kotlin/Any| {
-            public abstract fun createLoggedInGraph(): R|kotlin/Unit|
+            public abstract fun createLoggedInGraph(): R|LoggedInGraph|
 
             @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/MetroContribution|(scope = <getClass>(Q|dev/zacsweers/metro/AppScope|)) public abstract interface $$MetroContribution : R|LoggedInGraph.Factory| {
             }
