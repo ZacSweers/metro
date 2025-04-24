@@ -58,9 +58,8 @@ dependencies {
   functionalTestImplementation(libs.kotlin.stdlib)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
-  // TODO how can these be added
-  //  functionalTestRuntimeOnly(project(":compiler"))
-  //  functionalTestRuntimeOnly(project(":runtime"))
+  functionalTestRuntimeOnly(project(":compiler"))
+  functionalTestRuntimeOnly(project(":runtime"))
 }
 
 tasks.withType<Test>().configureEach {

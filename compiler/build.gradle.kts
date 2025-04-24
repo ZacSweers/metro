@@ -8,6 +8,7 @@ plugins {
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow)
+  alias(libs.plugins.testkit)
 }
 
 kotlin {
