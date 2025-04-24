@@ -393,6 +393,10 @@ class ICTests : BaseIncrementalCompilationTest() {
   
       import dev.zacsweers.metro.ContributesIntoSet
       import dev.zacsweers.metro.Inject
+  
+      @Inject
+      @ContributesIntoSet(Unit::class)
+      class Impl1 : ContributedInterface
     
       @Inject
       @ContributesIntoSet(Unit::class)
@@ -462,4 +466,99 @@ class ICTests : BaseIncrementalCompilationTest() {
         .withPath("com.example", "ContributedInterfaces")
         .build()
   }
+
+  @Test
+  fun newContributesToDetected() {
+    val fixture = FixtureContributesTo()
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    modifyKotlinFile(
+      project.rootDir,
+      "com.example",
+      "ContributedInterfaces.kt",
+      """
+      package com.example
+  
+      import dev.zacsweers.metro.ContributesTo
+      import dev.zacsweers.metro.Inject
+  
+      @ContributesTo(Unit::class)
+      interface ContributedInterface1
+  
+      @ContributesTo(Unit::class)
+      interface ContributedInterface2
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // TODO verify the new contribution was added
+    assertThat(secondBuildResult.output).contains("Processing contribution: NewContribution")
+  }
+
+  class FixtureContributesTo : AbstractGradleProject() {
+    private val pluginVersion = PLUGIN_UNDER_TEST_VERSION
+
+    val gradleProject: GradleProject
+      get() = build()
+
+    private fun build(): GradleProject {
+      return newGradleProjectBuilder(DslKind.KOTLIN)
+        .withRootProject {
+          sources = listOf(exampleGraph, contributedInterfaces)
+          withBuildScript {
+            plugins(
+              Plugin("org.jetbrains.kotlin.jvm", "2.1.20"),
+              Plugin("dev.zacsweers.metro", pluginVersion),
+            )
+
+            this.withKotlin(
+              """
+                metro { debug.set(true) }
+              """
+                .trimIndent()
+            )
+          }
+        }
+        .write()
+    }
+
+    private val exampleGraph =
+      kotlin(
+          """
+      package com.example
+    
+      import dev.zacsweers.metro.DependencyGraph
+      
+      interface ContributedInterface
+  
+      @DependencyGraph(Unit::class)
+      interface ExamplGraph
+    """
+        )
+        .withPath("com.example", "ExamplGraph")
+        .build()
+
+    private val contributedInterfaces =
+      kotlin(
+          """
+      package com.example
+      
+      import dev.zacsweers.metro.ContributesTo
+      import dev.zacsweers.metro.Inject
+  
+      @ContributesTo(Unit::class)
+      interface ContributedInterface1
+    """
+        )
+        .withPath("com.example", "ContributedInterfaces")
+        .build()
+  }
+
+  // TODO detect a contribution change when a contribution is removed
 }
