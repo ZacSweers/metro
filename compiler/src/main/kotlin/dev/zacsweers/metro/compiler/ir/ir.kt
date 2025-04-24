@@ -817,5 +817,5 @@ internal val IrClass.metroGraph: IrClass
     if (origin === Origins.ContributedGraph) {
       this
     } else {
-      requireNestedClass(Symbols.Names.metroGraph)
+      requireNestedClass(Symbols.Names.MetroGraph)
     }

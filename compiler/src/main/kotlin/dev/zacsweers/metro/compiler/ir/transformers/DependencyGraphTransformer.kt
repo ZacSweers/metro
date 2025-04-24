@@ -204,7 +204,7 @@ internal class DependencyGraphTransformer(
         // If it's a contributed graph, there is no inner generated graph
         declaration
       } else {
-        declaration.nestedClasses.singleOrNull { it.name == Symbols.Names.metroGraph }
+        declaration.nestedClasses.singleOrNull { it.name == Symbols.Names.MetroGraph }
           ?: error("Expected generated dependency graph for ${declaration.classIdOrFail}")
       }
 

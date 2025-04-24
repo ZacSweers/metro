@@ -156,6 +156,7 @@ internal class Symbols(
     val MetroMembersInjector = "$\$MetroMembersInjector".asName()
     val ProviderClass = "Provider".asName()
     val additionalScopes = StringNames.ADDITIONAL_SCOPES.asName()
+    val asContribution = "asContribution".asName()
     val binding = StringNames.BINDING.asName()
     val boundType = StringNames.BOUND_TYPE.asName()
     val contributed = StringNames.CONTRIBUTED.asName()
@@ -221,7 +222,7 @@ internal class Symbols(
 
   val asContribution: IrSimpleFunctionSymbol by lazy {
     pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, Name.identifier("asContribution")))
+      .referenceFunctions(CallableId(metroRuntime.packageFqName, Names.asContribution))
       .single()
   }
 

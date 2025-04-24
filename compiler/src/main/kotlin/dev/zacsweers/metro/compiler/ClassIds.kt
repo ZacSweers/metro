@@ -125,7 +125,7 @@ public class ClassIds(
   private val contributesGraphExtensionAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesGraphExtension")
   private val contributesGraphExtensionFactoryAnnotation =
-    contributesGraphExtensionAnnotation.createNestedClassId(Symbols.Names.factoryClassName)
+    contributesGraphExtensionAnnotation.createNestedClassId(Symbols.Names.FactoryClass)
 
   internal val contributesToAnnotations =
     setOf(contributesToAnnotation) + customContributesToAnnotations
