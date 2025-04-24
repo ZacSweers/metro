@@ -58,8 +58,9 @@ dependencies {
   functionalTestImplementation(libs.kotlin.stdlib)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
-  functionalTestRuntimeOnly(project(":compiler"))
-  functionalTestRuntimeOnly(project(":runtime"))
+  // TODO how can these be added
+  //  functionalTestRuntimeOnly(project(":compiler"))
+  //  functionalTestRuntimeOnly(project(":runtime"))
 }
 
 tasks.withType<Test>().configureEach {
@@ -67,10 +68,6 @@ tasks.withType<Test>().configureEach {
     "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}"
   )
 }
-
-tasks
-  .named { it == "publishPluginMavenPublicationToFunctionalTestRepository" }
-  .configureEach { mustRunAfter("signTestKitSupportForJavaPublication") }
 
 tasks
   .named { it == "publishTestKitSupportForJavaPublicationToFunctionalTestRepository" }
