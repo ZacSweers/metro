@@ -33,6 +33,7 @@
 * `@ContributesBinding` uses a `binding` API to support generic bound types. See the [aggregation docs](aggregation.md) for more info.
     * Note that if Anvil interop is enabled, _its_ `boundType` properties are supported in interop.
 * `@Contributes*.replaces` cannot replace classes in the same compilation as the graph that is merging them
+* Metro only merges graphs and cannot merge arbitrary interfaces.
 
 #### …from kotlin-inject-anvil
 

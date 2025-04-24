@@ -15,7 +15,7 @@ Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in diffe
 Some features overlap but just work differently in Metro:
 
 - Instead of `@UninstallModules` and `@TestInstallIn`, Metro graphs can exclude aggregations and contributed bindings can replace other bindings.
-- Hilt has support for injecting `ViewModel`s, but this is entirely doable without Hilt as well by just creating a multibinding. See the TODO sample for examples.
+- Hilt has support for injecting `ViewModel`s, but this is entirely doable without Hilt as well by just creating a multibinding. See the [android-app](https://github.com/ZacSweers/metro/tree/main/samples/android-app) sample for an example.
 - Hilt has support for aggregation with `@InstallIn`, Metro uses `@Contributes*` annotations.
 
 Some features are focused around injecting Android framework components. There are two arguably better solutions to this and one not-better solution.

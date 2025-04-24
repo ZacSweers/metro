@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -19,9 +19,11 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.toClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.isResolved
@@ -39,16 +41,40 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     val classIds = session.classIds
 
     val graphFactoryAnnotation =
-      declaration.annotationsIn(session, classIds.dependencyGraphFactoryAnnotations).toList()
+      declaration.annotationsIn(session, classIds.graphFactoryLikeAnnotations).singleOrNull()
+        ?: return
 
-    if (graphFactoryAnnotation.isEmpty()) return
+    val annotationClassId = graphFactoryAnnotation.toAnnotationClassId(session) ?: return
+    val isContributed = annotationClassId in classIds.contributesGraphExtensionFactoryAnnotations
 
-    declaration.validateApiDeclaration(context, reporter, "DependencyGraph factory") {
+    if (isContributed) {
+      // Must be interfaces
+      if (declaration.classKind != ClassKind.INTERFACE) {
+        reporter.reportOn(
+          declaration.source,
+          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          "${annotationClassId.relativeClassName.asString()} declarations can only be interfaces.",
+          context,
+        )
+        return
+      }
+    }
+
+    declaration.validateApiDeclaration(
+      context,
+      reporter,
+      "${annotationClassId.relativeClassName.asString()} declarations",
+    ) {
       return
     }
 
     val createFunction =
-      declaration.singleAbstractFunction(session, context, reporter, "@DependencyGraph.Factory") {
+      declaration.singleAbstractFunction(
+        session,
+        context,
+        reporter,
+        "@${annotationClassId.relativeClassName.asString()} declarations",
+      ) {
         return
       }
 
@@ -56,23 +82,64 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     val targetGraphAnnotation =
       targetGraph
         ?.annotations
-        ?.annotationsIn(session, classIds.dependencyGraphAnnotations)
+        ?.annotationsIn(session, classIds.graphLikeAnnotations)
         ?.singleOrNull()
     targetGraph?.let {
       if (targetGraphAnnotation == null) {
         reporter.reportOn(
           createFunction.resolvedReturnTypeRef.source ?: declaration.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
-          "DependencyGraph.Factory abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
+          "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
           context,
         )
         return
+      }
+
+      if (isContributed) {
+        // Target graph must be contributed too
+        if (
+          targetGraphAnnotation.toAnnotationClassId(session) !in
+            classIds.contributesGraphExtensionAnnotations
+        ) {
+          reporter.reportOn(
+            targetGraphAnnotation.source ?: declaration.source,
+            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a contributed graph extension but found ${it.classId.asSingleFqName()}.",
+            context,
+          )
+          return
+        }
+        // Factory must be nested in that class
+        if (it.classId != declaration.getContainingClassSymbol()?.classId) {
+          reporter.reportOn(
+            targetGraphAnnotation.source ?: declaration.source,
+            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            "${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${declaration.getContainingClassSymbol()?.classId?.asSingleFqName() ?: "top-level"}.",
+            context,
+          )
+          return
+        }
       }
     }
 
     val targetGraphScopes = targetGraphAnnotation?.allScopeClassIds().orEmpty()
     val targetGraphScopeAnnotations =
       targetGraph?.annotations?.scopeAnnotations(session).orEmpty().toSet()
+
+    if (isContributed) {
+      val contributedScopes = graphFactoryAnnotation.allScopeClassIds()
+      val overlapping = contributedScopes.intersect(targetGraphScopes)
+      // Must not contribute to the same scope
+      if (overlapping.isNotEmpty()) {
+        reporter.reportOn(
+          graphFactoryAnnotation.source ?: declaration.source,
+          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.asFqNameString() }.single()}'.",
+          context,
+        )
+        return
+      }
+    }
 
     val paramTypes = mutableSetOf<FirTypeKey>()
 
@@ -84,7 +151,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         reporter.reportOn(
           param.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
-          "DependencyGraph.Factory abstract function parameters must be unique.",
+          "${annotationClassId.relativeClassName.asString()} abstract function parameters must be unique.",
           context,
         )
         continue
@@ -115,7 +182,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         reporter.reportOn(
           param.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
-          "DependencyGraph.Factory abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends.",
+          "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends.",
           context,
         )
       }
@@ -125,6 +192,17 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       }
 
       val type = param.resolvedReturnTypeRef.toClassLikeSymbol(session) ?: continue
+
+      // Don't allow the target graph as a param
+      if (type.classId == targetGraph?.classId) {
+        reporter.reportOn(
+          param.resolvedReturnTypeRef.source ?: param.source ?: declaration.source,
+          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          "${annotationClassId.relativeClassName.asString()} declarations cannot have their target graph type as parameters.",
+          context,
+        )
+        continue
+      }
 
       when {
         isIncludes -> {
@@ -155,7 +233,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
               )
             }
 
-            dependencyGraphAnno.getBooleanArgument("isExtendable".asName(), session) != true -> {
+            dependencyGraphAnno.getBooleanArgument(Symbols.Names.isExtendable, session) != true -> {
               reporter.reportOn(
                 param.source,
                 FirMetroErrors.GRAPH_CREATORS_ERROR,

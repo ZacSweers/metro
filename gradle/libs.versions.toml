@@ -13,7 +13,8 @@
 # limitations under the License.
 
 [versions]
-agp = "8.9.1"
+agp = "8.9.2"
+androidx-lint-gradle = "1.0.0-alpha04"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
 autoService = "1.1.1"
@@ -40,6 +41,7 @@ wire = "5.3.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-lint = { id = "com.android.lint", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
@@ -61,11 +63,16 @@ testkit = { id = "com.autonomousapps.testkit", version = "0.10" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
-androidx-appcompat = "androidx.appcompat:appcompat:1.7.0"
 androidx-activity = "androidx.activity:activity-compose:1.10.1"
+androidx-appcompat = "androidx.appcompat:appcompat:1.7.0"
+androidx-compose-material3 = "androidx.compose.material3:material3:1.3.2"
+androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.8.0"
 androidx-core = "androidx.core:core-ktx:1.16.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.6"
+androidx-lifecycle-runtime-compose = "androidx.lifecycle:lifecycle-runtime-compose:2.8.7"
+androidx-lint-gradle = {  module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.12.0"
+androidx-navigationCompose = "androidx.navigation:navigation-compose:2.8.9"
 androidx-viewmodel = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
@@ -115,6 +122,7 @@ kotlin-scriptRuntime = { module = "org.jetbrains.kotlin:kotlin-script-runtime", 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
 
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-json-okio = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-okio", version.ref = "kotlinx-serialization" }
 kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.6.2"
 

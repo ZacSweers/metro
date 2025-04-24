@@ -18,12 +18,12 @@ package dev.zacsweers.metro.internal
 import dev.zacsweers.metro.Provider
 
 /** @see [BaseDoubleCheck] */
-public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
+public class DoubleCheck<T> private constructor(provider: Provider<T>) :
   BaseDoubleCheck<T>(provider) {
 
   public companion object {
     /** Returns a [Provider] that caches the value from the given delegate provider. */
-    public fun <P : Provider<T>, T : Any> provider(delegate: P): Provider<T> {
+    public fun <P : Provider<T>, T> provider(delegate: P): Provider<T> {
       if (delegate is DoubleCheck<*>) {
         /*
          * This should be a rare case, but if we have a scoped @Binds that delegates to a scoped
@@ -35,7 +35,7 @@ public class DoubleCheck<T : Any> private constructor(provider: Provider<T>) :
     }
 
     /** Returns a [Lazy] that caches the value from the given provider. */
-    public fun <P : Provider<T>, T : Any> lazy(provider: P): Lazy<T> {
+    public fun <P : Provider<T>, T> lazy(provider: P): Lazy<T> {
       if (provider is Lazy<*>) {
         @Suppress("UNCHECKED_CAST") val lazy = provider as Lazy<T>
         // Avoids memoizing a value that is already memoized.

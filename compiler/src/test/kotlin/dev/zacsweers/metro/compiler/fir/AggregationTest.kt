@@ -1196,6 +1196,48 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `repeated ContributesBinding annotations with different scopes and same bound types are ok`() {
+    compile(
+      source(
+        """
+          interface ContributedInterface
+
+          @Scope annotation class SecondScope
+
+          @ContributesBinding(AppScope::class)
+          @ContributesBinding(SecondScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val contributedInterface: ContributedInterface
+          }
+
+          @DependencyGraph(scope = SecondScope::class)
+          interface ExampleGraph2 {
+            val contributedInterface: ContributedInterface
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val contributedInterface = graph.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface).isNotNull()
+      assertThat(contributedInterface.javaClass.name).isEqualTo("test.Impl")
+      val graph2 =
+        classLoader
+          .loadClass("test.ExampleGraph2")
+          .generatedMetroGraphClass()
+          .createGraphWithNoArgs()
+      val contributedInterface2 = graph2.callProperty<Any>("contributedInterface")
+      assertThat(contributedInterface2).isNotNull()
+      assertThat(contributedInterface2.javaClass.name).isEqualTo("test.Impl")
+    }
+  }
+
+  @Test
   fun `single instance of a type can be annotated with both @ContributesIntoSet and @ContributesBinding`() {
     compile(
       source(

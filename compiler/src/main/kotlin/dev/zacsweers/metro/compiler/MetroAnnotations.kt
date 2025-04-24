@@ -218,7 +218,7 @@ private fun IrAnnotationContainer.metroAnnotations(
             multibinds = expectNullAndSet("multibindings", multibinds, annotation.asIrAnnotation())
             continue
           }
-          Symbols.ClassIds.composable -> {
+          Symbols.ClassIds.Composable -> {
             isComposable = true
             continue
           }
@@ -405,7 +405,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             multibinds = expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation))
             continue
           }
-          Symbols.ClassIds.composable -> {
+          Symbols.ClassIds.Composable -> {
             isComposable = true
             continue
           }

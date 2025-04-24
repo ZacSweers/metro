@@ -18,7 +18,7 @@ package dev.zacsweers.metro.internal
 import dev.zacsweers.metro.Provider
 
 /** A [Provider] of [Lazy] instances that each delegate to a given [Provider]. */
-public class ProviderOfLazy<T : Any> private constructor(private val provider: Provider<T>) :
+public class ProviderOfLazy<T> private constructor(private val provider: Provider<T>) :
   Provider<Lazy<T>> {
 
   /**
@@ -33,6 +33,6 @@ public class ProviderOfLazy<T : Any> private constructor(private val provider: P
      *
      * @see invoke
      */
-    public fun <T : Any> create(provider: Provider<T>): Provider<Lazy<T>> = ProviderOfLazy(provider)
+    public fun <T> create(provider: Provider<T>): Provider<Lazy<T>> = ProviderOfLazy(provider)
   }
 }

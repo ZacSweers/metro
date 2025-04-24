@@ -2,9 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
+import com.google.common.truth.Truth.assertThat
 import com.tschuchort.compiletesting.KotlinCompilation.ExitCode
+import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.allSupertypes
 import dev.zacsweers.metro.compiler.assertDiagnostics
+import kotlin.test.fail
 import org.junit.Ignore
 import org.junit.Test
 
@@ -38,14 +42,14 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       )
     result.assertDiagnostics(
       """
-        e: graphs.kt:11:24 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:12:29 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:13:35 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:14:29 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:15:31 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:16:35 DependencyGraph classes should be non-sealed abstract classes or interfaces.
-        e: graphs.kt:17:18 DependencyGraph must be public or internal.
-        e: graphs.kt:18:57 DependencyGraph classes' primary constructor must be public or internal.
+        e: graphs.kt:11:24 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:12:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:13:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:14:29 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:15:31 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:16:35 DependencyGraph declarations should be non-sealed abstract classes or interfaces.
+        e: graphs.kt:17:18 DependencyGraph declarations must be public or internal.
+        e: graphs.kt:18:57 DependencyGraph declarations' primary constructor must be public or internal.
       """
         .trimIndent()
     )
@@ -468,5 +472,232 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
     result.assertDiagnostics(
       "e: ExampleGraph.kt:10:25 @Extends graphs must be extendable (set DependencyGraph.isExtendable to true)."
     )
+  }
+
+  @Test
+  fun `target graph type cannot be a factory parameter`() {
+    val result =
+      compile(
+        source(
+          """
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Provides graph: ExampleGraph): ExampleGraph
+              }
+            }
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:10:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters."
+    )
+  }
+
+  @Test
+  fun `contributed graphs must have a nested factory`() {
+    val result =
+      compile(
+        source(
+          """
+            @ContributesGraphExtension(Unit::class)
+            interface ExampleGraph
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      )
+    result.assertDiagnostics(
+      "e: ExampleGraph.kt:7:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory."
+    )
+  }
+
+  @Test
+  fun `a primary scope should be defined before additionalScopes`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(additionalScopes = [Unit::class])
+            interface ExampleGraph
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:6:37 @DependencyGraph should have a primary `scope` defined if `additionalScopes` are defined."
+      )
+    }
+  }
+
+  @Test
+  fun `public graphs cannot merge internal contributions - simple`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(Unit::class)
+            interface ExampleGraph
+
+            @ContributesTo(Unit::class)
+            internal interface ContributedInterface
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface' is internal but graph declaration 'test.ExampleGraph' is public."
+      )
+    }
+  }
+
+  @Test
+  fun `excluded incompatible internal contributions work`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(Unit::class, excludes = [ContributedInterface::class])
+            interface ExampleGraph
+
+            @ContributesTo(Unit::class)
+            internal interface ContributedInterface
+          """
+          .trimIndent()
+      )
+    ) {
+      assertThat(ExampleGraph.allSupertypes().map { it.simpleName })
+        .doesNotContain("ContributedInterface")
+    }
+  }
+
+  @Test
+  fun `internal graphs cannot merge file-private contributions`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(Unit::class)
+            internal interface ExampleGraph
+
+            @ContributesTo(Unit::class)
+            private interface ContributedInterface
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:7:20 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface' is private but graph declaration 'test.ExampleGraph' is internal."
+      )
+    }
+  }
+
+  @Test
+  fun `effectively-internal graphs cannot merge file-private contributions`() {
+    compile(
+      source(
+        """
+            internal class Parent {
+              @DependencyGraph(Unit::class)
+              interface ExampleGraph
+            }
+
+            @ContributesTo(Unit::class)
+            private interface ContributedInterface
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: Parent.kt:8:13 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface' is private but graph declaration 'test.Parent.ExampleGraph' is effectively internal."
+      )
+    }
+  }
+
+  @Test
+  fun `public graphs cannot merge effectively-private contributions`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(Unit::class)
+            interface ExampleGraph
+
+            private class Parent {
+              @ContributesTo(Unit::class)
+              interface ContributedInterface
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.Parent.ContributedInterface' is effectively private but graph declaration 'test.ExampleGraph' is public."
+      )
+    }
+  }
+
+  @Test
+  fun `contributed graph factories may not be narrower visibility`() {
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph
+
+            @ContributesGraphExtension(Unit::class)
+            internal interface ContributedInterface {
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                fun create(): ContributedInterface
+              }
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleGraph.kt:7:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterface.Factory' is effectively internal but graph declaration 'test.ExampleGraph' is public."
+      )
+    }
+  }
+
+  @Test
+  fun `non-public contributions do not have hints and are not merged`() {
+    val firstResult =
+      compile(
+        source(
+          """
+            @ContributesTo(AppScope::class)
+            internal interface ContributedInterface
+          """
+            .trimIndent()
+        )
+      ) {
+        // Assert no hint is generated
+        // metro/hints/MetroHintsContributedInterfaceAppScopeKt.class
+        try {
+          classLoader.loadClass("metro.hints.MetroHintsContributedInterfaceAppScopeKt")
+          fail()
+        } catch (_: ClassNotFoundException) {}
+      }
+
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph
+          """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstResult,
+    ) {
+      assertThat(ExampleGraph.allSupertypes().map { it.simpleName })
+        .doesNotContain("ContributedInterface")
+    }
   }
 }

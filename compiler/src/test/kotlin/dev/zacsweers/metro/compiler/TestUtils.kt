@@ -80,12 +80,12 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
 }
 
 fun Class<*>.generatedFactoryClassAssisted(): Class<*> {
-  val expectedName = Symbols.Names.metroFactory.asString()
+  val expectedName = Symbols.Names.MetroFactory.asString()
   return classes.single { it.simpleName == expectedName }
 }
 
 fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
-  val expectedName = Symbols.Names.metroMembersInjector.asString()
+  val expectedName = Symbols.Names.MetroMembersInjector.asString()
   val nestedClass =
     declaredClasses.singleOrNull { it.simpleName == expectedName }
       ?: error(
@@ -96,7 +96,7 @@ fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
 }
 
 fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
-  val expectedName = Symbols.Names.metroImpl.asString()
+  val expectedName = Symbols.Names.MetroImpl.asString()
   return classes.single { it.simpleName == expectedName }
 }
 
@@ -144,7 +144,7 @@ fun Class<*>.providesFactoryClass(
 
   val methodName = providerCallableName ?: providesCallables.single()
 
-  val expectedName = "${methodName.capitalizeUS()}${Symbols.Names.metroFactory.asString()}"
+  val expectedName = "${methodName.capitalizeUS()}${Symbols.Names.MetroFactory.asString()}"
 
   val classToSearch = if (companion) companionObjectClass else this
 
@@ -167,8 +167,9 @@ fun Class<Factory<*>>.invokeCreateAsFactory(vararg args: Any): Factory<*> {
 }
 
 // Cannot confine to Class<Factory<*>> because this is also used for assisted factories
-fun Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<*> {
-  return invokeCreate(*args) as Provider<*>
+fun <T> Class<*>.invokeCreateAsProvider(vararg args: Any): Provider<T> {
+  @Suppress("UNCHECKED_CAST")
+  return invokeCreate(*args) as Provider<T>
 }
 
 val Class<*>.companionObjectClass: Class<*>
@@ -277,7 +278,7 @@ fun <T> Class<Factory<*>>.invokeCreateAs(vararg args: Any): T {
  * Exercises the whole generated factory creation flow by first creating with
  * [invokeCreateAsFactory] and then calling [Factory.invoke] to exercise its `newInstance()`.
  */
-fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
+fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any? {
   val factory = invokeCreateAsFactory(*args)
   return factory()
 }
@@ -286,7 +287,7 @@ fun Class<Factory<*>>.createNewInstance(vararg args: Any): Any {
  * Exercises the whole generated factory provider flow by first creating with [invokeProvider] and
  * then calling the graph's provider
  */
-fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any {
+fun Class<Factory<*>>.provideValue(providerName: String, vararg args: Any): Any? {
   return invokeProvider(providerName, *args)
 }
 
@@ -327,9 +328,9 @@ val JvmCompilationResult.Parent2Graph: Class<*>
   get() = classLoader.loadClass("test.Parent2Graph")
 
 fun Class<*>.generatedMetroGraphClass(): Class<*> {
-  return classes.singleOrNull { it.simpleName == Symbols.Names.metroGraph.asString() }
+  return classes.singleOrNull { it.simpleName == Symbols.Names.MetroGraph.asString() }
     ?: error(
-      "Could not find nested class $this.${Symbols.Names.metroGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
+      "Could not find nested class $this.${Symbols.Names.MetroGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
     )
 }
 
@@ -340,7 +341,18 @@ fun Class<*>.graphImpl(): Class<*> {
 fun <T> Any.callFunction(name: String, vararg args: Any): T {
   @Suppress("UNCHECKED_CAST")
   return javaClass
-    .getMethod(name, *args.mapToArray { it.javaClass.unboxIfPrimitive })
+    .getMethod(
+      name,
+      *args
+        .map { it.javaClass.unboxIfPrimitive }
+        .mapToArray {
+          if (it.simpleName == Symbols.StringNames.METRO_GRAPH) {
+            it.enclosingClass
+          } else {
+            it
+          }
+        },
+    )
     .invoke(this, *args) as T
 }
 

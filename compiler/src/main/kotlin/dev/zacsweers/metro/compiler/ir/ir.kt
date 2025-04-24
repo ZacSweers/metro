@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
@@ -30,6 +32,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
@@ -60,6 +63,7 @@ import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
@@ -122,12 +126,15 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
   )!!
 }
 
-internal fun CompilerMessageSourceLocation.render(): String {
+internal fun CompilerMessageSourceLocation.render(): String? {
   return buildString {
     val fileUri = File(path).toPath().toUri()
     append("$fileUri")
     if (line > 0 && column > 0) {
       append(":$line:$column")
+    } else {
+      // No line or column numbers makes this kind of useless so return null
+      return null
     }
     append(' ')
   }
@@ -154,6 +161,10 @@ internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
   return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
+}
+
+internal fun IrAnnotationContainer.findAnnotations(classId: ClassId): Sequence<IrConstructorCall> {
+  return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId == classId }
 }
 
 internal fun <T> IrConstructorCall.constArgumentOfTypeAt(position: Int): T? {
@@ -525,15 +536,18 @@ internal fun IrClass.getAllSuperTypes(
   excludeAny: Boolean = true,
 ): Sequence<IrType> {
   val self = this
+  // Cover for cases where a subtype explicitly redeclares an inherited supertype
+  val visitedClasses = mutableSetOf<ClassId>()
 
-  // TODO are there ever cases where superTypes includes the current class?
   suspend fun SequenceScope<IrType>.allSuperInterfacesImpl(currentClass: IrClass) {
     for (superType in currentClass.superTypes) {
       if (excludeAny && superType == pluginContext.irBuiltIns.anyType) continue
       val clazz = superType.classifierOrFail.owner as IrClass
       if (excludeSelf && clazz == self) continue
-      yield(superType)
-      allSuperInterfacesImpl(clazz)
+      if (visitedClasses.add(clazz.classIdOrFail)) {
+        yield(superType)
+        allSuperInterfacesImpl(clazz)
+      }
     }
   }
 
@@ -623,11 +637,41 @@ internal fun IrClass.implementsAny(
   }
 }
 
-internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? =
-  (getValueArgument(0) as IrConst?)?.value as Boolean?
+/**
+ * Returns the single const boolean argument of this constructor call or null if...
+ * - The number of arguments is not 1
+ * - The argument is not a const boolean
+ */
+internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? {
+  if (valueArgumentsCount != 1) return null
+  return (getValueArgument(0) as IrConst?)?.value as Boolean?
+}
 
 internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
   (getValueArgument(name) as IrConst?)?.value as Boolean?
+
+internal fun IrConstructorCall.scopeOrNull(): ClassId? {
+  return scopeClassOrNull()?.classIdOrFail
+}
+
+internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
+  return getValueArgument(Symbols.Names.scope)
+    ?.expectAsOrNull<IrClassReference>()
+    ?.classType
+    ?.rawTypeOrNull()
+}
+
+internal fun IrBuilderWithScope.kClassReference(symbol: IrClassSymbol): IrClassReference {
+  return IrClassReferenceImpl(
+    startOffset,
+    endOffset,
+    // KClass<T>
+    context.irBuiltIns.kClassClass.typeWith(symbol.defaultType),
+    symbol,
+    // T
+    symbol.defaultType,
+  )
+}
 
 internal fun Collection<IrElement?>.joinToKotlinLike(separator: String = "\n"): String {
   return joinToString(separator = separator) { it?.dumpKotlinLike() ?: "<null element>" }
@@ -757,3 +801,21 @@ internal fun IrFunction.stubExpressionBody(context: IrMetroContext) =
 
 internal fun IrBuilderWithScope.stubExpression(context: IrMetroContext) =
   irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))
+
+internal fun IrPluginContext.buildAnnotation(
+  symbol: IrSymbol,
+  callee: IrConstructorSymbol,
+  body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
+): IrConstructorCall {
+  return createIrBuilder(symbol).run {
+    irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+  }
+}
+
+internal val IrClass.metroGraph: IrClass
+  get() =
+    if (origin === Origins.ContributedGraph) {
+      this
+    } else {
+      requireNestedClass(Symbols.Names.MetroGraph)
+    }

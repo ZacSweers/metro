@@ -45,7 +45,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
           reporter.reportOn(
             typeArg.source ?: source,
             CREATE_GRAPH_ERROR,
-            "`createGraph` type argument '${rawType?.classId?.asFqNameString()}' must be annotated with a `@DependencyGraph` annotation.",
+            "`createGraph` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph` annotation.",
             context,
           )
           return
@@ -83,7 +83,7 @@ internal object CreateGraphChecker : FirFunctionCallChecker(MppCheckerKind.Commo
           reporter.reportOn(
             typeArg.source ?: source,
             CREATE_GRAPH_ERROR,
-            "`createGraphFactory` type argument '${rawType?.classId?.asFqNameString()}' must be annotated with a `@DependencyGraph.Factory` annotation.",
+            "`createGraphFactory` type argument '${rawType.classId.asFqNameString()}' must be annotated with a `@DependencyGraph.Factory` annotation.",
             context,
           )
           return

@@ -4,7 +4,39 @@ Changelog
 **Unreleased**
 --------------
 
-- **New**: Multibindings may not be empty by default. To allow an empty multibinding, `@Multibinds(allowEmpty = true)` must be explicitly declared now.
+- **New**: Add support for `@ContributesGraphExtension`! See the [docs](https://zacsweers.github.io/metro/dependency-graphs#contributed-graph-extensions) for more info.
+- **New**: Add a `asContribution()` compiler intrinsic to upcast graphs to expected contribution types. For example: `val contributedInterface = appGraph.asContribution<ContributedInterface>()`. This is validated at compile-time.
+- **Enhancement**: Add diagnostic to check that graph factories don't provide their target graphs as parameters.
+- **Enhancement**: Add diagnostic to check that a primary scope is defined if any additionalScopes are also defined on a graph annotation.
+- **Enhancement**: Add diagnostic to validate that contributed types do not have narrower visibility that aggregating graphs. i.e. detect if you accidentally try to contribute an `internal` type to a `public` graph.
+- **Enhancement**: Optimize supertype lookups when building binding classes by avoiding previously visited classes.
+- **Enhancement**: Don't generate hints for contributed types with non-public API visibility.
+- **Fix**: Fix rank processing error when the outranked binding is contributed using Metro's ContributesBinding annotation.
+- **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
+- **Fix**: Fix qualifiers on bindings not getting seen by extended child graphs.
+- **Fix**: Fix qualifiers getting ignored on accessors from `@Includes` dependencies.
+- **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
+
+0.2.0
+-----
+
+_2025-04-21_
+
+- **New**: Nullable bindings are now allowed! See the [nullability docs](https://zacsweers.github.io/metro/bindings#nullability) for more info.
+- **Enhancement**: Add diagnostics for multibindings with star projections.
+- **Enhancement**: Add diagnostic for map multibindings with nullable keys.
+- **Fix**: Ensure assisted factories' target bindings' parameters are processed in MetroGraph creation. Previously, these weren't processed and could result in scoped bindings not being cached.
+- **Fix**: Fix duplicate field accessors generated for graph supertypes.
+- Add [compose navigation sample](https://github.com/ZacSweers/metro/tree/main/samples/compose-navigation-app).
+
+Special thanks to  [@bnorm](https://github.com/bnorm) and [@yschimke](https://github.com/yschimke) for contributing to this release!
+
+0.1.3
+-----
+
+_2025-04-18_
+
+- **Change**: Multibindings may not be empty by default. To allow an empty multibinding, `@Multibinds(allowEmpty = true)` must be explicitly declared now.
 - **New**: Write graph metadata to reports (if enabled).
 - **New**: Support configuring debug and reports globally via `metro.debug` and `metro.reportsDestination` Gradle properties (respectively).
 - **Enhancement**: Change how aggregation hints are generated to improve incremental compilation. Externally contributed hints are now looked up lazily per-scope instead of all at once.
@@ -25,6 +57,8 @@ Changelog
 - Add a multiplatform Circuit sample: https://github.com/ZacSweers/metro/tree/main/samples/circuit-app
 - Add samples docs: https://zacsweers.github.io/metro/samples
 - Add FAQ docs: https://zacsweers.github.io/metro/faq
+
+Special thanks to [@JoelWilcox](https://github.com/JoelWilcox), [@bnorm](https://github.com/bnorm), and [@japplin](https://github.com/japplin) for contributing to this release!
 
 0.1.2
 -----

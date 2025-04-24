@@ -3,10 +3,14 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
+import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -19,11 +23,13 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.constructors
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
+import org.jetbrains.kotlin.name.StandardClassIds
 
 // TODO
 //  - if there's a factory(): Graph in the companion object, error because we'll generate it
@@ -34,12 +40,53 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val session = context.session
     val classIds = session.classIds
 
-    val isDependencyGraph =
-      declaration.isAnnotatedWithAny(session, classIds.dependencyGraphAnnotations)
+    val dependencyGraphAnno =
+      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull()
 
-    if (!isDependencyGraph) return
+    if (dependencyGraphAnno == null) return
 
-    declaration.validateApiDeclaration(context, reporter, "DependencyGraph") {
+    val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
+    val isContributed = graphAnnotationClassId in classIds.contributesGraphExtensionAnnotations
+
+    if (isContributed) {
+      // Must have a nested class annotated with `@ContributesGraphExtension.Factory`
+      val hasNestedFactory =
+        declaration.declarations.any { nestedClass ->
+          nestedClass is FirClass &&
+            nestedClass.isAnnotatedWithAny(
+              session,
+              classIds.contributesGraphExtensionFactoryAnnotations,
+            )
+        }
+      if (!hasNestedFactory) {
+        reporter.reportOn(
+          declaration.source,
+          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          "@${graphAnnotationClassId.relativeClassName.asString()} declarations must have a nested class annotated with @ContributesGraphExtension.Factory.",
+          context,
+        )
+        return
+      }
+    }
+
+    // Ensure scope is defined if any additionalScopes are defined
+    val scope =
+      dependencyGraphAnno.resolvedScopeClassId()?.takeUnless { it == StandardClassIds.Nothing }
+    val additionalScopes = dependencyGraphAnno.resolvedAdditionalScopesClassIds().orEmpty()
+    if (additionalScopes.isNotEmpty() && scope == null) {
+      reporter.reportOn(
+        dependencyGraphAnno.additionalScopesArgument()?.source ?: dependencyGraphAnno.source,
+        FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+        "@${graphAnnotationClassId.shortClassName.asString()} should have a primary `scope` defined if `additionalScopes` are defined.",
+        context,
+      )
+    }
+
+    declaration.validateApiDeclaration(
+      context,
+      reporter,
+      "${graphAnnotationClassId.shortClassName.asString()} declarations",
+    ) {
       return
     }
 

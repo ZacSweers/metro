@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.isOrImplements
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -14,8 +15,11 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.isMarkedNullable
+import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.StandardClassIds
 
 internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
@@ -107,10 +111,11 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       // No need to check for explicit return types as that's enforced implicitly by the abstract
       // check above
 
-      val returnType = declaration.returnTypeRef.coneTypeOrNull?.classLikeLookupTagIfAny?.classId!!
+      val returnType = declaration.returnTypeRef.coneTypeOrNull
+      val returnTypeClassId = returnType?.classLikeLookupTagIfAny?.classId!!
 
       // @Multibinds must return only Map or Set
-      if (returnType != StandardClassIds.Map && returnType != StandardClassIds.Set) {
+      if (returnTypeClassId != StandardClassIds.Map && returnTypeClassId != StandardClassIds.Set) {
         reporter.reportOn(
           declaration.returnTypeRef.source ?: source,
           FirMetroErrors.MULTIBINDS_ERROR,
@@ -118,6 +123,58 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           context,
         )
         return
+      } else if (returnTypeClassId == StandardClassIds.Map) {
+        when (val keyType = returnType.typeArguments[0]) {
+          ConeStarProjection -> {
+            reporter.reportOn(
+              declaration.returnTypeRef.source ?: source,
+              FirMetroErrors.MULTIBINDS_ERROR,
+              "Multibinding Map keys cannot be star projections. Use a concrete type instead.",
+              context,
+            )
+            return
+          }
+          else -> {
+            if (keyType.type?.isMarkedNullable == true) {
+              reporter.reportOn(
+                declaration.returnTypeRef.source ?: source,
+                FirMetroErrors.MULTIBINDS_ERROR,
+                "Multibinding map keys cannot be nullable. Use a non-nullable type instead.",
+                context,
+              )
+              return
+            }
+          }
+        }
+
+        val isStar =
+          returnType.typeArguments[1] == ConeStarProjection ||
+            returnType.typeArguments[1].type?.let {
+              // Check if it's a Provider<*>
+              it.typeArguments.isNotEmpty() &&
+                it.classLikeLookupTagIfAny?.classId in
+                  session.metroFirBuiltIns.classIds.providerTypes &&
+                it.typeArguments[0] == ConeStarProjection
+            } ?: false
+        if (isStar) {
+          reporter.reportOn(
+            declaration.returnTypeRef.source ?: source,
+            FirMetroErrors.MULTIBINDS_ERROR,
+            "Multibinding Map values cannot be star projections. Use a concrete type instead.",
+            context,
+          )
+          return
+        }
+      } else if (returnTypeClassId == StandardClassIds.Set) {
+        if (returnType.typeArguments[0] == ConeStarProjection) {
+          reporter.reportOn(
+            declaration.returnTypeRef.source ?: source,
+            FirMetroErrors.MULTIBINDS_ERROR,
+            "Multibinding Set elements cannot be star projections. Use a concrete type instead.",
+            context,
+          )
+          return
+        }
       }
       return
     }

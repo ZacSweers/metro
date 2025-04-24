@@ -39,7 +39,6 @@ import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
-import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isSubtypeOf
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
@@ -146,15 +145,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
     }
 
     val returnType = returnTypeRef.coneTypeOrNull ?: return
-    if (returnType.isMarkedNullable) {
-      reporter.reportOn(
-        source,
-        FirMetroErrors.PROVIDES_ERROR,
-        "Provider return types cannot be nullable. See https://github.com/ZacSweers/metro/discussions/153",
-        context,
-      )
-      return
-    }
 
     val bodyExpression =
       when (declaration) {

@@ -343,4 +343,119 @@ class MultibindsErrorsTest : MetroCompilerTest() {
       )
     }
   }
+
+  @Test
+  fun `maps cannot have nullable keys`() {
+    compile(
+      source(
+        """
+            interface ExampleGraph {
+              @Multibinds(allowEmpty = true)
+              val strings: Map<String?, String>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:16 Multibinding map keys cannot be nullable. Use a non-nullable type instead.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `maps cannot have star projection keys`() {
+    compile(
+      source(
+        """
+            interface ExampleGraph {
+              @Multibinds(allowEmpty = true)
+              val strings: Map<*, String>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:16 Multibinding Map keys cannot be star projections. Use a concrete type instead.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `maps cannot have star projection values`() {
+    compile(
+      source(
+        """
+            interface ExampleGraph {
+              @Multibinds(allowEmpty = true)
+              val strings: Map<String, *>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:16 Multibinding Map values cannot be star projections. Use a concrete type instead.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `maps cannot have star projection values - wrapped in provider`() {
+    compile(
+      source(
+        """
+            interface ExampleGraph {
+              @Multibinds(allowEmpty = true)
+              val strings: Map<String, Provider<*>>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:16 Multibinding Map values cannot be star projections. Use a concrete type instead.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `sets cannot have star projection values`() {
+    compile(
+      source(
+        """
+            interface ExampleGraph {
+              @Multibinds(allowEmpty = true)
+              val strings: Set<*>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:16 Multibinding Set elements cannot be star projections. Use a concrete type instead.
+        """
+          .trimIndent()
+      )
+    }
+  }
 }

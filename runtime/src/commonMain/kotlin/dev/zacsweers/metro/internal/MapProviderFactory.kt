@@ -21,7 +21,7 @@ import dev.zacsweers.metro.Provider
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
  * Provider<V>>` when calling [invoke] (as specified by [Factory]).
  */
-public class MapProviderFactory<K : Any, V : Any>
+public class MapProviderFactory<K : Any, V>
 private constructor(contributingMap: Map<K, Provider<V>>) :
   AbstractMapFactory<K, V, Provider<V>>(contributingMap), Lazy<Map<K, Provider<V>>> {
 

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.configureKsp
 import dagger.Lazy
@@ -10,6 +11,7 @@ import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
@@ -43,6 +45,7 @@ class DaggerInteropTest : MetroCompilerTest() {
           setOf(ClassId.fromString("dagger/assisted/AssistedFactory")),
         customAssistedInjectAnnotations =
           setOf(ClassId.fromString("dagger/assisted/AssistedInject")),
+        customMultibindsAnnotations = setOf(ClassId.fromString("dagger/multibindings/Multibinds")),
       )
 
   @Test
@@ -447,6 +450,32 @@ class DaggerInteropTest : MetroCompilerTest() {
       assertThat(fooInstance).isNotNull()
       assertThat(fooInstance).isInstanceOf(DaggerInteropDoubleCheck::class.java)
       assertThat(fooInstance.get().javaClass.name).isEqualTo("test.Foo")
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/334
+  @Test
+  fun `multibinds are usable`() {
+    compile(
+      source(
+        """
+          @DependencyGraph
+          interface ExampleGraph {
+             @dagger.multibindings.Multibinds fun ints(): Set<Int>
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        """
+          .trimIndent()
+      )
     }
   }
 }

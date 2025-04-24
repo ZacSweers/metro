@@ -12,13 +12,6 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-buildscript {
-  dependencies {
-    // Include our included build
-    classpath("dev.zacsweers.metro:gradle-plugin")
-  }
-}
-
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
@@ -33,7 +26,7 @@ plugins {
 }
 
 apiValidation {
-  ignoredProjects += listOf("compiler", "compiler-tests", "integration-tests")
+  ignoredProjects += listOf("compiler", "compiler-tests")
   ignoredPackages += listOf("dev.zacsweers.metro.internal")
   @OptIn(ExperimentalBCVApi::class)
   klib {

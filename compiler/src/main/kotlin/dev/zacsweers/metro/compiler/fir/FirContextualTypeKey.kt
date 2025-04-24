@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructType
+import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
 @Poko
@@ -127,7 +128,7 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
   val rawClassId = classId
 
   // Check if this is a Map type
-  if (rawClassId == Symbols.ClassIds.map && typeArguments.size == 2) {
+  if (rawClassId == StandardClassIds.Map && typeArguments.size == 2) {
     val keyType = typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
     val valueType = typeArguments[1].expectAs<ConeKotlinTypeProjection>().type
 

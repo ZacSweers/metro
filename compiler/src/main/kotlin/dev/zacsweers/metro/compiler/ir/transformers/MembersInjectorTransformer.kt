@@ -94,7 +94,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     */
     val injectorClass =
       declaration.nestedClasses.singleOrNull {
-        val isMetroImpl = it.name == Symbols.Names.metroMembersInjector
+        val isMetroImpl = it.name == Symbols.Names.MetroMembersInjector
         // If not external, double check its origin
         if (isMetroImpl && !isExternal) {
           if (it.origin != Origins.MembersInjectorClassDeclaration) {

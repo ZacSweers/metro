@@ -12,6 +12,9 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.makeNotNull
+import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -476,7 +479,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
       if (similarBindings.isNotEmpty()) {
         appendLine()
         appendLine("Similar bindings:")
-        similarBindings.map { "  - $it" }.sorted().forEach(::appendLine)
+        similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
       }
       if (metroContext.debug) {
         appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
@@ -490,22 +493,37 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
 
   // TODO
   //  - exclude types _in_ multibindings
-  //  - same type with diff nullability
-  private fun findSimilarBindings(key: TypeKey): List<SimilarBinding> {
-    val similarBindings = mutableListOf<SimilarBinding>()
+  private fun findSimilarBindings(key: TypeKey): Map<TypeKey, SimilarBinding> {
+    // Use a map to avoid reporting duplicates
+    val similarBindings = mutableMapOf<TypeKey, SimilarBinding>()
 
     // Same type with different qualifier
     if (key.qualifier != null) {
       findBinding(key.copy(qualifier = null))?.let {
-        similarBindings.add(SimilarBinding(it, "Different qualifier"))
+        similarBindings.putIfAbsent(it.typeKey, SimilarBinding(it, "Different qualifier"))
       }
+    }
+
+    // Check for nullable/non-nullable equivalent
+    val isNullable = key.type.isMarkedNullable()
+    val equivalentType =
+      if (isNullable) {
+        key.type.makeNotNull()
+      } else {
+        key.type.makeNullable()
+      }
+    val equivalentKey = key.copy(type = equivalentType)
+    findBinding(equivalentKey)?.let {
+      val nullabilityDescription =
+        if (isNullable) "Non-nullable equivalent" else "Nullable equivalent"
+      similarBindings.putIfAbsent(it.typeKey, SimilarBinding(it, nullabilityDescription))
     }
 
     // Little more involved, iterate the bindings for ones with the same type
     bindings.forEach { (bindingKey, binding) ->
       when {
         key.qualifier == null && bindingKey.type == key.type -> {
-          similarBindings.add(SimilarBinding(binding, "Different qualifier"))
+          similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Different qualifier"))
         }
         binding is Binding.Multibinding -> {
           val valueType =
@@ -516,7 +534,7 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
               (bindingKey.type.type as IrSimpleType).arguments[1].typeOrFail
             }
           if (valueType == key.type) {
-            similarBindings.add(SimilarBinding(binding, "Multibinding"))
+            similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Multibinding"))
           }
         }
         bindingKey.type == key.type -> {
@@ -524,10 +542,10 @@ internal class BindingGraph(private val metroContext: IrMetroContext) {
           // below as they would always return true for this
         }
         bindingKey.type.isSubtypeOf(key.type, metroContext.irTypeSystemContext) -> {
-          similarBindings.add(SimilarBinding(binding, "Subtype"))
+          similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Subtype"))
         }
         key.type.type.isSubtypeOf(bindingKey.type, metroContext.irTypeSystemContext) -> {
-          similarBindings.add(SimilarBinding(binding, "Supertype"))
+          similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Supertype"))
         }
       }
     }

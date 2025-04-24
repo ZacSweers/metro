@@ -12,27 +12,27 @@ import java.util.Objects
  */
 internal class VersionNumber
 private constructor(
-    val major: Int,
-    val minor: Int,
-    val micro: Int,
-    val patch: Int,
-    val qualifier: String?,
-    private val scheme: AbstractScheme,
+  val major: Int,
+  val minor: Int,
+  val micro: Int,
+  val patch: Int,
+  val qualifier: String?,
+  private val scheme: AbstractScheme,
 ) : Comparable<VersionNumber> {
 
   constructor(
-      major: Int,
-      minor: Int,
-      micro: Int,
-      qualifier: String?,
+    major: Int,
+    minor: Int,
+    micro: Int,
+    qualifier: String?,
   ) : this(major, minor, micro, 0, qualifier, DEFAULT_SCHEME)
 
   constructor(
-      major: Int,
-      minor: Int,
-      micro: Int,
-      patch: Int,
-      qualifier: String?,
+    major: Int,
+    minor: Int,
+    micro: Int,
+    patch: Int,
+    qualifier: String?,
   ) : this(major, minor, micro, patch, qualifier, PATCH_SCHEME)
 
   val baseVersion: VersionNumber
@@ -52,8 +52,8 @@ private constructor(
       patch - other.patch
     } else {
       compareBy<String?> { it?.lowercase(Locale.US) }
-          .thenComparing(nullsLast())
-          .compare(qualifier, other.qualifier)
+        .thenComparing(nullsLast())
+        .compare(qualifier, other.qualifier)
     }
   }
 
@@ -164,11 +164,11 @@ private constructor(
   private class DefaultScheme : AbstractScheme(3) {
     override fun format(versionNumber: VersionNumber): String {
       return VERSION_TEMPLATE.format(
-          Locale.US,
-          versionNumber.major,
-          versionNumber.minor,
-          versionNumber.micro,
-          if (versionNumber.qualifier == null) "" else "-" + versionNumber.qualifier,
+        Locale.US,
+        versionNumber.major,
+        versionNumber.minor,
+        versionNumber.micro,
+        if (versionNumber.qualifier == null) "" else "-" + versionNumber.qualifier,
       )
     }
 
@@ -180,12 +180,12 @@ private constructor(
   private class SchemeWithPatchVersion : AbstractScheme(4) {
     override fun format(versionNumber: VersionNumber): String {
       return VERSION_TEMPLATE.format(
-          Locale.US,
-          versionNumber.major,
-          versionNumber.minor,
-          versionNumber.micro,
-          versionNumber.patch,
-          if (versionNumber.qualifier == null) "" else "-" + versionNumber.qualifier,
+        Locale.US,
+        versionNumber.major,
+        versionNumber.minor,
+        versionNumber.micro,
+        versionNumber.patch,
+        if (versionNumber.qualifier == null) "" else "-" + versionNumber.qualifier,
       )
     }
 

@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.WrappedType
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -24,6 +23,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.render
+import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
 @Poko
@@ -236,7 +236,7 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
   val rawClassId = rawTypeOrNull()?.classId
 
   // Check if this is a Map type
-  if (rawClassId == Symbols.ClassIds.map && arguments.size == 2) {
+  if (rawClassId == StandardClassIds.Map && arguments.size == 2) {
     val keyType = arguments[0].typeOrFail
     val valueType = arguments[1].typeOrFail
 

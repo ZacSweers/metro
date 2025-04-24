@@ -25,7 +25,7 @@ import dev.zacsweers.metro.providerOf
  * @param <V> the type that each contributing factory
  * @param <V2> the value type of the map that this provides </V2></V></K>
  */
-public sealed class AbstractMapFactory<K : Any, V : Any, V2>(map: Map<K, Provider<V>>) :
+public sealed class AbstractMapFactory<K : Any, V, V2>(map: Map<K, Provider<V>>) :
   Factory<Map<K, V2>> {
   private val contributingMap: Map<K, Provider<V>> = map.toUnmodifiableMap()
 

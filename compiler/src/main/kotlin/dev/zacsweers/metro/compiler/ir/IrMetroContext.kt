@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -157,9 +157,12 @@ internal interface IrMetroContext {
 
   // InstanceFactory(...)
   fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
-    return irCallConstructor(symbols.instanceFactoryConstructorSymbol, listOf(type)).apply {
-      putValueArgument(0, arg)
-    }
+    return irInvoke(
+        irGetObject(symbols.instanceFactoryCompanionObject),
+        callee = symbols.instanceFactoryInvoke,
+        args = listOf(arg),
+      )
+      .apply { putTypeArgument(0, type) }
   }
 
   companion object {

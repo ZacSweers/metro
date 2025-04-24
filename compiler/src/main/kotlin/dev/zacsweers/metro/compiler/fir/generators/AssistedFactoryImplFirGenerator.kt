@@ -109,7 +109,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
     return if (
       classSymbol.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations)
     ) {
-      val classId = classSymbol.classId.createNestedClassId(Symbols.Names.metroImpl)
+      val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroImpl)
       implClasses[classId] = AssistedFactoryImpl(classSymbol)
       setOf(classId.shortClassName)
     } else if (classSymbol.hasOrigin(Keys.AssistedFactoryImplClassDeclaration)) {
@@ -132,7 +132,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
         // It's an impl's companion object, just generate the declaration
         createCompanionObject(owner, Keys.AssistedFactoryImplCompanionDeclaration).symbol
       }
-      Symbols.Names.metroImpl -> {
+      Symbols.Names.MetroImpl -> {
         // TODO if there's no assisted params, we could optimize this to just be an object?
         createNestedClass(owner, name, Keys.AssistedFactoryImplClassDeclaration) {
             for (typeParam in owner.typeParameterSymbols) {
@@ -173,7 +173,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
             name = Symbols.Names.delegateFactory,
             typeProvider = { typeParameterRefs ->
               implClass.injectedClass.classId
-                .createNestedClassId(Symbols.Names.metroFactory)
+                .createNestedClassId(Symbols.Names.MetroFactory)
                 .constructClassLikeType(
                   typeParameterRefs.mapToArray(FirTypeParameterRef::toConeType)
                 )
@@ -239,7 +239,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
             Symbols.Names.delegateFactory,
             typeProvider = {
               implClass.injectedClass.classId
-                .createNestedClassId(Symbols.Names.metroFactory)
+                .createNestedClassId(Symbols.Names.MetroFactory)
                 .constructClassLikeType(it.mapToArray(FirTypeParameterRef::toConeType))
             },
             key = Keys.ValueParameter,

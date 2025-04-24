@@ -99,7 +99,7 @@ internal class InjectConstructorTransformer(
     */
     val factoryCls =
       declaration.nestedClasses.singleOrNull {
-        val isMetroFactory = it.name == Symbols.Names.metroFactory
+        val isMetroFactory = it.name == Symbols.Names.MetroFactory
         // If not external, double check its origin
         if (isMetroFactory && !isExternal) {
           if (it.origin != Origins.InjectConstructorFactoryClassDeclaration) {
