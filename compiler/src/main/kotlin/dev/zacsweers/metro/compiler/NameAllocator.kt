@@ -158,11 +158,7 @@ private constructor(
    * @return A deep copy of this NameAllocator.
    */
   fun copy(): NameAllocator {
-    return NameAllocator(
-      allocatedNames.toMutableSet(),
-      tagToName.toMutableMap(),
-      mode = mode,
-    )
+    return NameAllocator(allocatedNames.toMutableSet(), tagToName.toMutableMap(), mode = mode)
   }
 
   internal enum class Mode {
@@ -194,9 +190,6 @@ private fun toJavaIdentifier(suggestion: String) = buildString {
   }
 }
 
-internal fun NameAllocator.newName(
-  suggestion: Name,
-  tag: Any = Uuid.random().toString(),
-): Name {
+internal fun NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
   return newName(suggestion.asString(), tag).asName()
 }
