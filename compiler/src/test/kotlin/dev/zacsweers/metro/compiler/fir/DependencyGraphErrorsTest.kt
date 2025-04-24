@@ -510,4 +510,22 @@ class DependencyGraphErrorsTest : MetroCompilerTest() {
       "e: ExampleGraph.kt:7:11 @ContributesGraphExtension declarations must have a nested class annotated with @ContributesGraphExtension.Factory."
     )
   }
+
+  @Test
+  fun `a primary scope should be defined before additionalScopes`() {
+      compile(
+        source(
+          """
+            @DependencyGraph(additionalScopes = [Unit::class])
+            interface ExampleGraph
+          """
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.COMPILATION_ERROR,
+      ) {
+        assertDiagnostics(
+          "e: ExampleGraph.kt:6:37 @DependencyGraph should have a primary `scope` defined if `additionalScopes` are defined."
+        )
+      }
+  }
 }
