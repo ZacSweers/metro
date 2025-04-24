@@ -200,7 +200,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
                   append("Get")
                 }
                 append(providerCallable.name.capitalizeUS())
-                append(Symbols.Names.metroFactory.asString())
+                append(Symbols.Names.MetroFactory.asString())
               }
               .asName()
           simpleName.also {
@@ -353,7 +353,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     val originClassSymbol =
       klass.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val callableName =
-      klass.name.asString().removeSuffix(Symbols.Names.metroFactory.asString()).decapitalizeUS()
+      klass.name.asString().removeSuffix(Symbols.Names.MetroFactory.asString()).decapitalizeUS()
     val callable =
       originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
         val nameMatches =

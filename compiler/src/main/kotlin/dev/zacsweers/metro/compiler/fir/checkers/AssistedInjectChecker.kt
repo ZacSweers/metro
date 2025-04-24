@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -14,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.mapToSetWithDupes
 import dev.zacsweers.metro.compiler.unsafeLazy
+import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
@@ -179,7 +179,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           annotations
             .annotationsIn(session, session.classIds.assistedAnnotations)
             .singleOrNull()
-            ?.getStringArgument(Symbols.Names.value, session)
+            ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)
             .orEmpty(),
         )
       }

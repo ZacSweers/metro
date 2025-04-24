@@ -82,7 +82,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
           .distinctBy { it.scopeName(session) }
           .forEach { scopeArgument ->
             val nestedContributionName =
-              nameAllocator.newName(Symbols.Names.metroContribution.identifier).asName()
+              nameAllocator.newName(Symbols.Names.MetroContribution.identifier).asName()
 
             contributionNamesToScopeArgs.put(nestedContributionName, scopeArgument)
           }
@@ -211,7 +211,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     name: Name,
     context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
-    if (!name.identifier.startsWith(Symbols.Names.metroContribution.identifier)) return null
+    if (!name.identifier.startsWith(Symbols.Names.MetroContribution.identifier)) return null
     val contributions = findContributions(owner) ?: return null
     return createNestedClass(
         owner,
@@ -236,7 +236,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
                 val originalScopeArg =
                   contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
                     ?: error("Could not find a contribution scope for ${owner.classId}.$name")
-                this.mapping.put("scope".asName(), originalScopeArg)
+                this.mapping.put(Symbols.Names.scope, originalScopeArg)
               }
             )
           }
@@ -269,7 +269,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
   // checks for non-interop
   private fun FirAnnotation.bindingTypeOrNull(): Pair<FirTypeRef?, Boolean> {
     // Return a binding defined using Metro's API
-    argumentAsOrNull<FirFunctionCall>("binding".asName(), 1)?.let { bindingType ->
+    argumentAsOrNull<FirFunctionCall>(Symbols.Names.binding, 1)?.let { bindingType ->
       return bindingType.typeArguments
         .getOrNull(0)
         ?.expectAsOrNull<FirTypeProjectionWithVariance>()

@@ -80,12 +80,12 @@ fun Class<*>.generatedFactoryClass(): Class<Factory<*>> {
 }
 
 fun Class<*>.generatedFactoryClassAssisted(): Class<*> {
-  val expectedName = Symbols.Names.metroFactory.asString()
+  val expectedName = Symbols.Names.MetroFactory.asString()
   return classes.single { it.simpleName == expectedName }
 }
 
 fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
-  val expectedName = Symbols.Names.metroMembersInjector.asString()
+  val expectedName = Symbols.Names.MetroMembersInjector.asString()
   val nestedClass =
     declaredClasses.singleOrNull { it.simpleName == expectedName }
       ?: error(
@@ -96,7 +96,7 @@ fun Class<*>.generatedMembersInjector(): Class<MembersInjector<*>> {
 }
 
 fun Class<*>.generatedAssistedFactoryImpl(): Class<*> {
-  val expectedName = Symbols.Names.metroImpl.asString()
+  val expectedName = Symbols.Names.MetroImpl.asString()
   return classes.single { it.simpleName == expectedName }
 }
 
@@ -144,7 +144,7 @@ fun Class<*>.providesFactoryClass(
 
   val methodName = providerCallableName ?: providesCallables.single()
 
-  val expectedName = "${methodName.capitalizeUS()}${Symbols.Names.metroFactory.asString()}"
+  val expectedName = "${methodName.capitalizeUS()}${Symbols.Names.MetroFactory.asString()}"
 
   val classToSearch = if (companion) companionObjectClass else this
 
@@ -328,9 +328,9 @@ val JvmCompilationResult.Parent2Graph: Class<*>
   get() = classLoader.loadClass("test.Parent2Graph")
 
 fun Class<*>.generatedMetroGraphClass(): Class<*> {
-  return classes.singleOrNull { it.simpleName == Symbols.Names.metroGraph.asString() }
+  return classes.singleOrNull { it.simpleName == Symbols.Names.MetroGraph.asString() }
     ?: error(
-      "Could not find nested class $this.${Symbols.Names.metroGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
+      "Could not find nested class $this.${Symbols.Names.MetroGraph.asString()}. Available: ${classes.joinToString { it.simpleName }}"
     )
 }
 

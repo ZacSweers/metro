@@ -63,7 +63,7 @@ internal class AssistedFactoryTransformer(
 
     val implClass =
       declaration.nestedClasses.singleOrNull {
-        val isMetroImpl = it.name == Symbols.Names.metroImpl
+        val isMetroImpl = it.name == Symbols.Names.MetroImpl
         // If not external, double check its origin
         if (isMetroImpl && !isExternal) {
           if (it.origin != Origins.AssistedFactoryImplClassDeclaration) {

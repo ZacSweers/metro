@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.StringNames
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -35,14 +36,16 @@ internal class ProviderFactory(
 
   init {
     val providesCallableIdAnno =
-      clazz.getAnnotation(Symbols.FqNames.providesCallableIdClass)
+      clazz.getAnnotation(Symbols.FqNames.ProvidesCallableIdClass)
         ?: error(
           "No @ProvidesCallableId found on class ${clazz.classId}. This is a bug in the Metro compiler."
         )
     val callableName = providesCallableIdAnno.getAnnotationStringValue("callableName")
     callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
     isPropertyAccessor =
-      providesCallableIdAnno.getConstBooleanArgumentOrNull("isPropertyAccessor".asName()) ?: false
+      providesCallableIdAnno.getConstBooleanArgumentOrNull(
+        StringNames.IS_PROPERTY_ACCESSOR.asName()
+      ) ?: false
     providesFunction =
       sourceCallable
         ?: context.pluginContext.referenceFunctions(callableId).firstOrNull()?.owner

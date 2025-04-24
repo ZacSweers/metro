@@ -41,7 +41,7 @@ internal object CreateGraphTransformer {
         // If there's no $$Impl class, the companion object is the impl
         val companionIsTheFactory =
           companion.implements(metroContext.pluginContext, rawType.classIdOrFail) &&
-            rawType.nestedClasses.singleOrNull { it.name == Symbols.Names.metroImpl } == null
+            rawType.nestedClasses.singleOrNull { it.name == Symbols.Names.MetroImpl } == null
 
         if (companionIsTheFactory) {
           return metroContext.pluginContext.createIrBuilder(expression.symbol).run {
@@ -53,7 +53,7 @@ internal object CreateGraphTransformer {
               // Note we don't filter on Origins.MetroGraphFactoryCompanionGetter, because
               // sometimes a user may have already defined one. An FIR checker will validate that
               // any such function is valid, so just trust it if one is found
-              it.name == Symbols.Names.factoryFunctionName
+              it.name == Symbols.Names.factory
             }
           // Replace it with a call directly to the factory function
           return metroContext.pluginContext.createIrBuilder(expression.symbol).run {
@@ -76,7 +76,7 @@ internal object CreateGraphTransformer {
         val companion = rawType.companionObject()!!
         val factoryFunction =
           companion.functions.singleOrNull {
-            it.hasAnnotation(Symbols.FqNames.graphFactoryInvokeFunctionMarkerClass)
+            it.hasAnnotation(Symbols.FqNames.GraphFactoryInvokeFunctionMarkerClass)
           } ?: error("Cannot find a graph factory function for ${rawType.kotlinFqName}")
         // Replace it with a call directly to the create function
         return metroContext.pluginContext.createIrBuilder(expression.symbol).run {

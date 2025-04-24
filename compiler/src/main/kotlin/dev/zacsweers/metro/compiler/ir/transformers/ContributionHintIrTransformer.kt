@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -64,7 +63,7 @@ internal class ContributionHintIrTransformer(
     val contributionScopes =
       declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNull {
         it
-          .getValueArgument("scope".asName())
+          .getValueArgument(Symbols.Names.scope)
           ?.expectAsOrNull<IrClassReference>()
           ?.classType
           ?.rawTypeOrNull()
@@ -83,7 +82,7 @@ internal class ContributionHintIrTransformer(
           .apply {
             parameters +=
               buildValueParameter(this) {
-                name = "contributed".asName()
+                name = Symbols.Names.contributed
                 type = declaration.defaultType
                 kind = IrParameterKind.Regular
               }

@@ -502,7 +502,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           append("Get")
         }
         append(name.capitalizeUS())
-        append(Symbols.Names.metroFactory.asString())
+        append(Symbols.Names.MetroFactory.asString())
       }
     }
 

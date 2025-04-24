@@ -239,7 +239,7 @@ internal class DependencyGraphTransformer(
         if (isGraph) {
           // It's just an external graph, just read the declared types from it
           graphDeclaration
-            .requireNestedClass(Symbols.Names.metroGraph)
+            .requireNestedClass(Symbols.Names.MetroGraph)
             .allCallableMembers(
               metroContext,
               excludeInheritedMembers = false,
@@ -273,7 +273,7 @@ internal class DependencyGraphTransformer(
       if (isExtendable) {
         val serialized =
           pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
-            graphDeclaration.requireNestedClass(Symbols.Names.metroGraph),
+            graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph),
             PLUGIN_ID,
           )
         if (serialized == null) {
@@ -387,7 +387,7 @@ internal class DependencyGraphTransformer(
     }
 
     val nonNullMetroGraph =
-      metroGraph ?: graphDeclaration.requireNestedClass(Symbols.Names.metroGraph)
+      metroGraph ?: graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph)
     val graphTypeKey = TypeKey(graphDeclaration.typeWith())
     val graphContextKey = ContextualTypeKey.create(graphTypeKey)
 
@@ -466,7 +466,7 @@ internal class DependencyGraphTransformer(
 
     scopes += buildSet {
       val scope =
-        dependencyGraphAnno.getValueArgument("scope".asName())?.let { scopeArg ->
+        dependencyGraphAnno.getValueArgument(Symbols.Names.scope)?.let { scopeArg ->
           pluginContext.createIrBuilder(graphDeclaration.symbol).run {
             irCall(symbols.metroSingleInConstructor).apply { putValueArgument(0, scopeArg) }
           }
@@ -475,7 +475,7 @@ internal class DependencyGraphTransformer(
       if (scope != null) {
         add(IrAnnotation(scope))
         dependencyGraphAnno
-          .getValueArgument("additionalScopes".asName())
+          .getValueArgument(Symbols.Names.additionalScopes)
           ?.expectAs<IrVararg>()
           ?.elements
           ?.forEach { scopeArg ->
@@ -628,7 +628,7 @@ internal class DependencyGraphTransformer(
     }
 
     val metroGraph =
-      dependencyGraphDeclaration.nestedClasses.singleOrNull { it.name == Symbols.Names.metroGraph }
+      dependencyGraphDeclaration.nestedClasses.singleOrNull { it.name == Symbols.Names.MetroGraph }
         ?: error("Expected generated dependency graph for $graphClassId")
 
     if (dependencyGraphDeclaration.isExternalParent) {
@@ -907,7 +907,7 @@ internal class DependencyGraphTransformer(
         val providerFieldsSet = depNode.proto.provider_field_names.toSet()
         val instanceFieldsSet = depNode.proto.instance_field_names.toSet()
 
-        val graphImpl = depNode.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+        val graphImpl = depNode.sourceGraph.requireNestedClass(Symbols.Names.MetroGraph)
         for (accessor in graphImpl.functions) {
           // TODO exclude toString/equals/hashCode or use marker annotation?
           when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
@@ -1134,7 +1134,7 @@ internal class DependencyGraphTransformer(
         } else {
           // Implement the factory's $$Impl class
           val factoryClass =
-            creator.type.requireNestedClass(Symbols.Names.metroImpl).apply(implementFactoryFunction)
+            creator.type.requireNestedClass(Symbols.Names.MetroImpl).apply(implementFactoryFunction)
 
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
@@ -1238,7 +1238,7 @@ internal class DependencyGraphTransformer(
               // Extended graphs
               addBoundInstanceField { irGet(irParam) }
               // Check that the input parameter is an instance of the metrograph class
-              val depMetroGraph = graphDep.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+              val depMetroGraph = graphDep.sourceGraph.requireNestedClass(Symbols.Names.MetroGraph)
               extraConstructorStatements.add {
                 irIfThen(
                   condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
@@ -1313,7 +1313,7 @@ internal class DependencyGraphTransformer(
       // Add instance fields for all the parent graphs
       for (parent in node.allExtendedNodes.values) {
         if (!parent.isExtendable) continue
-        val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.metroGraph)
+        val parentMetroGraph = parent.sourceGraph.requireNestedClass(Symbols.Names.MetroGraph)
         val proto =
           parent.proto
             ?: run {
@@ -1356,7 +1356,7 @@ internal class DependencyGraphTransformer(
                           val rawType = it.rawTypeOrNull()
                           // This stringy check is unfortunate but origins are not visible
                           // across compilation boundaries
-                          if (rawType?.name == Symbols.Names.metroGraph) {
+                          if (rawType?.name == Symbols.Names.MetroGraph) {
                             // if it's a $$MetroGraph, we actually want the parent type
                             rawType.parentAsClass.defaultType
                           } else {

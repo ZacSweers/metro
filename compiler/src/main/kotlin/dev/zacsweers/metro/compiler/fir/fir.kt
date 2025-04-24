@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.mapToArray
 import java.util.Objects
@@ -107,6 +106,7 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.JsStandardClassIds
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.platform.isJs
@@ -637,7 +637,9 @@ internal fun FirDeclaration.excludeFromJsExport(session: FirSession) {
     return
   }
   val jsExportIgnore =
-    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.jsExportIgnore)
+    session.symbolProvider.getClassLikeSymbolByClassId(
+      JsStandardClassIds.Annotations.JsExportIgnore
+    )
   val jsExportIgnoreAnnotation = jsExportIgnore as? FirRegularClassSymbol ?: return
   val jsExportIgnoreConstructor =
     jsExportIgnoreAnnotation.declarationSymbols.firstIsInstanceOrNull<FirConstructorSymbol>()
@@ -791,10 +793,10 @@ internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbo
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
 
-internal fun FirAnnotation.scopeArgument() = classArgument("scope".asName(), index = 0)
+internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, index = 0)
 
 internal fun FirAnnotation.additionalScopesArgument() =
-  argumentAsOrNull<FirArrayLiteral>("additionalScopes".asName(), index = 1)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.additionalScopes, index = 1)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
   buildSet {
@@ -804,10 +806,10 @@ internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
     .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
 internal fun FirAnnotation.excludesArgument() =
-  argumentAsOrNull<FirArrayLiteral>("excludes".asName(), index = 2)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.excludes, index = 2)
 
 internal fun FirAnnotation.replacesArgument() =
-  argumentAsOrNull<FirArrayLiteral>("replaces".asName(), index = 2)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.replaces, index = 2)
 
 internal fun FirAnnotation.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
@@ -816,9 +818,9 @@ internal fun FirAnnotation.rankValue(): Long {
 }
 
 private fun FirAnnotation.rankArgument() =
-  argumentAsOrNull<FirLiteralExpression>("rank".asName(), index = 5)
+  argumentAsOrNull<FirLiteralExpression>(Symbols.Names.rank, index = 5)
 
-internal fun FirAnnotation.bindingArgument() = annotationArgument("binding".asName(), index = 1)
+internal fun FirAnnotation.bindingArgument() = annotationArgument(Symbols.Names.binding, index = 1)
 
 internal fun FirAnnotation.resolvedBindingArgument(
   session: FirSession,
@@ -836,12 +838,12 @@ internal fun FirAnnotation.anvilKClassBoundTypeArgument(
   session: FirSession,
   typeResolver: TypeResolveService? = null,
 ): FirTypeRef? {
-  return getAnnotationKClassArgument("boundType".asName(), session, typeResolver)
+  return getAnnotationKClassArgument(Symbols.Names.boundType, session, typeResolver)
     ?.toFirResolvedTypeRef()
 }
 
 internal fun FirAnnotation.anvilIgnoreQualifier(session: FirSession): Boolean {
-  return getBooleanArgument("ignoreQualifier".asName(), session) ?: false
+  return getBooleanArgument(Symbols.Names.ignoreQualifier, session) ?: false
 }
 
 internal fun FirAnnotation.getAnnotationKClassArgument(

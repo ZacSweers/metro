@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -155,7 +155,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
               )
             }
 
-            dependencyGraphAnno.getBooleanArgument("isExtendable".asName(), session) != true -> {
+            dependencyGraphAnno.getBooleanArgument(Symbols.Names.isExtendable, session) != true -> {
               reporter.reportOn(
                 param.source,
                 FirMetroErrors.GRAPH_CREATORS_ERROR,

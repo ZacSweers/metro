@@ -133,7 +133,7 @@ public class ClassIds(
       customContributesIntoSetAnnotations
 
   internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
-  internal val lazyTypes = setOf(Symbols.ClassIds.lazy) + customLazyClasses
+  internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)
   internal val extends = setOf(Symbols.ClassIds.metroExtends)
