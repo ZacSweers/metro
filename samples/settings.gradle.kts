@@ -22,6 +22,7 @@ include(
   ":android-app",
   ":compose-navigation-app",
   ":circuit-app",
+  ":integration-tests",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-kotlinInject",
   ":interop:dependencies-dagger",

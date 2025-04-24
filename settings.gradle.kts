@@ -20,13 +20,7 @@ plugins { id("com.gradle.develocity") }
 
 rootProject.name = "metro"
 
-include(":compiler", ":compiler-tests", ":integration-tests", ":interop-dagger", ":runtime")
-
-includeBuild("gradle-plugin") {
-  dependencySubstitution {
-    substitute(module("dev.zacsweers.metro:gradle-plugin")).using(project(":"))
-  }
-}
+include(":compiler", ":compiler-tests", ":gradle-plugin", ":interop-dagger", ":runtime")
 
 val VERSION_NAME: String by extra.properties
 
