@@ -13,7 +13,7 @@ import com.google.common.truth.Truth.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
 
-class RegressionTests : BaseIncrementalCompilationTest() {
+class ICTests : BaseIncrementalCompilationTest() {
 
   /**
    * This test covers an issue where incremental compilation fails to detect when an `@Includes`
