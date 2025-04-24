@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphCreatorChecker
 import dev.zacsweers.metro.compiler.fir.checkers.InjectConstructorChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MembersInjectChecker
+import dev.zacsweers.metro.compiler.fir.checkers.MergedContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MultibindsChecker
 import dev.zacsweers.metro.compiler.fir.checkers.ProvidesChecker
 import org.jetbrains.kotlin.fir.FirSession
@@ -32,6 +33,7 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
             AggregationChecker,
             DependencyGraphCreatorChecker,
             DependencyGraphChecker,
+            MergedContributionChecker,
           )
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
