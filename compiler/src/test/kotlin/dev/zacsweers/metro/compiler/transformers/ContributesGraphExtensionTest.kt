@@ -265,6 +265,40 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `contributed graph can extend a generic interface`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+
+          interface GraphExtension<T> {
+            val value: T
+          }
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph : GraphExtension<Int> {
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<Int>("value")).isEqualTo(0)
+    }
+  }
+
   // Regression test for https://github.com/ZacSweers/metro/pull/351
   @Test
   fun `contributed graph factory can extend a generic interface with create graph function`() {
