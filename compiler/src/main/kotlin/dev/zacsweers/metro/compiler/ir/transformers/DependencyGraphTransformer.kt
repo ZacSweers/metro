@@ -62,6 +62,7 @@ import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.timedComputation
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withEntry
@@ -848,6 +849,9 @@ internal class DependencyGraphTransformer(
     }
 
     providerFactoriesToAdd.forEach { (typeKey, providerFactory) ->
+      // Track a lookup of the provider class for IC
+      trackClassLookup(node.sourceGraph, providerFactory.clazz)
+
       val parameters = providerFactory.parameters
       val contextKey = ContextualTypeKey(typeKey)
 
