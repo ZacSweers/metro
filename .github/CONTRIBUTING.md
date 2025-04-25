@@ -29,8 +29,9 @@ Tests are spread across a few areas.
 
 * `compiler-tests/` — New compiler tests using JetBrains' official compiler testing infrastructure. If possible, write new compiler tests in here! See [this PR](https://github.com/ZacSweers/metro/pull/128) for more details on how they work.
 * `compiler/src/test/` — Core compiler tests. These should be focused primarily on _error_ testing but can also perform limited functional testing. Note that while many tests are here, new tests should ideally use `compiler-tests`.
-* `integration-tests/` — Integration tests. These should only be functional in nature and not test error cases (error cases won't compile!). Note that new integration tests should usually be written in `compiler-tests`. Some scenarios, such as multi-compilation tests across Gradle, may make more sense to write here.
+* `gradle-plugin/src/functionalTest` — Integration gradle tests, primarily focused on exercising different incremental compilation scenarios.
 * `samples/` — Some samples have tests! This is useful to assert that these samples work as expected.
+    * `integration-tests/` — Integration tests. These should only be functional in nature and not test error cases (error cases won't compile!). Note that new integration tests should usually be written in `compiler-tests`. Some scenarios, such as multi-compilation tests across Gradle, may make more sense to write here.
 
 ## Compiler Plugin Design
 
