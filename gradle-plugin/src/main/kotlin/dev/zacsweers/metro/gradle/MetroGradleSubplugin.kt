@@ -74,6 +74,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         "dev.zacsweers.metro:interop-dagger:$VERSION",
       )
     }
+    val reportsDir = extension.reportsDestination.map { it.dir(kotlinCompilation.name) }
 
     return project.provider {
       buildList {
@@ -88,7 +89,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             extension.enableTopLevelFunctionInjection,
           )
         )
-        extension.reportsDestination.orNull
+        reportsDir.orNull
           ?.let { FilesSubpluginOption("reports-destination", listOf(it.asFile)) }
           ?.let(::add)
 

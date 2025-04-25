@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
 import java.nio.file.Path
 import kotlin.io.path.appendText
@@ -57,8 +56,6 @@ internal interface IrMetroContext {
   val lookupTracker: LookupTracker?
 
   val irTypeSystemContext: IrTypeSystemContext
-
-  val platformName: String?
 
   val reportsDir: Path?
 
@@ -186,17 +183,7 @@ internal interface IrMetroContext {
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
 
-      override val platformName: String? by lazy {
-        pluginContext.platform?.let { platform ->
-          platform.componentPlatforms.joinToString("-") { it.platformName }
-        }
-      }
-
-      override val reportsDir: Path? by lazy {
-        options.reportsDestination
-          ?.letIf(platformName != null) { it.resolve(platformName!!) }
-          ?.createDirectories()
-      }
+      override val reportsDir: Path? by lazy { options.reportsDestination?.createDirectories() }
 
       override val logFile: Path? by lazy {
         reportsDir?.let {
