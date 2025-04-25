@@ -266,6 +266,39 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `contributed graph factory can extend a generic interface with create graph function`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+
+          interface GraphExtensionFactory<T> {
+            fun createGraph(): T
+          }
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val int: Int
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory : GraphExtensionFactory<LoggedInGraph>
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            @Provides fun provideInt(): Int = 0
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createGraph")
+      assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
+    }
+  }
+
+  @Test
   fun `params are forwarded - provides`() {
     compile(
       source(
