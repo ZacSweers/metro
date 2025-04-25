@@ -927,4 +927,42 @@ class GraphExtensionTest : MetroCompilerTest() {
       )
     }
   }
+
+  @Test
+  fun `qualifiers are propagated in accessors too`() {
+    compile(
+      source(
+        """
+            @SingleIn(AppScope::class)
+            @DependencyGraph(isExtendable = true)
+            interface ParentGraph {
+              @Provides fun provideInt(): Int = 1
+              @Provides @Named("int") fun provideQualifiedInt(): Int = 2
+              @Provides @SingleIn(AppScope::class) fun provideScopedLong(): Long = 3L
+              @Provides @SingleIn(AppScope::class) @Named("long") fun provideScopedQualifiedLong(): Long = 4L
+            }
+
+            @DependencyGraph
+            interface ChildGraph {
+              val int: Int
+              @Named("int") val qualifiedInt: Int
+              val scopedLong: Long
+              @Named("long") val qualifiedScopedLong: Long
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Extends parent: ParentGraph): ChildGraph
+              }
+            }
+        """
+      )
+    ) {
+      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
+      assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
+      assertThat(childGraph.callProperty<Int>("qualifiedInt")).isEqualTo(2)
+      assertThat(childGraph.callProperty<Long>("scopedLong")).isEqualTo(3L)
+      assertThat(childGraph.callProperty<Long>("qualifiedScopedLong")).isEqualTo(4L)
+    }
+  }
 }

@@ -12,7 +12,6 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -73,21 +72,24 @@ internal interface BindingStack {
       com.slack.circuit.star.Example1 is requested at
              [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.ExampleGraph.example1()
        */
-      fun requestedAt(contextKey: ContextualTypeKey, accessor: IrSimpleFunction): Entry {
-        val rawDeclaration: IrOverridableDeclaration<*> =
-          accessor.correspondingPropertySymbol?.owner ?: accessor
+      fun requestedAt(contextKey: ContextualTypeKey, accessor: IrFunction): Entry {
         val declaration =
-          if (rawDeclaration.isFakeOverride) {
-            rawDeclaration.resolveOverriddenTypeIfAny()
+          if (accessor is IrSimpleFunction) {
+            val rawDeclaration = accessor.correspondingPropertySymbol?.owner ?: accessor
+            if (rawDeclaration.isFakeOverride) {
+              rawDeclaration.resolveOverriddenTypeIfAny()
+            } else {
+              rawDeclaration
+            }
           } else {
-            rawDeclaration
+            accessor
           }
         val targetFqName = declaration.parentAsClass.kotlinFqName
         val accessorString =
-          if (declaration is IrProperty) {
-            declaration.name.asString()
-          } else {
-            declaration.name.asString() + "()"
+          when (declaration) {
+            is IrProperty -> declaration.name.asString()
+            is IrConstructor -> targetFqName.shortName().asString() + "()"
+            else -> declaration.name.asString() + "()"
           }
         return Entry(
           contextKey = contextKey,

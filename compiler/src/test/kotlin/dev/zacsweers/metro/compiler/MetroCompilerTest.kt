@@ -10,6 +10,8 @@ import com.tschuchort.compiletesting.PluginOption
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
+import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import okio.Buffer
 import org.intellij.lang.annotations.Language
@@ -21,6 +23,7 @@ import org.junit.rules.TemporaryFolder
 abstract class MetroCompilerTest {
 
   @Rule @JvmField val temporaryFolder: TemporaryFolder = TemporaryFolder()
+  @Rule @JvmField val testInfo: TestInfoRule = TestInfoRule()
 
   // TODO every time we update this a ton of tests fail because their line numbers change
   //  would be nice to make this more flexible
@@ -38,6 +41,15 @@ abstract class MetroCompilerTest {
   protected open val metroOptions: MetroOptions
     get() = MetroOptions()
 
+  protected val debugOutputDir: Path
+    get() =
+      Paths.get(System.getProperty("metro.buildDir"))
+        .resolve("metroDebug")
+        .resolve(testInfo.currentClassName.substringAfterLast('.'))
+        .resolve(testInfo.currentMethodName.replace(" ", "_"))
+
+  private var compilationCount = 0
+
   protected fun prepareCompilation(
     vararg sourceFiles: SourceFile,
     debug: Boolean = MetroOption.DEBUG.raw.defaultValue.expectAs(),
@@ -46,9 +58,10 @@ abstract class MetroCompilerTest {
     options: MetroOptions =
       metroOptions.copy(debug = debug, generateAssistedFactories = generateAssistedFactories),
     previousCompilationResult: JvmCompilationResult? = null,
+    compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
     return KotlinCompilation().apply {
-      workingDir = temporaryFolder.root
+      workingDir = temporaryFolder.newFolder(compilationName)
       compilerPluginRegistrars = listOf(MetroCompilerPluginRegistrar())
       val processor = MetroCommandLineProcessor()
       commandLineProcessors = listOf(processor)
@@ -197,6 +210,20 @@ abstract class MetroCompilerTest {
                   customContributesIntoSetAnnotations.joinToString(":"),
                 )
               }
+              MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION -> {
+                if (customContributesGraphExtensionAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customContributesGraphExtensionAnnotations.joinToString(":"),
+                )
+              }
+              MetroOption.CUSTOM_CONTRIBUTES_GRAPH_EXTENSION_FACTORY -> {
+                if (customContributesGraphExtensionFactoryAnnotations.isEmpty()) continue
+                processor.option(
+                  entry.raw.cliOption,
+                  customContributesGraphExtensionFactoryAnnotations.joinToString(":"),
+                )
+              }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
@@ -259,6 +286,7 @@ abstract class MetroCompilerTest {
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
     compilationBlock: KotlinCompilation.() -> Unit = {},
     previousCompilationResult: JvmCompilationResult? = null,
+    compilationName: String = "compilation${compilationCount++}",
     body: JvmCompilationResult.() -> Unit = {},
   ): JvmCompilationResult {
     val cleaningOutput = Buffer()
@@ -268,6 +296,7 @@ abstract class MetroCompilerTest {
           debug = debug,
           options = options,
           previousCompilationResult = previousCompilationResult,
+          compilationName = compilationName,
         )
         .apply(compilationBlock)
         .apply { this.messageOutputStream = cleaningOutput.outputStream() }
@@ -293,6 +322,9 @@ abstract class MetroCompilerTest {
           println(file.readText())
           println()
         }
+
+      val targetDir = debugOutputDir.resolve(compilationName).toFile()
+      compilation.workingDir.copyRecursively(targetDir, overwrite = true)
     }
 
     return result

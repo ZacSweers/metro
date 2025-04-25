@@ -188,7 +188,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     val names = mutableSetOf<Name>()
     if (classSymbol.isDependencyGraph(session)) {
       log("Found graph ${classSymbol.classId}")
-      val classId = classSymbol.classId.createNestedClassId(Symbols.Names.metroGraph)
+      val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroGraph)
       names += classId.shortClassName
 
       val hasCompanion =
@@ -201,7 +201,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       log("Found graph factory ${classSymbol.classId}")
       val shouldGenerateImpl = !classSymbol.isInterface
       if (shouldGenerateImpl) {
-        names += Symbols.Names.metroImpl
+        names += Symbols.Names.MetroImpl
       }
     }
 
@@ -240,7 +240,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         log("Generating companion object for ${owner.classId}")
         createCompanionObject(owner, key).symbol
       }
-      Symbols.Names.metroGraph -> {
+      Symbols.Names.MetroGraph -> {
         log("Generating graph class")
         createNestedClass(owner, name, Keys.MetroGraphDeclaration) {
             superType(owner::constructType)
@@ -255,7 +255,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           .apply { markAsDeprecatedHidden(session) }
           .symbol
       }
-      Symbols.Names.metroImpl -> {
+      Symbols.Names.MetroImpl -> {
         log("Generating factory impl")
         createNestedClass(
             owner,
@@ -477,7 +477,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             createMemberFunction(
               owner,
               Keys.MetroGraphFactoryCompanionGetter,
-              Symbols.Names.factoryFunctionName,
+              Symbols.Names.factory,
               returnTypeProvider = {
                 creatorClass.constructType(it.mapToArray(FirTypeParameter::toConeType))
               },

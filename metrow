@@ -32,11 +32,9 @@ case "$1" in
            fi
 
            echo "Publishing version $version locally..."
-           ./gradlew -p gradle-plugin publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
            ./gradlew publishToMavenLocal -x dokkaGeneratePublicationHtml -PVERSION_NAME="${version}" --rerun-tasks
        else
            echo "Publishing version $version..."
-           ./gradlew -p gradle-plugin publish -x dokkaGeneratePublicationHtml --no-configuration-cache
            ./gradlew publish -x dokkaGeneratePublicationHtml --no-configuration-cache
        fi
        ;;
@@ -44,14 +42,12 @@ case "$1" in
    "check")
        echo "Running checks..."
        ./gradlew check
-       ./gradlew -p gradle-plugin check
        ./gradlew -p samples check
        ;;
 
    "clean")
        echo "Cleaning..."
        ./gradlew clean
-       ./gradlew -p gradle-plugin clean
        ./gradlew -p samples clean
        ;;
 
@@ -59,7 +55,6 @@ case "$1" in
        echo "Applying formatting and API gen..."
        # Annoyingly, the apiDump task has some caching issues
        ./gradlew clean spotlessApply apiDump kotlinUpgradeYarnLock --rerun-tasks --no-build-cache
-       ./gradlew -p gradle-plugin clean spotlessApply apiDump --rerun-tasks --no-build-cache
        ./gradlew -p samples spotlessApply kotlinUpgradeYarnLock
        ;;
 

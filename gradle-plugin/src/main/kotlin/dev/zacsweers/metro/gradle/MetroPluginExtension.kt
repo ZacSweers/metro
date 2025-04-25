@@ -20,7 +20,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
   /** Controls whether Metro's compiler plugin will be enabled on this project. */
   public val enabled: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
    * If enabled, the Metro compiler plugin will emit _extremely_ noisy debug logging.
@@ -28,16 +28,16 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * Optionally, you can specify a `metro.debug` gradle property to enable this globally.
    */
   public val debug: Property<Boolean> =
-      objects
-          .property(Boolean::class.javaObjectType)
-          .convention(providers.gradleProperty("metro.debug").map { it.toBoolean() }.orElse(false))
+    objects
+      .property(Boolean::class.javaObjectType)
+      .convention(providers.gradleProperty("metro.debug").map { it.toBoolean() }.orElse(false))
 
   /**
    * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
    * provider callables. See the kdoc on `Provides` for more details.
    */
   public val publicProviderSeverity: Property<DiagnosticSeverity> =
-      objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
    * Enables whether the Metro compiler plugin will automatically generate assisted factories for
@@ -45,7 +45,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * details.
    */
   public val generateAssistedFactories: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
    * Enables whether the Metro compiler plugin can inject top-level functions. See the kdoc on
@@ -55,21 +55,22 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * incremental compilation!
    */
   public val enableTopLevelFunctionInjection: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 
   /** Enable/disable hint property generation in IR for contributed types. Enabled by default. */
   public val generateHintProperties: Property<Boolean> =
-      objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
    * `metro.version.check` gradle property.
    */
   public val enableKotlinVersionCompatibilityChecks: Property<Boolean> =
-      objects
-          .property(Boolean::class.javaObjectType)
-          .convention(
-              providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true))
+    objects
+      .property(Boolean::class.javaObjectType)
+      .convention(
+        providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true)
+      )
 
   /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the
@@ -81,12 +82,13 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
    * _relative_ path from the project's **build** directory.
    */
   public val reportsDestination: DirectoryProperty =
-      objects
-          .directoryProperty()
-          .convention(
-              providers.gradleProperty("metro.reportsDestination").flatMap {
-                layout.buildDirectory.dir(it)
-              })
+    objects
+      .directoryProperty()
+      .convention(
+        providers.gradleProperty("metro.reportsDestination").flatMap {
+          layout.buildDirectory.dir(it)
+        }
+      )
 
   /**
    * Configures interop to support in generated code, usually from another DI framework.
@@ -117,6 +119,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val contributesTo: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesBinding: SetProperty<String> = objects.setProperty(String::class.java)
     public val contributesIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
+    public val contributesGraphExtension: SetProperty<String> =
+      objects.setProperty(String::class.java)
+    public val contributesGraphExtensionFactory: SetProperty<String> =
+      objects.setProperty(String::class.java)
     public val elementsIntoSet: SetProperty<String> = objects.setProperty(String::class.java)
     public val graph: SetProperty<String> = objects.setProperty(String::class.java)
     public val graphFactory: SetProperty<String> = objects.setProperty(String::class.java)
@@ -170,7 +176,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
       if (!includeJavax && !includeJakarta) {
         System.err.println(
-            "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true")
+          "At least one of metro.interop.includeDagger.includeJavax or metro.interop.includeDagger.includeJakarta should be true"
+        )
       }
       if (includeJavax) {
         includeJavax()
@@ -194,8 +201,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
     @JvmOverloads
     public fun includeAnvil(
-        includeDaggerAnvil: Boolean = true,
-        includeKotlinInjectAnvil: Boolean = true,
+      includeDaggerAnvil: Boolean = true,
+      includeKotlinInjectAnvil: Boolean = true,
     ) {
       check(includeDaggerAnvil || includeKotlinInjectAnvil) {
         "At least one of includeDaggerAnvil or includeKotlinInjectAnvil must be true"
@@ -207,11 +214,19 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
         contributesTo.add("com/squareup/anvil/annotations/ContributesTo")
         contributesBinding.add("com/squareup/anvil/annotations/ContributesBinding")
         contributesIntoSet.add("com/squareup/anvil/annotations/ContributesMultibinding")
+        contributesGraphExtension.add("com/squareup/anvil/annotations/ContributesSubcomponent")
+        // Anvil for Dagger doesn't have ContributesSubcomponent.Factory
       }
       if (includeKotlinInjectAnvil) {
         graph.add("software/amazon/lastmile/kotlin/inject/anvil/MergeComponent")
         contributesTo.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesTo")
         contributesBinding.add("software/amazon/lastmile/kotlin/inject/anvil/ContributesBinding")
+        contributesGraphExtension.add(
+          "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent"
+        )
+        contributesGraphExtensionFactory.add(
+          "software/amazon/lastmile/kotlin/inject/anvil/ContributesSubcomponent.Factory"
+        )
       }
     }
   }

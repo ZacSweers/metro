@@ -16,6 +16,8 @@ public class ClassIds(
   customContributesToAnnotations: Set<ClassId> = emptySet(),
   customContributesBindingAnnotations: Set<ClassId> = emptySet(),
   internal val customContributesIntoSetAnnotations: Set<ClassId> = emptySet(),
+  customContributesGraphExtensionAnnotations: Set<ClassId> = emptySet(),
+  customContributesGraphExtensionFactoryAnnotations: Set<ClassId> = emptySet(),
   customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
   customGraphAnnotations: Set<ClassId> = emptySet(),
   customGraphFactoryAnnotations: Set<ClassId> = emptySet(),
@@ -40,6 +42,10 @@ public class ClassIds(
         customContributesToAnnotations = options.customContributesToAnnotations,
         customContributesBindingAnnotations = options.customContributesBindingAnnotations,
         customContributesIntoSetAnnotations = options.customContributesIntoSetAnnotations,
+        customContributesGraphExtensionAnnotations =
+          options.customContributesGraphExtensionAnnotations,
+        customContributesGraphExtensionFactoryAnnotations =
+          options.customContributesGraphExtensionFactoryAnnotations,
         customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
         customGraphAnnotations = options.customGraphAnnotations,
         customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
@@ -63,7 +69,7 @@ public class ClassIds(
   }
 
   // Graphs
-  private val dependencyGraphAnnotation =
+  internal val dependencyGraphAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("DependencyGraph")
   internal val dependencyGraphAnnotations =
     setOf(dependencyGraphAnnotation) + customGraphAnnotations
@@ -116,6 +122,10 @@ public class ClassIds(
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesIntoSet")
   private val contributesIntoMapAnnotation =
     Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesIntoMap")
+  private val contributesGraphExtensionAnnotation =
+    Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesGraphExtension")
+  private val contributesGraphExtensionFactoryAnnotation =
+    contributesGraphExtensionAnnotation.createNestedClassId(Symbols.Names.FactoryClass)
 
   internal val contributesToAnnotations =
     setOf(contributesToAnnotation) + customContributesToAnnotations
@@ -125,15 +135,28 @@ public class ClassIds(
     setOf(contributesIntoSetAnnotation) + customElementsIntoSetAnnotations
   internal val contributesIntoMapAnnotations =
     setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
+  internal val contributesGraphExtensionAnnotations =
+    setOf(contributesGraphExtensionAnnotation) + customContributesGraphExtensionAnnotations
+  internal val contributesGraphExtensionFactoryAnnotations =
+    setOf(contributesGraphExtensionFactoryAnnotation) +
+      customContributesGraphExtensionFactoryAnnotations
+  internal val contributesToLikeAnnotations =
+    contributesToAnnotations + contributesGraphExtensionFactoryAnnotations
   internal val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +
       contributesIntoSetAnnotations +
       contributesIntoMapAnnotations +
-      customContributesIntoSetAnnotations
+      customContributesIntoSetAnnotations +
+      contributesGraphExtensionFactoryAnnotations
+
+  internal val graphLikeAnnotations =
+    dependencyGraphAnnotations + contributesGraphExtensionAnnotations
+  internal val graphFactoryLikeAnnotations =
+    dependencyGraphFactoryAnnotations + contributesGraphExtensionFactoryAnnotations
 
   internal val providerTypes = setOf(Symbols.ClassIds.metroProvider) + customProviderClasses
-  internal val lazyTypes = setOf(Symbols.ClassIds.lazy) + customLazyClasses
+  internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
 
   internal val includes = setOf(Symbols.ClassIds.metroIncludes)
   internal val extends = setOf(Symbols.ClassIds.metroExtends)

@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -22,14 +21,20 @@ internal class MetroFirBuiltIns(
 ) : FirExtensionSessionComponent(session) {
 
   val errorFunctionSymbol by unsafeLazy {
-    session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, "error".asName()).first {
+    session.symbolProvider.getTopLevelFunctionSymbols(kotlinPackageFqn, Symbols.Names.error).first {
       it.valueParameterSymbols.size == 1
     }
   }
 
+  val asContribution by unsafeLazy {
+    session.symbolProvider
+      .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, Symbols.Names.asContribution)
+      .first()
+  }
+
   val createGraph by unsafeLazy {
     session.symbolProvider
-      .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, "createGraph".asName())
+      .getTopLevelFunctionSymbols(Symbols.FqNames.metroRuntimePackage, Symbols.Names.createGraph)
       .first()
   }
 
@@ -37,7 +42,7 @@ internal class MetroFirBuiltIns(
     session.symbolProvider
       .getTopLevelFunctionSymbols(
         Symbols.FqNames.metroRuntimePackage,
-        "createGraphFactory".asName(),
+        Symbols.Names.createGraphFactory,
       )
       .first()
   }
@@ -48,28 +53,28 @@ internal class MetroFirBuiltIns(
   }
 
   val providesCallableIdClassSymbol by unsafeLazy {
-    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.providesCallableIdClass)
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.ProvidesCallableId)
       as FirRegularClassSymbol
   }
 
   val graphFactoryInvokeFunctionMarkerClassSymbol by unsafeLazy {
     session.symbolProvider.getClassLikeSymbolByClassId(
-      Symbols.ClassIds.graphFactoryInvokeFunctionMarkerClass
+      Symbols.ClassIds.GraphFactoryInvokeFunctionMarkerClass
     ) as FirRegularClassSymbol
   }
 
   val composableClassSymbol by unsafeLazy {
-    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.composable)
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.Composable)
       as FirRegularClassSymbol
   }
 
   val stableClassSymbol by unsafeLazy {
-    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.stable)
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.Stable)
       as FirRegularClassSymbol
   }
 
   val nonRestartableComposable by unsafeLazy {
-    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.stable)
+    session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.Stable)
       as FirRegularClassSymbol
   }
 

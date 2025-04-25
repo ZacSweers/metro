@@ -120,4 +120,8 @@ internal object Keys {
   data object InstanceFieldAccessor : GeneratedDeclarationKey() {
     override fun toString() = "InstanceFieldAccessor"
   }
+
+  data object ContributedGraph : GeneratedDeclarationKey() {
+    override fun toString() = "ContributedGraph"
+  }
 }

@@ -31,6 +31,12 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     }
 
     @Test
+    @TestMetadata("ContributingGraphExtensions.kt")
+    public void testContributingGraphExtensions() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingGraphExtensions.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingTypes.kt")
     public void testContributingTypes() {
       runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypes.kt");

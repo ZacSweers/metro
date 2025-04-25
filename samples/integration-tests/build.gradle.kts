@@ -18,7 +18,6 @@ kotlin {
   configureOrCreateNativePlatforms()
 
   sourceSets {
-    commonMain { dependencies { implementation(project(":runtime")) } }
     commonTest {
       dependencies {
         implementation(libs.kotlin.test)
@@ -51,14 +50,6 @@ metro { debug.set(false) }
 
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
-}
-
-configurations.configureEach {
-  resolutionStrategy.dependencySubstitution {
-    substitute(module("dev.zacsweers.metro:runtime")).using(project(":runtime"))
-    substitute(module("dev.zacsweers.metro:runtime-jvm")).using(project(":runtime"))
-    substitute(module("dev.zacsweers.metro:compiler")).using(project(":compiler"))
-  }
 }
 
 // Sourced from https://kotlinlang.org/docs/native-target-support.html

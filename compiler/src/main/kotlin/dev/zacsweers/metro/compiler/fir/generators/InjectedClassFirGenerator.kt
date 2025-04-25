@@ -356,12 +356,12 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
       val classesToGenerate = mutableSetOf<Name>()
       if (injectedClass.isConstructorInjected) {
-        val classId = classSymbol.classId.createNestedClassId(Symbols.Names.metroFactory)
+        val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroFactory)
         injectFactoryClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
       if (declaredInjectedMembers.isNotEmpty()) {
-        val classId = classSymbol.classId.createNestedClassId(Symbols.Names.metroMembersInjector)
+        val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroMembersInjector)
         membersInjectorClassIdsToInjectedClass[classId] = injectedClass
         classesToGenerate += classId.shortClassName
       }
@@ -387,7 +387,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         // It's a factory's companion object, just generate the declaration
         createCompanionObject(owner, companionKey).symbol
       }
-      Symbols.Names.metroFactory -> {
+      Symbols.Names.MetroFactory -> {
         val classId = owner.classId.createNestedClassId(name)
         val injectedClass = injectFactoryClassIdsToInjectedClass[classId] ?: return null
 
@@ -428,7 +428,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           .symbol
           .also { injectFactoryClassIdsToSymbols[it.classId] = it }
       }
-      Symbols.Names.metroMembersInjector -> {
+      Symbols.Names.MetroMembersInjector -> {
         val classId = owner.classId.createNestedClassId(name)
         val injectedClass = membersInjectorClassIdsToInjectedClass[classId] ?: return null
 
@@ -443,7 +443,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             }
 
             superType { typeParameterRefs ->
-              Symbols.ClassIds.membersInjector.constructClassLikeType(
+              Symbols.ClassIds.MembersInjector.constructClassLikeType(
                 arrayOf(owner.constructType(typeParameterRefs))
               )
             }
@@ -499,7 +499,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     }
     if (isFactoryCreatorClass) {
       names += Symbols.Names.create
-      names += Symbols.Names.newInstanceFunction
+      names += Symbols.Names.newInstance
     }
 
     // MembersInjector class
@@ -619,7 +619,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           }
         }
         .apply {
-          if (function.hasAnnotation(Symbols.ClassIds.composable, session)) {
+          if (function.hasAnnotation(Symbols.ClassIds.Composable, session)) {
             replaceAnnotationsSafe(
               listOf(buildComposableAnnotation(), buildNonRestartableAnnotation())
             )
@@ -689,10 +689,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               injectedClass.allParameters,
             )
           }
-          Symbols.Names.newInstanceFunction -> {
+          Symbols.Names.newInstance -> {
             buildNewInstanceFunction(
               nonNullContext,
-              Symbols.Names.newInstanceFunction,
+              Symbols.Names.newInstance,
               returnType,
               null,
               null,
@@ -715,7 +715,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               {
                 val targetClassType =
                   targetClass.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
-                Symbols.ClassIds.membersInjector.constructClassLikeType(arrayOf(targetClassType))
+                Symbols.ClassIds.MembersInjector.constructClassLikeType(arrayOf(targetClassType))
               },
               null,
               null,

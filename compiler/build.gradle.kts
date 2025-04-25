@@ -8,6 +8,7 @@ plugins {
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
   alias(libs.plugins.shadow)
+  alias(libs.plugins.testkit)
 }
 
 kotlin {
@@ -43,7 +44,10 @@ buildConfig {
   }
 }
 
-tasks.test { maxParallelForks = Runtime.getRuntime().availableProcessors() * 2 }
+tasks.test {
+  maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
+  systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
+}
 
 wire { kotlin { javaInterop = false } }
 

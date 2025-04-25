@@ -126,6 +126,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val BINDS_ERROR by error1<String>(NAME_IDENTIFIER)
   val AGGREGATION_ERROR by error1<String>(NAME_IDENTIFIER)
   val CREATE_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)
+  val AS_CONTRIBUTION_ERROR by error1<String>(NAME_IDENTIFIER)
   val MULTIBINDS_ERROR by error1<String>(NAME_IDENTIFIER)
   val MULTIBINDS_OVERRIDE_ERROR by error1<String>(OVERRIDE_MODIFIER)
   val MEMBERS_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
@@ -139,7 +140,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       // Common errors
       put(
         FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
-        "{0} classes must have exactly one abstract function but found {1}.",
+        "{0} must have exactly one abstract function but found {1}.",
         TO_STRING,
         TO_STRING,
       )
@@ -187,6 +188,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(PROVIDES_WARNING, "{0}", STRING)
       put(AGGREGATION_ERROR, "{0}", STRING)
       put(CREATE_GRAPH_ERROR, "{0}", STRING)
+      put(AS_CONTRIBUTION_ERROR, "{0}", STRING)
       put(MEMBERS_INJECT_ERROR, "{0}", STRING)
       put(MEMBERS_INJECT_STATUS_ERROR, "{0}", STRING)
       put(MEMBERS_INJECT_WARNING, "{0}", STRING)

@@ -125,7 +125,7 @@ private constructor(
    * [NameAllocator.get].
    */
   fun newName(suggestion: String, tag: Any = Uuid.random().toString()): String {
-    var result = buildString { append(dev.zacsweers.metro.compiler.toJavaIdentifier(suggestion)) }
+    var result = buildString { append(toJavaIdentifier(suggestion)) }
     var count = 1
     while (!allocatedNames.add(result)) {
       count++
@@ -157,12 +157,8 @@ private constructor(
    *
    * @return A deep copy of this NameAllocator.
    */
-  fun copy(): dev.zacsweers.metro.compiler.NameAllocator {
-    return dev.zacsweers.metro.compiler.NameAllocator(
-      allocatedNames.toMutableSet(),
-      tagToName.toMutableMap(),
-      mode = mode,
-    )
+  fun copy(): NameAllocator {
+    return NameAllocator(allocatedNames.toMutableSet(), tagToName.toMutableMap(), mode = mode)
   }
 
   internal enum class Mode {
@@ -194,9 +190,6 @@ private fun toJavaIdentifier(suggestion: String) = buildString {
   }
 }
 
-internal fun dev.zacsweers.metro.compiler.NameAllocator.newName(
-  suggestion: Name,
-  tag: Any = Uuid.random().toString(),
-): Name {
+internal fun NameAllocator.newName(suggestion: Name, tag: Any = Uuid.random().toString()): Name {
   return newName(suggestion.asString(), tag).asName()
 }
