@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.incremental
 
-import com.autonomousapps.kit.AbstractGradleProject
 import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
-import com.autonomousapps.kit.GradleProject
-import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
@@ -22,15 +19,8 @@ class ICTests : BaseIncrementalCompilationTest() {
    */
   @Test
   fun removingDependencyPropertyShouldFailOnIc() {
-    class Fixture : AbstractGradleProject() {
-      val gradleProject: GradleProject
-        get() =
-          newGradleProjectBuilder(DslKind.KOTLIN)
-            .withRootProject {
-              sources = listOf(appGraph, featureGraph, featureScreen)
-              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
-            }
-            .write()
+    class Fixture : MetroProject() {
+      override fun sources() = listOf(appGraph, featureGraph, featureScreen)
 
       private val appGraph =
         source(
@@ -115,15 +105,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun includesDependencyWithRemovedAccessorsShouldBeDetected() {
-    class Fixture : AbstractGradleProject() {
-      val gradleProject: GradleProject
-        get() =
-          newGradleProjectBuilder(DslKind.KOTLIN)
-            .withRootProject {
-              sources = listOf(baseGraph, serviceProvider, target)
-              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
-            }
-            .write()
+    class Fixture : MetroProject() {
+      override fun sources() = listOf(baseGraph, serviceProvider, target)
 
       private val baseGraph =
         source(
@@ -185,18 +168,10 @@ class ICTests : BaseIncrementalCompilationTest() {
       )
   }
 
-  // TODO accessor change isn't being detected
   @Test
   fun extendingGraphChangesDetected() {
-    class Fixture : AbstractGradleProject() {
-      val gradleProject: GradleProject
-        get() =
-          newGradleProjectBuilder(DslKind.KOTLIN)
-            .withRootProject {
-              sources = listOf(childGraph, appGraph, target)
-              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
-            }
-            .write()
+    class Fixture : MetroProject() {
+      override fun sources() = listOf(childGraph, appGraph, target)
 
       private val childGraph =
         source(
@@ -250,20 +225,153 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.output)
-      .contains("[Metro/MissingBinding] Missing bindings for: [kotlin.String")
+      .contains(
+        """
+          e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          
+              kotlin.String is injected at
+                  [test.ChildGraph] test.Target(…, string)
+              test.Target is requested at
+                  [test.ChildGraph] test.ChildGraph#target
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun supertypeProviderChangesDetected() {
+    class Fixture : MetroProject() {
+      override fun sources() = listOf(stringProvider, appGraph, target)
+
+      private val appGraph =
+        source(
+          """
+          @DependencyGraph
+          interface AppGraph : StringProvider {
+            val target: Target
+          }
+          """
+            .trimIndent()
+        )
+
+      val stringProvider =
+        source(
+          """
+          interface StringProvider {
+            @Provides
+            fun provideString(): String = ""
+          }
+          """
+            .trimIndent()
+        )
+
+      private val target = source("@Inject class Target(val string: String)")
+    }
+
+    val fixture = Fixture()
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.stringProvider,
+      """
+      interface StringProvider {
+        // Removed provider
+        // @Provides
+        // fun provideString(): String = ""
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.output)
+      .contains(
+        """
+          e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          
+              kotlin.String is injected at
+                  [test.AppGraph] test.Target(…, string)
+              test.Target is requested at
+                  [test.AppGraph] test.AppGraph#target
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun supertypeProviderCompanionChangesDetected() {
+    class Fixture : MetroProject() {
+      override fun sources() = listOf(stringProvider, appGraph, target)
+
+      private val appGraph =
+        source(
+          """
+          @DependencyGraph
+          interface AppGraph : StringProvider {
+            val target: Target
+          }
+          """
+            .trimIndent()
+        )
+
+      val stringProvider =
+        source(
+          """
+          interface StringProvider {
+            companion object {
+              @Provides
+              fun provideString(): String = ""
+            }
+          }
+          """
+            .trimIndent()
+        )
+
+      private val target = source("@Inject class Target(val string: String)")
+    }
+
+    val fixture = Fixture()
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.stringProvider,
+      """
+      interface StringProvider {
+        companion object {
+          // Removed provider
+          // @Provides
+          // fun provideString(): String = ""
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.output)
+      .contains(
+        """
+          e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          
+              kotlin.String is injected at
+                  [test.AppGraph] test.Target(…, string)
+              test.Target is requested at
+                  [test.AppGraph] test.AppGraph#target
+        """
+          .trimIndent()
+      )
   }
 
   @Test
   fun newContributesIntoSetDetected() {
-    class Fixture : AbstractGradleProject() {
-      val gradleProject: GradleProject
-        get() =
-          newGradleProjectBuilder(DslKind.KOTLIN)
-            .withRootProject {
-              sources = listOf(exampleGraph, contributedInterfaces)
-              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
-            }
-            .write()
+    class Fixture : MetroProject() {
+      override fun sources() = listOf(exampleGraph, contributedInterfaces)
 
       private val exampleGraph =
         source(
@@ -320,15 +428,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun newContributesToDetected() {
-    class Fixture : AbstractGradleProject() {
-      val gradleProject: GradleProject
-        get() =
-          newGradleProjectBuilder(DslKind.KOTLIN)
-            .withRootProject {
-              sources = listOf(exampleGraph, contributedInterfaces)
-              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
-            }
-            .write()
+    class Fixture : MetroProject() {
+      override fun sources() = listOf(exampleGraph, contributedInterfaces)
 
       private val exampleGraph =
         source(
