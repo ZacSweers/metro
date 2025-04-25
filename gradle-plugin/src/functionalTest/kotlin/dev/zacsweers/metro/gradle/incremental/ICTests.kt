@@ -7,8 +7,6 @@ import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
-import com.autonomousapps.kit.Source.Companion.kotlin
-import com.autonomousapps.kit.gradle.Plugin
 import com.google.common.truth.Truth.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
@@ -24,102 +22,35 @@ class ICTests : BaseIncrementalCompilationTest() {
    */
   @Test
   fun removingDependencyPropertyShouldFailOnIc() {
-    val fixture = Fixture314()
-    val project = fixture.gradleProject
-
-    // First build should succeed
-    val firstBuildResult = build(project.rootDir, "compileKotlin")
-    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
-
-    // Modify the FeatureScreen class to comment out the dependency property
-    modifyKotlinFile(
-      project.rootDir,
-      "com.example",
-      "FeatureScreen.kt",
-      """
-            package com.example
-
-            import dev.zacsweers.metro.ContributesTo
-            import dev.zacsweers.metro.Inject
-
-            interface Dependency
-
-            class FeatureScreen {
-                @Inject
-                lateinit var dependency: Dependency
-
-                @ContributesTo(Unit::class)
-                interface ServiceProvider {
-                    // val dependency: Dependency
-                }
+    class Fixture : AbstractGradleProject() {
+      val gradleProject: GradleProject
+        get() =
+          newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = listOf(appGraph, featureGraph, featureScreen)
+              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
             }
-        """
-        .trimIndent(),
-    )
+            .write()
 
-    // Second build should fail correctly on a missing binding
-    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
-
-    // Verify that the build failed with the expected error message
-    assertThat(secondBuildResult.output)
-      .contains("[Metro/MissingBinding] Missing bindings for: [com.example.Dependency")
-  }
-
-  class Fixture314 : AbstractGradleProject() {
-
-    // Injected into functionalTest JVM by the plugin
-    // Also available via AbstractGradleProject.PLUGIN_UNDER_TEST_VERSION
-    private val pluginVersion = PLUGIN_UNDER_TEST_VERSION
-
-    val gradleProject: GradleProject
-      get() = build()
-
-    private fun build(): GradleProject {
-      return newGradleProjectBuilder(DslKind.KOTLIN)
-        .withRootProject {
-          sources = listOf(appGraph, featureGraph, featureScreen)
-          withBuildScript {
-            plugins(
-              Plugin("org.jetbrains.kotlin.jvm", "2.1.20"),
-              Plugin("dev.zacsweers.metro", pluginVersion),
-            )
-          }
-        }
-        .write()
-    }
-
-    private val appGraph =
-      kotlin(
+      private val appGraph =
+        source(
           """
-          package com.example
-        
-          import dev.zacsweers.metro.ContributesBinding
-          import dev.zacsweers.metro.DependencyGraph
-          import dev.zacsweers.metro.Inject
-        
           @DependencyGraph(Unit::class)
           interface AppGraph
-        
+
           @Inject
           @ContributesBinding(Unit::class)
           class DependencyImpl : Dependency
           """
         )
-        .withPath("com.example", "AppGraph")
-        .build()
 
-    private val featureGraph =
-      kotlin(
+      private val featureGraph =
+        source(
           """
-          package com.example
-    
-          import dev.zacsweers.metro.DependencyGraph
-          import dev.zacsweers.metro.Includes
-    
           @DependencyGraph
           interface FeatureGraph {
               fun inject(screen: FeatureScreen)
-    
+
               @DependencyGraph.Factory
               interface Factory {
                   fun create(
@@ -129,51 +60,109 @@ class ICTests : BaseIncrementalCompilationTest() {
           }
           """
         )
-        .withPath("com.example", "FeatureGraph")
-        .build()
 
-    private val featureScreen =
-      kotlin(
+      val featureScreen =
+        source(
           """
-            package com.example
-    
-            import dev.zacsweers.metro.ContributesTo
-            import dev.zacsweers.metro.Inject
-    
-            interface Dependency
-    
             class FeatureScreen {
                 @Inject
                 lateinit var dependency: Dependency
-    
+
                 @ContributesTo(Unit::class)
                 interface ServiceProvider {
                     val dependency: Dependency // comment this line to break incremental
                 }
             }
+
+            interface Dependency
           """
         )
-        .withPath("com.example", "FeatureScreen")
-        .build()
+    }
+
+    val fixture = Fixture()
+    val project = fixture.gradleProject
+
+    // First build should succeed
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Modify the FeatureScreen class to comment out the dependency property
+    project.modify(
+      fixture.featureScreen,
+      """
+      class FeatureScreen {
+          @Inject
+          lateinit var dependency: Dependency
+
+          @ContributesTo(Unit::class)
+          interface ServiceProvider {
+              // val dependency: Dependency
+          }
+      }
+
+      interface Dependency
+      """
+        .trimIndent(),
+    )
+
+    // Second build should fail correctly on a missing binding
+    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+
+    // Verify that the build failed with the expected error message
+    assertThat(secondBuildResult.output)
+      .contains("[Metro/MissingBinding] Missing bindings for: [test.Dependency")
   }
 
   @Test
   fun includesDependencyWithRemovedAccessorsShouldBeDetected() {
-    val fixture = FixtureIncludes()
+    class Fixture : AbstractGradleProject() {
+      val gradleProject: GradleProject
+        get() =
+          newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = listOf(baseGraph, serviceProvider, target)
+              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
+            }
+            .write()
+
+      private val baseGraph =
+        source(
+          """
+          @DependencyGraph 
+          interface BaseGraph {
+              val target: Target
+          
+              @DependencyGraph.Factory
+              interface Factory {
+                  fun create(@Includes provider: ServiceProvider): BaseGraph
+              }
+          }
+          """
+            .trimIndent()
+        )
+
+      val serviceProvider =
+        source(
+          """
+          interface ServiceProvider {
+            val dependency: String
+          }
+          """
+            .trimIndent()
+        )
+
+      private val target = source("@Inject class Target(val string: String)")
+    }
+
+    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    modifyKotlinFile(
-      project.rootDir,
-      "com.example",
-      "ServiceProvider.kt",
+    project.modify(
+      fixture.serviceProvider,
       """
-      package com.example
-    
-      import dev.zacsweers.metro.ContributesTo
-  
       interface ServiceProvider {
           // val dependency: String // Removed accessor
       }
@@ -186,106 +175,69 @@ class ICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-        
+
             kotlin.String is injected at
-                [com.example.BaseGraph] com.example.Target(…, string)
-            com.example.Target is requested at
-                [com.example.BaseGraph] com.example.BaseGraph#target
+                [test.BaseGraph] test.Target(…, string)
+            test.Target is requested at
+                [test.BaseGraph] test.BaseGraph#target
       """
           .trimIndent()
       )
   }
 
-  class FixtureIncludes : AbstractGradleProject() {
-    private val pluginVersion = PLUGIN_UNDER_TEST_VERSION
-
-    val gradleProject: GradleProject
-      get() = build()
-
-    private fun build(): GradleProject {
-      return newGradleProjectBuilder(DslKind.KOTLIN)
-        .withRootProject {
-          sources = listOf(baseGraph, serviceProvider, target)
-          withBuildScript {
-            plugins(
-              Plugin("org.jetbrains.kotlin.jvm", "2.1.20"),
-              Plugin("dev.zacsweers.metro", pluginVersion),
-            )
-          }
-        }
-        .write()
-    }
-
-    private val baseGraph =
-      kotlin(
-          """
-      package com.example
-    
-      import dev.zacsweers.metro.DependencyGraph
-      import dev.zacsweers.metro.Includes
-  
-      @DependencyGraph 
-      interface BaseGraph {
-          val target: Target
-  
-          @DependencyGraph.Factory
-          interface Factory {
-              fun create(@Includes provider: ServiceProvider): BaseGraph
-          }
-      }
-    """
-        )
-        .withPath("com.example", "BaseGraph")
-        .build()
-
-    private val serviceProvider =
-      kotlin(
-          """
-      package com.example
-    
-      import dev.zacsweers.metro.ContributesTo
-  
-      interface ServiceProvider {
-        val dependency: String
-      }
-    """
-        )
-        .withPath("com.example", "ServiceProvider")
-        .build()
-
-    private val target =
-      kotlin(
-          """
-      package com.example
-    
-      import dev.zacsweers.metro.Inject
-  
-      @Inject 
-      class Target(val string: String)
-    """
-        )
-        .withPath("com.example", "Target")
-        .build()
-  }
-
   // TODO accessor change isn't being detected
   @Test
   fun extendingGraphChangesDetected() {
-    val fixture = FixtureExtends()
+    class Fixture : AbstractGradleProject() {
+      val gradleProject: GradleProject
+        get() =
+          newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = listOf(childGraph, appGraph, target)
+              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
+            }
+            .write()
+
+      private val childGraph =
+        source(
+          """
+          @DependencyGraph
+          interface ChildGraph {
+            val target: Target
+          
+            @DependencyGraph.Factory
+            interface Factory {
+              fun create(@Extends appGraph: AppGraph): ChildGraph
+            }
+          }
+          """
+            .trimIndent()
+        )
+
+      val appGraph =
+        source(
+          """
+          @DependencyGraph(isExtendable = true)
+          interface AppGraph {
+            @Provides
+            fun provideString(): String = ""
+          }
+          """
+            .trimIndent()
+        )
+
+      private val target = source("@Inject class Target(val string: String)")
+    }
+
+    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    modifyKotlinFile(
-      project.rootDir,
-      "com.example",
-      "AppGraph.kt",
+    project.modify(
+      fixture.appGraph,
       """
-      package com.example
-    
-      import dev.zacsweers.metro.DependencyGraph
-  
       @DependencyGraph(isExtendable = true)
       interface AppGraph {
         // Removed provider
@@ -301,103 +253,54 @@ class ICTests : BaseIncrementalCompilationTest() {
       .contains("[Metro/MissingBinding] Missing bindings for: [kotlin.String")
   }
 
-  class FixtureExtends : AbstractGradleProject() {
-    private val pluginVersion = PLUGIN_UNDER_TEST_VERSION
-
-    val gradleProject: GradleProject
-      get() = build()
-
-    private fun build(): GradleProject {
-      return newGradleProjectBuilder(DslKind.KOTLIN)
-        .withRootProject {
-          sources = listOf(childGraph, appGraph, target)
-          withBuildScript {
-            plugins(
-              Plugin("org.jetbrains.kotlin.jvm", "2.1.20"),
-              Plugin("dev.zacsweers.metro", pluginVersion),
-            )
-          }
-        }
-        .write()
-    }
-
-    private val childGraph =
-      kotlin(
-          """
-      package com.example
-    
-      import dev.zacsweers.metro.DependencyGraph
-      import dev.zacsweers.metro.Extends
-  
-      @DependencyGraph
-      interface ChildGraph {
-        val target: Target
-        
-        @DependencyGraph.Factory
-        interface Factory {
-          fun create(@Extends appGraph: AppGraph): ChildGraph
-        }
-      }
-    """
-        )
-        .withPath("com.example", "ChildGraph")
-        .build()
-
-    private val appGraph =
-      kotlin(
-          """
-      package com.example
-    
-      import dev.zacsweers.metro.DependencyGraph
-      import dev.zacsweers.metro.Provides
-  
-      @DependencyGraph(isExtendable = true)
-      interface AppGraph {
-        @Provides
-        fun provideString(): String = ""
-      }
-    """
-        )
-        .withPath("com.example", "AppGraph")
-        .build()
-
-    private val target =
-      kotlin(
-          """
-      package com.example
-  
-      import dev.zacsweers.metro.Inject
-  
-      @Inject 
-      class Target(val string: String)
-    """
-        )
-        .withPath("com.example", "Target")
-        .build()
-  }
-
   @Test
   fun newContributesIntoSetDetected() {
-    val fixture = FixtureContributesIntoSet()
+    class Fixture : AbstractGradleProject() {
+      val gradleProject: GradleProject
+        get() =
+          newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = listOf(exampleGraph, contributedInterfaces)
+              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
+            }
+            .write()
+
+      private val exampleGraph =
+        source(
+          """
+            @DependencyGraph(Unit::class)
+            interface ExamplGraph {
+              val set: Set<ContributedInterface>
+            }
+            interface ContributedInterface
+          """
+            .trimIndent()
+        )
+
+      val contributedInterfaces =
+        source(
+          """
+            @Inject
+            @ContributesIntoSet(Unit::class)
+            class Impl1 : ContributedInterface
+          """
+            .trimIndent()
+        )
+    }
+
+    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    modifyKotlinFile(
-      project.rootDir,
-      "com.example",
-      "ContributedInterfaces.kt",
+    project.modify(
+      fixture.contributedInterfaces,
       """
-      package com.example
-  
-      import dev.zacsweers.metro.ContributesIntoSet
-      import dev.zacsweers.metro.Inject
-  
       @Inject
       @ContributesIntoSet(Unit::class)
       class Impl1 : ContributedInterface
-    
+
       @Inject
       @ContributesIntoSet(Unit::class)
       class NewContribution : ContributedInterface
@@ -408,86 +311,58 @@ class ICTests : BaseIncrementalCompilationTest() {
     val secondBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    // TODO verify the new contribution was added
-    assertThat(secondBuildResult.output).contains("Processing contribution: NewContribution")
-  }
-
-  class FixtureContributesIntoSet : AbstractGradleProject() {
-    private val pluginVersion = PLUGIN_UNDER_TEST_VERSION
-
-    val gradleProject: GradleProject
-      get() = build()
-
-    private fun build(): GradleProject {
-      return newGradleProjectBuilder(DslKind.KOTLIN)
-        .withRootProject {
-          sources = listOf(exampleGraph, contributedInterfaces)
-          withBuildScript {
-            plugins(
-              Plugin("org.jetbrains.kotlin.jvm", "2.1.20"),
-              Plugin("dev.zacsweers.metro", pluginVersion),
-            )
-          }
-        }
-        .write()
-    }
-
-    private val exampleGraph =
-      kotlin(
-          """
-      package com.example
-    
-      import dev.zacsweers.metro.DependencyGraph
-      
-      interface ContributedInterface
-  
-      @DependencyGraph(Unit::class)
-      interface ExamplGraph {
-        val set: Set<ContributedInterface>
-      }
-    """
-        )
-        .withPath("com.example", "ExamplGraph")
-        .build()
-
-    private val contributedInterfaces =
-      kotlin(
-          """
-      package com.example
-      
-      import dev.zacsweers.metro.ContributesIntoSet
-      import dev.zacsweers.metro.Inject
-  
-      @Inject
-      @ContributesIntoSet(Unit::class)
-      class Impl1 : ContributedInterface
-    """
-        )
-        .withPath("com.example", "ContributedInterfaces")
-        .build()
+    // Verify that the new contribution is included in the interfaces
+    val classLoader = project.classLoader()
+    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    assertThat(exampleGraph.interfaces.map { it.name })
+      .contains("test.NewContribution\$\$\$MetroContribution")
   }
 
   @Test
   fun newContributesToDetected() {
-    val fixture = FixtureContributesTo()
+    class Fixture : AbstractGradleProject() {
+      val gradleProject: GradleProject
+        get() =
+          newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = listOf(exampleGraph, contributedInterfaces)
+              withBuildScript { plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro) }
+            }
+            .write()
+
+      private val exampleGraph =
+        source(
+          """
+          interface ContributedInterface
+
+          @DependencyGraph(Unit::class)
+          interface ExamplGraph
+          """
+            .trimIndent()
+        )
+
+      val contributedInterfaces =
+        source(
+          """
+          @ContributesTo(Unit::class)
+          interface ContributedInterface1
+          """
+            .trimIndent()
+        )
+    }
+
+    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    modifyKotlinFile(
-      project.rootDir,
-      "com.example",
-      "ContributedInterfaces.kt",
+    project.modify(
+      fixture.contributedInterfaces,
       """
-      package com.example
-  
-      import dev.zacsweers.metro.ContributesTo
-      import dev.zacsweers.metro.Inject
-  
       @ContributesTo(Unit::class)
       interface ContributedInterface1
-  
+
       @ContributesTo(Unit::class)
       interface ContributedInterface2
       """
@@ -497,67 +372,11 @@ class ICTests : BaseIncrementalCompilationTest() {
     val secondBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-    // TODO verify the new contribution was added
-    assertThat(secondBuildResult.output).contains("Processing contribution: NewContribution")
-  }
-
-  class FixtureContributesTo : AbstractGradleProject() {
-    private val pluginVersion = PLUGIN_UNDER_TEST_VERSION
-
-    val gradleProject: GradleProject
-      get() = build()
-
-    private fun build(): GradleProject {
-      return newGradleProjectBuilder(DslKind.KOTLIN)
-        .withRootProject {
-          sources = listOf(exampleGraph, contributedInterfaces)
-          withBuildScript {
-            plugins(
-              Plugin("org.jetbrains.kotlin.jvm", "2.1.20"),
-              Plugin("dev.zacsweers.metro", pluginVersion),
-            )
-
-            this.withKotlin(
-              """
-                metro { debug.set(true) }
-              """
-                .trimIndent()
-            )
-          }
-        }
-        .write()
-    }
-
-    private val exampleGraph =
-      kotlin(
-          """
-      package com.example
-    
-      import dev.zacsweers.metro.DependencyGraph
-      
-      interface ContributedInterface
-  
-      @DependencyGraph(Unit::class)
-      interface ExamplGraph
-    """
-        )
-        .withPath("com.example", "ExamplGraph")
-        .build()
-
-    private val contributedInterfaces =
-      kotlin(
-          """
-      package com.example
-      
-      import dev.zacsweers.metro.ContributesTo
-      import dev.zacsweers.metro.Inject
-  
-      @ContributesTo(Unit::class)
-      interface ContributedInterface1
-    """
-        )
-        .withPath("com.example", "ContributedInterfaces")
-        .build()
+    // Check that ContributedInterface2 was added as a supertype
+    val classLoader = project.classLoader()
+    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    assertThat(exampleGraph.interfaces.map { it.name })
+      .contains("test.ContributedInterface2\$\$\$MetroContribution")
   }
 
   // TODO detect a contribution change when a contribution is removed
