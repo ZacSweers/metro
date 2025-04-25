@@ -23,6 +23,7 @@ compose-jb = "1.7.3"
 dagger = "2.56.2"
 gjf = "1.26.0"
 jdk = "23"
+junit5 = "5.10.2"
 jvmTarget = "11"
 kct = "0.7.0"
 kotlin = "2.1.20"
@@ -58,6 +59,7 @@ mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.31.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.18.6" }
 shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta12" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.3" }
+testkit = { id = "com.autonomousapps.testkit", version = "0.10" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
@@ -146,6 +148,11 @@ picnic = "com.jakewharton.picnic:picnic:0.7.0"
 slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
 
 junit = { module = "junit:junit", version = "4.13.2" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit5" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit5" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit5" }
+testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.16"}
+testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.6.1"}
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
 kct-ksp = { module = "dev.zacsweers.kctfork:ksp", version.ref = "kct" }

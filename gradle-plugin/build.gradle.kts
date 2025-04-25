@@ -7,9 +7,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
   alias(libs.plugins.kotlin.jvm)
   `java-gradle-plugin`
-  alias(libs.plugins.dokka)
   alias(libs.plugins.mavenPublish)
   alias(libs.plugins.buildConfig)
+  alias(libs.plugins.testkit)
   alias(libs.plugins.android.lint)
 }
 
@@ -50,5 +50,24 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
+
   lintChecks(libs.androidx.lint.gradle)
+
+  functionalTestImplementation(libs.junit)
+  functionalTestImplementation(libs.truth)
+  functionalTestImplementation(libs.kotlin.stdlib)
+  functionalTestImplementation(libs.testkit.support)
+  functionalTestImplementation(libs.testkit.truth)
+  functionalTestRuntimeOnly(project(":compiler"))
+  functionalTestRuntimeOnly(project(":runtime"))
 }
+
+tasks.withType<Test>().configureEach {
+  jvmArgs(
+    "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}"
+  )
+}
+
+tasks
+  .named { it == "publishTestKitSupportForJavaPublicationToFunctionalTestRepository" }
+  .configureEach { mustRunAfter("signPluginMavenPublication") }
