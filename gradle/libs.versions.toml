@@ -151,7 +151,7 @@ junit = { module = "junit:junit", version = "4.13.2" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit5" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit5" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit5" }
-testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.16"}
+testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.18"}
 testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.6.1"}
 truth = { module = "com.google.truth:truth", version = "1.4.4" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }
