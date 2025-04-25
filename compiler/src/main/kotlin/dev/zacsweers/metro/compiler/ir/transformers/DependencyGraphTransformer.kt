@@ -2021,9 +2021,17 @@ internal class DependencyGraphTransformer(
     return parentGraph.nestedClasses.firstOrNull { it.classId == classId }
       ?: run {
         val generator = IrContributedGraphGenerator(metroContext, contributionData)
+        // Find the function declaration in the original @ContributesGraphExtension.Factory
         val sourceFunction =
-          contributedAccessor.ir.overriddenSymbolsSequence().lastOrNull()?.owner
-            ?: contributedAccessor.ir
+          contributedAccessor.ir
+            .overriddenSymbolsSequence()
+            .filter {
+              it.owner.parentClassOrNull?.isAnnotatedWithAny(
+                metroContext.symbols.classIds.contributesGraphExtensionFactoryAnnotations
+              ) == true
+            }
+            .lastOrNull()
+            ?.owner ?: contributedAccessor.ir
         generator.generateContributedGraph(
           parentGraph = parentGraph,
           sourceFactory = sourceFunction.parentAsClass,
