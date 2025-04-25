@@ -11,6 +11,7 @@ There are a few primary subprojects to consider.
 1. `:compiler` — Metro's compiler plugin implementation lives. This includes compiler-supported interop features too.
 2. `:compiler-tests` — Compiler tests using JetBrains' official compiler testing infrastructure.
 3. `:gradle-plugin` — Metro's companion Gradle plugin implementation. Mostly just an extension API and compiler plugin wiring with KGP.
+    - This is also where incremental compilation integration tests live!
 4. `:runtime` — Metro's core multiplatform runtime API. This is mostly annotations plus some small runtime APIs.
 5. `:interop-dagger` — An ancillary set of JVM-only Dagger-specific runtime APIs for interop with Dagger.
 6. `samples/` — A separate gradle project that contains several sample projects. This _includes_ the core artifacts as an included build. You can add this project in IntelliJ as another Gradle project to support developing both. There are also some integration tests in here.
