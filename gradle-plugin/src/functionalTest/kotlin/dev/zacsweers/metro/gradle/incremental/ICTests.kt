@@ -19,12 +19,13 @@ class ICTests : BaseIncrementalCompilationTest() {
    */
   @Test
   fun removingDependencyPropertyShouldFailOnIc() {
-    class Fixture : MetroProject() {
-      override fun sources() = listOf(appGraph, featureGraph, featureScreen)
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, featureGraph, featureScreen)
 
-      private val appGraph =
-        source(
-          """
+        private val appGraph =
+          source(
+            """
           @DependencyGraph(Unit::class)
           interface AppGraph
 
@@ -32,11 +33,11 @@ class ICTests : BaseIncrementalCompilationTest() {
           @ContributesBinding(Unit::class)
           class DependencyImpl : Dependency
           """
-        )
+          )
 
-      private val featureGraph =
-        source(
-          """
+        private val featureGraph =
+          source(
+            """
           @DependencyGraph
           interface FeatureGraph {
               fun inject(screen: FeatureScreen)
@@ -49,11 +50,11 @@ class ICTests : BaseIncrementalCompilationTest() {
               }
           }
           """
-        )
+          )
 
-      val featureScreen =
-        source(
-          """
+        val featureScreen =
+          source(
+            """
             class FeatureScreen {
                 @Inject
                 lateinit var dependency: Dependency
@@ -66,10 +67,9 @@ class ICTests : BaseIncrementalCompilationTest() {
 
             interface Dependency
           """
-        )
-    }
+          )
+      }
 
-    val fixture = Fixture()
     val project = fixture.gradleProject
 
     // First build should succeed
@@ -105,12 +105,13 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun includesDependencyWithRemovedAccessorsShouldBeDetected() {
-    class Fixture : MetroProject() {
-      override fun sources() = listOf(baseGraph, serviceProvider, target)
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(baseGraph, serviceProvider, target)
 
-      private val baseGraph =
-        source(
-          """
+        private val baseGraph =
+          source(
+            """
           @DependencyGraph 
           interface BaseGraph {
               val target: Target
@@ -121,23 +122,22 @@ class ICTests : BaseIncrementalCompilationTest() {
               }
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      val serviceProvider =
-        source(
-          """
+        val serviceProvider =
+          source(
+            """
           interface ServiceProvider {
             val dependency: String
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      private val target = source("@Inject class Target(val string: String)")
-    }
+        private val target = source("@Inject class Target(val string: String)")
+      }
 
-    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
@@ -170,12 +170,13 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun extendingGraphChangesDetected() {
-    class Fixture : MetroProject() {
-      override fun sources() = listOf(childGraph, appGraph, target)
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(childGraph, appGraph, target)
 
-      private val childGraph =
-        source(
-          """
+        private val childGraph =
+          source(
+            """
           @DependencyGraph
           interface ChildGraph {
             val target: Target
@@ -186,25 +187,24 @@ class ICTests : BaseIncrementalCompilationTest() {
             }
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      val appGraph =
-        source(
-          """
+        val appGraph =
+          source(
+            """
           @DependencyGraph(isExtendable = true)
           interface AppGraph {
             @Provides
             fun provideString(): String = ""
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      private val target = source("@Inject class Target(val string: String)")
-    }
+        private val target = source("@Inject class Target(val string: String)")
+      }
 
-    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
@@ -240,35 +240,35 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun supertypeProviderChangesDetected() {
-    class Fixture : MetroProject() {
-      override fun sources() = listOf(stringProvider, appGraph, target)
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(stringProvider, appGraph, target)
 
-      private val appGraph =
-        source(
-          """
+        private val appGraph =
+          source(
+            """
           @DependencyGraph
           interface AppGraph : StringProvider {
             val target: Target
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      val stringProvider =
-        source(
-          """
+        val stringProvider =
+          source(
+            """
           interface StringProvider {
             @Provides
             fun provideString(): String = ""
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      private val target = source("@Inject class Target(val string: String)")
-    }
+        private val target = source("@Inject class Target(val string: String)")
+      }
 
-    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
@@ -303,23 +303,24 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun supertypeProviderCompanionChangesDetected() {
-    class Fixture : MetroProject() {
-      override fun sources() = listOf(stringProvider, appGraph, target)
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(stringProvider, appGraph, target)
 
-      private val appGraph =
-        source(
-          """
+        private val appGraph =
+          source(
+            """
           @DependencyGraph
           interface AppGraph : StringProvider {
             val target: Target
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      val stringProvider =
-        source(
-          """
+        val stringProvider =
+          source(
+            """
           interface StringProvider {
             companion object {
               @Provides
@@ -327,13 +328,12 @@ class ICTests : BaseIncrementalCompilationTest() {
             }
           }
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      private val target = source("@Inject class Target(val string: String)")
-    }
+        private val target = source("@Inject class Target(val string: String)")
+      }
 
-    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
@@ -370,33 +370,33 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun newContributesIntoSetDetected() {
-    class Fixture : MetroProject() {
-      override fun sources() = listOf(exampleGraph, contributedInterfaces)
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(exampleGraph, contributedInterfaces)
 
-      private val exampleGraph =
-        source(
-          """
+        private val exampleGraph =
+          source(
+            """
             @DependencyGraph(Unit::class)
             interface ExamplGraph {
               val set: Set<ContributedInterface>
             }
             interface ContributedInterface
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      val contributedInterfaces =
-        source(
-          """
+        val contributedInterfaces =
+          source(
+            """
             @Inject
             @ContributesIntoSet(Unit::class)
             class Impl1 : ContributedInterface
           """
-            .trimIndent()
-        )
-    }
+              .trimIndent()
+          )
+      }
 
-    val fixture = Fixture()
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
@@ -423,36 +423,100 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExamplGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.NewContribution\$\$\$MetroContribution")
+      .contains("test.NewContribution$$\$MetroContribution")
+  }
+
+  @Test
+  fun removedContributesIntoSetDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(exampleGraph, contributedInterfaces)
+
+        private val exampleGraph =
+          source(
+            """
+            @DependencyGraph(Unit::class)
+            interface ExamplGraph {
+              val set: Set<ContributedInterface>
+            }
+            interface ContributedInterface
+          """
+              .trimIndent()
+          )
+
+        val contributedInterfaces =
+          source(
+            """
+            @Inject
+            @ContributesIntoSet(Unit::class)
+            class Impl1 : ContributedInterface
+      
+            @Inject
+            @ContributesIntoSet(Unit::class)
+            class Impl2 : ContributedInterface
+          """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Verify that the new contribution is included in the interfaces
+    with(project.classLoader()) {
+      val exampleGraph = loadClass("test.ExamplGraph")
+      assertThat(exampleGraph.interfaces.map { it.name })
+        .contains("test.Impl2$$\$MetroContribution")
+    }
+
+    project.modify(
+      fixture.contributedInterfaces,
+      """
+      @Inject
+      @ContributesIntoSet(Unit::class)
+      class Impl1 : ContributedInterface
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Verify that the removed contribution is removed from supertypes
+    val classLoader = project.classLoader()
+    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    assertThat(exampleGraph.interfaces.map { it.name })
+      .doesNotContain("test.Impl2$$\$MetroContribution")
   }
 
   @Test
   fun newContributesToDetected() {
-    class Fixture : MetroProject() {
-      override fun sources() = listOf(exampleGraph, contributedInterfaces)
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(exampleGraph, contributedInterfaces)
 
-      private val exampleGraph =
-        source(
-          """
+        private val exampleGraph =
+          source(
+            """
           interface ContributedInterface
 
           @DependencyGraph(Unit::class)
           interface ExamplGraph
           """
-            .trimIndent()
-        )
+              .trimIndent()
+          )
 
-      val contributedInterfaces =
-        source(
-          """
+        val contributedInterfaces =
+          source(
+            """
           @ContributesTo(Unit::class)
           interface ContributedInterface1
           """
-            .trimIndent()
-        )
-    }
-
-    val fixture = Fixture()
+              .trimIndent()
+          )
+      }
     val project = fixture.gradleProject
 
     val firstBuildResult = build(project.rootDir, "compileKotlin")
@@ -477,8 +541,65 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExamplGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.ContributedInterface2\$\$\$MetroContribution")
+      .contains("test.ContributedInterface2$$\$MetroContribution")
   }
 
-  // TODO detect a contribution change when a contribution is removed
+  @Test
+  fun removedContributesToDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(exampleGraph, contributedInterfaces)
+
+        private val exampleGraph =
+          source(
+            """
+          interface ContributedInterface
+
+          @DependencyGraph(Unit::class)
+          interface ExamplGraph
+          """
+              .trimIndent()
+          )
+
+        val contributedInterfaces =
+          source(
+            """
+          @ContributesTo(Unit::class)
+          interface ContributedInterface1
+
+          @ContributesTo(Unit::class)
+          interface ContributedInterface2
+          """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    with(project.classLoader()) {
+      val exampleGraph = loadClass("test.ExamplGraph")
+      assertThat(exampleGraph.interfaces.map { it.name })
+        .contains("test.ContributedInterface2$$\$MetroContribution")
+    }
+
+    project.modify(
+      fixture.contributedInterfaces,
+      """
+      @ContributesTo(Unit::class)
+      interface ContributedInterface1
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Check that ContributedInterface2 was removed as a supertype
+    val classLoader = project.classLoader()
+    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    assertThat(exampleGraph.interfaces.map { it.name })
+      .doesNotContain("test.ContributedInterface2$$\$MetroContribution")
+  }
 }
