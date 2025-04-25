@@ -112,10 +112,10 @@ class ICTests : BaseIncrementalCompilationTest() {
         private val baseGraph =
           source(
             """
-          @DependencyGraph 
+          @DependencyGraph
           interface BaseGraph {
               val target: Target
-          
+
               @DependencyGraph.Factory
               interface Factory {
                   fun create(@Includes provider: ServiceProvider): BaseGraph
@@ -180,7 +180,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           @DependencyGraph
           interface ChildGraph {
             val target: Target
-          
+
             @DependencyGraph.Factory
             interface Factory {
               fun create(@Extends appGraph: AppGraph): ChildGraph
@@ -228,7 +228,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
           e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-          
+
               kotlin.String is injected at
                   [test.ChildGraph] test.Target(…, string)
               test.Target is requested at
@@ -291,7 +291,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
           e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-          
+
               kotlin.String is injected at
                   [test.AppGraph] test.Target(…, string)
               test.Target is requested at
@@ -358,7 +358,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
           e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-          
+
               kotlin.String is injected at
                   [test.AppGraph] test.Target(…, string)
               test.Target is requested at
@@ -450,7 +450,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             @Inject
             @ContributesIntoSet(Unit::class)
             class Impl1 : ContributedInterface
-      
+
             @Inject
             @ContributesIntoSet(Unit::class)
             class Impl2 : ContributedInterface
