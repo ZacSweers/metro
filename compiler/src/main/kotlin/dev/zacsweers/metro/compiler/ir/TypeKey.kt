@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -14,12 +15,12 @@ import org.jetbrains.kotlin.ir.util.render
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 @Poko
-internal class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
-  Comparable<TypeKey> {
+internal class TypeKey(override val type: IrType, override val qualifier: IrAnnotation? = null) :
+  BaseTypeKey<IrType, IrAnnotation, TypeKey> {
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
 
-  fun copy(type: IrType = this.type, qualifier: IrAnnotation? = this.qualifier): TypeKey {
+  override fun copy(type: IrType, qualifier: IrAnnotation?): TypeKey {
     return TypeKey(type, qualifier)
   }
 
@@ -30,7 +31,7 @@ internal class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
     return cachedRender.compareTo(other.cachedRender)
   }
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     if (includeQualifier) {
       qualifier?.let {
         append(it)

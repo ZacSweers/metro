@@ -4,8 +4,9 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.WrappedType
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.backend.jvm.JvmSymbols
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
@@ -28,31 +29,19 @@ import org.jetbrains.kotlin.name.StandardClassIds
 /** A class that represents a type with contextual information. */
 @Poko
 internal class ContextualTypeKey(
-  val typeKey: TypeKey,
-  val wrappedType: WrappedType<IrType>,
-  val hasDefault: Boolean = false,
-  val isIntoMultibinding: Boolean = false,
-  @Poko.Skip val rawType: IrType? = null,
-) {
-  val isDeferrable: Boolean = wrappedType.isDeferrable()
-  val requiresProviderInstance: Boolean = isDeferrable
-
-  val isWrappedInProvider: Boolean
-    get() = wrappedType is WrappedType.Provider
-
-  val isWrappedInLazy: Boolean
-    get() = wrappedType is WrappedType.Lazy
-
-  val isLazyWrappedInProvider: Boolean
-    get() = wrappedType is WrappedType.Provider && wrappedType.innerType is WrappedType.Lazy
-
+  override val typeKey: TypeKey,
+  override val wrappedType: WrappedType<IrType>,
+  override val hasDefault: Boolean = false,
+  override val isIntoMultibinding: Boolean = false,
+  @Poko.Skip override val rawType: IrType? = null,
+) : BaseContextualTypeKey<IrType, TypeKey, ContextualTypeKey> {
   override fun toString(): String = render(short = true)
 
-  fun withTypeKey(typeKey: TypeKey, rawType: IrType? = null): ContextualTypeKey {
+  override fun withTypeKey(typeKey: TypeKey, rawType: IrType?): ContextualTypeKey {
     return ContextualTypeKey(typeKey, wrappedType, hasDefault, isIntoMultibinding, rawType)
   }
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     append(
       wrappedType.render { type ->
         if (type == typeKey.type) {

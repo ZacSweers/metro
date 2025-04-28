@@ -6,7 +6,9 @@ import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.ir.BindingStack.Entry
+import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -16,54 +18,25 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
-internal interface BindingStack {
-  val graph: IrClass
-  val entries: List<Entry>
-
-  fun push(entry: Entry)
-
-  fun pop()
-
-  fun entryFor(key: TypeKey): Entry?
-
-  fun entriesSince(key: TypeKey): List<Entry>
-
+internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Entry> {
   class Entry(
-    val contextKey: ContextualTypeKey,
-    val usage: String?,
-    val graphContext: String?,
+    override val contextKey: ContextualTypeKey,
+    override val usage: String?,
+    override val graphContext: String?,
     val declaration: IrDeclarationWithName?,
-    val displayTypeKey: TypeKey = contextKey.typeKey,
+    override val displayTypeKey: TypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
      * participate in validation.
      */
-    val isSynthetic: Boolean = false,
-  ) {
-    val typeKey: TypeKey
-      get() = contextKey.typeKey
-
-    fun render(graph: FqName, short: Boolean): String {
-      return buildString {
-        append(displayTypeKey.render(short))
-        usage?.let {
-          append(' ')
-          append(it)
-        }
-        graphContext?.let {
-          appendLine()
-          append("    ")
-          append("[${graph.asString()}]")
-          append(' ')
-          append(it)
-        }
-      }
-    }
+    override val isSynthetic: Boolean = false,
+  ) : BaseBindingStack.BaseEntry<IrType, TypeKey, ContextualTypeKey> {
 
     override fun toString(): String = render(FqName("..."), short = true)
 
@@ -193,6 +166,9 @@ internal interface BindingStack {
         override val graph
           get() = throw UnsupportedOperationException()
 
+        override val graphFqName: FqName
+          get() = throw UnsupportedOperationException()
+
         override val entries: List<Entry>
           get() = emptyList()
 
@@ -232,15 +208,15 @@ internal val BindingStack.lastEntryOrGraph
   get() = entries.firstOrNull()?.declaration ?: graph
 
 internal fun Appendable.appendBindingStack(
-  stack: BindingStack,
+  stack: BaseBindingStack<*, *, *, *>,
   indent: String = "    ",
   ellipse: Boolean = false,
   short: Boolean = true,
-) = appendBindingStackEntries(stack.graph.kotlinFqName, stack.entries, indent, ellipse, short)
+) = appendBindingStackEntries(stack.graphFqName, stack.entries, indent, ellipse, short)
 
 internal fun Appendable.appendBindingStackEntries(
   graphName: FqName,
-  entries: Collection<Entry>,
+  entries: Collection<BaseBindingStack.BaseEntry<*, *, *>>,
   indent: String = "    ",
   ellipse: Boolean = false,
   short: Boolean = true,
@@ -256,6 +232,8 @@ internal fun Appendable.appendBindingStackEntries(
 
 internal class BindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
   BindingStack {
+  override val graphFqName: FqName by unsafeLazy { graph.kotlinFqName }
+
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
   private val entrySet = mutableSetOf<TypeKey>()
