@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Symbols.FqNames.kotlinCollectionsPackageFqn
 import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
+import dev.zacsweers.metro.compiler.Symbols.StringNames.PROVIDES_CALLABLE_ID
 import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -104,8 +105,8 @@ internal class Symbols(
     val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroRuntimePackage = FqName(METRO_RUNTIME_PACKAGE)
     val GraphFactoryInvokeFunctionMarkerClass =
-      ClassIds.GraphFactoryInvokeFunctionMarkerClass.asSingleFqName()
-    val ProvidesCallableIdClass = ClassIds.ProvidesCallableId.asSingleFqName()
+      metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
+    val ProvidesCallableIdClass = metroRuntimeInternalPackage.child(PROVIDES_CALLABLE_ID.asName())
 
     fun scopeHint(scopeClassId: ClassId): FqName {
       return CallableIds.scopeHint(scopeClassId).asSingleFqName()
