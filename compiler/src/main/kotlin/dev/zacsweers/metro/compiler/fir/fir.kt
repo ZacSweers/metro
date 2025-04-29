@@ -395,9 +395,8 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
           val isAssisted =
             it.annotations.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
           if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
-            val inject = it.annotations
-              .annotationsIn(session, session.classIds.injectAnnotations)
-              .single()
+            val inject =
+              it.annotations.annotationsIn(session, session.classIds.injectAnnotations).single()
             if (KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)) {
               reporter.reportOn(
                 inject.source,
