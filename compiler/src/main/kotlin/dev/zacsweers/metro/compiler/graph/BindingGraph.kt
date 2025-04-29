@@ -3,8 +3,9 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.collections.plusAssign
 
-internal class BindingGraph<
+internal open class BindingGraph<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, *>,
@@ -65,45 +66,54 @@ internal class BindingGraph<
    */
   fun seal(onError: (String) -> Nothing = { error(it) }) {
     val stack = newBindingStack()
+    val visiting = hashSetOf<TypeKey>()
 
     /* 1. reject strict cycles / missing bindings */
-    val visiting = hashSetOf<TypeKey>()
-    fun dfsStrict(binding: Binding) {
+    fun dfsStrict(binding: Binding, contextKey: ContextualTypeKey) {
       val key = binding.typeKey
-      if (!visiting.add(key)) {
-        val cycle = stack.entriesSince(key)
-        if (cycle.isNotEmpty()) {
-          // Check if there's a deferrable type in the stack, if so we can break the cycle
-          // A -> B -> Lazy<A> is valid
-          // A -> B -> A is not
-          val hasDeferrable =
-            binding.contextualTypeKey.isDeferrable || cycle.any { it.contextKey.isDeferrable }
-          if (hasDeferrable) {
-            _deferredTypes += key
-            return
-          } else {
-            // TODO port messaging
-            onError("Strict dependency cycle:\n" + (cycle + cycle.first()).formatPath())
-          }
+      val cycle = stack.entriesSince(key)
+      if (cycle.isNotEmpty()) {
+        // Check if there's a deferrable type in the stack, if so we can break the cycle
+        // A -> B -> Lazy<A> is valid
+        // A -> B -> A is not
+        val isTrueCycle =
+          key !in deferredTypes &&
+          !contextKey.isDeferrable && cycle.none { it.contextKey.isDeferrable }
+        if (isTrueCycle) {
+          // TODO port messaging
+          onError("Strict dependency cycle:\n" + (cycle + cycle.first()).formatPath())
+        } else if (!contextKey.isIntoMultibinding) {
+          // TODO this if check isn't great
+//            stackLogger.log("Deferring ${key.render(short = true)}")
+          _deferredTypes += key
+          // We're in a loop here so nothing else needed
+          return
+        } else {
+          // Proceed
         }
       }
 
-      val binding = getOrCreateBinding(key, stack, onError)
+      if (!visiting.add(key)) return
 
+      val binding = getOrCreateBinding(key, stack, onError)
       // TODO pass this in?
       stack.push(stack.newBindingStackEntry(binding))
 
       binding.dependencies
-        .filterNot { it.isDeferrable }
-        .forEach { dfsStrict(getOrCreateBinding(it.typeKey, stack, onError)) }
+        .forEach {
+          dfsStrict(getOrCreateBinding(it.typeKey, stack, onError), it)
+        }
 
       stack.pop()
       visiting.remove(key)
     }
-    bindings.values.forEach(::dfsStrict)
+    bindings.values.forEach { binding -> dfsStrict(binding, binding.contextualTypeKey) }
+
+    visiting.clear()
 
     /* 2. cache transitive closure (all edges) */
     fun dfsAll(key: TypeKey): Set<TypeKey> {
+      if (!visiting.add(key)) return emptySet()
       return transitive.computeIfAbsent(key) {
         bindings[key]?.dependencies.orEmpty().flatMapToSet {
           Iterable {
@@ -113,7 +123,7 @@ internal class BindingGraph<
             }
           }
         }
-      }
+      }.also { visiting.remove(key) }
     }
     bindings.keys.forEach(::dfsAll)
     sealed = true
