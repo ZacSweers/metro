@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
@@ -84,7 +86,7 @@ class BindingGraphTest {
         [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
         Cycle:
             B <--> B
-        
+
         Trace:
             B
             B

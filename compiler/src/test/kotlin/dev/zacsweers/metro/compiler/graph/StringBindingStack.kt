@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
 import org.jetbrains.kotlin.backend.common.pop
@@ -34,7 +36,5 @@ internal class StringBindingStack(override val graph: String) :
     override val graphContext: String? = null,
     override val displayTypeKey: StringTypeKey = contextKey.typeKey,
     override val isSynthetic: Boolean = false,
-  ) : BaseBindingStack.BaseEntry<String, StringTypeKey, StringContextualTypeKey> {
-
-  }
+  ) : BaseBindingStack.BaseEntry<String, StringTypeKey, StringContextualTypeKey> {}
 }
