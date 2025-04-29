@@ -12,12 +12,14 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.descriptors.annotations.KotlinTarget
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
+import org.jetbrains.kotlin.fir.analysis.checkers.getAllowedAnnotationTargets
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
@@ -393,14 +395,16 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
           val isAssisted =
             it.annotations.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
           if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
-            reporter.reportOn(
-              it.annotations
-                .annotationsIn(session, session.classIds.injectAnnotations)
-                .single()
-                .source,
-              FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
-              context,
-            )
+            val inject = it.annotations
+              .annotationsIn(session, session.classIds.injectAnnotations)
+              .single()
+            if (KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)) {
+              reporter.reportOn(
+                inject.source,
+                FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
+                context,
+              )
+            }
           }
         }
       }
