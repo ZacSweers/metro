@@ -63,8 +63,8 @@ internal open class BindingGraph<
    * Note: The graph traversal employs depth-first search (DFS) for dependency validation and
    * transitive closure computation.
    *
-   * Throws:
-   * - An error if a strict dependency cycle or missing binding is encountered during validation.
+   * Calls [onError] if a strict dependency cycle or missing binding is encountered during
+   * validation.
    */
   fun seal(onError: (String) -> Nothing = { error(it) }) {
     val stack = newBindingStack()
