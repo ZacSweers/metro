@@ -2,8 +2,8 @@ package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
+import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.collections.plusAssign
 
 internal open class BindingGraph<
   Type : Any,
@@ -70,6 +70,13 @@ internal open class BindingGraph<
 
     /* 1. reject strict cycles / missing bindings */
     fun dfsStrict(binding: Binding, contextKey: ContextualTypeKey) {
+      // if (binding is Binding.Absent || binding is Binding.BoundInstance) return
+      //
+      // if (binding is Binding.Assisted) {
+      //   // TODO add another synthetic entry here pointing at the assisted factory type?
+      //   return dfs(binding.target, contextKey)
+      // }
+
       val key = binding.typeKey
       val cycle = stack.entriesSince(key)
       if (cycle.isNotEmpty()) {
@@ -78,13 +85,44 @@ internal open class BindingGraph<
         // A -> B -> A is not
         val isTrueCycle =
           key !in deferredTypes &&
-          !contextKey.isDeferrable && cycle.none { it.contextKey.isDeferrable }
+            !contextKey.isDeferrable &&
+            cycle.none { it.contextKey.isDeferrable }
         if (isTrueCycle) {
-          // TODO port messaging
-          onError("Strict dependency cycle:\n" + (cycle + cycle.first()).formatPath())
+          // Pull the root entry from the stack and add it back to the bottom of the stack to
+          // highlight the cycle
+          val fullCycle = cycle + cycle[0]
+
+          val message = buildString {
+            appendLine(
+              "[Metro/DependencyCycle] Found a dependency cycle while processing '${stack.graphFqName.asString()}'."
+            )
+            // Print a simple diagram of the cycle first
+            val indent = "    "
+            appendLine("Cycle:")
+            // If the cycle is just the same binding pointing at itself, can make that a bit more
+            // explicit with the arrow
+            val separator = if (fullCycle.size == 2) " <--> " else " --> "
+            fullCycle.joinTo(this, separator = separator, prefix = indent) {
+              it.contextKey.render(short = true)
+            }
+
+            appendLine()
+            appendLine()
+
+            // Print the full stack
+            appendLine("Trace:")
+            appendBindingStackEntries(
+              stack.graphFqName,
+              fullCycle,
+              indent = indent,
+              ellipse = true,
+              short = false,
+            )
+          }
+          onError(message)
         } else if (!contextKey.isIntoMultibinding) {
           // TODO this if check isn't great
-//            stackLogger.log("Deferring ${key.render(short = true)}")
+          //  stackLogger.log("Deferring ${key.render(short = true)}")
           _deferredTypes += key
           // We're in a loop here so nothing else needed
           return
@@ -99,10 +137,7 @@ internal open class BindingGraph<
       // TODO pass this in?
       stack.push(stack.newBindingStackEntry(binding))
 
-      binding.dependencies
-        .forEach {
-          dfsStrict(getOrCreateBinding(it.typeKey, stack, onError), it)
-        }
+      binding.dependencies.forEach { dfsStrict(getOrCreateBinding(it.typeKey, stack, onError), it) }
 
       stack.pop()
       visiting.remove(key)
@@ -114,16 +149,18 @@ internal open class BindingGraph<
     /* 2. cache transitive closure (all edges) */
     fun dfsAll(key: TypeKey): Set<TypeKey> {
       if (!visiting.add(key)) return emptySet()
-      return transitive.computeIfAbsent(key) {
-        bindings[key]?.dependencies.orEmpty().flatMapToSet {
-          Iterable {
-            iterator {
-              yield(it.typeKey)
-              yieldAll(dfsAll(it.typeKey))
+      return transitive
+        .computeIfAbsent(key) {
+          bindings[key]?.dependencies.orEmpty().flatMapToSet {
+            Iterable {
+              iterator {
+                yield(it.typeKey)
+                yieldAll(dfsAll(it.typeKey))
+              }
             }
           }
         }
-      }.also { visiting.remove(key) }
+        .also { visiting.remove(key) }
     }
     bindings.keys.forEach(::dfsAll)
     sealed = true
@@ -144,6 +181,3 @@ internal open class BindingGraph<
       )
   }
 }
-
-private fun List<BaseBindingStack.BaseEntry<*, *, *>>.formatPath(): String =
-  joinToString(" -> ") { it.contextKey.typeKey.toString() }

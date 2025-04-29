@@ -77,7 +77,21 @@ class BindingGraphTest {
     bindingGraph.put(bBinding)
 
     val exception = assertFailsWith<IllegalStateException> { bindingGraph.seal() }
-    assertThat(exception).hasMessageThat().contains("Strict dependency cycle")
+    assertThat(exception)
+      .hasMessageThat()
+      .contains(
+        """
+        [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
+        Cycle:
+            B <--> B
+        
+        Trace:
+            B
+            B
+            ...
+      """
+          .trimIndent()
+      )
   }
 
   @Test
