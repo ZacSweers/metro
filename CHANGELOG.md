@@ -16,6 +16,7 @@ Changelog
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
 - **Fix**: Fix qualifiers on bindings not getting seen by extended child graphs.
 - **Fix**: Fix qualifiers getting ignored on accessors from `@Includes` dependencies.
+- **Fix**: Fix `@ContributesGraphExtension` missing binding receiver info for contributed bindings.
 - **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
 - **Change**: Change debug reports dir to be per-compilation rather than per-platform.
 
