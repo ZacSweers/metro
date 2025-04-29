@@ -57,7 +57,7 @@ dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.31.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.18.6" }
-shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta12" }
+shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta13" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.3" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.13" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
