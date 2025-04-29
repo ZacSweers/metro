@@ -5,13 +5,15 @@ import dev.zacsweers.metro.compiler.Symbols
 
 @Poko
 internal class StringContextualTypeKey(
-  override val typeKey: StringTypeKey,
+  typeKey: StringTypeKey,
   override val hasDefault: Boolean = false,
   override val isIntoMultibinding: Boolean = false,
   @Poko.Skip override val rawType: String? = null,
 ) : BaseContextualTypeKey<String, StringTypeKey, StringContextualTypeKey> {
 
   override val wrappedType: WrappedType<String> = run { parseWrappedType(typeKey.type) }
+
+  override val typeKey = StringTypeKey(wrappedType.canonicalType())
 
   private fun parseWrappedType(type: String): WrappedType<String> {
     return when {
