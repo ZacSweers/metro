@@ -227,6 +227,125 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `multiple modules including contributed binding`() {
+    val loggedInScope =
+      compile(
+        source(
+          """
+          abstract class LoggedInScope
+        """
+            .trimIndent()
+        )
+      )
+
+    val contributedInterface =
+      compile(
+        source(
+          """
+          interface ContributedInterface
+        """
+            .trimIndent()
+        )
+      )
+
+    val loggedInGraph =
+      compile(
+        source(
+          """
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val contributedInterface: ContributedInterface
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+        """
+            .trimIndent()
+        ),
+        compilationBlock = {
+          addPreviousResultToClasspath(loggedInScope)
+          addPreviousResultToClasspath(contributedInterface)
+        },
+      )
+
+    val contributor =
+      compile(
+        source(
+          """
+          @ContributesBinding(LoggedInScope::class)
+          @Inject
+          class Impl : ContributedInterface
+        """
+            .trimIndent()
+        ),
+        compilationBlock = {
+          addPreviousResultToClasspath(loggedInScope)
+          addPreviousResultToClasspath(contributedInterface)
+        },
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      compilationBlock = {
+        addPreviousResultToClasspath(loggedInScope)
+        addPreviousResultToClasspath(loggedInGraph)
+        addPreviousResultToClasspath(contributedInterface)
+        addPreviousResultToClasspath(contributor)
+      },
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<Any>("contributedInterface")).isNotNull()
+    }
+  }
+
+  @Test
+  fun `single complex module with contributed binding`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+
+          interface ContributedInterface
+
+          @ContributesBinding(LoggedInScope::class)
+          @Inject
+          class Impl : ContributedInterface
+
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val contributedInterface: ContributedInterface
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<Any>("contributedInterface")).isNotNull()
+    }
+  }
+
+  @Test
   fun `contributed graph copies scope annotations`() {
     compile(
       source(
