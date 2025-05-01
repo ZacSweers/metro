@@ -10,6 +10,10 @@ internal class StringBinding(
   override val dependencies: List<StringContextualTypeKey> = emptyList(),
 ) : BaseBinding<String, StringTypeKey, StringContextualTypeKey> {
 
+  override fun renderLocationDiagnostic(): String {
+    return contextualTypeKey.typeKey.render(short = true)
+  }
+
   override fun toString(): String {
     return buildString {
       append(contextualTypeKey.render(short = true))

@@ -22,6 +22,7 @@ internal open class BindingGraph<
    * constructor-injected types).
    */
   private val computeBinding: (key: TypeKey) -> Binding? = { null },
+  private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
 ) {
   /* ConcurrentHashMaps for reentrant modifications */
   // Populated by initial graph setup and later seal()
@@ -36,8 +37,35 @@ internal open class BindingGraph<
   var sealed = false
     private set
 
-  fun put(binding: Binding) {
+  fun replace(binding: Binding) {
+    bindings[binding.typeKey] = binding
+  }
+
+  fun tryPut(binding: Binding, bindingStack: BindingStack) {
     check(!sealed) { "Graph already sealed" }
+    //    if (binding is Binding.Absent) {
+    //      // Don't store absent bindings
+    //      return
+    //    }
+    val key = binding.typeKey
+    if (bindings.containsKey(key)) {
+      val message = buildString {
+        appendLine(
+          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+        )
+        val existing = bindings.getValue(key)
+        val duplicate = binding
+        appendLine("├─ Binding 1: ${existing.renderLocationDiagnostic()}")
+        appendLine("├─ Binding 2: ${duplicate.renderLocationDiagnostic()}")
+        if (existing === duplicate) {
+          appendLine("├─ Bindings are the same: $existing")
+        } else if (existing == duplicate) {
+          appendLine("├─ Bindings are equal: $existing")
+        }
+        appendBindingStack(bindingStack)
+      }
+      onError(message, bindingStack)
+    }
     bindings[binding.typeKey] = binding
   }
 
@@ -66,7 +94,7 @@ internal open class BindingGraph<
    * Calls [onError] if a strict dependency cycle or missing binding is encountered during
    * validation.
    */
-  fun seal(onError: (String) -> Nothing = { error(it) }) {
+  fun seal() {
     val stack = newBindingStack()
     val visiting = hashSetOf<TypeKey>()
 
@@ -121,7 +149,7 @@ internal open class BindingGraph<
               short = false,
             )
           }
-          onError(message)
+          onError(message, stack)
         } else if (!contextKey.isIntoMultibinding) {
           // TODO this if check isn't great
           //  stackLogger.log("Deferring ${key.render(short = true)}")
@@ -135,11 +163,11 @@ internal open class BindingGraph<
 
       if (!visiting.add(key)) return
 
-      val binding = getOrCreateBinding(key, stack, onError)
+      val binding = getOrCreateBinding(key, stack)
       // TODO pass this in?
       stack.push(stack.newBindingStackEntry(binding))
 
-      binding.dependencies.forEach { dfsStrict(getOrCreateBinding(it.typeKey, stack, onError), it) }
+      binding.dependencies.forEach { dfsStrict(getOrCreateBinding(it.typeKey, stack), it) }
 
       stack.pop()
       visiting.remove(key)
@@ -171,7 +199,7 @@ internal open class BindingGraph<
   // O(1) after seal()
   fun TypeKey.dependsOn(other: TypeKey): Boolean = transitive[this]?.contains(other) == true
 
-  fun getOrCreateBinding(key: TypeKey, stack: BindingStack, onError: (String) -> Nothing): Binding {
+  fun getOrCreateBinding(key: TypeKey, stack: BindingStack): Binding {
     return bindings[key]
       ?: computeBinding(key)?.also { bindings[it.typeKey] = it }
       ?: onError(
@@ -179,7 +207,8 @@ internal open class BindingGraph<
           // TODO port messaging
           appendLine("No binding found for $key")
           appendBindingStack(stack)
-        }
+        },
+        stack,
       )
   }
 }

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
+import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import org.junit.Test
@@ -21,7 +22,8 @@ class BindingGraphTest {
   fun `put throws if graph is sealed`() {
     val graph = buildGraph { binding("key") }
 
-    val exception = assertFailsWith<IllegalStateException> { graph.put("key".typeKey.toBinding()) }
+    val exception =
+      assertFailsWith<IllegalStateException> { graph.tryPut("key".typeKey.toBinding()) }
     assertThat(exception).hasMessageThat().contains("Graph already sealed")
   }
 
@@ -75,8 +77,8 @@ class BindingGraphTest {
     val bBinding = b.toBinding(a)
     val bindingGraph = newStringBindingGraph()
 
-    bindingGraph.put(aBinding)
-    bindingGraph.put(bBinding)
+    bindingGraph.tryPut(aBinding)
+    bindingGraph.tryPut(bBinding)
 
     val exception = assertFailsWith<IllegalStateException> { bindingGraph.seal() }
     assertThat(exception)
@@ -104,8 +106,8 @@ class BindingGraphTest {
     val bBinding = b.toBinding()
     val bindingGraph = newStringBindingGraph()
 
-    bindingGraph.put(aBinding)
-    bindingGraph.put(bBinding)
+    bindingGraph.tryPut(aBinding)
+    bindingGraph.tryPut(bBinding)
     bindingGraph.seal()
 
     with(bindingGraph) {
@@ -124,9 +126,9 @@ class BindingGraphTest {
     val bindingC = c.toBinding()
     val bindingGraph = newStringBindingGraph()
 
-    bindingGraph.put(aBinding)
-    bindingGraph.put(bBinding)
-    bindingGraph.put(bindingC)
+    bindingGraph.tryPut(aBinding)
+    bindingGraph.tryPut(bBinding)
+    bindingGraph.tryPut(bindingC)
     bindingGraph.seal()
 
     with(bindingGraph) {
@@ -274,6 +276,49 @@ class BindingGraphTest {
       assertThat(deferredTypes).containsExactly("A".typeKey)
     }
   }
+
+  @Test
+  fun `duplicate bindings are an error - same key - equal bindings`() {
+    val throwable = assertFails {
+      buildGraph {
+        binding("A")
+        binding("A")
+      }
+    }
+    assertThat(throwable)
+      .hasMessageThat()
+      .contains(
+        """
+          [Metro/DuplicateBinding] Duplicate binding for A
+          ├─ Binding 1: A
+          ├─ Binding 2: A
+          ├─ Bindings are equal: A
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `duplicate bindings are an error - same key - same bindings`() {
+    val aBinding = "A".typeKey.toBinding()
+    val throwable = assertFails {
+      buildGraph {
+        tryPut(aBinding)
+        tryPut(aBinding)
+      }
+    }
+    assertThat(throwable)
+      .hasMessageThat()
+      .contains(
+        """
+          [Metro/DuplicateBinding] Duplicate binding for A
+          ├─ Binding 1: A
+          ├─ Binding 2: A
+          ├─ Bindings are the same: A
+        """
+          .trimIndent()
+      )
+  }
 }
 
 private val String.typeKey: StringTypeKey
@@ -318,10 +363,8 @@ private fun buildGraph(body: StringGraphBuilder.() -> Unit): StringGraph {
 private fun buildChainedGraph(vararg nodes: String): StringGraph {
   return buildGraph {
     for (i in 0 until nodes.size - 1) {
-      binding(nodes[i]) dependsOn nodes[i + 1]
+      nodes[i] dependsOn nodes[i + 1]
     }
-    // Make sure the last node is also in the graph
-    binding(nodes.last())
   }
 }
 
@@ -335,8 +378,12 @@ internal class StringGraphBuilder {
   }
 
   fun binding(contextKey: StringContextualTypeKey): StringContextualTypeKey {
-    graph.put(contextKey.typeKey.toBinding())
+    tryPut(contextKey.typeKey.toBinding())
     return contextKey
+  }
+
+  fun tryPut(binding: StringBinding) {
+    graph.tryPut(binding)
   }
 
   infix fun String.dependsOn(other: String): String {
@@ -356,18 +403,19 @@ internal class StringGraphBuilder {
 
   infix fun StringTypeKey.dependsOn(other: StringContextualTypeKey): StringContextualTypeKey {
     val currentDeps = graph[this]?.dependencies.orEmpty()
-    graph.put(toBinding(currentDeps + other))
+    val newBinding = StringBinding(this, currentDeps + other)
+    graph.replace(newBinding)
     if (other.typeKey !in graph && other.typeKey !in constructorInjectedTypes) {
-      graph.put(other.typeKey.toBinding())
+      graph.tryPut(other.typeKey.toBinding())
     }
     return other
   }
 
   infix fun StringBinding.dependsOn(other: StringContextualTypeKey): StringContextualTypeKey {
     val currentDeps = dependencies
-    graph.put(typeKey.toBinding(currentDeps + other))
+    graph.tryPut(typeKey.toBinding(currentDeps + other))
     if (other.typeKey !in graph) {
-      graph.put(other.typeKey.toBinding())
+      graph.tryPut(other.typeKey.toBinding())
     }
     return other
   }

@@ -12,4 +12,6 @@ internal interface BaseBinding<
     get() = contextualTypeKey.typeKey
 
   val dependencies: List<ContextualTypeKey>
+
+  fun renderLocationDiagnostic(): String
 }
