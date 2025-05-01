@@ -15,18 +15,18 @@ import org.jetbrains.kotlin.ir.util.render
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 @Poko
-internal class TypeKey(override val type: IrType, override val qualifier: IrAnnotation? = null) :
-  BaseTypeKey<IrType, IrAnnotation, TypeKey> {
+internal class IrTypeKey(override val type: IrType, override val qualifier: IrAnnotation? = null) :
+  BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
 
-  override fun copy(type: IrType, qualifier: IrAnnotation?): TypeKey {
-    return TypeKey(type, qualifier)
+  override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey {
+    return IrTypeKey(type, qualifier)
   }
 
   override fun toString(): String = cachedRender
 
-  override fun compareTo(other: TypeKey): Int {
+  override fun compareTo(other: IrTypeKey): Int {
     if (this == other) return 0
     return cachedRender.compareTo(other.cachedRender)
   }
@@ -63,14 +63,14 @@ internal class TypeKey(override val type: IrType, override val qualifier: IrAnno
   }
 }
 
-internal fun TypeKey.requireSetElementType(): IrType {
+internal fun IrTypeKey.requireSetElementType(): IrType {
   return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
 }
 
-internal fun TypeKey.requireMapKeyType(): IrType {
+internal fun IrTypeKey.requireMapKeyType(): IrType {
   return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
 }
 
-internal fun TypeKey.requireMapValueType(): IrType {
+internal fun IrTypeKey.requireMapValueType(): IrType {
   return type.expectAs<IrSimpleType>().arguments[1].typeOrFail
 }

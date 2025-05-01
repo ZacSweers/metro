@@ -410,7 +410,7 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
 
 internal fun IrBuilderWithScope.typeAsProviderArgument(
   context: IrMetroContext,
-  contextKey: ContextualTypeKey,
+  contextKey: IrContextualTypeKey,
   bindingCode: IrExpression,
   isAssisted: Boolean,
   isGraphInstance: Boolean,
@@ -562,7 +562,7 @@ internal fun IrClass.getAllSuperTypes(
 internal fun IrExpression.doubleCheck(
   irBuilder: IrBuilderWithScope,
   symbols: Symbols,
-  typeKey: TypeKey,
+  typeKey: IrTypeKey,
 ): IrExpression =
   with(irBuilder) {
     val providerType = typeKey.type.wrapInProvider(symbols.metroProvider)

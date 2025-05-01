@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.generatedClass
-import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -131,7 +131,7 @@ internal class AssistedFactoryTransformer(
         finalizeFakeOverride(implClass.thisReceiverOrFail)
         val functionParams =
           valueParameters.associateBy { valueParam ->
-            val key = ContextualTypeKey.from(metroContext, valueParam).typeKey
+            val key = IrContextualTypeKey.from(metroContext, valueParam).typeKey
             valueParam.toAssistedParameterKey(symbols, key)
           }
         body =

@@ -24,19 +24,19 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
-internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Entry> {
+internal interface BindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, Entry> {
   class Entry(
-    override val contextKey: ContextualTypeKey,
+    override val contextKey: IrContextualTypeKey,
     override val usage: String?,
     override val graphContext: String?,
     val declaration: IrDeclarationWithName?,
-    override val displayTypeKey: TypeKey = contextKey.typeKey,
+    override val displayTypeKey: IrTypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
      * participate in validation.
      */
     override val isSynthetic: Boolean = false,
-  ) : BaseBindingStack.BaseEntry<IrType, TypeKey, ContextualTypeKey> {
+  ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
 
     override fun toString(): String = render(FqName("..."), short = true)
 
@@ -45,7 +45,7 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Ent
       com.slack.circuit.star.Example1 is requested at
              [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.ExampleGraph.example1()
        */
-      fun requestedAt(contextKey: ContextualTypeKey, accessor: IrFunction): Entry {
+      fun requestedAt(contextKey: IrContextualTypeKey, accessor: IrFunction): Entry {
         val declaration =
           if (accessor is IrSimpleFunction) {
             val rawDeclaration = accessor.correspondingPropertySymbol?.owner ?: accessor
@@ -77,7 +77,7 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Ent
       com.slack.circuit.star.Example1
        */
       fun contributedToMultibinding(
-        contextKey: ContextualTypeKey,
+        contextKey: IrContextualTypeKey,
         declaration: IrDeclarationWithName?,
       ): Entry =
         Entry(
@@ -91,7 +91,7 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Ent
       /*
       com.slack.circuit.star.Example1
        */
-      fun simpleTypeRef(contextKey: ContextualTypeKey, usage: String? = null): Entry =
+      fun simpleTypeRef(contextKey: IrContextualTypeKey, usage: String? = null): Entry =
         Entry(
           contextKey = contextKey,
           usage = usage,
@@ -105,11 +105,11 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Ent
             [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.Example1(…, text2)
       */
       fun injectedAt(
-        contextKey: ContextualTypeKey,
+        contextKey: IrContextualTypeKey,
         function: IrFunction?,
         param: IrValueParameter? = null,
         declaration: IrDeclarationWithName? = param,
-        displayTypeKey: TypeKey = contextKey.typeKey,
+        displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
         val context =
@@ -142,9 +142,9 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Ent
             [com.slack.circuit.star.ExampleGraph] provideInt(...): kotlin.Int
       */
       fun providedAt(
-        contextualTypeKey: ContextualTypeKey,
+        contextualTypeKey: IrContextualTypeKey,
         function: IrFunction,
-        displayTypeKey: TypeKey = contextualTypeKey.typeKey,
+        displayTypeKey: IrTypeKey = contextualTypeKey.typeKey,
       ): Entry {
         val targetFqName = function.parent.kotlinFqName
         val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
@@ -180,11 +180,11 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, TypeKey, Ent
           // Do nothing
         }
 
-        override fun entryFor(key: TypeKey): Entry? {
+        override fun entryFor(key: IrTypeKey): Entry? {
           return null
         }
 
-        override fun entriesSince(key: TypeKey): List<Entry> {
+        override fun entriesSince(key: IrTypeKey): List<Entry> {
           return emptyList()
         }
       }
@@ -236,7 +236,7 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
 
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
-  private val entrySet = mutableSetOf<TypeKey>()
+  private val entrySet = mutableSetOf<IrTypeKey>()
   private val stack = ArrayDeque<Entry>()
   override val entries: List<Entry> = stack
 
@@ -265,7 +265,7 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
     entrySet.remove(removed.typeKey)
   }
 
-  override fun entryFor(key: TypeKey): Entry? {
+  override fun entryFor(key: IrTypeKey): Entry? {
     return if (key in entrySet) {
       stack.first { entry -> entry.typeKey == key }
     } else {
@@ -274,7 +274,7 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
   }
 
   // TODO optimize this by looking in the entrySet first
-  override fun entriesSince(key: TypeKey): List<Entry> {
+  override fun entriesSince(key: IrTypeKey): List<Entry> {
     val reversed = stack.asReversed()
     val index = reversed.indexOfFirst { !it.contextKey.isIntoMultibinding && it.typeKey == key }
     if (index == -1) return emptyList()
@@ -335,8 +335,8 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
 
 internal fun bindingStackEntryForDependency(
   binding: Binding,
-  contextKey: ContextualTypeKey,
-  targetKey: TypeKey,
+  contextKey: IrContextualTypeKey,
+  targetKey: IrTypeKey,
 ): Entry {
   return when (binding) {
     is Binding.ConstructorInjected -> {

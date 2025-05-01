@@ -7,7 +7,7 @@ import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.PROVIDES_CALLABLE_ID
-import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
@@ -206,7 +206,7 @@ internal class Symbols(
     DaggerSymbols(moduleFragment, pluginContext)
   }
 
-  fun providerSymbolsFor(key: ContextualTypeKey): ProviderSymbols {
+  fun providerSymbolsFor(key: IrContextualTypeKey): ProviderSymbols {
     return key.rawType?.let(::providerSymbolsFor) ?: metroProviderSymbols
   }
 
@@ -543,7 +543,7 @@ internal class Symbols(
 
     fun IrBuilderWithScope.invokeDoubleCheckLazy(
       metroContext: IrMetroContext,
-      contextKey: ContextualTypeKey,
+      contextKey: IrContextualTypeKey,
       arg: IrExpression,
     ): IrExpression {
       val lazySymbol = lazyFor(arg.type)
@@ -558,7 +558,7 @@ internal class Symbols(
     /** Transforms a given [metroProvider] into the [target] type's provider equivalent. */
     abstract fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
-      target: ContextualTypeKey,
+      target: IrContextualTypeKey,
     ): IrExpression
 
     /** Transforms a given [provider] into a Metro provider. */
@@ -582,7 +582,7 @@ internal class Symbols(
 
     override fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
-      target: ContextualTypeKey,
+      target: IrContextualTypeKey,
     ): IrExpression {
       // Nothing to do here!
       return metroProvider
@@ -657,7 +657,7 @@ internal class Symbols(
 
     override fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
-      target: ContextualTypeKey,
+      target: IrContextualTypeKey,
     ): IrExpression {
       val targetClassId =
         target.rawType?.classOrNull?.owner?.classId

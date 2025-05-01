@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.TypeKey
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -19,7 +19,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
   // TODO make this just alias to contextualtypekey?
   val type: IrType
   val providerType: IrType
-  val contextualTypeKey: ContextualTypeKey
+  val contextualTypeKey: IrContextualTypeKey
   val lazyType: IrType
   val isWrappedInProvider: Boolean
   val isWrappedInLazy: Boolean
@@ -28,7 +28,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val assistedIdentifier: String
   val assistedParameterKey: AssistedParameterKey
   val symbols: Symbols
-  val typeKey: TypeKey
+  val typeKey: IrTypeKey
   val isGraphInstance: Boolean
   val isBindsInstance: Boolean
   val isIncludes: Boolean
@@ -41,11 +41,11 @@ internal sealed interface Parameter : Comparable<Parameter> {
 
   // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
-  data class AssistedParameterKey(val typeKey: TypeKey, val assistedIdentifier: String) {
+  data class AssistedParameterKey(val typeKey: IrTypeKey, val assistedIdentifier: String) {
     companion object {
       fun IrValueParameter.toAssistedParameterKey(
         symbols: Symbols,
-        typeKey: TypeKey,
+        typeKey: IrTypeKey,
       ): AssistedParameterKey {
         return AssistedParameterKey(
           typeKey,

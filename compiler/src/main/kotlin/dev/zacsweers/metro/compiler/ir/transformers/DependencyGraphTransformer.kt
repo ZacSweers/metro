@@ -18,14 +18,14 @@ import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.Binding
 import dev.zacsweers.metro.compiler.ir.BindingGraph
 import dev.zacsweers.metro.compiler.ir.BindingStack
-import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContributedGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
-import dev.zacsweers.metro.compiler.ir.TypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
@@ -238,12 +238,12 @@ internal class DependencyGraphTransformer(
     val supertypes =
       graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false).memoized()
 
-    val accessors = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
-    val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, ContextualTypeKey>>()
+    val accessors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
+    val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     val scopes = mutableSetOf<IrAnnotation>()
-    val providerFactories = mutableListOf<Pair<TypeKey, ProviderFactory>>()
-    val extendedGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
-    val contributedGraphs = mutableMapOf<TypeKey, MetroSimpleFunction>()
+    val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
+    val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
+    val contributedGraphs = mutableMapOf<IrTypeKey, MetroSimpleFunction>()
 
     val isExtendable =
       dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
@@ -279,10 +279,10 @@ internal class DependencyGraphTransformer(
               it.annotations.isProvides ||
               it.annotations.isMultibinds
           }
-          .map { it to ContextualTypeKey.from(metroContext, it.ir, it.annotations) }
+          .map { it to IrContextualTypeKey.from(metroContext, it.ir, it.annotations) }
 
       // Read metadata if this is an extendable graph
-      val includedGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
+      val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
       var graphProto: DependencyGraphProto? = null
       if (isExtendable) {
         val serialized =
@@ -344,7 +344,7 @@ internal class DependencyGraphTransformer(
             }
 
             val metroFunction = metroFunctionOf(function)
-            metroFunction to ContextualTypeKey.from(this, function, metroFunction.annotations)
+            metroFunction to IrContextualTypeKey.from(this, function, metroFunction.annotations)
           }
         )
 
@@ -359,7 +359,7 @@ internal class DependencyGraphTransformer(
             val clazz =
               pluginContext.referenceClass(ClassId.fromString(graphClassId))
                 ?: error("Could not find graph class $graphClassId.")
-            val typeKey = TypeKey(clazz.defaultType)
+            val typeKey = IrTypeKey(clazz.defaultType)
             val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack)
             typeKey to node
           }
@@ -370,7 +370,7 @@ internal class DependencyGraphTransformer(
             val clazz =
               pluginContext.referenceClass(ClassId.fromString(graphClassId))
                 ?: error("Could not find graph class $graphClassId.")
-            val typeKey = TypeKey(clazz.defaultType)
+            val typeKey = IrTypeKey(clazz.defaultType)
             val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack)
             typeKey to node
           }
@@ -402,10 +402,10 @@ internal class DependencyGraphTransformer(
     }
 
     val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraph
-    val graphTypeKey = TypeKey(graphDeclaration.typeWith())
-    val graphContextKey = ContextualTypeKey.create(graphTypeKey)
+    val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
+    val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
 
-    val injectors = mutableListOf<Pair<MetroSimpleFunction, TypeKey>>()
+    val injectors = mutableListOf<Pair<MetroSimpleFunction, IrTypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
@@ -441,19 +441,19 @@ internal class DependencyGraphTransformer(
               declaration.returnType.isUnit()
           if (isContributedGraph) {
             val metroFunction = metroFunctionOf(declaration, annotations)
-            val contextKey = ContextualTypeKey.from(this, declaration, metroFunction.annotations)
+            val contextKey = IrContextualTypeKey.from(this, declaration, metroFunction.annotations)
             contributedGraphs[contextKey.typeKey] = metroFunction
           } else if (isInjector) {
             // It's an injector
             val metroFunction = metroFunctionOf(declaration, annotations)
             // key is the injected type wrapped in MembersInjector
             val typeKey =
-              TypeKey(symbols.metroMembersInjector.typeWith(declaration.valueParameters[0].type))
+              IrTypeKey(symbols.metroMembersInjector.typeWith(declaration.valueParameters[0].type))
             injectors += (metroFunction to typeKey)
           } else {
             // Accessor or binds
             val metroFunction = metroFunctionOf(declaration, annotations)
-            val contextKey = ContextualTypeKey.from(this, declaration, metroFunction.annotations)
+            val contextKey = IrContextualTypeKey.from(this, declaration, metroFunction.annotations)
             val collection =
               if (metroFunction.annotations.isBinds) {
                 bindsFunctions
@@ -487,7 +487,7 @@ internal class DependencyGraphTransformer(
 
           val getter = declaration.getter!!
           val metroFunction = metroFunctionOf(getter, annotations)
-          val contextKey = ContextualTypeKey.from(this, getter, metroFunction.annotations)
+          val contextKey = IrContextualTypeKey.from(this, getter, metroFunction.annotations)
           if (isContributedGraph) {
             contributedGraphs[contextKey.typeKey] = metroFunction
           } else {
@@ -588,7 +588,7 @@ internal class DependencyGraphTransformer(
       throw e
     }
 
-    val includedGraphNodes = mutableMapOf<TypeKey, DependencyGraphNode>()
+    val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     creator
       ?.parameters
       ?.valueParameters
@@ -750,7 +750,7 @@ internal class DependencyGraphTransformer(
 
   private fun checkGraphSelfCycle(
     graphDeclaration: IrClass,
-    graphTypeKey: TypeKey,
+    graphTypeKey: IrTypeKey,
     bindingStack: BindingStack,
   ) {
     if (bindingStack.entryFor(graphTypeKey) != null) {
@@ -792,7 +792,7 @@ internal class DependencyGraphTransformer(
     // Add aliases for all its supertypes
     // TODO dedupe supertype iteration
     for (superType in node.sourceGraph.getAllSuperTypes(pluginContext, excludeSelf = true)) {
-      val superTypeKey = TypeKey(superType)
+      val superTypeKey = IrTypeKey(superType)
       graph.addBinding(
         superTypeKey,
         Binding.Alias(
@@ -818,7 +818,7 @@ internal class DependencyGraphTransformer(
             // If it's a contributed graph, add an alias for the parent type since that's what
             // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph
             // TODO for chained children, how will they know this?
-            val parentTypeKey = TypeKey(parentType.superTypes.first())
+            val parentTypeKey = IrTypeKey(parentType.superTypes.first())
             graph.addBinding(
               parentTypeKey,
               Binding.Alias(
@@ -853,7 +853,7 @@ internal class DependencyGraphTransformer(
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
 
       val parameters = providerFactory.parameters
-      val contextKey = ContextualTypeKey(typeKey)
+      val contextKey = IrContextualTypeKey(typeKey)
 
       val provider =
         Binding.Provided(
@@ -1005,7 +1005,7 @@ internal class DependencyGraphTransformer(
             providerFieldAccessorsByName.getValue(
               "${providerField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
             )
-          val contextualTypeKey = ContextualTypeKey.from(this, accessor.ir, accessor.annotations)
+          val contextualTypeKey = IrContextualTypeKey.from(this, accessor.ir, accessor.annotations)
           val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
           if (existingBinding != null) {
             // If it's a graph type we can just proceed, can happen with common ancestors
@@ -1033,7 +1033,7 @@ internal class DependencyGraphTransformer(
             instanceFieldAccessorsByName.getValue(
               "${instanceField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
             )
-          val contextualTypeKey = ContextualTypeKey.from(this, accessor.ir, accessor.annotations)
+          val contextualTypeKey = IrContextualTypeKey.from(this, accessor.ir, accessor.annotations)
           val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
           if (existingBinding != null) {
             // If it's a graph type we can just proceed, can happen with common ancestors
@@ -1060,7 +1060,7 @@ internal class DependencyGraphTransformer(
 
     // Add MembersInjector bindings defined on injector functions
     node.injectors.forEach { (injector, typeKey) ->
-      val contextKey = ContextualTypeKey(typeKey)
+      val contextKey = IrContextualTypeKey(typeKey)
       val entry = BindingStack.Entry.requestedAt(contextKey, injector.ir)
 
       graph.addInjector(typeKey, entry)
@@ -1261,20 +1261,20 @@ internal class DependencyGraphTransformer(
     node: DependencyGraphNode,
     graphClass: IrClass,
     bindingGraph: BindingGraph,
-    deferredTypes: Set<TypeKey>,
+    deferredTypes: Set<IrTypeKey>,
   ) =
     with(graphClass) {
       val ctor = primaryConstructor!!
 
       // Fields for providers. May include both scoped and unscoped providers as well as bound
       // instances
-      val providerFields = mutableMapOf<TypeKey, IrField>()
+      val providerFields = mutableMapOf<IrTypeKey, IrField>()
       val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
       val fieldNameAllocator = dev.zacsweers.metro.compiler.NameAllocator()
       val extraConstructorStatements = mutableListOf<IrBuilderWithScope.() -> IrStatement>()
 
       // Fields for this graph and other instance params
-      val instanceFields = mutableMapOf<TypeKey, IrField>()
+      val instanceFields = mutableMapOf<IrTypeKey, IrField>()
 
       node.creator?.let { creator ->
         for ((i, param) in creator.parameters.valueParameters.withIndex()) {
@@ -1370,7 +1370,7 @@ internal class DependencyGraphTransformer(
       // Add convenience mappings for all supertypes to this field so
       // instance providers from inherited types use this instance
       for (superType in node.sourceGraph.getAllSuperTypes(pluginContext)) {
-        instanceFields[TypeKey(superType)] = thisGraphField
+        instanceFields[IrTypeKey(superType)] = thisGraphField
       }
 
       // Expose the graph as a provider field
@@ -1417,7 +1417,7 @@ internal class DependencyGraphTransformer(
             }
             .map {
               val metroFunction = metroFunctionOf(it)
-              val contextKey = ContextualTypeKey.from(metroContext, it, metroFunction.annotations)
+              val contextKey = IrContextualTypeKey.from(metroContext, it, metroFunction.annotations)
               metroFunction to contextKey
             }
         for ((accessor, contextualTypeKey) in instanceAccessors) {
@@ -1449,7 +1449,7 @@ internal class DependencyGraphTransformer(
                             it
                           }
                         }
-                        .let(::TypeKey)
+                        .let(::IrTypeKey)
                     irExprBody(
                       irInvoke(
                         dispatchReceiver =
@@ -1481,10 +1481,11 @@ internal class DependencyGraphTransformer(
         bindingDependencies.keys
           .sortedWith { a, b ->
             when {
+              // TODO eventually change this to dependsOn checks
               // If b depends on a, a should be initialized first
-              a in (bindingDependencies[b]?.dependencies.orEmpty()) -> -1
+              a in (bindingDependencies[b]?.parametersByKey.orEmpty()) -> -1
               // If a depends on b, b should be initialized first
-              b in (bindingDependencies[a]?.dependencies.orEmpty()) -> 1
+              b in (bindingDependencies[a]?.parametersByKey.orEmpty()) -> 1
               // Otherwise order doesn't matter, fall back to just type order for idempotence
               else -> a.compareTo(b)
             }
@@ -1542,7 +1543,7 @@ internal class DependencyGraphTransformer(
       // For all deferred types, assign them first as factories
       // TODO For any types that depend on deferred types, they need providers too?
       @Suppress("UNCHECKED_CAST")
-      val deferredFields: Map<TypeKey, IrField> =
+      val deferredFields: Map<IrTypeKey, IrField> =
         deferredTypes
           .associateWith { deferredTypeKey ->
             val binding = bindingDependencies[deferredTypeKey] ?: return@associateWith null
@@ -1566,7 +1567,7 @@ internal class DependencyGraphTransformer(
             providerFields[deferredTypeKey] = field
             field
           }
-          .filterValues { it != null } as Map<TypeKey, IrField>
+          .filterValues { it != null } as Map<IrTypeKey, IrField>
 
       // Create fields in dependency-order
       initOrder
@@ -1913,7 +1914,7 @@ internal class DependencyGraphTransformer(
         val targetParam = valueParameters[0]
         val binding =
           context.graph.requireBinding(typeKey, context.bindingStack) as Binding.MembersInjected
-        context.bindingStack.push(BindingStack.Entry.requestedAt(ContextualTypeKey(typeKey), this))
+        context.bindingStack.push(BindingStack.Entry.requestedAt(IrContextualTypeKey(typeKey), this))
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly
@@ -2013,7 +2014,7 @@ internal class DependencyGraphTransformer(
   }
 
   private fun getOrBuildContributedGraph(
-    typeKey: TypeKey,
+    typeKey: IrTypeKey,
     parentGraph: IrClass,
     contributedAccessor: MetroSimpleFunction,
   ): IrClass {
@@ -2044,12 +2045,12 @@ internal class DependencyGraphTransformer(
     node: DependencyGraphNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
-  ): Map<TypeKey, Binding> {
-    val bindingDependencies = mutableMapOf<TypeKey, Binding>()
+  ): Map<IrTypeKey, Binding> {
+    val bindingDependencies = mutableMapOf<IrTypeKey, Binding>()
     // Track used unscoped bindings. We only need to generate a field if they're used more than
     // once
-    val usedUnscopedBindings = mutableSetOf<TypeKey>()
-    val visitedBindings = mutableSetOf<TypeKey>()
+    val usedUnscopedBindings = mutableSetOf<IrTypeKey>()
+    val visitedBindings = mutableSetOf<IrTypeKey>()
 
     // Collect from roots
     node.accessors.forEach { (accessor, contextualTypeKey) ->
@@ -2087,14 +2088,14 @@ internal class DependencyGraphTransformer(
   }
 
   private fun findAndProcessBinding(
-    contextKey: ContextualTypeKey,
+    contextKey: IrContextualTypeKey,
     stackEntry: BindingStack.Entry,
     node: DependencyGraphNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
-    bindingDependencies: MutableMap<TypeKey, Binding>,
-    usedUnscopedBindings: MutableSet<TypeKey>,
-    visitedBindings: MutableSet<TypeKey>,
+    bindingDependencies: MutableMap<IrTypeKey, Binding>,
+    usedUnscopedBindings: MutableSet<IrTypeKey>,
+    visitedBindings: MutableSet<IrTypeKey>,
   ) {
     val key = contextKey.typeKey
     // Skip if already visited
@@ -2125,9 +2126,9 @@ internal class DependencyGraphTransformer(
     node: DependencyGraphNode,
     graph: BindingGraph,
     bindingStack: BindingStack,
-    bindingDependencies: MutableMap<TypeKey, Binding>,
-    usedUnscopedBindings: MutableSet<TypeKey>,
-    visitedBindings: MutableSet<TypeKey>,
+    bindingDependencies: MutableMap<IrTypeKey, Binding>,
+    usedUnscopedBindings: MutableSet<IrTypeKey>,
+    visitedBindings: MutableSet<IrTypeKey>,
   ) {
     val isMultibindingProvider =
       (binding is Binding.Provided || binding is Binding.Alias) &&
@@ -2303,7 +2304,7 @@ internal class DependencyGraphTransformer(
         Input type keys:
           - ${paramsToMap.map { it.typeKey }.joinToString()}
         Binding parameters (${function.kotlinFqName}):
-          - ${function.valueParameters.map { ContextualTypeKey.from(metroContext,it).typeKey }.joinToString()}
+          - ${function.valueParameters.map { IrContextualTypeKey.from(metroContext,it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
@@ -2444,8 +2445,8 @@ internal class DependencyGraphTransformer(
   private fun IrBuilderWithScope.generateBindingCode(
     binding: Binding,
     generationContext: GraphGenerationContext,
-    contextualTypeKey: ContextualTypeKey = binding.contextualTypeKey,
-    fieldInitKey: TypeKey? = null,
+    contextualTypeKey: IrContextualTypeKey = binding.contextualTypeKey,
+    fieldInitKey: IrTypeKey? = null,
   ): IrExpression {
     if (binding is Binding.Absent) {
       error("Absent bindings need to be checked prior to generateBindingCode()")
@@ -2521,7 +2522,7 @@ internal class DependencyGraphTransformer(
             factoryClass.companionObject()!!
           }
         val createFunction = creatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
-        // Must use the provider's params for TypeKey as that has qualifier
+        // Must use the provider's params for IrTypeKey as that has qualifier
         // annotations
         val args =
           generateBindingArguments(
@@ -2642,7 +2643,7 @@ internal class DependencyGraphTransformer(
       }
 
       is Binding.GraphDependency -> {
-        val ownerKey = TypeKey(binding.graph.defaultType)
+        val ownerKey = IrTypeKey(binding.graph.defaultType)
         val graphInstanceField =
           generationContext.instanceFields[ownerKey]
             ?: run {
@@ -2652,7 +2653,7 @@ internal class DependencyGraphTransformer(
             }
 
         val getterContextKey =
-          ContextualTypeKey.from(metroContext, binding.getter, metroAnnotationsOf(binding.getter))
+          IrContextualTypeKey.from(metroContext, binding.getter, metroAnnotationsOf(binding.getter))
         val lambda =
           irLambda(
             context = pluginContext,
@@ -2692,9 +2693,9 @@ internal class DependencyGraphTransformer(
 
   private fun IrBuilderWithScope.generateMultibindingExpression(
     binding: Binding.Multibinding,
-    contextualTypeKey: ContextualTypeKey,
+    contextualTypeKey: IrContextualTypeKey,
     generationContext: GraphGenerationContext,
-    fieldInitKey: TypeKey?,
+    fieldInitKey: IrTypeKey?,
   ): IrExpression {
     return if (binding.isSet) {
       generateSetMultibindingExpression(binding, contextualTypeKey, generationContext, fieldInitKey)
@@ -2706,9 +2707,9 @@ internal class DependencyGraphTransformer(
 
   private fun IrBuilderWithScope.generateSetMultibindingExpression(
     binding: Binding.Multibinding,
-    contextualTypeKey: ContextualTypeKey,
+    contextualTypeKey: IrContextualTypeKey,
     generationContext: GraphGenerationContext,
-    fieldInitKey: TypeKey?,
+    fieldInitKey: IrTypeKey?,
   ): IrExpression {
     val elementType = (binding.typeKey.type as IrSimpleType).arguments.single().typeOrFail
     val (collectionProviders, individualProviders) =
@@ -2731,7 +2732,7 @@ internal class DependencyGraphTransformer(
     binding: Binding.Multibinding,
     elementType: IrType,
     generationContext: GraphGenerationContext,
-    fieldInitKey: TypeKey?,
+    fieldInitKey: IrTypeKey?,
   ): IrExpression {
     val callee: IrSimpleFunctionSymbol
     val args: List<IrExpression>
@@ -2792,7 +2793,7 @@ internal class DependencyGraphTransformer(
     collectionProviders: List<Binding>,
     individualProviders: List<Binding>,
     generationContext: GraphGenerationContext,
-    fieldInitKey: TypeKey?,
+    fieldInitKey: IrTypeKey?,
   ): IrExpression {
     // SetFactory.<String>builder(1, 1)
     //   .addProvider(FileSystemModule_Companion_ProvideString1Factory.create())
@@ -2856,9 +2857,9 @@ internal class DependencyGraphTransformer(
 
   private fun IrBuilderWithScope.generateMapMultibindingExpression(
     binding: Binding.Multibinding,
-    contextualTypeKey: ContextualTypeKey,
+    contextualTypeKey: IrContextualTypeKey,
     generationContext: GraphGenerationContext,
-    fieldInitKey: TypeKey?,
+    fieldInitKey: IrTypeKey?,
   ): IrExpression {
     // MapFactory.<Integer, Integer>builder(2)
     //   .put(1, FileSystemModule_Companion_ProvideMapInt1Factory.create())
@@ -3011,12 +3012,12 @@ internal class DependencyGraphTransformer(
   private fun IrBuilderWithScope.generateMultibindingArgument(
     provider: Binding,
     generationContext: GraphGenerationContext,
-    fieldInitKey: TypeKey?,
+    fieldInitKey: IrTypeKey?,
   ): IrExpression {
     val bindingCode = generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)
     return typeAsProviderArgument(
       metroContext,
-      contextKey = ContextualTypeKey.create(provider.typeKey),
+      contextKey = IrContextualTypeKey.create(provider.typeKey),
       bindingCode = bindingCode,
       isAssisted = false,
       isGraphInstance = false,
@@ -3032,8 +3033,8 @@ internal class GraphGenerationContext(
   //  this is tricky because depending on the context, it's not valid
   //  to use an instance (for example - you need a provider). How can we
   //  clean this up?
-  val instanceFields: Map<TypeKey, IrField>,
-  val providerFields: Map<TypeKey, IrField>,
+  val instanceFields: Map<IrTypeKey, IrField>,
+  val providerFields: Map<IrTypeKey, IrField>,
   val multibindingProviderFields: Map<Binding.Provided, IrField>,
   val bindingStack: BindingStack,
 ) {
