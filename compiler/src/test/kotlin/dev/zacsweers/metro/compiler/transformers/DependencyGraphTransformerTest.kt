@@ -30,10 +30,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
   @Test
   fun simple() {
-    val result =
-      compile(
-        source(
-          """
+    compile(
+      source(
+        """
             @DependencyGraph(AppScope::class)
             interface ExampleGraph {
 
@@ -57,39 +56,31 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent()
-        )
+          .trimIndent()
       )
-    val graph =
-      result.ExampleGraph.generatedMetroGraphClass().createGraphViaFactory("Hello, world!")
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphViaFactory("Hello, world!")
 
-    val exampleClass = graph.callFunction<Callable<String>>("exampleClass")
-    assertThat(exampleClass.call()).isEqualTo("Hello, world!")
+      val exampleClass = graph.callFunction<Callable<String>>("exampleClass")
+      assertThat(exampleClass.call()).isEqualTo("Hello, world!")
 
-    // 2nd pass exercising creating a graph via createGraphFactory()
-    @Suppress("UNCHECKED_CAST")
-    val callableCreator =
-      result.classLoader
-        .loadClass("test.ExampleGraphKt")
-        .getDeclaredMethod("createExampleClass")
-        .invoke(null) as (String) -> Callable<String>
-    val callable = callableCreator("Hello, world!")
-    assertThat(callable.call()).isEqualTo("Hello, world!")
+      // 2nd pass exercising creating a graph via createGraphFactory()
+      @Suppress("UNCHECKED_CAST")
+      val callableCreator =
+        classLoader
+          .loadClass("test.ExampleGraphKt")
+          .getDeclaredMethod("createExampleClass")
+          .invoke(null) as (String) -> Callable<String>
+      val callable = callableCreator("Hello, world!")
+      assertThat(callable.call()).isEqualTo("Hello, world!")
+    }
   }
 
   @Test
   fun `missing binding should fail compilation and report property accessor`() {
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Inject
-            import java.util.concurrent.Callable
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -97,37 +88,27 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-        ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-
-            kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph#text
-        """
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+            
+                kotlin.String is requested at
+                    [test.ExampleGraph] test.ExampleGraph#text
+          """
           .trimIndent()
       )
+    }
   }
 
   @Test
   fun `missing binding should fail compilation and report property accessor with qualifier`() {
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import java.util.concurrent.Callable
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -136,37 +117,27 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-        ExampleGraph.kt:11:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-
-            @Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph#text
-        """
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            
+                @Named("hello") kotlin.String is requested at
+                    [test.ExampleGraph] test.ExampleGraph#text
+          """
           .trimIndent()
       )
+    }
   }
 
   @Test
   fun `missing binding should fail compilation and report property accessor with get site target qualifier`() {
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import java.util.concurrent.Callable
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -175,36 +146,27 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-        ExampleGraph.kt:11:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-
-            @Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph#text
-        """
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            
+                @Named("hello") kotlin.String is requested at
+                    [test.ExampleGraph] test.ExampleGraph#text
+          """
           .trimIndent()
       )
+    }
   }
 
   @Test
   fun `missing binding should fail compilation and function accessor`() {
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Inject
-            import java.util.concurrent.Callable
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -212,37 +174,27 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-        ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-
-            kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph#text()
-        """
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+            
+                kotlin.String is requested at
+                    [test.ExampleGraph] test.ExampleGraph#text()
+          """
           .trimIndent()
       )
+    }
   }
 
   @Test
   fun `missing binding should fail compilation and function accessor with qualifier`() {
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-            import java.util.concurrent.Callable
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -251,36 +203,27 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-        ExampleGraph.kt:11:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-
-            @Named("hello") kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph#text()
-        """
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            
+                @Named("hello") kotlin.String is requested at
+                    [test.ExampleGraph] test.ExampleGraph#text()
+          """
           .trimIndent()
       )
+    }
   }
 
   @Test
   fun `missing binding should fail compilation and report binding stack`() {
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-
+    compile(
+      source(
+        """
             @DependencyGraph
             abstract class ExampleGraph() {
 
@@ -291,39 +234,29 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             class ExampleClass(private val text: String)
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-        ExampleGraph.kt:14:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-
-            kotlin.String is injected at
-                [test.ExampleGraph] test.ExampleClass(…, text)
-            test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph#exampleClass()
-        """
+            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+            
+                kotlin.String is injected at
+                    [test.ExampleGraph] test.ExampleClass(…, text)
+                test.ExampleClass is requested at
+                    [test.ExampleGraph] test.ExampleGraph#exampleClass()
+          """
           .trimIndent()
       )
+    }
   }
 
   @Test
   fun `missing binding should fail compilation and report binding stack with qualifier`() {
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-            import dev.zacsweers.metro.Inject
-            import dev.zacsweers.metro.Named
-
+    compile(
+      source(
+        """
             @DependencyGraph
             abstract class ExampleGraph() {
 
@@ -334,23 +267,22 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             class ExampleClass(@Named("hello") private val text: String)
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-        ExampleGraph.kt:15:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-
-            @Named("hello") kotlin.String is injected at
-                [test.ExampleGraph] test.ExampleClass(…, text)
-            test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph#exampleClass()
-        """
+            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            
+                @Named("hello") kotlin.String is injected at
+                    [test.ExampleGraph] test.ExampleClass(…, text)
+                test.ExampleClass is requested at
+                    [test.ExampleGraph] test.ExampleGraph#exampleClass()
+          """
           .trimIndent()
       )
+    }
   }
 
   @Test
@@ -558,16 +490,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     // private val stringProvider: Provider<String> = StringProvider_Factory.create(...)
     // private val stringUserProvider = StringUserProviderFactory.create(stringProvider)
     // private val stringUserProvider2 = StringUserProvider2Factory.create(stringProvider)
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -581,24 +506,24 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        )
+          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      // Assert we generated a shared field
+      val provideValueField =
+        graph.javaClass.getDeclaredField("provideValueProvider").apply { isAccessible = true }
 
-    // Assert we generated a shared field
-    val provideValueField =
-      graph.javaClass.getDeclaredField("provideValueProvider").apply { isAccessible = true }
+      // Get its instance
+      @Suppress("UNCHECKED_CAST")
+      val provideValueProvider = provideValueField.get(graph) as Provider<String>
 
-    // Get its instance
-    @Suppress("UNCHECKED_CAST")
-    val provideValueProvider = provideValueField.get(graph) as Provider<String>
-
-    // Get its computed value to plug in below
-    val providerValue = provideValueProvider()
-    assertThat(graph.javaClass.getDeclaredField("provideValueProvider"))
-    assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo(providerValue.length * 2)
+      // Get its computed value to plug in below
+      val providerValue = provideValueProvider()
+      assertThat(graph.javaClass.getDeclaredField("provideValueProvider"))
+      assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo(providerValue.length * 2)
+    }
   }
 
   @Test
@@ -608,16 +533,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     //
     // private val stringUserProvider =
     // StringUserProviderFactory.create(StringProvider_Factory.create(...))
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -631,24 +549,23 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        )
+          .trimIndent()
       )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
 
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" })
+        .isNull()
 
-    assertThat(graph.javaClass.declaredFields.singleOrNull { it.name == "provideValueProvider" })
-      .isNull()
-
-    assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo("Hello, world!".length)
+      assertThat(graph.callProperty<Int>("valueLengths")).isEqualTo("Hello, world!".length)
+    }
   }
 
   @Test
   fun `unscoped graphs may not reference scoped types`() {
-    val result =
-      compile(
-        source(
-          """
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -660,36 +577,29 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
+              kotlin.String (scoped to '@SingleIn(AppScope::class)')
+              kotlin.String is requested at
+                  [test.ExampleGraph] test.ExampleGraph#value
+        """
+          .trimIndent()
       )
-
-    result.assertDiagnostics(
-      """
-        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
-            kotlin.String (scoped to '@SingleIn(AppScope::class)')
-            kotlin.String is requested at
-                [test.ExampleGraph] test.ExampleGraph#value
-      """
-        .trimIndent()
-    )
+    }
   }
 
   @Test
   fun `binding failures should only be focused on the current context`() {
     // small regression test to ensure that we pop the BindingStack correctly
     // while iterating exposed types and don't leave old refs
-    val result =
-      compile(
-        kotlin(
-          "ExampleGraph.kt",
-          """
-            package test
-
-            import dev.zacsweers.metro.DependencyGraph
-            import dev.zacsweers.metro.Provides
-
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -701,31 +611,30 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             }
 
           """
-            .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    assertThat(result.messages)
-      .contains(
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
         """
-          ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
-
-              kotlin.CharSequence is requested at
-                  [test.ExampleGraph] test.ExampleGraph#value2
-        """
+            e: ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
+            
+                kotlin.CharSequence is requested at
+                    [test.ExampleGraph] test.ExampleGraph#value2
+            
+            Similar bindings:
+              - String (Subtype). Type: Provided. Source: ExampleGraph.kt:12:3
+          """
           .trimIndent()
       )
-
-    assertThat(result.messages).doesNotContain("kotlin.String is requested at")
+    }
   }
 
   @Test
   fun `simple binds example`() {
-    val result =
-      compile(
-        source(
-          """
+    compile(
+      source(
+        """
             @DependencyGraph
             interface ExampleGraph {
 
@@ -739,15 +648,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
               fun provideValue(): String = "Hello, world!"
             }
           """
-            .trimIndent()
-        )
+          .trimIndent()
       )
-
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-
-    assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
-
-    assertThat(graph.callProperty<CharSequence>("value2")).isEqualTo("Hello, world!")
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(graph.callProperty<String>("value")).isEqualTo("Hello, world!")
+      assertThat(graph.callProperty<CharSequence>("value2")).isEqualTo("Hello, world!")
+    }
   }
 
   @Test
