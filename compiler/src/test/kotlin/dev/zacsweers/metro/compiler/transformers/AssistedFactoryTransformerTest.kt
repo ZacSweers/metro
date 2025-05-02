@@ -240,6 +240,27 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     }
   }
 
+  // Regression test for https://github.com/ZacSweers/metro/issues/364#issuecomment-2841469320
+  @Test
+  fun `assisted factory must target assisted inject types - missing return type`() {
+    compile(
+      source(
+        """
+            @AssistedFactory
+            fun interface ExampleClassFactory {
+              fun create(count: Int)
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        "e: ExampleClass.kt:6:7 `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
+      )
+    }
+  }
+
   @Test
   fun `assisted factories cannot be local`() {
     compile(
