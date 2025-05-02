@@ -73,7 +73,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       reporter.reportOn(
         function.source,
         ASSISTED_INJECTION_ERROR,
-        "`@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
+        "Invalid return type: ${targetType.symbol.classId.asSingleFqName()}. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
         context,
       )
       return

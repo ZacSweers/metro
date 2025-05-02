@@ -235,7 +235,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClass.kt:10:7 `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
+        "e: ExampleClass.kt:10:7 Invalid return type: test.ExampleClass. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
       )
     }
   }
@@ -256,7 +256,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        "e: ExampleClassFactory.kt:8:7 `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
+        "e: ExampleClassFactory.kt:8:7 Invalid return type: kotlin.Unit. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor."
       )
     }
   }
