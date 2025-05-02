@@ -71,7 +71,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       }
     if (injectConstructor == null) {
       reporter.reportOn(
-        targetType.source,
+        function.source,
         ASSISTED_INJECTION_ERROR,
         "`@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
         context,
