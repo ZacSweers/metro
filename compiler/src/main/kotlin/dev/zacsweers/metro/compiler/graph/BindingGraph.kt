@@ -7,11 +7,27 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
-import dev.zacsweers.metro.compiler.mapToSet
 import java.util.concurrent.ConcurrentHashMap
 
-// TODO break up into mutable/immutable
-internal open class BindingGraph<
+internal interface BindingGraph<
+  Type : Any,
+  TypeKey : BaseTypeKey<Type, *, *>,
+  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, *>,
+  Binding : BaseBinding<Type, TypeKey, ContextualTypeKey>,
+  BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
+  BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry>,
+> {
+  val snapshot: Map<TypeKey, Binding>
+  val deferredTypes: Set<TypeKey>
+
+  operator fun get(key: TypeKey): Binding?
+
+  operator fun contains(key: TypeKey): Boolean
+
+  fun TypeKey.dependsOn(other: TypeKey): Boolean
+}
+
+internal open class MutableBindingGraph<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, *>,
@@ -33,22 +49,19 @@ internal open class BindingGraph<
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
   private val stackLogger: MetroLogger = MetroLogger.NONE,
-  private val debug: Boolean = false,
-) {
+) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   // ConcurrentHashMap because we may concurrently (but not multi-threaded) modify while iterating
   private val bindings = ConcurrentHashMap<TypeKey, Binding>()
   // Populated by seal()
   private val transitive = hashMapOf<TypeKey, Set<TypeKey>>()
-  private val _deferredTypes = mutableSetOf<TypeKey>()
 
-  val deferredTypes: Set<TypeKey>
-    get() = _deferredTypes
+  override val deferredTypes: MutableSet<TypeKey> = mutableSetOf()
 
   var sealed = false
     private set
 
-  val snapshot: Map<TypeKey, Binding>
+  override val snapshot: Map<TypeKey, Binding>
     get() = bindings
 
   fun replace(binding: Binding) {
@@ -88,9 +101,9 @@ internal open class BindingGraph<
     return bindings.getOrPut(key, defaultValue)
   }
 
-  operator fun get(key: TypeKey): Binding? = bindings[key]
+  override operator fun get(key: TypeKey): Binding? = bindings[key]
 
-  operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
+  override operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
 
   /**
    * Finalizes the binding graph by performing validation and cache initialization.
@@ -187,7 +200,7 @@ internal open class BindingGraph<
         } else {
           // TODO this if check isn't great
           stackLogger.log("--> Deferring ${key.render(short = true)}")
-          _deferredTypes += key
+          deferredTypes += key
           // We're in a loop here so nothing else needed
           return
         }
@@ -292,7 +305,8 @@ internal open class BindingGraph<
   }
 
   // O(1) after seal()
-  fun TypeKey.dependsOn(other: TypeKey): Boolean = transitive[this]?.contains(other) == true
+  override fun TypeKey.dependsOn(other: TypeKey): Boolean =
+    transitive[this]?.contains(other) == true
 
   fun getOrCreateBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
     return bindings[contextKey.typeKey]
@@ -314,9 +328,6 @@ internal open class BindingGraph<
         appendLine("Similar bindings:")
         similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
       }
-      // if (debug) {
-      //   appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
-      // }
     }
 
     onError(message, bindingStack)

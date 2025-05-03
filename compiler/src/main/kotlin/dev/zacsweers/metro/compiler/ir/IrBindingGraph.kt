@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.BindingGraph
+import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import kotlin.text.appendLine
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -24,7 +25,7 @@ internal class IrBindingGraph(
 ) {
 
   private val realGraph =
-    BindingGraph(
+    MutableBindingGraph(
       newBindingStack = newBindingStack,
       newBindingStackEntry = { contextKey, binding ->
         bindingStackEntryForDependency(binding, contextKey, contextKey.typeKey)
@@ -39,7 +40,6 @@ internal class IrBindingGraph(
       },
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
       stackLogger = metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
-      debug = metroContext.debug,
     )
 
   // Use ConcurrentHashMap to allow reentrant modification

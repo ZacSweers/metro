@@ -19,7 +19,7 @@ internal class StringGraph(
       null
     },
 ) :
-  BindingGraph<
+  MutableBindingGraph<
     String,
     StringTypeKey,
     StringContextualTypeKey,
