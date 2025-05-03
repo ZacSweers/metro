@@ -3297,7 +3297,7 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `B SingleIn is NOT respected, when binding interface starts with a letter BEFORE B and injected into a wrapper class`() {
+  fun `binding scope is respected regardless of where it is injected`() {
     compile(
       source(
         """
