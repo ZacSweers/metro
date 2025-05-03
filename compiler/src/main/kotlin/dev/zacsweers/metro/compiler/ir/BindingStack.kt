@@ -370,7 +370,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(contextKey, binding.function, displayTypeKey = targetKey)
     }
     is Binding.Multibinding -> {
-      Entry.contributedToMultibinding(contextKey, binding.declaration)
+      Entry.contributedToMultibinding(binding.contextualTypeKey, binding.declaration)
     }
     is Binding.ObjectClass -> TODO()
     is Binding.BoundInstance -> TODO()
