@@ -86,7 +86,9 @@ private fun DependencyGraphNode.recurseIncludedNodes(
   }
 }
 
-private fun DependencyGraphNode.recurseParents(builder: MutableMap<IrTypeKey, DependencyGraphNode>) {
+private fun DependencyGraphNode.recurseParents(
+  builder: MutableMap<IrTypeKey, DependencyGraphNode>
+) {
   for ((key, value) in extendedGraphNodes) {
     builder.put(key, value)
     value.recurseParents(builder)

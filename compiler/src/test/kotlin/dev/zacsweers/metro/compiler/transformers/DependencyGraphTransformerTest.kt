@@ -93,7 +93,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-            
+
                 kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text
           """
@@ -122,7 +122,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-            
+
                 @Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text
           """
@@ -151,7 +151,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-            
+
                 @Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text
           """
@@ -179,7 +179,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-            
+
                 kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text()
           """
@@ -208,7 +208,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-            
+
                 @Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text()
           """
@@ -239,7 +239,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-            
+
                 kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
                 test.ExampleClass is requested at
@@ -272,7 +272,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
-            
+
                 @Named("hello") kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
                 test.ExampleClass is requested at
@@ -616,10 +616,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
             e: ExampleGraph.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.CharSequence
-            
+
                 kotlin.CharSequence is requested at
                     [test.ExampleGraph] test.ExampleGraph#value2
-            
+
             Similar bindings:
               - String (Subtype). Type: Provided. Source: ExampleGraph.kt:12:3
           """
@@ -735,7 +735,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:12:18 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
           Cycle:
               Int <--> Int (depends on itself)
-          
+
           Trace:
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph#provideInt(…, value)
@@ -781,7 +781,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             e: ExampleGraph.kt:12:21 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
             Cycle:
                 Int --> Double --> String --> Int
-            
+
             Trace:
                 kotlin.Int is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideString(…, int)

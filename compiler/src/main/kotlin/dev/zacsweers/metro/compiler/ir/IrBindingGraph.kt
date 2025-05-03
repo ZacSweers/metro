@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
-import dev.zacsweers.metro.compiler.graph.BindingGraph
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import kotlin.text.appendLine

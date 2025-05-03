@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.graph.BaseBinding
@@ -19,7 +18,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.render
 import java.util.TreeSet
@@ -44,7 +42,9 @@ import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
 internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualTypeKey> {
-  override val typeKey: IrTypeKey get()= contextualTypeKey.typeKey
+  override val typeKey: IrTypeKey
+    get() = contextualTypeKey.typeKey
+
   val scope: IrAnnotation?
   // TODO reconcile parametersByKey vs parameters in collectBindings
   val parametersByKey: Map<IrTypeKey, Parameter>
@@ -57,7 +57,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   override fun renderLocationDiagnostic(): String {
     // First check if we have the contributing file and line number
     return reportableLocation?.render()
-    // Or the fully-qualified contributing class name
+      // Or the fully-qualified contributing class name
       ?: parametersByKey.entries.firstOrNull()?.key?.toString()
       // Or print the full set of info we know about the binding
       ?: buildString {
@@ -91,11 +91,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
-    override val dependencies: List<IrContextualTypeKey> = parameters.nonInstanceParameters
-      .filterNot {
-        it.isAssisted
-      }
-      .map { it.contextualTypeKey }
+    override val dependencies: List<IrContextualTypeKey> =
+      parameters.nonInstanceParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey }
 
     override val scope: IrAnnotation?
       get() = annotations.scope
@@ -163,8 +160,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters<ConstructorParameter>,
   ) : Binding, BindingWithAnnotations {
-    override val dependencies: List<IrContextualTypeKey> = parameters.nonInstanceParameters
-      .map { it.contextualTypeKey }
+    override val dependencies: List<IrContextualTypeKey> =
+      parameters.nonInstanceParameters.map { it.contextualTypeKey }
 
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey }
@@ -249,15 +246,16 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val scope: IrAnnotation? = null
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey }
-    override val dependencies: List<IrContextualTypeKey> = parameters.nonInstanceParameters
-      .map { it.contextualTypeKey }
+    override val dependencies: List<IrContextualTypeKey> =
+      parameters.nonInstanceParameters.map { it.contextualTypeKey }
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val reportableLocation: CompilerMessageSourceLocation?
       get() {
         if (ir == null) return null
         return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
-          val isMetroContribution = it.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
+          val isMetroContribution =
+            it.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
           if (isMetroContribution) {
             // If it's a contribution, the source is
             // SourceClass.$$MetroContributionScopeName.bindingFunction
@@ -272,7 +270,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override fun renderLocationDiagnostic(): String {
       if ((annotations.isIntoMultibinding || annotations.isBinds) && ir != null) {
         (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
-          val isMetroContribution = it.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
+          val isMetroContribution =
+            it.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.metroContribution) == true
           if (isMetroContribution) {
             // If it's a contribution, the source is
             // SourceClass.$$MetroContributionScopeName.bindingFunction
@@ -282,9 +281,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
               it.parentAsClass.parentAsClass.locationOrNull()?.let { location ->
                 append(" at ")
                 append(location.render())
-              } ?: run {
-                append(" at an unknown source location (likely a separate compilation).")
-              }
+              } ?: run { append(" at an unknown source location (likely a separate compilation).") }
             }
           }
         }
@@ -439,6 +436,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val dependencies: List<IrContextualTypeKey> = emptyList()
     override val aggregatedBindings: Set<Binding>
       get() = sourceBindings
+
     override val parametersByKey: Map<IrTypeKey, Parameter> = buildMap {
       for (binding in sourceBindings) {
         putAll(binding.parametersByKey)
@@ -498,8 +496,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   ) : Binding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
-    override val dependencies: List<IrContextualTypeKey> = parameters.nonInstanceParameters
-      .map { it.contextualTypeKey }
+    override val dependencies: List<IrContextualTypeKey> =
+      parameters.nonInstanceParameters.map { it.contextualTypeKey }
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey }
     override val scope: IrAnnotation? = null
