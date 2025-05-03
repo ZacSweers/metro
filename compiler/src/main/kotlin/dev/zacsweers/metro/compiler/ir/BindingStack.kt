@@ -7,6 +7,7 @@ import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
+import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.BindingStack.Entry
 import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
@@ -196,7 +197,12 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, E
   }
 }
 
-internal inline fun <T> BindingStack.withEntry(entry: Entry?, block: () -> T): T {
+internal inline fun <
+  T,
+  Type : Any,
+  TypeKey : BaseTypeKey<Type, *, *>,
+  Entry : BaseBindingStack.BaseEntry<Type, TypeKey, *>,
+> BaseBindingStack<*, Type, TypeKey, Entry>.withEntry(entry: Entry?, block: () -> T): T {
   if (entry == null) return block()
   push(entry)
   val result = block()
@@ -273,12 +279,21 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
     }
   }
 
-  // TODO optimize this by looking in the entrySet first
+  // TODO optimize this by looking in the entrySet first?
   override fun entriesSince(key: IrTypeKey): List<Entry> {
-    val reversed = stack.asReversed()
-    val index = reversed.indexOfFirst { !it.contextKey.isIntoMultibinding && it.typeKey == key }
-    if (index == -1) return emptyList()
-    return reversed.slice(index until reversed.size).filterNot { it.isSynthetic }
+    // Top entry is always the key currently being processed, so exclude it from analysis with
+    // dropLast(1)
+    val inFocus = stack.asReversed().dropLast(1)
+    if (inFocus.isEmpty()) return emptyList()
+
+    val first =
+      inFocus.indexOfFirst {
+        !it.contextKey.isIntoMultibinding && !it.isSynthetic && it.typeKey == key
+      }
+    if (first == -1) return emptyList()
+
+    // path from the earlier duplicate up to the key just below the current one
+    return inFocus.subList(first, inFocus.size)
   }
 
   override fun toString() = renderTable()
