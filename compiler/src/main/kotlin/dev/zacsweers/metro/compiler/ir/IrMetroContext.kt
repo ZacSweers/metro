@@ -81,7 +81,7 @@ internal interface IrMetroContext {
     messageCollector.report(CompilerMessageSeverity.ERROR, message, locationOrNull())
   }
 
-  fun reportError(message: String, location: CompilerMessageSourceLocation) {
+  fun reportError(message: String, location: CompilerMessageSourceLocation?) {
     messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
   }
 
