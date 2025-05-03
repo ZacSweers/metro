@@ -12,22 +12,19 @@ internal class StringBindingStack(override val graph: String) :
   override val graphFqName: FqName = FqName(graph)
 
   override fun push(entry: Entry) {
-    entries.push(entry)
+    entries.addFirst(entry)
   }
 
   override fun pop() {
-    entries.pop()
+    entries.removeFirstOrNull() ?: error("Binding stack is empty!")
   }
 
   override fun entryFor(key: StringTypeKey): Entry? {
     return entries.firstOrNull { entry -> entry.typeKey == key }
   }
 
-  override fun entriesSince(key: StringTypeKey): List<Entry> {
-    val reversed = entries.asReversed()
-    val index = reversed.indexOfFirst { !it.contextKey.isIntoMultibinding && it.typeKey == key }
-    if (index == -1) return emptyList()
-    return reversed.slice(index until reversed.size).filterNot { it.isSynthetic }
+  override fun toString(): String {
+    return entries.joinToString(" -> ") { it.toString() }
   }
 
   class Entry(
@@ -36,5 +33,7 @@ internal class StringBindingStack(override val graph: String) :
     override val graphContext: String? = null,
     override val displayTypeKey: StringTypeKey = contextKey.typeKey,
     override val isSynthetic: Boolean = false,
-  ) : BaseBindingStack.BaseEntry<String, StringTypeKey, StringContextualTypeKey> {}
+  ) : BaseBindingStack.BaseEntry<String, StringTypeKey, StringContextualTypeKey> {
+    override fun toString() = contextKey.toString()
+  }
 }
