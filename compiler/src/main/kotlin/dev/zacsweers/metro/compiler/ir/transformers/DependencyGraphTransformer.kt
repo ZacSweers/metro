@@ -16,16 +16,16 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.Binding
-import dev.zacsweers.metro.compiler.ir.BindingGraph
 import dev.zacsweers.metro.compiler.ir.BindingStack
-import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrBindingGraph
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributedGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
@@ -713,7 +713,7 @@ internal class DependencyGraphTransformer(
       )
 
       val deferredTypes =
-        bindingGraph.validate(node) { message ->
+        bindingGraph.validate { message ->
           dependencyGraphDeclaration.reportError(message)
           exitProcessing()
         }
@@ -771,8 +771,14 @@ internal class DependencyGraphTransformer(
     }
   }
 
-  private fun createBindingGraph(node: DependencyGraphNode): BindingGraph {
-    val graph = BindingGraph(this)
+  private fun createBindingGraph(node: DependencyGraphNode): IrBindingGraph {
+    val graph =
+      IrBindingGraph(
+        this,
+        newBindingStack = {
+          BindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
+        },
+      )
 
     // Add explicit bindings from @Provides methods
     val bindingStack =
@@ -1260,7 +1266,7 @@ internal class DependencyGraphTransformer(
   private fun generateMetroGraph(
     node: DependencyGraphNode,
     graphClass: IrClass,
-    bindingGraph: BindingGraph,
+    bindingGraph: IrBindingGraph,
     deferredTypes: Set<IrTypeKey>,
   ) =
     with(graphClass) {
@@ -1480,14 +1486,15 @@ internal class DependencyGraphTransformer(
       val initOrder =
         bindingDependencies.keys
           .sortedWith { a, b ->
-            when {
-              // TODO eventually change this to dependsOn checks
-              // If b depends on a, a should be initialized first
-              a in (bindingDependencies[b]?.parametersByKey.orEmpty()) -> -1
-              // If a depends on b, b should be initialized first
-              b in (bindingDependencies[a]?.parametersByKey.orEmpty()) -> 1
-              // Otherwise order doesn't matter, fall back to just type order for idempotence
-              else -> a.compareTo(b)
+            with(bindingGraph) {
+              when {
+                // If a depends on b, b should be initialized first
+                a.dependsOn(b) -> 1
+                // If b depends on a, a should be initialized first
+                b.dependsOn(a) -> -1
+                // Otherwise order doesn't matter, fall back to just type order for idempotence
+                else -> a.compareTo(b)
+              }
             }
           }
           .map { bindingDependencies.getValue(it) }
@@ -1785,7 +1792,7 @@ internal class DependencyGraphTransformer(
     }
 
   private fun DependencyGraphNode.toProto(
-    bindingGraph: BindingGraph,
+    bindingGraph: IrBindingGraph,
     supertypeClasses: Set<String>,
     parentGraphClasses: Set<String>,
     providerFields: List<String>,
@@ -1914,7 +1921,9 @@ internal class DependencyGraphTransformer(
         val targetParam = valueParameters[0]
         val binding =
           context.graph.requireBinding(typeKey, context.bindingStack) as Binding.MembersInjected
-        context.bindingStack.push(BindingStack.Entry.requestedAt(IrContextualTypeKey(typeKey), this))
+        context.bindingStack.push(
+          BindingStack.Entry.requestedAt(IrContextualTypeKey(typeKey), this)
+        )
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly
@@ -1944,10 +1953,7 @@ internal class DependencyGraphTransformer(
                       add(irGet(targetParam))
                       for (parameter in parameters.valueParameters) {
                         val paramBinding =
-                          context.graph.getOrCreateBinding(
-                            parameter.contextualTypeKey,
-                            context.bindingStack,
-                          )
+                          context.graph.requireBinding(parameter.typeKey, context.bindingStack)
                         add(
                           typeAsProviderArgument(
                             metroContext,
@@ -2043,7 +2049,7 @@ internal class DependencyGraphTransformer(
 
   private fun collectBindings(
     node: DependencyGraphNode,
-    graph: BindingGraph,
+    graph: IrBindingGraph,
     bindingStack: BindingStack,
   ): Map<IrTypeKey, Binding> {
     val bindingDependencies = mutableMapOf<IrTypeKey, Binding>()
@@ -2091,7 +2097,7 @@ internal class DependencyGraphTransformer(
     contextKey: IrContextualTypeKey,
     stackEntry: BindingStack.Entry,
     node: DependencyGraphNode,
-    graph: BindingGraph,
+    graph: IrBindingGraph,
     bindingStack: BindingStack,
     bindingDependencies: MutableMap<IrTypeKey, Binding>,
     usedUnscopedBindings: MutableSet<IrTypeKey>,
@@ -2108,7 +2114,7 @@ internal class DependencyGraphTransformer(
     }
 
     bindingStack.withEntry(stackEntry) {
-      val binding = graph.getOrCreateBinding(contextKey, bindingStack)
+      val binding = graph.requireBinding(contextKey.typeKey, bindingStack)
       processBinding(
         binding,
         node,
@@ -2124,7 +2130,7 @@ internal class DependencyGraphTransformer(
   private fun processBinding(
     binding: Binding,
     node: DependencyGraphNode,
-    graph: BindingGraph,
+    graph: IrBindingGraph,
     bindingStack: BindingStack,
     bindingDependencies: MutableMap<IrTypeKey, Binding>,
     usedUnscopedBindings: MutableSet<IrTypeKey>,
@@ -2385,8 +2391,8 @@ internal class DependencyGraphTransformer(
           generationContext.bindingStack.push(entry)
           // Generate binding code for each param
           val paramBinding =
-            generationContext.graph.getOrCreateBinding(
-              contextualTypeKey,
+            generationContext.graph.requireBinding(
+              contextualTypeKey.typeKey,
               generationContext.bindingStack,
             )
 
@@ -3026,7 +3032,7 @@ internal class DependencyGraphTransformer(
 }
 
 internal class GraphGenerationContext(
-  val graph: BindingGraph,
+  val graph: IrBindingGraph,
   val thisReceiver: IrValueParameter,
   // TODO we can end up in awkward situations where we
   //  have the same type keys in both instance and provider fields

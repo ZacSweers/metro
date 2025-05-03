@@ -5,12 +5,19 @@ package dev.zacsweers.metro.compiler.graph
 @Suppress("UNCHECKED_CAST")
 internal class StringGraph(
   newBindingStack: () -> StringBindingStack,
-  newBindingStackEntry: StringBindingStack.(binding: StringBinding) -> StringBindingStack.Entry,
+  newBindingStackEntry:
+    StringBindingStack.(
+      contextKey: StringContextualTypeKey, binding: StringBinding,
+    ) -> StringBindingStack.Entry,
   /**
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types).
    */
-  computeBinding: (key: StringTypeKey) -> StringBinding? = { null },
+  computeBinding:
+    (contextKey: StringContextualTypeKey, stack: StringBindingStack) -> StringBinding? =
+    { _, _ ->
+      null
+    },
 ) :
   BindingGraph<
     String,
@@ -24,7 +31,7 @@ internal class StringGraph(
     newBindingStackEntry
       as
       StringBindingStack.(
-        BaseBinding<String, StringTypeKey, StringContextualTypeKey>
+        StringContextualTypeKey, BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
       ) -> StringBindingStack.Entry,
     computeBinding,
   ) {

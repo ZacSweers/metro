@@ -260,7 +260,7 @@ abstract class MetroCompilerTest {
         appendLine("package $packageName")
 
         // Imports
-        for (import in defaultImports + extraImports) {
+        for (import in (defaultImports + extraImports)) {
           appendLine("import $import")
         }
 

@@ -85,15 +85,16 @@ class BindingGraphTest {
       .hasMessageThat()
       .contains(
         """
-        [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
-        Cycle:
-            B <--> B
-
-        Trace:
-            B
-            B
-            ...
-      """
+          [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
+          Cycle:
+              A --> B --> A
+          
+          Trace:
+              A
+              B
+              A
+              ...
+        """
           .trimIndent()
       )
   }
@@ -328,7 +329,7 @@ private val String.contextualTypeKey: StringContextualTypeKey
   get() = StringTypeKey(this).contextualTypeKey
 
 private val StringTypeKey.contextualTypeKey: StringContextualTypeKey
-  get() = StringContextualTypeKey(this)
+  get() = StringContextualTypeKey.create(this)
 
 private fun StringTypeKey.toBinding(
   dependencies: List<StringContextualTypeKey> = emptyList()
@@ -346,11 +347,11 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
-  computeBinding: (StringTypeKey) -> StringBinding? = { null },
+  computeBinding: (StringContextualTypeKey, StringBindingStack) -> StringBinding? = { _, _ -> null },
 ): StringGraph {
   return StringGraph(
     newBindingStack = { StringBindingStack(graph) },
-    newBindingStackEntry = { StringBindingStack.Entry(it.contextualTypeKey) },
+    newBindingStackEntry = { contextKey, binding -> StringBindingStack.Entry(contextKey) },
     computeBinding = computeBinding,
   )
 }
@@ -370,7 +371,9 @@ private fun buildChainedGraph(vararg nodes: String): StringGraph {
 
 internal class StringGraphBuilder {
   private val constructorInjectedTypes = mutableMapOf<StringTypeKey, StringBinding>()
-  private val graph = newStringBindingGraph { constructorInjectedTypes[it] }
+  private val graph = newStringBindingGraph { contextKey, stack ->
+    constructorInjectedTypes[contextKey.typeKey]
+  }
 
   fun binding(key: String): String {
     binding(key.contextualTypeKey)

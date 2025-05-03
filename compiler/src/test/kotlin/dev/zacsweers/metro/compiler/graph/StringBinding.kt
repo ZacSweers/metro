@@ -28,6 +28,6 @@ internal class StringBinding(
     operator fun invoke(
       typeKey: StringTypeKey,
       dependencies: List<StringContextualTypeKey> = emptyList(),
-    ) = StringBinding(StringContextualTypeKey(typeKey), dependencies)
+    ) = StringBinding(StringContextualTypeKey.create(typeKey), dependencies)
   }
 }

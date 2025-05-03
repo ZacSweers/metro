@@ -20,7 +20,21 @@ internal interface BaseBindingStack<
 
   fun entryFor(key: TypeKey): Entry?
 
-  fun entriesSince(key: TypeKey): List<Entry>
+  fun entriesSince(key: TypeKey): List<Entry> {
+    // Top entry is always the key currently being processed, so exclude it from analysis with
+    // dropLast(1)
+    val inFocus = entries.asReversed().dropLast(1)
+    if (inFocus.isEmpty()) return emptyList()
+
+    val first =
+      inFocus.indexOfFirst {
+        !it.contextKey.isIntoMultibinding && !it.isSynthetic && it.typeKey == key
+      }
+    if (first == -1) return emptyList()
+
+    // path from the earlier duplicate up to the key just below the current one
+    return inFocus.subList(first, inFocus.size)
+  }
 
   interface BaseEntry<
     Type : Any,
