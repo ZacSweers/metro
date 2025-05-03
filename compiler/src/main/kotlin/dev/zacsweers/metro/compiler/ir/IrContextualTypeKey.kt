@@ -14,7 +14,9 @@ import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.isClassWithFqName
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
@@ -279,7 +281,14 @@ private fun IrType.renderShort(): String = buildString {
   if (this@renderShort is IrSimpleType) {
     arguments
       .takeUnless { it.isEmpty() }
-      ?.joinToString(", ", prefix = "<", postfix = ">") { it.typeOrFail.renderShort() }
+      ?.joinToString(", ", prefix = "<", postfix = ">") {
+        when (it) {
+          is IrStarProjection -> "*"
+          is IrTypeProjection -> {
+            it.type.renderShort()
+          }
+        }
+      }
       ?.let { append(it) }
   }
 }
