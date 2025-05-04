@@ -255,7 +255,6 @@ internal open class MutableBindingGraph<
     // Validate remaining bindings
     for (binding in bindings.values) {
       if (binding.typeKey in strictVisits) continue
-      if (binding.dependencies.isEmpty()) continue
 
       dfsStrict(binding, binding.contextualTypeKey)
     }
