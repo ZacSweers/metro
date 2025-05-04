@@ -24,7 +24,6 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
   override fun needTransformStatus(declaration: FirDeclaration): Boolean {
     return when (declaration) {
       is FirCallableDeclaration -> {
-        if (declaration.visibility == Visibilities.Private) return false
         if (declaration.isOverride) return false
         if (declaration is FirProperty) return false
         // Property accessors must match parent property visibility
