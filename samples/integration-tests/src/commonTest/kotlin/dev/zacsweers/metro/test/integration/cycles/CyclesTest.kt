@@ -12,7 +12,6 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metro.createGraphFactory
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -72,79 +71,6 @@ class CyclesTest {
     assertNotNull(childCycleGraph.obj)
   }
 
-  //  /*
-  //  ## Dagger generates
-  //  class CycleMultibindsGraphImpl implements CycleMultibindsGraph {
-  //    private Provider<X> xProvider = DelegateFactory();
-  //    private Provider mapOfStringAndProviderOfXProvider = MapProviderFactory.<String,
-  // X>builder(1).put("X", xProvider).build();
-  //    private Provider<Y> yProvider = DelegateFactory();
-  //    private Provider mapOfStringAndProviderOfYProvider = MapProviderFactory.<String,
-  // Y>builder(1).put("Y", yProvider).build();
-  //
-  //    private CycleMultibindsGraphImpl() {
-  //      DelegateFactory.setDelegate(yProvider, Y_Factory.create(mapOfStringAndProviderOfXProvider,
-  // mapOfStringAndProviderOfYProvider));
-  //      DelegateFactory.setDelegate(xProvider, X_Factory.create(yProvider));
-  //    }
-  //
-  //    private Map<String, javax.inject.Provider<X>> mapOfStringAndProviderOfX() {
-  //      return Collections.<String, javax.inject.Provider<X>>singletonMap("X", xProvider);
-  //    }
-  //
-  //    private Map<String, javax.inject.Provider<Y>> mapOfStringAndProviderOfY() {
-  //      return Collections.<String, javax.inject.Provider<Y>>singletonMap("Y", yProvider);
-  //    }
-  //
-  //    @Override
-  //    public Y y() {
-  //      return new Y(mapOfStringAndProviderOfX(), mapOfStringAndProviderOfY());
-  //    }
-  //  }
-  //
-  //  ## Metro generates
-  //  public class ExampleGraphImpl : ExampleGraph {
-  //    private val yProvider: Provider<Y> = DelegateFactory<Y>()
-  //    private val val xProvider: Provider<X> = X_Factory.create(y = <this>.#yProvider)
-  //
-  //    public constructor() /* primary */ {
-  //      super/*Any*/()
-  //      /* <init>() */
-  //
-  //      DelegateFactory.setDelegate(
-  //        yProvider,
-  //        Y_Factory.create(
-  //          mapOfProvidersOfX = MapProviderFactory.builder<String, X>(size = 1).put(key = "X",
-  // providerOfValue = <this>.#xProvider).build(),
-  //          mapOfProvidersOfY = MapProviderFactory.builder<String, Y>(size = 1).put(key = "Y",
-  // providerOfValue = <this>.#yProvider).build()
-  //        )
-  //      )
-  //    }
-  //
-  //    public override fun x(): X {
-  //      return xProvider.invoke()
-  //    }
-  //
-  //    public override fun y(): Y {
-  //      return yProvider.invoke()
-  //    }
-  //
-  //    public override val X.x: X
-  //      public override get(): X {
-  //        return error(message = "Never called")
-  //      }
-  //
-  //    public override val Y.y: Y
-  //      public override get(): Y {
-  //        return error(message = "Never called")
-  //      }
-  //
-  //  }
-  //   */
-  // TODO I'm not sure what's functionally different about
-  //  what metro generates and what dagger generates, but this infinite loops at runtime
-  @Ignore
   @Test
   fun providerMapIndirectionCycle() {
     val cycleMapGraph = createGraph<CycleMapGraph>()
