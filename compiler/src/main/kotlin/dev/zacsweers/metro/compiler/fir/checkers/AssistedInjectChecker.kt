@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 
 internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
-    declaration.source ?: return
+    val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
 
@@ -55,7 +55,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // TODO dagger doesn't allow type params on these, but seems like we could?
     if (function.typeParameterSymbols.isNotEmpty()) {
       reporter.reportOn(
-        function.source,
+        function.source ?: source,
         ASSISTED_INJECTION_ERROR,
         "`@AssistedFactory` functions cannot have type parameters.",
         context,
@@ -71,7 +71,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       }
     if (injectConstructor == null) {
       reporter.reportOn(
-        function.source,
+        function.source ?: source,
         ASSISTED_INJECTION_ERROR,
         "Invalid return type: ${targetType.symbol.classId.asSingleFqName()}. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
         context,
