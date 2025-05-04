@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler.ir.parameters
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.TypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.Kind
@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.name.Name
 internal class MembersInjectParameter(
   override val kind: Kind,
   override val name: Name,
-  override val contextualTypeKey: ContextualTypeKey,
+  override val contextualTypeKey: IrContextualTypeKey,
   override val hasDefault: Boolean,
   @Poko.Skip override val originalName: Name,
   @Poko.Skip override val providerType: IrType,
@@ -31,7 +31,7 @@ internal class MembersInjectParameter(
   @Poko.Skip override val location: CompilerMessageSourceLocation?,
   @Poko.Skip override val ir: IrValueParameter,
 ) : Parameter {
-  override val typeKey: TypeKey = contextualTypeKey.typeKey
+  override val typeKey: IrTypeKey = contextualTypeKey.typeKey
   override val type: IrType = contextualTypeKey.typeKey.type
   override val isWrappedInProvider: Boolean = contextualTypeKey.isWrappedInProvider
   override val isWrappedInLazy: Boolean = contextualTypeKey.isWrappedInLazy
@@ -91,7 +91,14 @@ internal fun IrProperty.toMemberInjectParameter(
   val declaredType = typeParameterRemapper?.invoke(propertyType) ?: propertyType
 
   // TODO warn if it's anything other than null for now?
-  val defaultValue = getter?.body ?: backingField?.initializer
+  // Check lateinit because they will report having a getter/body even though they're not actually
+  // implemented for our needs
+  val defaultValue =
+    if (isLateinit) {
+      null
+    } else {
+      getter?.body ?: backingField?.initializer
+    }
   val contextKey =
     declaredType.asContextualTypeKey(
       context,

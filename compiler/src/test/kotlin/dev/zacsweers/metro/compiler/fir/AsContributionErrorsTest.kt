@@ -334,8 +334,7 @@ class AsContributionErrorsTest : MetroCompilerTest() {
             }
           """
             .trimIndent(),
-      ),
-      debug = true,
+      )
     ) {
       val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val unitGraphFactory = invokeMain<Any>(exampleGraph)

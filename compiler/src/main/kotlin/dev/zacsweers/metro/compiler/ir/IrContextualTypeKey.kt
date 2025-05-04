@@ -4,8 +4,9 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.WrappedType
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.backend.jvm.JvmSymbols
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
@@ -13,7 +14,9 @@ import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.isClassWithFqName
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
@@ -27,32 +30,20 @@ import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
 @Poko
-internal class ContextualTypeKey(
-  val typeKey: TypeKey,
-  val wrappedType: WrappedType<IrType>,
-  val hasDefault: Boolean = false,
-  val isIntoMultibinding: Boolean = false,
-  @Poko.Skip val rawType: IrType? = null,
-) {
-  val isDeferrable: Boolean = wrappedType.isDeferrable()
-  val requiresProviderInstance: Boolean = isDeferrable
-
-  val isWrappedInProvider: Boolean
-    get() = wrappedType is WrappedType.Provider
-
-  val isWrappedInLazy: Boolean
-    get() = wrappedType is WrappedType.Lazy
-
-  val isLazyWrappedInProvider: Boolean
-    get() = wrappedType is WrappedType.Provider && wrappedType.innerType is WrappedType.Lazy
-
+internal class IrContextualTypeKey(
+  override val typeKey: IrTypeKey,
+  override val wrappedType: WrappedType<IrType>,
+  override val hasDefault: Boolean = false,
+  override val isIntoMultibinding: Boolean = false,
+  @Poko.Skip override val rawType: IrType? = null,
+) : BaseContextualTypeKey<IrType, IrTypeKey, IrContextualTypeKey> {
   override fun toString(): String = render(short = true)
 
-  fun withTypeKey(typeKey: TypeKey, rawType: IrType? = null): ContextualTypeKey {
-    return ContextualTypeKey(typeKey, wrappedType, hasDefault, isIntoMultibinding, rawType)
+  override fun withTypeKey(typeKey: IrTypeKey, rawType: IrType?): IrContextualTypeKey {
+    return IrContextualTypeKey(typeKey, wrappedType, hasDefault, isIntoMultibinding, rawType)
   }
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     append(
       wrappedType.render { type ->
         if (type == typeKey.type) {
@@ -81,13 +72,13 @@ internal class ContextualTypeKey(
       is WrappedType.Canonical -> wt.type
       is WrappedType.Provider -> {
         val innerType =
-          ContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
+          IrContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
             .toIrType(metroContext)
         innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.providerType)!!)
       }
       is WrappedType.Lazy -> {
         val innerType =
-          ContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
+          IrContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
             .toIrType(metroContext)
         innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.lazyType)!!)
       }
@@ -95,7 +86,7 @@ internal class ContextualTypeKey(
         // For Map types, we need to create a Map<K, V> type
         val keyType = wt.keyType
         val valueType =
-          ContextualTypeKey(typeKey, wt.valueType, hasDefault, isIntoMultibinding)
+          IrContextualTypeKey(typeKey, wt.valueType, hasDefault, isIntoMultibinding)
             .toIrType(metroContext)
 
         // Create a Map type with the key type and the processed value type
@@ -112,7 +103,7 @@ internal class ContextualTypeKey(
       function: IrSimpleFunction,
       annotations: MetroAnnotations<IrAnnotation>,
       type: IrType = function.returnType,
-    ): ContextualTypeKey =
+    ): IrContextualTypeKey =
       type.asContextualTypeKey(
         context,
         with(context) {
@@ -127,7 +118,7 @@ internal class ContextualTypeKey(
       context: IrMetroContext,
       parameter: IrValueParameter,
       type: IrType = parameter.type,
-    ): ContextualTypeKey =
+    ): IrContextualTypeKey =
       type.asContextualTypeKey(
         context = context,
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
@@ -136,14 +127,14 @@ internal class ContextualTypeKey(
       )
 
     fun create(
-      typeKey: TypeKey,
+      typeKey: IrTypeKey,
       isWrappedInProvider: Boolean = false,
       isWrappedInLazy: Boolean = false,
       isLazyWrappedInProvider: Boolean = false,
       hasDefault: Boolean = false,
       isIntoMultibinding: Boolean = false,
       rawType: IrType? = null,
-    ): ContextualTypeKey {
+    ): IrContextualTypeKey {
       val rawClassId = rawType?.rawTypeOrNull()?.classId
       val wrappedType =
         when {
@@ -172,7 +163,7 @@ internal class ContextualTypeKey(
           }
         }
 
-      return ContextualTypeKey(
+      return IrContextualTypeKey(
         typeKey = typeKey,
         wrappedType = wrappedType,
         hasDefault = hasDefault,
@@ -182,7 +173,7 @@ internal class ContextualTypeKey(
     }
 
     /** Left for backward compat */
-    operator fun invoke(typeKey: TypeKey): ContextualTypeKey {
+    operator fun invoke(typeKey: IrTypeKey): IrContextualTypeKey {
       return create(typeKey)
     }
   }
@@ -206,7 +197,7 @@ internal fun IrType.asContextualTypeKey(
   qualifierAnnotation: IrAnnotation?,
   hasDefault: Boolean,
   isIntoMultibinding: Boolean,
-): ContextualTypeKey {
+): IrContextualTypeKey {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
   val declaredType = this
@@ -215,7 +206,7 @@ internal fun IrType.asContextualTypeKey(
   val wrappedType = declaredType.asWrappedType(context)
 
   val typeKey =
-    TypeKey(
+    IrTypeKey(
       when (wrappedType) {
         is WrappedType.Canonical -> wrappedType.type
         else -> wrappedType.canonicalType()
@@ -223,7 +214,7 @@ internal fun IrType.asContextualTypeKey(
       qualifierAnnotation,
     )
 
-  return ContextualTypeKey(
+  return IrContextualTypeKey(
     typeKey = typeKey,
     wrappedType = wrappedType,
     hasDefault = hasDefault,
@@ -290,7 +281,14 @@ private fun IrType.renderShort(): String = buildString {
   if (this@renderShort is IrSimpleType) {
     arguments
       .takeUnless { it.isEmpty() }
-      ?.joinToString(", ", prefix = "<", postfix = ">") { it.typeOrFail.renderShort() }
+      ?.joinToString(", ", prefix = "<", postfix = ">") {
+        when (it) {
+          is IrStarProjection -> "*"
+          is IrTypeProjection -> {
+            it.type.renderShort()
+          }
+        }
+      }
       ?.let { append(it) }
   }
 }

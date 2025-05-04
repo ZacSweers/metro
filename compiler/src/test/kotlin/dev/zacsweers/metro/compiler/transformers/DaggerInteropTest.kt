@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.assertDiagnostics
+import dev.zacsweers.metro.compiler.assertNoWarningsOrErrors
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
@@ -413,8 +414,7 @@ class DaggerInteropTest : MetroCompilerTest() {
           )
         """
           .trimIndent()
-      ),
-      debug = true,
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val fooInstance = graph.callProperty<Any>("fooBar").callProperty<Provider<*>>("provider")
@@ -476,6 +476,22 @@ class DaggerInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       )
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/365
+  @Test
+  fun `do not suggest moving inject annotation to class when using javax or jakarta Inject`() {
+    compile(
+      source(
+        """
+            class JavaxInject @javax.inject.Inject constructor()
+            class JakartaInject @jakarta.inject.Inject constructor()
+          """
+          .trimIndent()
+      )
+    ) {
+      assertNoWarningsOrErrors()
     }
   }
 }

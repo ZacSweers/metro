@@ -4,13 +4,14 @@ package dev.zacsweers.metro.test.integration.cycles
 
 import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.Extends
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntoMap
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.createGraph
-import kotlin.test.Ignore
+import dev.zacsweers.metro.createGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -60,82 +61,16 @@ class CyclesTest {
     assertNotNull(a.e.d.b.c.aLazy.value)
   }
 
-  //  @Test
-  //  fun subcomponentIndirectionCycle() {
-  //    val childCycleGraph = CycleGraph.create().child();
-  //    val a = childCycleGraph.a();
-  //    assertThat(a.b.c.aProvider.get()).isNotNull();
-  //    assertThat(a.e.d.b.c.aProvider.get()).isNotNull();
-  //  }
-
-  /*
-  ## Dagger generates
-  class CycleMultibindsGraphImpl implements CycleMultibindsGraph {
-    private Provider<X> xProvider = DelegateFactory();
-    private Provider mapOfStringAndProviderOfXProvider = MapProviderFactory.<String, X>builder(1).put("X", xProvider).build();
-    private Provider<Y> yProvider = DelegateFactory();
-    private Provider mapOfStringAndProviderOfYProvider = MapProviderFactory.<String, Y>builder(1).put("Y", yProvider).build();
-
-    private CycleMultibindsGraphImpl() {
-      DelegateFactory.setDelegate(yProvider, Y_Factory.create(mapOfStringAndProviderOfXProvider, mapOfStringAndProviderOfYProvider));
-      DelegateFactory.setDelegate(xProvider, X_Factory.create(yProvider));
-    }
-
-    private Map<String, javax.inject.Provider<X>> mapOfStringAndProviderOfX() {
-      return Collections.<String, javax.inject.Provider<X>>singletonMap("X", xProvider);
-    }
-
-    private Map<String, javax.inject.Provider<Y>> mapOfStringAndProviderOfY() {
-      return Collections.<String, javax.inject.Provider<Y>>singletonMap("Y", yProvider);
-    }
-
-    @Override
-    public Y y() {
-      return new Y(mapOfStringAndProviderOfX(), mapOfStringAndProviderOfY());
-    }
+  @Test
+  fun graphExtensionIndirectionCycle() {
+    val parent = createGraph<CycleGraph>()
+    val childCycleGraph = createGraphFactory<ChildCycleGraph.Factory>().create(parent)
+    val a = childCycleGraph.a
+    assertNotNull(a.b.c.aProvider())
+    assertNotNull(a.e.d.b.c.aProvider())
+    assertNotNull(childCycleGraph.obj)
   }
 
-  ## Metro generates
-  public class ExampleGraphImpl : ExampleGraph {
-    private val yProvider: Provider<Y> = DelegateFactory<Y>()
-    private val val xProvider: Provider<X> = X_Factory.create(y = <this>.#yProvider)
-
-    public constructor() /* primary */ {
-      super/*Any*/()
-      /* <init>() */
-
-      DelegateFactory.setDelegate(
-        yProvider,
-        Y_Factory.create(
-          mapOfProvidersOfX = MapProviderFactory.builder<String, X>(size = 1).put(key = "X", providerOfValue = <this>.#xProvider).build(),
-          mapOfProvidersOfY = MapProviderFactory.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()
-        )
-      )
-    }
-
-    public override fun x(): X {
-      return xProvider.invoke()
-    }
-
-    public override fun y(): Y {
-      return yProvider.invoke()
-    }
-
-    public override val X.x: X
-      public override get(): X {
-        return error(message = "Never called")
-      }
-
-    public override val Y.y: Y
-      public override get(): Y {
-        return error(message = "Never called")
-      }
-
-  }
-   */
-  // TODO I'm not sure what's functionally different about
-  //  what metro generates and what dagger generates, but this infinite loops at runtime
-  @Ignore
   @Test
   fun providerMapIndirectionCycle() {
     val cycleMapGraph = createGraph<CycleMapGraph>()
@@ -200,13 +135,11 @@ class CyclesTest {
     @Binds @IntoMap @StringKey("Y") val Y.y: Y
   }
 
-  @DependencyGraph
+  @DependencyGraph(isExtendable = true)
   interface CycleGraph {
     fun a(): A
 
     fun c(): C
-
-    // fun child(): ChildCycleGraph
 
     @Provides
     private fun provideObjectWithCycle(obj: Provider<Any>): Any {
@@ -219,13 +152,17 @@ class CyclesTest {
     fun s(): S
   }
 
-  // TODO revisit after @GraphExtension
-  //  @Subcomponent
-  //  interface ChildCycleGraph {
-  //    A a();
-  //
-  //    Object object();
-  //  }
+  @DependencyGraph
+  interface ChildCycleGraph {
+    val a: A
+
+    val obj: Any
+
+    @DependencyGraph.Factory
+    fun interface Factory {
+      fun create(@Extends cycleGraph: CycleGraph): ChildCycleGraph
+    }
+  }
 
   interface Foo
 

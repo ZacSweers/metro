@@ -6,7 +6,10 @@ import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
-import dev.zacsweers.metro.compiler.ir.BindingStack.Entry
+import dev.zacsweers.metro.compiler.graph.BaseBindingStack
+import dev.zacsweers.metro.compiler.graph.BaseTypeKey
+import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
+import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -16,54 +19,25 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
-internal interface BindingStack {
-  val graph: IrClass
-  val entries: List<Entry>
-
-  fun push(entry: Entry)
-
-  fun pop()
-
-  fun entryFor(key: TypeKey): Entry?
-
-  fun entriesSince(key: TypeKey): List<Entry>
-
+internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, Entry> {
   class Entry(
-    val contextKey: ContextualTypeKey,
-    val usage: String?,
-    val graphContext: String?,
+    override val contextKey: IrContextualTypeKey,
+    override val usage: String?,
+    override val graphContext: String?,
     val declaration: IrDeclarationWithName?,
-    val displayTypeKey: TypeKey = contextKey.typeKey,
+    override val displayTypeKey: IrTypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
      * participate in validation.
      */
-    val isSynthetic: Boolean = false,
-  ) {
-    val typeKey: TypeKey
-      get() = contextKey.typeKey
-
-    fun render(graph: FqName, short: Boolean): String {
-      return buildString {
-        append(displayTypeKey.render(short))
-        usage?.let {
-          append(' ')
-          append(it)
-        }
-        graphContext?.let {
-          appendLine()
-          append("    ")
-          append("[${graph.asString()}]")
-          append(' ')
-          append(it)
-        }
-      }
-    }
+    override val isSynthetic: Boolean = false,
+  ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
 
     override fun toString(): String = render(FqName("..."), short = true)
 
@@ -72,7 +46,7 @@ internal interface BindingStack {
       com.slack.circuit.star.Example1 is requested at
              [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.ExampleGraph.example1()
        */
-      fun requestedAt(contextKey: ContextualTypeKey, accessor: IrFunction): Entry {
+      fun requestedAt(contextKey: IrContextualTypeKey, accessor: IrFunction): Entry {
         val declaration =
           if (accessor is IrSimpleFunction) {
             val rawDeclaration = accessor.correspondingPropertySymbol?.owner ?: accessor
@@ -104,7 +78,7 @@ internal interface BindingStack {
       com.slack.circuit.star.Example1
        */
       fun contributedToMultibinding(
-        contextKey: ContextualTypeKey,
+        contextKey: IrContextualTypeKey,
         declaration: IrDeclarationWithName?,
       ): Entry =
         Entry(
@@ -118,7 +92,7 @@ internal interface BindingStack {
       /*
       com.slack.circuit.star.Example1
        */
-      fun simpleTypeRef(contextKey: ContextualTypeKey, usage: String? = null): Entry =
+      fun simpleTypeRef(contextKey: IrContextualTypeKey, usage: String? = null): Entry =
         Entry(
           contextKey = contextKey,
           usage = usage,
@@ -132,24 +106,31 @@ internal interface BindingStack {
             [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.Example1(…, text2)
       */
       fun injectedAt(
-        contextKey: ContextualTypeKey,
+        contextKey: IrContextualTypeKey,
         function: IrFunction?,
         param: IrValueParameter? = null,
         declaration: IrDeclarationWithName? = param,
-        displayTypeKey: TypeKey = contextKey.typeKey,
+        displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
+        // TODO make some of this lazily evaluated
+        val functionToUse =
+          if (function is IrSimpleFunction && function.isFakeOverride) {
+            function.resolveOverriddenTypeIfAny()
+          } else {
+            function
+          }
         val context =
-          if (function == null) {
+          if (functionToUse == null) {
             "<intrinsic>"
           } else {
-            val targetFqName = function.parent.kotlinFqName
+            val targetFqName = functionToUse.parent.kotlinFqName
             val middle =
               when {
-                function is IrConstructor -> ""
-                function.isPropertyAccessor ->
-                  "#${(function.propertyIfAccessor as IrProperty).name.asString()}"
-                else -> "#${function.name.asString()}"
+                functionToUse is IrConstructor -> ""
+                functionToUse.isPropertyAccessor ->
+                  "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
+                else -> "#${functionToUse.name.asString()}"
               }
             val end = if (param == null) "()" else "(…, ${param.name.asString()})"
             "$targetFqName$middle$end"
@@ -169,9 +150,9 @@ internal interface BindingStack {
             [com.slack.circuit.star.ExampleGraph] provideInt(...): kotlin.Int
       */
       fun providedAt(
-        contextualTypeKey: ContextualTypeKey,
+        contextualTypeKey: IrContextualTypeKey,
         function: IrFunction,
-        displayTypeKey: TypeKey = contextualTypeKey.typeKey,
+        displayTypeKey: IrTypeKey = contextualTypeKey.typeKey,
       ): Entry {
         val targetFqName = function.parent.kotlinFqName
         val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
@@ -189,8 +170,11 @@ internal interface BindingStack {
 
   companion object {
     private val EMPTY =
-      object : BindingStack {
+      object : IrBindingStack {
         override val graph
+          get() = throw UnsupportedOperationException()
+
+        override val graphFqName: FqName
           get() = throw UnsupportedOperationException()
 
         override val entries: List<Entry>
@@ -204,23 +188,28 @@ internal interface BindingStack {
           // Do nothing
         }
 
-        override fun entryFor(key: TypeKey): Entry? {
+        override fun entryFor(key: IrTypeKey): Entry? {
           return null
         }
 
-        override fun entriesSince(key: TypeKey): List<Entry> {
+        override fun entriesSince(key: IrTypeKey): List<Entry> {
           return emptyList()
         }
       }
 
-    operator fun invoke(graph: IrClass, logger: MetroLogger): BindingStack =
-      BindingStackImpl(graph, logger)
+    operator fun invoke(graph: IrClass, logger: MetroLogger): IrBindingStack =
+      IrBindingStackImpl(graph, logger)
 
     fun empty() = EMPTY
   }
 }
 
-internal inline fun <T> BindingStack.withEntry(entry: Entry?, block: () -> T): T {
+internal inline fun <
+  T,
+  Type : Any,
+  TypeKey : BaseTypeKey<Type, *, *>,
+  Entry : BaseBindingStack.BaseEntry<Type, TypeKey, *>,
+> BaseBindingStack<*, Type, TypeKey, Entry>.withEntry(entry: Entry?, block: () -> T): T {
   if (entry == null) return block()
   push(entry)
   val result = block()
@@ -228,19 +217,19 @@ internal inline fun <T> BindingStack.withEntry(entry: Entry?, block: () -> T): T
   return result
 }
 
-internal val BindingStack.lastEntryOrGraph
+internal val IrBindingStack.lastEntryOrGraph
   get() = entries.firstOrNull()?.declaration ?: graph
 
 internal fun Appendable.appendBindingStack(
-  stack: BindingStack,
+  stack: BaseBindingStack<*, *, *, *>,
   indent: String = "    ",
   ellipse: Boolean = false,
   short: Boolean = true,
-) = appendBindingStackEntries(stack.graph.kotlinFqName, stack.entries, indent, ellipse, short)
+) = appendBindingStackEntries(stack.graphFqName, stack.entries, indent, ellipse, short)
 
 internal fun Appendable.appendBindingStackEntries(
   graphName: FqName,
-  entries: Collection<Entry>,
+  entries: Collection<BaseBindingStack.BaseEntry<*, *, *>>,
   indent: String = "    ",
   ellipse: Boolean = false,
   short: Boolean = true,
@@ -254,11 +243,13 @@ internal fun Appendable.appendBindingStackEntries(
   }
 }
 
-internal class BindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
-  BindingStack {
+internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
+  IrBindingStack {
+  override val graphFqName: FqName by unsafeLazy { graph.kotlinFqName }
+
   // TODO can we use one structure?
   // TODO can we use scattermap's IntIntMap? Store the typekey hash to its index
-  private val entrySet = mutableSetOf<TypeKey>()
+  private val entrySet = mutableSetOf<IrTypeKey>()
   private val stack = ArrayDeque<Entry>()
   override val entries: List<Entry> = stack
 
@@ -287,7 +278,7 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
     entrySet.remove(removed.typeKey)
   }
 
-  override fun entryFor(key: TypeKey): Entry? {
+  override fun entryFor(key: IrTypeKey): Entry? {
     return if (key in entrySet) {
       stack.first { entry -> entry.typeKey == key }
     } else {
@@ -295,12 +286,21 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
     }
   }
 
-  // TODO optimize this by looking in the entrySet first
-  override fun entriesSince(key: TypeKey): List<Entry> {
-    val reversed = stack.asReversed()
-    val index = reversed.indexOfFirst { !it.contextKey.isIntoMultibinding && it.typeKey == key }
-    if (index == -1) return emptyList()
-    return reversed.slice(index until reversed.size).filterNot { it.isSynthetic }
+  // TODO optimize this by looking in the entrySet first?
+  override fun entriesSince(key: IrTypeKey): List<Entry> {
+    // Top entry is always the key currently being processed, so exclude it from analysis with
+    // dropLast(1)
+    val inFocus = stack.asReversed().dropLast(1)
+    if (inFocus.isEmpty()) return emptyList()
+
+    val first =
+      inFocus.indexOfFirst {
+        !it.contextKey.isIntoMultibinding && !it.isSynthetic && it.typeKey == key
+      }
+    if (first == -1) return emptyList()
+
+    // path from the earlier duplicate up to the key just below the current one
+    return inFocus.subList(first, inFocus.size)
   }
 
   override fun toString() = renderTable()
@@ -357,8 +357,8 @@ internal class BindingStackImpl(override val graph: IrClass, private val logger:
 
 internal fun bindingStackEntryForDependency(
   binding: Binding,
-  contextKey: ContextualTypeKey,
-  targetKey: TypeKey,
+  contextKey: IrContextualTypeKey,
+  targetKey: IrTypeKey,
 ): Entry {
   return when (binding) {
     is Binding.ConstructorInjected -> {
@@ -392,7 +392,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(contextKey, binding.function, displayTypeKey = targetKey)
     }
     is Binding.Multibinding -> {
-      Entry.contributedToMultibinding(contextKey, binding.declaration)
+      Entry.contributedToMultibinding(binding.contextualTypeKey, binding.declaration)
     }
     is Binding.ObjectClass -> TODO()
     is Binding.BoundInstance -> TODO()

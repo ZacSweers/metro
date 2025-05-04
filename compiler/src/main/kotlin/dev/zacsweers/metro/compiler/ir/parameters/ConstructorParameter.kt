@@ -4,10 +4,10 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.BindingStack
-import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.IrBindingStack
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.TypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.name.Name
 internal class ConstructorParameter(
   override val kind: Kind,
   override val name: Name,
-  override val contextualTypeKey: ContextualTypeKey,
+  override val contextualTypeKey: IrContextualTypeKey,
   override val isAssisted: Boolean,
   override val isGraphInstance: Boolean,
   override val isBindsInstance: Boolean,
@@ -40,11 +40,11 @@ internal class ConstructorParameter(
   @Poko.Skip override val providerType: IrType,
   @Poko.Skip override val lazyType: IrType,
   @Poko.Skip override val symbols: Symbols,
-  @Poko.Skip val bindingStackEntry: BindingStack.Entry,
+  @Poko.Skip val bindingStackEntry: IrBindingStack.Entry,
   @Poko.Skip override val location: CompilerMessageSourceLocation?,
 ) : Parameter {
   override lateinit var ir: IrValueParameter
-  override val typeKey: TypeKey = contextualTypeKey.typeKey
+  override val typeKey: IrTypeKey = contextualTypeKey.typeKey
   override val type: IrType = contextualTypeKey.typeKey.type
   override val isWrappedInProvider: Boolean = contextualTypeKey.isWrappedInProvider
   override val isWrappedInLazy: Boolean = contextualTypeKey.isWrappedInLazy
@@ -136,7 +136,7 @@ internal fun IrValueParameter.toConstructorParameter(
       assistedIdentifier = assistedIdentifier,
       symbols = context.symbols,
       isGraphInstance = false,
-      bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
+      bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
       isBindsInstance = isProvides,
       isExtends = isExtends,
       isIncludes = isIncludes,

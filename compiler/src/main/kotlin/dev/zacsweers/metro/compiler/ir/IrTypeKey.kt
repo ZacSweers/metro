@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -14,23 +15,23 @@ import org.jetbrains.kotlin.ir.util.render
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 @Poko
-internal class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
-  Comparable<TypeKey> {
+internal class IrTypeKey(override val type: IrType, override val qualifier: IrAnnotation? = null) :
+  BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
 
-  fun copy(type: IrType = this.type, qualifier: IrAnnotation? = this.qualifier): TypeKey {
-    return TypeKey(type, qualifier)
+  override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey {
+    return IrTypeKey(type, qualifier)
   }
 
   override fun toString(): String = cachedRender
 
-  override fun compareTo(other: TypeKey): Int {
+  override fun compareTo(other: IrTypeKey): Int {
     if (this == other) return 0
     return cachedRender.compareTo(other.cachedRender)
   }
 
-  fun render(short: Boolean, includeQualifier: Boolean = true): String = buildString {
+  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     if (includeQualifier) {
       qualifier?.let {
         append(it)
@@ -62,14 +63,14 @@ internal class TypeKey(val type: IrType, val qualifier: IrAnnotation? = null) :
   }
 }
 
-internal fun TypeKey.requireSetElementType(): IrType {
+internal fun IrTypeKey.requireSetElementType(): IrType {
   return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
 }
 
-internal fun TypeKey.requireMapKeyType(): IrType {
+internal fun IrTypeKey.requireMapKeyType(): IrType {
   return type.expectAs<IrSimpleType>().arguments[0].typeOrFail
 }
 
-internal fun TypeKey.requireMapValueType(): IrType {
+internal fun IrTypeKey.requireMapValueType(): IrType {
   return type.expectAs<IrSimpleType>().arguments[1].typeOrFail
 }

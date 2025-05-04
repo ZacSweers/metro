@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.Symbols.StringNames
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.TypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.name.CallableId
 
 internal class ProviderFactory(
   val context: IrMetroContext,
-  sourceTypeKey: TypeKey,
+  sourceTypeKey: IrTypeKey,
   val clazz: IrClass,
   sourceCallable: IrSimpleFunction?,
   sourceAnnotations: MetroAnnotations<IrAnnotation>?,
@@ -31,7 +31,7 @@ internal class ProviderFactory(
   val callableId: CallableId
   val providesFunction: IrSimpleFunction
   val annotations: MetroAnnotations<IrAnnotation>
-  val typeKey: TypeKey
+  val typeKey: IrTypeKey
   val isPropertyAccessor: Boolean
 
   init {

@@ -10,11 +10,11 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.Binding
-import dev.zacsweers.metro.compiler.ir.BindingStack
-import dev.zacsweers.metro.compiler.ir.ContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrBindingStack
+import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.TypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
@@ -218,7 +218,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
     val instanceParam =
       if (!reference.isInObject) {
-        val contextualTypeKey = ContextualTypeKey.create(typeKey = TypeKey(graphType))
+        val contextualTypeKey = IrContextualTypeKey.create(typeKey = IrTypeKey(graphType))
         ConstructorParameter(
           kind = Parameter.Kind.VALUE,
           name = Name.identifier("graph"),
@@ -237,7 +237,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           // This is used for cycle detection in the dependency graph.
           // This code path is executed when a provider function is not in an object
           // and needs access to the graph instance.
-          bindingStackEntry = BindingStack.Entry.simpleTypeRef(contextualTypeKey),
+          bindingStackEntry = IrBindingStack.Entry.simpleTypeRef(contextualTypeKey),
           isBindsInstance = false,
           hasDefault = false,
           location = null,
@@ -358,7 +358,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
     return references.getOrPut(function.kotlinFqName) {
-      val typeKey = ContextualTypeKey.from(this, function, annotations).typeKey
+      val typeKey = IrContextualTypeKey.from(this, function, annotations).typeKey
       val isPropertyAccessor = function.isPropertyAccessor
       val fqName =
         if (isPropertyAccessor) {
@@ -392,7 +392,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
             "No getter found for property $fqName. Note that field properties are not supported"
           )
 
-      val typeKey = ContextualTypeKey.from(this, getter, annotations).typeKey
+      val typeKey = IrContextualTypeKey.from(this, getter, annotations).typeKey
 
       val parent = property.parentAsClass
       return CallableReference(
@@ -473,7 +473,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     val name: Name,
     val isPropertyAccessor: Boolean,
     val parameters: Parameters<ConstructorParameter>,
-    val typeKey: TypeKey,
+    val typeKey: IrTypeKey,
     val isNullable: Boolean,
     val parent: IrClassSymbol,
     val callee: IrFunctionSymbol,
@@ -535,7 +535,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     companion object // For extension
   }
 
-  fun factoryClassesFor(parent: IrClass): List<Pair<TypeKey, ProviderFactory>> {
+  fun factoryClassesFor(parent: IrClass): List<Pair<IrTypeKey, ProviderFactory>> {
     // Eager cache check
     val parentFqName = parent.kotlinFqName
     generatedFactoriesByClass[parentFqName]?.let { cachedFactories ->
@@ -592,9 +592,9 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
   fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
     val factoryType = factoryCls.superTypes.first { it.classOrNull == symbols.metroFactory }
-    // Extract TypeKey from Factory supertype
+    // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
-    val typeKey = TypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
+    val typeKey = IrTypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
     return ProviderFactory(metroContext, typeKey, factoryCls, null, null)
   }
 }

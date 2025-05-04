@@ -18,20 +18,20 @@ import org.jetbrains.kotlin.ir.types.typeWith
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
   val isExtendable: Boolean,
-  val includedGraphNodes: Map<TypeKey, DependencyGraphNode>,
-  val contributedGraphs: Map<TypeKey, MetroSimpleFunction>,
+  val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
+  val contributedGraphs: Map<IrTypeKey, MetroSimpleFunction>,
   val scopes: Set<IrAnnotation>,
-  val providerFactories: List<Pair<TypeKey, ProviderFactory>>,
+  val providerFactories: List<Pair<IrTypeKey, ProviderFactory>>,
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
-  val accessors: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
-  val bindsFunctions: List<Pair<MetroSimpleFunction, ContextualTypeKey>>,
+  val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
+  val bindsFunctions: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   // TypeKey key is the injected type wrapped in MembersInjector
-  val injectors: List<Pair<MetroSimpleFunction, TypeKey>>,
+  val injectors: List<Pair<MetroSimpleFunction, IrTypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
-  val extendedGraphNodes: Map<TypeKey, DependencyGraphNode>,
-  val typeKey: TypeKey = TypeKey(sourceGraph.typeWith()),
+  val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
+  val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
   val proto: DependencyGraphProto? = null,
 ) {
 
@@ -76,7 +76,7 @@ internal data class DependencyGraphNode(
 }
 
 private fun DependencyGraphNode.recurseIncludedNodes(
-  builder: MutableMap<TypeKey, DependencyGraphNode>
+  builder: MutableMap<IrTypeKey, DependencyGraphNode>
 ) {
   for ((key, node) in includedGraphNodes) {
     if (key !in builder) {
@@ -86,7 +86,9 @@ private fun DependencyGraphNode.recurseIncludedNodes(
   }
 }
 
-private fun DependencyGraphNode.recurseParents(builder: MutableMap<TypeKey, DependencyGraphNode>) {
+private fun DependencyGraphNode.recurseParents(
+  builder: MutableMap<IrTypeKey, DependencyGraphNode>
+) {
   for ((key, value) in extendedGraphNodes) {
     builder.put(key, value)
     value.recurseParents(builder)

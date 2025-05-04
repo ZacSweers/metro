@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.ir.parameters
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.TypeKey
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.Kind
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -156,7 +156,7 @@ private class ParametersImpl<T : Parameter>(
       }
       append(": ")
       ir?.let {
-        val typeKey = TypeKey(it.returnType)
+        val typeKey = IrTypeKey(it.returnType)
         append(typeKey.render(short = true, includeQualifier = false))
       } ?: run { append("<error>") }
     }

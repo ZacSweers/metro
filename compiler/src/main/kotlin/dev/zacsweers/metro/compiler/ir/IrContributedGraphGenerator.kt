@@ -34,7 +34,6 @@ import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -238,6 +237,7 @@ internal class IrContributedGraphGenerator(
               .apply {
                 overriddenSymbols += originalGetter.symbol
                 copyAnnotationsFrom(member.ir)
+                extensionReceiverParameter = originalGetter.extensionReceiverParameter
               }
           }
       } else {

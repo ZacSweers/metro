@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.allSupertypes
 import dev.zacsweers.metro.compiler.assertDiagnostics
+import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
@@ -1242,13 +1243,6 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          import dev.zacsweers.metro.AppScope
-          import dev.zacsweers.metro.ContributesBinding
-          import dev.zacsweers.metro.ContributesIntoSet
-          import dev.zacsweers.metro.DependencyGraph
-          import dev.zacsweers.metro.Inject
-          import dev.zacsweers.metro.binding
-
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val contributedSet: Set<ContributedInterface>
@@ -1852,15 +1846,15 @@ class AggregationTest : MetroCompilerTest() {
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
+      // TODO ideally this also lists a similar binding (Impl) but won't until we collect all
+      // missing bindings instead
+      //  of failing eagerly
       assertDiagnostics(
         """
           e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
 
-        test.ContributedInterface is requested at
-            [test.AltGraph] test.AltGraph#contributedInterface
-
-    Similar bindings:
-      - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
+              test.ContributedInterface is requested at
+                  [test.AltGraph] test.AltGraph#contributedInterface
         """
           .trimIndent()
       )
@@ -3220,6 +3214,130 @@ class AggregationTest : MetroCompilerTest() {
       assertThat(impl2).isSameInstanceAs(graph.callProperty<Any>("contributedInterface"))
       val impl1 = impl2.callProperty<Any>("impl1")
       assertThat(impl1).isSameInstanceAs(graph.callProperty<Any>("impl1"))
+    }
+  }
+
+  @Test
+  fun `B SingleIn is respected, when injected directly into A`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class) @Inject class B
+          @Inject class A(val b1: B, val b2: B) {
+            fun areEqual(): Boolean = b1 == b2
+          }
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val a: A
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
+    }
+  }
+
+  @Test
+  fun `B SingleIn is respected, when injected into AImpl and binding interface is used`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class) @Inject class B
+          interface A
+          @ContributesBinding(AppScope::class)
+          @Inject class AImpl(val b1: B, val b2: B): A {
+            fun areEqual(): Boolean = b1 == b2
+          }
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val a: A
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
+    }
+  }
+
+  @Test
+  fun `B SingleIn is respected, when injected into a wrapper class`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class) @Inject class B
+          @Inject class BWrapper(val b1: B, val b2: B)
+          @Inject class A(val bWrapper: BWrapper) {
+            fun areEqual(): Boolean = bWrapper.b1 == bWrapper.b2
+          }
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val a: A
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
+    }
+  }
+
+  @Test
+  fun `binding scope is respected regardless of where it is injected`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class) @Inject class B
+          @Inject class BWrapper(val b1: B, val b2: B)
+          interface A
+          @ContributesBinding(AppScope::class)
+          @Inject class AImpl(val bWrapper: BWrapper) : A {
+            fun areEqual(): Boolean = bWrapper.b1 == bWrapper.b2
+          }
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val a: A
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
+    }
+  }
+
+  @Test
+  fun `B SingleIn is respected, when binding interface starts with a letter AFTER B and injected into a wrapper class`() {
+    compile(
+      source(
+        """
+          @SingleIn(AppScope::class) @Inject class B
+          @Inject class BWrapper(val b1: B, val b2: B)
+          interface C
+          @ContributesBinding(AppScope::class)
+          @Inject class CImpl(val bWrapper: BWrapper) : C {
+            fun areEqual(): Boolean = bWrapper.b1 == bWrapper.b2
+          }
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val a: C
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+
+      assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
     }
   }
 }
