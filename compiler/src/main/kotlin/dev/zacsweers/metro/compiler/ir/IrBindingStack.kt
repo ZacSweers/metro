@@ -113,6 +113,7 @@ internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
+        // TODO make some of this lazily evaluated
         val functionToUse =
           if (function is IrSimpleFunction && function.isFakeOverride) {
             function.resolveOverriddenTypeIfAny()
