@@ -19,6 +19,8 @@ Changelog
 - **Fix**: Fix qualifiers on bindings not getting seen by extended child graphs.
 - **Fix**: Fix qualifiers getting ignored on accessors from `@Includes` dependencies.
 - **Fix**: Fix transitive scoped dependencies not always getting initialized first in graph provider fields.
+- **Fix**: Fix injected `lateinit var` properties being treated as if they have default values.
+- **Fix**: Alias bindings not always having their backing type visited during graph validation.
 - **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
 - **Change**: Change debug reports dir to be per-compilation rather than per-platform.
 
