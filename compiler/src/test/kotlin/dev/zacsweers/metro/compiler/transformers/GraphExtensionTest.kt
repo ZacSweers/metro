@@ -966,6 +966,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  // Regression test for https://github.com/ZacSweers/metro/issues/375
   @Test
   fun `parent graph is generated first even if child graph is defined first`() {
     compile(
