@@ -91,7 +91,14 @@ internal fun IrProperty.toMemberInjectParameter(
   val declaredType = typeParameterRemapper?.invoke(propertyType) ?: propertyType
 
   // TODO warn if it's anything other than null for now?
-  val defaultValue = getter?.body ?: backingField?.initializer
+  // Check lateinit because they will report having a getter/body even though they're not actually
+  // implemented for our needs
+  val defaultValue =
+    if (isLateinit) {
+      null
+    } else {
+      getter?.body ?: backingField?.initializer
+    }
   val contextKey =
     declaredType.asContextualTypeKey(
       context,
