@@ -1173,8 +1173,6 @@ internal class DependencyGraphTransformer(
       } else {
         graph.addBinding(binding.typeKey, binding, bindingStack)
       }
-      // Resolve aliased binding
-      binding.aliasedBinding(graph, bindingStack)
     }
 
     // Don't eagerly create bindings for injectable types, they'll be created on-demand
@@ -1836,7 +1834,7 @@ internal class DependencyGraphTransformer(
         .sortedBy { it.first.ir.name.asString() }
         .onEachIndexed { index, (_, contextKey) ->
           val isMultibindingAccessor =
-            bindingGraph.requireBinding(contextKey.typeKey, BindingStack.empty()) is
+            bindingGraph.requireBinding(contextKey, BindingStack.empty()) is
               Binding.Multibinding
           if (isMultibindingAccessor) {
             multibindingAccessors = multibindingAccessors or (1 shl index)
@@ -1886,7 +1884,7 @@ internal class DependencyGraphTransformer(
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
         val irFunction = this
-        val binding = context.graph.requireBinding(contextualTypeKey.typeKey, context.bindingStack)
+        val binding = context.graph.requireBinding(contextualTypeKey, context.bindingStack)
         context.bindingStack.push(BindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
         body =
           pluginContext.createIrBuilder(symbol).run {
@@ -1953,7 +1951,7 @@ internal class DependencyGraphTransformer(
                       add(irGet(targetParam))
                       for (parameter in parameters.valueParameters) {
                         val paramBinding =
-                          context.graph.requireBinding(parameter.typeKey, context.bindingStack)
+                          context.graph.requireBinding(parameter.contextualTypeKey, context.bindingStack)
                         add(
                           typeAsProviderArgument(
                             metroContext,
@@ -2114,7 +2112,7 @@ internal class DependencyGraphTransformer(
     }
 
     bindingStack.withEntry(stackEntry) {
-      val binding = graph.requireBinding(contextKey.typeKey, bindingStack)
+      val binding = graph.requireBinding(contextKey, bindingStack)
       processBinding(
         binding,
         node,
@@ -2392,7 +2390,7 @@ internal class DependencyGraphTransformer(
           // Generate binding code for each param
           val paramBinding =
             generationContext.graph.requireBinding(
-              contextualTypeKey.typeKey,
+              contextualTypeKey,
               generationContext.bindingStack,
             )
 
@@ -2455,7 +2453,9 @@ internal class DependencyGraphTransformer(
     fieldInitKey: IrTypeKey? = null,
   ): IrExpression {
     if (binding is Binding.Absent) {
-      error("Absent bindings need to be checked prior to generateBindingCode()")
+      error(
+        "Absent bindings need to be checked prior to generateBindingCode(). ${binding.typeKey} missing."
+      )
     }
 
     val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
