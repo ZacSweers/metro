@@ -947,7 +947,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:6:1 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
-                  [test.ExampleGraph] test.ExampleGraph.$${'$'}MetroGraph#inject()
+                  [test.ExampleGraph] test.ExampleGraph#inject()
         """
           .trimIndent()
       )
