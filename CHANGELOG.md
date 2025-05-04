@@ -13,6 +13,7 @@ Changelog
 - **Enhancement**: Optimize supertype lookups when building binding classes by avoiding previously visited classes.
 - **Enhancement**: Don't generate hints for contributed types with non-public API visibility.
 - **Enhancement**: When reporting duplicate binding errors where one of the bindings is contributed, report the contributing class in the error message.
+- **Enhancement**: When reporting scope incompatibility, check any extended parents match the scope and suggest a workaround in the error diagnostic.
 - **Fix**: Fix incremental compilation when a parent graph or supertype modifies/removes a provider.
 - **Fix**: Fix rank processing error when the outranked binding is contributed using Metro's ContributesBinding annotation.
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.

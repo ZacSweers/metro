@@ -981,6 +981,57 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  // https://github.com/ZacSweers/metro/issues/377
+  @Test
+  fun `suggest adding to parent if scoped constructor-injected class matches parent scope but isn't provided`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+
+          @Inject @SingleIn(AppScope::class) class Dependency
+          @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            // Works if added explicitly like this
+            // val dependency: Dependency
+          }
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+              val childDependency: ChildDependency
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: LoggedInScope.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+              test.Dependency (scoped to '@SingleIn(AppScope::class)')
+              test.Dependency is injected at
+                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.ChildDependency(…, dep)
+              test.ChildDependency is requested at
+                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+
+
+          (Hint)
+          It appears that extended parent graph 'test.ExampleGraph' does declare the '@SingleIn(AppScope::class)' scope but doesn't use 'Dependency' directly.
+          To work around this, consider declaring an accessor for 'Dependency' in that graph (i.e. `val dependency: Dependency`).
+          See https://github.com/ZacSweers/metro/issues/377 for more details.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }
