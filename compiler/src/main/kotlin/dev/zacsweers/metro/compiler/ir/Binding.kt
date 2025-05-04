@@ -230,26 +230,19 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters<out Parameter>,
     override val annotations: MetroAnnotations<IrAnnotation>,
   ) : Binding, BindingWithAnnotations {
-    private var aliasedBinding: Binding? = null
-
     fun aliasedBinding(graph: IrBindingGraph, stack: BindingStack): Binding {
-      val optionalBinding = aliasedBinding
-      return if (optionalBinding == null) {
-        val binding = graph.getOrCreateBinding(contextualTypeKey.withTypeKey(aliasedType), stack)
-        aliasedBinding = binding
-        binding
-      } else {
-        optionalBinding
-      }
+      // O(1) lookup at this point
+      return graph.requireBinding(contextualTypeKey.withTypeKey(aliasedType), stack)
     }
 
     override val scope: IrAnnotation? = null
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey }
     override val dependencies: List<IrContextualTypeKey> =
-      parameters.nonInstanceParameters.map { it.contextualTypeKey }
+      listOf(IrContextualTypeKey.create(aliasedType))
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
+    // TODO dedupe with the below render()
     override val reportableLocation: CompilerMessageSourceLocation?
       get() {
         if (ir == null) return null
@@ -372,7 +365,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation? = null
-    override val isTransient: Boolean = false
+    override val isTransient: Boolean = true
   }
 
   @Poko
@@ -511,7 +504,6 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
   contextKey: IrContextualTypeKey,
   bindingStack: BindingStack,
   bindingGraph: IrBindingGraph,
-  allowAbsent: Boolean = true,
 ): Binding? {
   val key = contextKey.typeKey
   val irClass = key.type.rawType()
@@ -550,7 +542,7 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
       parameters = function.parameters(metroContext),
       target = targetBinding,
     )
-  } else if (allowAbsent && contextKey.hasDefault) {
+  } else if (contextKey.hasDefault) {
     Absent(key)
   } else {
     null
