@@ -74,7 +74,10 @@ internal open class MutableBindingGraph<
    */
   fun tryPut(binding: Binding, bindingStack: BindingStack, key: TypeKey = binding.typeKey) {
     check(!sealed) { "Graph already sealed" }
-    check(!binding.isTransient) { "Transient bindings cannot be added to the graph" }
+    if (binding.isTransient) {
+      // Absent binding or otherwise not something we store
+      return
+    }
     if (bindings.containsKey(key)) {
       val message = buildString {
         appendLine(
@@ -94,11 +97,6 @@ internal open class MutableBindingGraph<
       onError(message, bindingStack)
     }
     bindings[binding.typeKey] = binding
-  }
-
-  @Suppress("UNCHECKED_CAST")
-  fun getOrPut(key: TypeKey, defaultValue: () -> Binding): Binding {
-    return bindings.getOrPut(key, defaultValue)
   }
 
   override operator fun get(key: TypeKey): Binding? = bindings[key]
@@ -310,7 +308,7 @@ internal open class MutableBindingGraph<
 
   fun getOrCreateBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
     return bindings[contextKey.typeKey]
-      ?: computeBinding(contextKey, stack)?.also { bindings[it.typeKey] = it }
+      ?: computeBinding(contextKey, stack)?.also { tryPut(it, stack) }
       ?: reportMissingBinding(contextKey.typeKey, stack)
   }
 
