@@ -558,8 +558,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           interface ExampleGraph
         """
           .trimIndent()
-      ),
-      debug = true,
+      )
     ) {
       assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
       val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()

@@ -2444,8 +2444,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Inject class ExampleClass(val ints: Map<Int, Provider<Int>>)
         """
           .trimIndent()
-      ),
-      debug = true,
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val exampleClass = graph.callProperty<Any>("exampleClass")
