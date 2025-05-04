@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
@@ -278,10 +279,7 @@ internal fun IrClass.memberInjectParameters(
   context: IrMetroContext
 ): Map<ClassId, List<Parameters<MembersInjectParameter>>> {
   return buildList {
-      val nameAllocator =
-        dev.zacsweers.metro.compiler.NameAllocator(
-          mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT
-        )
+      val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
       for (type in
         getAllSuperTypes(context.pluginContext, excludeSelf = false, excludeAny = true)) {
         val clazz = type.rawTypeOrNull() ?: continue
