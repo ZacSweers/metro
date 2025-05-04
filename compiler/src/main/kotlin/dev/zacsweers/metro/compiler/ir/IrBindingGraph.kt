@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import kotlin.text.appendLine
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
@@ -69,11 +68,16 @@ internal class IrBindingGraph(
 
   // For bindings we expect to already be cached
   fun requireBinding(key: IrTypeKey, stack: BindingStack): Binding {
-    return realGraph[key]
+    return requireBinding(IrContextualTypeKey.create(key), stack)
+  }
+
+  fun requireBinding(contextKey: IrContextualTypeKey, stack: BindingStack): Binding {
+    return realGraph[contextKey.typeKey]
       ?: run {
-        stack.push(BindingStack.Entry.simpleTypeRef(IrContextualTypeKey.create(key)))
+        if (contextKey.hasDefault) return Binding.Absent(contextKey.typeKey)
+        stack.push(BindingStack.Entry.simpleTypeRef(IrContextualTypeKey.create(contextKey.typeKey)))
         val message = buildString {
-          appendLine("No binding found for $key")
+          appendLine("No binding found for ${contextKey.typeKey}")
           appendBindingStack(stack)
           if (metroContext.debug) {
             appendLine(dumpGraph(stack.graph.kotlinFqName.asString(), short = false))
@@ -117,6 +121,7 @@ internal class IrBindingGraph(
   }
 
   fun getOrCreateBinding(contextKey: IrContextualTypeKey, bindingStack: BindingStack): Binding {
+    check(!realGraph.sealed)
     val key = contextKey.typeKey
     val existingBinding = realGraph[key]
     if (existingBinding != null) {
@@ -143,6 +148,9 @@ internal class IrBindingGraph(
   fun validate(onError: (String) -> Nothing): Set<IrTypeKey> {
     val deferredTypes = realGraph.seal(accessors)
     checkEmptyMultibindings(onError)
+    check(realGraph.snapshot.values.none { it is Binding.Absent }) {
+      "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
+    }
     return deferredTypes
   }
 
