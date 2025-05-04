@@ -1834,8 +1834,7 @@ internal class DependencyGraphTransformer(
         .sortedBy { it.first.ir.name.asString() }
         .onEachIndexed { index, (_, contextKey) ->
           val isMultibindingAccessor =
-            bindingGraph.requireBinding(contextKey, BindingStack.empty()) is
-              Binding.Multibinding
+            bindingGraph.requireBinding(contextKey, BindingStack.empty()) is Binding.Multibinding
           if (isMultibindingAccessor) {
             multibindingAccessors = multibindingAccessors or (1 shl index)
           }
@@ -1951,7 +1950,10 @@ internal class DependencyGraphTransformer(
                       add(irGet(targetParam))
                       for (parameter in parameters.valueParameters) {
                         val paramBinding =
-                          context.graph.requireBinding(parameter.contextualTypeKey, context.bindingStack)
+                          context.graph.requireBinding(
+                            parameter.contextualTypeKey,
+                            context.bindingStack,
+                          )
                         add(
                           typeAsProviderArgument(
                             metroContext,

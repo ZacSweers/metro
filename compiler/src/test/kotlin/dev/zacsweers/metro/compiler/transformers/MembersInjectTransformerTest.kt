@@ -948,7 +948,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               kotlin.String is injected at
                   [test.ExampleGraph] test.ExampleGraph.$${'$'}MetroGraph#inject()
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }

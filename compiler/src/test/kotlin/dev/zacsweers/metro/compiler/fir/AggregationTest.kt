@@ -1846,12 +1846,13 @@ class AggregationTest : MetroCompilerTest() {
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
-      // TODO ideally this also lists a similar binding (Impl) but won't until we collect all missing bindings instead
+      // TODO ideally this also lists a similar binding (Impl) but won't until we collect all
+      // missing bindings instead
       //  of failing eagerly
       assertDiagnostics(
         """
           e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
-      
+
               test.ContributedInterface is requested at
                   [test.AltGraph] test.AltGraph#contributedInterface
         """
