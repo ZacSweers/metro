@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
-  newBindingStack: () -> BindingStack,
+  newBindingStack: () -> IrBindingStack,
 ) {
 
   private val realGraph =
@@ -42,21 +42,21 @@ internal class IrBindingGraph(
 
   // Use ConcurrentHashMap to allow reentrant modification
   // TODO hoist accessors up and visit in seal?
-  private val accessors = mutableMapOf<IrContextualTypeKey, BindingStack.Entry>()
-  private val injectors = mutableMapOf<IrTypeKey, BindingStack.Entry>()
+  private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val injectors = mutableMapOf<IrTypeKey, IrBindingStack.Entry>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.snapshot
 
-  fun addAccessor(key: IrContextualTypeKey, entry: BindingStack.Entry) {
+  fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     accessors[key] = entry
   }
 
-  fun addInjector(key: IrTypeKey, entry: BindingStack.Entry) {
+  fun addInjector(key: IrTypeKey, entry: IrBindingStack.Entry) {
     injectors[key] = entry
   }
 
-  fun addBinding(key: IrTypeKey, binding: Binding, bindingStack: BindingStack) {
+  fun addBinding(key: IrTypeKey, binding: Binding, bindingStack: IrBindingStack) {
     if (binding is Binding.Absent) {
       // Don't store absent bindings
       return
@@ -67,15 +67,15 @@ internal class IrBindingGraph(
   fun findBinding(key: IrTypeKey): Binding? = realGraph[key]
 
   // For bindings we expect to already be cached
-  fun requireBinding(key: IrTypeKey, stack: BindingStack): Binding {
+  fun requireBinding(key: IrTypeKey, stack: IrBindingStack): Binding {
     return requireBinding(IrContextualTypeKey.create(key), stack)
   }
 
-  fun requireBinding(contextKey: IrContextualTypeKey, stack: BindingStack): Binding {
+  fun requireBinding(contextKey: IrContextualTypeKey, stack: IrBindingStack): Binding {
     return realGraph[contextKey.typeKey]
       ?: run {
         if (contextKey.hasDefault) return Binding.Absent(contextKey.typeKey)
-        stack.push(BindingStack.Entry.simpleTypeRef(IrContextualTypeKey.create(contextKey.typeKey)))
+        stack.push(IrBindingStack.Entry.simpleTypeRef(IrContextualTypeKey.create(contextKey.typeKey)))
         val message = buildString {
           appendLine("No binding found for ${contextKey.typeKey}")
           appendBindingStack(stack)
@@ -91,7 +91,7 @@ internal class IrBindingGraph(
   fun getOrCreateMultibinding(
     pluginContext: IrPluginContext,
     typeKey: IrTypeKey,
-    bindingStack: BindingStack,
+    bindingStack: IrBindingStack,
   ): Binding.Multibinding {
     var binding = realGraph[typeKey]
 
@@ -120,7 +120,7 @@ internal class IrBindingGraph(
       )
   }
 
-  fun getOrCreateBinding(contextKey: IrContextualTypeKey, bindingStack: BindingStack): Binding {
+  fun getOrCreateBinding(contextKey: IrContextualTypeKey, bindingStack: IrBindingStack): Binding {
     check(!realGraph.sealed)
     val key = contextKey.typeKey
     val existingBinding = realGraph[key]
@@ -237,7 +237,7 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun reportMissingBinding(typeKey: IrTypeKey, bindingStack: BindingStack): Nothing {
+  private fun reportMissingBinding(typeKey: IrTypeKey, bindingStack: IrBindingStack): Nothing {
     val declarationToReport = bindingStack.lastEntryOrGraph
     val message = buildString {
       append(

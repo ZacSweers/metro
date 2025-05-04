@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.ir.BindingStack
+import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -40,7 +40,7 @@ internal class ConstructorParameter(
   @Poko.Skip override val providerType: IrType,
   @Poko.Skip override val lazyType: IrType,
   @Poko.Skip override val symbols: Symbols,
-  @Poko.Skip val bindingStackEntry: BindingStack.Entry,
+  @Poko.Skip val bindingStackEntry: IrBindingStack.Entry,
   @Poko.Skip override val location: CompilerMessageSourceLocation?,
 ) : Parameter {
   override lateinit var ir: IrValueParameter
@@ -136,7 +136,7 @@ internal fun IrValueParameter.toConstructorParameter(
       assistedIdentifier = assistedIdentifier,
       symbols = context.symbols,
       isGraphInstance = false,
-      bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
+      bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
       isBindsInstance = isProvides,
       isExtends = isExtends,
       isIncludes = isIncludes,

@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.Binding
-import dev.zacsweers.metro.compiler.ir.BindingStack
+import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -237,7 +237,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           // This is used for cycle detection in the dependency graph.
           // This code path is executed when a provider function is not in an object
           // and needs access to the graph instance.
-          bindingStackEntry = BindingStack.Entry.simpleTypeRef(contextualTypeKey),
+          bindingStackEntry = IrBindingStack.Entry.simpleTypeRef(contextualTypeKey),
           isBindsInstance = false,
           hasDefault = false,
           location = null,

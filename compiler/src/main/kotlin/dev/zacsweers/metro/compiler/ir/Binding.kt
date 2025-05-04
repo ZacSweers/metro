@@ -230,7 +230,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters<out Parameter>,
     override val annotations: MetroAnnotations<IrAnnotation>,
   ) : Binding, BindingWithAnnotations {
-    fun aliasedBinding(graph: IrBindingGraph, stack: BindingStack): Binding {
+    fun aliasedBinding(graph: IrBindingGraph, stack: IrBindingStack): Binding {
       // O(1) lookup at this point
       return graph.requireBinding(contextualTypeKey.withTypeKey(aliasedType), stack)
     }
@@ -502,7 +502,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 /** Creates an expected class binding for the given [contextKey] or returns null. */
 internal fun IrMetroContext.injectedClassBindingOrNull(
   contextKey: IrContextualTypeKey,
-  bindingStack: BindingStack,
+  bindingStack: IrBindingStack,
   bindingGraph: IrBindingGraph,
 ): Binding? {
   val key = contextKey.typeKey
@@ -529,7 +529,7 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
   } else if (classAnnotations.isAssistedFactory) {
     val function = irClass.singleAbstractFunction(metroContext)
     val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function, classAnnotations)
-    val bindingStackEntry = BindingStack.Entry.injectedAt(contextKey, function)
+    val bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, function)
     val targetBinding =
       bindingStack.withEntry(bindingStackEntry) {
         bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)

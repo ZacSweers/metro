@@ -8,7 +8,7 @@ import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
-import dev.zacsweers.metro.compiler.ir.BindingStack.Entry
+import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
 import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -25,7 +25,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
-internal interface BindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, Entry> {
+internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, Entry> {
   class Entry(
     override val contextKey: IrContextualTypeKey,
     override val usage: String?,
@@ -169,7 +169,7 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, E
 
   companion object {
     private val EMPTY =
-      object : BindingStack {
+      object : IrBindingStack {
         override val graph
           get() = throw UnsupportedOperationException()
 
@@ -196,8 +196,8 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, E
         }
       }
 
-    operator fun invoke(graph: IrClass, logger: MetroLogger): BindingStack =
-      BindingStackImpl(graph, logger)
+    operator fun invoke(graph: IrClass, logger: MetroLogger): IrBindingStack =
+      IrBindingStackImpl(graph, logger)
 
     fun empty() = EMPTY
   }
@@ -216,7 +216,7 @@ internal inline fun <
   return result
 }
 
-internal val BindingStack.lastEntryOrGraph
+internal val IrBindingStack.lastEntryOrGraph
   get() = entries.firstOrNull()?.declaration ?: graph
 
 internal fun Appendable.appendBindingStack(
@@ -242,8 +242,8 @@ internal fun Appendable.appendBindingStackEntries(
   }
 }
 
-internal class BindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
-  BindingStack {
+internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
+  IrBindingStack {
   override val graphFqName: FqName by unsafeLazy { graph.kotlinFqName }
 
   // TODO can we use one structure?
