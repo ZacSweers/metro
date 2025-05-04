@@ -316,10 +316,10 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       for (annotation in providesFunction.annotations) {
         for (arg in annotation.valueArguments) {
           if (arg is IrClassReference) {
+            // https://youtrack.jetbrains.com/issue/KT-76257/
             val message =
               "Private provider functions with KClass annotation arguments are not supported: " +
                 "${providesFunction.kotlinFqName}. Make this function public to work around this for now."
-            // TODO link bug
             reportError(message, providesFunction.location())
             hasErrors = true
           }

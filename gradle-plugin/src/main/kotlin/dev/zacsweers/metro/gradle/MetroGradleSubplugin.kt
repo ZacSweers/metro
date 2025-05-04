@@ -80,9 +80,10 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
       buildList {
         add(lazyOption("enabled", extension.enabled))
         add(lazyOption("debug", extension.debug))
-        add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(lazyOption("generate-hint-properties", extension.generateHintProperties))
+        add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
+        add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
             "enable-top-level-function-injection",

@@ -33,13 +33,6 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       .convention(providers.gradleProperty("metro.debug").map { it.toBoolean() }.orElse(false))
 
   /**
-   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
-   * provider callables. See the kdoc on `Provides` for more details.
-   */
-  public val publicProviderSeverity: Property<DiagnosticSeverity> =
-    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
-
-  /**
    * Enables whether the Metro compiler plugin will automatically generate assisted factories for
    * injected constructors with assisted parameters. See the kdoc on `AssistedFactory` for more
    * details.
@@ -60,6 +53,17 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   /** Enable/disable hint property generation in IR for contributed types. Enabled by default. */
   public val generateHintProperties: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
+
+  /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
+  public val transformProvidersToPrivate: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(true)
+
+  /**
+   * Configures the Metro compiler plugin to warn, error, or do nothing when it encounters `public`
+   * provider callables. See the kdoc on `Provides` for more details.
+   */
+  public val publicProviderSeverity: Property<DiagnosticSeverity> =
+    objects.property(DiagnosticSeverity::class.javaObjectType).convention(DiagnosticSeverity.NONE)
 
   /**
    * Enable/disable Kotlin version compatibility checks. Defaults to true or the value of the
