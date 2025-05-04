@@ -113,17 +113,23 @@ internal interface BindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, E
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
+        val functionToUse =
+          if (function is IrSimpleFunction && function.isFakeOverride) {
+            function.resolveOverriddenTypeIfAny()
+          } else {
+            function
+          }
         val context =
-          if (function == null) {
+          if (functionToUse == null) {
             "<intrinsic>"
           } else {
-            val targetFqName = function.parent.kotlinFqName
+            val targetFqName = functionToUse.parent.kotlinFqName
             val middle =
               when {
-                function is IrConstructor -> ""
-                function.isPropertyAccessor ->
-                  "#${(function.propertyIfAccessor as IrProperty).name.asString()}"
-                else -> "#${function.name.asString()}"
+                functionToUse is IrConstructor -> ""
+                functionToUse.isPropertyAccessor ->
+                  "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
+                else -> "#${functionToUse.name.asString()}"
               }
             val end = if (param == null) "()" else "(…, ${param.name.asString()})"
             "$targetFqName$middle$end"
