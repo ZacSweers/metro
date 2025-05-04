@@ -1243,13 +1243,6 @@ class AggregationTest : MetroCompilerTest() {
     compile(
       source(
         """
-          import dev.zacsweers.metro.AppScope
-          import dev.zacsweers.metro.ContributesBinding
-          import dev.zacsweers.metro.ContributesIntoSet
-          import dev.zacsweers.metro.DependencyGraph
-          import dev.zacsweers.metro.Inject
-          import dev.zacsweers.metro.binding
-
           @DependencyGraph(scope = AppScope::class)
           interface ExampleGraph {
             val contributedSet: Set<ContributedInterface>
@@ -1853,15 +1846,14 @@ class AggregationTest : MetroCompilerTest() {
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
+      // TODO ideally this also lists a similar binding (Impl) but won't until we collect all missing bindings instead
+      //  of failing eagerly
       assertDiagnostics(
         """
           e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
-
-        test.ContributedInterface is requested at
-            [test.AltGraph] test.AltGraph#contributedInterface
-
-    Similar bindings:
-      - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
+      
+              test.ContributedInterface is requested at
+                  [test.AltGraph] test.AltGraph#contributedInterface
         """
           .trimIndent()
       )
