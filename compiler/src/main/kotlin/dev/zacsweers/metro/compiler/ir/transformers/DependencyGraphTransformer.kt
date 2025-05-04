@@ -819,12 +819,13 @@ internal class DependencyGraphTransformer(
         graph.addBinding(paramTypeKey, Binding.BoundInstance(creatorParam), bindingStack)
 
         if (creatorParam.isExtends) {
-          val parentType = paramTypeKey.type.rawTypeOrNull()
-          if (parentType?.origin === Origins.ContributedGraph) {
-            // If it's a contributed graph, add an alias for the parent type since that's what
-            // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph
-            // TODO for chained children, how will they know this?
-            val parentTypeKey = IrTypeKey(parentType.superTypes.first())
+          val parentType = paramTypeKey.type.rawType()
+          // If it's a contributed graph, add an alias for the parent types since that's what
+          // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph + supertypes
+          // TODO for chained children, how will they know this?
+          // TODO dedupe supertype iteration
+          for (superType in parentType.getAllSuperTypes(pluginContext, excludeSelf = true)) {
+            val parentTypeKey = IrTypeKey(superType)
             graph.addBinding(
               parentTypeKey,
               Binding.Alias(

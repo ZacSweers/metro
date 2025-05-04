@@ -75,9 +75,6 @@ internal class IrBindingGraph(
     return realGraph[contextKey.typeKey]
       ?: run {
         if (contextKey.hasDefault) return Binding.Absent(contextKey.typeKey)
-        stack.push(
-          IrBindingStack.Entry.simpleTypeRef(IrContextualTypeKey.create(contextKey.typeKey))
-        )
         val message = buildString {
           appendLine("No binding found for ${contextKey.typeKey}")
           appendBindingStack(stack)
