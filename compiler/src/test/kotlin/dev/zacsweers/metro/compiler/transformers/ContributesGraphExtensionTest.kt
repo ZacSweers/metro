@@ -951,21 +951,21 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           sealed interface TestScope
           sealed interface TestChildScope
-          
+
           @ContributesTo(TestScope::class)
           public interface TestContribution {
               @Provides
               public fun provideString(): String = ""
           }
-          
+
           @SingleIn(TestScope::class)
           @DependencyGraph(scope = TestScope::class, isExtendable = true)
           interface ParentGraph
-          
+
           @ContributesGraphExtension(TestChildScope::class)
           interface ChildGraph {
               val string: String
-          
+
               @ContributesGraphExtension.Factory(TestScope::class)
               interface Factory {
                   fun createChildGraph(): ChildGraph
