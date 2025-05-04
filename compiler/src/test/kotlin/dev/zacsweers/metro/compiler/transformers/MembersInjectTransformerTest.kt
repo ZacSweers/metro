@@ -3,12 +3,14 @@
 package dev.zacsweers.metro.compiler.transformers
 
 import com.google.common.truth.Truth.assertThat
+import com.tschuchort.compiletesting.KotlinCompilation
 import dev.zacsweers.metro.MembersInjector
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleClass
 import dev.zacsweers.metro.compiler.ExampleClass2
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callInject
 import dev.zacsweers.metro.compiler.callProperty
@@ -920,6 +922,34 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       val instance = ExampleClass.newInstanceStrict()
       graph.callInject(instance)
       assertThat(instance.callProperty<Int>("int")).isEqualTo(3)
+    }
+  }
+
+  @Test
+  fun `lateinit member inject of missing dep should fail`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              fun inject(exampleClass: ExampleClass)
+            }
+            class ExampleClass {
+              @Inject lateinit var value: String
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:6:1 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+
+              kotlin.String is injected at
+                  [test.ExampleGraph] test.ExampleGraph.$${'$'}MetroGraph#inject()
+        """.trimIndent()
+      )
     }
   }
 }
