@@ -21,6 +21,7 @@ Changelog
 - **Fix**: Fix transitive scoped dependencies not always getting initialized first in graph provider fields.
 - **Fix**: Fix injected `lateinit var` properties being treated as if they have default values.
 - **Fix**: Alias bindings not always having their backing type visited during graph validation.
+- **Fix**: Fix race condition in generating parent graphs first even if child graph is encountered first in processing.
 - **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
 - **Change**: Change debug reports dir to be per-compilation rather than per-platform.
 

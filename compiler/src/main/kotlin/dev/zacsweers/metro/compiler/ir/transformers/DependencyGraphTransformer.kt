@@ -1404,15 +1404,23 @@ internal class DependencyGraphTransformer(
       // Add instance fields for all the parent graphs
       for (parent in node.allExtendedNodes.values) {
         if (!parent.isExtendable) continue
+        // Check if this parent hasn't been generated yet. If so, generate it now
+        var proto = parent.proto
+        val needsToGenerateParent =
+          proto == null &&
+            parent.sourceGraph.classId !in metroDependencyGraphsByClass &&
+            !parent.sourceGraph.isExternalParent
+        if (needsToGenerateParent) {
+          visitClass(parent.sourceGraph)
+          proto = dependencyGraphNodesByClass.getValue(parent.sourceGraph.classIdOrFail).proto
+        }
+        if (proto == null) {
+          reportError(
+            "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?"
+          )
+          exitProcessing()
+        }
         val parentMetroGraph = parent.sourceGraph.metroGraph
-        val proto =
-          parent.proto
-            ?: run {
-              reportError(
-                "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?"
-              )
-              exitProcessing()
-            }
         val instanceAccessorNames = proto.instance_field_names.toSet()
         val instanceAccessors =
           parentMetroGraph.functions
