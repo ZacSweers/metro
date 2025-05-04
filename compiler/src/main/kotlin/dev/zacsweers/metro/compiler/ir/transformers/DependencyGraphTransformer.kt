@@ -16,10 +16,10 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.Binding
-import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBindingGraph
+import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributedGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrContributionData

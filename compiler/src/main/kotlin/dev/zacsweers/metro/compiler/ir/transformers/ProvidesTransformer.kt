@@ -10,8 +10,8 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.Binding
-import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
