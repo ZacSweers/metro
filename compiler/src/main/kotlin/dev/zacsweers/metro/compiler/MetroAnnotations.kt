@@ -370,7 +370,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             continue
           }
           in ids.assistedAnnotations -> {
-            assisted = expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation))
+            assisted =
+              expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation, session))
             continue
           }
         }
@@ -402,7 +403,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             continue
           }
           in ids.multibindsAnnotations -> {
-            multibinds = expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation))
+            multibinds =
+              expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation, session))
             continue
           }
           Symbols.ClassIds.Composable -> {
@@ -435,13 +437,13 @@ private fun FirBasedSymbol<*>.metroAnnotations(
     }
 
     if (annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
-      scope = expectNullAndSet("scope", scope, MetroFirAnnotation(annotation))
+      scope = expectNullAndSet("scope", scope, MetroFirAnnotation(annotation, session))
       continue
     } else if (annotationClass.isAnnotatedWithAny(session, ids.qualifierAnnotations)) {
-      qualifier = expectNullAndSet("qualifier", qualifier, MetroFirAnnotation(annotation))
+      qualifier = expectNullAndSet("qualifier", qualifier, MetroFirAnnotation(annotation, session))
       continue
     } else if (annotationClass.isAnnotatedWithAny(session, ids.mapKeyAnnotations)) {
-      mapKeys += MetroFirAnnotation(annotation)
+      mapKeys += MetroFirAnnotation(annotation, session)
       continue
     }
   }

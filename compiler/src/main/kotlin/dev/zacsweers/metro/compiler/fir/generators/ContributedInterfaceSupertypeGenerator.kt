@@ -361,7 +361,10 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
                 ContributedBinding(
                   contributingType,
-                  FirTypeKey(boundType, contributingType.annotations.qualifierAnnotation(session)),
+                  FirTypeKey(
+                    boundType,
+                    contributingType.annotations.qualifierAnnotation(session, typeResolver),
+                  ),
                   annotation.rankValue(),
                 )
               }

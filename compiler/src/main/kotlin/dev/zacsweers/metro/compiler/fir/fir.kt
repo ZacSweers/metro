@@ -355,24 +355,30 @@ internal inline fun FirClass.singleAbstractFunction(
  * Computes a hash key for this annotation instance composed of its underlying type and value
  * arguments.
  */
-internal fun FirAnnotationCall.computeAnnotationHash(): Int {
+internal fun FirAnnotationCall.computeAnnotationHash(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): Int {
   return Objects.hash(
-    resolvedType.classId,
+    toAnnotationClassIdSafe(session),
     arguments
-      .map {
-        when (it) {
-          is FirLiteralExpression -> it.value
+      .map { arg ->
+        when (arg) {
+          is FirLiteralExpression -> arg.value
           is FirGetClassCall -> {
-            val argument = it.argument
-            if (argument is FirResolvedQualifier) {
-              argument.classId
-            } else {
-              argument.resolvedType.classId
-            }
+            typeResolver?.let { arg.resolvedClassArgumentTarget(it)?.classId }
+              ?: run {
+                val argument = arg.argument
+                if (argument is FirResolvedQualifier) {
+                  argument.classId
+                } else {
+                  argument.resolvedType.classId
+                }
+              }
           }
           // Enum entry reference
           is FirPropertyAccessExpression -> {
-            it.calleeReference
+            arg.calleeReference
               .toResolvedPropertySymbol()
               ?.receiverParameter
               ?.typeRef
@@ -380,7 +386,7 @@ internal fun FirAnnotationCall.computeAnnotationHash(): Int {
               ?.classId
           }
           else -> {
-            error("Unexpected annotation argument type: ${it::class.java} - ${it.render()}")
+            error("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
           }
         }
       }
@@ -609,8 +615,12 @@ internal inline fun FirConstructorSymbol.validateVisibility(
 internal fun FirBasedSymbol<*>.qualifierAnnotation(session: FirSession): MetroFirAnnotation? =
   annotations.qualifierAnnotation(session)
 
-internal fun List<FirAnnotation>.qualifierAnnotation(session: FirSession): MetroFirAnnotation? =
-  asSequence().annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations)
+internal fun List<FirAnnotation>.qualifierAnnotation(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): MetroFirAnnotation? =
+  asSequence()
+    .annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations, typeResolver)
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   annotations.mapKeyAnnotation(session)
@@ -631,18 +641,20 @@ internal fun Sequence<FirAnnotation>.scopeAnnotations(
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
+  typeResolver: TypeResolveService? = null,
 ): MetroFirAnnotation? {
-  return annotationsAnnotatedWithAny(session, names).firstOrNull()
+  return annotationsAnnotatedWithAny(session, names, typeResolver).firstOrNull()
 }
 
 internal fun Sequence<FirAnnotation>.annotationsAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
+  typeResolver: TypeResolveService? = null,
 ): Sequence<MetroFirAnnotation> {
   return filter { it.isResolved }
     .filterIsInstance<FirAnnotationCall>()
     .filter { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
-    .map { MetroFirAnnotation(it) }
+    .map { MetroFirAnnotation(it, session, typeResolver) }
 }
 
 internal fun FirAnnotationCall.isQualifier(session: FirSession): Boolean {
