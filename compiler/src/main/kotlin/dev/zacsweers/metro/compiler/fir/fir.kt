@@ -583,33 +583,6 @@ internal inline fun FirClass.validateApiDeclaration(
     )
     onError()
   }
-  if (isAbstract && classKind == ClassKind.CLASS) {
-    primaryConstructorIfAny(context.session)?.validateVisibility(
-      context,
-      reporter,
-      "$type' primary constructor",
-    ) {
-      onError()
-    }
-  }
-}
-
-internal inline fun FirConstructorSymbol.validateVisibility(
-  context: CheckerContext,
-  reporter: DiagnosticReporter,
-  type: String,
-  onError: () -> Nothing,
-) {
-  checkVisibility { source, allowedVisibilities ->
-    reporter.reportOn(
-      source,
-      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
-      type,
-      allowedVisibilities,
-      context,
-    )
-    onError()
-  }
 }
 
 internal fun FirBasedSymbol<*>.qualifierAnnotation(session: FirSession): MetroFirAnnotation? =
