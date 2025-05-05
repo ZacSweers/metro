@@ -127,12 +127,16 @@ internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey,
           } else {
             // If it's a synthetic signature holder in a ClassFactory, use the parent class
             var treatAsConstructor = functionToUse is IrConstructor
-            val parentClassToReport = if (functionToUse is IrSimpleFunction && functionToUse.name == Symbols.Names.constructorFunction) {
-              treatAsConstructor = true
-              functionToUse.parentAsClass.parent
-            } else {
-              functionToUse.parent
-            }
+            val parentClassToReport =
+              if (
+                functionToUse is IrSimpleFunction &&
+                  functionToUse.name == Symbols.Names.constructorFunction
+              ) {
+                treatAsConstructor = true
+                functionToUse.parentAsClass.parent
+              } else {
+                functionToUse.parent
+              }
             val targetFqName = parentClassToReport.kotlinFqName
             val middle =
               when {

@@ -52,7 +52,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
 
   class MetroFactory(
     override val factoryClass: IrClass,
-    override val targetFunctionParameters: Parameters<ConstructorParameter>
+    override val targetFunctionParameters: Parameters<ConstructorParameter>,
   ) : ClassFactory {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
 
@@ -84,7 +84,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
   class DaggerFactory(
     private val metroContext: IrMetroContext,
     override val factoryClass: IrClass,
-    override val targetFunctionParameters: Parameters<ConstructorParameter>
+    override val targetFunctionParameters: Parameters<ConstructorParameter>,
   ) : ClassFactory {
     override val function: IrConstructor = targetFunctionParameters.ir!! as IrConstructor
     override val invokeFunctionSymbol: IrFunctionSymbol
@@ -120,9 +120,9 @@ internal sealed interface ClassFactory : IrMetroFactory {
       // Wrap in a metro provider if this is a provider
       return if (factoryClass.defaultType.implementsProviderType(metroContext)) {
         irInvoke(
-          extensionReceiver = createExpression,
-          callee = metroContext.symbols.daggerSymbols.asMetroProvider,
-        )
+            extensionReceiver = createExpression,
+            callee = metroContext.symbols.daggerSymbols.asMetroProvider,
+          )
           .apply { putTypeArgument(0, factoryClass.typeWith()) }
       } else {
         createExpression

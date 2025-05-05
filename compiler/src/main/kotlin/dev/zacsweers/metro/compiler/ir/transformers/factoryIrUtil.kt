@@ -116,24 +116,30 @@ internal fun generateStaticNewInstanceFunction(
 }
 
 /**
- * Generates a metadata-visible function in the factory class that matches the signature of the target constructor.
- * This function is used in downstream compilations to read the constructor's signature.
+ * Generates a metadata-visible function in the factory class that matches the signature of the
+ * target constructor. This function is used in downstream compilations to read the constructor's
+ * signature.
  */
 internal fun generateMetadataVisibleConstructorFunction(
   context: IrMetroContext,
   factoryClass: IrClass,
   targetConstructor: IrConstructor,
 ): IrSimpleFunction {
-  val function = factoryClass.addFunction {
-    name = Symbols.Names.constructorFunction
-    returnType = targetConstructor.returnType
-  }.apply {
-    copyParametersFrom(targetConstructor)
-    // The function's signature already matches the target constructor's signature, all we need this for
-    body = context.pluginContext.createIrBuilder(symbol).run {
-      irExprBodySafe(symbol, stubExpression(context))
-    }
-  }
+  val function =
+    factoryClass
+      .addFunction {
+        name = Symbols.Names.constructorFunction
+        returnType = targetConstructor.returnType
+      }
+      .apply {
+        copyParametersFrom(targetConstructor)
+        // The function's signature already matches the target constructor's signature, all we need
+        // this for
+        body =
+          context.pluginContext.createIrBuilder(symbol).run {
+            irExprBodySafe(symbol, stubExpression(context))
+          }
+      }
   context.pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
   return function
 }

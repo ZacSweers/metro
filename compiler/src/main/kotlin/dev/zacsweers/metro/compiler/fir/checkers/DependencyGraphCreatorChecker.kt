@@ -64,7 +64,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       context,
       reporter,
       "${annotationClassId.relativeClassName.asString()} declarations",
-      checkConstructor = true
+      checkConstructor = true,
     ) {
       return
     }

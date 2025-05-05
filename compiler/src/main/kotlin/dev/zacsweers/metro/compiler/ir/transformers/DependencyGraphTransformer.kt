@@ -779,7 +779,11 @@ internal class DependencyGraphTransformer(
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
         },
         findClassFactory = { clazz ->
-          injectConstructorTransformer.getOrGenerateFactory(clazz, previouslyFoundConstructor = null, doNotErrorOnMissing = true)
+          injectConstructorTransformer.getOrGenerateFactory(
+            clazz,
+            previouslyFoundConstructor = null,
+            doNotErrorOnMissing = true,
+          )
         },
       )
 

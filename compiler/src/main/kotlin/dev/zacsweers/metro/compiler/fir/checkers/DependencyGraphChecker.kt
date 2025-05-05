@@ -86,7 +86,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       context,
       reporter,
       "${graphAnnotationClassId.shortClassName.asString()} declarations",
-      checkConstructor = true
+      checkConstructor = true,
     ) {
       return
     }

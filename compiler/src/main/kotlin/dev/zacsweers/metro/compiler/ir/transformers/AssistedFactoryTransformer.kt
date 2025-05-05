@@ -116,8 +116,11 @@ internal class AssistedFactoryTransformer(
       targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
 
     val generatedFactory =
-      injectConstructorTransformer.getOrGenerateFactory(targetType, injectConstructor, doNotErrorOnMissing = false)
-        ?: return null
+      injectConstructorTransformer.getOrGenerateFactory(
+        targetType,
+        injectConstructor,
+        doNotErrorOnMissing = false,
+      ) ?: return null
 
     val constructorParams = injectConstructor.parameters(this)
     val assistedParameters =
