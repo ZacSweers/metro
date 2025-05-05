@@ -34,7 +34,7 @@ The rest of Hilt's features focus on gluing these pieces together and also suppo
 A few different reasons Metro doesn't have it
 
 - I think it risks being like `@Stable` in compose where people chase it for perceived performance benefits that they have not profiled or would not actualize if they did. Basically it becomes a premature optimization vector
-    - Ron Shapiro (the author of it) even said you shouldn't use it or scoping in general [for performance reasons] unless you've measured it: https://medium.com/@shapiro.rd/reusable-has-many-of-the-same-costs-as-singleton-c20b5d1ef308
+    - Ron Shapiro (the author of it) even said you shouldn't use it for scoping in general [for performance reasons] unless you've measured it: https://medium.com/@shapiro.rd/reusable-has-many-of-the-same-costs-as-singleton-c20b5d1ef308
 - Most people don't really know when to use it. It doesn't really strike a balance so much as blurs the line for limited value (see: the first bullet).
 - It invites people to make unclear assumptions. It's pretty simple to assume something stateful is always a new instance or always the same scoped instance. It is harder to envision scenarios where you have stateful types where you don't care about knowing if it's shared or not. You could say this should only be for stateless types then, but then you're deciding...
     - Do you want to limit instances? Just scope it
