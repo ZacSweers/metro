@@ -885,7 +885,7 @@ internal class DependencyGraphTransformer(
                     // Hard error because the FIR checker should catch these, so this implies broken
                     // FIR code gen
                     error(
-                      "Missing @MapKey for @IntoMap function: ${providerFactory.providesFunction.dumpKotlinLike()}"
+                      "Missing @MapKey for @IntoMap function: ${providerFactory.function.dumpKotlinLike()}"
                     )
                   }
               // TODO this is probably not robust enough
@@ -906,7 +906,7 @@ internal class DependencyGraphTransformer(
             }
 
             else -> {
-              error("Unrecognized provider: ${providerFactory.providesFunction.dumpKotlinLike()}")
+              error("Unrecognized provider: ${providerFactory.function.dumpKotlinLike()}")
             }
           }
         val multibindingTypeKey = provider.typeKey.copy(type = multibindingType)
@@ -2329,7 +2329,7 @@ internal class DependencyGraphTransformer(
     }
     if (
       binding is Binding.Provided &&
-        binding.providerFactory.providesFunction.correspondingPropertySymbol == null
+        binding.providerFactory.function.correspondingPropertySymbol == null
     ) {
       check(params.valueParameters.size == paramsToMap.size) {
         """

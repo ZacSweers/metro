@@ -380,7 +380,7 @@ internal fun bindingStackEntryForDependency(
     is Binding.Provided -> {
       Entry.injectedAt(
         contextKey,
-        binding.providerFactory.providesFunction,
+        binding.providerFactory.function,
         binding.parameterFor(targetKey),
         displayTypeKey = targetKey,
       )

@@ -188,7 +188,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val nameHint: String = providerFactory.callableId.callableName.asString()
 
     override val reportableLocation: CompilerMessageSourceLocation?
-      get() = providerFactory.providesFunction.locationOrNull()
+      get() = providerFactory.function.locationOrNull()
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
