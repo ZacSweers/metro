@@ -7,23 +7,18 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.graph.BaseBinding
-import dev.zacsweers.metro.compiler.ir.Binding.Absent
-import dev.zacsweers.metro.compiler.ir.Binding.Assisted
-import dev.zacsweers.metro.compiler.ir.Binding.ConstructorInjected
-import dev.zacsweers.metro.compiler.ir.Binding.ObjectClass
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
-import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.transformers.ClassFactory
 import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.render
+import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -33,7 +28,6 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.hasAnnotation
-import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
@@ -83,16 +77,20 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   @Poko
   class ConstructorInjected(
     @Poko.Skip override val type: IrClass,
-    @Poko.Skip val injectedConstructor: IrConstructor,
-    val isAssisted: Boolean,
+    @Poko.Skip val classFactory: ClassFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
-    override val parameters: Parameters<out Parameter>,
-    override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey },
   ) : Binding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
-    override val dependencies: List<IrContextualTypeKey> =
+    override val parameters: Parameters<out Parameter> = classFactory.targetFunctionParameters
+
+    override val parametersByKey: Map<IrTypeKey, Parameter> =
+      parameters.nonInstanceParameters.associateBy { it.typeKey }
+
+    val isAssisted by unsafeLazy { parameters.valueParameters.any { it.isAssisted } }
+
+    override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
       parameters.nonInstanceParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey }
+    }
 
     override val scope: IrAnnotation?
       get() = annotations.scope
@@ -104,7 +102,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
       get() = type.locationOrNull()
 
     fun parameterFor(typeKey: IrTypeKey) =
-      injectedConstructor.valueParameters[
+      classFactory.function.valueParameters[
           parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
 
     override fun toString() = buildString {
@@ -116,12 +114,9 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
       if (mapKey == null) return this
       return ConstructorInjected(
         type,
-        injectedConstructor,
-        isAssisted,
+        classFactory,
         annotations.copy(mapKeys = annotations.mapKeys + mapKey),
         typeKey,
-        parameters,
-        parametersByKey,
       )
     }
   }
@@ -496,55 +491,5 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
-  }
-}
-
-/** Creates an expected class binding for the given [contextKey] or returns null. */
-internal fun IrMetroContext.injectedClassBindingOrNull(
-  contextKey: IrContextualTypeKey,
-  bindingStack: IrBindingStack,
-  bindingGraph: IrBindingGraph,
-): Binding? {
-  val key = contextKey.typeKey
-  val irClass = key.type.rawType()
-  val classAnnotations = irClass.metroAnnotations(symbols.classIds)
-
-  if (irClass.isObject) {
-    // TODO make these opt-in?
-    return ObjectClass(irClass, classAnnotations, key)
-  }
-
-  val injectableConstructor =
-    irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
-  return if (injectableConstructor != null) {
-    val parameters = injectableConstructor.parameters(metroContext)
-    ConstructorInjected(
-      type = irClass,
-      injectedConstructor = injectableConstructor,
-      annotations = classAnnotations,
-      isAssisted = parameters.valueParameters.any { it.isAssisted },
-      typeKey = key,
-      parameters = parameters,
-    )
-  } else if (classAnnotations.isAssistedFactory) {
-    val function = irClass.singleAbstractFunction(metroContext)
-    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function, classAnnotations)
-    val bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, function)
-    val targetBinding =
-      bindingStack.withEntry(bindingStackEntry) {
-        bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
-      } as ConstructorInjected
-    Assisted(
-      type = irClass,
-      function = function,
-      annotations = classAnnotations,
-      typeKey = key,
-      parameters = function.parameters(metroContext),
-      target = targetBinding,
-    )
-  } else if (contextKey.hasDefault) {
-    Absent(key)
-  } else {
-    null
   }
 }

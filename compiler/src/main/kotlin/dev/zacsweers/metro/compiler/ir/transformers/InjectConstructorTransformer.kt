@@ -45,7 +45,6 @@ import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
-import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
@@ -59,20 +58,21 @@ internal class InjectConstructorTransformer(
   private val membersInjectorTransformer: MembersInjectorTransformer,
 ) : IrMetroContext by context {
 
-  private val generatedFactories = mutableMapOf<ClassId, ConstructorInjectedFactory>()
+  private val generatedFactories = mutableMapOf<ClassId, ClassFactory>()
 
   fun visitClass(declaration: IrClass) {
     val injectableConstructor =
       declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
     if (injectableConstructor != null) {
-      getOrGenerateFactory(declaration, injectableConstructor)
+      getOrGenerateFactory(declaration, injectableConstructor, doNotErrorOnMissing = false)
     }
   }
 
   fun getOrGenerateFactory(
     declaration: IrClass,
-    targetConstructor: IrConstructor,
-  ): ConstructorInjectedFactory? {
+    previouslyFoundConstructor: IrConstructor?,
+    doNotErrorOnMissing: Boolean,
+  ): ClassFactory? {
     val injectedClassId: ClassId = declaration.classIdOrFail
     generatedFactories[injectedClassId]?.let {
       return it
@@ -107,18 +107,24 @@ internal class InjectConstructorTransformer(
     if (factoryCls == null) {
       if (isExternal) {
         if (options.enableDaggerRuntimeInterop) {
+          val targetConstructor = previouslyFoundConstructor ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)
+            ?: return null
           // Look up where dagger would generate one
           val daggerFactoryClassId = injectedClassId.generatedClass("_Factory")
           val daggerFactoryClass = pluginContext.referenceClass(daggerFactoryClassId)?.owner
           if (daggerFactoryClass != null) {
-            val wrapper = ConstructorInjectedFactory.DaggerFactory(metroContext, daggerFactoryClass)
+            val wrapper = ClassFactory.DaggerFactory(metroContext, daggerFactoryClass, targetConstructor.parameters(metroContext))
             generatedFactories[injectedClassId] = wrapper
             return wrapper
           }
+        } else if (doNotErrorOnMissing) {
+          return null
         }
         declaration.reportError(
           "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
         )
+        return null
+      } else if (doNotErrorOnMissing) {
         return null
       } else {
         error(
@@ -131,7 +137,9 @@ internal class InjectConstructorTransformer(
     // TODO this doesn't work as expected in KMP, where things compiled in common are seen as
     //  external but no factory is found?
     if (isExternal) {
-      val wrapper = ConstructorInjectedFactory.MetroFactory(factoryCls)
+      val parameters = factoryCls.requireSimpleFunction(Symbols.StringNames.CONSTRUCTOR_FUNCTION).owner
+        .parameters(this)
+      val wrapper = ClassFactory.MetroFactory(factoryCls, parameters)
       generatedFactories[injectedClassId] = wrapper
       return wrapper
     }
@@ -139,6 +147,7 @@ internal class InjectConstructorTransformer(
     val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
     val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
 
+    val targetConstructor = previouslyFoundConstructor ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
     val constructorParameters = targetConstructor.parameters(metroContext, factoryCls, declaration)
     val allParameters =
       buildList {
@@ -201,9 +210,17 @@ internal class InjectConstructorTransformer(
 
     possiblyImplementInvoke(declaration, constructorParameters)
 
+    // Generate a metadata-visible function that matches the signature of the target constructor
+    // This is used in downstream compilations to read the constructor's signature
+    val constructorFunction = generateMetadataVisibleConstructorFunction(
+      context = metroContext,
+      factoryClass = factoryCls,
+      targetConstructor = targetConstructor,
+    )
+
     factoryCls.dumpToMetroLog()
 
-    val wrapper = ConstructorInjectedFactory.MetroFactory(factoryCls)
+    val wrapper = ClassFactory.MetroFactory(factoryCls, constructorFunction.parameters(metroContext))
     generatedFactories[injectedClassId] = wrapper
     return wrapper
   }

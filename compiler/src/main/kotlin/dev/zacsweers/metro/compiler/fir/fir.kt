@@ -515,6 +515,7 @@ internal inline fun FirClass.validateApiDeclaration(
   context: CheckerContext,
   reporter: DiagnosticReporter,
   type: String,
+  checkConstructor: Boolean,
   onError: () -> Nothing,
 ) {
   if (isLocal) {
@@ -573,6 +574,33 @@ internal inline fun FirClass.validateApiDeclaration(
     }
   }
 
+  checkVisibility { source, allowedVisibilities ->
+    reporter.reportOn(
+      source,
+      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      type,
+      allowedVisibilities,
+      context,
+    )
+    onError()
+  }
+  if (checkConstructor && isAbstract && classKind == ClassKind.CLASS) {
+    primaryConstructorIfAny(context.session)?.validateVisibility(
+      context,
+      reporter,
+      "$type' primary constructor",
+    ) {
+      onError()
+    }
+  }
+}
+
+internal inline fun FirConstructorSymbol.validateVisibility(
+  context: CheckerContext,
+  reporter: DiagnosticReporter,
+  type: String,
+  onError: () -> Nothing,
+) {
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,

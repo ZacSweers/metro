@@ -11,6 +11,8 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.implementsProviderType
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -18,6 +20,8 @@ import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -33,17 +37,25 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
 
-internal sealed interface IrMetroFactory
+internal sealed interface IrMetroFactory {
+  val function: IrFunction
+}
 
-internal sealed interface ConstructorInjectedFactory : IrMetroFactory {
+internal sealed interface ClassFactory : IrMetroFactory {
   val factoryClass: IrClass
   val invokeFunctionSymbol: IrFunctionSymbol
+  val targetFunctionParameters: Parameters<ConstructorParameter>
 
   fun IrBuilderWithScope.invokeCreateExpression(
     computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
   ): IrExpression
 
-  class MetroFactory(override val factoryClass: IrClass) : ConstructorInjectedFactory {
+  class MetroFactory(
+    override val factoryClass: IrClass,
+    override val targetFunctionParameters: Parameters<ConstructorParameter>
+  ) : ClassFactory {
+    override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
+
     override val invokeFunctionSymbol: IrFunctionSymbol by unsafeLazy {
       factoryClass.requireSimpleFunction(Symbols.StringNames.INVOKE)
     }
@@ -72,7 +84,9 @@ internal sealed interface ConstructorInjectedFactory : IrMetroFactory {
   class DaggerFactory(
     private val metroContext: IrMetroContext,
     override val factoryClass: IrClass,
-  ) : ConstructorInjectedFactory {
+    override val targetFunctionParameters: Parameters<ConstructorParameter>
+  ) : ClassFactory {
+    override val function: IrConstructor = targetFunctionParameters.ir!! as IrConstructor
     override val invokeFunctionSymbol: IrFunctionSymbol
       get() = factoryClass.requireSimpleFunction(Symbols.StringNames.GET)
 
@@ -125,7 +139,7 @@ internal class ProviderFactory(
   sourceAnnotations: MetroAnnotations<IrAnnotation>?,
 ) : IrMetroFactory {
   val callableId: CallableId
-  val function: IrSimpleFunction
+  override val function: IrSimpleFunction
   val annotations: MetroAnnotations<IrAnnotation>
   val typeKey: IrTypeKey
   val isPropertyAccessor: Boolean
