@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.tracing
 
 import kotlin.contracts.InvocationKind
@@ -69,16 +71,12 @@ private class SimpleTracer(
 }
 
 internal fun <T> Tracer.traceNested(description: String, block: (Tracer) -> T): T {
-  contract {
-    callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-  }
+  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   return nested(description).trace(block)
 }
 
 internal fun <T> Tracer.trace(block: (Tracer) -> T): T {
-  contract {
-    callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-  }
+  contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   start()
   try {
     return block(this)

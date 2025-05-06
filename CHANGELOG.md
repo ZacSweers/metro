@@ -7,6 +7,7 @@ Changelog
 - **Enhancement**: Return early once an externally-compiled dependency graph is found.
 - **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
 - **Fix**: Fix a comparator infinite loop vector.
+- When debug logging + reports dir is enabled, output a `logTrace.txt` to the reports dir for tracing data.
 
 0.3.0
 -----
