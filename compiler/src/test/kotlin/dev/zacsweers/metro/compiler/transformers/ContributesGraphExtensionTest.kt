@@ -1032,6 +1032,43 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `ContributesGraphExtension can provide multibindings`() {
+    compile(
+      source(
+        """
+        object AppScope
+        object LoggedInScope
+        
+        @DependencyGraph(AppScope::class, isExtendable = true)
+        interface ExampleGraph
+        
+        @ContributesGraphExtension(LoggedInScope::class, isExtendable = true)
+        interface LoggedInGraph {
+          val ints: Set<Int>
+          @Provides @IntoSet fun provideInt1(): Int = 1
+          @Provides @IntoSet fun provideInt2(): Int = 2
+          @Provides
+          @ElementsIntoSet
+          fun provideInts(): Set<Int> = setOf(3, 4)
+        
+          @ContributesGraphExtension.Factory(AppScope::class)
+          interface Factory1 {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+      """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val ints = loggedInGraph.callProperty<Set<Int>>("ints")
+      assertThat(ints).isNotNull()
+      assertThat(ints).containsExactly(1, 2, 3, 4)
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }
