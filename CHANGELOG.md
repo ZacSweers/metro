@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
+
 0.3.0
 -----
 
