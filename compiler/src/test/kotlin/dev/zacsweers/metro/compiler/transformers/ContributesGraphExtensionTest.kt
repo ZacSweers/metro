@@ -1069,6 +1069,90 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `ContributesGraphExtension can provide multibindings via @Binds`() {
+    compile(
+      source(
+        """
+        object AppScope
+        object LoggedInScope
+        
+        interface Task
+        @Inject class TaskImpl1 : Task
+        @Inject class TaskImpl2 : Task
+        
+        @DependencyGraph(AppScope::class, isExtendable = true)
+        interface ExampleGraph
+        
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val tasks: Set<Task>
+          @IntoSet @Binds val TaskImpl1.bind: Task
+          @IntoSet @Binds val TaskImpl2.bind: Task
+        
+          @ContributesGraphExtension.Factory(AppScope::class)
+          interface Factory1 {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+      """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val tasks = loggedInGraph.callProperty<Set<Any>>("tasks")
+      assertThat(tasks).isNotNull()
+      assertThat(tasks.map { it.javaClass.name }).containsExactly(
+        "test.TaskImpl1",
+        "test.TaskImpl2"
+      )
+    }
+  }
+
+  @Test
+  fun `ContributesGraphExtension can access multibindings provided by its parent`() {
+    compile(
+      source(
+        """
+        object AppScope
+        object LoggedInScope
+        
+        interface Task
+        @Inject class TaskImpl1 : Task
+        @Inject class TaskImpl2 : Task
+        
+        @DependencyGraph(AppScope::class, isExtendable = true)
+        interface ExampleGraph {
+          val tasks: Set<Task>
+          @IntoSet @Binds val TaskImpl1.bind: Task
+          @IntoSet @Binds val TaskImpl2.bind: Task
+        }
+        
+        @ContributesGraphExtension(LoggedInScope::class)
+        interface LoggedInGraph {
+          val tasksFromParent: Set<Task>
+        
+          @ContributesGraphExtension.Factory(AppScope::class)
+          interface Factory1 {
+            fun createLoggedInGraph(): LoggedInGraph
+          }
+        }
+      """
+          .trimIndent()
+      ),
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val tasks = loggedInGraph.callProperty<Set<Any>>("tasksFromParent")
+      assertThat(tasks).isNotNull()
+      assertThat(tasks.map { it.javaClass.name }).containsExactly(
+        "test.TaskImpl1",
+        "test.TaskImpl2"
+      )
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }
