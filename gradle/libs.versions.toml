@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [versions]
-agp = "8.9.2"
+agp = "8.10.0"
 androidx-lint-gradle = "1.0.0-alpha04"
 anvil = "0.4.1"
 atomicfu = "0.27.0"
