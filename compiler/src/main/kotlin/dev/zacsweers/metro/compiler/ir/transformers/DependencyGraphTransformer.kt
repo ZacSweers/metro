@@ -61,7 +61,7 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.timedComputation
+import dev.zacsweers.metro.compiler.ir.tracer
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -73,6 +73,9 @@ import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.BindsCallableId
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.trace
+import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
@@ -223,6 +226,7 @@ internal class DependencyGraphTransformer(
   private fun getOrComputeDependencyGraphNode(
     graphDeclaration: IrClass,
     bindingStack: IrBindingStack,
+    parentTracer: Tracer,
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
@@ -232,11 +236,12 @@ internal class DependencyGraphTransformer(
     }
 
     val node =
-      timedComputation(graphDeclaration.kotlinFqName.asString(), "Build DependencyGraphNode") {
+      parentTracer.traceNested("Build DependencyGraphNode") { tracer ->
         computeDependencyGraphNode(
           graphClassId,
           graphDeclaration,
           bindingStack,
+          tracer,
           metroGraph,
           dependencyGraphAnno,
         )
@@ -251,6 +256,7 @@ internal class DependencyGraphTransformer(
     graphClassId: ClassId,
     graphDeclaration: IrClass,
     bindingStack: IrBindingStack,
+    parentTracer: Tracer,
     metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
@@ -308,96 +314,102 @@ internal class DependencyGraphTransformer(
       val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
       var graphProto: DependencyGraphProto? = null
       if (isExtendable) {
-        val serialized =
-          pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
-            graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph),
-            PLUGIN_ID,
-          )
-        if (serialized == null) {
-          reportError(
-            "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-            graphDeclaration.location(),
-          )
-          exitProcessing()
-        }
+        parentTracer.traceNested("Populate inherited graph metadata") { tracer ->
+          val serialized =
+            pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
+              graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph),
+              PLUGIN_ID,
+            )
+          if (serialized == null) {
+            reportError(
+              "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
+              graphDeclaration.location(),
+            )
+            exitProcessing()
+          }
 
-        val metadata = MetroMetadata.ADAPTER.decode(serialized)
-        graphProto = metadata.dependency_graph
-        if (graphProto == null) {
-          reportError(
-            "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-            graphDeclaration.location(),
-          )
-          exitProcessing()
-        }
-
-        // Add any provider factories
-        providerFactories +=
-          graphProto.provider_factory_classes
-            .map { classId ->
-              val clazz = pluginContext.referenceClass(ClassId.fromString(classId))!!.owner
-              providesTransformer.externalProviderFactoryFor(clazz)
+          graphProto =
+            tracer.traceNested("Deserialize DependencyGraphProto") {
+              val metadata = MetroMetadata.ADAPTER.decode(serialized)
+              metadata.dependency_graph
             }
-            .map { it.typeKey to it }
+          if (graphProto == null) {
+            reportError(
+              "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
+              graphDeclaration.location(),
+            )
+            exitProcessing()
+          }
 
-        // Add any binds functions
-        bindsFunctions.addAll(
-          graphProto.binds_callable_ids.map { bindsCallableId ->
-            val classId = ClassId.fromString(bindsCallableId.class_id)
-            val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
+          // Add any provider factories
+          providerFactories +=
+            graphProto.provider_factory_classes
+              .map { classId ->
+                val clazz = pluginContext.referenceClass(ClassId.fromString(classId))!!.owner
+                providesTransformer.externalProviderFactoryFor(clazz)
+              }
+              .map { it.typeKey to it }
 
-            val function =
-              if (bindsCallableId.is_property) {
-                pluginContext.referenceProperties(callableId).singleOrNull()?.owner?.getter
-              } else {
-                pluginContext.referenceFunctions(callableId).singleOrNull()?.owner
+          // Add any binds functions
+          bindsFunctions.addAll(
+            graphProto.binds_callable_ids.map { bindsCallableId ->
+              val classId = ClassId.fromString(bindsCallableId.class_id)
+              val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
+
+              val function =
+                if (bindsCallableId.is_property) {
+                  pluginContext.referenceProperties(callableId).singleOrNull()?.owner?.getter
+                } else {
+                  pluginContext.referenceFunctions(callableId).singleOrNull()?.owner
+                }
+
+              if (function == null) {
+                val message = buildString {
+                  appendLine("No function found for $callableId")
+                  callableId.classId?.let {
+                    pluginContext.referenceClass(it)?.let {
+                      appendLine("Class dump")
+                      appendLine(it.owner.dumpKotlinLike())
+                    }
+                  } ?: run { appendLine("No class found for $callableId") }
+                }
+                error(message)
               }
 
-            if (function == null) {
-              val message = buildString {
-                appendLine("No function found for $callableId")
-                callableId.classId?.let {
-                  pluginContext.referenceClass(it)?.let {
-                    appendLine("Class dump")
-                    appendLine(it.owner.dumpKotlinLike())
-                  }
-                } ?: run { appendLine("No class found for $callableId") }
-              }
-              error(message)
+              val metroFunction = metroFunctionOf(function)
+              metroFunction to IrContextualTypeKey.from(this, function, metroFunction.annotations)
             }
+          )
 
-            val metroFunction = metroFunctionOf(function)
-            metroFunction to IrContextualTypeKey.from(this, function, metroFunction.annotations)
-          }
-        )
+          // Read scopes from annotations
+          // We copy scope annotations from parents onto this graph if it's extendable so we only
+          // need
+          // to copy once
+          scopes.addAll(graphDeclaration.scopeAnnotations())
 
-        // Read scopes from annotations
-        // We copy scope annotations from parents onto this graph if it's extendable so we only need
-        // to copy once
-        scopes.addAll(graphDeclaration.scopeAnnotations())
+          includedGraphNodes.putAll(
+            // TODO dedupe logic with below
+            graphProto.included_classes.associate { graphClassId ->
+              val clazz =
+                pluginContext.referenceClass(ClassId.fromString(graphClassId))
+                  ?: error("Could not find graph class $graphClassId.")
+              val typeKey = IrTypeKey(clazz.defaultType)
+              val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              typeKey to node
+            }
+          )
 
-        includedGraphNodes.putAll(
-          // TODO dedupe logic with below
-          graphProto.included_classes.associate { graphClassId ->
-            val clazz =
-              pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                ?: error("Could not find graph class $graphClassId.")
-            val typeKey = IrTypeKey(clazz.defaultType)
-            val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack)
-            typeKey to node
-          }
-        )
-
-        extendedGraphNodes.putAll(
-          graphProto.parent_graph_classes.associate { graphClassId ->
-            val clazz =
-              pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                ?: error("Could not find graph class $graphClassId.")
-            val typeKey = IrTypeKey(clazz.defaultType)
-            val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack)
-            typeKey to node
-          }
-        )
+          extendedGraphNodes.putAll(
+            graphProto.parent_graph_classes.associate { graphClassId ->
+              val clazz =
+                pluginContext.referenceClass(ClassId.fromString(graphClassId))
+                  ?: error("Could not find graph class $graphClassId.")
+              val typeKey = IrTypeKey(clazz.defaultType)
+              val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              typeKey to node
+            }
+          )
+        }
       }
 
       // TODO split DependencyGraphNode into sealed interface with external/internal variants?
@@ -623,7 +635,7 @@ internal class DependencyGraphTransformer(
           bindingStack.withEntry(
             IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
           ) {
-            getOrComputeDependencyGraphNode(type, bindingStack)
+            getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
           }
         if (it.isExtends) {
           extendedGraphNodes[it.typeKey] = node
@@ -711,15 +723,18 @@ internal class DependencyGraphTransformer(
       return
     }
 
-    timedComputation(
-      dependencyGraphDeclaration.kotlinFqName.asString(),
-      "Transform dependency graph",
-    ) {
+    val tracer =
+      tracer(
+        dependencyGraphDeclaration.kotlinFqName.shortName().asString(),
+        "Transform dependency graph",
+      )
+    tracer.trace { tracer ->
       transformDependencyGraph(
         graphClassId,
         dependencyGraphDeclaration,
         dependencyGraphAnno,
         metroGraph,
+        tracer,
       )
     }
 
@@ -731,6 +746,7 @@ internal class DependencyGraphTransformer(
     dependencyGraphDeclaration: IrClass,
     dependencyGraphAnno: IrConstructorCall,
     metroGraph: IrClass,
+    parentTracer: Tracer,
   ) {
     val node =
       getOrComputeDependencyGraphNode(
@@ -739,29 +755,21 @@ internal class DependencyGraphTransformer(
           dependencyGraphDeclaration,
           metroContext.loggerFor(MetroLogger.Type.GraphNodeConstruction),
         ),
+        parentTracer,
         metroGraph,
         dependencyGraphAnno,
       )
 
     // Generate creator functions
-    timedComputation(
-      dependencyGraphDeclaration.kotlinFqName.asString(),
-      "Implement creator functions",
-    ) {
+    parentTracer.traceNested("Implement creator functions") {
       implementCreatorFunctions(node.sourceGraph, node.creator, metroGraph)
     }
 
-    val bindingGraph =
-      timedComputation(dependencyGraphDeclaration.kotlinFqName.asString(), "Build binding graph") {
-        createBindingGraph(node)
-      }
+    val bindingGraph = parentTracer.traceNested("Build binding graph") { createBindingGraph(node) }
 
     try {
       val deferredTypes =
-        timedComputation(
-          dependencyGraphDeclaration.kotlinFqName.asString(),
-          "-- Validate binding graph",
-        ) {
+        parentTracer.traceNested("Validate binding graph") {
           checkGraphSelfCycle(
             dependencyGraphDeclaration,
             node.typeKey,
@@ -780,11 +788,8 @@ internal class DependencyGraphTransformer(
         bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false)
       }
 
-      timedComputation(
-        dependencyGraphDeclaration.kotlinFqName.asString(),
-        "Transform metro graph",
-      ) {
-        generateMetroGraph(node, metroGraph, bindingGraph, deferredTypes)
+      parentTracer.traceNested("Transform metro graph") { tracer ->
+        generateMetroGraph(node, metroGraph, bindingGraph, deferredTypes, tracer)
       }
     } catch (e: Exception) {
       if (e is ExitProcessingException) {
@@ -1326,6 +1331,7 @@ internal class DependencyGraphTransformer(
     graphClass: IrClass,
     bindingGraph: IrBindingGraph,
     deferredTypes: Set<IrTypeKey>,
+    parentTracer: Tracer,
   ) =
     with(graphClass) {
       val ctor = primaryConstructor!!
@@ -1547,13 +1553,13 @@ internal class DependencyGraphTransformer(
       // Note we do this in two passes rather than keep a TreeMap because otherwise we'd be doing
       // dependency lookups at each insertion
       val bindingDependencies =
-        timedComputation(node.sourceGraph, "Collect bindings") {
+        parentTracer.traceNested("Collect bindings") {
           collectBindings(node, bindingGraph, bindingStack)
         }
 
       // Compute safe initialization order
       val initOrder =
-        timedComputation(node.sourceGraph, "Compute safe init order") {
+        parentTracer.traceNested("Compute safe init order") {
           bindingDependencies.keys
             .sortedWith { a, b ->
               with(bindingGraph) {
@@ -1742,10 +1748,12 @@ internal class DependencyGraphTransformer(
         }
       }
 
-      node.implementOverrides(baseGenerationContext)
+      parentTracer.traceNested("Implement overrides") { tracer ->
+        node.implementOverrides(baseGenerationContext, tracer)
+      }
 
       if (node.isExtendable) {
-        timedComputation(node.sourceGraph.kotlinFqName.asString(), "Generate Metro metadata") {
+        parentTracer.traceNested("Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto =
             node.toProto(
@@ -1946,7 +1954,10 @@ internal class DependencyGraphTransformer(
           pluginContext.createIrBuilder(symbol).run { irExprBody(initializerExpression()) }
       }
 
-  private fun DependencyGraphNode.implementOverrides(context: GraphGenerationContext) {
+  private fun DependencyGraphNode.implementOverrides(
+    context: GraphGenerationContext,
+    parentTracer: Tracer,
+  ) {
     // Implement abstract getters for accessors
     accessors.forEach { (function, contextualTypeKey) ->
       function.ir.apply {
@@ -2073,7 +2084,8 @@ internal class DependencyGraphTransformer(
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
         val irFunction = this
-        val contributedGraph = getOrBuildContributedGraph(typeKey, sourceGraph, function)
+        val contributedGraph =
+          getOrBuildContributedGraph(typeKey, sourceGraph, function, parentTracer)
         val ctor = contributedGraph.primaryConstructor!!
         body =
           pluginContext.createIrBuilder(symbol).run {
@@ -2096,6 +2108,7 @@ internal class DependencyGraphTransformer(
     typeKey: IrTypeKey,
     parentGraph: IrClass,
     contributedAccessor: MetroSimpleFunction,
+    parentTracer: Tracer,
   ): IrClass {
     val classId = typeKey.type.rawType().classIdOrFail
     return parentGraph.nestedClasses.firstOrNull { it.classId == classId }
@@ -2115,10 +2128,7 @@ internal class DependencyGraphTransformer(
 
         val sourceFactory = sourceFunction.parentAsClass
         val sourceGraph = sourceFactory.parentAsClass
-        timedComputation(
-          "${parentGraph.kotlinFqName}.Contributed${sourceGraph.name}",
-          "Generate contributed graph",
-        ) {
+        parentTracer.traceNested("Generate contributed graph ${sourceGraph.name}") {
           generator.generateContributedGraph(
             parentGraph = parentGraph,
             sourceGraph = sourceGraph,

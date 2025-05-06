@@ -7,13 +7,14 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.tracer
 import java.nio.file.Path
 import kotlin.io.path.appendText
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
-import kotlin.time.measureTimedValue
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -26,7 +27,6 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -38,7 +38,6 @@ import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
@@ -64,12 +63,17 @@ internal interface IrMetroContext {
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
   val logFile: Path?
-
+  val traceLogFile: Path?
   val timingsFile: Path?
 
   fun log(message: String) {
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
-    logFile?.appendText("\n$LOG_PREFIX $message")
+    logFile?.appendText("\n$message")
+  }
+
+  fun logTrace(message: String) {
+    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    traceLogFile?.appendText("$message\n")
   }
 
   fun logVerbose(message: String) {
@@ -196,6 +200,14 @@ internal interface IrMetroContext {
           }
         }
       }
+      override val traceLogFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("traceLog.txt").apply {
+            deleteIfExists()
+            createFile()
+          }
+        }
+      }
 
       override val timingsFile: Path? by lazy {
         reportsDir?.let {
@@ -228,23 +240,11 @@ internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> 
   reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
 }
 
-internal inline fun <T> IrMetroContext.timedComputation(
-  tag: IrDeclarationParent,
-  description: String,
-  block: () -> T,
-): T {
-  return timedComputation(tag.kotlinFqName.asString(), description, block)
-}
-
-internal inline fun <T> IrMetroContext.timedComputation(
-  tag: String,
-  description: String,
-  block: () -> T,
-): T {
-  check(tag.isNotBlank()) { "Tag must not be blank" }
-  check(description.isNotBlank()) { "description must not be blank" }
-  val (result, duration) = measureTimedValue { block() }
-  log("[$tag] $description took ${duration.inWholeMilliseconds}ms")
-  logTiming(tag, description, duration.inWholeMilliseconds)
-  return result
-}
+internal fun IrMetroContext.tracer(tag: String, description: String): Tracer =
+  if (debug) {
+    check(tag.isNotBlank()) { "Tag must not be blank" }
+    check(description.isNotBlank()) { "description must not be blank" }
+    tracer(tag, description, ::logTrace, ::logTiming)
+  } else {
+    Tracer.NOOP
+  }

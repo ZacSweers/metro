@@ -97,17 +97,10 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             class ExampleClass(private val text: String) : Callable<String> {
               override fun call(): String = text
             }
-
-            fun createExampleClass(): (String) -> Callable<String> {
-              val factory = createGraphFactory<ExampleGraph.Factory>()
-              return { factory.create(it).exampleClass() }
-            }
-
           """
           .trimIndent()
       ),
-      debug = true,
-      options = metroOptions.copy(reportsDestination = reportsDir),
+      options = metroOptions.copy(reportsDestination = reportsDir, debug = true),
     ) {
       val timings = reportsDir.resolve("timings.csv").readText()
       // tag,description,durationMs
@@ -121,13 +114,43 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertThat(withoutTime)
         .isEqualTo(
           """
-          test.ExampleGraph,Build DependencyGraphNode
-          test.ExampleGraph,Implement creator functions
-          test.ExampleGraph,Build binding graph
-          test.ExampleGraph,-- Validate binding graph
-          test.ExampleGraph,Transform metro graph
-          test.ExampleGraph,Transform dependency graph
+          ExampleGraph,Build DependencyGraphNode
+          ExampleGraph,Implement creator functions
+          ExampleGraph,Build binding graph
+          ExampleGraph,Validate binding graph
+          ExampleGraph,Collect bindings
+          ExampleGraph,Compute safe init order
+          ExampleGraph,Implement overrides
+          ExampleGraph,Transform metro graph
+          ExampleGraph,Transform dependency graph
         """
+            .trimIndent()
+        )
+
+      val traceLog = reportsDir.resolve("traceLog.txt").readText()
+      val cleanedLog = traceLog.replace("\\((\\d+) ms\\)".toRegex(), "(xx ms)")
+      assertThat(cleanedLog.trim())
+        .isEqualTo(
+          """
+            [ExampleGraph] ▶ Transform dependency graph
+              ▶ Build DependencyGraphNode
+              ◀ Build DependencyGraphNode (xx ms)
+              ▶ Implement creator functions
+              ◀ Implement creator functions (xx ms)
+              ▶ Build binding graph
+              ◀ Build binding graph (xx ms)
+              ▶ Validate binding graph
+              ◀ Validate binding graph (xx ms)
+              ▶ Transform metro graph
+                ▶ Collect bindings
+                ◀ Collect bindings (xx ms)
+                ▶ Compute safe init order
+                ◀ Compute safe init order (xx ms)
+                ▶ Implement overrides
+                ◀ Implement overrides (xx ms)
+              ◀ Transform metro graph (xx ms)
+            [ExampleGraph] ◀ Transform dependency graph (xx ms)
+          """
             .trimIndent()
         )
     }
