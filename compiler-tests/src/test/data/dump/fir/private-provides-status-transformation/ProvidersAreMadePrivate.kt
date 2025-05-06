@@ -3,19 +3,19 @@ interface ExampleProviders {
   fun shouldBePrivate(): String = "hello"
 
   @Provides
-  public fun shouldNotBePrivate(): String = "hello"
+  public fun shouldNotBePrivate1(): String = "hello"
 
   @Provides
-  internal fun shouldNotBePrivate(): String = "hello"
+  private fun shouldBePrivate2(): String = "hello"
 
   companion object {
     @Provides
     fun shouldBePrivate(): String = "hello"
 
     @Provides
-    public fun shouldNotBePrivate(): String = "hello"
+    public fun shouldNotBePrivate1(): String = "hello"
 
     @Provides
-    internal fun shouldNotBePrivate(): String = "hello"
+    internal fun shouldNotBePrivate2(): String = "hello"
   }
 }

@@ -4,12 +4,12 @@ FILE: ProvidersAreMadePrivate.kt
             ^shouldBePrivate String(hello)
         }
 
-        @R|dev/zacsweers/metro/Provides|() public open fun shouldNotBePrivate(): R|kotlin/String| {
-            ^shouldNotBePrivate String(hello)
+        @R|dev/zacsweers/metro/Provides|() public open fun shouldNotBePrivate1(): R|kotlin/String| {
+            ^shouldNotBePrivate1 String(hello)
         }
 
-        @R|dev/zacsweers/metro/Provides|() internal open fun shouldNotBePrivate(): R|kotlin/String| {
-            ^shouldNotBePrivate String(hello)
+        @R|dev/zacsweers/metro/Provides|() private final fun shouldBePrivate2(): R|kotlin/String| {
+            ^shouldBePrivate2 String(hello)
         }
 
         public final companion object Companion : R|kotlin/Any| {
@@ -21,12 +21,12 @@ FILE: ProvidersAreMadePrivate.kt
                 ^shouldBePrivate String(hello)
             }
 
-            @R|dev/zacsweers/metro/Provides|() public final fun shouldNotBePrivate(): R|kotlin/String| {
-                ^shouldNotBePrivate String(hello)
+            @R|dev/zacsweers/metro/Provides|() public final fun shouldNotBePrivate1(): R|kotlin/String| {
+                ^shouldNotBePrivate1 String(hello)
             }
 
-            @R|dev/zacsweers/metro/Provides|() internal final fun shouldNotBePrivate(): R|kotlin/String| {
-                ^shouldNotBePrivate String(hello)
+            @R|dev/zacsweers/metro/Provides|() internal final fun shouldNotBePrivate2(): R|kotlin/String| {
+                ^shouldNotBePrivate2 String(hello)
             }
 
             @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldBePrivate), isPropertyAccessor = Boolean(false)) public final object ShouldBePrivate$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
@@ -40,12 +40,23 @@ FILE: ProvidersAreMadePrivate.kt
 
             }
 
-            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldNotBePrivate), isPropertyAccessor = Boolean(false)) public final object ShouldNotBePrivate$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldNotBePrivate1), isPropertyAccessor = Boolean(false)) public final object ShouldNotBePrivate1$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
                 public final fun create(): R|dev/zacsweers/metro/internal/Factory<kotlin/String>|
 
-                public final fun shouldNotBePrivate(): R|kotlin/String|
+                public final fun shouldNotBePrivate1(): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.Companion.ShouldNotBePrivate$$MetroFactory| {
+                private constructor(): R|ExampleProviders.Companion.ShouldNotBePrivate1$$MetroFactory| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+            @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldNotBePrivate2), isPropertyAccessor = Boolean(false)) public final object ShouldNotBePrivate2$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+                public final fun create(): R|dev/zacsweers/metro/internal/Factory<kotlin/String>|
+
+                public final fun shouldNotBePrivate2(): R|kotlin/String|
+
+                private constructor(): R|ExampleProviders.Companion.ShouldNotBePrivate2$$MetroFactory| {
                     super<R|kotlin/Any|>()
                 }
 
@@ -71,17 +82,35 @@ FILE: ProvidersAreMadePrivate.kt
 
         }
 
-        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldNotBePrivate), isPropertyAccessor = Boolean(false)) public final class ShouldNotBePrivate$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
-            public constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldNotBePrivate$$MetroFactory| {
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldNotBePrivate1), isPropertyAccessor = Boolean(false)) public final class ShouldNotBePrivate1$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            public constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldNotBePrivate1$$MetroFactory| {
                 super<R|kotlin/Any|>()
             }
 
             public final companion object Companion : R|kotlin/Any| {
                 public final fun create(instance: R|ExampleProviders|): R|dev/zacsweers/metro/internal/Factory<kotlin/String>|
 
-                public final fun shouldNotBePrivate(instance: R|ExampleProviders|): R|kotlin/String|
+                public final fun shouldNotBePrivate1(instance: R|ExampleProviders|): R|kotlin/String|
 
-                private constructor(): R|ExampleProviders.ShouldNotBePrivate$$MetroFactory.Companion| {
+                private constructor(): R|ExampleProviders.ShouldNotBePrivate1$$MetroFactory.Companion| {
+                    super<R|kotlin/Any|>()
+                }
+
+            }
+
+        }
+
+        @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldBePrivate2), isPropertyAccessor = Boolean(false)) public final class ShouldBePrivate2$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
+            public constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate2$$MetroFactory| {
+                super<R|kotlin/Any|>()
+            }
+
+            public final companion object Companion : R|kotlin/Any| {
+                public final fun create(instance: R|ExampleProviders|): R|dev/zacsweers/metro/internal/Factory<kotlin/String>|
+
+                public final fun shouldBePrivate2(instance: R|ExampleProviders|): R|kotlin/String|
+
+                private constructor(): R|ExampleProviders.ShouldBePrivate2$$MetroFactory.Companion| {
                     super<R|kotlin/Any|>()
                 }
 
