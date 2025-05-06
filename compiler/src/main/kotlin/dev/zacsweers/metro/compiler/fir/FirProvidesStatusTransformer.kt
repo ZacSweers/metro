@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -56,13 +57,18 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
     status: FirDeclarationStatus,
     declaration: FirDeclaration,
   ): FirDeclarationStatus {
-    return when (status.modality) {
-      null ->
+    val visibility = (declaration as FirSimpleFunction).visibility
+    return when (visibility) {
+      Visibilities.Unknown -> {
         status.copyWithNewDefaults(
           visibility = Visibilities.Private,
           defaultVisibility = Visibilities.Private,
         )
-      else -> status.copyWithNewDefaults(defaultVisibility = Visibilities.Private)
+      }
+      else -> {
+        // Leave explicitly defined visibility as-is
+        status
+      }
     }
   }
 }
