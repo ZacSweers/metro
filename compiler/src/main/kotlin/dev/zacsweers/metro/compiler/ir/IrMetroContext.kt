@@ -63,18 +63,19 @@ internal interface IrMetroContext {
 
   val logFile: Path?
 
-  fun IrMetroContext.log(message: String) {
-    if (debug) {
-      // Print directly because STRONG_WARNING may fail the build instead since it's a warning
-      println(message)
-    } else {
-      messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
-    }
+  val timingsFile: Path?
+
+  fun log(message: String) {
+    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     logFile?.appendText("\n$LOG_PREFIX $message")
   }
 
-  fun IrMetroContext.logVerbose(message: String) {
+  fun logVerbose(message: String) {
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
+  }
+
+  fun logTiming(name: String, durationMs: Long) {
+    timingsFile?.appendText("\n$name,${durationMs}")
   }
 
   fun IrDeclaration.reportError(message: String) {
@@ -194,6 +195,16 @@ internal interface IrMetroContext {
         }
       }
 
+      override val timingsFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("timings.csv").apply {
+            deleteIfExists()
+            createFile()
+            it.appendText("name,durationMs\n")
+          }
+        }
+      }
+
       override fun loggerFor(type: MetroLogger.Type): MetroLogger {
         return loggerCache.getOrPut(type) {
           if (type in options.enabledLoggers) {
@@ -218,4 +229,5 @@ internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> 
 internal inline fun IrMetroContext.timedComputation(name: String, block: () -> Unit) {
   val result = measureTimeMillis(block)
   log("$name took ${result}ms")
+  logTiming(name, result)
 }
