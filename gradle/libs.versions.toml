@@ -91,7 +91,7 @@ circuit-runtime = { module = "com.slack.circuit:circuit-runtime", version.ref = 
 circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annotations", version.ref = "circuit" }
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
-compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "compose-jb" }
+compose-materialIcons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-jb" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
