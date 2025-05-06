@@ -6,7 +6,10 @@ import com.google.auto.service.AutoService
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.backend.common.toLogger
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.common.messages.MessageRenderer.PLAIN_FULL_PATHS
+import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -25,9 +28,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     val classIds = ClassIds.fromOptions(options)
 
+    val messageCollector = if (options.debug) {
+      PrintingMessageCollector(System.err, PLAIN_FULL_PATHS, true)
+    } else {
+      configuration.messageCollector
+    }
+
     if (options.debug) {
-      // Println because strong warnings may fail builds in -Werror
-      println("Metro options:\n$options")
+      messageCollector.toLogger().log("Metro options:\n$options")
     }
 
     FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
