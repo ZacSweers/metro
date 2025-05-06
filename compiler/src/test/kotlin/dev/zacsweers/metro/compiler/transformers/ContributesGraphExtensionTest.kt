@@ -1039,10 +1039,10 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         object AppScope
         object LoggedInScope
-        
+
         @DependencyGraph(AppScope::class, isExtendable = true)
         interface ExampleGraph
-        
+
         @ContributesGraphExtension(LoggedInScope::class, isExtendable = true)
         interface LoggedInGraph {
           val ints: Set<Int>
@@ -1051,7 +1051,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           @Provides
           @ElementsIntoSet
           fun provideInts(): Set<Int> = setOf(3, 4)
-        
+
           @ContributesGraphExtension.Factory(AppScope::class)
           interface Factory1 {
             fun createLoggedInGraph(): LoggedInGraph
@@ -1059,7 +1059,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         }
       """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
@@ -1076,20 +1076,20 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         object AppScope
         object LoggedInScope
-        
+
         interface Task
         @Inject class TaskImpl1 : Task
         @Inject class TaskImpl2 : Task
-        
+
         @DependencyGraph(AppScope::class, isExtendable = true)
         interface ExampleGraph
-        
+
         @ContributesGraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val tasks: Set<Task>
           @IntoSet @Binds val TaskImpl1.bind: Task
           @IntoSet @Binds val TaskImpl2.bind: Task
-        
+
           @ContributesGraphExtension.Factory(AppScope::class)
           interface Factory1 {
             fun createLoggedInGraph(): LoggedInGraph
@@ -1097,16 +1097,14 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         }
       """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val tasks = loggedInGraph.callProperty<Set<Any>>("tasks")
       assertThat(tasks).isNotNull()
-      assertThat(tasks.map { it.javaClass.name }).containsExactly(
-        "test.TaskImpl1",
-        "test.TaskImpl2"
-      )
+      assertThat(tasks.map { it.javaClass.name })
+        .containsExactly("test.TaskImpl1", "test.TaskImpl2")
     }
   }
 
@@ -1117,22 +1115,22 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
         object AppScope
         object LoggedInScope
-        
+
         interface Task
         @Inject class TaskImpl1 : Task
         @Inject class TaskImpl2 : Task
-        
+
         @DependencyGraph(AppScope::class, isExtendable = true)
         interface ExampleGraph {
           val tasks: Set<Task>
           @IntoSet @Binds val TaskImpl1.bind: Task
           @IntoSet @Binds val TaskImpl2.bind: Task
         }
-        
+
         @ContributesGraphExtension(LoggedInScope::class)
         interface LoggedInGraph {
           val tasksFromParent: Set<Task>
-        
+
           @ContributesGraphExtension.Factory(AppScope::class)
           interface Factory1 {
             fun createLoggedInGraph(): LoggedInGraph
@@ -1140,16 +1138,14 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         }
       """
           .trimIndent()
-      ),
+      )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
       val tasks = loggedInGraph.callProperty<Set<Any>>("tasksFromParent")
       assertThat(tasks).isNotNull()
-      assertThat(tasks.map { it.javaClass.name }).containsExactly(
-        "test.TaskImpl1",
-        "test.TaskImpl2"
-      )
+      assertThat(tasks.map { it.javaClass.name })
+        .containsExactly("test.TaskImpl1", "test.TaskImpl2")
     }
   }
 
