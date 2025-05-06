@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
+- **Fix**: Fix a comparator infinite loop vector.
 
 0.3.0
 -----

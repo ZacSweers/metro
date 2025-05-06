@@ -148,3 +148,13 @@ internal fun CallableId.render(short: Boolean, isProperty: Boolean): String {
     }
   }
 }
+
+internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
+  val sizeCompare = size.compareTo(other.size)
+  if (sizeCompare != 0) return sizeCompare
+  for (i in indices) {
+    val cmp = this[i].compareTo(other[i])
+    if (cmp != 0) return cmp
+  }
+  return 0
+}
