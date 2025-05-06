@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -37,6 +38,7 @@ import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
@@ -224,6 +226,14 @@ internal fun IrMetroContext.writeDiagnostic(fileName: String, text: () -> String
 
 internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> String) {
   reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
+}
+
+internal inline fun <T> IrMetroContext.timedComputation(
+  tag: IrDeclarationParent,
+  description: String,
+  block: () -> T,
+): T {
+  return timedComputation(tag.kotlinFqName.asString(), description, block)
 }
 
 internal inline fun <T> IrMetroContext.timedComputation(

@@ -1546,25 +1546,30 @@ internal class DependencyGraphTransformer(
       // First pass: collect bindings and their dependencies for provider field ordering
       // Note we do this in two passes rather than keep a TreeMap because otherwise we'd be doing
       // dependency lookups at each insertion
-      val bindingDependencies = collectBindings(node, bindingGraph, bindingStack)
+      val bindingDependencies =
+        timedComputation(node.sourceGraph, "Collect bindings") {
+          collectBindings(node, bindingGraph, bindingStack)
+        }
 
       // Compute safe initialization order
       val initOrder =
-        bindingDependencies.keys
-          .sortedWith { a, b ->
-            with(bindingGraph) {
-              when {
-                // If a depends on b, b should be initialized first
-                a.dependsOn(b) -> 1
-                // If b depends on a, a should be initialized first
-                b.dependsOn(a) -> -1
-                // Otherwise order doesn't matter, fall back to just type order for idempotence
-                else -> a.compareTo(b)
+        timedComputation(node.sourceGraph, "Compute safe init order") {
+          bindingDependencies.keys
+            .sortedWith { a, b ->
+              with(bindingGraph) {
+                when {
+                  // If a depends on b, b should be initialized first
+                  a.dependsOn(b) -> 1
+                  // If b depends on a, a should be initialized first
+                  b.dependsOn(a) -> -1
+                  // Otherwise order doesn't matter, fall back to just type order for idempotence
+                  else -> a.compareTo(b)
+                }
               }
             }
-          }
-          .map { bindingDependencies.getValue(it) }
-          .distinct()
+            .map { bindingDependencies.getValue(it) }
+            .distinct()
+        }
 
       val baseGenerationContext =
         GraphGenerationContext(
