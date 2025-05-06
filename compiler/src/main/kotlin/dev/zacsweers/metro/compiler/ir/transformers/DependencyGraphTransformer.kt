@@ -169,7 +169,7 @@ internal class DependencyGraphTransformer(
   private val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
 
   // Keyed by the source declaration
-  private val metroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
+  private val processedMetroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
   override fun visitCall(expression: IrCall): IrExpression {
     return CreateGraphTransformer.visitCall(expression, metroContext)
@@ -210,7 +210,7 @@ internal class DependencyGraphTransformer(
       }
 
     try {
-      getOrBuildDependencyGraph(declaration, dependencyGraphAnno, metroGraph)
+      tryTransformDependencyGraph(declaration, dependencyGraphAnno, metroGraph)
     } catch (_: ExitProcessingException) {
       // End processing, don't fail up because this would've been warned before
     }
@@ -231,6 +231,29 @@ internal class DependencyGraphTransformer(
       return it
     }
 
+    val node =
+      timedComputation(graphDeclaration.kotlinFqName.asString(), "Build DependencyGraphNode") {
+        computeDependencyGraphNode(
+          graphClassId,
+          graphDeclaration,
+          bindingStack,
+          metroGraph,
+          dependencyGraphAnno,
+        )
+      }
+
+    dependencyGraphNodesByClass[graphClassId] = node
+
+    return node
+  }
+
+  private fun computeDependencyGraphNode(
+    graphClassId: ClassId,
+    graphDeclaration: IrClass,
+    bindingStack: IrBindingStack,
+    metroGraph: IrClass? = null,
+    dependencyGraphAnno: IrConstructorCall? = null,
+  ): DependencyGraphNode {
     val dependencyGraphAnno =
       dependencyGraphAnno
         ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
@@ -670,25 +693,45 @@ internal class DependencyGraphTransformer(
       exitProcessing()
     }
 
-    dependencyGraphNodesByClass[graphClassId] = dependencyGraphNode
     return dependencyGraphNode
   }
 
-  private fun getOrBuildDependencyGraph(
+  private fun tryTransformDependencyGraph(
     dependencyGraphDeclaration: IrClass,
     dependencyGraphAnno: IrConstructorCall,
     metroGraph: IrClass,
-  ): IrClass {
+  ) {
     val graphClassId = dependencyGraphDeclaration.classIdOrFail
-    metroDependencyGraphsByClass[graphClassId]?.let {
-      return it
+    processedMetroDependencyGraphsByClass[graphClassId]?.let {
+      return
     }
-
     if (dependencyGraphDeclaration.isExternalParent) {
-      // Externally compiled, look up its generated class
-      metroDependencyGraphsByClass[graphClassId] = metroGraph
+      // Externally compiled, just use its generated class
+      processedMetroDependencyGraphsByClass[graphClassId] = metroGraph
+      return
     }
 
+    timedComputation(
+      dependencyGraphDeclaration.kotlinFqName.asString(),
+      "Transform dependency graph",
+    ) {
+      transformDependencyGraph(
+        graphClassId,
+        dependencyGraphDeclaration,
+        dependencyGraphAnno,
+        metroGraph,
+      )
+    }
+
+    processedMetroDependencyGraphsByClass[graphClassId] = metroGraph
+  }
+
+  private fun transformDependencyGraph(
+    graphClassId: ClassId,
+    dependencyGraphDeclaration: IrClass,
+    dependencyGraphAnno: IrConstructorCall,
+    metroGraph: IrClass,
+  ) {
     val node =
       getOrComputeDependencyGraphNode(
         dependencyGraphDeclaration,
@@ -701,21 +744,34 @@ internal class DependencyGraphTransformer(
       )
 
     // Generate creator functions
-    implementCreatorFunctions(node.sourceGraph, node.creator, metroGraph)
+    timedComputation(
+      dependencyGraphDeclaration.kotlinFqName.asString(),
+      "Implement creator functions",
+    ) {
+      implementCreatorFunctions(node.sourceGraph, node.creator, metroGraph)
+    }
 
-    val bindingGraph = createBindingGraph(node)
+    val bindingGraph =
+      timedComputation(dependencyGraphDeclaration.kotlinFqName.asString(), "Build binding graph") {
+        createBindingGraph(node)
+      }
 
     try {
-      checkGraphSelfCycle(
-        dependencyGraphDeclaration,
-        node.typeKey,
-        IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.CycleDetection)),
-      )
-
       val deferredTypes =
-        bindingGraph.validate { message ->
-          dependencyGraphDeclaration.reportError(message)
-          exitProcessing()
+        timedComputation(
+          dependencyGraphDeclaration.kotlinFqName.asString(),
+          "-- Validate binding graph",
+        ) {
+          checkGraphSelfCycle(
+            dependencyGraphDeclaration,
+            node.typeKey,
+            IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.CycleDetection)),
+          )
+
+          bindingGraph.validate { message ->
+            dependencyGraphDeclaration.reportError(message)
+            exitProcessing()
+          }
         }
 
       writeDiagnostic({
@@ -724,7 +780,12 @@ internal class DependencyGraphTransformer(
         bindingGraph.dumpGraph(node.sourceGraph.kotlinFqName.asString(), short = false)
       }
 
-      generateMetroGraph(node, metroGraph, bindingGraph, deferredTypes)
+      timedComputation(
+        dependencyGraphDeclaration.kotlinFqName.asString(),
+        "Transform metro graph",
+      ) {
+        generateMetroGraph(node, metroGraph, bindingGraph, deferredTypes)
+      }
     } catch (e: Exception) {
       if (e is ExitProcessingException) {
         throw e
@@ -735,7 +796,7 @@ internal class DependencyGraphTransformer(
       )
     }
 
-    metroDependencyGraphsByClass[graphClassId] = metroGraph
+    processedMetroDependencyGraphsByClass[graphClassId] = metroGraph
 
     metroGraph.dumpToMetroLog()
 
@@ -744,8 +805,6 @@ internal class DependencyGraphTransformer(
     }) {
       metroGraph.dumpKotlinLike()
     }
-
-    return metroGraph
   }
 
   private fun checkGraphSelfCycle(
@@ -1408,7 +1467,7 @@ internal class DependencyGraphTransformer(
         var proto = parent.proto
         val needsToGenerateParent =
           proto == null &&
-            parent.sourceGraph.classId !in metroDependencyGraphsByClass &&
+            parent.sourceGraph.classId !in processedMetroDependencyGraphsByClass &&
             !parent.sourceGraph.isExternalParent
         if (needsToGenerateParent) {
           visitClass(parent.sourceGraph)
@@ -1681,7 +1740,7 @@ internal class DependencyGraphTransformer(
       node.implementOverrides(baseGenerationContext)
 
       if (node.isExtendable) {
-        timedComputation("Generating Metro metadata") {
+        timedComputation(node.sourceGraph.kotlinFqName.asString(), "Generate Metro metadata") {
           // Finally, generate metadata
           val graphProto =
             node.toProto(
@@ -2048,11 +2107,20 @@ internal class DependencyGraphTransformer(
             }
             .lastOrNull()
             ?.owner ?: contributedAccessor.ir
-        generator.generateContributedGraph(
-          parentGraph = parentGraph,
-          sourceFactory = sourceFunction.parentAsClass,
-          factoryFunction = sourceFunction,
-        )
+
+        val sourceFactory = sourceFunction.parentAsClass
+        val sourceGraph = sourceFactory.parentAsClass
+        timedComputation(
+          "${parentGraph.kotlinFqName}.Contributed${sourceGraph.name}",
+          "Generate contributed graph",
+        ) {
+          generator.generateContributedGraph(
+            parentGraph = parentGraph,
+            sourceGraph = sourceGraph,
+            sourceFactory = sourceFactory,
+            factoryFunction = sourceFunction,
+          )
+        }
       }
   }
 

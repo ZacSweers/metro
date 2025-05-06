@@ -13,7 +13,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
-import kotlin.system.measureTimeMillis
+import kotlin.time.measureTimedValue
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -74,8 +74,8 @@ internal interface IrMetroContext {
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
   }
 
-  fun logTiming(name: String, durationMs: Long) {
-    timingsFile?.appendText("\n$name,${durationMs}")
+  fun logTiming(tag: String, description: String, durationMs: Long) {
+    timingsFile?.appendText("\n$tag,$description,${durationMs}")
   }
 
   fun IrDeclaration.reportError(message: String) {
@@ -200,7 +200,7 @@ internal interface IrMetroContext {
           it.resolve("timings.csv").apply {
             deleteIfExists()
             createFile()
-            it.appendText("name,durationMs\n")
+            appendText("tag,description,durationMs")
           }
         }
       }
@@ -226,8 +226,15 @@ internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> 
   reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
 }
 
-internal inline fun IrMetroContext.timedComputation(name: String, block: () -> Unit) {
-  val result = measureTimeMillis(block)
-  log("$name took ${result}ms")
-  logTiming(name, result)
+internal inline fun <T> IrMetroContext.timedComputation(
+  tag: String,
+  description: String,
+  block: () -> T,
+): T {
+  check(tag.isNotBlank()) { "Tag must not be blank" }
+  check(description.isNotBlank()) { "description must not be blank" }
+  val (result, duration) = measureTimedValue { block() }
+  log("[$tag] $description took ${duration.inWholeMilliseconds}ms")
+  logTiming(tag, description, duration.inWholeMilliseconds)
+  return result
 }

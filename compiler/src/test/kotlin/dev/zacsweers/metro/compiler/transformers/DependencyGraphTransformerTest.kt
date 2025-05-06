@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.newInstanceStrict
 import dev.zacsweers.metro.internal.MapFactory
 import dev.zacsweers.metro.internal.MapProviderFactory
 import java.util.concurrent.Callable
+import kotlin.io.path.readText
 import kotlin.test.Ignore
 import kotlin.test.assertNotNull
 import org.junit.Test
@@ -71,6 +72,64 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .invoke(null) as (String) -> Callable<String>
       val callable = callableCreator("Hello, world!")
       assertThat(callable.call()).isEqualTo("Hello, world!")
+    }
+  }
+
+  @Test
+  fun `debug logging prints`() {
+    val reportsDir = temporaryFolder.newFolder("reports").toPath()
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+
+              fun exampleClass(): ExampleClass
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Provides text: String): ExampleGraph
+              }
+            }
+
+            @SingleIn(AppScope::class)
+            @Inject
+            class ExampleClass(private val text: String) : Callable<String> {
+              override fun call(): String = text
+            }
+
+            fun createExampleClass(): (String) -> Callable<String> {
+              val factory = createGraphFactory<ExampleGraph.Factory>()
+              return { factory.create(it).exampleClass() }
+            }
+
+          """
+          .trimIndent()
+      ),
+      debug = true,
+      options = metroOptions.copy(reportsDestination = reportsDir),
+    ) {
+      val timings = reportsDir.resolve("timings.csv").readText()
+      // tag,description,durationMs
+      // test.ExampleGraph,Build DependencyGraphNode,15
+      // test.ExampleGraph,Implement creator functions,0
+      // test.ExampleGraph,Build binding graph,1
+      // test.ExampleGraph,-- Validate binding graph,4
+      // test.ExampleGraph,Transform metro graph,10
+      // test.ExampleGraph,Transform dependency graph,46
+      val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
+      assertThat(withoutTime)
+        .isEqualTo(
+          """
+          test.ExampleGraph,Build DependencyGraphNode
+          test.ExampleGraph,Implement creator functions
+          test.ExampleGraph,Build binding graph
+          test.ExampleGraph,-- Validate binding graph
+          test.ExampleGraph,Transform metro graph
+          test.ExampleGraph,Transform dependency graph
+        """
+            .trimIndent()
+        )
     }
   }
 
