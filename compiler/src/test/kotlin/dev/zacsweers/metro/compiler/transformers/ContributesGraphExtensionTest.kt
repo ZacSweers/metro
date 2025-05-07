@@ -347,6 +347,61 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `contributed graph can inject multibinding from parent`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          interface ContributedInterface
+          class Impl1 : ContributedInterface
+          interface ConsumerInterface
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val consumer: ConsumerInterface
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @ContributesBinding(LoggedInScope::class)
+          class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>) : ConsumerInterface
+
+          @ContributesTo(AppScope::class)
+          interface MultibindingsModule {
+
+            @Provides
+            @ElementsIntoSet
+            fun provideImpl1(): Set<ContributedInterface> = setOf(Impl1())
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            val contributions: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(
+          loggedInGraph.callProperty<Any>("consumer").callProperty<Set<Any>>("contributions").map {
+            it.javaClass.canonicalName
+          }
+        )
+        .isEqualTo(listOf("test.Impl1"))
+      assertThat(
+          exampleGraph.callProperty<Set<Any>>("contributions").map { it.javaClass.canonicalName }
+        )
+        .isEqualTo(listOf("test.Impl1"))
+    }
+  }
+
+  @Test
   fun `contributed graph copies scope annotations`() {
     compile(
       source(

@@ -6,6 +6,7 @@ Changelog
 
 - **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
 - **Fix**: Fix a comparator infinite loop vector.
+- **Fix**: Fix @ElementsIntoSet multibinding contributions triggering a dependency cycle in some situations.
 
 0.3.0
 -----

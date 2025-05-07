@@ -186,15 +186,15 @@ internal open class MutableBindingGraph<
           key !in deferredTypes &&
             !contextKey.isDeferrable &&
             cycle.none { it.contextKey.isDeferrable }
-        if (isTrueCycle) {
+        if (contextKey.isIntoMultibinding) {
+          // Proceed
+          stackLogger.log("--> Into multibinding, proceeding")
+        } else if (isTrueCycle) {
           stackLogger.log("--> ❌True cycle!")
           // Pull the root entry from the stack and add it back to the bottom of the stack to
           // highlight the cycle
           val fullCycle = cycle + cycle[0]
           reportCycle(fullCycle)
-        } else if (contextKey.isIntoMultibinding) {
-          // Proceed
-          stackLogger.log("--> Into multibinding, proceeding")
         } else {
           // TODO this if check isn't great
           stackLogger.log("--> Deferring ${key.render(short = true)}")
