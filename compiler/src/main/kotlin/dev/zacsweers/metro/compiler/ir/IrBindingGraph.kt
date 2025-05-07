@@ -5,8 +5,16 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.ir.Binding.Absent
+import dev.zacsweers.metro.compiler.ir.Binding.Assisted
+import dev.zacsweers.metro.compiler.ir.Binding.ConstructorInjected
+import dev.zacsweers.metro.compiler.ir.Binding.ObjectClass
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.transformers.ClassFactory
+import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
@@ -14,12 +22,14 @@ import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
   newBindingStack: () -> IrBindingStack,
+  private val findClassFactory: (IrClass) -> ClassFactory?,
 ) {
 
   private val realGraph =
@@ -29,7 +39,7 @@ internal class IrBindingGraph(
         bindingStackEntryForDependency(binding, contextKey, contextKey.typeKey)
       },
       computeBinding = { contextKey, stack ->
-        metroContext.injectedClassBindingOrNull(contextKey, stack, this)
+        metroContext.injectedClassBindingOrNull(contextKey, stack, this, findClassFactory)
       },
       onError = { message, stack ->
         val location = stack.lastEntryOrGraph.locationOrNull()
@@ -127,7 +137,8 @@ internal class IrBindingGraph(
       return existingBinding
     }
 
-    val binding = metroContext.injectedClassBindingOrNull(contextKey, bindingStack, this)
+    val binding =
+      metroContext.injectedClassBindingOrNull(contextKey, bindingStack, this, findClassFactory)
     when (binding) {
       is Binding.Absent -> {
         // Do nothing, don't store this
@@ -394,5 +405,52 @@ internal class IrBindingGraph(
         }
       }
     }
+  }
+}
+
+/** Creates an expected class binding for the given [contextKey] or returns null. */
+internal fun IrMetroContext.injectedClassBindingOrNull(
+  contextKey: IrContextualTypeKey,
+  bindingStack: IrBindingStack,
+  bindingGraph: IrBindingGraph,
+  findClassFactory: (IrClass) -> ClassFactory?,
+): Binding? {
+  val key = contextKey.typeKey
+  val irClass = key.type.rawType()
+  val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+
+  if (irClass.isObject) {
+    // TODO make these opt-in?
+    return ObjectClass(irClass, classAnnotations, key)
+  }
+
+  val classFactory = findClassFactory(irClass)
+  return if (classFactory != null) {
+    ConstructorInjected(
+      type = irClass,
+      classFactory = classFactory,
+      annotations = classAnnotations,
+      typeKey = key,
+    )
+  } else if (classAnnotations.isAssistedFactory) {
+    val function = irClass.singleAbstractFunction(metroContext)
+    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function, classAnnotations)
+    val bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, function)
+    val targetBinding =
+      bindingStack.withEntry(bindingStackEntry) {
+        bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
+      } as ConstructorInjected
+    Assisted(
+      type = irClass,
+      function = function,
+      annotations = classAnnotations,
+      typeKey = key,
+      parameters = function.parameters(metroContext),
+      target = targetBinding,
+    )
+  } else if (contextKey.hasDefault) {
+    Absent(key)
+  } else {
+    null
   }
 }
