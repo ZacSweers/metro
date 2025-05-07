@@ -44,6 +44,14 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
+          ExampleGraph,Check self-cycles
+          ExampleGraph,Traverse from roots
+          ExampleGraph,Traverse remaining bindings
+          ExampleGraph,Cache transitive closure
+          ExampleGraph,seal graph
+          ExampleGraph,check empty multibindings
+          ExampleGraph,check for absent bindings
+          ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
           ExampleGraph,Compute safe init order
@@ -67,6 +75,22 @@ class TracingTest : MetroCompilerTest() {
               ▶ Build binding graph
               ◀ Build binding graph (xx ms)
               ▶ Validate binding graph
+                ▶ Check self-cycles
+                ◀ Check self-cycles (xx ms)
+                ▶ Validate graph
+                  ▶ seal graph
+                    ▶ Traverse from roots
+                    ◀ Traverse from roots (xx ms)
+                    ▶ Traverse remaining bindings
+                    ◀ Traverse remaining bindings (xx ms)
+                    ▶ Cache transitive closure
+                    ◀ Cache transitive closure (xx ms)
+                  ◀ seal graph (xx ms)
+                  ▶ check empty multibindings
+                  ◀ check empty multibindings (xx ms)
+                  ▶ check for absent bindings
+                  ◀ check for absent bindings (xx ms)
+                ◀ Validate graph (xx ms)
               ◀ Validate binding graph (xx ms)
               ▶ Transform metro graph
                 ▶ Collect bindings
@@ -125,6 +149,14 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
+          ExampleGraph,Check self-cycles
+          ExampleGraph,Traverse from roots
+          ExampleGraph,Traverse remaining bindings
+          ExampleGraph,Cache transitive closure
+          ExampleGraph,seal graph
+          ExampleGraph,check empty multibindings
+          ExampleGraph,check for absent bindings
+          ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
           ExampleGraph,Compute safe init order
@@ -135,6 +167,14 @@ class TracingTest : MetroCompilerTest() {
           ChildGraph,Build DependencyGraphNode
           ChildGraph,Implement creator functions
           ChildGraph,Build binding graph
+          ChildGraph,Check self-cycles
+          ChildGraph,Traverse from roots
+          ChildGraph,Traverse remaining bindings
+          ChildGraph,Cache transitive closure
+          ChildGraph,seal graph
+          ChildGraph,check empty multibindings
+          ChildGraph,check for absent bindings
+          ChildGraph,Validate graph
           ChildGraph,Validate binding graph
           ChildGraph,Collect bindings
           ChildGraph,Compute safe init order
@@ -158,6 +198,22 @@ class TracingTest : MetroCompilerTest() {
               ▶ Build binding graph
               ◀ Build binding graph (xx ms)
               ▶ Validate binding graph
+                ▶ Check self-cycles
+                ◀ Check self-cycles (xx ms)
+                ▶ Validate graph
+                  ▶ seal graph
+                    ▶ Traverse from roots
+                    ◀ Traverse from roots (xx ms)
+                    ▶ Traverse remaining bindings
+                    ◀ Traverse remaining bindings (xx ms)
+                    ▶ Cache transitive closure
+                    ◀ Cache transitive closure (xx ms)
+                  ◀ seal graph (xx ms)
+                  ▶ check empty multibindings
+                  ◀ check empty multibindings (xx ms)
+                  ▶ check for absent bindings
+                  ◀ check for absent bindings (xx ms)
+                ◀ Validate graph (xx ms)
               ◀ Validate binding graph (xx ms)
               ▶ Transform metro graph
                 ▶ Collect bindings
@@ -178,6 +234,22 @@ class TracingTest : MetroCompilerTest() {
               ▶ Build binding graph
               ◀ Build binding graph (xx ms)
               ▶ Validate binding graph
+                ▶ Check self-cycles
+                ◀ Check self-cycles (xx ms)
+                ▶ Validate graph
+                  ▶ seal graph
+                    ▶ Traverse from roots
+                    ◀ Traverse from roots (xx ms)
+                    ▶ Traverse remaining bindings
+                    ◀ Traverse remaining bindings (xx ms)
+                    ▶ Cache transitive closure
+                    ◀ Cache transitive closure (xx ms)
+                  ◀ seal graph (xx ms)
+                  ▶ check empty multibindings
+                  ◀ check empty multibindings (xx ms)
+                  ▶ check for absent bindings
+                  ◀ check for absent bindings (xx ms)
+                ◀ Validate graph (xx ms)
               ◀ Validate binding graph (xx ms)
               ▶ Transform metro graph
                 ▶ Collect bindings
@@ -236,6 +308,14 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
+          ExampleGraph,Check self-cycles
+          ExampleGraph,Traverse from roots
+          ExampleGraph,Traverse remaining bindings
+          ExampleGraph,Cache transitive closure
+          ExampleGraph,seal graph
+          ExampleGraph,check empty multibindings
+          ExampleGraph,check for absent bindings
+          ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
           ExampleGraph,Compute safe init order
@@ -247,6 +327,14 @@ class TracingTest : MetroCompilerTest() {
           $${'$'}ContributedChildGraph,Build DependencyGraphNode
           $${'$'}ContributedChildGraph,Implement creator functions
           $${'$'}ContributedChildGraph,Build binding graph
+          $${'$'}ContributedChildGraph,Check self-cycles
+          $${'$'}ContributedChildGraph,Traverse from roots
+          $${'$'}ContributedChildGraph,Traverse remaining bindings
+          $${'$'}ContributedChildGraph,Cache transitive closure
+          $${'$'}ContributedChildGraph,seal graph
+          $${'$'}ContributedChildGraph,check empty multibindings
+          $${'$'}ContributedChildGraph,check for absent bindings
+          $${'$'}ContributedChildGraph,Validate graph
           $${'$'}ContributedChildGraph,Validate binding graph
           $${'$'}ContributedChildGraph,Collect bindings
           $${'$'}ContributedChildGraph,Compute safe init order
@@ -270,6 +358,22 @@ class TracingTest : MetroCompilerTest() {
               ▶ Build binding graph
               ◀ Build binding graph (xx ms)
               ▶ Validate binding graph
+                ▶ Check self-cycles
+                ◀ Check self-cycles (xx ms)
+                ▶ Validate graph
+                  ▶ seal graph
+                    ▶ Traverse from roots
+                    ◀ Traverse from roots (xx ms)
+                    ▶ Traverse remaining bindings
+                    ◀ Traverse remaining bindings (xx ms)
+                    ▶ Cache transitive closure
+                    ◀ Cache transitive closure (xx ms)
+                  ◀ seal graph (xx ms)
+                  ▶ check empty multibindings
+                  ◀ check empty multibindings (xx ms)
+                  ▶ check for absent bindings
+                  ◀ check for absent bindings (xx ms)
+                ◀ Validate graph (xx ms)
               ◀ Validate binding graph (xx ms)
               ▶ Transform metro graph
                 ▶ Collect bindings
@@ -292,6 +396,22 @@ class TracingTest : MetroCompilerTest() {
               ▶ Build binding graph
               ◀ Build binding graph (xx ms)
               ▶ Validate binding graph
+                ▶ Check self-cycles
+                ◀ Check self-cycles (xx ms)
+                ▶ Validate graph
+                  ▶ seal graph
+                    ▶ Traverse from roots
+                    ◀ Traverse from roots (xx ms)
+                    ▶ Traverse remaining bindings
+                    ◀ Traverse remaining bindings (xx ms)
+                    ▶ Cache transitive closure
+                    ◀ Cache transitive closure (xx ms)
+                  ◀ seal graph (xx ms)
+                  ▶ check empty multibindings
+                  ◀ check empty multibindings (xx ms)
+                  ▶ check for absent bindings
+                  ◀ check for absent bindings (xx ms)
+                ◀ Validate graph (xx ms)
               ◀ Validate binding graph (xx ms)
               ▶ Transform metro graph
                 ▶ Collect bindings
