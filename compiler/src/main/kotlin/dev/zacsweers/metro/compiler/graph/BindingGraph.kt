@@ -169,6 +169,8 @@ internal open class MutableBindingGraph<
       onError(message, stack)
     }
 
+    val visited = mutableSetOf<TypeKey>()
+
     /* 1. reject strict cycles / missing bindings */
     fun dfsStrict(binding: Binding, contextKey: ContextualTypeKey) {
       stackLogger.log(
@@ -209,6 +211,10 @@ internal open class MutableBindingGraph<
         }
       }
 
+      if (key in visited) {
+        return
+      }
+
       stackLogger.log("--> Traversing dependencies")
       for (depKey in binding.dependencies) {
         stackLogger.log("----> Dependency: ${depKey.render(short = true)}")
@@ -240,11 +246,9 @@ internal open class MutableBindingGraph<
         }
       }
 
+      visited += contextKey.typeKey
       stackLogger.log("--> Exit DFS: ${key.render(short = true)}")
     }
-
-    // Track strict visits
-    val strictVisits = hashSetOf<TypeKey>()
 
     // Walk from roots first
     tracer.traceNested("Traverse from roots") {
@@ -254,7 +258,6 @@ internal open class MutableBindingGraph<
           val binding = getOrCreateBinding(contextKey, stack)
           stackLogger.log("Root binding: $binding")
           dfsStrict(binding, contextKey)
-          strictVisits += contextKey.typeKey
         }
       }
     }
@@ -262,13 +265,13 @@ internal open class MutableBindingGraph<
     // Validate remaining bindings
     tracer.traceNested("Traverse remaining bindings") {
       for (binding in bindings.values) {
-        if (binding.typeKey in strictVisits) continue
+        if (binding.typeKey in visited) continue
 
         dfsStrict(binding, binding.contextualTypeKey)
       }
     }
 
-    val visiting = mutableSetOf<TypeKey>()
+    visited.clear()
 
     /* 2. cache transitive closure (all edges) */
     fun dfsAll(key: TypeKey): Set<TypeKey> {
@@ -278,7 +281,7 @@ internal open class MutableBindingGraph<
       }
 
       // Bounce if it's a strict cycle. We already validated these above
-      if (!visiting.add(key)) return emptySet()
+      if (!visited.add(key)) return emptySet()
 
       // Compute transitive deps.
       // Important to do this in a local var rather than a getOrPut() call to avoid a reentrant
@@ -297,7 +300,7 @@ internal open class MutableBindingGraph<
           }
         }
 
-      visiting.remove(key)
+      visited.remove(key)
 
       // Memoize *after* computation
       transitive[key] = deps
@@ -306,7 +309,7 @@ internal open class MutableBindingGraph<
 
     tracer.traceNested("Cache transitive closure") { bindings.keys.forEach(::dfsAll) }
 
-    visiting.clear()
+    visited.clear()
 
     sealed = true
     return deferredTypes
