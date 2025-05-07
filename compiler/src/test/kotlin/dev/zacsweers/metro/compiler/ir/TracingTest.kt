@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import com.google.common.truth.Truth.assertThat
@@ -99,7 +101,7 @@ class TracingTest : MetroCompilerTest() {
             interface ChildGraph {
 
               fun exampleClass(): ExampleClass
-              
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@Extends parent: ExampleGraph): ChildGraph
@@ -210,7 +212,7 @@ class TracingTest : MetroCompilerTest() {
             interface ChildGraph {
 
               fun exampleClass(): ExampleClass
-              
+
               @ContributesGraphExtension.Factory(AppScope::class)
               fun interface Factory {
                 fun createChildGraph(): ChildGraph

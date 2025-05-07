@@ -20,7 +20,6 @@ import dev.zacsweers.metro.compiler.newInstanceStrict
 import dev.zacsweers.metro.internal.MapFactory
 import dev.zacsweers.metro.internal.MapProviderFactory
 import java.util.concurrent.Callable
-import kotlin.io.path.readText
 import kotlin.test.Ignore
 import kotlin.test.assertNotNull
 import org.junit.Test
