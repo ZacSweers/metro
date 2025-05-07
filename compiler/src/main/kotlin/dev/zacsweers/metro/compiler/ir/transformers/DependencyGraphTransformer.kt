@@ -769,16 +769,20 @@ internal class DependencyGraphTransformer(
 
     try {
       val deferredTypes =
-        parentTracer.traceNested("Validate binding graph") {
-          checkGraphSelfCycle(
-            dependencyGraphDeclaration,
-            node.typeKey,
-            IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.CycleDetection)),
-          )
+        parentTracer.traceNested("Validate binding graph") { tracer ->
+          tracer.traceNested("Check self-cycles") {
+            checkGraphSelfCycle(
+              dependencyGraphDeclaration,
+              node.typeKey,
+              IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.CycleDetection)),
+            )
+          }
 
-          bindingGraph.validate { message ->
-            dependencyGraphDeclaration.reportError(message)
-            exitProcessing()
+          tracer.traceNested("Validate graph") {
+            bindingGraph.validate(it) { message ->
+              dependencyGraphDeclaration.reportError(message)
+              exitProcessing()
+            }
           }
         }
 

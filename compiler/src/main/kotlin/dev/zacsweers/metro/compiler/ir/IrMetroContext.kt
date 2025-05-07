@@ -246,5 +246,5 @@ internal fun IrMetroContext.tracer(tag: String, description: String): Tracer =
     check(description.isNotBlank()) { "description must not be blank" }
     tracer(tag, description, ::logTrace, ::logTiming)
   } else {
-    Tracer.NOOP
+    Tracer.NONE
   }

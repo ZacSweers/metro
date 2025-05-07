@@ -6,6 +6,8 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
@@ -144,11 +146,14 @@ internal class IrBindingGraph(
 
   fun IrTypeKey.dependsOn(key: IrTypeKey) = with(realGraph) { this@dependsOn.dependsOn(key) }
 
-  fun validate(onError: (String) -> Nothing): Set<IrTypeKey> {
-    val deferredTypes = realGraph.seal(accessors)
-    checkEmptyMultibindings(onError)
-    check(realGraph.snapshot.values.none { it is Binding.Absent }) {
-      "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
+  fun validate(parentTracer: Tracer, onError: (String) -> Nothing): Set<IrTypeKey> {
+    val deferredTypes =
+      parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
+    parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
+    parentTracer.traceNested("check for absent bindings") {
+      check(realGraph.snapshot.values.none { it is Binding.Absent }) {
+        "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
+      }
     }
     return deferredTypes
   }

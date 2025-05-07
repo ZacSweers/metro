@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.concurrent.ConcurrentHashMap
 
 internal interface BindingGraph<
@@ -124,7 +126,10 @@ internal open class MutableBindingGraph<
    * Calls [onError] if a strict dependency cycle or missing binding is encountered during
    * validation.
    */
-  fun seal(roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap()): Set<TypeKey> {
+  fun seal(
+    roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
+    tracer: Tracer = Tracer.NONE,
+  ): Set<TypeKey> {
     val stack = newBindingStack()
 
     fun reportCycle(fullCycle: List<BindingStackEntry>): Nothing {
@@ -242,21 +247,25 @@ internal open class MutableBindingGraph<
     val strictVisits = hashSetOf<TypeKey>()
 
     // Walk from roots first
-    for ((contextKey, entry) in roots) {
-      stackLogger.log("Traversing root: ${contextKey.render(short = true)}")
-      stack.withEntry(entry) {
-        val binding = getOrCreateBinding(contextKey, stack)
-        stackLogger.log("Root binding: $binding")
-        dfsStrict(binding, contextKey)
-        strictVisits += contextKey.typeKey
+    tracer.traceNested("Traverse from roots") {
+      for ((contextKey, entry) in roots) {
+        stackLogger.log("Traversing root: ${contextKey.render(short = true)}")
+        stack.withEntry(entry) {
+          val binding = getOrCreateBinding(contextKey, stack)
+          stackLogger.log("Root binding: $binding")
+          dfsStrict(binding, contextKey)
+          strictVisits += contextKey.typeKey
+        }
       }
     }
 
     // Validate remaining bindings
-    for (binding in bindings.values) {
-      if (binding.typeKey in strictVisits) continue
+    tracer.traceNested("Traverse remaining bindings") {
+      for (binding in bindings.values) {
+        if (binding.typeKey in strictVisits) continue
 
-      dfsStrict(binding, binding.contextualTypeKey)
+        dfsStrict(binding, binding.contextualTypeKey)
+      }
     }
 
     val visiting = mutableSetOf<TypeKey>()
@@ -294,7 +303,9 @@ internal open class MutableBindingGraph<
       transitive[key] = deps
       return deps
     }
-    bindings.keys.forEach(::dfsAll)
+
+    tracer.traceNested("Cache transitive closure") { bindings.keys.forEach(::dfsAll) }
+
     visiting.clear()
 
     sealed = true

@@ -18,7 +18,7 @@ internal interface Tracer {
   fun nested(description: String): Tracer
 
   companion object {
-    val NOOP: Tracer =
+    val NONE: Tracer =
       object : Tracer {
         override val tag: String = ""
         override val description: String = ""
@@ -32,7 +32,7 @@ internal interface Tracer {
         }
 
         override fun nested(description: String): Tracer {
-          return NOOP
+          return NONE
         }
       }
   }
