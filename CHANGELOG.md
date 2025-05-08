@@ -5,10 +5,9 @@ Changelog
 --------------
 
 - **Enhancement**: Improve caching in binding graph validation to significantly improve performance.
-- **Enhancement**: Return early once an externally compiled dependency graph is found.
+- **Enhancement**: Return early once an externally-compiled dependency graph is found.
 - **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
 - **Fix**: Fix a comparator infinite loop vector.
-- **Fix**: When `metro.debug` is enabled, print all the noisy logs to console directly.
 - When debug logging + reports dir is enabled, output a `logTrace.txt` to the reports dir for tracing data.
 
 0.3.0
