@@ -1852,7 +1852,7 @@ class AggregationTest : MetroCompilerTest() {
 
               test.ContributedInterface is requested at
                   [test.AltGraph] test.AltGraph#contributedInterface
-          
+
           Similar bindings:
             - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
         """

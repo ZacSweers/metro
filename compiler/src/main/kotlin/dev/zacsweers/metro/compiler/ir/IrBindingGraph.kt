@@ -138,11 +138,12 @@ internal class IrBindingGraph(
       is Binding -> {
         addBinding(key, binding, bindingStack)
       }
-      null -> realGraph.reportMissingBinding(key, bindingStack) {
-        if (metroContext.debug) {
-          appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
+      null ->
+        realGraph.reportMissingBinding(key, bindingStack) {
+          if (metroContext.debug) {
+            appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
+          }
         }
-      }
     }
     return binding
   }

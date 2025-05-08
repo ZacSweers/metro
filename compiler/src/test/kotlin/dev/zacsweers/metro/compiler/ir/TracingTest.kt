@@ -34,7 +34,7 @@ class TracingTest : MetroCompilerTest() {
           """
           .trimIndent()
       ),
-      options = metroOptions.copy(reportsDestination = reportsDir)
+      options = metroOptions.copy(reportsDestination = reportsDir),
     ) {
       val timings = reportsDir.resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
@@ -142,7 +142,7 @@ class TracingTest : MetroCompilerTest() {
           """
           .trimIndent()
       ),
-      options = metroOptions.copy(reportsDestination = reportsDir)
+      options = metroOptions.copy(reportsDestination = reportsDir),
     ) {
       val timings = reportsDir.resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
@@ -307,7 +307,7 @@ class TracingTest : MetroCompilerTest() {
           """
           .trimIndent()
       ),
-      options = metroOptions.copy(reportsDestination = reportsDir)
+      options = metroOptions.copy(reportsDestination = reportsDir),
     ) {
       val timings = reportsDir.resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
