@@ -62,48 +62,6 @@ internal open class MutableBindingGraph<
   var sealed = false
     private set
 
-  override val snapshot: Map<TypeKey, Binding>
-    get() = bindings
-
-  fun replace(binding: Binding) {
-    bindings[binding.typeKey] = binding
-  }
-
-  /**
-   * @param key The key to put the binding under. Can be customized to link/alias a key to another
-   *   binding
-   */
-  fun tryPut(binding: Binding, bindingStack: BindingStack, key: TypeKey = binding.typeKey) {
-    check(!sealed) { "Graph already sealed" }
-    if (binding.isTransient) {
-      // Absent binding or otherwise not something we store
-      return
-    }
-    if (bindings.containsKey(key)) {
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
-        )
-        val existing = bindings.getValue(key)
-        val duplicate = binding
-        appendLine("├─ Binding 1: ${existing.renderLocationDiagnostic()}")
-        appendLine("├─ Binding 2: ${duplicate.renderLocationDiagnostic()}")
-        if (existing === duplicate) {
-          appendLine("├─ Bindings are the same: $existing")
-        } else if (existing == duplicate) {
-          appendLine("├─ Bindings are equal: $existing")
-        }
-        appendBindingStack(bindingStack)
-      }
-      onError(message, bindingStack)
-    }
-    bindings[binding.typeKey] = binding
-  }
-
-  override operator fun get(key: TypeKey): Binding? = bindings[key]
-
-  override operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
-
   /**
    * Finalizes the binding graph by performing validation and cache initialization.
    *
@@ -381,6 +339,48 @@ internal open class MutableBindingGraph<
 
     tracer.traceNested("Cache transitive closure") { bindings.keys.forEach(::dfsAll) }
   }
+
+  override val snapshot: Map<TypeKey, Binding>
+    get() = bindings
+
+  fun replace(binding: Binding) {
+    bindings[binding.typeKey] = binding
+  }
+
+  /**
+   * @param key The key to put the binding under. Can be customized to link/alias a key to another
+   *   binding
+   */
+  fun tryPut(binding: Binding, bindingStack: BindingStack, key: TypeKey = binding.typeKey) {
+    check(!sealed) { "Graph already sealed" }
+    if (binding.isTransient) {
+      // Absent binding or otherwise not something we store
+      return
+    }
+    if (bindings.containsKey(key)) {
+      val message = buildString {
+        appendLine(
+          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+        )
+        val existing = bindings.getValue(key)
+        val duplicate = binding
+        appendLine("├─ Binding 1: ${existing.renderLocationDiagnostic()}")
+        appendLine("├─ Binding 2: ${duplicate.renderLocationDiagnostic()}")
+        if (existing === duplicate) {
+          appendLine("├─ Bindings are the same: $existing")
+        } else if (existing == duplicate) {
+          appendLine("├─ Bindings are equal: $existing")
+        }
+        appendBindingStack(bindingStack)
+      }
+      onError(message, bindingStack)
+    }
+    bindings[binding.typeKey] = binding
+  }
+
+  override operator fun get(key: TypeKey): Binding? = bindings[key]
+
+  override operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
 
   // O(1) after seal()
   override fun TypeKey.dependsOn(other: TypeKey): Boolean =
