@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.MetroLogger
+
 @Suppress("UNCHECKED_CAST")
 internal class StringGraph(
   newBindingStack: () -> StringBindingStack,
@@ -18,6 +20,7 @@ internal class StringGraph(
     { _, _ ->
       null
     },
+  logger: MetroLogger = MetroLogger.NONE,
 ) :
   MutableBindingGraph<
     String,
@@ -34,6 +37,7 @@ internal class StringGraph(
         StringContextualTypeKey, BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
       ) -> StringBindingStack.Entry,
     computeBinding,
+    stackLogger = logger
   ) {
   fun tryPut(binding: BaseBinding<String, StringTypeKey, StringContextualTypeKey>) {
     tryPut(binding, StringBindingStack("AppGraph"))

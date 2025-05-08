@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.MetroLoggerImpl
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -347,12 +349,14 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
+  debug: Boolean = false,
   computeBinding: (StringContextualTypeKey, StringBindingStack) -> StringBinding? = { _, _ -> null },
 ): StringGraph {
   return StringGraph(
     newBindingStack = { StringBindingStack(graph) },
     newBindingStackEntry = { contextKey, binding -> StringBindingStack.Entry(contextKey) },
     computeBinding = computeBinding,
+    logger = if (debug) MetroLoggerImpl(MetroLogger.Type.BindingGraphConstruction, ::println) else MetroLogger.NONE
   )
 }
 
