@@ -131,6 +131,21 @@ internal open class MutableBindingGraph<
   ): Set<TypeKey> {
     val stack = newBindingStack()
 
+    populateGraph(roots, stack, tracer)
+
+    checkForCycles(roots, stack, tracer)
+
+    cacheEdges(tracer)
+
+    sealed = true
+    return deferredTypes
+  }
+
+  private fun populateGraph(
+    roots: Map<ContextualTypeKey, BindingStackEntry>,
+    stack: BindingStack,
+    tracer: Tracer,
+  ) {
     // Traverse all the bindings up front to
     // First ensure all the roots' bindings are present
     for (contextKey in roots.keys) {
@@ -183,7 +198,13 @@ internal open class MutableBindingGraph<
         binding.visitAggregatedDependencies()
       }
     }
+  }
 
+  private fun checkForCycles(
+    roots: Map<ContextualTypeKey, BindingStackEntry>,
+    stack: BindingStack,
+    tracer: Tracer,
+  ) {
     fun reportCycle(fullCycle: List<BindingStackEntry>): Nothing {
       val message = buildString {
         appendLine(
@@ -319,7 +340,9 @@ internal open class MutableBindingGraph<
         dfsStrict(binding, binding.contextualTypeKey)
       }
     }
+  }
 
+  private fun cacheEdges(tracer: Tracer) {
     val visiting = mutableSetOf<TypeKey>()
 
     /* 2. cache transitive closure (all edges) */
@@ -357,11 +380,6 @@ internal open class MutableBindingGraph<
     }
 
     tracer.traceNested("Cache transitive closure") { bindings.keys.forEach(::dfsAll) }
-
-    visiting.clear()
-
-    sealed = true
-    return deferredTypes
   }
 
   // O(1) after seal()
