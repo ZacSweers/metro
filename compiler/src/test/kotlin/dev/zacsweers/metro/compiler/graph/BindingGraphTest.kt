@@ -356,7 +356,9 @@ private fun newStringBindingGraph(
     newBindingStack = { StringBindingStack(graph) },
     newBindingStackEntry = { contextKey, binding -> StringBindingStack.Entry(contextKey) },
     computeBinding = computeBinding,
-    logger = if (debug) MetroLoggerImpl(MetroLogger.Type.BindingGraphConstruction, ::println) else MetroLogger.NONE
+    logger =
+      if (debug) MetroLoggerImpl(MetroLogger.Type.BindingGraphConstruction, ::println)
+      else MetroLogger.NONE,
   )
 }
 

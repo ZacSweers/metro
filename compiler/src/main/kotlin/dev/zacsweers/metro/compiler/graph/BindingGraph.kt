@@ -322,8 +322,7 @@ internal open class MutableBindingGraph<
   }
 
   fun createBindingOrFail(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
-    return computeBinding(contextKey, stack)
-      ?: reportMissingBinding(contextKey.typeKey, stack)
+    return computeBinding(contextKey, stack) ?: reportMissingBinding(contextKey.typeKey, stack)
   }
 
   private fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack): Nothing {

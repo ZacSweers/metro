@@ -37,7 +37,7 @@ internal class StringGraph(
         StringContextualTypeKey, BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
       ) -> StringBindingStack.Entry,
     computeBinding,
-    stackLogger = logger
+    stackLogger = logger,
   ) {
   fun tryPut(binding: BaseBinding<String, StringTypeKey, StringContextualTypeKey>) {
     tryPut(binding, StringBindingStack("AppGraph"))
