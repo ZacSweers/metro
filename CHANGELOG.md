@@ -4,7 +4,6 @@ Changelog
 **Unreleased**
 --------------
 
-- **Enhancement**: Improve caching in binding graph validation to significantly improve performance.
 - **Enhancement**: Return early once an externally-compiled dependency graph is found.
 - **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
 - **Fix**: Fix a comparator infinite loop vector.
