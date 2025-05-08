@@ -241,7 +241,7 @@ internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> 
 }
 
 internal fun IrMetroContext.tracer(tag: String, description: String): Tracer =
-  if (debug) {
+  if (traceLogFile != null || timingsFile != null || debug) {
     check(tag.isNotBlank()) { "Tag must not be blank" }
     check(description.isNotBlank()) { "description must not be blank" }
     tracer(tag, description, ::logTrace, ::logTiming)
