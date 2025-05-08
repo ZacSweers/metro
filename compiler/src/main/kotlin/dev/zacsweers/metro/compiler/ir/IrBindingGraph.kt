@@ -30,6 +30,7 @@ internal class IrBindingGraph(
       newBindingStackEntry = { contextKey, binding ->
         bindingStackEntryForDependency(binding, contextKey, contextKey.typeKey)
       },
+      absentBinding = { key -> Binding.Absent(key) },
       computeBinding = { contextKey, stack ->
         metroContext.injectedClassBindingOrNull(contextKey, stack, this)
       },
@@ -137,7 +138,11 @@ internal class IrBindingGraph(
       is Binding -> {
         addBinding(key, binding, bindingStack)
       }
-      null -> reportMissingBinding(key, bindingStack)
+      null -> realGraph.reportMissingBinding(key, bindingStack) {
+        if (metroContext.debug) {
+          appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
+        }
+      }
     }
     return binding
   }
@@ -239,31 +244,6 @@ internal class IrBindingGraph(
 
       yieldAll(similar)
     }
-  }
-
-  private fun reportMissingBinding(typeKey: IrTypeKey, bindingStack: IrBindingStack): Nothing {
-    val declarationToReport = bindingStack.lastEntryOrGraph
-    val message = buildString {
-      append(
-        "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
-      )
-      appendLine(typeKey.render(short = false))
-      appendLine()
-      appendBindingStack(bindingStack, short = false)
-      val similarBindings = findSimilarBindings(typeKey)
-      if (similarBindings.isNotEmpty()) {
-        appendLine()
-        appendLine("Similar bindings:")
-        similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
-      }
-      if (metroContext.debug) {
-        appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
-      }
-    }
-
-    with(metroContext) { declarationToReport.reportError(message) }
-
-    exitProcessing()
   }
 
   // TODO

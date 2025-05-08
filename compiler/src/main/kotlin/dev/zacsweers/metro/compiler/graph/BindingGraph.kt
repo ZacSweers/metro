@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import java.util.concurrent.ConcurrentHashMap
 
 internal interface BindingGraph<
   Type : Any,
@@ -40,6 +39,7 @@ internal open class MutableBindingGraph<
   private val newBindingStack: () -> BindingStack,
   private val newBindingStackEntry:
     BindingStack.(contextKey: ContextualTypeKey, callingBinding: Binding) -> BindingStackEntry,
+  private val absentBinding: (typeKey: TypeKey) -> Binding,
   /**
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types).
@@ -53,8 +53,7 @@ internal open class MutableBindingGraph<
   private val stackLogger: MetroLogger = MetroLogger.NONE,
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
-  // ConcurrentHashMap because we may concurrently (but not multi-threaded) modify while iterating
-  private val bindings = ConcurrentHashMap<TypeKey, Binding>()
+  private val bindings = mutableMapOf<TypeKey, Binding>()
   // Populated by seal()
   private val transitive = hashMapOf<TypeKey, Set<TypeKey>>()
 
@@ -131,6 +130,59 @@ internal open class MutableBindingGraph<
     tracer: Tracer = Tracer.NONE,
   ): Set<TypeKey> {
     val stack = newBindingStack()
+
+    // Traverse all the bindings up front to
+    // First ensure all the roots' bindings are present
+    for (contextKey in roots.keys) {
+      computeBinding(contextKey, stack)?.let { tryPut(it, stack, contextKey.typeKey) }
+    }
+
+    // Then populate the rest of the bindings. This is important to do because some bindings
+    // are computed (i.e., constructor-injected types) as they are used. We do this upfront
+    // so that the graph is fully populated before we start validating it and avoid mutating
+    // it while we're validating it.
+    val bindingQueue = ArrayDeque<Binding>().also { it.addAll(bindings.values) }
+
+    tracer.traceNested("Populate bindings") {
+      while (bindingQueue.isNotEmpty()) {
+        val binding = bindingQueue.removeFirst()
+        if (binding.typeKey !in bindings && !binding.isTransient) {
+          bindings[binding.typeKey] = binding
+        }
+
+        fun Binding.visitDependencies() {
+          for (depKey in dependencies) {
+            stack.withEntry(stack.newBindingStackEntry(depKey, this)) {
+              val typeKey = depKey.typeKey
+              if (typeKey !in bindings) {
+                // If the binding isn't present, we'll report it later
+                computeBinding(depKey, stack)?.let { bindingQueue.addLast(it) }
+              }
+            }
+          }
+        }
+
+        binding.visitDependencies()
+
+        fun Binding.visitAggregatedDependencies() {
+          for (binding in aggregatedBindings) {
+            if (binding.typeKey !in bindings) {
+              // If the binding isn't present, we'll report it later
+              computeBinding(binding.contextualTypeKey, stack)?.let { bindingQueue.addLast(it) }
+            }
+            // Queue up aggregated bindings' deps just in case
+            @Suppress("UNCHECKED_CAST")
+            for (depKey in (binding as Binding).dependencies) {
+              if (depKey.typeKey !in bindings) {
+                bindingQueue.addLast(binding)
+              }
+            }
+          }
+        }
+
+        binding.visitAggregatedDependencies()
+      }
+    }
 
     fun reportCycle(fullCycle: List<BindingStackEntry>): Nothing {
       val message = buildString {
@@ -214,7 +266,7 @@ internal open class MutableBindingGraph<
         stackLogger.log("----> Dependency: ${depKey.render(short = true)}")
         val stackEntry = stack.newBindingStackEntry(depKey, binding)
         stack.withEntry(stackEntry) {
-          val depBinding = getOrCreateBinding(depKey, stack)
+          val depBinding = requireBinding(depKey, stack)
           stackLogger.log("----> Binding: $depBinding")
           // Check direct dependencies for cycles
           if (depBinding == binding && contextKey == depKey && !depKey.isDeferrable) {
@@ -251,7 +303,7 @@ internal open class MutableBindingGraph<
       for ((contextKey, entry) in roots) {
         stackLogger.log("Traversing root: ${contextKey.render(short = true)}")
         stack.withEntry(entry) {
-          val binding = getOrCreateBinding(contextKey, stack)
+          val binding = requireBinding(contextKey, stack)
           stackLogger.log("Root binding: $binding")
           dfsStrict(binding, contextKey)
           strictVisits += contextKey.typeKey
@@ -325,7 +377,17 @@ internal open class MutableBindingGraph<
     return computeBinding(contextKey, stack) ?: reportMissingBinding(contextKey.typeKey, stack)
   }
 
-  private fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack): Nothing {
+  fun requireBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
+    return bindings[contextKey.typeKey]
+      ?: contextKey.takeIf { it.hasDefault }?.let { absentBinding(it.typeKey) }
+      ?: reportMissingBinding(contextKey.typeKey, stack)
+  }
+
+  fun reportMissingBinding(
+    typeKey: TypeKey,
+    bindingStack: BindingStack,
+    extraContent: StringBuilder.() -> Unit = {},
+  ): Nothing {
     val message = buildString {
       append(
         "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
@@ -339,6 +401,7 @@ internal open class MutableBindingGraph<
         appendLine("Similar bindings:")
         similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
       }
+      extraContent()
     }
 
     onError(message, bindingStack)
