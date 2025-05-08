@@ -318,7 +318,11 @@ internal open class MutableBindingGraph<
 
   fun getOrCreateBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
     return bindings[contextKey.typeKey]
-      ?: computeBinding(contextKey, stack)?.also { tryPut(it, stack) }
+      ?: createBindingOrFail(contextKey, stack).also { tryPut(it, stack) }
+  }
+
+  fun createBindingOrFail(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
+    return computeBinding(contextKey, stack)
       ?: reportMissingBinding(contextKey.typeKey, stack)
   }
 
