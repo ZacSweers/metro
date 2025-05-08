@@ -1673,6 +1673,84 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     assertThat(strings).containsExactly("0", "1", "3")
   }
 
+  @Test
+  fun `single module with contributed multibinding as elements used in constructor injection`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          interface ContributedInterface
+          class Impl1 : ContributedInterface
+
+          @ContributesTo(AppScope::class)
+          interface MultibindingsModule {
+
+            @Provides
+            @ElementsIntoSet
+            fun provideImpl1(): Set<ContributedInterface> = setOf(Impl1())
+          }
+
+          class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            val multibindingConsumer: MultibindingConsumer
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(
+          exampleGraph
+            .callProperty<Any>("multibindingConsumer")
+            .callProperty<Set<Any>>("contributions")
+            .map { it.javaClass.canonicalName }
+        )
+        .isEqualTo(listOf("test.Impl1"))
+    }
+  }
+
+  @Test
+  fun `single module with contributed multibinding used in constructor injection`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          interface ContributedInterface
+          class Impl1 : ContributedInterface
+
+          @ContributesTo(AppScope::class)
+          interface MultibindingsModule {
+
+            @Provides
+            @IntoSet
+            fun provideImpl1(): ContributedInterface = Impl1()
+          }
+
+          class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>)
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            val multibindingConsumer: MultibindingConsumer
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertThat(
+          exampleGraph
+            .callProperty<Any>("multibindingConsumer")
+            .callProperty<Set<Any>>("contributions")
+            .map { it.javaClass.canonicalName }
+        )
+        .isEqualTo(listOf("test.Impl1"))
+    }
+  }
+
   // The annotation is stored on the FirPropertyAccessorSymbol, this test ensures
   // we check there too
   @Test

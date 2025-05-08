@@ -928,7 +928,11 @@ internal class DependencyGraphTransformer(
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
 
       val parameters = providerFactory.parameters
-      val contextKey = IrContextualTypeKey(typeKey)
+      val contextKey =
+        IrContextualTypeKey.create(
+          typeKey,
+          isIntoMultibinding = providerFactory.annotations.isIntoMultibinding,
+        )
 
       val provider =
         Binding.Provided(
