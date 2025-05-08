@@ -189,14 +189,10 @@ internal open class MutableBindingGraph<
         // Check if there's a deferrable type in the stack, if so we can break the cycle
         // A -> B -> Lazy<A> is valid
         // A -> B -> A is not
-        val deferrableKey = if (contextKey.isDeferrable) {
-          contextKey.typeKey
-        } else {
-          cycle.firstOrNull { it.contextKey.isDeferrable }?.typeKey
-        }
         val isTrueCycle =
           key !in deferredTypes &&
-            deferrableKey == null
+            !contextKey.isDeferrable &&
+            cycle.none { it.contextKey.isDeferrable }
         if (isTrueCycle) {
           stackLogger.log("--> ❌True cycle!")
           // Pull the root entry from the stack and add it back to the bottom of the stack to
@@ -205,21 +201,14 @@ internal open class MutableBindingGraph<
           reportCycle(fullCycle)
         } else if (contextKey.isIntoMultibinding) {
           // Proceed
-          // TODO is this still necessary since they don't live in the stack directly
           stackLogger.log("--> Into multibinding, proceeding")
         } else {
           // TODO this if check isn't great
           stackLogger.log("--> Deferring ${key.render(short = true)}")
-          // The type to defer is the one that breaks the loop, not necessarily this type
-          deferredTypes += deferrableKey!!
+          deferredTypes += key
           // We're in a loop here so nothing else needed
           return
         }
-      }
-
-      // If it's deferrable, don't need to recurse further for checking cycles
-      if (contextKey.isDeferrable) {
-        return
       }
 
       if (key in visited) {
