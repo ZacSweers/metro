@@ -122,6 +122,7 @@ internal class IrBindingGraph(
       )
   }
 
+  // TODO make this not mutate the graph anymore
   fun getOrCreateBinding(contextKey: IrContextualTypeKey, bindingStack: IrBindingStack): Binding {
     check(!realGraph.sealed)
     val key = contextKey.typeKey
