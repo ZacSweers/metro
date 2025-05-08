@@ -36,6 +36,7 @@ internal class StringGraph(
       StringBindingStack.(
         StringContextualTypeKey, BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
       ) -> StringBindingStack.Entry,
+    absentBinding = { StringBinding(it) },
     computeBinding,
     stackLogger = logger,
   ) {

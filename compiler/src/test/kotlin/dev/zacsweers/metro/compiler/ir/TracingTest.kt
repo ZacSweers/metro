@@ -34,7 +34,7 @@ class TracingTest : MetroCompilerTest() {
           """
           .trimIndent()
       ),
-      options = metroOptions.copy(reportsDestination = reportsDir, debug = true),
+      options = metroOptions.copy(reportsDestination = reportsDir)
     ) {
       val timings = reportsDir.resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
@@ -45,6 +45,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Check self-cycles
+          ExampleGraph,Populate bindings
           ExampleGraph,Traverse from roots
           ExampleGraph,Traverse remaining bindings
           ExampleGraph,Cache transitive closure
@@ -79,6 +80,8 @@ class TracingTest : MetroCompilerTest() {
                 ◀ Check self-cycles (xx ms)
                 ▶ Validate graph
                   ▶ seal graph
+                    ▶ Populate bindings
+                    ◀ Populate bindings (xx ms)
                     ▶ Traverse from roots
                     ◀ Traverse from roots (xx ms)
                     ▶ Traverse remaining bindings
@@ -139,7 +142,7 @@ class TracingTest : MetroCompilerTest() {
           """
           .trimIndent()
       ),
-      options = metroOptions.copy(reportsDestination = reportsDir, debug = true),
+      options = metroOptions.copy(reportsDestination = reportsDir)
     ) {
       val timings = reportsDir.resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
@@ -150,6 +153,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Check self-cycles
+          ExampleGraph,Populate bindings
           ExampleGraph,Traverse from roots
           ExampleGraph,Traverse remaining bindings
           ExampleGraph,Cache transitive closure
@@ -168,6 +172,7 @@ class TracingTest : MetroCompilerTest() {
           ChildGraph,Implement creator functions
           ChildGraph,Build binding graph
           ChildGraph,Check self-cycles
+          ChildGraph,Populate bindings
           ChildGraph,Traverse from roots
           ChildGraph,Traverse remaining bindings
           ChildGraph,Cache transitive closure
@@ -202,6 +207,8 @@ class TracingTest : MetroCompilerTest() {
                 ◀ Check self-cycles (xx ms)
                 ▶ Validate graph
                   ▶ seal graph
+                    ▶ Populate bindings
+                    ◀ Populate bindings (xx ms)
                     ▶ Traverse from roots
                     ◀ Traverse from roots (xx ms)
                     ▶ Traverse remaining bindings
@@ -238,6 +245,8 @@ class TracingTest : MetroCompilerTest() {
                 ◀ Check self-cycles (xx ms)
                 ▶ Validate graph
                   ▶ seal graph
+                    ▶ Populate bindings
+                    ◀ Populate bindings (xx ms)
                     ▶ Traverse from roots
                     ◀ Traverse from roots (xx ms)
                     ▶ Traverse remaining bindings
@@ -298,7 +307,7 @@ class TracingTest : MetroCompilerTest() {
           """
           .trimIndent()
       ),
-      options = metroOptions.copy(reportsDestination = reportsDir, debug = true),
+      options = metroOptions.copy(reportsDestination = reportsDir)
     ) {
       val timings = reportsDir.resolve("timings.csv").readText()
       val withoutTime = timings.lines().drop(1).joinToString("\n") { it.substringBeforeLast(",") }
@@ -309,6 +318,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
           ExampleGraph,Check self-cycles
+          ExampleGraph,Populate bindings
           ExampleGraph,Traverse from roots
           ExampleGraph,Traverse remaining bindings
           ExampleGraph,Cache transitive closure
@@ -328,6 +338,7 @@ class TracingTest : MetroCompilerTest() {
           $${'$'}ContributedChildGraph,Implement creator functions
           $${'$'}ContributedChildGraph,Build binding graph
           $${'$'}ContributedChildGraph,Check self-cycles
+          $${'$'}ContributedChildGraph,Populate bindings
           $${'$'}ContributedChildGraph,Traverse from roots
           $${'$'}ContributedChildGraph,Traverse remaining bindings
           $${'$'}ContributedChildGraph,Cache transitive closure
@@ -362,6 +373,8 @@ class TracingTest : MetroCompilerTest() {
                 ◀ Check self-cycles (xx ms)
                 ▶ Validate graph
                   ▶ seal graph
+                    ▶ Populate bindings
+                    ◀ Populate bindings (xx ms)
                     ▶ Traverse from roots
                     ◀ Traverse from roots (xx ms)
                     ▶ Traverse remaining bindings
@@ -400,6 +413,8 @@ class TracingTest : MetroCompilerTest() {
                 ◀ Check self-cycles (xx ms)
                 ▶ Validate graph
                   ▶ seal graph
+                    ▶ Populate bindings
+                    ◀ Populate bindings (xx ms)
                     ▶ Traverse from roots
                     ◀ Traverse from roots (xx ms)
                     ▶ Traverse remaining bindings
