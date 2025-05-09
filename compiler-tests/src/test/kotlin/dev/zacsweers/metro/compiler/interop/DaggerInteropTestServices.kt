@@ -27,7 +27,7 @@ class DaggerInteropEnvironmentConfigurator(testServices: TestServices) :
     configuration: CompilerConfiguration,
     module: TestModule,
   ) {
-    if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+    if (MetroDirectives.ENABLE_DAGGER_KSP in module.directives) {
       for (file in daggerInteropClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
@@ -38,7 +38,7 @@ class DaggerInteropEnvironmentConfigurator(testServices: TestServices) :
 class DaggerInteropClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
-    return when (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+    return when (MetroDirectives.ENABLE_DAGGER_KSP in module.directives) {
       true -> daggerInteropClasspath
       false -> emptyList()
     }

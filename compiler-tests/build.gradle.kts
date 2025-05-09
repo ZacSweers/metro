@@ -79,8 +79,11 @@ tasks.withType<Test> {
 }
 
 fun Test.setLibraryProperty(propName: String, jarName: String) {
-  val path = project.configurations.testRuntimeClasspath.get()
-    .files.find { """$jarName-\d.*jar""".toRegex().matches(it.name) }
-    ?.absolutePath ?: return
+  val path =
+    project.configurations.testRuntimeClasspath
+      .get()
+      .files
+      .find { """$jarName-\d.*jar""".toRegex().matches(it.name) }
+      ?.absolutePath ?: return
   systemProperty(propName, path)
 }

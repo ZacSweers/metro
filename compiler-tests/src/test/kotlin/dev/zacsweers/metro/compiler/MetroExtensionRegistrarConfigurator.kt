@@ -47,11 +47,11 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       MetroDirectives.DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE !in module.directives
     val addDaggerAnnotations =
       MetroDirectives.WITH_DAGGER in module.directives ||
-          MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives
+        MetroDirectives.ENABLE_DAGGER_KSP in module.directives
 
     val options =
       MetroOptions(
-        enableDaggerRuntimeInterop = MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives,
+        enableDaggerRuntimeInterop = MetroDirectives.ENABLE_DAGGER_KSP in module.directives,
         generateAssistedFactories =
           MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives,
         transformProvidersToPrivate = transformProvidersToPrivate,

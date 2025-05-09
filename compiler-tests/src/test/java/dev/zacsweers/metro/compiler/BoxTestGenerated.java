@@ -67,6 +67,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoaded.kt");
       }
+
+      @Test
+      @TestMetadata("DaggerFactoryClassCanBeLoadedJakarta.kt")
+      public void testDaggerFactoryClassCanBeLoadedJakarta() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoadedJakarta.kt");
+      }
     }
   }
 

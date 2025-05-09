@@ -1,7 +1,7 @@
 // ENABLE_DAGGER_KSP
 
 // FILE: ExampleClass.java
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class ExampleClass {
   @Inject public ExampleClass() {
