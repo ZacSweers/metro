@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.test.services.getOrCreateTempDirectory
 import org.jetbrains.kotlin.test.services.isJavaFile
 import org.jetbrains.kotlin.test.services.isKtFile
 import org.jetbrains.kotlin.test.services.sourceFileProvider
-import org.jetbrains.kotlin.test.util.KtTestUtil
 import java.io.File
 
 class Ksp2AdditionalSourceProvider(
@@ -31,6 +30,7 @@ class Ksp2AdditionalSourceProvider(
       KspComponentProcessor.Provider()
     )
 
+    // Write out test files to KSP input directories
     val kotlinInput = testServices.getOrCreateTempDirectory("ksp-kotlin-input-${module.name}")
     val javaInput = testServices.getOrCreateTempDirectory("ksp-java-input-${module.name}")
 
@@ -46,6 +46,7 @@ class Ksp2AdditionalSourceProvider(
       path.writeText(testServices.sourceFileProvider.getContentOfSourceFile(testFile))
     }
 
+    // Setup KSP output directories
     val projectBase = testServices.getOrCreateTempDirectory("ksp-project-base-${module.name}")
     val caches = projectBase.resolve("caches").also { it.mkdirs() }
     val classOutput = projectBase.resolve("classes").also { it.mkdirs() }
@@ -62,11 +63,11 @@ class Ksp2AdditionalSourceProvider(
 //          processorOptions = this@Ksp2PrecursorTool.processorOptions.toMap()
 
       jvmTarget = "11"
-      jdkHome = KtTestUtil.getJdk11Home()
-      languageVersion = KotlinVersion.CURRENT.let { "${it.major}.${it.minor}" }
-      apiVersion = KotlinVersion.CURRENT.let { "${it.major}.${it.minor}" }
+      jdkHome = File(System.getProperty("java.home"))
+      languageVersion = module.languageVersionSettings.languageVersion.versionString
+      apiVersion = module.languageVersionSettings.apiVersion.versionString
 
-      moduleName = "main"
+      moduleName = module.name
       sourceRoots = listOf(kotlinInput)
       javaSourceRoots = listOf(javaInput)
       libraries = getHostClasspaths()
@@ -91,6 +92,8 @@ class Ksp2AdditionalSourceProvider(
     return kotlinKspTestFiles + javaKspTestFiles
   }
 
+  // TODO remove this in favor of explicit Gradle configuration?
+  //  - or is there a way to extract the classpath from the test framework?
   private fun getHostClasspaths(): List<File> {
     val classGraph = ClassGraph()
       .enableSystemJarsAndModules()

@@ -45,6 +45,32 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/interop")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Interop {
+    @Test
+    public void testAllFilesPresentInInterop() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/dagger")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dagger {
+      @Test
+      public void testAllFilesPresentInDagger() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryClassCanBeLoaded.kt")
+      public void testDaggerFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoaded.kt");
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/member")
   @TestDataPath("$PROJECT_ROOT")
   public class Member {
