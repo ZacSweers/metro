@@ -356,43 +356,43 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 }
 
 internal fun bindingStackEntryForDependency(
-  binding: Binding,
+  callingBinding: Binding,
   contextKey: IrContextualTypeKey,
   targetKey: IrTypeKey,
 ): Entry {
-  return when (binding) {
+  return when (callingBinding) {
     is Binding.ConstructorInjected -> {
       Entry.injectedAt(
         contextKey,
-        binding.injectedConstructor,
-        binding.parameterFor(targetKey),
+        callingBinding.injectedConstructor,
+        callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
       )
     }
     is Binding.Alias -> {
       Entry.injectedAt(
         contextKey,
-        binding.ir,
-        binding.parameters.extensionOrFirstParameter?.ir,
+        callingBinding.ir,
+        callingBinding.parameters.extensionOrFirstParameter?.ir,
         displayTypeKey = targetKey,
       )
     }
     is Binding.Provided -> {
       Entry.injectedAt(
         contextKey,
-        binding.providerFactory.providesFunction,
-        binding.parameterFor(targetKey),
+        callingBinding.providerFactory.providesFunction,
+        callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
       )
     }
     is Binding.Assisted -> {
-      Entry.injectedAt(contextKey, binding.function, displayTypeKey = targetKey)
+      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
     is Binding.MembersInjected -> {
-      Entry.injectedAt(contextKey, binding.function, displayTypeKey = targetKey)
+      Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
     is Binding.Multibinding -> {
-      Entry.contributedToMultibinding(binding.contextualTypeKey, binding.declaration)
+      Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
     }
     is Binding.ObjectClass -> TODO()
     is Binding.BoundInstance -> TODO()
