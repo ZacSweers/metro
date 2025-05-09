@@ -650,27 +650,6 @@ class DependencyGraphProcessingTest {
   }
 
   @Test
-  fun `multibindings - set with scoped dependencies`() {
-    val graph = createGraph<MultibindingGraphWithWithScopedSetDeps>()
-    assertEquals(setOf(0), graph.ints)
-    assertEquals(setOf(0, 1), graph.ints)
-    assertEquals(setOf(0, 2), graph.ints)
-  }
-
-  @Singleton
-  @DependencyGraph
-  abstract class MultibindingGraphWithWithScopedSetDeps {
-    private var scopedCount = 0
-    private var unscopedCount = 0
-
-    abstract val ints: Set<Int>
-
-    @Provides @Singleton @IntoSet private fun provideScopedInt(): Int = scopedCount++
-
-    @Provides @IntoSet private fun provideUnscopedInt(): Int = unscopedCount++
-  }
-
-  @Test
   fun `multibindings - simple int map with one value`() {
     val graph = createGraph<MultibindingGraphWithSingleIntMap>()
     assertEquals(mapOf(1 to 1), graph.ints)
