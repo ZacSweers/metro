@@ -3,10 +3,10 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.MetroLogger
-import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 
@@ -38,14 +38,18 @@ internal open class MutableBindingGraph<
 >(
   private val newBindingStack: () -> BindingStack,
   private val newBindingStackEntry:
-    BindingStack.(contextKey: ContextualTypeKey, callingBinding: Binding) -> BindingStackEntry,
+    BindingStack.(
+      contextKey: ContextualTypeKey,
+      callingBinding: Binding?,
+      roots: Map<ContextualTypeKey, BindingStackEntry>,
+    ) -> BindingStackEntry,
   private val absentBinding: (typeKey: TypeKey) -> Binding,
   /**
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types).
    */
-  private val computeBinding: (contextKey: ContextualTypeKey, stack: BindingStack) -> Binding? =
-    { _, _ ->
+  private val computeBinding: (contextKey: ContextualTypeKey) -> Binding? =
+    { _ ->
       null
     },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
@@ -54,8 +58,7 @@ internal open class MutableBindingGraph<
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   private val bindings = mutableMapOf<TypeKey, Binding>()
-  // Populated by seal()
-  private val transitive = hashMapOf<TypeKey, Set<TypeKey>>()
+  private val bindingIndices = mutableMapOf<TypeKey, Int>()
 
   override val deferredTypes: MutableSet<TypeKey> = mutableSetOf()
 
@@ -86,17 +89,35 @@ internal open class MutableBindingGraph<
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     tracer: Tracer = Tracer.NONE,
-  ): Set<TypeKey> {
+  ): List<TypeKey> {
     val stack = newBindingStack()
 
     populateGraph(roots, stack, tracer)
 
-    checkForCycles(roots, stack, tracer)
+    val topo = tracer.traceNested("Topological sort") {
+      checkForCyclesAndSort(roots, stack)
+    }
 
-    cacheEdges(tracer)
+    tracer.traceNested("Compute deferred types") {
+      // If it depends itself or something that comes later in the topo sort, it
+      // must be deferred. This is how we handle cycles that are broken by deferrable
+      // types like Provider/Lazy/...
+      // O(1) “does A depend on B?”
+      bindingIndices.putAll(topo.withIndex().associate { it.value to it.index })
+      topo.forEachIndexed { currentIndex, key ->
+        bindings.getValue(key).dependencies.forEach { dep ->
+          // May be null if dep has a default value
+          bindingIndices[dep.typeKey]?.let { depIndex ->
+            if (depIndex >= currentIndex) {
+              deferredTypes += key
+            }
+          }
+        }
+      }
+    }
 
     sealed = true
-    return deferredTypes
+    return topo
   }
 
   private fun populateGraph(
@@ -107,7 +128,7 @@ internal open class MutableBindingGraph<
     // Traverse all the bindings up front to
     // First ensure all the roots' bindings are present
     for (contextKey in roots.keys) {
-      computeBinding(contextKey, stack)?.let { tryPut(it, stack, contextKey.typeKey) }
+      computeBinding(contextKey)?.let { tryPut(it, stack, contextKey.typeKey) }
     }
 
     // Then populate the rest of the bindings. This is important to do because some bindings
@@ -125,11 +146,11 @@ internal open class MutableBindingGraph<
 
         fun Binding.visitDependencies() {
           for (depKey in dependencies) {
-            stack.withEntry(stack.newBindingStackEntry(depKey, this)) {
+            stack.withEntry(stack.newBindingStackEntry(depKey, this, roots)) {
               val typeKey = depKey.typeKey
               if (typeKey !in bindings) {
                 // If the binding isn't present, we'll report it later
-                computeBinding(depKey, stack)?.let { bindingQueue.addLast(it) }
+                computeBinding(depKey)?.let { bindingQueue.addLast(it) }
               }
             }
           }
@@ -141,7 +162,8 @@ internal open class MutableBindingGraph<
           for (binding in aggregatedBindings) {
             if (binding.typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              computeBinding(binding.contextualTypeKey, stack)?.let { bindingQueue.addLast(it) }
+              // TODO why can't we just add the binding directly to the queue?
+              computeBinding(binding.contextualTypeKey)?.let { bindingQueue.addLast(it) }
             }
             // Queue up aggregated bindings' deps just in case
             @Suppress("UNCHECKED_CAST")
@@ -158,186 +180,106 @@ internal open class MutableBindingGraph<
     }
   }
 
-  private fun checkForCycles(
+  private fun checkForCyclesAndSort(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
     stack: BindingStack,
-    tracer: Tracer,
-  ) {
-    fun reportCycle(fullCycle: List<BindingStackEntry>): Nothing {
-      val message = buildString {
-        appendLine(
-          "[Metro/DependencyCycle] Found a dependency cycle while processing '${stack.graphFqName.asString()}'."
-        )
-        // Print a simple diagram of the cycle first
-        val indent = "    "
-        appendLine("Cycle:")
-        if (fullCycle.size == 1) {
-          val key = fullCycle[0].contextKey.typeKey
-          append(
-            "$indent${key.render(short = true)} <--> ${key.render(short = true)} (depends on itself)"
-          )
-        } else {
-          // If the cycle is just the same binding pointing at itself, can make that a bit more
-          // explicit with the arrow
-          val separator = if (fullCycle.size == 2) " <--> " else " --> "
-          fullCycle.joinTo(this, separator = separator, prefix = indent) {
-            it.contextKey.render(short = true)
-          }
-        }
+  ): List<TypeKey> {
 
-        appendLine()
-        appendLine()
-        // Print the full stack
-        appendLine("Trace:")
-        appendBindingStackEntries(
-          stack.graphFqName,
-          fullCycle,
-          indent = indent,
-          ellipse = fullCycle.size > 1,
-          short = false,
-        )
+    /*
+     * Build the adjacency list we’ll feed to [topologicalSort]. – Edges that pass through a
+     * deferrable wrapper (Lazy/Provider/…) are **omitted** so the remaining graph is a DAG. –
+     * Aggregated‑binding edges are flattened the same way the old cacheEdges() did.
+     */
+    val sourceToTarget: Map<TypeKey, Set<TypeKey>> =
+      bindings.mapValues { (_, binding) ->
+        binding.dependencies
+          .asSequence()
+          .filterNot { it.isDeferrable }
+          .mapToSet { it.typeKey }
       }
-      onError(message, stack)
+
+    val onMissing: (TypeKey, TypeKey) -> Unit = { source, missing ->
+      val binding = bindings.getValue(source)
+      val contextKey = binding.dependencies.first { it.typeKey == missing }
+      if (!contextKey.hasDefault) {
+        val stackEntry = stack.newBindingStackEntry(contextKey, binding, roots)
+
+        // If there's a root entry for the missing binding, add it into the stack too
+        val matchingRootEntry =
+          roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
+        matchingRootEntry?.let { stack.push(it) }
+        stack.withEntry(stackEntry) { reportMissingBinding(missing, stack) }
+      }
     }
 
-    /* 1. reject strict cycles / missing bindings */
-    fun dfsStrict(binding: Binding, contextKey: ContextualTypeKey) {
-      stackLogger.log(
-        "DFS: ${binding.typeKey} ($contextKey). Stack: ${stack.entries.drop(1).joinToString { it.typeKey.render(short = true) }}"
+    /**
+     * Run topo sort. It gives back either a valid order or calls onCycle/onMissing for errors
+     *
+     * Note that onMissing will gracefully
+     */
+    val result =
+      bindings.keys.topologicalSort(
+        sourceToTarget = { k -> sourceToTarget[k].orEmpty() },
+        errorHandler = BindingGraphErrorHandler(onMissing) { cycle ->
+          // Populate the BindingStack for a readable cycle trace
+          val entriesInCycle =
+            cycle
+              .mapIndexed { i, key ->
+                val callingBinding =
+                  if (i == 0) {
+                    // This is the first index, must be an entry-point instead (i.e. "requested by")
+                    null
+                  } else {
+                    bindings.getValue(cycle[i - 1])
+                  }
+                stack.newBindingStackEntry(
+                  callingBinding?.dependencies?.firstOrNull { it.typeKey == key }
+                    ?: bindings.getValue(key).contextualTypeKey,
+                  callingBinding,
+                  roots,
+                )
+              }
+              .reversed()
+          reportCycle(entriesInCycle, stack)
+        },
+        onMissing = onMissing,
       )
 
-      if (binding.isTransient) {
-        // Absent binding or otherwise not something we store
-        return
-      }
-
-      val key = binding.typeKey
-      val cycle = stack.entriesSince(key)
-      if (cycle.isNotEmpty()) {
-        stackLogger.log("-> Cycle! ${cycle.joinToString { it.typeKey.render(short = true) }}")
-        // Check if there's a deferrable type in the stack, if so we can break the cycle
-        // A -> B -> Lazy<A> is valid
-        // A -> B -> A is not
-        val isTrueCycle =
-          key !in deferredTypes &&
-            !contextKey.isDeferrable &&
-            cycle.none { it.contextKey.isDeferrable }
-        if (contextKey.isIntoMultibinding) {
-          // Proceed
-          stackLogger.log("--> Into multibinding, proceeding")
-        } else if (isTrueCycle) {
-          stackLogger.log("--> ❌True cycle!")
-          // Pull the root entry from the stack and add it back to the bottom of the stack to
-          // highlight the cycle
-          val fullCycle = cycle + cycle[0]
-          reportCycle(fullCycle)
-        } else {
-          // TODO this if check isn't great
-          stackLogger.log("--> Deferring ${key.render(short = true)}")
-          deferredTypes += key
-          // We're in a loop here so nothing else needed
-          return
-        }
-      }
-
-      stackLogger.log("--> Traversing dependencies")
-      for (depKey in binding.dependencies) {
-        stackLogger.log("----> Dependency: ${depKey.render(short = true)}")
-        val stackEntry = stack.newBindingStackEntry(depKey, binding)
-        stack.withEntry(stackEntry) {
-          val depBinding = requireBinding(depKey, stack)
-          stackLogger.log("----> Binding: $depBinding")
-          // Check direct dependencies for cycles
-          if (depBinding == binding && contextKey == depKey && !depKey.isDeferrable) {
-            stackLogger.log(
-              "----> ❌Found a direct cycle! ${stackEntry.typeKey.render(short = true)}"
-            )
-            reportCycle(listOf(stackEntry))
-          } else {
-            stackLogger.log("└─-----> Recursing ${key.render(short = true)}")
-            dfsStrict(depBinding, depKey)
-          }
-        }
-      }
-
-      stackLogger.log("--> Traversing aggregatedBindings")
-      for (depBinding in binding.aggregatedBindings) {
-        stackLogger.log("----> Binding: $depBinding")
-        val stackEntry = stack.newBindingStackEntry(depBinding.contextualTypeKey, binding)
-        stack.withEntry(stackEntry) {
-          stackLogger.log("----> Binding: $depBinding")
-          stackLogger.log("└─-----> Recursing ${key.render(short = true)}")
-          @Suppress("UNCHECKED_CAST") dfsStrict(depBinding as Binding, depBinding.contextualTypeKey)
-        }
-      }
-
-      stackLogger.log("--> Exit DFS: ${key.render(short = true)}")
-    }
-
-    // Track strict visits
-    val strictVisits = hashSetOf<TypeKey>()
-
-    // Walk from roots first
-    tracer.traceNested("Traverse from roots") {
-      for ((contextKey, entry) in roots) {
-        stackLogger.log("Traversing root: ${contextKey.render(short = true)}")
-        stack.withEntry(entry) {
-          val binding = requireBinding(contextKey, stack)
-          stackLogger.log("Root binding: $binding")
-          dfsStrict(binding, contextKey)
-          strictVisits += contextKey.typeKey
-        }
-      }
-    }
-
-    // Validate remaining bindings
-    tracer.traceNested("Traverse remaining bindings") {
-      for (binding in bindings.values) {
-        if (binding.typeKey in strictVisits) continue
-
-        dfsStrict(binding, binding.contextualTypeKey)
-      }
-    }
+    return result // guaranteed size == V, no cycles
   }
 
-  private fun cacheEdges(tracer: Tracer) {
-    val visiting = mutableSetOf<TypeKey>()
-
-    /* 2. cache transitive closure (all edges) */
-    fun dfsAll(key: TypeKey): Set<TypeKey> {
-      // Bounce if it's already cached
-      transitive[key]?.let {
-        return it
+  private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {
+    val message = buildString {
+      appendLine(
+        "[Metro/DependencyCycle] Found a dependency cycle while processing '${stack.graphFqName.asString()}'."
+      )
+      // Print a simple diagram of the cycle first
+      val indent = "    "
+      appendLine("Cycle:")
+      if (fullCycle.size == 2) {
+        val key = fullCycle[0].contextKey.typeKey
+        append(
+          "$indent${key.render(short = true)} <--> ${key.render(short = true)} (depends on itself)"
+        )
+      } else {
+        fullCycle.joinTo(this, separator = " --> ", prefix = indent) {
+          it.contextKey.render(short = true)
+        }
       }
 
-      // Bounce if it's a strict cycle. We already validated these above
-      if (!visiting.add(key)) return emptySet()
-
-      // Compute transitive deps.
-      // Important to do this in a local var rather than a getOrPut() call to avoid a reentrant
-      // update
-      val binding = bindings[key]
-      val directDepKeys =
-        binding
-          ?.dependencies
-          .orEmpty()
-          .plus(binding?.aggregatedBindings.orEmpty().map { it.contextualTypeKey })
-      val deps =
-        directDepKeys.asSequence().flatMapToSet {
-          sequence {
-            yield(it.typeKey)
-            yieldAll(dfsAll(it.typeKey))
-          }
-        }
-
-      visiting.remove(key)
-
-      // Memoize *after* computation
-      transitive[key] = deps
-      return deps
+      appendLine()
+      appendLine()
+      // Print the full stack
+      appendLine("Trace:")
+      appendBindingStackEntries(
+        stack.graphFqName,
+        fullCycle,
+        indent = indent,
+        ellipse = fullCycle.size > 1,
+        short = false,
+      )
     }
-
-    tracer.traceNested("Cache transitive closure") { bindings.keys.forEach(::dfsAll) }
+    onError(message, stack)
   }
 
   override val snapshot: Map<TypeKey, Binding>
@@ -383,8 +325,9 @@ internal open class MutableBindingGraph<
   override operator fun contains(key: TypeKey): Boolean = bindings.containsKey(key)
 
   // O(1) after seal()
-  override fun TypeKey.dependsOn(other: TypeKey): Boolean =
-    transitive[this]?.contains(other) == true
+  override fun TypeKey.dependsOn(other: TypeKey): Boolean {
+    return bindingIndices.getValue(this) >= bindingIndices.getValue(other)
+  }
 
   fun getOrCreateBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
     return bindings[contextKey.typeKey]
@@ -392,7 +335,7 @@ internal open class MutableBindingGraph<
   }
 
   fun createBindingOrFail(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
-    return computeBinding(contextKey, stack) ?: reportMissingBinding(contextKey.typeKey, stack)
+    return computeBinding(contextKey) ?: reportMissingBinding(contextKey.typeKey, stack)
   }
 
   fun requireBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {

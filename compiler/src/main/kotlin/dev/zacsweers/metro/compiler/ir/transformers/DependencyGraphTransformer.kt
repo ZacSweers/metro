@@ -768,7 +768,7 @@ internal class DependencyGraphTransformer(
     val bindingGraph = parentTracer.traceNested("Build binding graph") { createBindingGraph(node) }
 
     try {
-      val deferredTypes =
+      val result =
         parentTracer.traceNested("Validate binding graph") { tracer ->
           tracer.traceNested("Check self-cycles") {
             checkGraphSelfCycle(
@@ -793,7 +793,7 @@ internal class DependencyGraphTransformer(
       }
 
       parentTracer.traceNested("Transform metro graph") { tracer ->
-        generateMetroGraph(node, metroGraph, bindingGraph, deferredTypes, tracer)
+        generateMetroGraph(node, metroGraph, bindingGraph, result, tracer)
       }
     } catch (e: Exception) {
       if (e is ExitProcessingException) {
@@ -1338,7 +1338,7 @@ internal class DependencyGraphTransformer(
     node: DependencyGraphNode,
     graphClass: IrClass,
     bindingGraph: IrBindingGraph,
-    deferredTypes: Set<IrTypeKey>,
+    sealResult: IrBindingGraph.BindingGraphResult,
     parentTracer: Tracer,
   ) =
     with(graphClass) {
@@ -1566,24 +1566,27 @@ internal class DependencyGraphTransformer(
         }
 
       // Compute safe initialization order
-      val initOrder =
-        parentTracer.traceNested("Compute safe init order") {
-          bindingDependencies.keys
-            .sortedWith { a, b ->
-              with(bindingGraph) {
-                when {
-                  // If a depends on b, b should be initialized first
-                  a.dependsOn(b) -> 1
-                  // If b depends on a, a should be initialized first
-                  b.dependsOn(a) -> -1
-                  // Otherwise order doesn't matter, fall back to just type order for idempotence
-                  else -> a.compareTo(b)
-                }
-              }
-            }
-            .map { bindingDependencies.getValue(it) }
-            .distinct()
-        }
+      val initOrder = sealResult.sortedKeys
+        .mapNotNull { bindingDependencies[it] }
+        .distinctBy { it.typeKey }
+//        parentTracer.traceNested("Compute safe init order") {
+//          bindingDependencies.keys
+//            .sortedBy { sealResult.sortedKeys }
+//            .sortedWith { a, b ->
+//              with(bindingGraph) {
+//                when {
+//                  // If a depends on b, b should be initialized first
+//                  a.dependsOn(b) -> 1
+//                  // If b depends on a, a should be initialized first
+//                  b.dependsOn(a) -> -1
+//                  // Otherwise order doesn't matter, fall back to just type order for idempotence
+//                  else -> a.compareTo(b)
+//                }
+//              }
+//            }
+//            .map { bindingDependencies.getValue(it) }
+//            .distinct()
+//        }
 
       val baseGenerationContext =
         GraphGenerationContext(
@@ -1636,9 +1639,10 @@ internal class DependencyGraphTransformer(
       // TODO For any types that depend on deferred types, they need providers too?
       @Suppress("UNCHECKED_CAST")
       val deferredFields: Map<IrTypeKey, IrField> =
-        deferredTypes
+        sealResult
+          .deferredTypes
           .associateWith { deferredTypeKey ->
-            val binding = bindingDependencies[deferredTypeKey] ?: return@associateWith null
+            val binding = bindingGraph.requireBinding(deferredTypeKey, IrBindingStack.empty())
             val field =
               addField(
                   fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
@@ -1659,7 +1663,6 @@ internal class DependencyGraphTransformer(
             providerFields[deferredTypeKey] = field
             field
           }
-          .filterValues { it != null } as Map<IrTypeKey, IrField>
 
       // Create fields in dependency-order
       initOrder
@@ -2319,7 +2322,8 @@ internal class DependencyGraphTransformer(
       is Binding.Assisted -> {
         // For assisted bindings, we need provider fields for the assisted factory impl type
         // The factory impl type depends on a provider of the assisted type
-        bindingDependencies[key] = binding.target
+        val targetBinding = graph.requireBinding(binding.target, bindingStack)
+        bindingDependencies[key] = targetBinding
         // TODO is this safe to end up as a provider field? Can someone create a
         //  binding such that you have an assisted type on the DI graph that is
         //  provided by a provider that depends on the assisted factory? I suspect
@@ -2328,7 +2332,7 @@ internal class DependencyGraphTransformer(
         // By definition, assisted parameters are not available on the graph
         // But we _do_ need to process the target type's parameters!
         processBinding(
-          binding = binding.target,
+          binding = targetBinding,
           node = node,
           graph = graph,
           bindingStack = bindingStack,
@@ -2693,7 +2697,8 @@ internal class DependencyGraphTransformer(
           isFromDagger = false
         }
 
-        val delegateFactoryProvider = generateBindingCode(binding.target, generationContext)
+        val targetBinding = generationContext.graph.requireBinding(binding.target.typeKey, IrBindingStack.empty())
+        val delegateFactoryProvider = generateBindingCode(targetBinding, generationContext)
         val invokeCreateExpression =
           irInvoke(
             dispatchReceiver = dispatchReceiver,

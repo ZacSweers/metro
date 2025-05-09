@@ -27,12 +27,16 @@ internal class IrBindingGraph(
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
-      newBindingStackEntry = { contextKey, binding ->
-        bindingStackEntryForDependency(binding, contextKey, contextKey.typeKey)
+      newBindingStackEntry = { contextKey, callingBinding, roots ->
+        if (callingBinding == null) {
+          roots.getValue(contextKey)
+        } else {
+          bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+        }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBinding = { contextKey, stack ->
-        metroContext.injectedClassBindingOrNull(contextKey, stack, this)
+      computeBinding = { contextKey ->
+        metroContext.injectedClassBindingOrNull(contextKey)
       },
       onError = { message, stack ->
         val location = stack.lastEntryOrGraph.locationOrNull()
@@ -43,7 +47,6 @@ internal class IrBindingGraph(
       stackLogger = metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
     )
 
-  // Use ConcurrentHashMap to allow reentrant modification
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrTypeKey, IrBindingStack.Entry>()
@@ -78,15 +81,11 @@ internal class IrBindingGraph(
     return realGraph[contextKey.typeKey]
       ?: run {
         if (contextKey.hasDefault) return Binding.Absent(contextKey.typeKey)
-        val message = buildString {
-          appendLine("No binding found for ${contextKey.typeKey}")
-          appendBindingStack(stack)
+        realGraph.reportMissingBinding(contextKey.typeKey, stack) {
           if (metroContext.debug) {
             appendLine(dumpGraph(stack.graph.kotlinFqName.asString(), short = false))
           }
         }
-        metroContext.reportError(message, stack.lastEntryOrGraph.location())
-        exitProcessing()
       }
   }
 
@@ -122,39 +121,14 @@ internal class IrBindingGraph(
       )
   }
 
-  // TODO make this not mutate the graph anymore
-  fun getOrCreateBinding(contextKey: IrContextualTypeKey, bindingStack: IrBindingStack): Binding {
-    check(!realGraph.sealed)
-    val key = contextKey.typeKey
-    val existingBinding = realGraph[key]
-    if (existingBinding != null) {
-      return existingBinding
-    }
-
-    val binding = metroContext.injectedClassBindingOrNull(contextKey, bindingStack, this)
-    when (binding) {
-      is Binding.Absent -> {
-        // Do nothing, don't store this
-      }
-      is Binding -> {
-        addBinding(key, binding, bindingStack)
-      }
-      null ->
-        realGraph.reportMissingBinding(key, bindingStack) {
-          if (metroContext.debug) {
-            appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
-          }
-        }
-    }
-    return binding
-  }
-
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
 
   fun IrTypeKey.dependsOn(key: IrTypeKey) = with(realGraph) { this@dependsOn.dependsOn(key) }
 
-  fun validate(parentTracer: Tracer, onError: (String) -> Nothing): Set<IrTypeKey> {
-    val deferredTypes =
+  data class BindingGraphResult(val sortedKeys: List<IrTypeKey>, val deferredTypes: Set<IrTypeKey>)
+
+  fun validate(parentTracer: Tracer, onError: (String) -> Nothing): BindingGraphResult {
+    val sortedKeys =
       parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
     parentTracer.traceNested("check for absent bindings") {
@@ -162,7 +136,7 @@ internal class IrBindingGraph(
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
-    return deferredTypes
+    return BindingGraphResult(sortedKeys, realGraph.deferredTypes)
   }
 
   private fun checkEmptyMultibindings(onError: (String) -> Nothing) {

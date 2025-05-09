@@ -310,14 +310,14 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   @Poko
   class Assisted(
     @Poko.Skip override val type: IrClass,
-    val target: ConstructorInjected,
+    val target: IrContextualTypeKey,
     @Poko.Skip val function: IrSimpleFunction,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val parameters: Parameters<out Parameter>,
     override val typeKey: IrTypeKey,
   ) : Binding, BindingWithAnnotations, InjectedClassBinding<Assisted> {
     // Dependencies are handled by the target class
-    override val dependencies: List<IrContextualTypeKey> = listOf(target.contextualTypeKey)
+    override val dependencies: List<IrContextualTypeKey> = listOf(target)
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
@@ -502,8 +502,6 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 /** Creates an expected class binding for the given [contextKey] or returns null. */
 internal fun IrMetroContext.injectedClassBindingOrNull(
   contextKey: IrContextualTypeKey,
-  bindingStack: IrBindingStack,
-  bindingGraph: IrBindingGraph,
 ): Binding? {
   val key = contextKey.typeKey
   val irClass = key.type.rawType()
@@ -529,18 +527,13 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
   } else if (classAnnotations.isAssistedFactory) {
     val function = irClass.singleAbstractFunction(metroContext)
     val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function, classAnnotations)
-    val bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, function)
-    val targetBinding =
-      bindingStack.withEntry(bindingStackEntry) {
-        bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
-      } as ConstructorInjected
     Assisted(
       type = irClass,
       function = function,
       annotations = classAnnotations,
       typeKey = key,
       parameters = function.parameters(metroContext),
-      target = targetBinding,
+      target = targetContextualTypeKey,
     )
   } else if (contextKey.hasDefault) {
     Absent(key)
