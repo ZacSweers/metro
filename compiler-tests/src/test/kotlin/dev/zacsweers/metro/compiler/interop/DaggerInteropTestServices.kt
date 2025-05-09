@@ -12,34 +12,34 @@ import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.RuntimeClasspathProvider
 import org.jetbrains.kotlin.test.services.TestServices
 
-private val daggerRuntimeClasspath =
-  System.getProperty("daggerRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
-    ?: error("Unable to get a valid classpath from 'daggerRuntime.classpath' property")
+private val daggerInteropClasspath =
+  System.getProperty("daggerInterop.classpath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'daggerInterop.classpath' property")
 
-fun TestConfigurationBuilder.configureDaggerAnnotations() {
-  useConfigurators(::DaggerRuntimeEnvironmentConfigurator)
+fun TestConfigurationBuilder.configureDaggerInterop() {
+  useConfigurators(::DaggerInteropEnvironmentConfigurator)
   useCustomRuntimeClasspathProviders(::DaggerRuntimeClassPathProvider)
 }
 
-class DaggerRuntimeEnvironmentConfigurator(testServices: TestServices) :
+class DaggerInteropEnvironmentConfigurator(testServices: TestServices) :
   EnvironmentConfigurator(testServices) {
   override fun configureCompilerConfiguration(
     configuration: CompilerConfiguration,
     module: TestModule,
   ) {
-    if (MetroDirectives.WITH_DAGGER in module.directives || MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
-      for (file in daggerRuntimeClasspath) {
+    if (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+      for (file in daggerInteropClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
     }
   }
 }
 
-class DaggerRuntimeClassPathProvider(testServices: TestServices) :
+class DaggerInteropClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
-    return when (MetroDirectives.WITH_DAGGER in module.directives || MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
-      true -> daggerRuntimeClasspath
+    return when (MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives) {
+      true -> daggerInteropClasspath
       false -> emptyList()
     }
   }

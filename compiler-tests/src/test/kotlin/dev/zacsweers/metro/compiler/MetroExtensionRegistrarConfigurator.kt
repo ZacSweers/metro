@@ -2,9 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dagger.internal.codegen.KspComponentProcessor
+import dev.zacsweers.metro.compiler.MetroDirectives
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
+import dev.zacsweers.metro.compiler.interop.Ksp2AdditionalSourceProvider
 import dev.zacsweers.metro.compiler.interop.configureAnvilAnnotations
 import dev.zacsweers.metro.compiler.interop.configureDaggerAnnotations
+import dev.zacsweers.metro.compiler.interop.configureDaggerInterop
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
@@ -30,6 +34,8 @@ fun TestConfigurationBuilder.configurePlugin() {
 
   configureAnvilAnnotations()
   configureDaggerAnnotations()
+  configureDaggerInterop()
+  useAdditionalSourceProviders(::Ksp2AdditionalSourceProvider)
 }
 
 class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
@@ -43,6 +49,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       MetroDirectives.DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE !in module.directives
     val options =
       MetroOptions(
+        enableDaggerRuntimeInterop = MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives,
         generateAssistedFactories =
           MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives,
         transformProvidersToPrivate = transformProvidersToPrivate,
@@ -101,6 +108,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             if (MetroDirectives.WITH_DAGGER in module.directives) {
               add(ClassId.fromString("javax/inject/Provider"))
               add(ClassId.fromString("jakarta/inject/Provider"))
+              add(ClassId.fromString("dagger/internal/Provider"))
             }
           },
         customProvidesAnnotations =

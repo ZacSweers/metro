@@ -9,6 +9,7 @@ val metroRuntimeClasspath: Configuration by configurations.creating { isTransiti
 val anvilRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
 // include transitive in this case to grab jakarta and javax
 val daggerRuntimeClasspath: Configuration by configurations.creating {}
+val daggerInteropClasspath: Configuration by configurations.creating { isTransitive = false }
 
 dependencies {
   testImplementation(project(":compiler"))
@@ -17,10 +18,18 @@ dependencies {
   testImplementation(libs.kotlin.compilerTestFramework)
   testImplementation(libs.kotlin.compiler)
 
+  testImplementation("com.google.devtools.ksp:symbol-processing-aa-embeddable:2.1.10-1.0.31")
+  testImplementation("com.google.devtools.ksp:symbol-processing-api:2.1.10-1.0.31")
+  testImplementation("com.google.devtools.ksp:symbol-processing-common-deps:2.1.10-1.0.31")
+  testImplementation("com.google.devtools.ksp:symbol-processing:2.1.10-1.0.31")
+  testImplementation("io.github.classgraph:classgraph:4.8.179")
+  testImplementation(libs.dagger.compiler)
+
   metroRuntimeClasspath(project(":runtime"))
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
+  daggerInteropClasspath(project(":interop-dagger"))
 
   // Dependencies required to run the internal test framework.
   testRuntimeOnly(libs.kotlin.reflect)
@@ -55,6 +64,7 @@ tasks.withType<Test> {
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
   systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
+  systemProperty("daggerInterop.classpath", daggerInteropClasspath.asPath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")

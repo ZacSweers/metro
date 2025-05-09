@@ -16,4 +16,5 @@ object MetroDirectives : SimpleDirectivesContainer() {
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
   val WITH_DAGGER by directive("Add Dagger as dependency and configure custom annotations.")
+  val ENABLE_DAGGER_INTEROP by directive("TODO")
 }
