@@ -18,7 +18,7 @@ private val daggerInteropClasspath =
 
 fun TestConfigurationBuilder.configureDaggerInterop() {
   useConfigurators(::DaggerInteropEnvironmentConfigurator)
-  useCustomRuntimeClasspathProviders(::DaggerRuntimeClassPathProvider)
+  useCustomRuntimeClasspathProviders(::DaggerInteropClassPathProvider)
 }
 
 class DaggerInteropEnvironmentConfigurator(testServices: TestServices) :

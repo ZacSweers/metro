@@ -1,8 +1,6 @@
 // ENABLE_DAGGER_INTEROP
 
 // FILE: ExampleClass.java
-package test;
-
 import javax.inject.Inject;
 
 public class ExampleClass {
