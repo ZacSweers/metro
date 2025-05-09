@@ -733,13 +733,16 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:12:18 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
+          e: ExampleGraph.kt:6:1 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
           Cycle:
               Int <--> Int (depends on itself)
 
           Trace:
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph#provideInt(…, value)
+              kotlin.Int is requested at
+                  [test.ExampleGraph] test.ExampleGraph#value
+              ...
         """
           .trimIndent()
       )
@@ -779,19 +782,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:12:21 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
+            e: ExampleGraph.kt:6:1 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
             Cycle:
-                Int --> Double --> String --> Int
+                String --> Double --> Int --> String
 
             Trace:
-                kotlin.Int is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
-                kotlin.Double is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
                 kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideDouble(…, string)
+                kotlin.Double is injected at
+                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
                 kotlin.Int is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
+                kotlin.String is requested at
+                    [test.ExampleGraph] test.ExampleGraph#value
                 ...
           """
           .trimIndent()
@@ -2740,5 +2743,82 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertThat(exampleGraph.callProperty<Long>("scopedLong")).isEqualTo(3L)
       assertThat(exampleGraph.callProperty<Long>("qualifiedScopedLong")).isEqualTo(4L)
     }
+  }
+
+  @Test
+  fun `cycle smoke test`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface CyclicalGraphWithClassesBrokenWithProviderBarExposed {
+              val bar: Bar
+          
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProviderBarExposed
+              }
+          
+              @Inject
+              class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+                override fun call() = barProvider().call()
+              }
+          
+              @Inject
+              class Bar(val foo: Foo, val message: String) : Callable<String> {
+                override fun call() = message
+              }
+            }
+        """
+      )
+    )
+  }
+
+  @Test
+  fun `optional deps with back referencing default`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val message: String
+          
+              @Provides private fun provideInt(): Int = 3
+          
+              @Provides
+              private fun provideMessage(
+                intValue: Int,
+                input: CharSequence = "Not found: " + intValue,
+              ): String = input.toString()
+            }
+        """
+      )
+    )
+  }
+
+  @Test
+  fun `map cycle graph`() {
+    compile(
+      source(
+        """
+            @Inject class X(val y: Y)
+          
+            @Inject
+            class Y(
+              val mapOfProvidersOfX: Map<String, Provider<X>>,
+              val mapOfProvidersOfY: Map<String, Provider<Y>>,
+            )
+          
+            @DependencyGraph
+            interface CycleMapGraph {
+              fun y(): Y
+          
+              @Binds @IntoMap @StringKey("X") val X.x: X
+          
+              @Binds @IntoMap @StringKey("Y") val Y.y: Y
+            }
+        """
+      )
+    )
   }
 }

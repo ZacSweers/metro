@@ -9,15 +9,15 @@ internal class StringGraph(
   newBindingStack: () -> StringBindingStack,
   newBindingStackEntry:
     StringBindingStack.(
-      contextKey: StringContextualTypeKey, binding: StringBinding,
+      contextKey: StringContextualTypeKey, binding: StringBinding?, roots: Map<StringContextualTypeKey, StringBindingStack.Entry>
     ) -> StringBindingStack.Entry,
   /**
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types).
    */
   computeBinding:
-    (contextKey: StringContextualTypeKey, stack: StringBindingStack) -> StringBinding? =
-    { _, _ ->
+    (contextKey: StringContextualTypeKey) -> StringBinding? =
+    { _ ->
       null
     },
   logger: MetroLogger = MetroLogger.NONE,
@@ -33,9 +33,7 @@ internal class StringGraph(
     newBindingStack,
     newBindingStackEntry
       as
-      StringBindingStack.(
-        StringContextualTypeKey, BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
-      ) -> StringBindingStack.Entry,
+      StringBindingStack.(StringContextualTypeKey, BaseBinding<String, StringTypeKey, StringContextualTypeKey>?, Map<StringContextualTypeKey, StringBindingStack.Entry>) -> StringBindingStack.Entry,
     absentBinding = { StringBinding(it) },
     computeBinding,
     stackLogger = logger,

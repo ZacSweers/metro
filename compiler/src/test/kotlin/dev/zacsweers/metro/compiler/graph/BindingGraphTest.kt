@@ -87,14 +87,14 @@ class BindingGraphTest {
       .hasMessageThat()
       .contains(
         """
-          [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
+          Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
           Cycle:
-              B --> A --> B
-
+              A --> B --> A
+          
           Trace:
-              B
               A
               B
+              A
               ...
         """
           .trimIndent()
@@ -350,11 +350,11 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
   debug: Boolean = false,
-  computeBinding: (StringContextualTypeKey, StringBindingStack) -> StringBinding? = { _, _ -> null },
+  computeBinding: (StringContextualTypeKey) -> StringBinding? = { _ -> null },
 ): StringGraph {
   return StringGraph(
     newBindingStack = { StringBindingStack(graph) },
-    newBindingStackEntry = { contextKey, binding -> StringBindingStack.Entry(contextKey) },
+    newBindingStackEntry = { contextKey, binding, roots -> StringBindingStack.Entry(contextKey) },
     computeBinding = computeBinding,
     logger =
       if (debug) MetroLoggerImpl(MetroLogger.Type.BindingGraphConstruction, ::println)
@@ -377,7 +377,7 @@ private fun buildChainedGraph(vararg nodes: String): StringGraph {
 
 internal class StringGraphBuilder {
   private val constructorInjectedTypes = mutableMapOf<StringTypeKey, StringBinding>()
-  private val graph = newStringBindingGraph { contextKey, stack ->
+  private val graph = newStringBindingGraph { contextKey ->
     constructorInjectedTypes[contextKey.typeKey]
   }
 
