@@ -157,25 +157,6 @@ internal open class MutableBindingGraph<
         }
 
         binding.visitDependencies()
-
-        fun Binding.visitAggregatedDependencies() {
-          for (binding in aggregatedBindings) {
-            if (binding.typeKey !in bindings) {
-              // If the binding isn't present, we'll report it later
-              // TODO why can't we just add the binding directly to the queue?
-              computeBinding(binding.contextualTypeKey)?.let { bindingQueue.addLast(it) }
-            }
-            // Queue up aggregated bindings' deps just in case
-            @Suppress("UNCHECKED_CAST")
-            for (depKey in (binding as Binding).dependencies) {
-              if (depKey.typeKey !in bindings) {
-                bindingQueue.addLast(binding)
-              }
-            }
-          }
-        }
-
-        binding.visitAggregatedDependencies()
       }
     }
   }
