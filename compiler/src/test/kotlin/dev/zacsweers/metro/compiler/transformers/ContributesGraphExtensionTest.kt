@@ -1087,6 +1087,31 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `graph extends interface`() {
+    compile(
+      source(
+        """
+          abstract class Parent
+
+          interface Test
+
+          @ContributesGraphExtension(Parent::class, isExtendable = true)
+          interface ParentGraph : Test {
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun create(): ParentGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph : Test
+        """
+          .trimIndent()
+      )
+    )
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }
