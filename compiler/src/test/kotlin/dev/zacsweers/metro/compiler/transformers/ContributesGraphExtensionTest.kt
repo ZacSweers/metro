@@ -1127,6 +1127,31 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `contributed graph with qualified provider`() {
+    compile(
+      source(
+        """
+          abstract class Parent
+
+          @ContributesGraphExtension(Parent::class, isExtendable = true)
+          interface ParentGraph {
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun create(
+                  @Provides @ForScope(Parent::class) string: String
+              ): ParentGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      )
+    )
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }
