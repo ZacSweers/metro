@@ -1509,25 +1509,6 @@ internal class DependencyGraphTransformer(
       // Compute safe initialization order
       val initOrder =
         sealResult.sortedKeys.mapNotNull { bindingDependencies[it] }.distinctBy { it.typeKey }
-      //        parentTracer.traceNested("Compute safe init order") {
-      //          bindingDependencies.keys
-      //            .sortedBy { sealResult.sortedKeys }
-      //            .sortedWith { a, b ->
-      //              with(bindingGraph) {
-      //                when {
-      //                  // If a depends on b, b should be initialized first
-      //                  a.dependsOn(b) -> 1
-      //                  // If b depends on a, a should be initialized first
-      //                  b.dependsOn(a) -> -1
-      //                  // Otherwise order doesn't matter, fall back to just type order for
-      // idempotence
-      //                  else -> a.compareTo(b)
-      //                }
-      //              }
-      //            }
-      //            .map { bindingDependencies.getValue(it) }
-      //            .distinct()
-      //        }
 
       val baseGenerationContext =
         GraphGenerationContext(
@@ -2294,6 +2275,8 @@ internal class DependencyGraphTransformer(
           //  }
         } else {
           // Process all providers deps, but don't need a specific dep for this one
+          // TODO eventually would be nice to just let a binding.dependencies lookup handle this
+          //  but currently the later logic uses parameters for lookups
           for (providerKey in binding.sourceBindings) {
             val provider = graph.requireBinding(providerKey, bindingStack)
             processBinding(
@@ -2715,8 +2698,7 @@ internal class DependencyGraphTransformer(
               )
             }
 
-        val getterContextKey =
-          IrContextualTypeKey.from(metroContext, binding.getter)
+        val getterContextKey = IrContextualTypeKey.from(metroContext, binding.getter)
         val lambda =
           irLambda(
             context = pluginContext,
@@ -2952,11 +2934,7 @@ internal class DependencyGraphTransformer(
     val keyType: IrType = mapTypeArgs[0].typeOrFail
     val rawValueType = mapTypeArgs[1].typeOrFail
     val rawValueTypeMetadata =
-      rawValueType.typeOrFail.asContextualTypeKey(
-        metroContext,
-        null,
-        hasDefault = false,
-      )
+      rawValueType.typeOrFail.asContextualTypeKey(metroContext, null, hasDefault = false)
 
     // TODO what about Map<String, Provider<Lazy<String>>>?
     //  isDeferrable() but we need to be able to convert back to the middle type

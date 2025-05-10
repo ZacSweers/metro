@@ -48,10 +48,7 @@ internal open class MutableBindingGraph<
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types).
    */
-  private val computeBinding: (contextKey: ContextualTypeKey) -> Binding? =
-    { _ ->
-      null
-    },
+  private val computeBinding: (contextKey: ContextualTypeKey) -> Binding? = { _ -> null },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
   private val stackLogger: MetroLogger = MetroLogger.NONE,
@@ -69,19 +66,16 @@ internal open class MutableBindingGraph<
    * Finalizes the binding graph by performing validation and cache initialization.
    *
    * This function operates in a two-step process:
-   * 1. Validates the binding graph to detect strict dependency cycles and ensures all required
-   *    bindings are present. Cycles that involve deferrable types, such as `Lazy` or `Provider`,
-   *    are allowed and deferred for special handling at code-generation-time and store any deferred
-   *    types in [deferredTypes]. Any strictly invalid cycles or missing bindings result in an error
-   *    being thrown.
-   * 2. Calculates the transitive closure of the dependencies for each type. The transitive closure
-   *    is cached for efficient lookup of indirect dependencies during graph ops after sealing.
+   * 1. Validates the binding graph by performing a [topologicalSort]. Cycles that involve
+   *    deferrable types, such as `Lazy` or `Provider`, are allowed and deferred for special
+   *    handling at code-generation-time and store any deferred types in [deferredTypes]. Any
+   *    strictly invalid cycles or missing bindings result in an error being thrown.
+   * 2. The returned topologically sorted list is then processed to compute [bindingIndices] and
+   *    [deferredTypes]. Any dependency whose index is later than the current index is presumed a
+   *    valid cycle indicator and thus that type must be deferred.
    *
    * This operation runs in O(V+E). After calling this function, the binding graph becomes
    * immutable.
-   *
-   * Note: The graph traversal employs depth-first search (DFS) for dependency validation and
-   * transitive closure computation.
    *
    * Calls [onError] if a strict dependency cycle or missing binding is encountered during
    * validation.
@@ -94,9 +88,7 @@ internal open class MutableBindingGraph<
 
     populateGraph(roots, stack, tracer)
 
-    val topo = tracer.traceNested("Topological sort") {
-      checkForCyclesAndSort(roots, stack)
-    }
+    val topo = tracer.traceNested("Sort and validate") { sortAndValidate(roots, stack, it) }
 
     tracer.traceNested("Compute deferred types") {
       // If it depends itself or something that comes later in the topo sort, it
@@ -161,9 +153,10 @@ internal open class MutableBindingGraph<
     }
   }
 
-  private fun checkForCyclesAndSort(
+  private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
     stack: BindingStack,
+    parentTracer: Tracer,
   ): List<TypeKey> {
 
     /*
@@ -172,11 +165,10 @@ internal open class MutableBindingGraph<
      * Aggregated‑binding edges are flattened the same way the old cacheEdges() did.
      */
     val sourceToTarget: Map<TypeKey, Set<TypeKey>> =
-      bindings.mapValues { (_, binding) ->
-        binding.dependencies
-          .asSequence()
-          .filterNot { it.isDeferrable }
-          .mapToSet { it.typeKey }
+      parentTracer.traceNested("Build adjacency list") {
+        bindings.mapValues { (_, binding) ->
+          binding.dependencies.asSequence().filterNot { it.isDeferrable }.mapToSet { it.typeKey }
+        }
       }
 
     val onMissing: (TypeKey, TypeKey) -> Unit = { source, missing ->
@@ -199,32 +191,36 @@ internal open class MutableBindingGraph<
      * Note that onMissing will gracefully
      */
     val result =
-      bindings.keys.topologicalSort(
-        sourceToTarget = { k -> sourceToTarget[k].orEmpty() },
-        errorHandler = BindingGraphErrorHandler(onMissing) { cycle ->
-          // Populate the BindingStack for a readable cycle trace
-          val entriesInCycle =
-            cycle
-              .mapIndexed { i, key ->
-                val callingBinding =
-                  if (i == 0) {
-                    // This is the first index, must be an entry-point instead (i.e. "requested by")
-                    null
-                  } else {
-                    bindings.getValue(cycle[i - 1])
+      parentTracer.traceNested("Topo sort") {
+        bindings.keys.topologicalSort(
+          sourceToTarget = { k -> sourceToTarget[k].orEmpty() },
+          errorHandler =
+            BindingGraphErrorHandler(onMissing) { cycle ->
+              // Populate the BindingStack for a readable cycle trace
+              val entriesInCycle =
+                cycle
+                  .mapIndexed { i, key ->
+                    val callingBinding =
+                      if (i == 0) {
+                        // This is the first index, must be an entry-point instead (i.e. "requested
+                        // by")
+                        null
+                      } else {
+                        bindings.getValue(cycle[i - 1])
+                      }
+                    stack.newBindingStackEntry(
+                      callingBinding?.dependencies?.firstOrNull { it.typeKey == key }
+                        ?: bindings.getValue(key).contextualTypeKey,
+                      callingBinding,
+                      roots,
+                    )
                   }
-                stack.newBindingStackEntry(
-                  callingBinding?.dependencies?.firstOrNull { it.typeKey == key }
-                    ?: bindings.getValue(key).contextualTypeKey,
-                  callingBinding,
-                  roots,
-                )
-              }
-              .reversed()
-          reportCycle(entriesInCycle, stack)
-        },
-        onMissing = onMissing,
-      )
+                  .reversed()
+              reportCycle(entriesInCycle, stack)
+            },
+          onMissing = onMissing,
+        )
+      }
 
     return result // guaranteed size == V, no cycles
   }

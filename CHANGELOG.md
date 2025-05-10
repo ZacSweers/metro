@@ -4,7 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Rewrite graph resolution using topological sorting to vastly improve performance and simplify generation.
 - **Enhancement**: Return early once an externally-compiled dependency graph is found.
+- **Enhancement**: Simplify multibinding contributor handling in graph resolution by generating synthetic qualifiers for each of them. This allows them to participate in standard graph resolution.
 - **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
 - **Fix**: Fix a comparator infinite loop vector.
 - **Fix**: Fix @ElementsIntoSet multibinding contributions triggering a dependency cycle in some situations.

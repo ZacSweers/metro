@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import kotlin.io.path.readText
+import org.junit.Ignore
 import org.junit.Test
 
 class TracingTest : MetroCompilerTest() {
@@ -46,16 +47,16 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build binding graph
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
-          ExampleGraph,Traverse from roots
-          ExampleGraph,Traverse remaining bindings
-          ExampleGraph,Cache transitive closure
+          ExampleGraph,Build adjacency list
+          ExampleGraph,Topo sort
+          ExampleGraph,Sort and validate
+          ExampleGraph,Compute deferred types
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
           ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
-          ExampleGraph,Compute safe init order
           ExampleGraph,Implement overrides
           ExampleGraph,Transform metro graph
           ExampleGraph,Transform dependency graph
@@ -82,12 +83,14 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
-                    ▶ Traverse from roots
-                    ◀ Traverse from roots (xx ms)
-                    ▶ Traverse remaining bindings
-                    ◀ Traverse remaining bindings (xx ms)
-                    ▶ Cache transitive closure
-                    ◀ Cache transitive closure (xx ms)
+                    ▶ Sort and validate
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Topo sort
+                      ◀ Topo sort (xx ms)
+                    ◀ Sort and validate (xx ms)
+                    ▶ Compute deferred types
+                    ◀ Compute deferred types (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -98,8 +101,6 @@ class TracingTest : MetroCompilerTest() {
               ▶ Transform metro graph
                 ▶ Collect bindings
                 ◀ Collect bindings (xx ms)
-                ▶ Compute safe init order
-                ◀ Compute safe init order (xx ms)
                 ▶ Implement overrides
                 ◀ Implement overrides (xx ms)
               ◀ Transform metro graph (xx ms)
@@ -154,16 +155,16 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build binding graph
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
-          ExampleGraph,Traverse from roots
-          ExampleGraph,Traverse remaining bindings
-          ExampleGraph,Cache transitive closure
+          ExampleGraph,Build adjacency list
+          ExampleGraph,Topo sort
+          ExampleGraph,Sort and validate
+          ExampleGraph,Compute deferred types
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
           ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
-          ExampleGraph,Compute safe init order
           ExampleGraph,Implement overrides
           ExampleGraph,Generate Metro metadata
           ExampleGraph,Transform metro graph
@@ -173,16 +174,16 @@ class TracingTest : MetroCompilerTest() {
           ChildGraph,Build binding graph
           ChildGraph,Check self-cycles
           ChildGraph,Populate bindings
-          ChildGraph,Traverse from roots
-          ChildGraph,Traverse remaining bindings
-          ChildGraph,Cache transitive closure
+          ChildGraph,Build adjacency list
+          ChildGraph,Topo sort
+          ChildGraph,Sort and validate
+          ChildGraph,Compute deferred types
           ChildGraph,seal graph
           ChildGraph,check empty multibindings
           ChildGraph,check for absent bindings
           ChildGraph,Validate graph
           ChildGraph,Validate binding graph
           ChildGraph,Collect bindings
-          ChildGraph,Compute safe init order
           ChildGraph,Implement overrides
           ChildGraph,Transform metro graph
           ChildGraph,Transform dependency graph
@@ -209,12 +210,14 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
-                    ▶ Traverse from roots
-                    ◀ Traverse from roots (xx ms)
-                    ▶ Traverse remaining bindings
-                    ◀ Traverse remaining bindings (xx ms)
-                    ▶ Cache transitive closure
-                    ◀ Cache transitive closure (xx ms)
+                    ▶ Sort and validate
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Topo sort
+                      ◀ Topo sort (xx ms)
+                    ◀ Sort and validate (xx ms)
+                    ▶ Compute deferred types
+                    ◀ Compute deferred types (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -225,8 +228,6 @@ class TracingTest : MetroCompilerTest() {
               ▶ Transform metro graph
                 ▶ Collect bindings
                 ◀ Collect bindings (xx ms)
-                ▶ Compute safe init order
-                ◀ Compute safe init order (xx ms)
                 ▶ Implement overrides
                 ◀ Implement overrides (xx ms)
                 ▶ Generate Metro metadata
@@ -247,12 +248,14 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
-                    ▶ Traverse from roots
-                    ◀ Traverse from roots (xx ms)
-                    ▶ Traverse remaining bindings
-                    ◀ Traverse remaining bindings (xx ms)
-                    ▶ Cache transitive closure
-                    ◀ Cache transitive closure (xx ms)
+                    ▶ Sort and validate
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Topo sort
+                      ◀ Topo sort (xx ms)
+                    ◀ Sort and validate (xx ms)
+                    ▶ Compute deferred types
+                    ◀ Compute deferred types (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -263,8 +266,6 @@ class TracingTest : MetroCompilerTest() {
               ▶ Transform metro graph
                 ▶ Collect bindings
                 ◀ Collect bindings (xx ms)
-                ▶ Compute safe init order
-                ◀ Compute safe init order (xx ms)
                 ▶ Implement overrides
                 ◀ Implement overrides (xx ms)
               ◀ Transform metro graph (xx ms)
@@ -319,16 +320,16 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build binding graph
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
-          ExampleGraph,Traverse from roots
-          ExampleGraph,Traverse remaining bindings
-          ExampleGraph,Cache transitive closure
+          ExampleGraph,Build adjacency list
+          ExampleGraph,Topo sort
+          ExampleGraph,Sort and validate
+          ExampleGraph,Compute deferred types
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
           ExampleGraph,Validate graph
           ExampleGraph,Validate binding graph
           ExampleGraph,Collect bindings
-          ExampleGraph,Compute safe init order
           ExampleGraph,Generate contributed graph ChildGraph
           ExampleGraph,Implement overrides
           ExampleGraph,Generate Metro metadata
@@ -339,16 +340,16 @@ class TracingTest : MetroCompilerTest() {
           $${'$'}ContributedChildGraph,Build binding graph
           $${'$'}ContributedChildGraph,Check self-cycles
           $${'$'}ContributedChildGraph,Populate bindings
-          $${'$'}ContributedChildGraph,Traverse from roots
-          $${'$'}ContributedChildGraph,Traverse remaining bindings
-          $${'$'}ContributedChildGraph,Cache transitive closure
+          $${'$'}ContributedChildGraph,Build adjacency list
+          $${'$'}ContributedChildGraph,Topo sort
+          $${'$'}ContributedChildGraph,Sort and validate
+          $${'$'}ContributedChildGraph,Compute deferred types
           $${'$'}ContributedChildGraph,seal graph
           $${'$'}ContributedChildGraph,check empty multibindings
           $${'$'}ContributedChildGraph,check for absent bindings
           $${'$'}ContributedChildGraph,Validate graph
           $${'$'}ContributedChildGraph,Validate binding graph
           $${'$'}ContributedChildGraph,Collect bindings
-          $${'$'}ContributedChildGraph,Compute safe init order
           $${'$'}ContributedChildGraph,Implement overrides
           $${'$'}ContributedChildGraph,Transform metro graph
           $${'$'}ContributedChildGraph,Transform dependency graph
@@ -375,12 +376,14 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
-                    ▶ Traverse from roots
-                    ◀ Traverse from roots (xx ms)
-                    ▶ Traverse remaining bindings
-                    ◀ Traverse remaining bindings (xx ms)
-                    ▶ Cache transitive closure
-                    ◀ Cache transitive closure (xx ms)
+                    ▶ Sort and validate
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Topo sort
+                      ◀ Topo sort (xx ms)
+                    ◀ Sort and validate (xx ms)
+                    ▶ Compute deferred types
+                    ◀ Compute deferred types (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -391,8 +394,6 @@ class TracingTest : MetroCompilerTest() {
               ▶ Transform metro graph
                 ▶ Collect bindings
                 ◀ Collect bindings (xx ms)
-                ▶ Compute safe init order
-                ◀ Compute safe init order (xx ms)
                 ▶ Implement overrides
                   ▶ Generate contributed graph ChildGraph
                   ◀ Generate contributed graph ChildGraph (xx ms)
@@ -415,12 +416,14 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
-                    ▶ Traverse from roots
-                    ◀ Traverse from roots (xx ms)
-                    ▶ Traverse remaining bindings
-                    ◀ Traverse remaining bindings (xx ms)
-                    ▶ Cache transitive closure
-                    ◀ Cache transitive closure (xx ms)
+                    ▶ Sort and validate
+                      ▶ Build adjacency list
+                      ◀ Build adjacency list (xx ms)
+                      ▶ Topo sort
+                      ◀ Topo sort (xx ms)
+                    ◀ Sort and validate (xx ms)
+                    ▶ Compute deferred types
+                    ◀ Compute deferred types (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -431,8 +434,6 @@ class TracingTest : MetroCompilerTest() {
               ▶ Transform metro graph
                 ▶ Collect bindings
                 ◀ Collect bindings (xx ms)
-                ▶ Compute safe init order
-                ◀ Compute safe init order (xx ms)
                 ▶ Implement overrides
                 ◀ Implement overrides (xx ms)
               ◀ Transform metro graph (xx ms)
