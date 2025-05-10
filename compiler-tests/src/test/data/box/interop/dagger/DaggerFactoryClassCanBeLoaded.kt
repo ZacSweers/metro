@@ -1,10 +1,6 @@
-// ENABLE_DAGGER_INTEROP
+// ENABLE_DAGGER_KSP
 
-// MODULE: main
 // FILE: ExampleClass.java
-
-package test;
-
 import javax.inject.Inject;
 
 public class ExampleClass {
@@ -14,8 +10,15 @@ public class ExampleClass {
 }
 
 // FILE: ExampleGraph.kt
+import kotlin.test.*
 
 @DependencyGraph
 interface ExampleGraph {
   val exampleClass: ExampleClass
+}
+
+fun box(): String {
+  val graph = createGraph<ExampleGraph>()
+  assertNotNull(graph.exampleClass)
+  return "OK"
 }
