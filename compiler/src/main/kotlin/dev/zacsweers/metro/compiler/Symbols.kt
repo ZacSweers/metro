@@ -269,7 +269,12 @@ internal class Symbols(
   }
 
   val multibindingElement: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName()))!!.constructors.first()
+    pluginContext
+      .referenceClass(
+        ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
+      )!!
+      .constructors
+      .first()
   }
 
   val metroDependencyGraphAnnotationConstructor: IrConstructorSymbol by lazy {

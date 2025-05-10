@@ -38,9 +38,7 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBinding = { contextKey ->
-        metroContext.injectedClassBindingOrNull(contextKey)
-      },
+      computeBinding = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
       onError = { message, stack ->
         val location = stack.lastEntryOrGraph.locationOrNull()
         metroContext.reportError(message, location)
@@ -113,9 +111,7 @@ internal class IrBindingGraph(
               ?: run {
                 // Hard error because the FIR checker should catch these, so this implies broken
                 // FIR code gen
-                error(
-                  "Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}"
-                )
+                error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
               }
           val keyType = metroContext.mapKeyType(mapKey)
           metroContext.pluginContext.irBuiltIns.mapClass.typeWith(
@@ -131,7 +127,8 @@ internal class IrBindingGraph(
         }
       }
 
-    val multibindingTypeKey = contextKey.typeKey.copy(type = multibindingType, qualifier = originalQualifier)
+    val multibindingTypeKey =
+      contextKey.typeKey.copy(type = multibindingType, qualifier = originalQualifier)
 
     var binding = realGraph[multibindingTypeKey]
 
@@ -139,10 +136,7 @@ internal class IrBindingGraph(
       // TODO
       //  - compute bindingId
       //  - get real qualifier
-      binding = Binding.Multibinding.fromContributor(
-        metroContext,
-        multibindingTypeKey
-      )
+      binding = Binding.Multibinding.fromContributor(metroContext, multibindingTypeKey)
       realGraph.tryPut(binding, bindingStack)
       // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
       if (binding.isMap) {
@@ -152,7 +146,9 @@ internal class IrBindingGraph(
             .typeOrNull!!
             .wrapInProvider(this@IrBindingGraph.metroContext.symbols.metroProvider)
         val providerTypeKey =
-          binding.typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+          binding.typeKey.copy(
+            type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType)
+          )
         realGraph.tryPut(binding, bindingStack, providerTypeKey)
       }
     }
@@ -324,7 +320,9 @@ internal class IrBindingGraph(
       }
     }
 
-    return similarBindings.filterNot { (it.value.binding as? Binding.BindingWithAnnotations)?.annotations?.isIntoMultibinding == true }
+    return similarBindings.filterNot {
+      (it.value.binding as? Binding.BindingWithAnnotations)?.annotations?.isIntoMultibinding == true
+    }
   }
 
   // TODO iterate on this more!

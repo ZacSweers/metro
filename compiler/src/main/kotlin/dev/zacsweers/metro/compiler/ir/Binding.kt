@@ -22,9 +22,7 @@ import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
-import kotlin.collections.first
 import kotlin.collections.firstOrNull
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -34,9 +32,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
-import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -45,7 +41,6 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -421,9 +416,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     @Poko.Skip val declaration: IrSimpleFunction?,
     val isSet: Boolean,
     val isMap: Boolean,
-    /**
-     * Corresponds to @MultibindsElement.bindingId
-     */
+    /** Corresponds to @MultibindsElement.bindingId */
     val bindingId: String,
     var allowEmpty: Boolean,
     // Reconcile this with parametersByKey?
@@ -493,12 +486,13 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
           )
         val isMap = !isSet
 
-        val bindingId: String = if (isMap) {
-          val keyType = typeKey.type.expectAs<IrSimpleType>().arguments[0].typeOrFail
-          createMapBindingId(keyType, typeKey)
-        } else {
-          typeKey.multibindingId
-        }
+        val bindingId: String =
+          if (isMap) {
+            val keyType = typeKey.type.expectAs<IrSimpleType>().arguments[0].typeOrFail
+            createMapBindingId(keyType, typeKey)
+          } else {
+            typeKey.multibindingId
+          }
 
         return Multibinding(
           typeKey,

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.internal
 
-import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Qualifier
 
 /**
@@ -12,7 +11,4 @@ import dev.zacsweers.metro.Qualifier
  * @param elementId The ID of the element.
  */
 @Qualifier
-public annotation class MultibindingElement(
-  val bindingId: String,
-  val elementId: String,
-)
+public annotation class MultibindingElement(val bindingId: String, val elementId: String)

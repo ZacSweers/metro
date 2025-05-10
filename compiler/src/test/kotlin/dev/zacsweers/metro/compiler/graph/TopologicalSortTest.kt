@@ -46,11 +46,7 @@ class TopologicalSortTest {
 
   @Test
   fun happyPath() {
-    assertTopologicalSort(
-      unsorted = listOf("a", "b"),
-      sorted = listOf("b", "a"),
-      "ab",
-    )
+    assertTopologicalSort(unsorted = listOf("a", "b"), sorted = listOf("b", "a"), "ab")
     assertTopologicalSort(
       unsorted = listOf("b", "c", "d", "a"),
       sorted = listOf("a", "b", "c", "d"),
@@ -81,52 +77,65 @@ class TopologicalSortTest {
 
   @Test
   fun cycleCrashes() {
-    val exception = assertFailsWith<IllegalArgumentException> {
-      listOf("a", "b")
-        .topologicalSort(edges("ab", "ba"))
-    }
-    assertThat(exception).hasMessageThat().isEqualTo(
-      """
+    val exception =
+      assertFailsWith<IllegalArgumentException> {
+        listOf("a", "b").topologicalSort(edges("ab", "ba"))
+      }
+    assertThat(exception)
+      .hasMessageThat()
+      .isEqualTo(
+        """
       |No topological ordering is possible for these items:
       |  a (b)
       |  b (a)
-      """.trimMargin(),
-    )
+      """
+          .trimMargin()
+      )
   }
 
   @Test
   fun elementConsumedButNotDeclaredCrashes() {
-    val exception = assertFailsWith<IllegalArgumentException> {
-      listOf("a", "b")
-        .topologicalSort(edges("ab", "ac"))
-    }
-    assertThat(exception).hasMessageThat().isEqualTo(
-      """
+    val exception =
+      assertFailsWith<IllegalArgumentException> {
+        listOf("a", "b").topologicalSort(edges("ab", "ac"))
+      }
+    assertThat(exception)
+      .hasMessageThat()
+      .isEqualTo(
+        """
       |No element for c found for a
-      """.trimMargin(),
-    )
+      """
+          .trimMargin()
+      )
   }
 
   @Test
   fun exceptionMessageOnlyIncludesProblematicItems() {
-    val exception = assertFailsWith<IllegalArgumentException> {
-      listOf("a", "b", "c", "d", "e")
-        .topologicalSort(edges("ab", "bc", "da", "de", "db", "ed", "ef"))
-    }
-    assertThat(exception).hasMessageThat().isEqualTo(
-      """
+    val exception =
+      assertFailsWith<IllegalArgumentException> {
+        listOf("a", "b", "c", "d", "e")
+          .topologicalSort(edges("ab", "bc", "da", "de", "db", "ed", "ef"))
+      }
+    assertThat(exception)
+      .hasMessageThat()
+      .isEqualTo(
+        """
       |No element for f found for e
-      """.trimMargin(),
-    )
+      """
+          .trimMargin()
+      )
   }
 
-  private fun assertTopologicalSort(unsorted: List<String>, sorted: List<String>, vararg edges: String) {
+  private fun assertTopologicalSort(
+    unsorted: List<String>,
+    sorted: List<String>,
+    vararg edges: String,
+  ) {
     val sourceToTarget = edges(*edges)
     assertFalse(unsorted.isTopologicallySorted(sourceToTarget))
     assertTrue(sorted.isTopologicallySorted(sourceToTarget))
 
-    val actual = unsorted
-      .topologicalSort(sourceToTarget)
+    val actual = unsorted.topologicalSort(sourceToTarget)
 
     assertTrue(actual.isTopologicallySorted(sourceToTarget))
     assertEquals(sorted, actual)
@@ -134,8 +143,6 @@ class TopologicalSortTest {
 
   /** Each string is two characters, source and destination of an edge. */
   private fun edges(vararg edges: String): (String) -> List<String> {
-    return { node: String ->
-      edges.filter { it.startsWith(node) }.map { it.substring(1) }
-    }
+    return { node: String -> edges.filter { it.startsWith(node) }.map { it.substring(1) } }
   }
 }

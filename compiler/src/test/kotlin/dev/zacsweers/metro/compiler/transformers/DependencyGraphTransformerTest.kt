@@ -2753,17 +2753,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @DependencyGraph
             interface CyclicalGraphWithClassesBrokenWithProviderBarExposed {
               val bar: Bar
-          
+
               @DependencyGraph.Factory
               fun interface Factory {
                 fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProviderBarExposed
               }
-          
+
               @Inject
               class Foo(val barProvider: Provider<Bar>) : Callable<String> {
                 override fun call() = barProvider().call()
               }
-          
+
               @Inject
               class Bar(val foo: Foo, val message: String) : Callable<String> {
                 override fun call() = message
@@ -2782,9 +2782,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val message: String
-          
+
               @Provides private fun provideInt(): Int = 3
-          
+
               @Provides
               private fun provideMessage(
                 intValue: Int,
@@ -2802,19 +2802,19 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       source(
         """
             @Inject class X(val y: Y)
-          
+
             @Inject
             class Y(
               val mapOfProvidersOfX: Map<String, Provider<X>>,
               val mapOfProvidersOfY: Map<String, Provider<Y>>,
             )
-          
+
             @DependencyGraph
             interface CycleMapGraph {
               fun y(): Y
-          
+
               @Binds @IntoMap @StringKey("X") val X.x: X
-          
+
               @Binds @IntoMap @StringKey("Y") val Y.y: Y
             }
         """

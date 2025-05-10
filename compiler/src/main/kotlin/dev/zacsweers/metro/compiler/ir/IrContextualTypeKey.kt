@@ -3,20 +3,15 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import org.jetbrains.kotlin.backend.jvm.JvmSymbols
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
-import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType

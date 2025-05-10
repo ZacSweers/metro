@@ -26,10 +26,7 @@ internal interface BaseBindingStack<
     val inFocus = entries.asReversed().dropLast(1)
     if (inFocus.isEmpty()) return emptyList()
 
-    val first =
-      inFocus.indexOfFirst {
-        !it.isSynthetic && it.typeKey == key
-      }
+    val first = inFocus.indexOfFirst { !it.isSynthetic && it.typeKey == key }
     if (first == -1) return emptyList()
 
     // path from the earlier duplicate up to the key just below the current one

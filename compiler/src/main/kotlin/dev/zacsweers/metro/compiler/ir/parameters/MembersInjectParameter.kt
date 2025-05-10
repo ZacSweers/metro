@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey

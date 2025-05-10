@@ -90,7 +90,7 @@ class BindingGraphTest {
           Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
           Cycle:
               A --> B --> A
-          
+
           Trace:
               A
               B
