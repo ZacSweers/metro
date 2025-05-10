@@ -8,6 +8,8 @@ Changelog
 - **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
 - **Fix**: Fix a comparator infinite loop vector.
 - **Fix**: Fix @ElementsIntoSet multibinding contributions triggering a dependency cycle in some situations.
+- **Fix**: Fix assertion error for generated multibinding name hint when using both @Multibinds and @ElementsIntoSet for the same multibinding.
+- **Fix**: Fix contributed graph extensions not inheriting empty declared multibindings.
 - When debug logging + reports dir is enabled, output a `logTrace.txt` to the reports dir for tracing data.
 
 0.3.0
