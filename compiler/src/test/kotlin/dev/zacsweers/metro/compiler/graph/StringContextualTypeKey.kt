@@ -10,7 +10,6 @@ internal class StringContextualTypeKey
 private constructor(
   override val typeKey: StringTypeKey,
   override val hasDefault: Boolean = false,
-  override val isIntoMultibinding: Boolean = false,
   @Poko.Skip override val rawType: String? = null,
   @Poko.Skip override val wrappedType: WrappedType<String>,
 ) : BaseContextualTypeKey<String, StringTypeKey, StringContextualTypeKey> {
@@ -21,7 +20,6 @@ private constructor(
     return create(
       typeKey,
       hasDefault = hasDefault,
-      isIntoMultibinding = isIntoMultibinding,
       rawType = rawType,
     )
   }
@@ -45,7 +43,6 @@ private constructor(
     fun create(
       typeKey: StringTypeKey,
       hasDefault: Boolean = false,
-      isIntoMultibinding: Boolean = false,
       rawType: String? = null,
     ): StringContextualTypeKey {
       val wrappedType = parseWrappedType(typeKey.type)
@@ -53,7 +50,6 @@ private constructor(
         typeKey = StringTypeKey(wrappedType.canonicalType()),
         wrappedType = wrappedType,
         hasDefault = hasDefault,
-        isIntoMultibinding = isIntoMultibinding,
         rawType = rawType,
       )
     }

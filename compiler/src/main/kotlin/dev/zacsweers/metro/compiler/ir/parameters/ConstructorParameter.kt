@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -97,7 +98,6 @@ internal fun IrValueParameter.toConstructorParameter(
       context,
       with(context) { qualifierAnnotation() },
       defaultValue != null,
-      false,
     )
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()

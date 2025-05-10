@@ -295,7 +295,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 
     val first =
       inFocus.indexOfFirst {
-        !it.contextKey.isIntoMultibinding && !it.isSynthetic && it.typeKey == key
+        !it.isSynthetic && it.typeKey == key
       }
     if (first == -1) return emptyList()
 

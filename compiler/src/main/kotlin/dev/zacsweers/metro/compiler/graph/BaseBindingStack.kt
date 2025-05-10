@@ -28,7 +28,7 @@ internal interface BaseBindingStack<
 
     val first =
       inFocus.indexOfFirst {
-        !it.contextKey.isIntoMultibinding && !it.isSynthetic && it.typeKey == key
+        !it.isSynthetic && it.typeKey == key
       }
     if (first == -1) return emptyList()
 

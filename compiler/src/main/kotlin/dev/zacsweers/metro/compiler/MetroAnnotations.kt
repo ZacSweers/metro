@@ -23,11 +23,13 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 
@@ -49,6 +51,9 @@ internal class MetroAnnotations<T>(
   val scope: T?,
   val qualifier: T?,
   val mapKeys: Set<T>,
+  // An IrAnnotation or FirAnnotation
+  // TODO the lack of a type here is unfortunate
+  val symbol: Any?,
 ) {
   val isMultibinds: Boolean
     get() = multibinds != null
@@ -100,6 +105,7 @@ internal class MetroAnnotations<T>(
       scope,
       qualifier,
       mapKeys,
+      symbol
     )
   }
 
@@ -141,6 +147,7 @@ internal class MetroAnnotations<T>(
         scope = null,
         qualifier = null,
         mapKeys = emptySet(),
+        symbol = null,
       )
 
     @Suppress("UNCHECKED_CAST") fun <T> none(): MetroAnnotations<T> = NONE as MetroAnnotations<T>
@@ -281,6 +288,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       scope = scope,
       qualifier = qualifier,
       mapKeys = mapKeys,
+      symbol = (this as? IrDeclaration)?.symbol,
     )
 
   val thisContainer = this
@@ -466,6 +474,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       scope = scope,
       qualifier = qualifier,
       mapKeys = mapKeys,
+      // This is never used in FIR so always null
+      symbol = null,
     )
 
   val thisContainer = this

@@ -10,7 +10,6 @@ internal interface BaseContextualTypeKey<
   val typeKey: TypeKey
   val wrappedType: WrappedType<Type>
   val hasDefault: Boolean
-  val isIntoMultibinding: Boolean
   val rawType: Type?
   val isDeferrable: Boolean
     get() = wrappedType.isDeferrable()

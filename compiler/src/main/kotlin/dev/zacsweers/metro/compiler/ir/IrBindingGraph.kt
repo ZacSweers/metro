@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -9,10 +10,12 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -91,23 +94,65 @@ internal class IrBindingGraph(
 
   fun getOrCreateMultibinding(
     pluginContext: IrPluginContext,
-    typeKey: IrTypeKey,
+    annotations: MetroAnnotations<IrAnnotation>,
+    contextKey: IrContextualTypeKey,
+    declaration: IrSimpleFunction,
+    originalQualifier: IrAnnotation?,
     bindingStack: IrBindingStack,
   ): Binding.Multibinding {
-    var binding = realGraph[typeKey]
+    val multibindingType =
+      when {
+        annotations.isIntoSet -> {
+          metroContext.pluginContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
+        }
+
+        annotations.isElementsIntoSet -> contextKey.typeKey.type
+        annotations.isIntoMap -> {
+          val mapKey =
+            annotations.mapKeys.firstOrNull()
+              ?: run {
+                // Hard error because the FIR checker should catch these, so this implies broken
+                // FIR code gen
+                error(
+                  "Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}"
+                )
+              }
+          val keyType = metroContext.mapKeyType(mapKey)
+          metroContext.pluginContext.irBuiltIns.mapClass.typeWith(
+            // MapKey is the key type
+            keyType,
+            // Return type is the value type
+            contextKey.typeKey.type.removeAnnotations(),
+          )
+        }
+
+        else -> {
+          error("Unrecognized provider: ${declaration.locationOrNull()}")
+        }
+      }
+
+    val multibindingTypeKey = contextKey.typeKey.copy(type = multibindingType, qualifier = originalQualifier)
+
+    var binding = realGraph[multibindingTypeKey]
 
     if (binding == null) {
-      binding = Binding.Multibinding.create(metroContext, typeKey, null)
+      // TODO
+      //  - compute bindingId
+      //  - get real qualifier
+      binding = Binding.Multibinding.fromContributor(
+        metroContext,
+        multibindingTypeKey
+      )
       realGraph.tryPut(binding, bindingStack)
       // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
       if (binding.isMap) {
-        val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
+        val keyType = (binding.typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
         val valueType =
-          typeKey.type.arguments[1]
+          binding.typeKey.type.arguments[1]
             .typeOrNull!!
             .wrapInProvider(this@IrBindingGraph.metroContext.symbols.metroProvider)
         val providerTypeKey =
-          typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+          binding.typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
         realGraph.tryPut(binding, bindingStack, providerTypeKey)
       }
     }
@@ -222,8 +267,6 @@ internal class IrBindingGraph(
     }
   }
 
-  // TODO
-  //  - exclude types _in_ multibindings
   private fun findSimilarBindings(key: IrTypeKey): Map<IrTypeKey, SimilarBinding> {
     // Use a map to avoid reporting duplicates
     val similarBindings = mutableMapOf<IrTypeKey, SimilarBinding>()
@@ -281,8 +324,7 @@ internal class IrBindingGraph(
       }
     }
 
-    // TODO filter out source bindings in multibindings? Should be covered though
-    return similarBindings
+    return similarBindings.filterNot { (it.value.binding as? Binding.BindingWithAnnotations)?.annotations?.isIntoMultibinding == true }
   }
 
   // TODO iterate on this more!
@@ -329,7 +371,8 @@ internal class IrBindingGraph(
 
     if (!isNested && binding is Binding.Multibinding && binding.sourceBindings.isNotEmpty()) {
       appendLine("├─ Source bindings:")
-      binding.sourceBindings.forEach { sourceBinding ->
+      binding.sourceBindings.forEach { sourceBindingKey ->
+        val sourceBinding = requireBinding(sourceBindingKey, IrBindingStack.empty())
         val nested = buildString { appendBinding(sourceBinding, short, isNested = true) }
         append("│  ├─ ")
         appendLine(nested.lines().first())
