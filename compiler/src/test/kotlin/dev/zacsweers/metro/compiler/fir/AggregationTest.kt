@@ -3340,4 +3340,40 @@ class AggregationTest : MetroCompilerTest() {
       assertThat(appGraph.callProperty<Any>("a").callFunction<Boolean>("areEqual")).isTrue()
     }
   }
+
+  @Test
+  fun `SingleIn is respected when combining Provider and multibindings`() {
+    compile(
+      source(
+        """
+            interface ContributedInterface
+
+            @Inject
+            @ContributesIntoSet(AppScope::class)
+            class Impl(val singleton: Singleton) : ContributedInterface
+
+            @Inject @SingleIn(AppScope::class) class Singleton
+
+            @Inject class Wrapper(val provider: Provider<Set<ContributedInterface>>)
+
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val wrapper: Wrapper
+              val singleton: Singleton
+            }
+        """
+          .trimIndent()
+      )
+    ) {
+      val appGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val singleton0 = appGraph.callProperty<Any>("singleton")
+      val provider = appGraph.callProperty<Any>("wrapper").callProperty<Any>("provider")
+      val singleton1 =
+        provider.callFunction<Set<Any>>("invoke").first().callProperty<Any>("singleton")
+      val singleton2 =
+        provider.callFunction<Set<Any>>("invoke").first().callProperty<Any>("singleton")
+      assertThat(singleton0).isSameInstanceAs(singleton1)
+      assertThat(singleton0).isSameInstanceAs(singleton2)
+    }
+  }
 }
