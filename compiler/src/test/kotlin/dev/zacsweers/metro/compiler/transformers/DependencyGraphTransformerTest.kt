@@ -1473,7 +1473,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
@@ -1502,7 +1502,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
@@ -1535,7 +1535,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
@@ -2852,6 +2852,34 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """.trimIndent()
       )
+    }
+  }
+
+  // Regression tests that ensures that a default dependency (i.e. one that would pass through
+  // topo sorting's onMissing() handler doesn't break the later satisfied checks
+  @Test
+  fun `optional dependency does not break topo sorting`() {
+    compile(
+      source(
+        """
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph {
+          fun foo(): Foo
+        }
+
+        @SingleIn(AppScope::class)
+        class Foo @Inject constructor(
+          val bar: Bar,
+          val text: String = "default"
+        )
+
+        @Inject class Bar
+      """.trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val foo = graph.callFunction<Any>("foo")
+      assertThat(foo.callProperty<String>("text")).isEqualTo("default")
     }
   }
 }

@@ -43,6 +43,7 @@ internal fun <T> Iterable<T>.topologicalSort(
   val sourceSet = toSet()
   // Build a reverse index, from targets to sources.
   val targetToSources = mutableMapOf<T, MutableSet<T>>()
+  val ignoredMissingTargets = mutableSetOf<T>()
   val queue = ArrayDeque<T>()
   for (source in sourceSet) {
     var hasTargets = false
@@ -50,6 +51,8 @@ internal fun <T> Iterable<T>.topologicalSort(
       // missing vertex
       if (target !in sourceSet) {
         onMissing(source, target)
+        // If we got here, this missing target is allowable (i.e. a default value)
+        ignoredMissingTargets += target
         continue
       }
       val set = targetToSources.getOrPut(target, ::mutableSetOf)
@@ -75,7 +78,7 @@ internal fun <T> Iterable<T>.topologicalSort(
       if (
         source !in queue &&
         sourceToTarget(source).all { t ->
-          t !in sourceSet || // ignore edges we dropped earlier, i.e. onMissing()
+          t in ignoredMissingTargets || // ignore edges we dropped earlier in onMissing()
             t in result   ||
             t in queue
         }

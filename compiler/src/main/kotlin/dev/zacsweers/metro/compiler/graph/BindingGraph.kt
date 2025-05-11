@@ -161,8 +161,8 @@ internal open class MutableBindingGraph<
 
     /**
      * Build the adjacency list we’ll feed to [topologicalSort].
-     *
-     * * Edges that pass through a deferrable wrapper (Lazy/Provider/…) are **omitted** so the remaining graph is a DAG.
+     * * Edges that pass through a deferrable wrapper (Lazy/Provider/…) are **omitted** so the
+     *   remaining graph is a DAG.
      * * Aggregated‑binding edges are flattened the same way the old cacheEdges() did.
      */
     val sourceToTarget: Map<TypeKey, Set<TypeKey>> =
@@ -172,31 +172,18 @@ internal open class MutableBindingGraph<
         }
       }
 
-    val onMissing: (TypeKey, TypeKey) -> Unit = { source, missing ->
-      val binding = bindings.getValue(source)
-      val contextKey = binding.dependencies.first { it.typeKey == missing }
-      if (!contextKey.hasDefault) {
-        val stackEntry = stack.newBindingStackEntry(contextKey, binding, roots)
-
-        // If there's a root entry for the missing binding, add it into the stack too
-        val matchingRootEntry =
-          roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
-        matchingRootEntry?.let { stack.push(it) }
-        stack.withEntry(stackEntry) { reportMissingBinding(missing, stack) }
-      }
-    }
-
     /**
-     * Run topo sort. It gives back either a valid order or calls onCycle/onMissing for errors
+     * Run topo sort. It gives back either a valid order or calls errorHandler for errors
      *
-     * Note that onMissing will gracefully
+     * Note that `onMissing` will gracefully allow missing targets that have default values (i.e.
+     * optional bindings).
      */
     val result =
       parentTracer.traceNested("Topo sort") {
         bindings.keys.topologicalSort(
           sourceToTarget = { k -> sourceToTarget[k].orEmpty() },
           errorHandler =
-            BindingGraphErrorHandler(onMissing) { cycle ->
+            CycleReconstructingErrorHandler { cycle ->
               // Populate the BindingStack for a readable cycle trace
               val entriesInCycle =
                 cycle
@@ -219,7 +206,19 @@ internal open class MutableBindingGraph<
                   .reversed()
               reportCycle(entriesInCycle, stack)
             },
-          onMissing = onMissing,
+          onMissing = { source, missing ->
+            val binding = bindings.getValue(source)
+            val contextKey = binding.dependencies.first { it.typeKey == missing }
+            if (!contextKey.hasDefault) {
+              val stackEntry = stack.newBindingStackEntry(contextKey, binding, roots)
+
+              // If there's a root entry for the missing binding, add it into the stack too
+              val matchingRootEntry =
+                roots.entries.firstOrNull { it.key.typeKey == binding.typeKey }?.value
+              matchingRootEntry?.let { stack.push(it) }
+              stack.withEntry(stackEntry) { reportMissingBinding(missing, stack) }
+            }
+          },
         )
       }
 

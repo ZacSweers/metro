@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-internal class BindingGraphErrorHandler<T>(
-  private val onMissing: (source: T, target: T) -> Unit,
-  private val onCycle: (List<T>) -> Nothing,
-) : TopoErrorHandler<T> {
+internal class CycleReconstructingErrorHandler<T>(private val onCycle: (List<T>) -> Nothing) :
+  TopoErrorHandler<T> {
   override fun onError(
     unorderedItems: Set<T>,
     targetToSources: Map<T, Set<T>>,
@@ -26,7 +24,9 @@ internal class BindingGraphErrorHandler<T>(
           val missingDep = sourceToTarget(u).find { it !in resultSet }
           missingDep?.let { u to it }
         }
-      onMissing(culprit, missingDep)
+      error(
+        "Unexpected missing dep. $culprit -> $missingDep. Please report this with a repro case to the Metro issue tracker."
+      )
     } else {
       // We have a cycle, walk forward until we return to the start
       val indicesByEntry = LinkedHashMap<T, Int>() // preserve insertion order
@@ -36,8 +36,9 @@ internal class BindingGraphErrorHandler<T>(
         indicesByEntry[next] = indicesByEntry.size
         // guaranteed at this point to have a dep in the unordered set,
         // find and follow it
-        next = sourceToTarget(next).firstOrNull { it in unorderedItems }
-          ?: error("Cycle did not have a missing dep! $next -> ${sourceToTarget(next)}")
+        next =
+          sourceToTarget(next).firstOrNull { it in unorderedItems }
+            ?: error("Cycle did not have a missing dep! $next -> ${sourceToTarget(next)}")
       }
 
       val cycleStartIndex = indicesByEntry.getValue(next)
