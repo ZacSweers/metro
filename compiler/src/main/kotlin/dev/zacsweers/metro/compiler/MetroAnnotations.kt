@@ -52,7 +52,7 @@ internal class MetroAnnotations<T>(
   val mapKeys: Set<T>,
   // An IrAnnotation or FirAnnotation
   // TODO the lack of a type here is unfortunate
-  val symbol: Any?,
+  @Poko.Skip val symbol: Any?,
 ) {
   val isMultibinds: Boolean
     get() = multibinds != null
