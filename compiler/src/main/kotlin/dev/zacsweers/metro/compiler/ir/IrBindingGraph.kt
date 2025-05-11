@@ -168,6 +168,7 @@ internal class IrBindingGraph(
   fun IrTypeKey.dependsOn(key: IrTypeKey) = with(realGraph) { this@dependsOn.dependsOn(key) }
 
   data class BindingGraphResult(val sortedKeys: List<IrTypeKey>, val deferredTypes: Set<IrTypeKey>)
+
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
   fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
@@ -208,12 +209,15 @@ internal class IrBindingGraph(
             }
           }
         }
-        val declarationToReport = if (multibinding.declaration?.isFakeOverride == true) {
-          multibinding.declaration!!.overriddenSymbolsSequence().firstOrNull { !it.owner.isFakeOverride }
-            ?.owner
-        } else {
-          multibinding.declaration
-        }
+        val declarationToReport =
+          if (multibinding.declaration?.isFakeOverride == true) {
+            multibinding.declaration!!
+              .overriddenSymbolsSequence()
+              .firstOrNull { !it.owner.isFakeOverride }
+              ?.owner
+          } else {
+            multibinding.declaration
+          }
         errors += GraphError(declarationToReport, message)
       }
     }

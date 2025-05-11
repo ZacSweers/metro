@@ -780,7 +780,7 @@ internal class DependencyGraphTransformer(
           tracer.traceNested("Validate graph") {
             bindingGraph.validate(it) { errors ->
               for ((declaration, message) in errors) {
-               (declaration ?: dependencyGraphDeclaration).reportError(message)
+                (declaration ?: dependencyGraphDeclaration).reportError(message)
               }
               exitProcessing()
             }
@@ -977,7 +977,8 @@ internal class DependencyGraphTransformer(
             )
           graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
         } else {
-          // If it's already in the graph, ensure its allowEmpty is up to date and update its location
+          // If it's already in the graph, ensure its allowEmpty is up to date and update its
+          // location
           val allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
           graph
             .requireBinding(contextualTypeKey.typeKey, bindingStack)

@@ -2833,7 +2833,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           @Multibinds val strings: Set<String>
           @Multibinds val stringsAndInts: Map<String, Int>
         }
-      """.trimIndent()
+      """
+          .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
@@ -2850,7 +2851,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:10:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.Int>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
@@ -2874,7 +2876,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         )
 
         @Inject class Bar
-      """.trimIndent()
+      """
+          .trimIndent()
       )
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()

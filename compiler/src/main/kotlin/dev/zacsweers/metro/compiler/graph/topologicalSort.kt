@@ -77,11 +77,11 @@ internal fun <T> Iterable<T>.topologicalSort(
       // If all of a source's *relevant* targets are satisfied, queue it up.
       if (
         source !in queue &&
-        sourceToTarget(source).all { t ->
-          t in ignoredMissingTargets || // ignore edges we dropped earlier in onMissing()
-            t in result   ||
-            t in queue
-        }
+          sourceToTarget(source).all { t ->
+            t in ignoredMissingTargets || // ignore edges we dropped earlier in onMissing()
+              t in result ||
+              t in queue
+          }
       ) {
         queue += source
       }

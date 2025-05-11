@@ -414,9 +414,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   @Poko
   class Multibinding(
     override val typeKey: IrTypeKey,
-    /**
-     * The original `@Multibinds` declaration, if any. Note this may point at a fake override.
-     */
+    /** The original `@Multibinds` declaration, if any. Note this may point at a fake override. */
     @Poko.Skip var declaration: IrSimpleFunction?,
     val isSet: Boolean,
     val isMap: Boolean,
