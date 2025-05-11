@@ -63,17 +63,22 @@ internal fun <T> Iterable<T>.topologicalSort(
     }
   }
 
-  val result = mutableListOf<T>()
+  // Set for O(1) lookups during satisfied checks
+  val result = LinkedHashSet<T>(capacity(sourceSet.size))
   while (queue.isNotEmpty()) {
     val node = queue.removeFirst()
     result += node
 
     val potentiallySatisfied = targetToSources[node].orEmpty()
     for (source in potentiallySatisfied) {
-      // If all a source's targets are satisfied, queue up the source.
+      // If all of a source's *relevant* targets are satisfied, queue it up.
       if (
         source !in queue &&
-          sourceToTarget(source).all { target -> target in result || target in queue }
+        sourceToTarget(source).all { t ->
+          t !in sourceSet || // ignore edges we dropped earlier, i.e. onMissing()
+            t in result   ||
+            t in queue
+        }
       ) {
         queue += source
       }
@@ -84,8 +89,11 @@ internal fun <T> Iterable<T>.topologicalSort(
     val unordered = sourceSet - result.toSet()
     errorHandler.onError(unordered, targetToSources, sourceToTarget, result)
   }
-  return result
+  return result.toList()
 }
+
+private fun capacity(expectedSize: Int): Int =
+  if (expectedSize < 3) 3 else expectedSize + expectedSize / 3 + 1
 
 internal fun interface TopoErrorHandler<T> {
   fun onError(
