@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.render
 
-// TODO use this in provides/binding lookup
 internal fun IrTypeKey.transformMultiboundQualifier(
   metroContext: IrMetroContext,
   annotations: MetroAnnotations<IrAnnotation>,
@@ -54,11 +53,6 @@ internal fun IrTypeKey.transformMultiboundQualifier(
 
   return copy(qualifier = IrAnnotation(newQualifier))
 }
-
-internal val IrAnnotation.multibindingId: String
-  get() {
-    return ir.getAnnotationStringValue("bindingId").expectAs<IrConst>().valueAs()
-  }
 
 /** Returns a unique ID for this specific binding */
 internal val IrSymbol.multibindingElementId: String
