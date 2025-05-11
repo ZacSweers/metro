@@ -168,8 +168,9 @@ internal class IrBindingGraph(
   fun IrTypeKey.dependsOn(key: IrTypeKey) = with(realGraph) { this@dependsOn.dependsOn(key) }
 
   data class BindingGraphResult(val sortedKeys: List<IrTypeKey>, val deferredTypes: Set<IrTypeKey>)
+  data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun validate(parentTracer: Tracer, onError: (IrDeclaration?, String) -> Nothing): BindingGraphResult {
+  fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
     val sortedKeys =
       parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
@@ -181,8 +182,9 @@ internal class IrBindingGraph(
     return BindingGraphResult(sortedKeys, realGraph.deferredTypes)
   }
 
-  private fun checkEmptyMultibindings(onError: (IrDeclaration?, String) -> Nothing) {
+  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
     val multibindings = realGraph.snapshot.values.filterIsInstance<Binding.Multibinding>()
+    val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
         val message = buildString {
@@ -212,8 +214,11 @@ internal class IrBindingGraph(
         } else {
           multibinding.declaration
         }
-        onError(declarationToReport, message)
+        errors += GraphError(declarationToReport, message)
       }
+    }
+    if (errors.isNotEmpty()) {
+      onError(errors)
     }
   }
 

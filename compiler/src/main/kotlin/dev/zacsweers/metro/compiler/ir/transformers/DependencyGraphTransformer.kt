@@ -778,8 +778,10 @@ internal class DependencyGraphTransformer(
           }
 
           tracer.traceNested("Validate graph") {
-            bindingGraph.validate(it) { declaration, message ->
-              (declaration ?: dependencyGraphDeclaration).reportError(message)
+            bindingGraph.validate(it) { errors ->
+              for ((declaration, message) in errors) {
+               (declaration ?: dependencyGraphDeclaration).reportError(message)
+              }
               exitProcessing()
             }
           }
