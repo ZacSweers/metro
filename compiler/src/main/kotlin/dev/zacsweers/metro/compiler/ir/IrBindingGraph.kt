@@ -134,9 +134,6 @@ internal class IrBindingGraph(
     var binding = realGraph[multibindingTypeKey]
 
     if (binding == null) {
-      // TODO
-      //  - compute bindingId
-      //  - get real qualifier
       binding = Binding.Multibinding.fromContributor(metroContext, multibindingTypeKey)
       realGraph.tryPut(binding, bindingStack)
       // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
