@@ -36,7 +36,8 @@ internal class BindingGraphErrorHandler<T>(
         indicesByEntry[next] = indicesByEntry.size
         // guaranteed at this point to have a dep in the unordered set,
         // find and follow it
-        next = sourceToTarget(next).first { it in unorderedItems }
+        next = sourceToTarget(next).firstOrNull { it in unorderedItems }
+          ?: error("Cycle did not have a missing dep! $next -> ${sourceToTarget(next)}")
       }
 
       val cycleStartIndex = indicesByEntry.getValue(next)
