@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
@@ -168,7 +169,7 @@ internal class IrBindingGraph(
 
   data class BindingGraphResult(val sortedKeys: List<IrTypeKey>, val deferredTypes: Set<IrTypeKey>)
 
-  fun validate(parentTracer: Tracer, onError: (String) -> Nothing): BindingGraphResult {
+  fun validate(parentTracer: Tracer, onError: (IrDeclaration?, String) -> Nothing): BindingGraphResult {
     val sortedKeys =
       parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
@@ -180,7 +181,7 @@ internal class IrBindingGraph(
     return BindingGraphResult(sortedKeys, realGraph.deferredTypes)
   }
 
-  private fun checkEmptyMultibindings(onError: (String) -> Nothing) {
+  private fun checkEmptyMultibindings(onError: (IrDeclaration?, String) -> Nothing) {
     val multibindings = realGraph.snapshot.values.filterIsInstance<Binding.Multibinding>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
@@ -205,7 +206,13 @@ internal class IrBindingGraph(
             }
           }
         }
-        onError(message)
+        val declarationToReport = if (multibinding.declaration?.isFakeOverride == true) {
+          multibinding.declaration!!.overriddenSymbolsSequence().firstOrNull { !it.owner.isFakeOverride }
+            ?.owner
+        } else {
+          multibinding.declaration
+        }
+        onError(declarationToReport, message)
       }
     }
   }

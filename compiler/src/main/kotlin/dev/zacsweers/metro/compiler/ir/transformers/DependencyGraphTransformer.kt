@@ -778,8 +778,8 @@ internal class DependencyGraphTransformer(
           }
 
           tracer.traceNested("Validate graph") {
-            bindingGraph.validate(it) { message ->
-              dependencyGraphDeclaration.reportError(message)
+            bindingGraph.validate(it) { declaration, message ->
+              (declaration ?: dependencyGraphDeclaration).reportError(message)
               exitProcessing()
             }
           }
@@ -975,12 +975,15 @@ internal class DependencyGraphTransformer(
             )
           graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
         } else {
-          // If it's already in the graph, ensure its allowEmpty is up to date
+          // If it's already in the graph, ensure its allowEmpty is up to date and update its location
           val allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
           graph
             .requireBinding(contextualTypeKey.typeKey, bindingStack)
             .expectAs<Binding.Multibinding>()
-            .allowEmpty = allowEmpty
+            .let {
+              it.allowEmpty = allowEmpty
+              it.declaration = getter.ir
+            }
         }
       } else {
         graph.addAccessor(

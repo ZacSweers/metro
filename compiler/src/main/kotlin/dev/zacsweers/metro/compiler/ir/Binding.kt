@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
+import java.util.TreeSet
 import kotlin.collections.firstOrNull
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -413,16 +414,18 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   @Poko
   class Multibinding(
     override val typeKey: IrTypeKey,
-    @Poko.Skip val declaration: IrSimpleFunction?,
+    /**
+     * The original `@Multibinds` declaration, if any. Note this may point at a fake override.
+     */
+    @Poko.Skip var declaration: IrSimpleFunction?,
     val isSet: Boolean,
     val isMap: Boolean,
     /** Corresponds to @MultibindsElement.bindingId */
     val bindingId: String,
     var allowEmpty: Boolean,
     // Reconcile this with parametersByKey?
-    // Sorted for consistency
-    // TODO sort
-    val sourceBindings: MutableSet<IrTypeKey> = mutableSetOf(),
+    // TreeSet sorting for consistency
+    val sourceBindings: MutableSet<IrTypeKey> = TreeSet(),
   ) : Binding {
     override val scope: IrAnnotation? = null
     override val dependencies by unsafeLazy { sourceBindings.map { IrContextualTypeKey(it) } }
