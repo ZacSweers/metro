@@ -159,10 +159,11 @@ internal open class MutableBindingGraph<
     parentTracer: Tracer,
   ): List<TypeKey> {
 
-    /*
-     * Build the adjacency list we’ll feed to [topologicalSort]. – Edges that pass through a
-     * deferrable wrapper (Lazy/Provider/…) are **omitted** so the remaining graph is a DAG. –
-     * Aggregated‑binding edges are flattened the same way the old cacheEdges() did.
+    /**
+     * Build the adjacency list we’ll feed to [topologicalSort].
+     *
+     * * Edges that pass through a deferrable wrapper (Lazy/Provider/…) are **omitted** so the remaining graph is a DAG.
+     * * Aggregated‑binding edges are flattened the same way the old cacheEdges() did.
      */
     val sourceToTarget: Map<TypeKey, Set<TypeKey>> =
       parentTracer.traceNested("Build adjacency list") {
