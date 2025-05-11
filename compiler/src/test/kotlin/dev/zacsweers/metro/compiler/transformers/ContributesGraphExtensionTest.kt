@@ -822,7 +822,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:9:1 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope') but LoggedInGraph is not extendable.
+          e: LoggedInScope.kt:9:1 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope'), but LoggedInGraph is not extendable.
         """
           .trimIndent()
       )
@@ -857,9 +857,9 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:8:1 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope') but ExampleGraph is not extendable.
+          e: LoggedInScope.kt:8:1 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope'), but ExampleGraph is not extendable.
 
-          Either mark ExampleGraph as extendable (`@DependencyGraph(isExtendable = true)`) or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`)
+          Either mark ExampleGraph as extendable (`@DependencyGraph(isExtendable = true)`), or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`).
         """
           .trimIndent()
       )

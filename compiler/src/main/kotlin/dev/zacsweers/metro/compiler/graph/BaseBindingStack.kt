@@ -60,7 +60,9 @@ internal interface BaseBindingStack<
         graphContext?.let {
           appendLine()
           append("    ")
-          append("[${graph.asString()}]")
+          append('[')
+          append(graph.asString())
+          append(']')
           append(' ')
           append(it)
         }

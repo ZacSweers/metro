@@ -129,9 +129,12 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
 internal fun CompilerMessageSourceLocation.render(): String? {
   return buildString {
     val fileUri = File(path).toPath().toUri()
-    append("$fileUri")
+    append(fileUri)
     if (line > 0 && column > 0) {
-      append(":$line:$column")
+      append(':')
+      append(line)
+      append(':')
+      append(column)
     } else {
       // No line or column numbers makes this kind of useless so return null
       return null

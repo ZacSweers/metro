@@ -68,22 +68,30 @@ internal class IrContributedGraphGenerator(
     if (!parentIsExtendable) {
       with(metroContext) {
         val message = buildString {
-          append(
-            "Contributed graph extension '${sourceGraph.kotlinFqName}' contributes to parent graph "
-          )
-          append(
-            "'${realParent.kotlinFqName}' (scope '${parentGraphAnno.scopeOrNull()!!.asSingleFqName()}') "
-          )
-          append("but ${realParent.name} is not extendable.")
+          append("Contributed graph extension '")
+          append(sourceGraph.kotlinFqName)
+          append("' contributes to parent graph ")
+          append('\'')
+          append(realParent.kotlinFqName)
+          append("' (scope '")
+          append(parentGraphAnno.scopeOrNull()!!.asSingleFqName())
+          append("'), but ")
+          append(realParent.name)
+          append(" is not extendable.")
           if (!parentIsContributed) {
             appendLine()
             appendLine()
-            append("Either mark ${realParent.name} as extendable ")
-            append("(`@${parentGraphAnno.annotationClass.name}(isExtendable = true)`) or ")
-            append("exclude it from ${realParent.name} ")
-            append(
-              "(`@${parentGraphAnno.annotationClass.name}(excludes = [${sourceGraph.name}::class])`)"
-            )
+            append("Either mark ")
+            append(realParent.name)
+            append(" as extendable (`@")
+            append(parentGraphAnno.annotationClass.name)
+            append("(isExtendable = true)`), or exclude it from ")
+            append(realParent.name)
+            append(" (`@")
+            append(parentGraphAnno.annotationClass.name)
+            append("(excludes = [")
+            append(sourceGraph.name)
+            append("::class])`).")
           }
         }
         sourceGraph.reportError(message)

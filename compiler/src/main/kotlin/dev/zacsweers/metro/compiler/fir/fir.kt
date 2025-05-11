@@ -1022,8 +1022,10 @@ internal fun List<FirElement>.joinToRender(separator: String = ", "): String {
     buildString {
       append(it.render())
       if (it is FirAnnotation) {
-        append(" resolved=${it.isResolved}")
-        append(" unexpandedClassId=${it.unexpandedClassId}")
+        append(" resolved=")
+        append(it.isResolved)
+        append(" unexpandedClassId=")
+        append(it.unexpandedClassId)
       }
     }
   }

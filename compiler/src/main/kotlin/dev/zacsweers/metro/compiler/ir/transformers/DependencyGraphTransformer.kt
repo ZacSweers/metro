@@ -364,13 +364,18 @@ internal class DependencyGraphTransformer(
 
               if (function == null) {
                 val message = buildString {
-                  appendLine("No function found for $callableId")
+                  append("No function found for ")
+                  appendLine(callableId)
                   callableId.classId?.let {
                     pluginContext.referenceClass(it)?.let {
                       appendLine("Class dump")
                       appendLine(it.owner.dumpKotlinLike())
                     }
-                  } ?: run { appendLine("No class found for $callableId") }
+                  }
+                    ?: run {
+                      append("No class found for ")
+                      appendLine(callableId)
+                    }
                 }
                 error(message)
               }
@@ -681,9 +686,12 @@ internal class DependencyGraphTransformer(
               appendLine(
                 "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
               )
-              appendLine("Scope: ${parentScope.render(short = false)}")
-              appendLine("Ancestor 1: ${previous.sourceGraph.kotlinFqName}")
-              appendLine("Ancestor 2: ${depNode.sourceGraph.kotlinFqName}")
+              append("Scope: ")
+              appendLine(parentScope.render(short = false))
+              append("Ancestor 1: ")
+              appendLine(previous.sourceGraph.kotlinFqName)
+              append("Ancestor 2: ")
+              appendLine(depNode.sourceGraph.kotlinFqName)
             }
           )
           exitProcessing()

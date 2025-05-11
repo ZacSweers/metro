@@ -195,9 +195,10 @@ internal class IrBindingGraph(
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
         val message = buildString {
-          appendLine(
-            "[Metro/EmptyMultibinding] Multibinding '${multibinding.typeKey}' was unexpectedly empty."
-          )
+          append("[Metro/EmptyMultibinding] Multibinding '")
+          append(multibinding.typeKey)
+          appendLine("' was unexpectedly empty.")
+
           appendLine()
           appendLine(
             "If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`."
@@ -352,7 +353,8 @@ internal class IrBindingGraph(
     if (realGraph.snapshot.isEmpty()) return "Empty binding graph"
 
     return buildString {
-      appendLine("Binding Graph: $name")
+      append("Binding Graph: ")
+      appendLine(name)
       // Sort by type key for consistent output
       realGraph.snapshot.entries
         .sortedBy { it.key.toString() }
