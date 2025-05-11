@@ -2821,4 +2821,37 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     )
   }
+
+  @Test
+  fun `multiple empty multibinds are reported together`() {
+    compile(
+      source(
+        """
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph {
+          @Multibinds val ints: Set<Int>
+          @Multibinds val strings: Set<String>
+          @Multibinds val stringsAndInts: Map<String, Int>
+        }
+      """.trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          e: ExampleGraph.kt:9:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          e: ExampleGraph.kt:10:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.Int>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        """.trimIndent()
+      )
+    }
+  }
 }
