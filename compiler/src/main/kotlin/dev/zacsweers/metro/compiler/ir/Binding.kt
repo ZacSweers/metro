@@ -431,7 +431,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters<out Parameter> = Parameters.empty()
 
     override val nameHint: String
-      get() = error("Should never be called")
+      get() = "${typeKey.type.rawType().name}Multibinding"
 
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 

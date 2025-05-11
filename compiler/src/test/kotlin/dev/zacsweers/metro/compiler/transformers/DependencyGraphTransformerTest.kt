@@ -1856,6 +1856,41 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `a multibinding can be declared with @Multibinds and contributed to using @ElementsIntoSet`() {
+    compile(
+      source(
+        """
+            interface MultiboundType
+
+            @Inject
+            class MultiImpl : MultiboundType
+
+            @ContributesTo(AppScope::class)
+            interface MultibindingsModule {
+              @Provides @ElementsIntoSet
+              fun provideMulti(impl: MultiImpl): Set<@JvmSuppressWildcards MultiboundType> = setOf(impl)
+            }
+
+            @ContributesTo(AppScope::class)
+            interface MultibindingsModule2 {
+              @Multibinds(allowEmpty = true)
+              fun provideMulti(): Set<@JvmSuppressWildcards MultiboundType>
+            }
+
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val multi: Set<MultiboundType>
+            }
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("multi"))
+    }
+  }
+
+  @Test
   fun `duplicate bindings are reported - double provides`() {
     compile(
       source(

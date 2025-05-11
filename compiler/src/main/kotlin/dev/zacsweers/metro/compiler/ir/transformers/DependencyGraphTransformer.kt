@@ -801,7 +801,7 @@ internal class DependencyGraphTransformer(
         throw e
       }
       throw AssertionError(
-        "Code gen exception while processing ${dependencyGraphDeclaration.classIdOrFail}",
+        "Code gen exception while processing ${dependencyGraphDeclaration.classIdOrFail}. ${e.message}",
         e,
       )
     }
@@ -962,7 +962,17 @@ internal class DependencyGraphTransformer(
       graph.addBinding(contextKey.typeKey, provider, bindingStack)
     }
 
-    node.accessors.forEach { (getter, contextualTypeKey) ->
+    val accessorsToAdd = buildList {
+      addAll(node.accessors)
+      addAll(
+        node.allExtendedNodes.flatMap { (_, extendedNode) ->
+          // Pass down @Multibinds declarations in the same way we do for multibinding providers
+          extendedNode.accessors.filter { it.first.annotations.isMultibinds }
+        }
+      )
+    }
+
+    accessorsToAdd.forEach { (getter, contextualTypeKey) ->
       val multibinds = getter.annotations.multibinds
       val isMultibindingDeclaration = multibinds != null
 
