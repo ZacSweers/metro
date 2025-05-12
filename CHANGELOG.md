@@ -15,6 +15,7 @@ Changelog
 - **Fix**: Fix contributed graph extensions not inheriting empty declared multibindings.
 - **Fix**: Ensure we report the `@Multibinds` declaration location in errors if one is available.
 - **Fix**: Dedupe overrides by all parameters not just value parameters.
+- **Fix**: Dedupe overrides by signature rather than name when generating contributed graphs.
 - When debug logging + reports dir is enabled, output a `logTrace.txt` to the reports dir for tracing data.
 
 0.3.0

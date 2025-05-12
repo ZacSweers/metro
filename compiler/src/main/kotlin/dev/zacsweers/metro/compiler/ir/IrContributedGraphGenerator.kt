@@ -220,12 +220,12 @@ internal class IrContributedGraphGenerator(
               functionFilter = { it.modality == Modality.ABSTRACT },
             )
         }
-        .distinctBy { it.ir.name }
-    for (member in abstractMembers) {
-      if (member.ir.isPropertyAccessor) {
+        .map { it.ir }
+        .distinctBy { it.computeJvmDescriptorIsh(metroContext) }
+    for (getter in abstractMembers) {
+      if (getter.isPropertyAccessor) {
         // Stub the property declaration + getter
-        val originalGetter = member.ir
-        val property = member.ir.correspondingPropertySymbol!!.owner
+        val property = getter.correspondingPropertySymbol!!.owner
         addProperty {
             name = property.name
             updateFrom(property)
@@ -235,29 +235,29 @@ internal class IrContributedGraphGenerator(
             overriddenSymbols += property.symbol
             copyAnnotationsFrom(property)
             addGetter {
-                name = originalGetter.name
-                visibility = originalGetter.visibility
+                name = getter.name
+                visibility = getter.visibility
                 origin = Origins.Default
                 isFakeOverride = true
-                returnType = member.ir.returnType
+                returnType = getter.returnType
               }
               .apply {
-                overriddenSymbols += originalGetter.symbol
-                copyAnnotationsFrom(member.ir)
-                extensionReceiverParameter = originalGetter.extensionReceiverParameter
+                overriddenSymbols += getter.symbol
+                copyAnnotationsFrom(getter)
+                extensionReceiverParameter = getter.extensionReceiverParameter
               }
           }
       } else {
         addFunction {
-            name = member.ir.name
-            updateFrom(member.ir)
+            name = getter.name
+            updateFrom(getter)
             isFakeOverride = true
-            returnType = member.ir.returnType
+            returnType = getter.returnType
           }
           .apply {
-            overriddenSymbols += member.ir.symbol
-            copyParametersFrom(member.ir)
-            copyAnnotationsFrom(member.ir)
+            overriddenSymbols += getter.symbol
+            copyParametersFrom(getter)
+            copyAnnotationsFrom(getter)
           }
       }
     }
