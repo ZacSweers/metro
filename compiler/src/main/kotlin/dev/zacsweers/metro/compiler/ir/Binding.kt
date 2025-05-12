@@ -237,6 +237,13 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters<out Parameter>,
     override val annotations: MetroAnnotations<IrAnnotation>,
   ) : Binding, BindingWithAnnotations {
+
+    init {
+      if (ir != null && !annotations.isBinds) {
+        error("Aliases must be binds!")
+      }
+    }
+
     fun aliasedBinding(graph: IrBindingGraph, stack: IrBindingStack): Binding {
       // O(1) lookup at this point
       return graph.requireBinding(contextualTypeKey.withTypeKey(aliasedType), stack)
@@ -294,8 +301,9 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override fun toString() = buildString {
       if (annotations.isBinds) {
         append("@Binds ")
-      } else {
-        append("@Provides ")
+      } else if (ir == null) {
+        // This is a synthetic alias
+        append("@Binds /* synthetic */ ")
       }
       if (annotations.isIntoSet) {
         append("@IntoSet ")
