@@ -208,7 +208,7 @@ internal open class MutableBindingGraph<
                 .reversed()
             reportCycle(entriesInCycle, stack)
           },
-          parentTracer = nestedTracer
+          parentTracer = nestedTracer,
         )
       }
 
