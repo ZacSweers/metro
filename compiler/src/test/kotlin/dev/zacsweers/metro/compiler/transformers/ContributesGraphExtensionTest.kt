@@ -347,6 +347,101 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `contributed graph can inject multibinding from parent`() {
+    compile(
+      source(
+        """
+          abstract class LoggedInScope
+          interface ContributedInterface
+          class Impl1 : ContributedInterface
+          interface ConsumerInterface
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val consumer: ConsumerInterface
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @ContributesBinding(LoggedInScope::class)
+          class MultibindingConsumer @Inject constructor(val contributions: Set<ContributedInterface>) : ConsumerInterface
+
+          @ContributesTo(AppScope::class)
+          interface MultibindingsModule {
+
+            @Provides
+            @ElementsIntoSet
+            fun provideImpl1(): Set<ContributedInterface> = setOf(Impl1())
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            val contributions: Set<ContributedInterface>
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      assertThat(exitCode).isEqualTo(KotlinCompilation.ExitCode.OK)
+      val exampleGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(
+          loggedInGraph.callProperty<Any>("consumer").callProperty<Set<Any>>("contributions").map {
+            it.javaClass.canonicalName
+          }
+        )
+        .isEqualTo(listOf("test.Impl1"))
+      assertThat(
+          exampleGraph.callProperty<Set<Any>>("contributions").map { it.javaClass.canonicalName }
+        )
+        .isEqualTo(listOf("test.Impl1"))
+    }
+  }
+
+  @Test
+  fun `contributed graph can inject an empty declared multibinding from parent`() {
+    compile(
+      source(
+        """
+            interface MultiboundType
+            abstract class LoggedInScope
+
+            @Inject
+            class MultiImpl : MultiboundType
+
+            @ContributesTo(AppScope::class)
+            interface MultibindingsModule2 {
+              // Important for @Multibinding to be used for this test's coverage, as opposed to @ElementsIntoSet
+              @Multibinds(allowEmpty = true)
+              fun provideMulti(): Set<@JvmSuppressWildcards MultiboundType>
+            }
+
+            @ContributesGraphExtension(LoggedInScope::class)
+            interface LoggedInGraph {
+              val multi: Set<MultiboundType>
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                fun createLoggedInGraph(): LoggedInGraph
+              }
+            }
+
+            @DependencyGraph(AppScope::class, isExtendable = true)
+            interface ExampleGraph
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      assertThat(loggedInGraph.callProperty<Any>("multi")).isNotNull()
+    }
+  }
+
+  @Test
   fun `contributed graph copies scope annotations`() {
     compile(
       source(
@@ -727,7 +822,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:9:1 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope') but LoggedInGraph is not extendable.
+          e: LoggedInScope.kt:9:1 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope'), but LoggedInGraph is not extendable.
         """
           .trimIndent()
       )
@@ -762,9 +857,9 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:8:1 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope') but ExampleGraph is not extendable.
+          e: LoggedInScope.kt:8:1 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope'), but ExampleGraph is not extendable.
 
-          Either mark ExampleGraph as extendable (`@DependencyGraph(isExtendable = true)`) or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`)
+          Either mark ExampleGraph as extendable (`@DependencyGraph(isExtendable = true)`), or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`).
         """
           .trimIndent()
       )

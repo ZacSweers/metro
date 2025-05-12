@@ -7,17 +7,15 @@ internal class StringGraph(
   newBindingStack: () -> StringBindingStack,
   newBindingStackEntry:
     StringBindingStack.(
-      contextKey: StringContextualTypeKey, binding: StringBinding,
+      contextKey: StringContextualTypeKey,
+      binding: StringBinding?,
+      roots: Map<StringContextualTypeKey, StringBindingStack.Entry>,
     ) -> StringBindingStack.Entry,
   /**
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types).
    */
-  computeBinding:
-    (contextKey: StringContextualTypeKey, stack: StringBindingStack) -> StringBinding? =
-    { _, _ ->
-      null
-    },
+  computeBinding: (contextKey: StringContextualTypeKey) -> StringBinding? = { _ -> null },
 ) :
   MutableBindingGraph<
     String,
@@ -31,8 +29,11 @@ internal class StringGraph(
     newBindingStackEntry
       as
       StringBindingStack.(
-        StringContextualTypeKey, BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
+        StringContextualTypeKey,
+        BaseBinding<String, StringTypeKey, StringContextualTypeKey>?,
+        Map<StringContextualTypeKey, StringBindingStack.Entry>,
       ) -> StringBindingStack.Entry,
+    absentBinding = { StringBinding(it) },
     computeBinding,
   ) {
   fun tryPut(binding: BaseBinding<String, StringTypeKey, StringContextualTypeKey>) {

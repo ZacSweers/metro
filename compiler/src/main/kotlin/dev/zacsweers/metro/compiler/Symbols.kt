@@ -268,6 +268,15 @@ internal class Symbols(
     instanceFactoryCompanionObject.requireSimpleFunction(StringNames.INVOKE)
   }
 
+  val multibindingElement: IrConstructorSymbol by lazy {
+    pluginContext
+      .referenceClass(
+        ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
+      )!!
+      .constructors
+      .first()
+  }
+
   val metroDependencyGraphAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(classIds.dependencyGraphAnnotation)!!.constructors.first()
   }
