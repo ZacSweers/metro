@@ -36,7 +36,6 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
 
@@ -48,10 +47,10 @@ internal class IrContributedGraphGenerator(
   @OptIn(DelicateIrParameterIndexSetter::class)
   fun generateContributedGraph(
     parentGraph: IrClass,
+    sourceGraph: IrClass,
     sourceFactory: IrClass,
     factoryFunction: IrSimpleFunction,
   ): IrClass {
-    val sourceGraph = sourceFactory.parentAsClass
     val contributesGraphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).firstOrNull()
 

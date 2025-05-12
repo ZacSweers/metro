@@ -7,13 +7,14 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.compiler.tracing.Tracer
+import dev.zacsweers.metro.compiler.tracing.tracer
 import java.nio.file.Path
 import kotlin.io.path.appendText
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
-import kotlin.system.measureTimeMillis
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
@@ -62,19 +63,25 @@ internal interface IrMetroContext {
   fun loggerFor(type: MetroLogger.Type): MetroLogger
 
   val logFile: Path?
+  val traceLogFile: Path?
+  val timingsFile: Path?
 
-  fun IrMetroContext.log(message: String) {
-    if (debug) {
-      // Print directly because STRONG_WARNING may fail the build instead since it's a warning
-      println(message)
-    } else {
-      messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
-    }
-    logFile?.appendText("\n$LOG_PREFIX $message")
+  fun log(message: String) {
+    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    logFile?.appendText("\n$message")
   }
 
-  fun IrMetroContext.logVerbose(message: String) {
+  fun logTrace(message: String) {
+    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    traceLogFile?.appendText("$message\n")
+  }
+
+  fun logVerbose(message: String) {
     messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
+  }
+
+  fun logTiming(tag: String, description: String, durationMs: Long) {
+    timingsFile?.appendText("\n$tag,$description,${durationMs}")
   }
 
   fun IrDeclaration.reportError(message: String) {
@@ -193,6 +200,24 @@ internal interface IrMetroContext {
           }
         }
       }
+      override val traceLogFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("traceLog.txt").apply {
+            deleteIfExists()
+            createFile()
+          }
+        }
+      }
+
+      override val timingsFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("timings.csv").apply {
+            deleteIfExists()
+            createFile()
+            appendText("tag,description,durationMs")
+          }
+        }
+      }
 
       override fun loggerFor(type: MetroLogger.Type): MetroLogger {
         return loggerCache.getOrPut(type) {
@@ -215,7 +240,11 @@ internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> 
   reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
 }
 
-internal inline fun IrMetroContext.timedComputation(name: String, block: () -> Unit) {
-  val result = measureTimeMillis(block)
-  log("$name took ${result}ms")
-}
+internal fun IrMetroContext.tracer(tag: String, description: String): Tracer =
+  if (traceLogFile != null || timingsFile != null || debug) {
+    check(tag.isNotBlank()) { "Tag must not be blank" }
+    check(description.isNotBlank()) { "description must not be blank" }
+    tracer(tag, description, ::logTrace, ::logTiming)
+  } else {
+    Tracer.NONE
+  }

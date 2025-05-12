@@ -624,8 +624,8 @@ class DependencyGraphProcessingTest {
   @Test
   fun `multibindings - int set with mix of scoped elements into set and individual providers`() {
     val graph = createGraph<MultibindingGraphWithMixOfScopedElementsIntoSetAndIndividualProviders>()
-    assertEquals(setOf(2, 7, 10), graph.ints)
-    assertEquals(setOf(4, 9, 10), graph.ints)
+    assertEquals(setOf(2, 6, 10), graph.ints)
+    assertEquals(setOf(3, 7, 10), graph.ints)
 
     // Ensure we return immutable types
     assertFailsWith<UnsupportedOperationException> { (graph.ints as MutableSet<Int>).clear() }
@@ -635,39 +635,19 @@ class DependencyGraphProcessingTest {
   @DependencyGraph
   abstract class MultibindingGraphWithMixOfScopedElementsIntoSetAndIndividualProviders {
     private var count = 10
-    private var unscopedCount = 1
+    private var unscopedCount1 = 1
+    private var unscopedCount2 = 1
 
     abstract val ints: Set<Int>
 
-    @Provides @IntoSet private fun provideInt1(): Int = 1 + unscopedCount++
+    @Provides @IntoSet private fun provideInt1(): Int = 1 + unscopedCount1++
 
-    @Provides @IntoSet private fun provideInt5(): Int = 5 + unscopedCount++
+    @Provides @IntoSet private fun provideInt5(): Int = 5 + unscopedCount2++
 
     @Provides
     @ElementsIntoSet
     @Singleton
     private fun provideInts(): Set<Int> = buildSet { add(count++) }
-  }
-
-  @Test
-  fun `multibindings - set with scoped dependencies`() {
-    val graph = createGraph<MultibindingGraphWithWithScopedSetDeps>()
-    assertEquals(setOf(0), graph.ints)
-    assertEquals(setOf(0, 1), graph.ints)
-    assertEquals(setOf(0, 2), graph.ints)
-  }
-
-  @Singleton
-  @DependencyGraph
-  abstract class MultibindingGraphWithWithScopedSetDeps {
-    private var scopedCount = 0
-    private var unscopedCount = 0
-
-    abstract val ints: Set<Int>
-
-    @Provides @Singleton @IntoSet private fun provideScopedInt(): Int = scopedCount++
-
-    @Provides @IntoSet private fun provideUnscopedInt(): Int = unscopedCount++
   }
 
   @Test

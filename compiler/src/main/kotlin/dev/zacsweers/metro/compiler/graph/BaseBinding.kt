@@ -14,13 +14,6 @@ internal interface BaseBinding<
   val dependencies: List<ContextualTypeKey>
 
   /**
-   * If this binding is a multibinding, this will be a list of bindings that are aggregated into
-   * this one. These aggregated bindings will _not_ be separately available on the graph.
-   */
-  val aggregatedBindings: Set<BaseBinding<Type, TypeKey, ContextualTypeKey>>
-    get() = emptySet()
-
-  /**
    * If true, indicates this binding is purely informational and should not be stored in the graph
    * itself.
    */

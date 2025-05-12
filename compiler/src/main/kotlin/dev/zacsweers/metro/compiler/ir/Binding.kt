@@ -6,6 +6,7 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.ir.Binding.Absent
 import dev.zacsweers.metro.compiler.ir.Binding.Assisted
@@ -20,7 +21,9 @@ import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.render
+import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
+import kotlin.collections.firstOrNull
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -28,7 +31,9 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -310,14 +315,14 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   @Poko
   class Assisted(
     @Poko.Skip override val type: IrClass,
-    val target: ConstructorInjected,
+    val target: IrContextualTypeKey,
     @Poko.Skip val function: IrSimpleFunction,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val parameters: Parameters<out Parameter>,
     override val typeKey: IrTypeKey,
   ) : Binding, BindingWithAnnotations, InjectedClassBinding<Assisted> {
     // Dependencies are handled by the target class
-    override val dependencies: List<IrContextualTypeKey> = listOf(target.contextualTypeKey)
+    override val dependencies: List<IrContextualTypeKey> = listOf(target)
     override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
@@ -406,54 +411,68 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   // TODO sets
   //  unscoped always initializes inline? Dagger sometimes generates private getters
   //  - @multibinds methods can never be scoped
-  //  - their providers can't go into providerFields - would cause duplicates. Need to look up by
-  //   nameHint
   @Poko
   class Multibinding(
     override val typeKey: IrTypeKey,
-    @Poko.Skip val declaration: IrSimpleFunction?,
+    /** The original `@Multibinds` declaration, if any. Note this may point at a fake override. */
+    @Poko.Skip var declaration: IrSimpleFunction?,
     val isSet: Boolean,
     val isMap: Boolean,
+    /** Corresponds to @MultibindsElement.bindingId */
+    val bindingId: String,
     var allowEmpty: Boolean,
     // Reconcile this with parametersByKey?
-    // Sorted for consistency
-    val sourceBindings: MutableSet<BindingWithAnnotations> =
-      TreeSet(
-        compareBy<Binding> { it.typeKey }
-          .thenBy { it.nameHint }
-          .thenBy { it.scope }
-          .thenBy { it.parameters }
-      ),
+    // TreeSet sorting for consistency
+    val sourceBindings: MutableSet<IrTypeKey> = TreeSet(),
   ) : Binding {
     override val scope: IrAnnotation? = null
-    override val dependencies: List<IrContextualTypeKey> = emptyList()
-    override val aggregatedBindings: Set<Binding>
-      get() = sourceBindings
-
-    override val parametersByKey: Map<IrTypeKey, Parameter> = buildMap {
-      for (binding in sourceBindings) {
-        putAll(binding.parametersByKey)
-      }
-    }
-
-    override val parameters: Parameters<out Parameter> =
-      if (sourceBindings.isEmpty()) {
-        Parameters.empty()
-      } else {
-        sourceBindings
-          .map { it.parameters }
-          .reduce { current, next -> current.mergeValueParametersWith(next) }
-      }
+    override val dependencies by unsafeLazy { sourceBindings.map { IrContextualTypeKey(it) } }
+    override val parametersByKey: Map<IrTypeKey, Parameter> = emptyMap()
+    override val parameters: Parameters<out Parameter> = Parameters.empty()
 
     override val nameHint: String
-      get() = error("Should never be called")
+      get() = "${typeKey.type.rawType().name}Multibinding"
 
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
     override val reportableLocation: CompilerMessageSourceLocation? = null
 
     companion object {
-      fun create(
+      /**
+       * Special case! Multibindings may be created under two conditions:
+       * 1. Explicitly via `@Multibinds`
+       * 2. Implicitly via a `@Provides` callable that contributes into a multibinding
+       *
+       * Because these may both happen, if the key already exists in the graph we won't try to add
+       * it again
+       */
+      fun fromMultibindsDeclaration(
+        metroContext: IrMetroContext,
+        getter: MetroSimpleFunction,
+        multibinds: IrAnnotation,
+        contextualTypeKey: IrContextualTypeKey,
+      ): Multibinding {
+        return create(
+          metroContext = metroContext,
+          typeKey = contextualTypeKey.typeKey,
+          declaration = getter.ir,
+          allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false,
+        )
+      }
+
+      fun fromContributor(
+        metroContext: IrMetroContext,
+        multibindingTypeKey: IrTypeKey,
+      ): Multibinding {
+        return create(
+          metroContext = metroContext,
+          typeKey = multibindingTypeKey,
+          declaration = null,
+          allowEmpty = false,
+        )
+      }
+
+      private fun create(
         metroContext: IrMetroContext,
         typeKey: IrTypeKey,
         declaration: IrSimpleFunction?,
@@ -468,10 +487,19 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
           )
         val isMap = !isSet
 
+        val bindingId: String =
+          if (isMap) {
+            val keyType = typeKey.type.expectAs<IrSimpleType>().arguments[0].typeOrFail
+            createMapBindingId(keyType, typeKey)
+          } else {
+            typeKey.multibindingId
+          }
+
         return Multibinding(
           typeKey,
           isSet = isSet,
           isMap = isMap,
+          bindingId = bindingId,
           allowEmpty = allowEmpty,
           declaration = declaration,
         )
@@ -500,11 +528,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 }
 
 /** Creates an expected class binding for the given [contextKey] or returns null. */
-internal fun IrMetroContext.injectedClassBindingOrNull(
-  contextKey: IrContextualTypeKey,
-  bindingStack: IrBindingStack,
-  bindingGraph: IrBindingGraph,
-): Binding? {
+internal fun IrMetroContext.injectedClassBindingOrNull(contextKey: IrContextualTypeKey): Binding? {
   val key = contextKey.typeKey
   val irClass = key.type.rawType()
   val classAnnotations = irClass.metroAnnotations(symbols.classIds)
@@ -528,19 +552,14 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
     )
   } else if (classAnnotations.isAssistedFactory) {
     val function = irClass.singleAbstractFunction(metroContext)
-    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function, classAnnotations)
-    val bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, function)
-    val targetBinding =
-      bindingStack.withEntry(bindingStackEntry) {
-        bindingGraph.getOrCreateBinding(targetContextualTypeKey, bindingStack)
-      } as ConstructorInjected
+    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
     Assisted(
       type = irClass,
       function = function,
       annotations = classAnnotations,
       typeKey = key,
       parameters = function.parameters(metroContext),
-      target = targetBinding,
+      target = targetContextualTypeKey,
     )
   } else if (contextKey.hasDefault) {
     Absent(key)
