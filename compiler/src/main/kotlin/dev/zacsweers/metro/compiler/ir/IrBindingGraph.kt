@@ -171,6 +171,16 @@ internal class IrBindingGraph(
   fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
     val sortedKeys =
       parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
+
+    metroContext.writeDiagnostic("validatedKeys-${parentTracer.tag}.txt") {
+      buildString { sortedKeys.joinTo(this, separator = "\n") { it.render(short = false) } }
+    }
+    metroContext.writeDiagnostic("deferredTypes-${parentTracer.tag}.txt") {
+      buildString {
+        realGraph.deferredTypes.joinTo(this, separator = "\n") { it.render(short = false) }
+      }
+    }
+
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
     parentTracer.traceNested("check for absent bindings") {
       check(realGraph.snapshot.values.none { it is Binding.Absent }) {
