@@ -47,6 +47,11 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
+          ExampleGraph,Compute SSCs
+          ExampleGraph,Check for cycles
+          ExampleGraph,Build component DAG
+          ExampleGraph,Topo sort component DAG
+          ExampleGraph,Expand components
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
@@ -86,6 +91,16 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
+                        ▶ Compute SSCs
+                        ◀ Compute SSCs (xx ms)
+                        ▶ Check for cycles
+                        ◀ Check for cycles (xx ms)
+                        ▶ Build component DAG
+                        ◀ Build component DAG (xx ms)
+                        ▶ Topo sort component DAG
+                        ◀ Topo sort component DAG (xx ms)
+                        ▶ Expand components
+                        ◀ Expand components (xx ms)
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
                     ▶ Compute binding indices
@@ -155,6 +170,11 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
+          ExampleGraph,Compute SSCs
+          ExampleGraph,Check for cycles
+          ExampleGraph,Build component DAG
+          ExampleGraph,Topo sort component DAG
+          ExampleGraph,Expand components
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
@@ -174,6 +194,11 @@ class TracingTest : MetroCompilerTest() {
           ChildGraph,Check self-cycles
           ChildGraph,Populate bindings
           ChildGraph,Build adjacency list
+          ChildGraph,Compute SSCs
+          ChildGraph,Check for cycles
+          ChildGraph,Build component DAG
+          ChildGraph,Topo sort component DAG
+          ChildGraph,Expand components
           ChildGraph,Topo sort
           ChildGraph,Sort and validate
           ChildGraph,Compute binding indices
@@ -213,6 +238,16 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
+                        ▶ Compute SSCs
+                        ◀ Compute SSCs (xx ms)
+                        ▶ Check for cycles
+                        ◀ Check for cycles (xx ms)
+                        ▶ Build component DAG
+                        ◀ Build component DAG (xx ms)
+                        ▶ Topo sort component DAG
+                        ◀ Topo sort component DAG (xx ms)
+                        ▶ Expand components
+                        ◀ Expand components (xx ms)
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
                     ▶ Compute binding indices
@@ -251,6 +286,16 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
+                        ▶ Compute SSCs
+                        ◀ Compute SSCs (xx ms)
+                        ▶ Check for cycles
+                        ◀ Check for cycles (xx ms)
+                        ▶ Build component DAG
+                        ◀ Build component DAG (xx ms)
+                        ▶ Topo sort component DAG
+                        ◀ Topo sort component DAG (xx ms)
+                        ▶ Expand components
+                        ◀ Expand components (xx ms)
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
                     ▶ Compute binding indices
@@ -320,6 +365,11 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
+          ExampleGraph,Compute SSCs
+          ExampleGraph,Check for cycles
+          ExampleGraph,Build component DAG
+          ExampleGraph,Topo sort component DAG
+          ExampleGraph,Expand components
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
           ExampleGraph,Compute binding indices
@@ -340,6 +390,11 @@ class TracingTest : MetroCompilerTest() {
           $${'$'}ContributedChildGraph,Check self-cycles
           $${'$'}ContributedChildGraph,Populate bindings
           $${'$'}ContributedChildGraph,Build adjacency list
+          $${'$'}ContributedChildGraph,Compute SSCs
+          $${'$'}ContributedChildGraph,Check for cycles
+          $${'$'}ContributedChildGraph,Build component DAG
+          $${'$'}ContributedChildGraph,Topo sort component DAG
+          $${'$'}ContributedChildGraph,Expand components
           $${'$'}ContributedChildGraph,Topo sort
           $${'$'}ContributedChildGraph,Sort and validate
           $${'$'}ContributedChildGraph,Compute binding indices
@@ -379,6 +434,16 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
+                        ▶ Compute SSCs
+                        ◀ Compute SSCs (xx ms)
+                        ▶ Check for cycles
+                        ◀ Check for cycles (xx ms)
+                        ▶ Build component DAG
+                        ◀ Build component DAG (xx ms)
+                        ▶ Topo sort component DAG
+                        ◀ Topo sort component DAG (xx ms)
+                        ▶ Expand components
+                        ◀ Expand components (xx ms)
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
                     ▶ Compute binding indices
@@ -419,6 +484,16 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
+                        ▶ Compute SSCs
+                        ◀ Compute SSCs (xx ms)
+                        ▶ Check for cycles
+                        ◀ Check for cycles (xx ms)
+                        ▶ Build component DAG
+                        ◀ Build component DAG (xx ms)
+                        ▶ Topo sort component DAG
+                        ◀ Topo sort component DAG (xx ms)
+                        ▶ Expand components
+                        ◀ Expand components (xx ms)
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
                     ▶ Compute binding indices

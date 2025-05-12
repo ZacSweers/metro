@@ -171,7 +171,7 @@ internal open class MutableBindingGraph<
 
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
-      parentTracer.traceNested("Topo sort") {
+      parentTracer.traceNested("Topo sort") { nestedTracer ->
         topologicalSort(
           fullAdjacency = fullAdjacency,
           isDeferrable = { from, to ->
@@ -208,6 +208,7 @@ internal open class MutableBindingGraph<
                 .reversed()
             reportCycle(entriesInCycle, stack)
           },
+          parentTracer = nestedTracer
         )
       }
 
