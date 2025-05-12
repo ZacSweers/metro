@@ -27,7 +27,7 @@ internal fun IrFunction.computeJvmDescriptorIsh(
   }
 
   append("(")
-  for (parameter in parameters(context).valueParameters) {
+  for (parameter in parameters(context).allParameters) {
     append(parameter.typeKey.type.rawTypeOrNull()?.kotlinFqName?.asString() ?: "kotlin.Any")
   }
   append(")")
