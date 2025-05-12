@@ -49,7 +49,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build adjacency list
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
-          ExampleGraph,Compute deferred types
+          ExampleGraph,Compute binding indices
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
@@ -88,8 +88,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Topo sort
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
-                    ▶ Compute deferred types
-                    ◀ Compute deferred types (xx ms)
+                    ▶ Compute binding indices
+                    ◀ Compute binding indices (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -157,7 +157,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build adjacency list
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
-          ExampleGraph,Compute deferred types
+          ExampleGraph,Compute binding indices
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
@@ -176,7 +176,7 @@ class TracingTest : MetroCompilerTest() {
           ChildGraph,Build adjacency list
           ChildGraph,Topo sort
           ChildGraph,Sort and validate
-          ChildGraph,Compute deferred types
+          ChildGraph,Compute binding indices
           ChildGraph,seal graph
           ChildGraph,check empty multibindings
           ChildGraph,check for absent bindings
@@ -215,8 +215,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Topo sort
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
-                    ▶ Compute deferred types
-                    ◀ Compute deferred types (xx ms)
+                    ▶ Compute binding indices
+                    ◀ Compute binding indices (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -253,8 +253,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Topo sort
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
-                    ▶ Compute deferred types
-                    ◀ Compute deferred types (xx ms)
+                    ▶ Compute binding indices
+                    ◀ Compute binding indices (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -322,7 +322,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build adjacency list
           ExampleGraph,Topo sort
           ExampleGraph,Sort and validate
-          ExampleGraph,Compute deferred types
+          ExampleGraph,Compute binding indices
           ExampleGraph,seal graph
           ExampleGraph,check empty multibindings
           ExampleGraph,check for absent bindings
@@ -342,7 +342,7 @@ class TracingTest : MetroCompilerTest() {
           $${'$'}ContributedChildGraph,Build adjacency list
           $${'$'}ContributedChildGraph,Topo sort
           $${'$'}ContributedChildGraph,Sort and validate
-          $${'$'}ContributedChildGraph,Compute deferred types
+          $${'$'}ContributedChildGraph,Compute binding indices
           $${'$'}ContributedChildGraph,seal graph
           $${'$'}ContributedChildGraph,check empty multibindings
           $${'$'}ContributedChildGraph,check for absent bindings
@@ -381,8 +381,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Topo sort
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
-                    ▶ Compute deferred types
-                    ◀ Compute deferred types (xx ms)
+                    ▶ Compute binding indices
+                    ◀ Compute binding indices (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)
@@ -421,8 +421,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Topo sort
                       ◀ Topo sort (xx ms)
                     ◀ Sort and validate (xx ms)
-                    ▶ Compute deferred types
-                    ◀ Compute deferred types (xx ms)
+                    ▶ Compute binding indices
+                    ◀ Compute binding indices (xx ms)
                   ◀ seal graph (xx ms)
                   ▶ check empty multibindings
                   ◀ check empty multibindings (xx ms)

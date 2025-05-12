@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 
@@ -19,7 +17,6 @@ internal interface BindingGraph<
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry>,
 > {
   val snapshot: Map<TypeKey, Binding>
-  val deferredTypes: Set<TypeKey>
 
   operator fun get(key: TypeKey): Binding?
 
@@ -51,13 +48,10 @@ internal open class MutableBindingGraph<
   private val computeBinding: (contextKey: ContextualTypeKey) -> Binding? = { _ -> null },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
-  private val stackLogger: MetroLogger = MetroLogger.NONE,
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   private val bindings = mutableMapOf<TypeKey, Binding>()
   private val bindingIndices = mutableMapOf<TypeKey, Int>()
-
-  override val deferredTypes: MutableSet<TypeKey> = mutableSetOf()
 
   var sealed = false
     private set
@@ -83,29 +77,19 @@ internal open class MutableBindingGraph<
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     tracer: Tracer = Tracer.NONE,
-  ): List<TypeKey> {
+  ): TopoSortResult<TypeKey> {
     val stack = newBindingStack()
 
     populateGraph(roots, stack, tracer)
 
     val topo = tracer.traceNested("Sort and validate") { sortAndValidate(roots, stack, it) }
 
-    tracer.traceNested("Compute deferred types") {
+    tracer.traceNested("Compute binding indices") {
       // If it depends itself or something that comes later in the topo sort, it
       // must be deferred. This is how we handle cycles that are broken by deferrable
       // types like Provider/Lazy/...
       // O(1) “does A depend on B?”
-      bindingIndices.putAll(topo.withIndex().associate { it.value to it.index })
-      topo.forEachIndexed { currentIndex, key ->
-        bindings.getValue(key).dependencies.forEach { dep ->
-          // May be null if dep has a default value
-          bindingIndices[dep.typeKey]?.let { depIndex ->
-            if (depIndex >= currentIndex) {
-              deferredTypes += key
-            }
-          }
-        }
-      }
+      bindingIndices.putAll(topo.sortedKeys.withIndex().associate { it.value to it.index })
     }
 
     sealed = true
@@ -157,55 +141,18 @@ internal open class MutableBindingGraph<
     roots: Map<ContextualTypeKey, BindingStackEntry>,
     stack: BindingStack,
     parentTracer: Tracer,
-  ): List<TypeKey> {
-
+  ): TopoSortResult<TypeKey> {
     /**
-     * Build the adjacency list we’ll feed to [topologicalSort].
-     * * Edges that pass through a deferrable wrapper (Lazy/Provider/…) are **omitted** so the
-     *   remaining graph is a DAG.
-     * * Aggregated‑binding edges are flattened the same way the old cacheEdges() did.
-     */
-    val sourceToTarget: Map<TypeKey, Set<TypeKey>> =
-      parentTracer.traceNested("Build adjacency list") {
-        bindings.mapValues { (_, binding) ->
-          binding.dependencies.asSequence().filterNot { it.isDeferrable }.mapToSet { it.typeKey }
-        }
-      }
-
-    /**
-     * Run topo sort. It gives back either a valid order or calls errorHandler for errors
+     * Build the full adjacency mapping of keys to all their dependencies.
      *
      * Note that `onMissing` will gracefully allow missing targets that have default values (i.e.
      * optional bindings).
      */
-    val result =
-      parentTracer.traceNested("Topo sort") {
-        bindings.keys.topologicalSort(
-          sourceToTarget = { k -> sourceToTarget[k].orEmpty() },
-          errorHandler =
-            CycleReconstructingErrorHandler { cycle ->
-              // Populate the BindingStack for a readable cycle trace
-              val entriesInCycle =
-                cycle
-                  .mapIndexed { i, key ->
-                    val callingBinding =
-                      if (i == 0) {
-                        // This is the first index, must be an entry-point instead (i.e. "requested
-                        // by")
-                        null
-                      } else {
-                        bindings.getValue(cycle[i - 1])
-                      }
-                    stack.newBindingStackEntry(
-                      callingBinding?.dependencies?.firstOrNull { it.typeKey == key }
-                        ?: bindings.getValue(key).contextualTypeKey,
-                      callingBinding,
-                      roots,
-                    )
-                  }
-                  .reversed()
-              reportCycle(entriesInCycle, stack)
-            },
+    val fullAdjacency =
+      parentTracer.traceNested("Build adjacency list") {
+        buildFullAdjacency(
+          bindings = bindings,
+          dependenciesOf = { binding -> binding.dependencies.map { it.typeKey } },
           onMissing = { source, missing ->
             val binding = bindings.getValue(source)
             val contextKey = binding.dependencies.first { it.typeKey == missing }
@@ -222,7 +169,49 @@ internal open class MutableBindingGraph<
         )
       }
 
-    return result // guaranteed size == V, no cycles
+    // Run topo sort. It gives back either a valid order or calls onCycle for errors
+    val result =
+      parentTracer.traceNested("Topo sort") {
+        topologicalSort(
+          fullAdjacency = fullAdjacency,
+          isDeferrable = { from, to ->
+            bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
+          },
+          onCycle = { cycle ->
+            val fullCycle =
+              buildList {
+                  add(cycle.last())
+                  addAll(cycle)
+                }
+                // Reverse upfront so we can backward look at dependency requests
+                .reversed()
+            // Populate the BindingStack for a readable cycle trace
+            val entriesInCycle =
+              fullCycle
+                .mapIndexed { i, key ->
+                  val callingBinding =
+                    if (i == 0) {
+                      // This is the first index, must be an entry-point instead (i.e. "requested
+                      // by")
+                      null
+                    } else {
+                      bindings.getValue(fullCycle[i - 1])
+                    }
+                  stack.newBindingStackEntry(
+                    callingBinding?.dependencies?.firstOrNull { it.typeKey == key }
+                      ?: bindings.getValue(key).contextualTypeKey,
+                    callingBinding,
+                    roots,
+                  )
+                }
+                // Reverse one more time to correct the order
+                .reversed()
+            reportCycle(entriesInCycle, stack)
+          },
+        )
+      }
+
+    return result
   }
 
   private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {

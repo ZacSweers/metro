@@ -276,7 +276,7 @@ Contributed graphs may also be chained, but note that `@ContributesGraphExtensio
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
 
-* Internal graph validation uses a [topological sort](https://en.wikipedia.org/wiki/Topological_sorting) implementation [adapted from Zipline](https://github.com/cashapp/zipline/blob/30ca7c9d782758737e9d20e8d9505930178d1992/zipline/src/hostMain/kotlin/app/cash/zipline/internal/topologicalSort.kt).
+* Internal graph validation uses [Tarjan's algorithm](https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm) + [topological sort](https://en.wikipedia.org/wiki/Topological_sorting) implementation.
   * This runs in O(V+E) time
   * The returned ordered list of bindings can be used to determine provider field generation order.
   * Any binding whose order depends on one later in the returned order implicitly requires use of `DelegateFactory`.

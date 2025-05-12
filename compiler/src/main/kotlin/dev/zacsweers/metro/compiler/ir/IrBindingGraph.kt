@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -46,7 +45,6 @@ internal class IrBindingGraph(
         exitProcessing()
       },
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
-      stackLogger = metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
     )
 
   // TODO hoist accessors up and visit in seal?
@@ -164,21 +162,22 @@ internal class IrBindingGraph(
 
   fun IrTypeKey.dependsOn(key: IrTypeKey) = with(realGraph) { this@dependsOn.dependsOn(key) }
 
-  data class BindingGraphResult(val sortedKeys: List<IrTypeKey>, val deferredTypes: Set<IrTypeKey>)
+  data class BindingGraphResult(
+    val sortedKeys: List<IrTypeKey>,
+    val deferredTypes: List<IrTypeKey>,
+  )
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
   fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
-    val sortedKeys =
+    val (sortedKeys, deferredTypes) =
       parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
 
     metroContext.writeDiagnostic("validatedKeys-${parentTracer.tag}.txt") {
       buildString { sortedKeys.joinTo(this, separator = "\n") { it.render(short = false) } }
     }
     metroContext.writeDiagnostic("deferredTypes-${parentTracer.tag}.txt") {
-      buildString {
-        realGraph.deferredTypes.joinTo(this, separator = "\n") { it.render(short = false) }
-      }
+      buildString { deferredTypes.joinTo(this, separator = "\n") { it.render(short = false) } }
     }
 
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
@@ -187,7 +186,7 @@ internal class IrBindingGraph(
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
-    return BindingGraphResult(sortedKeys, realGraph.deferredTypes)
+    return BindingGraphResult(sortedKeys, deferredTypes)
   }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
