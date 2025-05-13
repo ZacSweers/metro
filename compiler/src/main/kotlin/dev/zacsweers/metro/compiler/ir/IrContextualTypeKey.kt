@@ -35,7 +35,7 @@ internal class IrContextualTypeKey(
   override val hasDefault: Boolean = false,
   @Poko.Skip override val rawType: IrType? = null,
 ) : BaseContextualTypeKey<IrType, IrTypeKey, IrContextualTypeKey> {
-  override fun toString(): String = render(short = true)
+  override fun toString(): String = render(short = false)
 
   override fun withTypeKey(typeKey: IrTypeKey, rawType: IrType?): IrContextualTypeKey {
     return IrContextualTypeKey(typeKey, wrappedType, hasDefault, rawType)
