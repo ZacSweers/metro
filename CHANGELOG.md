@@ -14,6 +14,11 @@ Changelog
 - **Fix**: Fix assertion error for generated multibinding name hint when using both @Multibinds and @ElementsIntoSet for the same multibinding.
 - **Fix**: Fix contributed graph extensions not inheriting empty declared multibindings.
 - **Fix**: Ensure we report the `@Multibinds` declaration location in errors if one is available.
+- **Fix**: Dedupe overrides by all parameters not just value parameters.
+- **Fix**: Dedupe overrides by signature rather than name when generating contributed graphs.
+- **Fix**: Fix accidentally adding contributed graphs as child elements of parent graphs twice.
+- **Fix**: Fix not deep copying `extensionReceiverParameter` when implementing fake overrides in contributed graphs.
+- **Fix**: Report fully qualified qualifier renderings in diagnostics.
 - When debug logging + reports dir is enabled, output a `logTrace.txt` to the reports dir for tracing data.
 
 0.3.0

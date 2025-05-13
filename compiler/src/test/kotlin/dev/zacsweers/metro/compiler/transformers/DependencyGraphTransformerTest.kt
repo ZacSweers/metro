@@ -121,9 +121,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is requested at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text
           """
           .trimIndent()
@@ -150,9 +150,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is requested at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text
           """
           .trimIndent()
@@ -207,9 +207,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is requested at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text()
           """
           .trimIndent()
@@ -271,9 +271,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is injected at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
                 test.ExampleClass is requested at
                     [test.ExampleGraph] test.ExampleGraph#exampleClass()
@@ -2267,9 +2267,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("qualified") kotlin.Int
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("qualified") kotlin.Int
 
-              @Named("qualified") kotlin.Int is requested at
+              @dev.zacsweers.metro.Named("qualified") kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
 
           Similar bindings:
