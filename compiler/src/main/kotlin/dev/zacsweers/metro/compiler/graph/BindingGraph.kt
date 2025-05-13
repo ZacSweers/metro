@@ -10,8 +10,8 @@ import dev.zacsweers.metro.compiler.tracing.traceNested
 
 internal interface BindingGraph<
   Type : Any,
-  TypeKey : BaseTypeKey<Type, *, *>,
-  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, *>,
+  TypeKey : BaseTypeKey<Type, *, TypeKey>,
+  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
   Binding : BaseBinding<Type, TypeKey, ContextualTypeKey>,
   BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry>,
@@ -27,8 +27,8 @@ internal interface BindingGraph<
 
 internal open class MutableBindingGraph<
   Type : Any,
-  TypeKey : BaseTypeKey<Type, *, *>,
-  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, *>,
+  TypeKey : BaseTypeKey<Type, *, TypeKey>,
+  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
   Binding : BaseBinding<Type, TypeKey, ContextualTypeKey>,
   BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry>,
