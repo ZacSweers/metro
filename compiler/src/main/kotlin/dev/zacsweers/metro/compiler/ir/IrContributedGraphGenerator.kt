@@ -244,7 +244,8 @@ internal class IrContributedGraphGenerator(
               .apply {
                 overriddenSymbols += getter.symbol
                 copyAnnotationsFrom(getter)
-                extensionReceiverParameter = getter.extensionReceiverParameter?.deepCopyWithSymbols(this)
+                extensionReceiverParameter =
+                  getter.extensionReceiverParameter?.deepCopyWithSymbols(this)
               }
           }
       } else {
