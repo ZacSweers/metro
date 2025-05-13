@@ -233,11 +233,12 @@ internal open class MutableBindingGraph<
         }
       }
 
-      val entriesToReport = if (fullCycle.size == 2) {
-        fullCycle.take(1)
-      } else {
-        fullCycle
-      }
+      val entriesToReport =
+        if (fullCycle.size == 2) {
+          fullCycle.take(1)
+        } else {
+          fullCycle
+        }
 
       appendLine()
       appendLine()
