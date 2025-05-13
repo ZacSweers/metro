@@ -2343,13 +2343,6 @@ internal class DependencyGraphTransformer(
         visitedBindings = visitedBindings,
       )
     }
-
-    if (binding is Binding.Alias) {
-      // Track this even though we won't generate a field so that we can reference it when sorting
-      // Annoyingly, I was never able to create a test that actually failed without this, but did
-      // need this fix to fix a real world example in github.com/zacsweers/catchup
-      bindingDependencies[key] = graph.requireBinding(binding.aliasedType, bindingStack)
-    }
   }
 
   private fun IrBuilderWithScope.generateBindingArguments(
