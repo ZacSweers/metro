@@ -2200,56 +2200,8 @@ internal class DependencyGraphTransformer(
 
     val bindingScope = binding.scope
 
-    // Check scoping compatibility
     // TODO FIR error?
-    if (bindingScope != null) {
-      if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
-        val isUnscoped = node.scopes.isEmpty()
-        // Error if there are mismatched scopes
-        val declarationToReport = node.sourceGraph
-        bindingStack.push(
-          IrBindingStack.Entry.simpleTypeRef(
-            binding.contextualTypeKey,
-            usage = "(scoped to '$bindingScope')",
-          )
-        )
-        val message = buildString {
-          append("[Metro/IncompatiblyScopedBindings] ")
-          append(declarationToReport.kotlinFqName)
-          if (isUnscoped) {
-            // Unscoped graph but scoped binding
-            append(" (unscoped) may not reference scoped bindings:")
-          } else {
-            // Scope mismatch
-            append(
-              " (scopes ${node.scopes.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
-            )
-          }
-          appendLine()
-          appendBindingStack(bindingStack, short = false)
-          if (!isUnscoped && binding is Binding.ConstructorInjected) {
-            val matchingParent =
-              node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
-            if (matchingParent != null) {
-              appendLine()
-              appendLine()
-              val shortTypeKey = binding.typeKey.render(short = true)
-              appendLine(
-                """
-                  (Hint)
-                  It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
-                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`).
-                  See https://github.com/ZacSweers/metro/issues/377 for more details.
-                """
-                  .trimIndent()
-              )
-            }
-          }
-        }
-        declarationToReport.reportError(message)
-        exitProcessing()
-      }
-    }
+    checkScopingCompatibility(node, binding, bindingStack)
 
     visitedBindings += key
 
@@ -2349,6 +2301,61 @@ internal class DependencyGraphTransformer(
       // Annoyingly, I was never able to create a test that actually failed without this, but did
       // need this fix to fix a real world example in github.com/zacsweers/catchup
       bindingDependencies[key] = graph.requireBinding(binding.aliasedType, bindingStack)
+    }
+  }
+
+  private fun checkScopingCompatibility(
+    node: DependencyGraphNode,
+    binding: Binding,
+    bindingStack: IrBindingStack,
+  ) {
+    val bindingScope = binding.scope ?: return
+
+    if (node.scopes.isEmpty() || !node.hasAccessToScope(bindingScope)) {
+      val isUnscoped = node.scopes.isEmpty()
+      // Error if there are mismatched scopes
+      val declarationToReport = node.sourceGraph
+      bindingStack.push(
+        IrBindingStack.Entry.simpleTypeRef(
+          binding.contextualTypeKey,
+          usage = "(scoped to '$bindingScope')",
+        )
+      )
+      val message = buildString {
+        append("[Metro/IncompatiblyScopedBindings] ")
+        append(declarationToReport.kotlinFqName)
+        if (isUnscoped) {
+          // Unscoped graph but scoped binding
+          append(" (unscoped) may not reference scoped bindings:")
+        } else {
+          // Scope mismatch
+          append(
+            " (scopes ${node.scopes.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
+          )
+        }
+        appendLine()
+        appendBindingStack(bindingStack, short = false)
+        if (!isUnscoped && binding is Binding.ConstructorInjected) {
+          val matchingParent =
+            node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
+          if (matchingParent != null) {
+            appendLine()
+            appendLine()
+            val shortTypeKey = binding.typeKey.render(short = true)
+            appendLine(
+              """
+                  (Hint)
+                  It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
+                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`).
+                  See https://github.com/ZacSweers/metro/issues/377 for more details.
+                """
+                .trimIndent()
+            )
+          }
+        }
+      }
+      declarationToReport.reportError(message)
+      exitProcessing()
     }
   }
 

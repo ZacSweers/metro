@@ -56,6 +56,10 @@ internal data class DependencyGraphNode(
 
   val allExtendedNodes by lazy { buildMap { recurseParents(this) } }
 
+  fun hasAccessToScope(scope: IrAnnotation): Boolean {
+    return scope in scopes || scope in allExtendedNodes.flatMap { it.value.scopes }
+  }
+
   override fun toString(): String = typeKey.render(short = true)
 
   sealed interface Creator {

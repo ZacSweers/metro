@@ -19,6 +19,7 @@ Changelog
 - **Fix**: Fix accidentally adding contributed graphs as child elements of parent graphs twice.
 - **Fix**: Fix not deep copying `extensionReceiverParameter` when implementing fake overrides in contributed graphs.
 - **Fix**: Report fully qualified qualifier renderings in diagnostics.
+- **Fix**: Enable graph extensions to access scoped constructor-injected classes from parent graphs even if the parent doesn't have an explicit accessor.
 - When debug logging + reports dir is enabled, output a `logTrace.txt` to the reports dir for tracing data.
 
 0.3.0
