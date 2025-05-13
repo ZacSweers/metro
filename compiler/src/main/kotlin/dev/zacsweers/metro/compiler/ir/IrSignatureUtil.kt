@@ -15,6 +15,7 @@ internal fun IrFunction.computeJvmDescriptorIsh(
   context: IrMetroContext,
   customName: String? = null,
   includeReturnType: Boolean = true,
+  includeInstanceReceiver: Boolean = false,
 ): String = buildString {
   if (customName != null) {
     append(customName)
@@ -27,7 +28,15 @@ internal fun IrFunction.computeJvmDescriptorIsh(
   }
 
   append("(")
-  for (parameter in parameters(context).allParameters) {
+  val paramsToInclude =
+    with(parameters(context)) {
+      if (includeInstanceReceiver) {
+        allParameters
+      } else {
+        nonInstanceParameters
+      }
+    }
+  for (parameter in paramsToInclude) {
     append(parameter.typeKey.type.rawTypeOrNull()?.kotlinFqName?.asString() ?: "kotlin.Any")
   }
   append(")")
