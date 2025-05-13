@@ -113,7 +113,6 @@ internal class IrContributedGraphGenerator(
           kind = ClassKind.CLASS
         }
         .apply {
-          parentGraph.addChild(this)
           createThisReceiverParameter()
           // Add a @DependencyGraph(...) annotation
           annotations +=
