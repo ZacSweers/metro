@@ -86,14 +86,14 @@ class BindingGraphTest {
       .hasMessageThat()
       .contains(
         """
-          Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
+          [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
           Cycle:
-              A --> B --> A
+              B --> A --> B
 
           Trace:
-              A
               B
               A
+              B
               ...
         """
           .trimIndent()

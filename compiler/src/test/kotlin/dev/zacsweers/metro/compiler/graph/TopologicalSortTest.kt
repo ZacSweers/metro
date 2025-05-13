@@ -22,6 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class TopologicalSortTest {
   @Test
@@ -124,6 +125,96 @@ class TopologicalSortTest {
       """
           .trimMargin()
       )
+  }
+
+  @Test
+  fun deterministicWhenThereAreNoEdges() {
+    val unsorted = listOf("c", "a", "b")
+    val expected = listOf("a", "b", "c")
+
+    val actual = unsorted.topologicalSort(edges())
+
+    assertEquals(expected, actual)
+    assertTrue(actual.isTopologicallySorted(edges()))
+  }
+
+  /**
+   * ```
+   * a
+   * ├──▶ b
+   * └──▶ c
+   * ```
+   *
+   * After 'a' is processed both 'b' and 'c' are ready. Dequeue 'b' before 'c' because 'b' < 'c'
+   * according to Comparable order.
+   */
+  @Test
+  fun deterministicTieBreakWhenMultipleNodesReadyTogether() {
+    val sourceToTarget = edges("ab", "ac")
+
+    val unsorted = listOf("c", "a", "b")
+    val expected = listOf("b", "c", "a")
+
+    val actual = unsorted.topologicalSort(sourceToTarget)
+
+    assertEquals(expected, actual)
+    assertTrue(actual.isTopologicallySorted(sourceToTarget))
+  }
+
+  @Test
+  fun priorityQueueChoosesSmallestReadyVertexFirst() {
+    /**
+     * ```
+     *        root
+     *      /  |  \
+     *    v1   …   v5           all ready at the same time
+     * ```
+     */
+    val deps = edges("rv1", "rv2", "rv3", "rv4", "rv5")
+
+    val expected = listOf("v1", "v2", "v3", "v4", "v5", "r")
+
+    repeat(1000) {
+      val shuffled = expected.shuffled()
+      val actual = shuffled.topologicalSort(deps)
+
+      assertTrue(actual.isTopologicallySorted(deps))
+      assertEquals(expected, actual)
+    }
+  }
+
+  /**
+   * Inside‑component ordering test.
+   *
+   * One SCC with a deferrable edge is *not* an error, but we want its vertices returned in natural
+   * order.
+   *
+   * ```
+   * a  --(deferrable)-->  b
+   * ^                     |
+   * +--------- strict ----+
+   * ```
+   *
+   * Without vertices.sorted() Tarjan’s pop order is b,a.
+   */
+  @Test
+  fun verticesInsideComponentComeOutInNaturalOrder() {
+    val full =
+      mapOf(
+        "a" to listOf("b"), // deferrable
+        "b" to listOf("a"), // strict
+      )
+    val isDeferrable = { f: String, t: String -> f == "a" && t == "b" }
+
+    val result =
+      topologicalSort(
+          fullAdjacency = full,
+          isDeferrable = isDeferrable,
+          onCycle = { fail("cycle") },
+        )
+        .sortedKeys
+
+    assertEquals(listOf("a", "b"), result)
   }
 
   private fun assertTopologicalSort(
