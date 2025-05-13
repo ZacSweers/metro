@@ -33,7 +33,10 @@ internal class IrTypeKey(override val type: IrType, override val qualifier: IrAn
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
     if (includeQualifier) {
-      qualifier?.let { append(it.render(short)) }
+      qualifier?.let {
+        append(it.render(short))
+        append(" ")
+      }
     }
     val typeString =
       if (short) {
