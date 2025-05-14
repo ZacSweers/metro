@@ -74,6 +74,7 @@ abstract class MetroCompilerTest {
       // TODO this is needed until/unless we implement JVM reflection support for DefaultImpls
       //  invocations
       kotlincArguments += "-Xjvm-default=all"
+      kotlincArguments += listOf("-Xverify-ir=error", "-Xverify-ir-visibility")
 
       // TODO test enabling IC?
       //  kotlincArguments += "-Xenable-incremental-compilation"
