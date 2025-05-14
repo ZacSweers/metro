@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.mapNotNullToSet
-import kotlin.collections.flatMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -44,7 +43,21 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     contributingClasses: List<IrClass>,
     scopeClassId: ClassId,
   ): Set<IrType> {
-    return contributingClasses
+    val filteredContributions = contributingClasses.toMutableList()
+
+    // Remove replaced contributions
+    filteredContributions
+      .flatMap { contributingType ->
+        contributingType
+          .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
+          .flatMap { annotation -> annotation.replacedClasses() }
+      }
+      .distinct()
+      .forEach { replacedClass ->
+        filteredContributions.removeIf { it.symbol == replacedClass.symbol }
+      }
+
+    return filteredContributions
       .flatMap { it.nestedClasses }
       .mapNotNullToSet { nestedClass ->
         val metroContribution =

@@ -1278,6 +1278,87 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `bindings can be replaced in contributed graphs`() {
+    val commonCompilation =
+      compile(
+        source(
+          """
+          interface ContributedInterface
+          abstract class LoggedInScope
+        """
+            .trimIndent()
+        )
+      )
+
+    val libCompilation1 =
+      compile(
+        source(
+          """
+          @Inject
+          @SingleIn(LoggedInScope::class)
+          @ContributesBinding(LoggedInScope::class)
+          class Impl1 : ContributedInterface
+        """
+            .trimIndent()
+        ),
+        compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
+      )
+
+    val libCompilation2 =
+      compile(
+        source(
+          """
+          @Inject
+          @SingleIn(LoggedInScope::class)
+          @ContributesBinding(LoggedInScope::class, replaces = [Impl1::class])
+          class Impl2(
+            val impl1: Impl1
+          ) : ContributedInterface
+        """
+            .trimIndent()
+        ),
+        compilationBlock = {
+          addPreviousResultToClasspath(commonCompilation)
+          addPreviousResultToClasspath(libCompilation1)
+        },
+      )
+
+    compile(
+      source(
+        """
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val contributedInterface: ContributedInterface
+            val impl1: Impl1
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      compilationBlock = {
+        addPreviousResultToClasspath(commonCompilation)
+        addPreviousResultToClasspath(libCompilation2)
+        addPreviousResultToClasspath(libCompilation1)
+      },
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val impl2 = loggedInGraph.callProperty<Any>("contributedInterface")
+      assertThat(impl2.javaClass.simpleName).isEqualTo("Impl2")
+      assertThat(impl2).isSameInstanceAs(loggedInGraph.callProperty<Any>("contributedInterface"))
+      val impl1 = impl2.callProperty<Any>("impl1")
+      assertThat(impl1).isSameInstanceAs(loggedInGraph.callProperty<Any>("impl1"))
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }

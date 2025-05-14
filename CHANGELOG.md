@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix**: Fix generic members inherited from generic supertypes of contributed graphs.
+- **Fix**: Fix contributed binding replacements not being respected in contributed graphs.
 
 0.3.1
 -----

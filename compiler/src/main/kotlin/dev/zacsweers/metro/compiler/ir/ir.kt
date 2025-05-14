@@ -669,6 +669,14 @@ internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? {
 internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
   (getValueArgument(name) as IrConst?)?.value as Boolean?
 
+internal fun IrConstructorCall.replacesArgument() =
+  getValueArgument(Symbols.Names.replaces)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
+  return replacesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
+    ?: return emptySet()
+}
+
 internal fun IrConstructorCall.scopeOrNull(): ClassId? {
   return scopeClassOrNull()?.classIdOrFail
 }
