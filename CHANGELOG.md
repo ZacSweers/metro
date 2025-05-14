@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Fix generic members inherited from generic supertypes of contributed graphs.
+
 0.3.1
 -----
 
