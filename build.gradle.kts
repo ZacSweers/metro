@@ -114,6 +114,8 @@ allprojects {
         "**/SetFactory.kt",
         "**/SetFactoryTest.kt",
         "**/StringKey.kt",
+        "**/topologicalSort.kt",
+        "**/TopologicalSortTest.kt",
         "**/cycles/CyclesTest.kt",
         "**/cycles/LongCycle.kt",
       )

@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.propertyIfAccessor
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -133,7 +134,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
-    val returnTypeRef = declaration.returnTypeRef
+    val returnTypeRef = declaration.propertyIfAccessor.returnTypeRef
     if (returnTypeRef.source?.kind is KtFakeSourceElementKind.ImplicitTypeRef) {
       reporter.reportOn(
         source,

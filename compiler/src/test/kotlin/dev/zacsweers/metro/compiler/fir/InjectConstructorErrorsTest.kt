@@ -198,8 +198,8 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: VisibleClasses.kt:7:1 Injected classes must be visible, either `public` or `internal`.
-            e: VisibleClasses.kt:11:3 Injected classes must be visible, either `public` or `internal`.
+            e: VisibleClasses.kt:7:1 Injected classes must be public or internal.
+            e: VisibleClasses.kt:11:3 Injected classes must be public or internal.
           """
           .trimIndent()
       )

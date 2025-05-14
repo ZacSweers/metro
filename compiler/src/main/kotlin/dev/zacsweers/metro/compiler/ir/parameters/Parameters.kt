@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compareTo
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.Kind
@@ -89,10 +90,10 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
 
     @Suppress("UNCHECKED_CAST") fun <T : Parameter> empty(): Parameters<T> = EMPTY as Parameters<T>
 
-    val COMPARATOR =
+    val COMPARATOR: Comparator<Parameters<*>> =
       compareBy<Parameters<*>> { it.instance }
         .thenBy { it.extensionReceiver }
-        .thenComparator { a, b -> compareValues(a, b) }
+        .thenComparator { a, b -> a.valueParameters.compareTo(b.valueParameters) }
 
     operator fun <T : Parameter> invoke(
       callableId: CallableId,

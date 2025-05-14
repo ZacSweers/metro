@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -49,6 +50,9 @@ internal class MetroAnnotations<T>(
   val scope: T?,
   val qualifier: T?,
   val mapKeys: Set<T>,
+  // An IrAnnotation or FirAnnotation
+  // TODO the lack of a type here is unfortunate
+  @Poko.Skip val symbol: Any?,
 ) {
   val isMultibinds: Boolean
     get() = multibinds != null
@@ -100,6 +104,7 @@ internal class MetroAnnotations<T>(
       scope,
       qualifier,
       mapKeys,
+      symbol,
     )
   }
 
@@ -141,6 +146,7 @@ internal class MetroAnnotations<T>(
         scope = null,
         qualifier = null,
         mapKeys = emptySet(),
+        symbol = null,
       )
 
     @Suppress("UNCHECKED_CAST") fun <T> none(): MetroAnnotations<T> = NONE as MetroAnnotations<T>
@@ -281,6 +287,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       scope = scope,
       qualifier = qualifier,
       mapKeys = mapKeys,
+      symbol = (this as? IrDeclaration)?.symbol,
     )
 
   val thisContainer = this
@@ -370,7 +377,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             continue
           }
           in ids.assistedAnnotations -> {
-            assisted = expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation))
+            assisted =
+              expectNullAndSet("assisted", assisted, MetroFirAnnotation(annotation, session))
             continue
           }
         }
@@ -402,7 +410,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
             continue
           }
           in ids.multibindsAnnotations -> {
-            multibinds = expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation))
+            multibinds =
+              expectNullAndSet("multibinds", assisted, MetroFirAnnotation(annotation, session))
             continue
           }
           Symbols.ClassIds.Composable -> {
@@ -435,13 +444,13 @@ private fun FirBasedSymbol<*>.metroAnnotations(
     }
 
     if (annotationClass.isAnnotatedWithAny(session, ids.scopeAnnotations)) {
-      scope = expectNullAndSet("scope", scope, MetroFirAnnotation(annotation))
+      scope = expectNullAndSet("scope", scope, MetroFirAnnotation(annotation, session))
       continue
     } else if (annotationClass.isAnnotatedWithAny(session, ids.qualifierAnnotations)) {
-      qualifier = expectNullAndSet("qualifier", qualifier, MetroFirAnnotation(annotation))
+      qualifier = expectNullAndSet("qualifier", qualifier, MetroFirAnnotation(annotation, session))
       continue
     } else if (annotationClass.isAnnotatedWithAny(session, ids.mapKeyAnnotations)) {
-      mapKeys += MetroFirAnnotation(annotation)
+      mapKeys += MetroFirAnnotation(annotation, session)
       continue
     }
   }
@@ -464,6 +473,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       scope = scope,
       qualifier = qualifier,
       mapKeys = mapKeys,
+      // This is never used in FIR so always null
+      symbol = null,
     )
 
   val thisContainer = this

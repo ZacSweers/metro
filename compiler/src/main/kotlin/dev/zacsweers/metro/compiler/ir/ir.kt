@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.singleOrError
 import java.io.File
 import java.util.Objects
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -93,6 +94,7 @@ import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
@@ -129,9 +131,12 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
 internal fun CompilerMessageSourceLocation.render(): String? {
   return buildString {
     val fileUri = File(path).toPath().toUri()
-    append("$fileUri")
+    append(fileUri)
     if (line > 0 && column > 0) {
-      append(":$line:$column")
+      append(':')
+      append(line)
+      append(':')
+      append(column)
     } else {
       // No line or column numbers makes this kind of useless so return null
       return null
@@ -590,7 +595,21 @@ internal fun IrClass.allFunctions(pluginContext: IrPluginContext): Sequence<IrSi
 }
 
 internal fun IrClass.singleAbstractFunction(context: IrMetroContext): IrSimpleFunction {
-  return abstractFunctions(context).single()
+  return abstractFunctions(context).singleOrError {
+    buildString {
+      append("Required a single abstract function for ")
+      append(kotlinFqName)
+      appendLine(" but found multiple:")
+      append(
+        joinTo(this, "\n") { function ->
+          "- " +
+            function.kotlinFqName.asString() +
+            "\n  - " +
+            function.computeJvmDescriptorIsh(context, includeReturnType = false)
+        }
+      )
+    }
+  }
 }
 
 internal fun IrSimpleFunction.isAbstractAndVisible(): Boolean {

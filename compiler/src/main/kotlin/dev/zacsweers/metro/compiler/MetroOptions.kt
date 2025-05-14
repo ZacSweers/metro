@@ -128,12 +128,23 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  TRANSFORM_PROVIDERS_TO_PRIVATE(
+    RawMetroOption.boolean(
+      name = "transform-providers-to-private",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description = "Enable/disable automatic transformation of providers to be private.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
       defaultValue = MetroOptions.DiagnosticSeverity.NONE.name,
       valueDescription = "NONE|WARN|ERROR",
-      description = "Control diagnostic severity reporting of public providers",
+      description =
+        "Control diagnostic severity reporting of public providers. Only applies if `transform-providers-to-private` is false.",
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
@@ -423,9 +434,15 @@ public data class MetroOptions(
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
   val generateHintProperties: Boolean =
     MetroOption.GENERATE_HINT_PROPERTIES.raw.defaultValue.expectAs(),
+  val transformProvidersToPrivate: Boolean =
+    MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
-    MetroOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
-      DiagnosticSeverity.valueOf(it)
+    if (transformProvidersToPrivate) {
+      DiagnosticSeverity.NONE
+    } else {
+      MetroOption.PUBLIC_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
+        DiagnosticSeverity.valueOf(it)
+      }
     },
   val enabledLoggers: Set<MetroLogger.Type> = MetroOption.LOGGING.raw.defaultValue.expectAs(),
   val enableDaggerRuntimeInterop: Boolean =
@@ -525,6 +542,9 @@ public data class MetroOptions(
 
           MetroOption.GENERATE_HINT_PROPERTIES ->
             options = options.copy(generateHintProperties = configuration.getAsBoolean(entry))
+
+          MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
+            options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =

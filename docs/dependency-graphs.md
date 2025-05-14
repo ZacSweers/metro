@@ -276,6 +276,10 @@ Contributed graphs may also be chained, but note that `@ContributesGraphExtensio
 
 Dependency graph code gen is designed to largely match how Dagger components are generated.
 
+* Internal graph validation uses [Tarjan's algorithm](https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm) + [topological sort](https://en.wikipedia.org/wiki/Topological_sorting) implementation.
+  * This runs in O(V+E) time
+  * The returned ordered list of bindings can be used to determine provider field generation order.
+  * Any binding whose order depends on one later in the returned order implicitly requires use of `DelegateFactory`.
 * Dependencies are traversed from public accessors and `inject()` functions.
 * Metro generates Provider Factory classes for each provider. These should be generated at the same time that the provider is compiled so that their factory classes. This is for two primary purposes:
     * They can be reused to avoid code duplication
@@ -286,7 +290,7 @@ Dependency graph code gen is designed to largely match how Dagger components are
 * `@Provides` factory parameters are stored in a field backed by `InstanceFactory`.
 * Multibindings create new collection instances every time.
 * Multibinding providers are not accessible as standalone bindings.
-* Graph extensions are implemented via combination of things
+* Graph extensions are implemented via a combination of things
     * Custom `MetroMetadata` is generated and serialized into Kotlin's `Metadata` annotations.
     * Extendable parent graphs opt-in to generating this metadata. They write information about their available provider and instance fields, binds callable IDs, parent graphs, and provides callable IDs.
     * Extendable parent graphs generate `_metroAccessor`-suffixed `internal` functions that expose instance fields and provider fields.

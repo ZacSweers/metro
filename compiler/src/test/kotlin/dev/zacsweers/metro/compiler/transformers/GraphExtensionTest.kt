@@ -965,4 +965,34 @@ class GraphExtensionTest : MetroCompilerTest() {
       assertThat(childGraph.callProperty<Long>("qualifiedScopedLong")).isEqualTo(4L)
     }
   }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/375
+  @Test
+  fun `parent graph is generated first even if child graph is defined first`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ChildGraph {
+              val int: Int
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Extends parent: ParentGraph): ChildGraph
+              }
+            }
+
+            @SingleIn(AppScope::class)
+            @DependencyGraph(isExtendable = true)
+            interface ParentGraph {
+              @Provides fun provideInt(): Int = 1
+            }
+        """
+      )
+    ) {
+      val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
+      assertThat(childGraph.callProperty<Int>("int")).isEqualTo(1)
+    }
+  }
 }

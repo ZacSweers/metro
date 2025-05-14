@@ -254,7 +254,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       "Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:"
                     )
                     for (overlap in overlaps) {
-                      appendLine("- ${overlap.asSingleFqName().asString()}")
+                      append("- ")
+                      appendLine(overlap.asSingleFqName().asString())
                     }
                   },
                   context,
@@ -270,9 +271,12 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       appendLine(
                         "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
                       )
-                      appendLine("Scope: ${parentScope.asSingleFqName()}")
-                      appendLine("Parent 1: ${previous.asSingleFqName()}")
-                      appendLine("Parent 2: ${parentClassId.asSingleFqName()}")
+                      append("Scope: ")
+                      appendLine(parentScope.asSingleFqName())
+                      append("Parent 1: ")
+                      appendLine(previous.asSingleFqName())
+                      append("Parent 2: ")
+                      appendLine(parentClassId.asSingleFqName())
                     },
                     context,
                   )
@@ -293,7 +297,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       "Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:"
                     )
                     for (overlap in overlaps) {
-                      appendLine("- ${overlap.simpleString()}")
+                      append("- ")
+                      appendLine(overlap.simpleString())
                     }
                   },
                   context,
@@ -312,9 +317,12 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       appendLine(
                         "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
                       )
-                      appendLine("Scope: ${parentScope.simpleString()}")
-                      appendLine("Parent 1: ${previous.asSingleFqName()}")
-                      appendLine("Parent 2: ${parentClassId.asSingleFqName()}")
+                      append("Scope: ")
+                      appendLine(parentScope.simpleString())
+                      append("Parent 1: ")
+                      appendLine(previous.asSingleFqName())
+                      append("Parent 2: ")
+                      appendLine(parentClassId.asSingleFqName())
                     },
                     context,
                   )

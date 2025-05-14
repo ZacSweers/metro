@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
@@ -34,13 +33,12 @@ internal class IrContextualTypeKey(
   override val typeKey: IrTypeKey,
   override val wrappedType: WrappedType<IrType>,
   override val hasDefault: Boolean = false,
-  override val isIntoMultibinding: Boolean = false,
   @Poko.Skip override val rawType: IrType? = null,
 ) : BaseContextualTypeKey<IrType, IrTypeKey, IrContextualTypeKey> {
-  override fun toString(): String = render(short = true)
+  override fun toString(): String = render(short = false)
 
   override fun withTypeKey(typeKey: IrTypeKey, rawType: IrType?): IrContextualTypeKey {
-    return IrContextualTypeKey(typeKey, wrappedType, hasDefault, isIntoMultibinding, rawType)
+    return IrContextualTypeKey(typeKey, wrappedType, hasDefault, rawType)
   }
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
@@ -72,22 +70,19 @@ internal class IrContextualTypeKey(
       is WrappedType.Canonical -> wt.type
       is WrappedType.Provider -> {
         val innerType =
-          IrContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
-            .toIrType(metroContext)
+          IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType(metroContext)
         innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.providerType)!!)
       }
       is WrappedType.Lazy -> {
         val innerType =
-          IrContextualTypeKey(typeKey, wt.innerType, hasDefault, isIntoMultibinding)
-            .toIrType(metroContext)
+          IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType(metroContext)
         innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.lazyType)!!)
       }
       is WrappedType.Map -> {
         // For Map types, we need to create a Map<K, V> type
         val keyType = wt.keyType
         val valueType =
-          IrContextualTypeKey(typeKey, wt.valueType, hasDefault, isIntoMultibinding)
-            .toIrType(metroContext)
+          IrContextualTypeKey(typeKey, wt.valueType, hasDefault).toIrType(metroContext)
 
         // Create a Map type with the key type and the processed value type
         val mapClass = metroContext.pluginContext.irBuiltIns.mapClass
@@ -101,7 +96,6 @@ internal class IrContextualTypeKey(
     fun from(
       context: IrMetroContext,
       function: IrSimpleFunction,
-      annotations: MetroAnnotations<IrAnnotation>,
       type: IrType = function.returnType,
     ): IrContextualTypeKey =
       type.asContextualTypeKey(
@@ -111,7 +105,6 @@ internal class IrContextualTypeKey(
             ?: function.qualifierAnnotation()
         },
         false,
-        annotations.isIntoMultibinding,
       )
 
     fun from(
@@ -123,7 +116,6 @@ internal class IrContextualTypeKey(
         context = context,
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
         hasDefault = parameter.defaultValue != null,
-        isIntoMultibinding = false,
       )
 
     fun create(
@@ -132,7 +124,6 @@ internal class IrContextualTypeKey(
       isWrappedInLazy: Boolean = false,
       isLazyWrappedInProvider: Boolean = false,
       hasDefault: Boolean = false,
-      isIntoMultibinding: Boolean = false,
       rawType: IrType? = null,
     ): IrContextualTypeKey {
       val rawClassId = rawType?.rawTypeOrNull()?.classId
@@ -167,7 +158,6 @@ internal class IrContextualTypeKey(
         typeKey = typeKey,
         wrappedType = wrappedType,
         hasDefault = hasDefault,
-        isIntoMultibinding = isIntoMultibinding,
         rawType = rawType,
       )
     }
@@ -196,7 +186,6 @@ internal fun IrType.asContextualTypeKey(
   context: IrMetroContext,
   qualifierAnnotation: IrAnnotation?,
   hasDefault: Boolean,
-  isIntoMultibinding: Boolean,
 ): IrContextualTypeKey {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
 
@@ -214,11 +203,12 @@ internal fun IrType.asContextualTypeKey(
       qualifierAnnotation,
     )
 
+  // TODO do we need to transform contextkey for multibindings here?
+
   return IrContextualTypeKey(
     typeKey = typeKey,
     wrappedType = wrappedType,
     hasDefault = hasDefault,
-    isIntoMultibinding = isIntoMultibinding,
     rawType = this,
   )
 }

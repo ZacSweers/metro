@@ -104,7 +104,6 @@ internal fun IrProperty.toMemberInjectParameter(
       context,
       with(context) { qualifierAnnotation() },
       defaultValue != null,
-      false,
     )
 
   return MembersInjectParameter(
@@ -138,7 +137,6 @@ internal fun IrValueParameter.toMemberInjectParameter(
       context,
       with(context) { qualifierAnnotation() },
       defaultValue != null,
-      false,
     )
 
   return MembersInjectParameter(

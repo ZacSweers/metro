@@ -22,6 +22,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Test
+  @TestMetadata("MultibindingsHaveConsistentOrderAcrossContributedGraph.kt")
+  public void testMultibindingsHaveConsistentOrderAcrossContributedGraph() {
+    runTest("compiler-tests/src/test/data/dump/ir/MultibindingsHaveConsistentOrderAcrossContributedGraph.kt");
+  }
+
+  @Test
   @TestMetadata("scratch.kt")
   public void testScratch() {
     runTest("compiler-tests/src/test/data/dump/ir/scratch.kt");

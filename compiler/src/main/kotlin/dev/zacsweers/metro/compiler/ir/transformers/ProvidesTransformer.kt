@@ -316,10 +316,10 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       for (annotation in providesFunction.annotations) {
         for (arg in annotation.valueArguments) {
           if (arg is IrClassReference) {
+            // https://youtrack.jetbrains.com/issue/KT-76257/
             val message =
-              "Private provider functions with KClass arguments are not supported: " +
+              "Private provider functions with KClass annotation arguments are not supported: " +
                 "${providesFunction.kotlinFqName}. Make this function public to work around this for now."
-            // TODO link bug
             reportError(message, providesFunction.location())
             hasErrors = true
           }
@@ -358,7 +358,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
     return references.getOrPut(function.kotlinFqName) {
-      val typeKey = IrContextualTypeKey.from(this, function, annotations).typeKey
+      val typeKey = IrContextualTypeKey.from(this, function).typeKey
       val isPropertyAccessor = function.isPropertyAccessor
       val fqName =
         if (isPropertyAccessor) {
@@ -392,7 +392,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
             "No getter found for property $fqName. Note that field properties are not supported"
           )
 
-      val typeKey = IrContextualTypeKey.from(this, getter, annotations).typeKey
+      val typeKey = IrContextualTypeKey.from(this, getter).typeKey
 
       val parent = property.parentAsClass
       return CallableReference(

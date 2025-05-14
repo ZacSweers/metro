@@ -4,8 +4,41 @@ Changelog
 **Unreleased**
 --------------
 
+0.3.1
+-----
+
+_2025-05-13_
+
+- **Enhancement**: Rewrite graph resolution using topological sorting to vastly improve performance and simplify generation.
+- **Enhancement**: Return early once an externally-compiled dependency graph is found.
+- **Enhancement**: Simplify multibinding contributor handling in graph resolution by generating synthetic qualifiers for each of them. This allows them to participate in standard graph resolution.
+- **Enhancement**: When there are multiple empty `@Multibinds` errors, report them all at once.
+- **Enhancement**: Avoid unnecessary `StringBuilder` allocations.
+- **Fix**: Don't transform `@Provides` function's to be private if its visibility is already explicitly defined.
+- **Fix**: Fix a comparator infinite loop vector.
+- **Fix**: Fix `@ElementsIntoSet` multibinding contributions triggering a dependency cycle in some situations.
+- **Fix**: Fix assertion error for generated multibinding name hint when using both @Multibinds and @ElementsIntoSet for the same multibinding.
+- **Fix**: Fix contributed graph extensions not inheriting empty declared multibindings.
+- **Fix**: Ensure we report the `@Multibinds` declaration location in errors if one is available.
+- **Fix**: Dedupe overrides by all parameters not just value parameters.
+- **Fix**: Dedupe overrides by signature rather than name when generating contributed graphs.
+- **Fix**: Fix accidentally adding contributed graphs as child elements of parent graphs twice.
+- **Fix**: Fix not deep copying `extensionReceiverParameter` when implementing fake overrides in contributed graphs.
+- **Fix**: Report fully qualified qualifier renderings in diagnostics.
+- **Fix**: Don't generate provider fields for multibinding elements unnecessarily.
+- When debug logging + reports dir is enabled, output a `logTrace.txt` to the reports dir for tracing data.
+- Update to Kotlin `2.1.21`.
+
+Special thanks to [@asapha](https://github.com/asapha), [@gabrielittner](https://github.com/gabrielittner), [@jzbrooks](https://github.com/jzbrooks), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
+0.3.0
+-----
+
+_2025-05-05_
+
 - **New**: Add support for `@ContributesGraphExtension`! See the [docs](https://zacsweers.github.io/metro/dependency-graphs#contributed-graph-extensions) for more info.
 - **New**: Add a `asContribution()` compiler intrinsic to upcast graphs to expected contribution types. For example: `val contributedInterface = appGraph.asContribution<ContributedInterface>()`. This is validated at compile-time.
+- **New**: Automatically transform `@Provides` functions to be `private`. This is enabled by defaults and supersedes the `publicProviderSeverity` when enabled, and can be disabled via the Gradle extension or `transform-providers-to-private` compiler option. Note that properties and providers with any annotations with `KClass` arguments are not supported yet pending upstream kotlinc changes.
 - **Enhancement**: Rewrite the internal `BindingGraph` implementation to be more performant, accurate, and testable.
 - **Enhancement**: Add diagnostic to check that graph factories don't provide their target graphs as parameters.
 - **Enhancement**: Add diagnostic to check that a primary scope is defined if any additionalScopes are also defined on a graph annotation.
@@ -13,6 +46,8 @@ Changelog
 - **Enhancement**: Optimize supertype lookups when building binding classes by avoiding previously visited classes.
 - **Enhancement**: Don't generate hints for contributed types with non-public API visibility.
 - **Enhancement**: When reporting duplicate binding errors where one of the bindings is contributed, report the contributing class in the error message.
+- **Enhancement**: When reporting scope incompatibility, check any extended parents match the scope and suggest a workaround in the error diagnostic.
+- **Enhancement**: Allow AssistedFactory methods to be protected.
 - **Fix**: Fix incremental compilation when a parent graph or supertype modifies/removes a provider.
 - **Fix**: Fix rank processing error when the outranked binding is contributed using Metro's ContributesBinding annotation.
 - **Fix**: Fix `@Provides` graph parameters not getting passed on to extended child graphs.
@@ -21,8 +56,13 @@ Changelog
 - **Fix**: Fix transitive scoped dependencies not always getting initialized first in graph provider fields.
 - **Fix**: Fix injected `lateinit var` properties being treated as if they have default values.
 - **Fix**: Alias bindings not always having their backing type visited during graph validation.
+- **Fix**: Fix race condition in generating parent graphs first even if child graph is encountered first in processing.
+- **Fix**: Fallback `AssistedInjectChecker` error report to the declaration source.
+- **Fix**: Fix missing parent supertype bindings in graph extensions.
 - **Change**: `InstanceFactory` is no longer a value class. This wasn't going to offer much value in practice.
 - **Change**: Change debug reports dir to be per-compilation rather than per-platform.
+
+Special thanks to [@gabrielittner](https://github.com/gabrielittner), [@kevinguitar](https://github.com/kevinguitar), [@JoelWilcox](https://github.com/JoelWilcox), and [@japplin](https://github.com/japplin) for contributing to this release!
 
 0.2.0
 -----
@@ -36,7 +76,7 @@ _2025-04-21_
 - **Fix**: Fix duplicate field accessors generated for graph supertypes.
 - Add [compose navigation sample](https://github.com/ZacSweers/metro/tree/main/samples/compose-navigation-app).
 
-Special thanks to  [@bnorm](https://github.com/bnorm) and [@yschimke](https://github.com/yschimke) for contributing to this release!
+Special thanks to [@bnorm](https://github.com/bnorm) and [@yschimke](https://github.com/yschimke) for contributing to this release!
 
 0.1.3
 -----

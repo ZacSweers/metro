@@ -39,8 +39,9 @@ public class MetroFirExtensionRegistrar(
       ::ProvidesFactorySupertypeGenerator,
       false,
     )
-    // TODO enable once we support metadata propagation
-    //  +::FirProvidesStatusTransformer
+    if (options.transformProvidersToPrivate) {
+      +::FirProvidesStatusTransformer
+    }
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)

@@ -30,7 +30,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
             .trimIndent()
         ),
-        options = metroOptions.withAnvilContributesBinding(),
+        options = metroOptions.withAnvilInterop(),
       )
 
     compile(
@@ -47,7 +47,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           .trimIndent()
       ),
       previousCompilationResult = previousCompilation,
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -69,7 +69,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
             .trimIndent()
         ),
-        options = metroOptions.withAnvilContributesBinding(),
+        options = metroOptions.withAnvilInterop(),
       )
 
     compile(
@@ -86,7 +86,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           .trimIndent()
       ),
       previousCompilationResult = libCompilation,
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -118,7 +118,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -155,7 +155,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -203,7 +203,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           .trimIndent()
       ),
       previousCompilationResult = libCompilation,
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -232,7 +232,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -261,7 +261,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -295,7 +295,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -326,7 +326,7 @@ class AnvilInteropTest : MetroCompilerTest() {
           """
             .trimIndent()
         ),
-        options = metroOptions.withAnvilContributesBinding(),
+        options = metroOptions.withAnvilInterop(),
       )
 
     compile(
@@ -354,7 +354,7 @@ class AnvilInteropTest : MetroCompilerTest() {
       previousCompilationResult = previousCompilation,
       options =
         metroOptions
-          .withAnvilContributesBinding()
+          .withAnvilInterop()
           .copy(customQualifierAnnotations = setOf(ClassId.fromString("test/ThirdPartyQualifier"))),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
@@ -388,7 +388,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val contributedInterface = graph.callProperty<Any>("contributedInterface")
@@ -420,7 +420,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
@@ -493,7 +493,7 @@ class AnvilInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.withAnvilContributesBinding(),
+      options = metroOptions.withAnvilInterop(),
       expectedExitCode = ExitCode.INTERNAL_ERROR,
     ) {
       assertThat(messages)
@@ -506,10 +506,54 @@ class AnvilInteropTest : MetroCompilerTest() {
     }
   }
 
-  private fun MetroOptions.withAnvilContributesBinding(): MetroOptions {
-    return metroOptions.copy(
+  // https://github.com/ZacSweers/metro/issues/388
+  @Test
+  fun `ContributesSubcomponent test`() {
+    compile(
+      source(
+        """
+          class Parent
+          class Child
+
+          @SingleIn(Parent::class)
+          @DependencyGraph(scope = Parent::class, isExtendable = true)
+          interface ParentComponent {
+              @DependencyGraph.Factory
+              interface Factory {
+                  fun create(): ParentComponent
+              }
+          }
+
+          @com.squareup.anvil.annotations.ContributesSubcomponent(Child::class, parentScope = Parent::class)
+          interface ChildComponent {
+              @ContributesGraphExtension.Factory(Parent::class)
+              interface Factory {
+                  fun create(): ChildComponent
+              }
+          }
+
+          interface ActivityNavigator
+
+          @Inject
+          @ForScope(Child::class)
+          @SingleIn(Child::class)
+          @com.squareup.anvil.annotations.ContributesBinding(Child::class, boundType = ActivityNavigator::class)
+          class BottomSheetNavigator : ActivityNavigator
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.withAnvilInterop(),
+    ) {
+      println("asdf")
+    }
+  }
+
+  private fun MetroOptions.withAnvilInterop(): MetroOptions {
+    return copy(
       customContributesBindingAnnotations =
         setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesBinding")),
+      customContributesGraphExtensionAnnotations =
+        setOf(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent")),
       enableDaggerAnvilInterop = true,
     )
   }

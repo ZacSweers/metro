@@ -91,7 +91,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   // Common
   val FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION by error2<String, String>(NAME_IDENTIFIER)
   val METRO_DECLARATION_ERROR by error1<String>(NAME_IDENTIFIER)
-  val METRO_DECLARATION_VISIBILITY_ERROR by error1<String>(VISIBILITY_MODIFIER)
+  val METRO_DECLARATION_VISIBILITY_ERROR by error2<String, String>(VISIBILITY_MODIFIER)
   val METRO_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
 
   // DependencyGraph factory errors
@@ -109,7 +109,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val ONLY_CLASSES_CAN_BE_INJECTED by error0(NAME_IDENTIFIER)
   val ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0(NAME_IDENTIFIER)
-  val INJECTED_CLASSES_MUST_BE_VISIBLE by error0(VISIBILITY_MODIFIER)
+  val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<String>(VISIBILITY_MODIFIER)
 
   // Assisted factory/inject errors
   val ASSISTED_INJECTION_ERROR by error1<String>(NAME_IDENTIFIER)
@@ -149,7 +149,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
         "Local classes cannot be annotated with @Inject or have @Inject-annotated constructors.",
       )
       put(METRO_DECLARATION_ERROR, "{0}", TO_STRING)
-      put(METRO_DECLARATION_VISIBILITY_ERROR, "{0} must be public or internal.", TO_STRING)
+      put(METRO_DECLARATION_VISIBILITY_ERROR, "{0} must be {1}.", TO_STRING, STRING)
       put(METRO_TYPE_PARAMETERS_ERROR, "{0}", STRING)
 
       // DependencyGraph creator errors
@@ -179,10 +179,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
         ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED,
         "Only final and open classes be annotated with @Inject or have @Inject-annotated constructors.",
       )
-      put(
-        INJECTED_CLASSES_MUST_BE_VISIBLE,
-        "Injected classes must be visible, either `public` or `internal`.",
-      )
+      put(INJECTED_CLASSES_MUST_BE_VISIBLE, "Injected classes must be {0}.", STRING)
       put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
       put(PROVIDES_ERROR, "{0}", STRING)
       put(PROVIDES_WARNING, "{0}", STRING)

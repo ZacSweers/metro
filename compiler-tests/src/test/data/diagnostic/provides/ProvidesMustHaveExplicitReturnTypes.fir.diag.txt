@@ -1,3 +1,3 @@
-/ProvidesMustHaveExplicitReturnTypes.kt:(110,123): error: Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.
+/ProvidesMustHaveExplicitReturnTypes.kt:(278,291): error: Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.
 
-/ProvidesMustHaveExplicitReturnTypes.kt:(180,190): error: Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.
+/ProvidesMustHaveExplicitReturnTypes.kt:(348,358): error: Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.

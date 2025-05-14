@@ -174,20 +174,23 @@ internal fun List<FirAnnotation>.isAnnotatedWithAny(
 }
 
 internal inline fun FirMemberDeclaration.checkVisibility(
-  onError: (source: KtSourceElement?) -> Nothing
+  allowProtected: Boolean = false,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
 ) {
-  visibility.checkVisibility(source, onError)
+  visibility.checkVisibility(source, allowProtected, onError)
 }
 
 internal inline fun FirCallableSymbol<*>.checkVisibility(
-  onError: (source: KtSourceElement?) -> Nothing
+  allowProtected: Boolean = false,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
 ) {
-  visibility.checkVisibility(source, onError)
+  visibility.checkVisibility(source, allowProtected, onError)
 }
 
 internal inline fun Visibility.checkVisibility(
   source: KtSourceElement?,
-  onError: (source: KtSourceElement?) -> Nothing,
+  allowProtected: Boolean = false,
+  onError: (source: KtSourceElement?, allowedVisibilities: String) -> Nothing,
 ) {
   // TODO what about expect/actual/protected
   when (this) {
@@ -196,8 +199,13 @@ internal inline fun Visibility.checkVisibility(
       // These are fine
       // TODO what about across modules? Is internal really ok? Or PublishedApi?
     }
+    Visibilities.Protected -> {
+      if (!allowProtected) {
+        onError(source, "public or internal")
+      }
+    }
     else -> {
-      onError(source)
+      onError(source, if (allowProtected) "public, internal or protected" else "public or internal")
     }
   }
 }
@@ -301,6 +309,7 @@ internal inline fun FirClass.singleAbstractFunction(
   context: CheckerContext,
   reporter: DiagnosticReporter,
   type: String,
+  allowProtected: Boolean = false,
   onError: () -> Nothing,
 ): FirNamedFunctionSymbol {
   val abstractFunctions = symbol.abstractFunctions(session)
@@ -329,11 +338,12 @@ internal inline fun FirClass.singleAbstractFunction(
   }
 
   val function = abstractFunctions.single()
-  function.checkVisibility { source ->
+  function.checkVisibility(allowProtected) { source, allowedVisibilities ->
     reporter.reportOn(
       source,
       FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
       "$type classes' single abstract functions",
+      allowedVisibilities,
       context,
     )
     onError()
@@ -345,24 +355,30 @@ internal inline fun FirClass.singleAbstractFunction(
  * Computes a hash key for this annotation instance composed of its underlying type and value
  * arguments.
  */
-internal fun FirAnnotationCall.computeAnnotationHash(): Int {
+internal fun FirAnnotationCall.computeAnnotationHash(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): Int {
   return Objects.hash(
-    resolvedType.classId,
+    toAnnotationClassIdSafe(session),
     arguments
-      .map {
-        when (it) {
-          is FirLiteralExpression -> it.value
+      .map { arg ->
+        when (arg) {
+          is FirLiteralExpression -> arg.value
           is FirGetClassCall -> {
-            val argument = it.argument
-            if (argument is FirResolvedQualifier) {
-              argument.classId
-            } else {
-              argument.resolvedType.classId
-            }
+            typeResolver?.let { arg.resolvedClassArgumentTarget(it)?.classId }
+              ?: run {
+                val argument = arg.argument
+                if (argument is FirResolvedQualifier) {
+                  argument.classId
+                } else {
+                  argument.resolvedType.classId
+                }
+              }
           }
           // Enum entry reference
           is FirPropertyAccessExpression -> {
-            it.calleeReference
+            arg.calleeReference
               .toResolvedPropertySymbol()
               ?.receiverParameter
               ?.typeRef
@@ -370,7 +386,7 @@ internal fun FirAnnotationCall.computeAnnotationHash(): Int {
               ?.classId
           }
           else -> {
-            error("Unexpected annotation argument type: ${it::class.java} - ${it.render()}")
+            error("Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}")
           }
         }
       }
@@ -473,8 +489,13 @@ internal inline fun FirClass.validateInjectedClass(
     }
   }
 
-  checkVisibility { source ->
-    reporter.reportOn(source, FirMetroErrors.INJECTED_CLASSES_MUST_BE_VISIBLE, context)
+  checkVisibility { source, allowedVisibilities ->
+    reporter.reportOn(
+      source,
+      FirMetroErrors.INJECTED_CLASSES_MUST_BE_VISIBLE,
+      allowedVisibilities,
+      context,
+    )
     onError()
   }
 }
@@ -552,8 +573,14 @@ internal inline fun FirClass.validateApiDeclaration(
     }
   }
 
-  checkVisibility { source ->
-    reporter.reportOn(source, FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR, type, context)
+  checkVisibility { source, allowedVisibilities ->
+    reporter.reportOn(
+      source,
+      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      type,
+      allowedVisibilities,
+      context,
+    )
     onError()
   }
   if (isAbstract && classKind == ClassKind.CLASS) {
@@ -573,8 +600,14 @@ internal inline fun FirConstructorSymbol.validateVisibility(
   type: String,
   onError: () -> Nothing,
 ) {
-  checkVisibility { source ->
-    reporter.reportOn(source, FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR, type, context)
+  checkVisibility { source, allowedVisibilities ->
+    reporter.reportOn(
+      source,
+      FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
+      type,
+      allowedVisibilities,
+      context,
+    )
     onError()
   }
 }
@@ -582,8 +615,12 @@ internal inline fun FirConstructorSymbol.validateVisibility(
 internal fun FirBasedSymbol<*>.qualifierAnnotation(session: FirSession): MetroFirAnnotation? =
   annotations.qualifierAnnotation(session)
 
-internal fun List<FirAnnotation>.qualifierAnnotation(session: FirSession): MetroFirAnnotation? =
-  asSequence().annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations)
+internal fun List<FirAnnotation>.qualifierAnnotation(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): MetroFirAnnotation? =
+  asSequence()
+    .annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations, typeResolver)
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   annotations.mapKeyAnnotation(session)
@@ -604,18 +641,20 @@ internal fun Sequence<FirAnnotation>.scopeAnnotations(
 internal fun Sequence<FirAnnotation>.annotationAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
+  typeResolver: TypeResolveService? = null,
 ): MetroFirAnnotation? {
-  return annotationsAnnotatedWithAny(session, names).firstOrNull()
+  return annotationsAnnotatedWithAny(session, names, typeResolver).firstOrNull()
 }
 
 internal fun Sequence<FirAnnotation>.annotationsAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
+  typeResolver: TypeResolveService? = null,
 ): Sequence<MetroFirAnnotation> {
   return filter { it.isResolved }
     .filterIsInstance<FirAnnotationCall>()
     .filter { annotationCall -> annotationCall.isAnnotatedWithAny(session, names) }
-    .map { MetroFirAnnotation(it) }
+    .map { MetroFirAnnotation(it, session, typeResolver) }
 }
 
 internal fun FirAnnotationCall.isQualifier(session: FirSession): Boolean {
@@ -983,8 +1022,10 @@ internal fun List<FirElement>.joinToRender(separator: String = ", "): String {
     buildString {
       append(it.render())
       if (it is FirAnnotation) {
-        append(" resolved=${it.isResolved}")
-        append(" unexpandedClassId=${it.unexpandedClassId}")
+        append(" resolved=")
+        append(it.isResolved)
+        append(" unexpandedClassId=")
+        append(it.unexpandedClassId)
       }
     }
   }

@@ -39,13 +39,20 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
     module: TestModule,
     configuration: CompilerConfiguration,
   ) {
+    val transformProvidersToPrivate =
+      MetroDirectives.DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE !in module.directives
     val options =
       MetroOptions(
         generateAssistedFactories =
           MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives,
+        transformProvidersToPrivate = transformProvidersToPrivate,
         publicProviderSeverity =
-          module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
-            ?: MetroOptions.DiagnosticSeverity.NONE,
+          if (transformProvidersToPrivate) {
+            MetroOptions.DiagnosticSeverity.NONE
+          } else {
+            module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
+              ?: MetroOptions.DiagnosticSeverity.NONE
+          },
         customGraphAnnotations =
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {

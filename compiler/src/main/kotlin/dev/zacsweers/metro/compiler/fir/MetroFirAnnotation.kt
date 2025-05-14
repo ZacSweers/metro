@@ -5,19 +5,25 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.appendIterableWith
 import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.unsafeLazy
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
+import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.types.ConstantValueKind
 
-internal class MetroFirAnnotation(val fir: FirAnnotationCall) {
-  private val cachedHashKey by unsafeLazy { fir.computeAnnotationHash() }
+internal class MetroFirAnnotation(
+  val fir: FirAnnotationCall,
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+) {
+  private val cachedHashKey by unsafeLazy { fir.computeAnnotationHash(session, typeResolver) }
   private val cachedToString by unsafeLazy {
     buildString { renderAsAnnotation(fir, simple = false) }
   }
