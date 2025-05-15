@@ -18,18 +18,18 @@ dependencies {
   testImplementation(libs.kotlin.compilerTestFramework)
   testImplementation(libs.kotlin.compiler)
 
-  testImplementation("com.google.devtools.ksp:symbol-processing-aa-embeddable:2.1.10-1.0.31")
-  testImplementation("com.google.devtools.ksp:symbol-processing-api:2.1.10-1.0.31")
-  testImplementation("com.google.devtools.ksp:symbol-processing-common-deps:2.1.10-1.0.31")
-  testImplementation("com.google.devtools.ksp:symbol-processing:2.1.10-1.0.31")
-  testImplementation("io.github.classgraph:classgraph:4.8.179")
+  testImplementation(libs.ksp.symbolProcessing)
+  testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
+  testImplementation(libs.ksp.symbolProcessing.commonDeps)
+  testImplementation(libs.ksp.symbolProcessing.api)
+  testImplementation(libs.classgraph)
   testImplementation(libs.dagger.compiler)
 
   metroRuntimeClasspath(project(":runtime"))
+  daggerInteropClasspath(project(":interop-dagger"))
   anvilRuntimeClasspath(libs.anvil.annotations)
   anvilRuntimeClasspath(libs.anvil.annotations.optional)
   daggerRuntimeClasspath(libs.dagger.runtime)
-  daggerInteropClasspath(project(":interop-dagger"))
 
   // Dependencies required to run the internal test framework.
   testRuntimeOnly(libs.kotlin.reflect)
