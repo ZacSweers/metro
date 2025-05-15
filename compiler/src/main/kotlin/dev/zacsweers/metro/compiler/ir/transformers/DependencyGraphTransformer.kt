@@ -127,6 +127,7 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
@@ -2523,7 +2524,7 @@ internal class DependencyGraphTransformer(
         mapKey
       } else {
         // We can just copy the expression!
-        mapKey.getValueArgument(0)!!
+        mapKey.getValueArgument(0)!!.deepCopyWithSymbols()
       }
 
     return expression
