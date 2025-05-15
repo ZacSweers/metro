@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationsIn
@@ -36,6 +37,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val hasDefault: Boolean
   val location: CompilerMessageSourceLocation?
   val ir: IrValueParameter
+  val bindingStackEntry: IrBindingStack.Entry
 
   override fun compareTo(other: Parameter): Int = COMPARATOR.compare(this, other)
 
