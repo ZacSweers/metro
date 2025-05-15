@@ -37,6 +37,7 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.getSingleConstBooleanArgumentOrNull
+import dev.zacsweers.metro.compiler.ir.hiddenDeprecated
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
@@ -1808,8 +1809,7 @@ internal class DependencyGraphTransformer(
               addFunction(
                   name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
                   returnType = field.type,
-                  // TODO is this... ok?
-                  visibility = DescriptorVisibilities.INTERNAL,
+                  visibility = DescriptorVisibilities.PUBLIC,
                   origin = Origins.InstanceFieldAccessor,
                 )
                 .apply {
@@ -1818,7 +1818,8 @@ internal class DependencyGraphTransformer(
                       it.ir.transform(DeepCopyIrTreeWithSymbols(SymbolRemapper.EMPTY), null)
                         as IrConstructorCall
                   }
-                  // TODO add deprecation + hidden annotation to hide? Not sure if necessary
+                  // Add Deprecated(HIDDEN) annotation to hide
+                  annotations += hiddenDeprecated()
                   body =
                     pluginContext.createIrBuilder(symbol).run {
                       val expression =

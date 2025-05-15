@@ -65,7 +65,11 @@ import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
+import org.jetbrains.kotlin.ir.expressions.impl.fromSymbolOwner
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -853,3 +857,30 @@ internal val IrClass.metroGraphOrNull: IrClass?
     } else {
       nestedClassOrNull(Symbols.Names.MetroGraph)
     }
+
+// Adapted from compose-compiler
+// https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608
+internal fun IrMetroContext.hiddenDeprecated(
+  message: String = "This synthesized declaration should not be used directly"
+): IrConstructorCall {
+  return IrConstructorCallImpl.fromSymbolOwner(
+      type = symbols.deprecated.defaultType,
+      constructorSymbol = metroContext.symbols.deprecatedAnnotationConstructor,
+    )
+    .also {
+      it.arguments[0] =
+        IrConstImpl.string(
+          SYNTHETIC_OFFSET,
+          SYNTHETIC_OFFSET,
+          pluginContext.irBuiltIns.stringType,
+          message,
+        )
+      it.arguments[2] =
+        IrGetEnumValueImpl(
+          SYNTHETIC_OFFSET,
+          SYNTHETIC_OFFSET,
+          symbols.deprecationLevel.defaultType,
+          symbols.hiddenDeprecationLevel,
+        )
+    }
+}

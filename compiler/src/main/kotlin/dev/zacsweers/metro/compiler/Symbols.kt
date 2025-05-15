@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -510,6 +511,23 @@ internal class Symbols(
       .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.ELEMENTS_INTO_SET.asName()))!!
       .constructors
       .single()
+  }
+
+  val deprecatedAnnotationConstructor: IrConstructorSymbol by lazy {
+    pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first { it.owner.isPrimary }
+  }
+
+  val deprecated: IrClassSymbol by lazy {
+    pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!
+  }
+
+  val deprecationLevel: IrClassSymbol by lazy {
+    pluginContext.referenceClass(StandardClassIds.DeprecationLevel)!!
+  }
+
+  val hiddenDeprecationLevel by lazy {
+    deprecationLevel.owner.declarations.filterIsInstance<IrEnumEntry>()
+      .single { it.name.toString() == "HIDDEN" }.symbol
   }
 
   val dependencyGraphAnnotations
