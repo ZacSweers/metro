@@ -33,7 +33,7 @@ dependencies {
   testImplementation(libs.kotlin.compilerTestFramework)
   testImplementation(libs.kotlin.compiler)
 
-  testImplementation(libs.ksp.symbolProcessing)
+  testRuntimeOnly(libs.ksp.symbolProcessing)
   testImplementation(libs.ksp.symbolProcessing.aaEmbeddable)
   testImplementation(libs.ksp.symbolProcessing.commonDeps)
   testImplementation(libs.ksp.symbolProcessing.api)
