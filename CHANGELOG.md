@@ -10,6 +10,7 @@ Changelog
 - **Fix**: Fix contributed binding replacements not being respected in contributed graphs.
 - **Fix**: Fix contributed providers not being visible to N+2+ descendant graphs.
 - **Fix**: Collect bindings from member injectors as well as exposed accessors when determining scoped provider fields.
+- **Fix**: Fix a few `-Xverify-ir` and `-Xverify-ir-visibility` issues + run all tests with these enabled now.
 
 0.3.1
 -----

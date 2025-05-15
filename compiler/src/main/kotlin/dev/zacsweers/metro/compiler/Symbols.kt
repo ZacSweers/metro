@@ -514,7 +514,9 @@ internal class Symbols(
   }
 
   val deprecatedAnnotationConstructor: IrConstructorSymbol by lazy {
-    pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first { it.owner.isPrimary }
+    pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first {
+      it.owner.isPrimary
+    }
   }
 
   val deprecated: IrClassSymbol by lazy {
@@ -526,8 +528,10 @@ internal class Symbols(
   }
 
   val hiddenDeprecationLevel by lazy {
-    deprecationLevel.owner.declarations.filterIsInstance<IrEnumEntry>()
-      .single { it.name.toString() == "HIDDEN" }.symbol
+    deprecationLevel.owner.declarations
+      .filterIsInstance<IrEnumEntry>()
+      .single { it.name.toString() == "HIDDEN" }
+      .symbol
   }
 
   val dependencyGraphAnnotations
