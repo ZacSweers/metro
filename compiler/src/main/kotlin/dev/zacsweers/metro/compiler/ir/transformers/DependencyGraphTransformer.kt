@@ -2746,7 +2746,7 @@ internal class DependencyGraphTransformer(
         val lambda =
           irLambda(
             context = pluginContext,
-            parent = generationContext.thisReceiver.parent,
+            parent = this.parent,
             receiverParameter = null,
             emptyList(),
             binding.typeKey.type,
