@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.interop
 
-import com.google.devtools.ksp.impl.CommandLineKSPLogger
 import com.google.devtools.ksp.impl.KotlinSymbolProcessing
 import com.google.devtools.ksp.processing.KSPJvmConfig
 import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.MetroDirectives
+import dev.zacsweers.metro.compiler.test.JVM_TARGET
 import io.github.classgraph.ClassGraph
 import java.io.File
+import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
+import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.model.TestFile
 import org.jetbrains.kotlin.test.model.TestModule
@@ -63,11 +65,11 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
     val config =
       KSPJvmConfig.Builder()
         .apply {
-          // TODO better way to specify JVM information?
-          jvmTarget = "11"
+          jvmTarget = JVM_TARGET
           jdkHome = File(System.getProperty("java.home"))
           languageVersion = module.languageVersionSettings.languageVersion.versionString
           apiVersion = module.languageVersionSettings.apiVersion.versionString
+          allWarningsAsErrors = true // TODO is there a corresponding Directive?
 
           moduleName = module.name
           sourceRoots = listOf(kotlinInput)
@@ -84,11 +86,19 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
         }
         .build()
 
-    // TODO collect errors and throw?
-    //  - this is basically how the exit code works
-    //  - error reported exit code => processing error
-    val logger = CommandLineKSPLogger()
-    KotlinSymbolProcessing(config, providers, logger).execute()
+    val messageCollector =
+      PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, true)
+    val logger = TestKSPLogger(messageCollector, allWarningsAsErrors = config.allWarningsAsErrors)
+    try {
+      when (KotlinSymbolProcessing(config, providers, logger).execute()) {
+        KotlinSymbolProcessing.ExitCode.PROCESSING_ERROR -> error("Processing error!")
+        KotlinSymbolProcessing.ExitCode.OK -> {
+          // Succeeded
+        }
+      }
+    } finally {
+      logger.reportAll()
+    }
 
     val kotlinKspTestFiles =
       kotlinOutput.walkTopDown().filter { it.isFile }.map { it.toTestFile() }.toList()

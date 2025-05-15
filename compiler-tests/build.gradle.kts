@@ -2,7 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 plugins {
   alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.buildConfig)
   java
+}
+
+buildConfig {
+  generateAtSync = true
+  packageName("dev.zacsweers.metro.compiler.test")
+  kotlin {
+    useKotlinOutput {
+      internalVisibility = true
+      topLevelConstants = true
+    }
+  }
+  sourceSets.named("test") {
+    buildConfigField("String", "JVM_TARGET", libs.versions.jvmTarget.map { "\"$it\"" })
+  }
 }
 
 val metroRuntimeClasspath: Configuration by configurations.creating { isTransitive = false }
