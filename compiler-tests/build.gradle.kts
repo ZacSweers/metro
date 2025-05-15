@@ -67,6 +67,7 @@ tasks.register<JavaExec>("generateTests") {
 
 tasks.withType<Test> {
   dependsOn(metroRuntimeClasspath)
+  dependsOn(daggerInteropClasspath)
   inputs
     .dir(layout.projectDirectory.dir("src/test/data"))
     .withPropertyName("testData")
