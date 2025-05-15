@@ -1278,6 +1278,263 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  @Test
+  fun `bindings can be replaced in contributed graphs`() {
+    val commonCompilation =
+      compile(
+        source(
+          """
+          interface ContributedInterface
+          abstract class LoggedInScope
+        """
+            .trimIndent()
+        )
+      )
+
+    val libCompilation1 =
+      compile(
+        source(
+          """
+          @Inject
+          @SingleIn(LoggedInScope::class)
+          @ContributesBinding(LoggedInScope::class)
+          class Impl1 : ContributedInterface
+        """
+            .trimIndent()
+        ),
+        compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
+      )
+
+    val libCompilation2 =
+      compile(
+        source(
+          """
+          @Inject
+          @SingleIn(LoggedInScope::class)
+          @ContributesBinding(LoggedInScope::class, replaces = [Impl1::class])
+          class Impl2(
+            val impl1: Impl1
+          ) : ContributedInterface
+        """
+            .trimIndent()
+        ),
+        compilationBlock = {
+          addPreviousResultToClasspath(commonCompilation)
+          addPreviousResultToClasspath(libCompilation1)
+        },
+      )
+
+    compile(
+      source(
+        """
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val contributedInterface: ContributedInterface
+            val impl1: Impl1
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(): LoggedInGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      compilationBlock = {
+        addPreviousResultToClasspath(commonCompilation)
+        addPreviousResultToClasspath(libCompilation2)
+        addPreviousResultToClasspath(libCompilation1)
+      },
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val impl2 = loggedInGraph.callProperty<Any>("contributedInterface")
+      assertThat(impl2.javaClass.simpleName).isEqualTo("Impl2")
+      assertThat(impl2).isSameInstanceAs(loggedInGraph.callProperty<Any>("contributedInterface"))
+      val impl1 = impl2.callProperty<Any>("impl1")
+      assertThat(impl1).isSameInstanceAs(loggedInGraph.callProperty<Any>("impl1"))
+    }
+  }
+
+  @Test
+  fun `graph extends interface`() {
+    compile(
+      source(
+        """
+          abstract class ChildScope
+
+          interface Test
+
+          @ContributesGraphExtension(ChildScope::class, isExtendable = true)
+          interface ChildGraph : Test {
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun create(): ChildGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph : Test
+        """
+          .trimIndent()
+      )
+    )
+  }
+
+  @Test
+  fun `graph extends interface - bound in child`() {
+    compile(
+      source(
+        """
+          abstract class ChildScope
+
+          interface Test
+
+          @ContributesGraphExtension(ChildScope::class, isExtendable = true)
+          interface ChildGraph : Test {
+
+            val test: Test
+            @Binds val ChildGraph.bind: Test
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun create(): ChildGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph : Test {
+          }
+        """
+          .trimIndent()
+      )
+    )
+  }
+
+  @Test
+  fun `graph extends interface - bound in parent`() {
+    compile(
+      source(
+        """
+          abstract class Parent
+
+          interface Test
+
+          @ContributesGraphExtension(Parent::class, isExtendable = true)
+          interface ChildGraph : Test {
+
+            val test: Test
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun create(): ChildGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph : Test {
+            @Binds val ExampleGraph.bind: Test
+          }
+        """
+          .trimIndent()
+      )
+    )
+  }
+
+  @Test
+  fun `multiple levels of provider inheritance`() {
+    compile(
+      source(
+        """
+          sealed interface GrandParentScope
+          sealed interface ParentScope
+          sealed interface ChildScope
+
+          @ContributesTo(GrandParentScope::class)
+          interface TestContribution {
+              @Provides
+              fun provideString(): String = ""
+          }
+
+          @SingleIn(GrandParentScope::class)
+          @DependencyGraph(scope = GrandParentScope::class, isExtendable = true)
+          interface GrandParentGraph
+
+          @ContributesGraphExtension(ParentScope::class, isExtendable = true)
+          interface ParentGraph {
+              @ContributesGraphExtension.Factory(GrandParentScope::class)
+              interface Factory {
+                  fun createParentGraph(): ParentGraph
+              }
+          }
+
+          @ContributesGraphExtension(ChildScope::class)
+          interface ChildGraph {
+              val string: String
+
+              @ContributesGraphExtension.Factory(ParentScope::class)
+              interface Factory {
+                  fun createChildGraph(): ChildGraph
+              }
+          }
+        """
+          .trimIndent()
+      )
+    )
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/377#issuecomment-2878782694
+  @Test
+  fun `contributed graph should ensure scoping of class-injected types`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+
+          @Inject @SingleIn(AppScope::class) class Dependency
+          @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            val dependency: Dependency
+          }
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+              fun inject(screen: LoggedInScreen)
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+
+          class LoggedInScreen {
+              @Inject lateinit var childDependency: ChildDependency
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val loggedInScreen1 = classLoader.loadClass("test.LoggedInScreen").newInstanceStrict()
+      loggedInGraph.callFunction<Any>("inject", loggedInScreen1)
+      val childDep1 = loggedInScreen1.callProperty<Any>("childDependency")
+      assertThat(childDep1).isNotNull()
+
+      val loggedInScreen2 = classLoader.loadClass("test.LoggedInScreen").newInstanceStrict()
+      loggedInGraph.callFunction<Any>("inject", loggedInScreen2)
+      val childDep2 = loggedInScreen2.callProperty<Any>("childDependency")
+      assertThat(childDep2).isNotNull()
+
+      assertThat(childDep2).isSameInstanceAs(childDep1)
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }

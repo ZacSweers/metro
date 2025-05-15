@@ -272,7 +272,7 @@ internal open class MutableBindingGraph<
       // Absent binding or otherwise not something we store
       return
     }
-    if (bindings.containsKey(key)) {
+    if (key in bindings) {
       val message = buildString {
         appendLine(
           "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"

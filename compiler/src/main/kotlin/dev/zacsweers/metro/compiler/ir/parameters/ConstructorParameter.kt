@@ -40,7 +40,7 @@ internal class ConstructorParameter(
   @Poko.Skip override val providerType: IrType,
   @Poko.Skip override val lazyType: IrType,
   @Poko.Skip override val symbols: Symbols,
-  @Poko.Skip val bindingStackEntry: IrBindingStack.Entry,
+  @Poko.Skip override val bindingStackEntry: IrBindingStack.Entry,
   @Poko.Skip override val location: CompilerMessageSourceLocation?,
 ) : Parameter {
   override lateinit var ir: IrValueParameter

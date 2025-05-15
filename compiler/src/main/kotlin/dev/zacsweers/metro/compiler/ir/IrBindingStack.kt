@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.unsafeLazy
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -30,7 +31,7 @@ internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey,
     override val contextKey: IrContextualTypeKey,
     override val usage: String?,
     override val graphContext: String?,
-    val declaration: IrDeclarationWithName?,
+    val declaration: IrDeclaration?,
     override val displayTypeKey: IrTypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
@@ -109,7 +110,7 @@ internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey,
         contextKey: IrContextualTypeKey,
         function: IrFunction?,
         param: IrValueParameter? = null,
-        declaration: IrDeclarationWithName? = param,
+        declaration: IrDeclaration? = param,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
       ): Entry {
@@ -141,6 +142,27 @@ internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey,
           usage = "is injected at",
           graphContext = context,
           declaration = declaration,
+          isSynthetic = isSynthetic,
+        )
+      }
+
+      /*
+      java.lang.CharSequence is injected at
+            [com.slack.circuit.star.ExampleGraph] com.slack.circuit.star.Example1.text2
+      */
+      fun memberInjectedAt(
+        contextKey: IrContextualTypeKey,
+        member: IrDeclarationWithName,
+        displayTypeKey: IrTypeKey = contextKey.typeKey,
+        isSynthetic: Boolean = false,
+      ): Entry {
+        val context = member.parent.kotlinFqName.child(member.name).asString()
+        return Entry(
+          contextKey = contextKey,
+          displayTypeKey = displayTypeKey,
+          usage = "is injected at",
+          graphContext = context,
+          declaration = member,
           isSynthetic = isSynthetic,
         )
       }

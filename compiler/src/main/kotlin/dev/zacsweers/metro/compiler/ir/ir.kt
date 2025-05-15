@@ -669,6 +669,14 @@ internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? {
 internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
   (getValueArgument(name) as IrConst?)?.value as Boolean?
 
+internal fun IrConstructorCall.replacesArgument() =
+  getValueArgument(Symbols.Names.replaces)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
+  return replacesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
+    ?: return emptySet()
+}
+
 internal fun IrConstructorCall.scopeOrNull(): ClassId? {
   return scopeClassOrNull()?.classIdOrFail
 }
@@ -760,8 +768,12 @@ internal fun IrClassSymbol.requireSimpleFunction(name: String) =
     )
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
-  return nestedClasses.firstOrNull { it.name == name }
+  return nestedClassOrNull(name)
     ?: error("No nested class $name in $classId. Found ${nestedClasses.map { it.name }}")
+}
+
+internal fun IrClass.nestedClassOrNull(name: Name): IrClass? {
+  return nestedClasses.firstOrNull { it.name == name }
 }
 
 internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T {
@@ -831,10 +843,13 @@ internal fun IrPluginContext.buildAnnotation(
   }
 }
 
-internal val IrClass.metroGraph: IrClass
+internal val IrClass.metroGraphOrFail: IrClass
+  get() = metroGraphOrNull ?: error("No generated MetroGraph for $classId")
+
+internal val IrClass.metroGraphOrNull: IrClass?
   get() =
     if (origin === Origins.ContributedGraph) {
       this
     } else {
-      requireNestedClass(Symbols.Names.MetroGraph)
+      nestedClassOrNull(Symbols.Names.MetroGraph)
     }

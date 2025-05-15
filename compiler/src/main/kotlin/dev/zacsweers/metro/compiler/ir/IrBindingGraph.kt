@@ -63,10 +63,6 @@ internal class IrBindingGraph(
   }
 
   fun addBinding(key: IrTypeKey, binding: Binding, bindingStack: IrBindingStack) {
-    if (binding is Binding.Absent) {
-      // Don't store absent bindings
-      return
-    }
     realGraph.tryPut(binding, bindingStack, key)
   }
 
@@ -159,8 +155,6 @@ internal class IrBindingGraph(
   }
 
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
-
-  fun IrTypeKey.dependsOn(key: IrTypeKey) = with(realGraph) { this@dependsOn.dependsOn(key) }
 
   data class BindingGraphResult(
     val sortedKeys: List<IrTypeKey>,
