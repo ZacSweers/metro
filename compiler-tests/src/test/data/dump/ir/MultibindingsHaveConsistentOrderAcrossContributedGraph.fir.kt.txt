@@ -117,10 +117,6 @@ interface ExampleGraph : $$MetroContribution {
 
     }
 
-    internal fun thisGraphInstance_metroAccessor(): ExampleGraph {
-      return <this>.#thisGraphInstance
-    }
-
     override fun createLoggedInGraph(): LoggedInGraph {
       return $$ContributedLoggedInGraph(exampleGraph = <this>)
     }
