@@ -768,8 +768,12 @@ internal fun IrClassSymbol.requireSimpleFunction(name: String) =
     )
 
 internal fun IrClass.requireNestedClass(name: Name): IrClass {
-  return nestedClasses.firstOrNull { it.name == name }
+  return nestedClassOrNull(name)
     ?: error("No nested class $name in $classId. Found ${nestedClasses.map { it.name }}")
+}
+
+internal fun IrClass.nestedClassOrNull(name: Name): IrClass? {
+  return nestedClasses.firstOrNull { it.name == name }
 }
 
 internal fun <T : IrOverridableDeclaration<*>> T.resolveOverriddenTypeIfAny(): T {
@@ -839,10 +843,13 @@ internal fun IrPluginContext.buildAnnotation(
   }
 }
 
-internal val IrClass.metroGraph: IrClass
+internal val IrClass.metroGraphOrFail: IrClass
+  get() = metroGraphOrNull ?: error("No generated MetroGraph for $classId")
+
+internal val IrClass.metroGraphOrNull: IrClass?
   get() =
     if (origin === Origins.ContributedGraph) {
       this
     } else {
-      requireNestedClass(Symbols.Names.MetroGraph)
+      nestedClassOrNull(Symbols.Names.MetroGraph)
     }

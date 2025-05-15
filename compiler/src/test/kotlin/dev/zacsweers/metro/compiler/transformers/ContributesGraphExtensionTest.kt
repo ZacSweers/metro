@@ -1444,6 +1444,48 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     )
   }
 
+  @Test
+  fun `multiple levels of provider inheritance`() {
+    compile(
+      source(
+        """
+          sealed interface GrandParentScope
+          sealed interface ParentScope
+          sealed interface ChildScope
+
+          @ContributesTo(GrandParentScope::class)
+          interface TestContribution {
+              @Provides
+              fun provideString(): String = ""
+          }
+
+          @SingleIn(GrandParentScope::class)
+          @DependencyGraph(scope = GrandParentScope::class, isExtendable = true)
+          interface GrandParentGraph
+
+          @ContributesGraphExtension(ParentScope::class, isExtendable = true)
+          interface ParentGraph {
+              @ContributesGraphExtension.Factory(GrandParentScope::class)
+              interface Factory {
+                  fun createParentGraph(): ParentGraph
+              }
+          }
+
+          @ContributesGraphExtension(ChildScope::class)
+          interface ChildGraph {
+              val string: String
+
+              @ContributesGraphExtension.Factory(ParentScope::class)
+              interface Factory {
+                  fun createChildGraph(): ChildGraph
+              }
+          }
+        """
+          .trimIndent()
+      )
+    )
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }

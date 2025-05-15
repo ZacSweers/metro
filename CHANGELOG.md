@@ -4,9 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Optimize supertype lookups in IR.
 - **Fix**: Fix generic members inherited from generic supertypes of contributed graphs.
 - **Fix**: Fix `@ContributedGraphExtension` that extends the same interface as the parent causes a duplicate binding error.
 - **Fix**: Fix contributed binding replacements not being respected in contributed graphs.
+- **Fix**: Fix contributed providers not being visible to N+2+ descendant graphs.
 
 0.3.1
 -----

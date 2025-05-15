@@ -45,7 +45,8 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
-import dev.zacsweers.metro.compiler.ir.metroGraph
+import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
+import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -264,7 +265,9 @@ internal class DependencyGraphTransformer(
         ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
     val isGraph = dependencyGraphAnno != null
     val supertypes =
-      graphDeclaration.getAllSuperTypes(pluginContext, excludeSelf = false).memoized()
+      (graphDeclaration.metroGraphOrNull ?: graphDeclaration)
+        .getAllSuperTypes(pluginContext, excludeSelf = false)
+        .memoized()
 
     val accessors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
@@ -281,7 +284,7 @@ internal class DependencyGraphTransformer(
         if (isGraph) {
           // It's just an external graph, just read the declared types from it
           graphDeclaration
-            .metroGraph // Doesn't cover contributed graphs but they're not visible anyway
+            .metroGraphOrFail // Doesn't cover contributed graphs but they're not visible anyway
             .allCallableMembers(
               metroContext,
               excludeInheritedMembers = false,
@@ -420,6 +423,7 @@ internal class DependencyGraphTransformer(
       val dependentNode =
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
+          supertypes = supertypes.toList(),
           isExtendable = isExtendable,
           includedGraphNodes = includedGraphNodes,
           scopes = scopes,
@@ -440,7 +444,7 @@ internal class DependencyGraphTransformer(
       return dependentNode
     }
 
-    val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraph
+    val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraphOrFail
     val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
     val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
 
@@ -652,6 +656,7 @@ internal class DependencyGraphTransformer(
     val dependencyGraphNode =
       DependencyGraphNode(
         sourceGraph = graphDeclaration,
+        supertypes = supertypes.toList(),
         isExtendable = isExtendable,
         includedGraphNodes = includedGraphNodes,
         contributedGraphs = contributedGraphs,
@@ -884,7 +889,7 @@ internal class DependencyGraphTransformer(
 
     // Add aliases for all its supertypes
     // TODO dedupe supertype iteration
-    for (superType in node.sourceGraph.getAllSuperTypes(pluginContext, excludeSelf = true)) {
+    for (superType in node.supertypes) {
       val superTypeKey = IrTypeKey(superType)
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
     }
@@ -1001,18 +1006,20 @@ internal class DependencyGraphTransformer(
       if (creatorParam.isBindsInstance || creatorParam.isExtends) {
         val paramTypeKey = creatorParam.typeKey
         graph.addBinding(paramTypeKey, Binding.BoundInstance(creatorParam), bindingStack)
+      }
+    }
 
-        if (creatorParam.isExtends) {
-          val parentType = paramTypeKey.type.rawType()
-          // If it's a contributed graph, add an alias for the parent types since that's what
-          // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph + supertypes
-          // TODO for chained children, how will they know this?
-          // TODO dedupe supertype iteration
-          for (superType in parentType.getAllSuperTypes(pluginContext, excludeSelf = true)) {
-            val parentTypeKey = IrTypeKey(superType)
-            superTypeToAlias.putIfAbsent(parentTypeKey, paramTypeKey)
-          }
-        }
+    // Traverse all parent graph supertypes to create binding aliases as needed
+    node.allExtendedNodes.forEach { (typeKey, extendedNode) ->
+      // If it's a contributed graph, add an alias for the parent types since that's what
+      // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph + supertypes
+      for (superType in extendedNode.supertypes) {
+        val parentTypeKey = IrTypeKey(superType)
+
+        // Ignore the graph declaration itself, handled separately
+        if (parentTypeKey == typeKey) continue
+
+        superTypeToAlias.putIfAbsent(parentTypeKey, typeKey)
       }
     }
 
@@ -1117,7 +1124,7 @@ internal class DependencyGraphTransformer(
         val providerFieldsSet = depNode.proto.provider_field_names.toSet()
         val instanceFieldsSet = depNode.proto.instance_field_names.toSet()
 
-        val graphImpl = depNode.sourceGraph.metroGraph
+        val graphImpl = depNode.sourceGraph.metroGraphOrFail
         for (accessor in graphImpl.functions) {
           // TODO exclude toString/equals/hashCode or use marker annotation?
           when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
@@ -1376,20 +1383,10 @@ internal class DependencyGraphTransformer(
               // Extended graphs
               addBoundInstanceField { irGet(irParam) }
 
-              val parentType = graphDep.sourceGraph.metroGraph
-              // If it's a contributed graph, add an alias for the parent types since that's what
-              // bindings will look for. i.e. $$ContributedLoggedInGraph -> LoggedInGraph +
-              // supertypes
-              // TODO for chained children, how will they know this?
-              // TODO dedupe supertype iteration
-              for (superType in parentType.getAllSuperTypes(pluginContext, excludeSelf = true)) {
-                instanceFields[IrTypeKey(superType)] = graphDepField
-              }
-
               // Check that the input parameter is an instance of the metrograph class
               // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
               if (graphDep.sourceGraph != graphClass) {
-                val depMetroGraph = graphDep.sourceGraph.metroGraph
+                val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
                 extraConstructorStatements.add {
                   irIfThen(
                     condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
@@ -1434,12 +1431,6 @@ internal class DependencyGraphTransformer(
 
       instanceFields[node.typeKey] = thisGraphField
 
-      // Add convenience mappings for all supertypes to this field so
-      // instance providers from inherited types use this instance
-      for (superType in node.sourceGraph.getAllSuperTypes(pluginContext)) {
-        instanceFields[IrTypeKey(superType)] = thisGraphField
-      }
-
       // Expose the graph as a provider field
       providerFields[node.typeKey] =
         addField(
@@ -1482,7 +1473,7 @@ internal class DependencyGraphTransformer(
           )
           exitProcessing()
         }
-        val parentMetroGraph = parent.sourceGraph.metroGraph
+        val parentMetroGraph = parent.sourceGraph.metroGraphOrFail
         val instanceAccessorNames = proto.instance_field_names.toSet()
         val instanceAccessors =
           parentMetroGraph.functions
