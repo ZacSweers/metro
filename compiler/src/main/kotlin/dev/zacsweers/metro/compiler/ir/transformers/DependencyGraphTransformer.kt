@@ -814,9 +814,13 @@ internal class DependencyGraphTransformer(
         throw e
       }
       throw AssertionError(
-        "Code gen exception while processing ${dependencyGraphDeclaration.classIdOrFail}. ${e.message}",
-        e,
-      )
+          "Code gen exception while processing ${dependencyGraphDeclaration.classIdOrFail}. ${e.message}",
+          e,
+        )
+        .apply {
+          // Don't fill in the stacktrace here as it's not relevant to the issue
+          setStackTrace(emptyArray())
+        }
     }
 
     processedMetroDependencyGraphsByClass[graphClassId] = metroGraph
