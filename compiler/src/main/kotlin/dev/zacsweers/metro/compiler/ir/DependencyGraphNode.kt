@@ -12,11 +12,13 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
   val sourceGraph: IrClass,
+  val supertypes: List<IrType>,
   val isExtendable: Boolean,
   val includedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
   val contributedGraphs: Map<IrTypeKey, MetroSimpleFunction>,

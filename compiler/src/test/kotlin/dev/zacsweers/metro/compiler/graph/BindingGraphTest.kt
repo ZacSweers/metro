@@ -3,8 +3,6 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.compiler.MetroLogger
-import dev.zacsweers.metro.compiler.MetroLoggerImpl
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -15,14 +13,14 @@ class BindingGraphTest {
   @Test
   fun put() {
     val key = "key".typeKey
-    val graph = buildGraph { binding("key") }
+    val (graph) = buildGraph { binding("key") }
 
     assertTrue(key in graph)
   }
 
   @Test
   fun `put throws if graph is sealed`() {
-    val graph = buildGraph { binding("key") }
+    val (graph) = buildGraph { binding("key") }
 
     val exception =
       assertFailsWith<IllegalStateException> { graph.tryPut("key".typeKey.toBinding()) }
@@ -33,7 +31,7 @@ class BindingGraphTest {
   fun `seal processes dependencies and marks graph as sealed`() {
     val a = "A".typeKey
     val b = "B".typeKey
-    val graph = buildGraph { a dependsOn b }
+    val (graph) = buildGraph { a dependsOn b }
 
     with(graph) {
       assertThat(a.dependsOn(b)).isTrue()
@@ -46,17 +44,18 @@ class BindingGraphTest {
     val a = "A".typeKey
     val b = "B".typeKey
 
-    val graph = buildGraph {
-      a dependsOn "Provider<A>".contextualTypeKey
-      b dependsOn "Lazy<B>".contextualTypeKey
-    }
+    val (graph, result) =
+      buildGraph {
+        a dependsOn "Provider<A>".contextualTypeKey
+        b dependsOn "Lazy<B>".contextualTypeKey
+      }
 
     with(graph) {
       assertThat(a.dependsOn(a)).isTrue()
       assertThat(b.dependsOn(b)).isTrue()
     }
 
-    assertThat(graph.deferredTypes).containsExactly(a, b)
+    assertThat(result.deferredTypes).containsExactly(a, b)
   }
 
   @Test
@@ -64,11 +63,11 @@ class BindingGraphTest {
     val aProvider = "Provider<A>".typeKey
     val b = "B".typeKey
 
-    val graph = buildGraph { aProvider dependsOn b }
+    val (graph, result) = buildGraph { aProvider dependsOn b }
 
     with(graph) { assertThat(aProvider.dependsOn(b)).isTrue() }
 
-    assertThat(graph.deferredTypes).isEmpty()
+    assertThat(result.deferredTypes).isEmpty()
   }
 
   @Test
@@ -89,12 +88,12 @@ class BindingGraphTest {
         """
           [Metro/DependencyCycle] Found a dependency cycle while processing 'AppGraph'.
           Cycle:
-              A --> B --> A
+              B --> A --> B
 
           Trace:
-              A
               B
               A
+              B
               ...
         """
           .trimIndent()
@@ -147,7 +146,7 @@ class BindingGraphTest {
   @Test
   fun `medium length traversal`() {
     // Create a chain
-    val graph = buildChainedGraph("A", "B", "C", "D", "E")
+    val (graph) = buildChainedGraph("A", "B", "C", "D", "E")
 
     with(graph) {
       // Verify direct dependencies
@@ -175,14 +174,15 @@ class BindingGraphTest {
     val eBinding = e.toBinding(d)
     val cBinding = c.toBinding(e)
 
-    val graph = buildGraph {
-      constructorInjected(dBinding)
-      constructorInjected(eBinding)
-      constructorInjected(cBinding)
-      a dependsOn c
-      c dependsOn e
-      e dependsOn d
-    }
+    val (graph) =
+      buildGraph {
+        constructorInjected(dBinding)
+        constructorInjected(eBinding)
+        constructorInjected(cBinding)
+        a dependsOn c
+        c dependsOn e
+        e dependsOn d
+      }
 
     with(graph) {
       assertThat(c.dependsOn(d)).isTrue()
@@ -196,10 +196,11 @@ class BindingGraphTest {
   @Test
   fun `short traversal with 3 nodes`() {
     // Create a short chain A1 -> A2 -> A3
-    val graph = buildGraph {
-      "A1" dependsOn "A2"
-      "A2" dependsOn "A3"
-    }
+    val (graph) =
+      buildGraph {
+        "A1" dependsOn "A2"
+        "A2" dependsOn "A3"
+      }
 
     // Verify that A1 depends on A3 transitively
     with(graph) {
@@ -211,15 +212,14 @@ class BindingGraphTest {
   @Test
   fun `simple self cycle with Provider type`() {
     // A -> Provider<A>
-    val graph = buildGraph {
-      // Create a direct cycle
-      "A".dependsOn("Provider<A>")
-    }
+    val (graph, result) =
+      buildGraph {
+        // Create a direct cycle
+        "A".dependsOn("Provider<A>")
+      }
 
-    with(graph) {
-      assertThat("A".typeKey.dependsOn("Provider<A>".typeKey)).isTrue()
-      assertThat(deferredTypes).containsExactly("A".typeKey)
-    }
+    with(graph) { assertThat("A".typeKey.dependsOn("Provider<A>".typeKey)).isTrue() }
+    assertThat(result.deferredTypes).containsExactly("A".typeKey)
   }
 
   @Test
@@ -227,21 +227,22 @@ class BindingGraphTest {
     // Create a graph with both computed and non-computed bindings
     val computedTypes = setOf("Computed1", "Computed2", "Computed3")
 
-    val graph = buildGraph {
-      // Add some regular bindings
-      val a = binding("A")
-      val b = binding("B")
-      val c = binding("C")
+    val (graph) =
+      buildGraph {
+        // Add some regular bindings
+        val a = binding("A")
+        val b = binding("B")
+        val c = binding("C")
 
-      // Create dependencies on computed bindings
-      a dependsOn "Computed1"
-      b dependsOn "Computed2"
-      c dependsOn "Computed3"
+        // Create dependencies on computed bindings
+        a dependsOn "Computed1"
+        b dependsOn "Computed2"
+        c dependsOn "Computed3"
 
-      // Create dependencies between computed bindings
-      "Computed1".typeKey dependsOn "Computed2"
-      "Computed2".typeKey dependsOn "Computed3"
-    }
+        // Create dependencies between computed bindings
+        "Computed1".typeKey dependsOn "Computed2"
+        "Computed2".typeKey dependsOn "Computed3"
+      }
 
     // Verify that all bindings are in the graph
     with(graph) {
@@ -272,12 +273,10 @@ class BindingGraphTest {
   @Test
   fun `direct cycle with lazy`() {
     // A -> Lazy<A>
-    val graph = buildGraph { "A" dependsOn "Lazy<A>" }
+    val (graph, result) = buildGraph { "A" dependsOn "Lazy<A>" }
 
-    with(graph) {
-      assertThat("A".typeKey.dependsOn("Lazy<A>".typeKey)).isTrue()
-      assertThat(deferredTypes).containsExactly("A".typeKey)
-    }
+    with(graph) { assertThat("A".typeKey.dependsOn("Lazy<A>".typeKey)).isTrue() }
+    assertThat(result.deferredTypes).containsExactly("A".typeKey)
   }
 
   @Test
@@ -349,25 +348,25 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
-  debug: Boolean = false,
-  computeBinding: (StringContextualTypeKey, StringBindingStack) -> StringBinding? = { _, _ -> null },
+  computeBinding: (StringContextualTypeKey) -> StringBinding? = { _ -> null },
 ): StringGraph {
   return StringGraph(
     newBindingStack = { StringBindingStack(graph) },
-    newBindingStackEntry = { contextKey, binding -> StringBindingStack.Entry(contextKey) },
+    newBindingStackEntry = { contextKey, binding, roots -> StringBindingStack.Entry(contextKey) },
     computeBinding = computeBinding,
-    logger =
-      if (debug) MetroLoggerImpl(MetroLogger.Type.BindingGraphConstruction, ::println)
-      else MetroLogger.NONE,
   )
 }
 
-private fun buildGraph(body: StringGraphBuilder.() -> Unit): StringGraph {
+private fun buildGraph(
+  body: StringGraphBuilder.() -> Unit
+): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
   return StringGraphBuilder().apply(body).sealAndReturn()
 }
 
 // Helper method to create a graph with a chain of dependencies
-private fun buildChainedGraph(vararg nodes: String): StringGraph {
+private fun buildChainedGraph(
+  vararg nodes: String
+): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
   return buildGraph {
     for (i in 0 until nodes.size - 1) {
       nodes[i] dependsOn nodes[i + 1]
@@ -377,7 +376,7 @@ private fun buildChainedGraph(vararg nodes: String): StringGraph {
 
 internal class StringGraphBuilder {
   private val constructorInjectedTypes = mutableMapOf<StringTypeKey, StringBinding>()
-  private val graph = newStringBindingGraph { contextKey, stack ->
+  private val graph = newStringBindingGraph { contextKey ->
     constructorInjectedTypes[contextKey.typeKey]
   }
 
@@ -437,8 +436,7 @@ internal class StringGraphBuilder {
     constructorInjectedTypes[binding.typeKey] = binding
   }
 
-  fun sealAndReturn(): StringGraph {
-    graph.seal()
-    return graph
+  fun sealAndReturn(): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
+    return graph to graph.seal()
   }
 }

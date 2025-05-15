@@ -121,9 +121,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is requested at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text
           """
           .trimIndent()
@@ -150,9 +150,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is requested at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text
           """
           .trimIndent()
@@ -207,9 +207,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is requested at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is requested at
                     [test.ExampleGraph] test.ExampleGraph#text()
           """
           .trimIndent()
@@ -271,9 +271,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("hello") kotlin.String
+            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
-                @Named("hello") kotlin.String is injected at
+                @dev.zacsweers.metro.Named("hello") kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
                 test.ExampleClass is requested at
                     [test.ExampleGraph] test.ExampleGraph#exampleClass()
@@ -733,7 +733,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:12:18 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
+          e: ExampleGraph.kt:6:1 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
           Cycle:
               Int <--> Int (depends on itself)
 
@@ -779,17 +779,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:12:21 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
+            e: ExampleGraph.kt:6:1 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
             Cycle:
-                Int --> Double --> String --> Int
+                Int --> String --> Double --> Int
 
             Trace:
                 kotlin.Int is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
-                kotlin.Double is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
                 kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideDouble(…, string)
+                kotlin.Double is injected at
+                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
                 kotlin.Int is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
                 ...
@@ -1470,7 +1470,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
@@ -1499,7 +1499,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
@@ -1532,7 +1532,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
@@ -1849,6 +1849,41 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       assertNotNull(graph.callProperty<Any>("exampleClass"))
+    }
+  }
+
+  @Test
+  fun `a multibinding can be declared with @Multibinds and contributed to using @ElementsIntoSet`() {
+    compile(
+      source(
+        """
+            interface MultiboundType
+
+            @Inject
+            class MultiImpl : MultiboundType
+
+            @ContributesTo(AppScope::class)
+            interface MultibindingsModule {
+              @Provides @ElementsIntoSet
+              fun provideMulti(impl: MultiImpl): Set<@JvmSuppressWildcards MultiboundType> = setOf(impl)
+            }
+
+            @ContributesTo(AppScope::class)
+            interface MultibindingsModule2 {
+              @Multibinds(allowEmpty = true)
+              fun provideMulti(): Set<@JvmSuppressWildcards MultiboundType>
+            }
+
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph {
+              val multi: Set<MultiboundType>
+            }
+          """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      assertNotNull(graph.callProperty<Any>("multi"))
     }
   }
 
@@ -2232,9 +2267,9 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @Named("qualified") kotlin.Int
+          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("qualified") kotlin.Int
 
-              @Named("qualified") kotlin.Int is requested at
+              @dev.zacsweers.metro.Named("qualified") kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
 
           Similar bindings:
@@ -2739,6 +2774,147 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertThat(exampleGraph.callProperty<Int>("qualifiedInt")).isEqualTo(2)
       assertThat(exampleGraph.callProperty<Long>("scopedLong")).isEqualTo(3L)
       assertThat(exampleGraph.callProperty<Long>("qualifiedScopedLong")).isEqualTo(4L)
+    }
+  }
+
+  @Test
+  fun `cycle smoke test`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface CyclicalGraphWithClassesBrokenWithProviderBarExposed {
+              val bar: Bar
+
+              @DependencyGraph.Factory
+              fun interface Factory {
+                fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProviderBarExposed
+              }
+
+              @Inject
+              class Foo(val barProvider: Provider<Bar>) : Callable<String> {
+                override fun call() = barProvider().call()
+              }
+
+              @Inject
+              class Bar(val foo: Foo, val message: String) : Callable<String> {
+                override fun call() = message
+              }
+            }
+        """
+      )
+    )
+  }
+
+  @Test
+  fun `optional deps with back referencing default`() {
+    compile(
+      source(
+        """
+            @DependencyGraph
+            interface ExampleGraph {
+              val message: String
+
+              @Provides private fun provideInt(): Int = 3
+
+              @Provides
+              private fun provideMessage(
+                intValue: Int,
+                input: CharSequence = "Not found: " + intValue,
+              ): String = input.toString()
+            }
+        """
+      )
+    )
+  }
+
+  @Test
+  fun `map cycle graph`() {
+    compile(
+      source(
+        """
+            @Inject class X(val y: Y)
+
+            @Inject
+            class Y(
+              val mapOfProvidersOfX: Map<String, Provider<X>>,
+              val mapOfProvidersOfY: Map<String, Provider<Y>>,
+            )
+
+            @DependencyGraph
+            interface CycleMapGraph {
+              fun y(): Y
+
+              @Binds @IntoMap @StringKey("X") val X.x: X
+
+              @Binds @IntoMap @StringKey("Y") val Y.y: Y
+            }
+        """
+      )
+    )
+  }
+
+  @Test
+  fun `multiple empty multibinds are reported together`() {
+    compile(
+      source(
+        """
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph {
+          @Multibinds val ints: Set<Int>
+          @Multibinds val strings: Set<String>
+          @Multibinds val stringsAndInts: Map<String, Int>
+        }
+      """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          e: ExampleGraph.kt:9:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+
+          e: ExampleGraph.kt:10:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.Int>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  // Regression tests that ensures that a default dependency (i.e. one that would pass through
+  // topo sorting's onMissing() handler doesn't break the later satisfied checks
+  @Test
+  fun `optional dependency does not break topo sorting`() {
+    compile(
+      source(
+        """
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph {
+          fun foo(): Foo
+        }
+
+        @SingleIn(AppScope::class)
+        class Foo @Inject constructor(
+          val bar: Bar,
+          val text: String = "default"
+        )
+
+        @Inject class Bar
+      """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val foo = graph.callFunction<Any>("foo")
+      assertThat(foo.callProperty<String>("text")).isEqualTo("default")
     }
   }
 }

@@ -2,17 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -27,22 +30,23 @@ internal class IrBindingGraph(
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
-      newBindingStackEntry = { contextKey, binding ->
-        bindingStackEntryForDependency(binding, contextKey, contextKey.typeKey)
+      newBindingStackEntry = { contextKey, callingBinding, roots ->
+        if (callingBinding == null) {
+          roots.getValue(contextKey)
+        } else {
+          bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+        }
       },
-      computeBinding = { contextKey, stack ->
-        metroContext.injectedClassBindingOrNull(contextKey, stack, this)
-      },
+      absentBinding = { key -> Binding.Absent(key) },
+      computeBinding = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
       onError = { message, stack ->
         val location = stack.lastEntryOrGraph.locationOrNull()
         metroContext.reportError(message, location)
         exitProcessing()
       },
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
-      stackLogger = metroContext.loggerFor(MetroLogger.Type.BindingGraphConstruction),
     )
 
-  // Use ConcurrentHashMap to allow reentrant modification
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrTypeKey, IrBindingStack.Entry>()
@@ -59,10 +63,6 @@ internal class IrBindingGraph(
   }
 
   fun addBinding(key: IrTypeKey, binding: Binding, bindingStack: IrBindingStack) {
-    if (binding is Binding.Absent) {
-      // Don't store absent bindings
-      return
-    }
     realGraph.tryPut(binding, bindingStack, key)
   }
 
@@ -77,37 +77,70 @@ internal class IrBindingGraph(
     return realGraph[contextKey.typeKey]
       ?: run {
         if (contextKey.hasDefault) return Binding.Absent(contextKey.typeKey)
-        val message = buildString {
-          appendLine("No binding found for ${contextKey.typeKey}")
-          appendBindingStack(stack)
+        realGraph.reportMissingBinding(contextKey.typeKey, stack) {
           if (metroContext.debug) {
             appendLine(dumpGraph(stack.graph.kotlinFqName.asString(), short = false))
           }
         }
-        metroContext.reportError(message, stack.lastEntryOrGraph.location())
-        exitProcessing()
       }
   }
 
   fun getOrCreateMultibinding(
     pluginContext: IrPluginContext,
-    typeKey: IrTypeKey,
+    annotations: MetroAnnotations<IrAnnotation>,
+    contextKey: IrContextualTypeKey,
+    declaration: IrSimpleFunction,
+    originalQualifier: IrAnnotation?,
     bindingStack: IrBindingStack,
   ): Binding.Multibinding {
-    var binding = realGraph[typeKey]
+    val multibindingType =
+      when {
+        annotations.isIntoSet -> {
+          metroContext.pluginContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
+        }
+
+        annotations.isElementsIntoSet -> contextKey.typeKey.type
+        annotations.isIntoMap -> {
+          val mapKey =
+            annotations.mapKeys.firstOrNull()
+              ?: run {
+                // Hard error because the FIR checker should catch these, so this implies broken
+                // FIR code gen
+                error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
+              }
+          val keyType = metroContext.mapKeyType(mapKey)
+          metroContext.pluginContext.irBuiltIns.mapClass.typeWith(
+            // MapKey is the key type
+            keyType,
+            // Return type is the value type
+            contextKey.typeKey.type.removeAnnotations(),
+          )
+        }
+
+        else -> {
+          error("Unrecognized provider: ${declaration.locationOrNull()}")
+        }
+      }
+
+    val multibindingTypeKey =
+      contextKey.typeKey.copy(type = multibindingType, qualifier = originalQualifier)
+
+    var binding = realGraph[multibindingTypeKey]
 
     if (binding == null) {
-      binding = Binding.Multibinding.create(metroContext, typeKey, null)
+      binding = Binding.Multibinding.fromContributor(metroContext, multibindingTypeKey)
       realGraph.tryPut(binding, bindingStack)
       // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
       if (binding.isMap) {
-        val keyType = (typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
+        val keyType = (binding.typeKey.type as IrSimpleType).arguments[0].typeOrNull!!
         val valueType =
-          typeKey.type.arguments[1]
+          binding.typeKey.type.arguments[1]
             .typeOrNull!!
             .wrapInProvider(this@IrBindingGraph.metroContext.symbols.metroProvider)
         val providerTypeKey =
-          typeKey.copy(type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType))
+          binding.typeKey.copy(
+            type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType)
+          )
         realGraph.tryPut(binding, bindingStack, providerTypeKey)
       }
     }
@@ -121,51 +154,45 @@ internal class IrBindingGraph(
       )
   }
 
-  fun getOrCreateBinding(contextKey: IrContextualTypeKey, bindingStack: IrBindingStack): Binding {
-    check(!realGraph.sealed)
-    val key = contextKey.typeKey
-    val existingBinding = realGraph[key]
-    if (existingBinding != null) {
-      return existingBinding
-    }
-
-    val binding = metroContext.injectedClassBindingOrNull(contextKey, bindingStack, this)
-    when (binding) {
-      is Binding.Absent -> {
-        // Do nothing, don't store this
-      }
-      is Binding -> {
-        addBinding(key, binding, bindingStack)
-      }
-      null -> reportMissingBinding(key, bindingStack)
-    }
-    return binding
-  }
-
   operator fun contains(key: IrTypeKey): Boolean = key in realGraph
 
-  fun IrTypeKey.dependsOn(key: IrTypeKey) = with(realGraph) { this@dependsOn.dependsOn(key) }
+  data class BindingGraphResult(
+    val sortedKeys: List<IrTypeKey>,
+    val deferredTypes: List<IrTypeKey>,
+  )
 
-  fun validate(parentTracer: Tracer, onError: (String) -> Nothing): Set<IrTypeKey> {
-    val deferredTypes =
+  data class GraphError(val declaration: IrDeclaration?, val message: String)
+
+  fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
+    val (sortedKeys, deferredTypes) =
       parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
+
+    metroContext.writeDiagnostic("validatedKeys-${parentTracer.tag}.txt") {
+      buildString { sortedKeys.joinTo(this, separator = "\n") { it.render(short = false) } }
+    }
+    metroContext.writeDiagnostic("deferredTypes-${parentTracer.tag}.txt") {
+      buildString { deferredTypes.joinTo(this, separator = "\n") { it.render(short = false) } }
+    }
+
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
     parentTracer.traceNested("check for absent bindings") {
       check(realGraph.snapshot.values.none { it is Binding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
-    return deferredTypes
+    return BindingGraphResult(sortedKeys, deferredTypes)
   }
 
-  private fun checkEmptyMultibindings(onError: (String) -> Nothing) {
+  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
     val multibindings = realGraph.snapshot.values.filterIsInstance<Binding.Multibinding>()
+    val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
         val message = buildString {
-          appendLine(
-            "[Metro/EmptyMultibinding] Multibinding '${multibinding.typeKey}' was unexpectedly empty."
-          )
+          append("[Metro/EmptyMultibinding] Multibinding '")
+          append(multibinding.typeKey)
+          appendLine("' was unexpectedly empty.")
+
           appendLine()
           appendLine(
             "If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`."
@@ -183,8 +210,20 @@ internal class IrBindingGraph(
             }
           }
         }
-        onError(message)
+        val declarationToReport =
+          if (multibinding.declaration?.isFakeOverride == true) {
+            multibinding.declaration!!
+              .overriddenSymbolsSequence()
+              .firstOrNull { !it.owner.isFakeOverride }
+              ?.owner
+          } else {
+            multibinding.declaration
+          }
+        errors += GraphError(declarationToReport, message)
       }
+    }
+    if (errors.isNotEmpty()) {
+      onError(errors)
     }
   }
 
@@ -241,33 +280,6 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun reportMissingBinding(typeKey: IrTypeKey, bindingStack: IrBindingStack): Nothing {
-    val declarationToReport = bindingStack.lastEntryOrGraph
-    val message = buildString {
-      append(
-        "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
-      )
-      appendLine(typeKey.render(short = false))
-      appendLine()
-      appendBindingStack(bindingStack, short = false)
-      val similarBindings = findSimilarBindings(typeKey)
-      if (similarBindings.isNotEmpty()) {
-        appendLine()
-        appendLine("Similar bindings:")
-        similarBindings.values.map { "  - $it" }.sorted().forEach(::appendLine)
-      }
-      if (metroContext.debug) {
-        appendLine(dumpGraph(bindingStack.graph.kotlinFqName.asString(), short = false))
-      }
-    }
-
-    with(metroContext) { declarationToReport.reportError(message) }
-
-    exitProcessing()
-  }
-
-  // TODO
-  //  - exclude types _in_ multibindings
   private fun findSimilarBindings(key: IrTypeKey): Map<IrTypeKey, SimilarBinding> {
     // Use a map to avoid reporting duplicates
     val similarBindings = mutableMapOf<IrTypeKey, SimilarBinding>()
@@ -325,8 +337,9 @@ internal class IrBindingGraph(
       }
     }
 
-    // TODO filter out source bindings in multibindings? Should be covered though
-    return similarBindings
+    return similarBindings.filterNot {
+      (it.value.binding as? Binding.BindingWithAnnotations)?.annotations?.isIntoMultibinding == true
+    }
   }
 
   // TODO iterate on this more!
@@ -334,7 +347,8 @@ internal class IrBindingGraph(
     if (realGraph.snapshot.isEmpty()) return "Empty binding graph"
 
     return buildString {
-      appendLine("Binding Graph: $name")
+      append("Binding Graph: ")
+      appendLine(name)
       // Sort by type key for consistent output
       realGraph.snapshot.entries
         .sortedBy { it.key.toString() }
@@ -373,7 +387,8 @@ internal class IrBindingGraph(
 
     if (!isNested && binding is Binding.Multibinding && binding.sourceBindings.isNotEmpty()) {
       appendLine("├─ Source bindings:")
-      binding.sourceBindings.forEach { sourceBinding ->
+      binding.sourceBindings.forEach { sourceBindingKey ->
+        val sourceBinding = requireBinding(sourceBindingKey, IrBindingStack.empty())
         val nested = buildString { appendBinding(sourceBinding, short, isNested = true) }
         append("│  ├─ ")
         appendLine(nested.lines().first())

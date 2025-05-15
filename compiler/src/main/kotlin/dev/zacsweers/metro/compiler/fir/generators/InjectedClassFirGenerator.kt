@@ -199,11 +199,13 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         if (isConstructorInjected) {
           append(" (constructor)")
           if (constructorParameters.isNotEmpty()) {
-            append(" constructorParams=$constructorParameters")
+            append(" constructorParams=")
+            append(constructorParameters)
           }
         }
         if (injectedMembersParamsByMemberKey.isNotEmpty()) {
-          append(" injectedMembers=${injectedMembersParamsByMemberKey.keys}")
+          append(" injectedMembers=")
+          append(injectedMembersParamsByMemberKey.keys)
         }
       }
     }

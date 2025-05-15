@@ -67,7 +67,11 @@ internal class MetroLoggerImpl(
 
   override fun log(message: () -> String) {
     val fullMessage = buildString {
-      tag?.let { append("[$it] ") }
+      tag?.let {
+        append('[')
+        append(it)
+        append("] ")
+      }
       append("  ".repeat(indent))
       append(message())
     }

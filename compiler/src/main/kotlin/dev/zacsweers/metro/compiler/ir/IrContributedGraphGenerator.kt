@@ -10,12 +10,8 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
-import org.jetbrains.kotlin.ir.builders.declarations.addFunction
-import org.jetbrains.kotlin.ir.builders.declarations.addGetter
-import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -29,12 +25,11 @@ import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.util.addChild
+import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
-import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
@@ -68,22 +63,30 @@ internal class IrContributedGraphGenerator(
     if (!parentIsExtendable) {
       with(metroContext) {
         val message = buildString {
-          append(
-            "Contributed graph extension '${sourceGraph.kotlinFqName}' contributes to parent graph "
-          )
-          append(
-            "'${realParent.kotlinFqName}' (scope '${parentGraphAnno.scopeOrNull()!!.asSingleFqName()}') "
-          )
-          append("but ${realParent.name} is not extendable.")
+          append("Contributed graph extension '")
+          append(sourceGraph.kotlinFqName)
+          append("' contributes to parent graph ")
+          append('\'')
+          append(realParent.kotlinFqName)
+          append("' (scope '")
+          append(parentGraphAnno.scopeOrNull()!!.asSingleFqName())
+          append("'), but ")
+          append(realParent.name)
+          append(" is not extendable.")
           if (!parentIsContributed) {
             appendLine()
             appendLine()
-            append("Either mark ${realParent.name} as extendable ")
-            append("(`@${parentGraphAnno.annotationClass.name}(isExtendable = true)`) or ")
-            append("exclude it from ${realParent.name} ")
-            append(
-              "(`@${parentGraphAnno.annotationClass.name}(excludes = [${sourceGraph.name}::class])`)"
-            )
+            append("Either mark ")
+            append(realParent.name)
+            append(" as extendable (`@")
+            append(parentGraphAnno.annotationClass.name)
+            append("(isExtendable = true)`), or exclude it from ")
+            append(realParent.name)
+            append(" (`@")
+            append(parentGraphAnno.annotationClass.name)
+            append("(excludes = [")
+            append(sourceGraph.name)
+            append("::class])`).")
           }
         }
         sourceGraph.reportError(message)
@@ -105,7 +108,6 @@ internal class IrContributedGraphGenerator(
           kind = ClassKind.CLASS
         }
         .apply {
-          parentGraph.addChild(this)
           createThisReceiverParameter()
           // Add a @DependencyGraph(...) annotation
           annotations +=
@@ -166,9 +168,10 @@ internal class IrContributedGraphGenerator(
         it.scopeOrNull() ?: error("No scope found for ${sourceGraph.name}: ${it.dumpKotlinLike()}")
       }
     contributedGraph.superTypes += contributionData[scope]
-    contributedGraph.addFakeOverrides()
 
     parentGraph.addChild(contributedGraph)
+
+    contributedGraph.addFakeOverrides(irTypeSystemContext)
 
     return contributedGraph
   }
@@ -191,67 +194,6 @@ internal class IrContributedGraphGenerator(
         parentClass.symbol,
         returnType,
       )
-    }
-  }
-
-  private fun IrClass.addFakeOverrides() {
-    // Iterate all abstract functions/properties from supertypes and add fake overrides of them here
-    // TODO need to merge colliding overrides
-    val abstractMembers =
-      getAllSuperTypes(metroContext.pluginContext, excludeSelf = true, excludeAny = true)
-        .asSequence()
-        .flatMap {
-          it
-            .rawType()
-            .allCallableMembers(
-              metroContext,
-              excludeInheritedMembers = true,
-              excludeCompanionObjectMembers = true,
-              // For interfaces do we need to just check if the parent is an interface?
-              propertyFilter = { it.modality == Modality.ABSTRACT },
-              functionFilter = { it.modality == Modality.ABSTRACT },
-            )
-        }
-        .distinctBy { it.ir.name }
-    for (member in abstractMembers) {
-      if (member.ir.isPropertyAccessor) {
-        // Stub the property declaration + getter
-        val originalGetter = member.ir
-        val property = member.ir.correspondingPropertySymbol!!.owner
-        addProperty {
-            name = property.name
-            updateFrom(property)
-            isFakeOverride = true
-          }
-          .apply {
-            overriddenSymbols += property.symbol
-            copyAnnotationsFrom(property)
-            addGetter {
-                name = originalGetter.name
-                visibility = originalGetter.visibility
-                origin = Origins.Default
-                isFakeOverride = true
-                returnType = member.ir.returnType
-              }
-              .apply {
-                overriddenSymbols += originalGetter.symbol
-                copyAnnotationsFrom(member.ir)
-                extensionReceiverParameter = originalGetter.extensionReceiverParameter
-              }
-          }
-      } else {
-        addFunction {
-            name = member.ir.name
-            updateFrom(member.ir)
-            isFakeOverride = true
-            returnType = member.ir.returnType
-          }
-          .apply {
-            overriddenSymbols += member.ir.symbol
-            copyParametersFrom(member.ir)
-            copyAnnotationsFrom(member.ir)
-          }
-      }
     }
   }
 }
