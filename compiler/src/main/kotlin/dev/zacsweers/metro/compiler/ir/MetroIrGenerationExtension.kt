@@ -24,17 +24,18 @@ public class MetroIrGenerationExtension(
     val symbols = Symbols(moduleFragment, pluginContext, classIds, options)
     val context = IrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
 
-    // First - collect all the contributions in this round
-    val contributionData = IrContributionData(context)
     try {
+      // First - collect all the contributions in this round
+      val contributionData = IrContributionData(context)
       moduleFragment.accept(IrContributionVisitor(context), contributionData)
+
+      // Second - transform the dependency graphs
+      val dependencyGraphTransformer =
+        DependencyGraphTransformer(context, moduleFragment, contributionData)
+      moduleFragment.transform(dependencyGraphTransformer, null)
     } catch (_: ExitProcessingException) {
       // Reported internally
       return
     }
-
-    val dependencyGraphTransformer =
-      DependencyGraphTransformer(context, moduleFragment, contributionData)
-    moduleFragment.transform(dependencyGraphTransformer, null)
   }
 }
