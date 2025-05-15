@@ -1496,22 +1496,22 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           @Inject @SingleIn(AppScope::class) class Dependency
           @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
-          
+
           @DependencyGraph(scope = AppScope::class, isExtendable = true)
           interface ExampleGraph {
             val dependency: Dependency
           }
-          
+
           @ContributesGraphExtension(LoggedInScope::class)
           interface LoggedInGraph {
               fun inject(screen: LoggedInScreen)
-          
+
               @ContributesGraphExtension.Factory(AppScope::class)
               interface Factory {
                   fun createLoggedInGraph(): LoggedInGraph
               }
           }
-          
+
           class LoggedInScreen {
               @Inject lateinit var childDependency: ChildDependency
           }

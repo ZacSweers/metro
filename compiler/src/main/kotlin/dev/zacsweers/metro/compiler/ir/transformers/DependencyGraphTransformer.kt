@@ -48,7 +48,6 @@ import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
-import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -2133,6 +2132,19 @@ internal class DependencyGraphTransformer(
         visitedBindings = visitedBindings,
       )
     }
+    node.injectors.forEach { (accessor, typeKey) ->
+      val contextKey = IrContextualTypeKey(typeKey)
+      findAndProcessBinding(
+        contextKey = contextKey,
+        stackEntry = IrBindingStack.Entry.requestedAt(contextKey, accessor.ir),
+        node = node,
+        graph = graph,
+        bindingStack = bindingStack,
+        bindingDependencies = bindingDependencies,
+        usedUnscopedBindings = usedUnscopedBindings,
+        visitedBindings = visitedBindings,
+      )
+    }
 
     if (node.isExtendable) {
       // Ensure all scoped providers have fields in extendable graphs, even if they are not used in
@@ -2349,7 +2361,7 @@ internal class DependencyGraphTransformer(
       // Process binding dependencies
       findAndProcessBinding(
         contextKey = param.contextualTypeKey,
-        stackEntry = (param as ConstructorParameter).bindingStackEntry,
+        stackEntry = param.bindingStackEntry,
         node = node,
         graph = graph,
         bindingStack = bindingStack,

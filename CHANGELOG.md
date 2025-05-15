@@ -9,6 +9,7 @@ Changelog
 - **Fix**: Fix `@ContributedGraphExtension` that extends the same interface as the parent causes a duplicate binding error.
 - **Fix**: Fix contributed binding replacements not being respected in contributed graphs.
 - **Fix**: Fix contributed providers not being visible to N+2+ descendant graphs.
+- **Fix**: Collect bindings from member injectors as well as exposed accessors when determining scoped provider fields.
 
 0.3.1
 -----
