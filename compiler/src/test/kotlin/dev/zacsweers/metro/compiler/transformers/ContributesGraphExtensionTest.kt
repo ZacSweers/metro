@@ -1486,6 +1486,55 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     )
   }
 
+  // Regression test for https://github.com/ZacSweers/metro/issues/377#issuecomment-2878782694
+  @Test
+  fun `contributed graph should ensure scoping of class-injected types`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+
+          @Inject @SingleIn(AppScope::class) class Dependency
+          @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
+          
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            val dependency: Dependency
+          }
+          
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+              fun inject(screen: LoggedInScreen)
+          
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+          
+          class LoggedInScreen {
+              @Inject lateinit var childDependency: ChildDependency
+          }
+        """
+          .trimIndent()
+      )
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val loggedInGraph = graph.callFunction<Any>("createLoggedInGraph")
+      val loggedInScreen1 = classLoader.loadClass("test.LoggedInScreen").newInstanceStrict()
+      loggedInGraph.callFunction<Any>("inject", loggedInScreen1)
+      val childDep1 = loggedInScreen1.callProperty<Any>("childDependency")
+      assertThat(childDep1).isNotNull()
+
+      val loggedInScreen2 = classLoader.loadClass("test.LoggedInScreen").newInstanceStrict()
+      loggedInGraph.callFunction<Any>("inject", loggedInScreen2)
+      val childDep2 = loggedInScreen2.callProperty<Any>("childDependency")
+      assertThat(childDep2).isNotNull()
+
+      assertThat(childDep2).isSameInstanceAs(childDep1)
+    }
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }
