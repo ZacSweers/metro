@@ -111,8 +111,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
       get() = type.locationOrNull()
 
     fun parameterFor(typeKey: IrTypeKey) =
-      injectedConstructor.valueParameters[
-          parameters.valueParameters.indexOfFirst { it.typeKey == typeKey }]
+      injectedConstructor.regularParameters[
+          parameters.regularParameters.indexOfFirst { it.typeKey == typeKey }]
 
     override fun toString() = buildString {
       append("@Inject ")
@@ -558,7 +558,7 @@ internal fun IrMetroContext.injectedClassBindingOrNull(contextKey: IrContextualT
       type = irClass,
       injectedConstructor = injectableConstructor,
       annotations = classAnnotations,
-      isAssisted = parameters.valueParameters.any { it.isAssisted },
+      isAssisted = parameters.regularParameters.any { it.isAssisted },
       typeKey = key,
       parameters = parameters,
     )

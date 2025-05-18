@@ -11,8 +11,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.InstanceParameter)
   val ReceiverParameter: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ReceiverParameter)
-  val ValueParameter: IrDeclarationOrigin =
-    IrDeclarationOrigin.GeneratedByPlugin(Keys.ValueParameter)
+  val RegularParameter: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.RegularParameter)
   val AssistedFactoryImplClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.AssistedFactoryImplClassDeclaration)
   val AssistedFactoryImplCreatorFunctionDeclaration: IrDeclarationOrigin =

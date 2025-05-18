@@ -67,7 +67,7 @@ internal fun FirExtension.buildFactoryConstructor(
             session,
             Symbols.ClassIds.metroProvider,
           ),
-          key = Keys.ValueParameter,
+          key = Keys.RegularParameter,
         )
       }
     }

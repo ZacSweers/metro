@@ -33,7 +33,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       val contributingClasses =
         functionsInPackage.map { contribution ->
           // This is the single value param
-          contribution.owner.valueParameters.single().type.classOrFail.owner
+          contribution.owner.regularParameters.single().type.classOrFail.owner
         }
       getScopedContributions(contributingClasses, scopeClassId)
     }

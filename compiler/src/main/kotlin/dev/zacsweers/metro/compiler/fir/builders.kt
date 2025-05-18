@@ -117,7 +117,7 @@ internal fun FirExtension.copyParameters(
     functionBuilder.valueParameters +=
       buildValueParameterCopy(originalFir) {
           name = original.name
-          origin = Keys.ValueParameter.origin
+          origin = Keys.RegularParameter.origin
           symbol = FirValueParameterSymbol(original.symbol.name)
           containingDeclarationSymbol = functionBuilder.symbol
           parameterInit(original)
@@ -154,7 +154,7 @@ internal fun FirExtension.buildSimpleValueParameter(
   name: Name,
   type: FirTypeRef,
   containingFunctionSymbol: FirFunctionSymbol<*>,
-  origin: FirDeclarationOrigin = Keys.ValueParameter.origin,
+  origin: FirDeclarationOrigin = Keys.RegularParameter.origin,
   hasDefaultValue: Boolean = false,
   isCrossinline: Boolean = false,
   isNoinline: Boolean = false,

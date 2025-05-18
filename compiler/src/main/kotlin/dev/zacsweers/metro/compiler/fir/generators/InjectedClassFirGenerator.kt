@@ -541,7 +541,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                   //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
                   .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
               },
-              key = Keys.ValueParameter,
+              key = Keys.RegularParameter,
             )
           }
         }
@@ -616,7 +616,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 // TODO need to remap these
                 //  .withArguments(it.mapToArray(FirTypeParameterRef::toConeType))
               },
-              key = Keys.ValueParameter,
+              key = Keys.RegularParameter,
             )
           }
         }
@@ -664,7 +664,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                   valueParameter(
                     assistedParameter.name,
                     assistedParameter.symbol.resolvedReturnType,
-                    key = Keys.ValueParameter,
+                    key = Keys.RegularParameter,
                   )
                 }
               }
@@ -749,7 +749,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 valueParameter(
                   Symbols.Names.instance,
                   typeProvider = injectedClass.classSymbol::constructType,
-                  key = Keys.ValueParameter, // Or should this be instance?
+                  key = Keys.RegularParameter, // Or should this be instance?
                 )
                 // Add its parameters
                 for (param in parameters) {
@@ -779,7 +779,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                         resolvedType.withArguments(finalTypeParameters.toTypedArray())
                       }
                     },
-                    key = Keys.ValueParameter,
+                    key = Keys.RegularParameter,
                   )
                 }
               }

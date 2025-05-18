@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -33,6 +34,7 @@ import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.explicitParametersCount
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
+import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.CallableId
@@ -476,14 +478,14 @@ internal class Symbols(
     pluginContext
       .referenceFunctions(CallableId(stdlibCollections.packageFqName, "setOf".asName()))
       .first {
-        it.owner.valueParameters.size == 1 && it.owner.valueParameters[0].varargElementType == null
+        it.owner.hasShape(regularParameters = 1) && it.owner.regularParameters[0].varargElementType == null
       }
   }
 
   val buildSetWithCapacity by lazy {
     pluginContext
       .referenceFunctions(CallableId(stdlibCollections.packageFqName, "buildSet".asName()))
-      .first { it.owner.valueParameters.size == 2 }
+      .first { it.owner.hasShape(regularParameters = 2) }
   }
 
   val mutableSetAdd by lazy {

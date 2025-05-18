@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.Kind
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -88,7 +89,7 @@ internal fun IrProperty.toMemberInjectParameter(
   val propertyType =
     getter?.returnType ?: backingField?.type ?: error("No getter or backing field!")
 
-  val setterParam = setter?.valueParameters?.singleOrNull()
+  val setterParam = setter?.regularParameters?.singleOrNull()
 
   // Remap type parameters in underlying types to the new target container. This is important for
   // type mangling

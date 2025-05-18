@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
+import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.implementsProviderType
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -21,6 +22,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -154,7 +156,7 @@ internal class InjectConstructorTransformer(
           addAll(memberInjectParameters)
         }
         .distinct()
-    val allValueParameters = allParameters.flatMap { it.valueParameters }
+    val allValueParameters = allParameters.flatMap { it.regularParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
 
     val ctor = factoryCls.primaryConstructor!!
@@ -230,20 +232,20 @@ internal class InjectConstructorTransformer(
     invokeFunction.body =
       pluginContext.createIrBuilder(invokeFunction.symbol).irBlockBody {
         val constructorParameterNames =
-          constructorParameters.valueParameters
+          constructorParameters.regularParameters
             .filterNot { it.isAssisted }
             .associateBy { it.originalName }
 
-        val functionParamsByName = invokeFunction.valueParameters.associate { it.name to irGet(it) }
+        val functionParamsByName = invokeFunction.regularParameters.associate { it.name to irGet(it) }
 
         val args =
-          constructorParameters.valueParameters.map { targetParam ->
+          constructorParameters.regularParameters.map { targetParam ->
             when (val parameterName = targetParam.originalName) {
               in constructorParameterNames -> {
                 val constructorParam = constructorParameterNames.getValue(parameterName)
                 val providerInstance =
                   irGetField(
-                    irGet(invokeFunction.dispatchReceiverParameter!!),
+                    irGet(invokeFunction.dispatchReceiverParameterCompat!!),
                     parametersToFields.getValue(constructorParam),
                   )
                 val contextKey = targetParam.contextualTypeKey
@@ -290,7 +292,7 @@ internal class InjectConstructorTransformer(
                       parametersAsProviderArguments(
                         metroContext,
                         parameters,
-                        invokeFunction.dispatchReceiverParameter!!,
+                        invokeFunction.dispatchReceiverParameterCompat!!,
                         parametersToFields,
                       )
                     )
@@ -327,7 +329,7 @@ internal class InjectConstructorTransformer(
       // If compose compiler has already run, the looked up function may be the _old_ function
       // and we need to update the reference to the newly transformed one
       val hasComposeCompilerRun =
-        invokeFunction.valueParameters.lastOrNull()?.name?.asString() == "\$changed"
+        invokeFunction.regularParameters.lastOrNull()?.name?.asString() == "\$changed"
       if (hasComposeCompilerRun) {
         val originalParent = targetCallable.owner.file
         targetCallable =
@@ -340,17 +342,17 @@ internal class InjectConstructorTransformer(
       // TODO
       //  copy default values
       invokeFunction.apply {
-        val functionReceiver = dispatchReceiverParameter!!
+        val functionReceiver = dispatchReceiverParameterCompat!!
         body =
           pluginContext.createIrBuilder(symbol).run {
             val constructorParameterNames =
-              constructorParameters.valueParameters.associateBy { it.originalName }
+              constructorParameters.regularParameters.associateBy { it.originalName }
 
             val functionParamsByName =
-              invokeFunction.valueParameters.associate { it.name to irGet(it) }
+              invokeFunction.regularParameters.associate { it.name to irGet(it) }
 
             val args =
-              targetCallable.owner.parameters(metroContext).valueParameters.map { targetParam ->
+              targetCallable.owner.parameters(metroContext).regularParameters.map { targetParam ->
                 when (val parameterName = targetParam.originalName) {
                   in constructorParameterNames -> {
                     val constructorParam = constructorParameterNames.getValue(parameterName)
@@ -434,11 +436,11 @@ internal class InjectConstructorTransformer(
       generateStaticNewInstanceFunction(
         context = metroContext,
         parentClass = classToGenerateCreatorsIn,
-        sourceParameters = constructorParameters.valueParameters.map { it.ir },
+        sourceParameters = constructorParameters.regularParameters.map { it.ir },
       ) { function ->
         irCallConstructor(targetConstructor, emptyList()).apply {
           for (index in constructorParameters.allParameters.indices) {
-            val parameter = function.valueParameters[index]
+            val parameter = function.regularParameters[index]
             putValueArgument(parameter.index, irGet(parameter))
           }
         }

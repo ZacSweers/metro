@@ -17,8 +17,8 @@ internal object Keys {
     override fun toString() = "ReceiverParameter"
   }
 
-  data object ValueParameter : GeneratedDeclarationKey() {
-    override fun toString() = "ValueParameter"
+  data object RegularParameter : GeneratedDeclarationKey() {
+    override fun toString() = "RegularParameter"
   }
 
   data object AssistedFactoryImplClassDeclaration : GeneratedDeclarationKey() {

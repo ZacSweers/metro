@@ -94,7 +94,7 @@ internal fun IrMetroContext.shouldUnwrapMapKeyValues(mapKey: IrConstructorCall):
 internal fun IrMetroContext.mapKeyType(mapKey: IrAnnotation): IrType {
   val unwrapValues = metroContext.shouldUnwrapMapKeyValues(mapKey)
   return if (unwrapValues) {
-      mapKey.ir.annotationClass.primaryConstructor!!.valueParameters[0].type
+      mapKey.ir.annotationClass.primaryConstructor!!.regularParameters[0].type
     } else {
       mapKey.ir.type
     }

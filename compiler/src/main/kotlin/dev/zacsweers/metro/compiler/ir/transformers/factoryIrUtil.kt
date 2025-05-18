@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -45,11 +46,11 @@ internal fun generateStaticCreateFunction(
 
   return function.apply {
     if (patchCreationParams) {
-      val instanceParam = valueParameters.find { it.origin == Origins.InstanceParameter }
-      val valueParamsToPatch = valueParameters.filter { it.origin == Origins.ValueParameter }
+      val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
+      val valueParamsToPatch = regularParameters.filter { it.origin == Origins.RegularParameter }
       context.copyParameterDefaultValues(
         providerFunction = providerFunction,
-        sourceParameters = parameters.valueParameters.filterNot { it.isAssisted }.map { it.ir },
+        sourceParameters = parameters.regularParameters.filterNot { it.isAssisted }.map { it.ir },
         targetParameters = valueParamsToPatch,
         targetGraphParameter = instanceParam,
         wrapInProvider = true,
@@ -94,8 +95,8 @@ internal fun generateStaticNewInstanceFunction(
   val function = parentClass.functions.first { it.origin == Origins.FactoryNewInstanceFunction }
 
   return function.apply {
-    val instanceParam = valueParameters.find { it.origin == Origins.InstanceParameter }
-    val valueParametersToMap = valueParameters.filter { it.origin == Origins.ValueParameter }
+    val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
+    val valueParametersToMap = regularParameters.filter { it.origin == Origins.RegularParameter }
     context.copyParameterDefaultValues(
       providerFunction = targetFunction,
       sourceParameters = sourceParameters,

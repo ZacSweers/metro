@@ -38,7 +38,7 @@ internal fun IrMetroContext.copyParameterDefaultValues(
     object : IrElementTransformerVoid() {
       override fun visitGetValue(expression: IrGetValue): IrExpression {
         // Check if the expression is the instance receiver
-        if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
+        if (expression.symbol == providerFunction?.dispatchReceiverParameterCompat?.symbol) {
           return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, targetGraphParameter!!.symbol)
         }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }

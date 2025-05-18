@@ -342,7 +342,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 log("Generating SAM param ${valueParameterSymbol.name}")
                 valueParameter(
                   name = valueParameterSymbol.name,
-                  key = Keys.ValueParameter,
+                  key = Keys.RegularParameter,
                   typeProvider = {
                     valueParameterSymbol.resolvedReturnType.withArguments(
                       it.mapToArray(FirTypeParameterRef::toConeType)
@@ -406,7 +406,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
               log("Generating parameter ${parameter.name}")
               valueParameter(
                 name = parameter.name,
-                key = Keys.ValueParameter,
+                key = Keys.RegularParameter,
                 typeProvider = {
                   parameter.resolvedReturnType.withArguments(
                     it.mapToArray(FirTypeParameterRef::toConeType)

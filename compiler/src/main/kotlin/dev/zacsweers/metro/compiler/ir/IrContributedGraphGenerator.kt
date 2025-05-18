@@ -155,7 +155,7 @@ internal class IrContributedGraphGenerator(
               pluginContext.buildAnnotation(symbol, symbols.metroExtendsAnnotationConstructor)
           }
         // Copy over any creator params
-        factoryFunction.valueParameters.forEach { param ->
+        factoryFunction.regularParameters.forEach { param ->
           addValueParameter(param.name, param.type).apply { this.copyAnnotationsFrom(param) }
         }
 

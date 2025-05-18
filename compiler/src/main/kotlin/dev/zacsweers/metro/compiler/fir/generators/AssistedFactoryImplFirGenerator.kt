@@ -242,7 +242,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
                 .createNestedClassId(Symbols.Names.MetroFactory)
                 .constructClassLikeType(it.mapToArray(FirTypeParameterRef::toConeType))
             },
-            key = Keys.ValueParameter,
+            key = Keys.RegularParameter,
           )
         }
       } else {

@@ -18,6 +18,8 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
+import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
+import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -31,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
@@ -200,7 +203,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       return it
     }
 
-    val sourceValueParameters = reference.parameters.valueParameters
+    val sourceValueParameters = reference.parameters.regularParameters
 
     val generatedClassId = reference.generatedClassId
 
@@ -251,7 +254,8 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         reference.callee.owner.callableId,
         instance = instanceParam,
         extensionReceiver = null,
-        valueParameters = sourceValueParameters,
+        regularParameters = sourceValueParameters,
+        contextParameters = emptyList(),
         ir = null, // Will set later
       )
 
@@ -263,20 +267,20 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       // These will always have an instance parameter
       parameterIndexOffset++
     }
-    if (reference.callee.owner.extensionReceiverParameter != null) {
+    if (reference.callee.owner.extensionReceiverParameterCompat != null) {
       parameterIndexOffset++
     }
     val sourceParametersToFields: Map<Parameter, IrField> =
       constructorParametersToFields.entries.associate { (irParam, field) ->
         val sourceParam =
           if (irParam.origin == Origins.InstanceParameter) {
-            sourceParameters.instance!!
+            sourceParameters.dispatchReceiverParameter!!
           } else if (irParam.index == -1) {
             error(
               "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
             )
           } else {
-            sourceParameters.valueParameters.getOrNull(irParam.index - parameterIndexOffset)
+            sourceParameters.regularParameters.getOrNull(irParam.index - parameterIndexOffset)
               ?: error(
                 "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
               )
@@ -302,7 +306,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
               parametersAsProviderArguments(
                 metroContext,
                 parameters = sourceParameters,
-                receiver = invokeFunction.owner.dispatchReceiverParameter!!,
+                receiver = invokeFunction.owner.dispatchReceiverParameterCompat!!,
                 parametersToFields = sourceParametersToFields,
               ),
           ),
@@ -440,11 +444,11 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         context = metroContext,
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee.owner,
-        sourceParameters = reference.parameters.valueParameters.map { it.ir },
+        sourceParameters = reference.parameters.regularParameters.map { it.ir },
       ) { function ->
-        val valueParameters = function.valueParameters
+        val parameters = function.regularParameters
 
-        val args = valueParameters.filter { it.origin == Origins.ValueParameter }.map { irGet(it) }
+        val args = parameters.filter { it.origin == Origins.RegularParameter }.map { irGet(it) }
 
         val dispatchReceiver =
           if (reference.isInObject) {
@@ -454,7 +458,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           } else {
             // Instance graph call
             // exampleGraph.$callableName$arguments
-            irGet(valueParameters[0])
+            irGet(parameters[0])
           }
 
         irInvoke(

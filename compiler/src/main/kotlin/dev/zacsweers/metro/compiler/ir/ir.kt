@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -51,6 +52,7 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -368,7 +370,7 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 ): IrConstructorCall {
   return irCall(constructor)
     .apply {
-      for (parameter in source.valueParameters) {
+      for (parameter in source.regularParameters) {
         putValueArgument(parameter.index, irGet(parameter))
       }
     }
@@ -493,7 +495,7 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
   clazz: IrClass,
 ): Map<IrValueParameter, IrField> {
   return buildMap {
-    for (irParameter in constructor.valueParameters) {
+    for (irParameter in constructor.regularParameters) {
       val irField =
         clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
           isFinal = true
@@ -509,7 +511,7 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
   clazz: IrClass,
 ): Map<Parameter, IrField> {
   return buildMap {
-    for (irParameter in parameters.valueParameters) {
+    for (irParameter in parameters.regularParameters) {
       val irField =
         clazz
           .addField(
@@ -798,7 +800,7 @@ internal fun IrOverridableDeclaration<*>.finalizeFakeOverride(
   origin = IrDeclarationOrigin.DEFINED
   modality = Modality.FINAL
   if (this is IrSimpleFunction) {
-    this.dispatchReceiverParameter =
+    this.dispatchReceiverParameterCompat =
       dispatchReceiverParameter.copyTo(this, type = dispatchReceiverParameter.type)
   } else if (this is IrProperty) {
     this.getter?.finalizeFakeOverride(dispatchReceiverParameter)
@@ -884,3 +886,70 @@ internal fun IrMetroContext.hiddenDeprecated(
         )
     }
 }
+
+internal var IrFunction.extensionReceiverParameterCompat: IrValueParameter?
+  get() {
+    return parameters.firstOrNull { it.kind == IrParameterKind.ExtensionReceiver }
+  }
+  set(value) {
+    setReceiverParameter(IrParameterKind.ExtensionReceiver, value)
+  }
+
+internal var IrFunction.dispatchReceiverParameterCompat: IrValueParameter?
+  get() {
+    return parameters.firstOrNull { it.kind == IrParameterKind.DispatchReceiver }
+  }
+  set(value) {
+    setReceiverParameter(IrParameterKind.DispatchReceiver, value)
+  }
+
+@OptIn(DelicateIrParameterIndexSetter::class)
+private fun IrFunction.setReceiverParameter(kind: IrParameterKind, value: IrValueParameter?) {
+  val parameters = parameters.toMutableList()
+
+  var index = parameters.indexOfFirst { it.kind == kind }
+  var reindexSubsequent = false
+  if (index >= 0) {
+    val old = parameters[index]
+    old.indexInOldValueParameters = -1
+    old.indexInParameters = -1
+
+    if (value != null) {
+      parameters[index] = value
+    } else {
+      parameters.removeAt(index)
+      reindexSubsequent = true
+    }
+  } else {
+    if (value != null) {
+      index = parameters.indexOfLast { it.kind < kind } + 1
+      parameters.add(index, value)
+      reindexSubsequent = true
+    } else {
+      // nothing
+    }
+  }
+
+  if (value != null) {
+    value.indexInOldValueParameters = -1
+    value.indexInParameters = index
+    value.kind = kind
+  }
+
+  if (reindexSubsequent) {
+    for (i in index..<parameters.size) {
+      parameters[i].indexInParameters = i
+    }
+  }
+  this.parameters = parameters
+}
+
+internal val IrFunction.contextParameters: List<IrValueParameter>
+  get() {
+    return parameters.filter { it.kind == IrParameterKind.Context }
+  }
+
+internal val IrFunction.regularParameters: List<IrValueParameter>
+  get() {
+    return parameters.filter { it.kind == IrParameterKind.Regular }
+  }
