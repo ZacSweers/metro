@@ -10,12 +10,12 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
-import dev.zacsweers.metro.compiler.ir.parameters.Parameter.Kind
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
@@ -220,13 +220,13 @@ internal fun IrFunction.parameters(
     instance =
       dispatchReceiverParameterCompat?.toConstructorParameter(
         context,
-        Kind.INSTANCE,
+        IrParameterKind.DispatchReceiver,
         typeParameterRemapper = mapper,
       ),
     extensionReceiver =
       extensionReceiverParameterCompat?.toConstructorParameter(
         context,
-        Kind.EXTENSION_RECEIVER,
+        IrParameterKind.ExtensionReceiver,
         typeParameterRemapper = mapper,
       ),
     regularParameters = regularParameters.mapToConstructorParameters(context, mapper),
@@ -262,7 +262,7 @@ internal fun IrFunction.memberInjectParameters(
         property.toMemberInjectParameter(
           context = context,
           uniqueName = nameAllocator.newName(property.name.asString()).asName(),
-          kind = Kind.VALUE,
+          kind = IrParameterKind.Regular,
           typeParameterRemapper = mapper,
         )
       )

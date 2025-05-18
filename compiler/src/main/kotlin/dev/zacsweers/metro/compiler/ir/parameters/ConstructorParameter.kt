@@ -12,10 +12,10 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.locationOrNull
-import dev.zacsweers.metro.compiler.ir.parameters.Parameter.Kind
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.classId
@@ -24,7 +24,7 @@ import org.jetbrains.kotlin.name.Name
 
 @Poko
 internal class ConstructorParameter(
-  override val kind: Kind,
+  override val kind: IrParameterKind,
   override val name: Name,
   override val contextualTypeKey: IrContextualTypeKey,
   override val isAssisted: Boolean,
@@ -73,7 +73,7 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
   return map { valueParameter ->
     valueParameter.toConstructorParameter(
       context,
-      Kind.VALUE,
+      IrParameterKind.Regular,
       valueParameter.name,
       typeParameterRemapper,
     )
@@ -82,7 +82,7 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
 
 internal fun IrValueParameter.toConstructorParameter(
   context: IrMetroContext,
-  kind: Kind = Kind.VALUE,
+  kind: IrParameterKind = IrParameterKind.Regular,
   uniqueName: Name = this.name,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): ConstructorParameter {

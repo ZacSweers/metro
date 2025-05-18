@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -223,7 +224,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       if (!reference.isInObject) {
         val contextualTypeKey = IrContextualTypeKey.create(typeKey = IrTypeKey(graphType))
         ConstructorParameter(
-          kind = Parameter.Kind.VALUE,
+          kind = IrParameterKind.Regular,
           name = Name.identifier("graph"),
           contextualTypeKey = contextualTypeKey,
           originalName = Name.identifier("graph"),
