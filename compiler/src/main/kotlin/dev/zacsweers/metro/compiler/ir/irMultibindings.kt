@@ -45,8 +45,8 @@ internal fun IrTypeKey.transformMultiboundQualifier(
 
   val newQualifier =
     metroContext.pluginContext.buildAnnotation(symbol, metroContext.symbols.multibindingElement) {
-      it.putValueArgument(0, irString(bindingId))
-      it.putValueArgument(1, irString(elementId))
+      it.arguments[0] = irString(bindingId)
+      it.arguments[1] = irString(elementId)
     }
 
   return copy(qualifier = IrAnnotation(newQualifier))

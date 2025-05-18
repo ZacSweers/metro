@@ -362,7 +362,7 @@ private fun FirBasedSymbol<*>.metroAnnotations(
   var qualifier: MetroFirAnnotation? = null
   val mapKeys = mutableSetOf<MetroFirAnnotation>()
 
-  for (annotation in annotations.filter { it.isResolved }) {
+  for (annotation in resolvedAnnotationsWithClassIds.filter { it.isResolved }) {
     if (annotation !is FirAnnotationCall) continue
     val annotationType = annotation.resolvedType as? ConeClassLikeType ?: continue
     val annotationClass = annotationType.toClassSymbol(session) ?: continue

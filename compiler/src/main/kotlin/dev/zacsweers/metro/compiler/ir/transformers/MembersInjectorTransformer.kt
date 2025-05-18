@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
-import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -27,9 +26,6 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.set
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -241,7 +237,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
           addMemberInjection(
             context = metroContext,
             instanceReceiver = regularParameters[0],
-            injectorReceiver = dispatchReceiverParameterCompat!!,
+            injectorReceiver = dispatchReceiverParameter!!,
             injectFunctions = injectFunctions,
             parametersToFields = sourceParametersToFields,
           )

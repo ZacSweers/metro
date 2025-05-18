@@ -82,7 +82,6 @@ artifacts {
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
-  implementation(libs.autoService)
   implementation(libs.picnic) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
   shadow(libs.wire.runtime) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
 

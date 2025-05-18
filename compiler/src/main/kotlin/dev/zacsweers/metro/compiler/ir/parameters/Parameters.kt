@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.compareTo
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.contextParameters
-import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -218,7 +217,7 @@ internal fun IrFunction.parameters(
   return Parameters(
     callableId = callableId,
     instance =
-      dispatchReceiverParameterCompat?.toConstructorParameter(
+      dispatchReceiverParameter?.toConstructorParameter(
         context,
         IrParameterKind.DispatchReceiver,
         typeParameterRemapper = mapper,

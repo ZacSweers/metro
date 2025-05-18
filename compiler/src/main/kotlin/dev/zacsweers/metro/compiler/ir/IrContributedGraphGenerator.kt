@@ -116,16 +116,12 @@ internal class IrContributedGraphGenerator(
               symbols.metroDependencyGraphAnnotationConstructor,
             ) {
               // Copy over the scope annotation
-              it.putValueArgument(0, kClassReference(sourceScope.symbol))
+              it.arguments[0] = kClassReference(sourceScope.symbol)
               // Pass on if it's extendable
-              it.putValueArgument(
-                3,
-                irBoolean(
-                  contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
-                    Symbols.Names.isExtendable
-                  ) ?: false
-                ),
-              )
+              it.arguments[3] = irBoolean(
+                contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
+                  Symbols.Names.isExtendable
+                ) ?: false)
             }
           superTypes += sourceGraph.defaultType
         }

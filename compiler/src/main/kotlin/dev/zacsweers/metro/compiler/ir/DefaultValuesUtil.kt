@@ -38,7 +38,7 @@ internal fun IrMetroContext.copyParameterDefaultValues(
     object : IrElementTransformerVoid() {
       override fun visitGetValue(expression: IrGetValue): IrExpression {
         // Check if the expression is the instance receiver
-        if (expression.symbol == providerFunction?.dispatchReceiverParameterCompat?.symbol) {
+        if (expression.symbol == providerFunction?.dispatchReceiverParameter?.symbol) {
           return IrGetValueImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, targetGraphParameter!!.symbol)
         }
         val index = sourceParameters.indexOfFirst { it.symbol == expression.symbol }
@@ -75,23 +75,20 @@ internal fun IrMetroContext.copyParameterDefaultValues(
             symbols.metroProviderFunction,
           )
           .apply {
-            putTypeArgument(0, parameter.type)
-            putValueArgument(
-              0,
-              irLambda(
-                context = pluginContext,
-                parent = targetParam.parent,
-                valueParameters = emptyList(),
-                returnType = parameter.type,
-                receiverParameter = null,
-              ) {
-                +irReturn(
-                  defaultValue.expression
-                    .deepCopyWithoutPatchingParents()
-                    .transform(transformer, null)
-                )
-              },
-            )
+            typeArguments[0] = parameter.type
+            arguments[0] = irLambda(
+              context = pluginContext,
+              parent = targetParam.parent,
+              valueParameters = emptyList(),
+              returnType = parameter.type,
+              receiverParameter = null,
+            ) {
+              +irReturn(
+                defaultValue.expression
+                  .deepCopyWithoutPatchingParents()
+                  .transform(transformer, null)
+              )
+            }
           }
       targetParam.defaultValue =
         defaultValue.deepCopyWithoutPatchingParents().apply { expression = provider }

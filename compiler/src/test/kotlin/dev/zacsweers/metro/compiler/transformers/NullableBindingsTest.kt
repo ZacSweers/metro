@@ -20,7 +20,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph(Unit::class, isExtendable = true)
+          @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val int: Int
             val nullable: Int?

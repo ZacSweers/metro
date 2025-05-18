@@ -2,13 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import com.google.auto.service.AutoService
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.jetbrains.kotlin.config.CompilerConfiguration
 
-@AutoService(CommandLineProcessor::class)
 public class MetroCommandLineProcessor : CommandLineProcessor {
 
   override val pluginId: String = "dev.zacsweers.metro.compiler"

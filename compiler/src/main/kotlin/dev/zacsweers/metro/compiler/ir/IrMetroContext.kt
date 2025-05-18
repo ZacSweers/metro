@@ -164,9 +164,9 @@ internal interface IrMetroContext {
     return irInvoke(
         irGetObject(symbols.instanceFactoryCompanionObject),
         callee = symbols.instanceFactoryInvoke,
+      typeArgs = listOf(type),
         args = listOf(arg),
       )
-      .apply { putTypeArgument(0, type) }
   }
 
   companion object {

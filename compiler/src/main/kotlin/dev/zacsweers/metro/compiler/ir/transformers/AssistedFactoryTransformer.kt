@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
-import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -160,7 +159,7 @@ internal class AssistedFactoryTransformer(
               symbol,
               irInvoke(
                 dispatchReceiver =
-                  irGetField(irGet(dispatchReceiverParameterCompat!!), delegateFactoryField),
+                  irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
                 callee = generatedFactory.invokeFunctionSymbol,
                 args = argumentList,
               ),

@@ -54,15 +54,15 @@ private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall, sh
 
   // TODO type args not supported
 
-  if (irAnnotation.valueArgumentsCount == 0) return
+  if (irAnnotation.arguments.isEmpty()) return
 
   appendIterableWith(
-    0 until irAnnotation.valueArgumentsCount,
+    0 until irAnnotation.arguments.size,
     separator = ", ",
     prefix = "(",
     postfix = ")",
   ) { index ->
-    renderAsAnnotationArgument(irAnnotation.getValueArgument(index), short)
+    renderAsAnnotationArgument(irAnnotation.arguments[index], short)
   }
 }
 

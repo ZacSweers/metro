@@ -18,7 +18,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
-import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -41,6 +40,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
+import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -199,6 +199,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     return getOrLookupFactoryClass(reference)
   }
 
+  @OptIn(DeprecatedForRemovalCompilerApi::class)
   fun getOrLookupFactoryClass(reference: CallableReference): ProviderFactory {
     generatedFactories[reference.fqName]?.let {
       return it
@@ -276,12 +277,12 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         val sourceParam =
           if (irParam.origin == Origins.InstanceParameter) {
             sourceParameters.dispatchReceiverParameter!!
-          } else if (irParam.index == -1) {
+          } else if (irParam.indexInParameters == -1) {
             error(
               "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
             )
           } else {
-            sourceParameters.regularParameters.getOrNull(irParam.index - parameterIndexOffset)
+            sourceParameters.regularParameters.getOrNull(irParam.indexInOldValueParameters - parameterIndexOffset)
               ?: error(
                 "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
               )
@@ -307,7 +308,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
               parametersAsProviderArguments(
                 metroContext,
                 parameters = sourceParameters,
-                receiver = invokeFunction.owner.dispatchReceiverParameterCompat!!,
+                receiver = invokeFunction.owner.dispatchReceiverParameter!!,
                 parametersToFields = sourceParametersToFields,
               ),
           ),
@@ -319,7 +320,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       // If any annotations have IrClassReference arguments, the compiler barfs
       var hasErrors = false
       for (annotation in providesFunction.annotations) {
-        for (arg in annotation.valueArguments) {
+        for (arg in annotation.arguments) {
           if (arg is IrClassReference) {
             // https://youtrack.jetbrains.com/issue/KT-76257/
             val message =

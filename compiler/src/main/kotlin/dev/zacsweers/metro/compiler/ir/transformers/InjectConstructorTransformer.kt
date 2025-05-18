@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
-import dev.zacsweers.metro.compiler.ir.dispatchReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.implementsProviderType
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
@@ -26,8 +25,6 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import kotlin.collections.component1
-import kotlin.collections.component2
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -57,6 +54,7 @@ import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -245,7 +243,7 @@ internal class InjectConstructorTransformer(
                 val constructorParam = constructorParameterNames.getValue(parameterName)
                 val providerInstance =
                   irGetField(
-                    irGet(invokeFunction.dispatchReceiverParameterCompat!!),
+                    irGet(invokeFunction.dispatchReceiverParameter!!),
                     parametersToFields.getValue(constructorParam),
                   )
                 val contextKey = targetParam.contextualTypeKey
@@ -266,17 +264,18 @@ internal class InjectConstructorTransformer(
             }
           }
 
+        val typeArgs = if (newInstanceFunction.typeParameters.isNotEmpty()) {
+          listOf(invokeFunction.returnType)
+        } else {
+          null
+        }
         val newInstance =
           irInvoke(
               dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
               callee = newInstanceFunction.symbol,
+            typeArgs = typeArgs,
               args = args,
             )
-            .apply {
-              if (newInstanceFunction.typeParameters.isNotEmpty()) {
-                putTypeArgument(0, invokeFunction.returnType)
-              }
-            }
 
         if (injectors.isNotEmpty()) {
           val instance = irTemporary(newInstance)
@@ -292,7 +291,7 @@ internal class InjectConstructorTransformer(
                       parametersAsProviderArguments(
                         metroContext,
                         parameters,
-                        invokeFunction.dispatchReceiverParameterCompat!!,
+                        invokeFunction.dispatchReceiverParameter!!,
                         parametersToFields,
                       )
                     )
@@ -342,7 +341,7 @@ internal class InjectConstructorTransformer(
       // TODO
       //  copy default values
       invokeFunction.apply {
-        val functionReceiver = dispatchReceiverParameterCompat!!
+        val functionReceiver = dispatchReceiverParameter!!
         body =
           pluginContext.createIrBuilder(symbol).run {
             val constructorParameterNames =
@@ -385,11 +384,9 @@ internal class InjectConstructorTransformer(
                   dispatchReceiver = null,
                   extensionReceiver = null,
                   typeHint = targetCallable.owner.returnType,
+                  // TODO type params
                   args = args,
                 )
-                .apply {
-                  // TODO type params
-                }
 
             irExprBodySafe(symbol, invokeExpression)
           }
@@ -439,9 +436,12 @@ internal class InjectConstructorTransformer(
         sourceParameters = constructorParameters.regularParameters.map { it.ir },
       ) { function ->
         irCallConstructor(targetConstructor, emptyList()).apply {
+          // The function may have a dispatch receiver so we need to offset
+          val functionParameters = function.nonDispatchParameters
+          val indexOffset = if (function.dispatchReceiverParameter == null) 0 else 1
           for (index in constructorParameters.allParameters.indices) {
-            val parameter = function.regularParameters[index]
-            putValueArgument(parameter.index, irGet(parameter))
+            val parameter = functionParameters[index]
+            arguments[parameter.indexInParameters - indexOffset] = irGet(parameter)
           }
         }
       }
@@ -520,8 +520,8 @@ internal class InjectConstructorTransformer(
           irInvoke(
               extensionReceiver = createExpression,
               callee = metroContext.symbols.daggerSymbols.asMetroProvider,
+            typeArgs = listOf(factoryClass.typeWith())
             )
-            .apply { putTypeArgument(0, factoryClass.typeWith()) }
         } else {
           createExpression
         }

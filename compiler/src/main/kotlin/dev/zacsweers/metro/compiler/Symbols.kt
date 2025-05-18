@@ -465,7 +465,7 @@ internal class Symbols(
   val stdlibCheckNotNull: IrFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(stdlib.packageFqName, "checkNotNull".asName()))
-      .single { it.owner.explicitParametersCount == 2 }
+      .single { it.owner.parameters.size == 2 }
   }
 
   val emptySet by lazy {
@@ -702,18 +702,14 @@ internal class Symbols(
           ClassIds.JAKARTA_PROVIDER_CLASS_ID -> asJakartaProvider
           else -> error("Unexpected non-dagger/jakarta/javax provider $targetClassId")
         }
-      return irInvoke(extensionReceiver = metroProvider, callee = interopFunction).apply {
-        putTypeArgument(0, target.typeKey.type)
-      }
+      return irInvoke(extensionReceiver = metroProvider, callee = interopFunction, typeArgs = listOf(target.typeKey.type))
     }
 
     override fun IrBuilderWithScope.transformToMetroProvider(
       provider: IrExpression,
       type: IrType,
     ): IrExpression {
-      return irInvoke(extensionReceiver = provider, callee = asMetroProvider).apply {
-        putTypeArgument(0, type)
-      }
+      return irInvoke(extensionReceiver = provider, callee = asMetroProvider, typeArgs = listOf(type))
     }
 
     val daggerLazy: IrClassSymbol by lazy {
