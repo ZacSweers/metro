@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
+
 0.3.2
 -----
 
