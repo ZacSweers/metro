@@ -478,7 +478,7 @@ internal class Symbols(
     pluginContext
       .referenceFunctions(CallableId(stdlibCollections.packageFqName, "setOf".asName()))
       .first {
-        it.owner.hasShape(regularParameters = 1) && it.owner.regularParameters[0].varargElementType == null
+        it.owner.hasShape(regularParameters = 1) && it.owner.parameters[0].varargElementType == null
       }
   }
 
