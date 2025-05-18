@@ -32,7 +32,6 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.explicitParametersCount
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
@@ -702,14 +701,22 @@ internal class Symbols(
           ClassIds.JAKARTA_PROVIDER_CLASS_ID -> asJakartaProvider
           else -> error("Unexpected non-dagger/jakarta/javax provider $targetClassId")
         }
-      return irInvoke(extensionReceiver = metroProvider, callee = interopFunction, typeArgs = listOf(target.typeKey.type))
+      return irInvoke(
+        extensionReceiver = metroProvider,
+        callee = interopFunction,
+        typeArgs = listOf(target.typeKey.type),
+      )
     }
 
     override fun IrBuilderWithScope.transformToMetroProvider(
       provider: IrExpression,
       type: IrType,
     ): IrExpression {
-      return irInvoke(extensionReceiver = provider, callee = asMetroProvider, typeArgs = listOf(type))
+      return irInvoke(
+        extensionReceiver = provider,
+        callee = asMetroProvider,
+        typeArgs = listOf(type),
+      )
     }
 
     val daggerLazy: IrClassSymbol by lazy {

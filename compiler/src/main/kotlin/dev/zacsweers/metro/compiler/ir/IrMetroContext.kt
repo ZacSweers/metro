@@ -162,11 +162,11 @@ internal interface IrMetroContext {
   // InstanceFactory(...)
   fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
     return irInvoke(
-        irGetObject(symbols.instanceFactoryCompanionObject),
-        callee = symbols.instanceFactoryInvoke,
+      irGetObject(symbols.instanceFactoryCompanionObject),
+      callee = symbols.instanceFactoryInvoke,
       typeArgs = listOf(type),
-        args = listOf(arg),
-      )
+      args = listOf(arg),
+    )
   }
 
   companion object {

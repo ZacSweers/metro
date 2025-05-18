@@ -1628,7 +1628,10 @@ internal class DependencyGraphTransformer(
                 initializer =
                   pluginContext.createIrBuilder(symbol).run {
                     irExprBody(
-                      irInvoke(callee = symbols.metroDelegateFactoryConstructor, typeArgs = listOf(deferredTypeKey.type))
+                      irInvoke(
+                        callee = symbols.metroDelegateFactoryConstructor,
+                        typeArgs = listOf(deferredTypeKey.type),
+                      )
                     )
                   }
               }
@@ -1697,27 +1700,27 @@ internal class DependencyGraphTransformer(
         val binding = bindingGraph.requireBinding(deferredTypeKey, bindingStack)
         extraConstructorStatements.add {
           irInvoke(
-              dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
-              callee = symbols.metroDelegateFactorySetDelegate,
+            dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
+            callee = symbols.metroDelegateFactorySetDelegate,
             typeArgs = listOf(deferredTypeKey.type),
-              // TODO de-dupe?
-              args =
-                listOf(
-                  irGetField(irGet(thisReceiverParameter), field),
-                  pluginContext.createIrBuilder(symbol).run {
-                    generateBindingCode(
-                        binding,
-                        baseGenerationContext,
-                        fieldInitKey = deferredTypeKey,
-                      )
-                      .letIf(binding.scope != null) {
-                        // If it's scoped, wrap it in double-check
-                        // DoubleCheck.provider(<provider>)
-                        it.doubleCheck(this@run, symbols, binding.typeKey)
-                      }
-                  },
-                ),
-            )
+            // TODO de-dupe?
+            args =
+              listOf(
+                irGetField(irGet(thisReceiverParameter), field),
+                pluginContext.createIrBuilder(symbol).run {
+                  generateBindingCode(
+                      binding,
+                      baseGenerationContext,
+                      fieldInitKey = deferredTypeKey,
+                    )
+                    .letIf(binding.scope != null) {
+                      // If it's scoped, wrap it in double-check
+                      // DoubleCheck.provider(<provider>)
+                      it.doubleCheck(this@run, symbols, binding.typeKey)
+                    }
+                },
+              ),
+          )
         }
       }
 
@@ -2920,12 +2923,12 @@ internal class DependencyGraphTransformer(
     // SetFactory.<String>builder(1, 1)
     val builder: IrExpression =
       irInvoke(
-          dispatchReceiver = irGetObject(symbols.setFactoryCompanionObject),
-          callee = symbols.setFactoryBuilderFunction,
-          typeHint = symbols.setFactoryBuilder.typeWith(elementType),
+        dispatchReceiver = irGetObject(symbols.setFactoryCompanionObject),
+        callee = symbols.setFactoryBuilderFunction,
+        typeHint = symbols.setFactoryBuilder.typeWith(elementType),
         typeArgs = listOf(elementType),
-          args = listOf(irInt(individualProviders.size), irInt(collectionProviders.size)),
-        )
+        args = listOf(irInt(individualProviders.size), irInt(collectionProviders.size)),
+      )
 
     val withProviders =
       individualProviders.fold(builder) { receiver, provider ->
@@ -2942,11 +2945,12 @@ internal class DependencyGraphTransformer(
     val withCollectionProviders =
       collectionProviders.fold(withProviders) { receiver, provider ->
         irInvoke(
-            dispatchReceiver = receiver,
-            callee = symbols.setFactoryBuilderAddCollectionProviderFunction,
-            typeHint = builder.type,
-          args =listOf(generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey))
-          )
+          dispatchReceiver = receiver,
+          callee = symbols.setFactoryBuilderAddCollectionProviderFunction,
+          typeHint = builder.type,
+          args =
+            listOf(generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)),
+        )
       }
 
     // .build()
@@ -3088,10 +3092,11 @@ internal class DependencyGraphTransformer(
             dispatchReceiver = receiver,
             callee = putter,
             typeHint = builder.type,
-            args = listOf(
-              generateMapKeyLiteral(sourceBinding),
-              generateBindingCode(sourceBinding, generationContext, fieldInitKey = fieldInitKey)
-            )
+            args =
+              listOf(
+                generateMapKeyLiteral(sourceBinding),
+                generateBindingCode(sourceBinding, generationContext, fieldInitKey = fieldInitKey),
+              ),
           )
         }
 

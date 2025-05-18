@@ -118,10 +118,12 @@ internal class IrContributedGraphGenerator(
               // Copy over the scope annotation
               it.arguments[0] = kClassReference(sourceScope.symbol)
               // Pass on if it's extendable
-              it.arguments[3] = irBoolean(
-                contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
-                  Symbols.Names.isExtendable
-                ) ?: false)
+              it.arguments[3] =
+                irBoolean(
+                  contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
+                    Symbols.Names.isExtendable
+                  ) ?: false
+                )
             }
           superTypes += sourceGraph.defaultType
         }

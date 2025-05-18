@@ -234,7 +234,8 @@ internal class InjectConstructorTransformer(
             .filterNot { it.isAssisted }
             .associateBy { it.originalName }
 
-        val functionParamsByName = invokeFunction.regularParameters.associate { it.name to irGet(it) }
+        val functionParamsByName =
+          invokeFunction.regularParameters.associate { it.name to irGet(it) }
 
         val args =
           constructorParameters.regularParameters.map { targetParam ->
@@ -264,18 +265,19 @@ internal class InjectConstructorTransformer(
             }
           }
 
-        val typeArgs = if (newInstanceFunction.typeParameters.isNotEmpty()) {
-          listOf(invokeFunction.returnType)
-        } else {
-          null
-        }
+        val typeArgs =
+          if (newInstanceFunction.typeParameters.isNotEmpty()) {
+            listOf(invokeFunction.returnType)
+          } else {
+            null
+          }
         val newInstance =
           irInvoke(
-              dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
-              callee = newInstanceFunction.symbol,
+            dispatchReceiver = dispatchReceiverFor(newInstanceFunction),
+            callee = newInstanceFunction.symbol,
             typeArgs = typeArgs,
-              args = args,
-            )
+            args = args,
+          )
 
         if (injectors.isNotEmpty()) {
           val instance = irTemporary(newInstance)
@@ -380,13 +382,13 @@ internal class InjectConstructorTransformer(
 
             val invokeExpression =
               irInvoke(
-                  callee = targetCallable,
-                  dispatchReceiver = null,
-                  extensionReceiver = null,
-                  typeHint = targetCallable.owner.returnType,
-                  // TODO type params
-                  args = args,
-                )
+                callee = targetCallable,
+                dispatchReceiver = null,
+                extensionReceiver = null,
+                typeHint = targetCallable.owner.returnType,
+                // TODO type params
+                args = args,
+              )
 
             irExprBodySafe(symbol, invokeExpression)
           }
@@ -518,10 +520,10 @@ internal class InjectConstructorTransformer(
         // Wrap in a metro provider if this is a provider
         return if (factoryClass.defaultType.implementsProviderType(metroContext)) {
           irInvoke(
-              extensionReceiver = createExpression,
-              callee = metroContext.symbols.daggerSymbols.asMetroProvider,
-            typeArgs = listOf(factoryClass.typeWith())
-            )
+            extensionReceiver = createExpression,
+            callee = metroContext.symbols.daggerSymbols.asMetroProvider,
+            typeArgs = listOf(factoryClass.typeWith()),
+          )
         } else {
           createExpression
         }

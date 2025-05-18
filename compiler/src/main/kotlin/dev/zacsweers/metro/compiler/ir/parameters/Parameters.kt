@@ -109,9 +109,8 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
       contextParameters: List<T>,
       ir: IrFunction?,
     ): Parameters<T> =
-      ParametersImpl(callableId, instance, extensionReceiver, regularParameters, contextParameters).apply {
-        ir?.let { this.ir = it }
-      }
+      ParametersImpl(callableId, instance, extensionReceiver, regularParameters, contextParameters)
+        .apply { ir?.let { this.ir = it } }
   }
 }
 
@@ -173,9 +172,14 @@ private class ParametersImpl<T : Parameter>(
   }
 
   override fun with(ir: IrFunction): Parameters<T> {
-    return ParametersImpl(callableId, dispatchReceiverParameter, extensionReceiverParameter, regularParameters, contextParameters).apply {
-      this.ir = ir
-    }
+    return ParametersImpl(
+        callableId,
+        dispatchReceiverParameter,
+        extensionReceiverParameter,
+        regularParameters,
+        contextParameters,
+      )
+      .apply { this.ir = ir }
   }
 
   override val nonInstanceParameters: List<T> by unsafeLazy {

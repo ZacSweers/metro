@@ -76,19 +76,20 @@ internal fun IrMetroContext.copyParameterDefaultValues(
           )
           .apply {
             typeArguments[0] = parameter.type
-            arguments[0] = irLambda(
-              context = pluginContext,
-              parent = targetParam.parent,
-              valueParameters = emptyList(),
-              returnType = parameter.type,
-              receiverParameter = null,
-            ) {
-              +irReturn(
-                defaultValue.expression
-                  .deepCopyWithoutPatchingParents()
-                  .transform(transformer, null)
-              )
-            }
+            arguments[0] =
+              irLambda(
+                context = pluginContext,
+                parent = targetParam.parent,
+                valueParameters = emptyList(),
+                returnType = parameter.type,
+                receiverParameter = null,
+              ) {
+                +irReturn(
+                  defaultValue.expression
+                    .deepCopyWithoutPatchingParents()
+                    .transform(transformer, null)
+                )
+              }
           }
       targetParam.defaultValue =
         defaultValue.deepCopyWithoutPatchingParents().apply { expression = provider }

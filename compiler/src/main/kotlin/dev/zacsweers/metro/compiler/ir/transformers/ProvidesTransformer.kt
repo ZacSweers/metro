@@ -42,7 +42,6 @@ import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.ir.backend.js.utils.valueArguments
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -282,7 +281,9 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
               "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
             )
           } else {
-            sourceParameters.regularParameters.getOrNull(irParam.indexInOldValueParameters - parameterIndexOffset)
+            sourceParameters.regularParameters.getOrNull(
+              irParam.indexInOldValueParameters - parameterIndexOffset
+            )
               ?: error(
                 "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
               )
