@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirective
 import org.jetbrains.kotlin.test.runners.AbstractFirLightTreeDiagnosticsTest
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
-open class AbstractDiagnosticTest : AbstractFirLightTreeDiagnosticsTest() {
+open class AbstractFirDiagnosticTest : AbstractFirLightTreeDiagnosticsTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return ClasspathBasedStandardLibrariesPathProvider
   }

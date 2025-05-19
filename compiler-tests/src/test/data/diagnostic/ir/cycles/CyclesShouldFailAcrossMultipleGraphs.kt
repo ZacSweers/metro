@@ -1,4 +1,5 @@
-// RENDER_DIAGNOSTICS_FULL_TEXT
+// RUN_PIPELINE_TILL: BACKEND
+package test
 
 @DependencyGraph
 interface CharSequenceGraph {
