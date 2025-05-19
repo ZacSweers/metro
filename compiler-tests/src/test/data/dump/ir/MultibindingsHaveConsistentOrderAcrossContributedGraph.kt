@@ -1,3 +1,4 @@
+// DONT_SORT_DECLARATIONS
 object AppScope
 
 interface Task
