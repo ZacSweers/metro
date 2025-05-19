@@ -2778,35 +2778,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `cycle smoke test`() {
-    compile(
-      source(
-        """
-            @DependencyGraph
-            interface CyclicalGraphWithClassesBrokenWithProviderBarExposed {
-              val bar: Bar
-
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Provides message: String): CyclicalGraphWithClassesBrokenWithProviderBarExposed
-              }
-
-              @Inject
-              class Foo(val barProvider: Provider<Bar>) : Callable<String> {
-                override fun call() = barProvider().call()
-              }
-
-              @Inject
-              class Bar(val foo: Foo, val message: String) : Callable<String> {
-                override fun call() = message
-              }
-            }
-        """
-      )
-    )
-  }
-
-  @Test
   fun `optional deps with back referencing default`() {
     compile(
       source(

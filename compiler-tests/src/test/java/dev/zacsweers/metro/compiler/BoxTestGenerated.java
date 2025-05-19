@@ -82,6 +82,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testSelfCycle() {
       runTest("compiler-tests/src/test/data/box/cycles/SelfCycle.kt");
     }
+
+    @Test
+    @TestMetadata("SmokeTest.kt")
+    public void testSmokeTest() {
+      runTest("compiler-tests/src/test/data/box/cycles/SmokeTest.kt");
+    }
   }
 
   @Nested
