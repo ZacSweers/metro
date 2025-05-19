@@ -17,7 +17,6 @@
 
 package dev.zacsweers.metro.compiler
 
-import dev.zacsweers.metro.compiler.NameAllocator.Mode
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import org.jetbrains.kotlin.name.Name
