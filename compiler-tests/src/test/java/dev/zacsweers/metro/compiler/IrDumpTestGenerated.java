@@ -44,6 +44,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("BindsCycleGraph.kt")
+    public void testBindsCycleGraph() {
+      runTest("compiler-tests/src/test/data/dump/ir/cycles/BindsCycleGraph.kt");
+    }
+
+    @Test
     @TestMetadata("CycleGraph.kt")
     public void testCycleGraph() {
       runTest("compiler-tests/src/test/data/dump/ir/cycles/CycleGraph.kt");

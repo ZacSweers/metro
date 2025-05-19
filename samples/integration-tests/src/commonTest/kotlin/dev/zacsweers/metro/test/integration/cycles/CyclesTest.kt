@@ -44,15 +44,6 @@ class CyclesTest {
     assertEquals(cycleMapGraph.y().mapOfProvidersOfY.size, 1)
   }
 
-  /**
-   * Tests that a cycle where a `@Binds` binding depends on a binding that has to be deferred works.
-   */
-  @Test
-  fun cycleWithDeferredBinds() {
-    val bindsCycleGraph = createGraph<BindsCycleGraph>()
-    assertNotNull(bindsCycleGraph.bar())
-  }
-
   @Inject class X(val y: Y)
 
   @Inject
@@ -68,20 +59,5 @@ class CyclesTest {
     @Binds @IntoMap @StringKey("X") val X.x: X
 
     @Binds @IntoMap @StringKey("Y") val Y.y: Y
-  }
-
-  interface Foo
-
-  @Inject class Bar(val fooProvider: Provider<Foo>) : Foo
-
-  /**
-   * A component with a cycle in which a `@Binds` binding depends on the binding that has to be
-   * deferred.
-   */
-  @DependencyGraph
-  interface BindsCycleGraph {
-    fun bar(): Bar
-
-    @Binds fun foo(bar: Bar): Foo
   }
 }
