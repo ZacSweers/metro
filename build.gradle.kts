@@ -116,8 +116,6 @@ allprojects {
         "**/StringKey.kt",
         "**/topologicalSort.kt",
         "**/TopologicalSortTest.kt",
-        "**/cycles/CyclesTest.kt",
-        "**/cycles/LongCycle.kt",
       )
     }
     format("licenseJava") {

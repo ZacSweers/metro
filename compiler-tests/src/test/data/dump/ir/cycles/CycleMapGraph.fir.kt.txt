@@ -1,0 +1,162 @@
+@Inject
+class X {
+  val y: Y
+    field = y
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory : Factory<X> {
+    private /* final field */ val y: Provider<Y> = y
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(y: Provider<Y>): Factory<X> {
+        return $$MetroFactory(y = y)
+      }
+
+      fun newInstance(y: Y): X {
+        return X(y = y)
+      }
+
+    }
+
+    constructor(y: Provider<Y>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): X {
+      return Companion.newInstance(y = <this>.#y.invoke())
+    }
+
+  }
+
+  constructor(y: Y) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Y {
+  val mapOfProvidersOfX: Map<String, Provider<X>>
+    field = mapOfProvidersOfX
+    get
+
+  val mapOfProvidersOfY: Map<String, Provider<Y>>
+    field = mapOfProvidersOfY
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory : Factory<Y> {
+    private /* final field */ val mapOfProvidersOfX: Provider<Map<String, Provider<X>>> = mapOfProvidersOfX
+    private /* final field */ val mapOfProvidersOfY: Provider<Map<String, Provider<Y>>> = mapOfProvidersOfY
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>): Factory<Y> {
+        return $$MetroFactory(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
+      }
+
+      fun newInstance(mapOfProvidersOfX: Map<String, X>, mapOfProvidersOfY: Map<String, Y>): Y {
+        return Y(mapOfProvidersOfX = mapOfProvidersOfX, mapOfProvidersOfY = mapOfProvidersOfY)
+      }
+
+    }
+
+    constructor(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Y {
+      return Companion.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
+    }
+
+  }
+
+  constructor(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface CycleMapGraph {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): CycleMapGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : CycleMapGraph {
+    private /* final field */ val thisGraphInstance: CycleMapGraph = <this>
+    private /* final field */ val cycleMapGraphProvider: Provider<CycleMapGraph> = Companion.invoke<CycleMapGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val yProvider: Provider<Y> = DelegateFactory<Y>()
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      Companion.setDelegate<Y>(delegateFactory = <this>.#yProvider, delegate = Companion.create(mapOfProvidersOfX = Companion.builder<String, X>(size = 1).put(key = "X", providerOfValue = Companion.create(y = <this>.#yProvider)).build(), mapOfProvidersOfY = Companion.builder<String, Y>(size = 1).put(key = "Y", providerOfValue = <this>.#yProvider).build()))
+    }
+
+    override fun y(): Y {
+      return <this>.#yProvider.invoke()
+    }
+
+    @Binds
+    @IntoMap
+    @StringKey(value = "X")
+    override val X.x: X
+      override get(): X {
+        return error(message = "Never called")
+      }
+
+    @Binds
+    @IntoMap
+    @StringKey(value = "Y")
+    override val Y.y: Y
+      override get(): Y {
+        return error(message = "Never called")
+      }
+
+  }
+
+  abstract fun y(): Y
+
+  @Binds
+  @IntoMap
+  @StringKey(value = "X")
+  abstract val X.x: X
+    abstract get
+
+  @Binds
+  @IntoMap
+  @StringKey(value = "Y")
+  abstract val Y.y: Y
+    abstract get
+
+}

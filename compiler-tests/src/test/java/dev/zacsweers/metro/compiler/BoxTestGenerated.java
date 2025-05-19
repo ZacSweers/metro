@@ -66,6 +66,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("CycleMapGraph.kt")
+    public void testCycleMapGraph() {
+      runTest("compiler-tests/src/test/data/box/cycles/CycleMapGraph.kt");
+    }
+
+    @Test
     @TestMetadata("LongCycle.kt")
     public void testLongCycle() {
       runTest("compiler-tests/src/test/data/box/cycles/LongCycle.kt");
