@@ -1535,6 +1535,39 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     }
   }
 
+  /**
+   * A more complex version of
+   * [DependencyGraphTransformerTest.`roots already in the graph are not re-added`].
+   */
+  @Test
+  fun `multiple contributed graphs should be able to inject dependency from parent`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+
+          @Inject @SingleIn(AppScope::class) class Dependency
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            val dependency: Dependency
+          }
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+              val dependency: Dependency
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+          .trimIndent()
+      )
+    )
+  }
+
   // TODO
   //  - multiple scopes to same graph. Need disambiguating names
 }

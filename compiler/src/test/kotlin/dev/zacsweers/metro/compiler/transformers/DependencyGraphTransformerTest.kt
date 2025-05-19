@@ -2917,4 +2917,30 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertThat(foo.callProperty<String>("text")).isEqualTo("default")
     }
   }
+
+  @Test
+  fun `roots already in the graph are not re-added`() {
+    // Regression test to ensure we don't try to unnecessarily recompute
+    // bindings that are already present in the graph (provided some other way)
+    // This only affects constructor-injected classes as they would return a
+    // non-null value for the binding when it tried to create it
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class)
+          interface ExampleGraph {
+            val value: Dependency
+
+            @DependencyGraph.Factory
+            interface Factory {
+              fun create(@Provides value: Dependency): ExampleGraph
+            }
+          }
+
+          @Inject class Dependency
+        """
+          .trimIndent()
+      )
+    )
+  }
 }

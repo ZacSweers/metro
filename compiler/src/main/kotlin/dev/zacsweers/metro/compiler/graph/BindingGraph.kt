@@ -104,7 +104,9 @@ internal open class MutableBindingGraph<
     // Traverse all the bindings up front to
     // First ensure all the roots' bindings are present
     for (contextKey in roots.keys) {
-      computeBinding(contextKey)?.let { tryPut(it, stack, contextKey.typeKey) }
+      if (contextKey.typeKey !in bindings) {
+        computeBinding(contextKey)?.let { tryPut(it, stack, contextKey.typeKey) }
+      }
     }
 
     // Then populate the rest of the bindings. This is important to do because some bindings

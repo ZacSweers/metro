@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
 - Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
 
 0.3.2
