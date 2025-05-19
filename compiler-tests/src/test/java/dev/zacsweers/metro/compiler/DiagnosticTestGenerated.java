@@ -56,6 +56,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/cycles")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Cycles {
+    @Test
+    public void testAllFilesPresentInCycles() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CyclesShouldFailAcrossMultipleGraphs.kt")
+    public void testCyclesShouldFailAcrossMultipleGraphs() {
+      runTest("compiler-tests/src/test/data/diagnostic/cycles/CyclesShouldFailAcrossMultipleGraphs.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/provides")
   @TestDataPath("$PROJECT_ROOT")
   public class Provides {
