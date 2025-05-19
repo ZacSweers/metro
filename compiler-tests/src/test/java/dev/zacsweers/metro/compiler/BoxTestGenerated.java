@@ -58,6 +58,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testLongCycle() {
       runTest("compiler-tests/src/test/data/box/cycles/LongCycle.kt");
     }
+
+    @Test
+    @TestMetadata("SelfCycle.kt")
+    public void testSelfCycle() {
+      runTest("compiler-tests/src/test/data/box/cycles/SelfCycle.kt");
+    }
   }
 
   @Nested

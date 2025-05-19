@@ -28,13 +28,6 @@ import kotlin.test.assertNotNull
 class CyclesTest {
 
   @Test
-  fun providerIndirectionSelfCycle() {
-    val selfCycleGraph = createGraph<SelfCycleGraph>()
-    val s = selfCycleGraph.s()
-    assertNotNull(s.sProvider())
-  }
-
-  @Test
   fun providerIndirectionCycle() {
     val cycleGraph = createGraph<CycleGraph>()
     val a = cycleGraph.a()
@@ -42,13 +35,6 @@ class CyclesTest {
     assertNotNull(c.aProvider())
     assertNotNull(a.b.c.aProvider())
     assertNotNull(a.e.d.b.c.aProvider())
-  }
-
-  @Test
-  fun lazyIndirectionSelfCycle() {
-    val selfCycleGraph = createGraph<SelfCycleGraph>()
-    val s = selfCycleGraph.s()
-    assertNotNull(s.sLazy.value)
   }
 
   @Test
@@ -112,12 +98,6 @@ class CyclesTest {
 
   @Inject class E(val d: D)
 
-  @Suppress("MEMBERS_INJECT_WARNING")
-  @Inject
-  class S(val sProvider: Provider<S>) {
-    @Inject lateinit var sLazy: Lazy<S>
-  }
-
   @Inject class X(val y: Y)
 
   @Inject
@@ -145,11 +125,6 @@ class CyclesTest {
     private fun provideObjectWithCycle(obj: Provider<Any>): Any {
       return "object"
     }
-  }
-
-  @DependencyGraph
-  interface SelfCycleGraph {
-    fun s(): S
   }
 
   @DependencyGraph
