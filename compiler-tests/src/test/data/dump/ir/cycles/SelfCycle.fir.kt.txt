@@ -1,0 +1,123 @@
+@Suppress(names = ["MEMBERS_INJECT_WARNING"])
+@Inject
+class S {
+  val sProvider: Provider<S>
+    field = sProvider
+    get
+
+  lateinit var sLazy: Lazy<S>
+    get
+    set
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory : Factory<S> {
+    private /* final field */ val sProvider: Provider<S> = sProvider
+    private /* final field */ val sLazy: Provider<S> = sLazy
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(sProvider: Provider<S>, sLazy: Provider<S>): Factory<S> {
+        return $$MetroFactory(sProvider = sProvider, sLazy = sLazy)
+      }
+
+      fun newInstance(sProvider: Provider<S>): S {
+        return S(sProvider = sProvider)
+      }
+
+    }
+
+    constructor(sProvider: Provider<S>, sLazy: Provider<S>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): S {
+      val tmp_0: S = Companion.newInstance(sProvider = <this>.#sProvider)
+      Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy</* null */, /* null */>(provider = <this>.#sLazy))
+      return tmp_0
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroMembersInjector : MembersInjector<S> {
+    private /* final field */ val sLazy: Provider<S> = sLazy
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(sLazy: Provider<S>): MembersInjector<$$MetroMembersInjector> {
+        return $$MetroMembersInjector(sLazy = sLazy)
+      }
+
+      fun injectSLazy(instance: S, sLazy: Lazy<S>) {
+        return instance.#sLazy = sLazy
+      }
+
+    }
+
+    constructor(sLazy: Provider<S>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun injectMembers(instance: S) {
+      Companion.injectSLazy(instance = instance, sLazy = Companion.lazy</* null */, /* null */>(provider = <this>.#sLazy))
+    }
+
+  }
+
+  constructor(sProvider: Provider<S>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface SelfCycleGraph {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): SelfCycleGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : SelfCycleGraph {
+    private /* final field */ val thisGraphInstance: SelfCycleGraph = <this>
+    private /* final field */ val selfCycleGraphProvider: Provider<SelfCycleGraph> = Companion.invoke<SelfCycleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val sProvider: Provider<S> = DelegateFactory<S>()
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      Companion.setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = Companion.create(sProvider = <this>.#sProvider, sLazy = <this>.#sProvider))
+    }
+
+    override fun s(): S {
+      return <this>.#sProvider.invoke()
+    }
+
+  }
+
+  abstract fun s(): S
+
+}
