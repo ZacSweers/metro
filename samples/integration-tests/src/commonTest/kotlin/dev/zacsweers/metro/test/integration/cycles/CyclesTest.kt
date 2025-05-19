@@ -28,36 +28,6 @@ import kotlin.test.assertNotNull
 class CyclesTest {
 
   @Test
-  fun providerIndirectionCycle() {
-    val cycleGraph = createGraph<CycleGraph>()
-    val a = cycleGraph.a()
-    val c = cycleGraph.c()
-    assertNotNull(c.aProvider())
-    assertNotNull(a.b.c.aProvider())
-    assertNotNull(a.e.d.b.c.aProvider())
-  }
-
-  @Test
-  fun lazyIndirectionCycle() {
-    val cycleGraph = createGraph<CycleGraph>()
-    val a = cycleGraph.a()
-    val c = cycleGraph.c()
-    assertNotNull(c.aLazy.value)
-    assertNotNull(a.b.c.aLazy.value)
-    assertNotNull(a.e.d.b.c.aLazy.value)
-  }
-
-  @Test
-  fun graphExtensionIndirectionCycle() {
-    val parent = createGraph<CycleGraph>()
-    val childCycleGraph = createGraphFactory<ChildCycleGraph.Factory>().create(parent)
-    val a = childCycleGraph.a
-    assertNotNull(a.b.c.aProvider())
-    assertNotNull(a.e.d.b.c.aProvider())
-    assertNotNull(childCycleGraph.obj)
-  }
-
-  @Test
   fun providerMapIndirectionCycle() {
     val cycleMapGraph = createGraph<CycleMapGraph>()
     assertNotNull(cycleMapGraph.y())
@@ -83,21 +53,6 @@ class CyclesTest {
     assertNotNull(bindsCycleGraph.bar())
   }
 
-  @Inject class A(val b: B, val e: E)
-
-  @Inject class B(val c: C)
-
-  @Suppress("MEMBERS_INJECT_WARNING")
-  @Inject
-  class C(val aProvider: Provider<A>) {
-    @Inject lateinit var aLazy: Lazy<A>
-    @Inject lateinit var aLazyProvider: Provider<Lazy<A>>
-  }
-
-  @Inject class D(val b: B)
-
-  @Inject class E(val d: D)
-
   @Inject class X(val y: Y)
 
   @Inject
@@ -113,30 +68,6 @@ class CyclesTest {
     @Binds @IntoMap @StringKey("X") val X.x: X
 
     @Binds @IntoMap @StringKey("Y") val Y.y: Y
-  }
-
-  @DependencyGraph(isExtendable = true)
-  interface CycleGraph {
-    fun a(): A
-
-    fun c(): C
-
-    @Provides
-    private fun provideObjectWithCycle(obj: Provider<Any>): Any {
-      return "object"
-    }
-  }
-
-  @DependencyGraph
-  interface ChildCycleGraph {
-    val a: A
-
-    val obj: Any
-
-    @DependencyGraph.Factory
-    fun interface Factory {
-      fun create(@Extends cycleGraph: CycleGraph): ChildCycleGraph
-    }
   }
 
   interface Foo
