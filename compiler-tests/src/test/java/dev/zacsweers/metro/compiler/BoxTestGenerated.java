@@ -45,6 +45,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/cycles")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Cycles {
+    @Test
+    public void testAllFilesPresentInCycles() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("LongCycle.kt")
+    public void testLongCycle() {
+      runTest("compiler-tests/src/test/data/box/cycles/LongCycle.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/dependencygraph")
   @TestDataPath("$PROJECT_ROOT")
   public class Dependencygraph {
