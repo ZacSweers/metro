@@ -120,6 +120,11 @@ private  val fieldNameAllocator = NameAllocator()
   private val providerFields = mutableMapOf<IrTypeKey, IrField>()
   private val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
 
+  // Track a stack for bindings
+  // TODO is this still needed?
+  private val bindingStack =
+    IrBindingStack(node.sourceGraph, metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen))
+
   fun generate() =
     with(graphClass) {
       val ctor = primaryConstructor!!
@@ -325,15 +330,9 @@ private  val fieldNameAllocator = NameAllocator()
           }
         }
 
-      // Track a stack for bindings
-      // TODO is this still needed?
-      val bindingStack =
-        IrBindingStack(node.sourceGraph, metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen))
-
       val baseGenerationContext =
         GraphGenerationContext(
           thisReceiverParameter,
-          bindingStack,
         )
 
       for ((key, binding) in bindingGraph.bindingsSnapshot()) {
@@ -714,8 +713,8 @@ private  val fieldNameAllocator = NameAllocator()
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
         val irFunction = this
-        val binding = bindingGraph.requireBinding(contextualTypeKey, context.bindingStack)
-        context.bindingStack.push(IrBindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
+        val binding = bindingGraph.requireBinding(contextualTypeKey, bindingStack)
+        bindingStack.push(IrBindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
         body =
           pluginContext.createIrBuilder(symbol).run {
             if (binding is Binding.Multibinding) {
@@ -739,7 +738,7 @@ private  val fieldNameAllocator = NameAllocator()
             )
           }
       }
-      context.bindingStack.pop()
+      bindingStack.pop()
     }
 
     // Implement abstract injectors
@@ -748,8 +747,8 @@ private  val fieldNameAllocator = NameAllocator()
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = regularParameters[0]
         val binding =
-          bindingGraph.requireBinding(typeKey, context.bindingStack) as Binding.MembersInjected
-        context.bindingStack.push(
+          bindingGraph.requireBinding(typeKey, bindingStack) as Binding.MembersInjected
+        bindingStack.push(
           IrBindingStack.Entry.requestedAt(IrContextualTypeKey(typeKey), this)
         )
 
@@ -783,7 +782,7 @@ private  val fieldNameAllocator = NameAllocator()
                         val paramBinding =
                           bindingGraph.requireBinding(
                             parameter.contextualTypeKey,
-                            context.bindingStack,
+                            bindingStack,
                           )
                         add(
                           typeAsProviderArgument(
@@ -807,7 +806,7 @@ private  val fieldNameAllocator = NameAllocator()
             }
           }
       }
-      context.bindingStack.pop()
+      bindingStack.pop()
     }
 
     // Implement no-op bodies for Binds providers
@@ -991,12 +990,12 @@ private  val fieldNameAllocator = NameAllocator()
               is Binding.BoundInstance,
               is Binding.GraphDependency -> error("Should never happen, logic is handled above")
             }
-          generationContext.bindingStack.push(entry)
+          bindingStack.push(entry)
           // Generate binding code for each param
           val paramBinding =
             bindingGraph.requireBinding(
               contextualTypeKey,
-              generationContext.bindingStack,
+              bindingStack,
             )
 
           if (paramBinding is Binding.Absent) {
@@ -1107,7 +1106,7 @@ private  val fieldNameAllocator = NameAllocator()
       is Binding.Alias -> {
         // For binds functions, just use the backing type
         val aliasedBinding =
-          binding.aliasedBinding(bindingGraph, generationContext.bindingStack)
+          binding.aliasedBinding(bindingGraph, bindingStack)
         check(aliasedBinding != binding) { "Aliased binding aliases itself" }
         return generateBindingCode(aliasedBinding, generationContext)
       }
@@ -1319,7 +1318,7 @@ private  val fieldNameAllocator = NameAllocator()
       binding.sourceBindings
         .map {
           bindingGraph
-            .requireBinding(it, generationContext.bindingStack)
+            .requireBinding(it, bindingStack)
             .expectAs<Binding.BindingWithAnnotations>()
         }
         .partition { it.annotations.isElementsIntoSet }
@@ -1357,7 +1356,7 @@ private  val fieldNameAllocator = NameAllocator()
         callee = symbols.setOfSingleton
         val provider =
           binding.sourceBindings.first().let {
-            bindingGraph.requireBinding(it, generationContext.bindingStack)
+            bindingGraph.requireBinding(it, bindingStack)
           }
         args = listOf(generateMultibindingArgument(provider, generationContext, fieldInitKey))
       }
@@ -1379,7 +1378,7 @@ private  val fieldNameAllocator = NameAllocator()
               // This is the mutable set receiver
               val functionReceiver = function.extensionReceiverParameterCompat!!
               binding.sourceBindings
-                .map { bindingGraph.requireBinding(it, generationContext.bindingStack) }
+                .map { bindingGraph.requireBinding(it, bindingStack) }
                 .forEach { provider ->
                   +irInvoke(
                     dispatchReceiver = irGet(functionReceiver),
@@ -1566,7 +1565,7 @@ private  val fieldNameAllocator = NameAllocator()
 
     val withProviders =
       binding.sourceBindings
-        .map { bindingGraph.requireBinding(it, generationContext.bindingStack) }
+        .map { bindingGraph.requireBinding(it, bindingStack) }
         .fold(builder) { receiver, sourceBinding ->
           val providerTypeMetadata = sourceBinding.contextualTypeKey
 
@@ -1629,7 +1628,6 @@ private  val fieldNameAllocator = NameAllocator()
 
 internal class GraphGenerationContext(
   val thisReceiver: IrValueParameter,
-  val bindingStack: IrBindingStack,
 ) {
   // Each declaration in FIR is actually generated with a different "this" receiver, so we
   // need to be able to specify this per-context.
@@ -1638,6 +1636,5 @@ internal class GraphGenerationContext(
   fun withReceiver(receiver: IrValueParameter): GraphGenerationContext =
     GraphGenerationContext(
       receiver,
-      bindingStack,
     )
 }
