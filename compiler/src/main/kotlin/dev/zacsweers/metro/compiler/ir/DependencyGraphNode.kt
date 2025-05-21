@@ -34,7 +34,9 @@ internal data class DependencyGraphNode(
   val creator: Creator?,
   val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
   val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
-  val proto: DependencyGraphProto? = null,
+  // TODO not ideal that this is mutable/lateinit but welp
+  //  maybe we track these protos separately somewhere?
+  var proto: DependencyGraphProto? = null,
 ) {
 
   val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
