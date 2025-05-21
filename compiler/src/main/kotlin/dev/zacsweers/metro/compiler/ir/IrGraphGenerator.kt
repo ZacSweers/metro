@@ -312,8 +312,11 @@ internal class IrGraphGenerator(
               exitProcessing()
             }
             .collect()
-          // Compute safe initialization order
-          sealResult.sortedKeys.mapNotNull { providerFieldBindings[it] }.distinctBy { it.typeKey }
+          buildList(providerFieldBindings.size) {
+            for (key in sealResult.sortedKeys) {
+              providerFieldBindings[key]?.let(::add)
+            }
+          }
         }
 
       // Track a stack for bindings
