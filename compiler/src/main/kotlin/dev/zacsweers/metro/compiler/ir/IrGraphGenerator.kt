@@ -2,6 +2,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
@@ -105,19 +106,25 @@ internal class IrGraphGenerator(
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
 
+private  val fieldNameAllocator = NameAllocator()
+  // TODO we can end up in awkward situations where we
+  //  have the same type keys in both instance and provider fields
+  //  this is tricky because depending on the context, it's not valid
+  //  to use an instance (for example - you need a provider). How can we
+  //  clean this up?
+  // Fields for this graph and other instance params
+  private val instanceFields = mutableMapOf<IrTypeKey, IrField>()
+
+  // Fields for providers. May include both scoped and unscoped providers as well as bound
+  // instances
+  private val providerFields = mutableMapOf<IrTypeKey, IrField>()
+  private val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
+
   fun generate() =
     with(graphClass) {
       val ctor = primaryConstructor!!
 
-      // Fields for providers. May include both scoped and unscoped providers as well as bound
-      // instances
-      val providerFields = mutableMapOf<IrTypeKey, IrField>()
-      val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
-      val fieldNameAllocator = dev.zacsweers.metro.compiler.NameAllocator()
       val extraConstructorStatements = mutableListOf<IrBuilderWithScope.() -> IrStatement>()
-
-      // Fields for this graph and other instance params
-      val instanceFields = mutableMapOf<IrTypeKey, IrField>()
 
       node.creator?.let { creator ->
         for ((i, param) in creator.parameters.regularParameters.withIndex()) {
@@ -326,9 +333,6 @@ internal class IrGraphGenerator(
       val baseGenerationContext =
         GraphGenerationContext(
           thisReceiverParameter,
-          instanceFields,
-          providerFields,
-          multibindingProviderFields,
           bindingStack,
         )
 
@@ -924,7 +928,7 @@ internal class IrGraphGenerator(
       // TODO consolidate this logic with generateBindingCode
       if (!contextualTypeKey.requiresProviderInstance) {
         // IFF the parameter can take a direct instance, try our instance fields
-        generationContext.instanceFields[typeKey]?.let { instanceField ->
+        instanceFields[typeKey]?.let { instanceField ->
           return@mapIndexed irGetField(irGet(generationContext.thisReceiver), instanceField).let {
             with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
           }
@@ -932,20 +936,20 @@ internal class IrGraphGenerator(
       }
 
       val providerInstance =
-        if (typeKey in generationContext.providerFields) {
+        if (typeKey in providerFields) {
           // If it's in provider fields, invoke that field
           irGetField(
             irGet(generationContext.thisReceiver),
-            generationContext.providerFields.getValue(typeKey),
+            providerFields.getValue(typeKey),
           )
         } else if (
           binding is Binding.Provided &&
             binding.isIntoMultibinding &&
-            binding in generationContext.multibindingProviderFields
+            binding in multibindingProviderFields
         ) {
           irGetField(
             irGet(generationContext.thisReceiver),
-            generationContext.multibindingProviderFields.getValue(binding),
+            multibindingProviderFields.getValue(binding),
           )
         } else {
           val entry =
@@ -1056,9 +1060,9 @@ internal class IrGraphGenerator(
     if (
       binding is Binding.Provided &&
         binding.isIntoMultibinding &&
-        binding in generationContext.multibindingProviderFields
+        binding in multibindingProviderFields
     ) {
-      generationContext.multibindingProviderFields[binding]?.let {
+      multibindingProviderFields[binding]?.let {
         return irGetField(irGet(generationContext.thisReceiver), it).let {
           with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
         }
@@ -1069,7 +1073,7 @@ internal class IrGraphGenerator(
     // provider for it.
     // This is important for cases like DelegateFactory and breaking cycles.
     if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
-      generationContext.providerFields[binding.typeKey]?.let {
+      providerFields[binding.typeKey]?.let {
         return irGetField(irGet(generationContext.thisReceiver), it).let {
           with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
         }
@@ -1245,10 +1249,10 @@ internal class IrGraphGenerator(
       is Binding.GraphDependency -> {
         val ownerKey = IrTypeKey(binding.graph.defaultType)
         val graphInstanceField =
-          generationContext.instanceFields[ownerKey]
+          instanceFields[ownerKey]
             ?: run {
               error(
-                "No matching included type instance found for type ${ownerKey}. Available instance fields ${generationContext.instanceFields.keys}"
+                "No matching included type instance found for type ${ownerKey}. Available instance fields ${instanceFields.keys}"
               )
             }
 
@@ -1625,14 +1629,6 @@ internal class IrGraphGenerator(
 
 internal class GraphGenerationContext(
   val thisReceiver: IrValueParameter,
-  // TODO we can end up in awkward situations where we
-  //  have the same type keys in both instance and provider fields
-  //  this is tricky because depending on the context, it's not valid
-  //  to use an instance (for example - you need a provider). How can we
-  //  clean this up?
-  val instanceFields: Map<IrTypeKey, IrField>,
-  val providerFields: Map<IrTypeKey, IrField>,
-  val multibindingProviderFields: Map<Binding.Provided, IrField>,
   val bindingStack: IrBindingStack,
 ) {
   // Each declaration in FIR is actually generated with a different "this" receiver, so we
@@ -1642,9 +1638,6 @@ internal class GraphGenerationContext(
   fun withReceiver(receiver: IrValueParameter): GraphGenerationContext =
     GraphGenerationContext(
       receiver,
-      instanceFields,
-      providerFields,
-      multibindingProviderFields,
       bindingStack,
     )
 }
