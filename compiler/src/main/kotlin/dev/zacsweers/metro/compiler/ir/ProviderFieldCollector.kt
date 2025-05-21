@@ -77,18 +77,22 @@ internal class ProviderFieldCollector(
       )
 
     // TODO use graph.bindingSnapshot() directly
-    node.accessors
-      .plus(node.injectors.map { (injector, key) -> injector to IrContextualTypeKey(key) })
-      .forEach { (injector, contextKey) ->
-        if (seen.add(contextKey.typeKey)) {
-          val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
-          queue +=
-            contextKey to IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
-        } else {
-          // Increment the refCount still
-          contextKey.typeKey.mark()
-        }
+    val roots =
+      node.accessors.plus(
+        node.injectors.map { (injector, key) -> injector to IrContextualTypeKey(key) }
+      )
+
+    for ((injector, contextKey) in roots) {
+      if (seen.add(contextKey.typeKey)) {
+        val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
+        queue +=
+          contextKey to IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
+      } else {
+        // Don't increment the refCount on multiple roots because we still need to follow their deps
+        // avoids a situation where multiple accessors expose the same type key and results in
+        // them not being visited
       }
+    }
 
     while (queue.isNotEmpty()) {
       val (contextKey, stack) = queue.removeFirst()
