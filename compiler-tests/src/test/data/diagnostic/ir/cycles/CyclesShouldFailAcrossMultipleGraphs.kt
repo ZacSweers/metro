@@ -1,4 +1,5 @@
 // RUN_PIPELINE_TILL: BACKEND
+// RENDER_ALL_DIAGNOSTICS_FULL_TEXT
 package test
 
 @DependencyGraph
