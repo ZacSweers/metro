@@ -27,6 +27,9 @@ import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
 internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, Entry> {
+
+  fun copy(): IrBindingStack
+
   class Entry(
     override val contextKey: IrContextualTypeKey,
     override val usage: String?,
@@ -193,6 +196,8 @@ internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey,
   companion object {
     private val EMPTY =
       object : IrBindingStack {
+        override fun copy() = this
+
         override val graph
           get() = throw UnsupportedOperationException()
 
@@ -277,6 +282,15 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 
   init {
     logger.log("New stack: ${logger.type}")
+  }
+
+  override fun copy(): IrBindingStack {
+    val currentStack = stack
+    return IrBindingStackImpl(graph, logger).apply {
+      for (entry in currentStack) {
+        push(entry)
+      }
+    }
   }
 
   override fun push(entry: Entry) {

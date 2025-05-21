@@ -303,14 +303,11 @@ internal class IrGraphGenerator(
         }
       }
 
-      // Track a stack for bindings
-      val bindingStack =
-        IrBindingStack(node.sourceGraph, metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen))
 
       // Collect bindings and their dependencies for provider field ordering
       val initOrder =
         parentTracer.traceNested("Collect bindings") {
-          val providerFieldBindings = ProviderFieldCollector(node, bindingGraph, bindingStack) { declaration, message ->
+          val providerFieldBindings = ProviderFieldCollector(node, bindingGraph) { declaration, message ->
               declaration.reportError(message)
               exitProcessing()
             }
@@ -318,6 +315,11 @@ internal class IrGraphGenerator(
           // Compute safe initialization order
           sealResult.sortedKeys.mapNotNull { providerFieldBindings[it] }.distinctBy { it.typeKey }
         }
+
+      // Track a stack for bindings
+      // TODO is this still needed?
+      val bindingStack =
+        IrBindingStack(node.sourceGraph, metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen))
 
       val baseGenerationContext =
         GraphGenerationContext(

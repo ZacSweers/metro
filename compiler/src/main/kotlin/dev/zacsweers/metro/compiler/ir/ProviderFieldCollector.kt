@@ -1,96 +1,135 @@
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
+/** Computes the set of bindings that must end up in provider fields. */
 internal class ProviderFieldCollector(
   private val node: DependencyGraphNode,
   private val graph: IrBindingGraph,
-  private val bindingStack: IrBindingStack,
   private val onError: (IrDeclaration, String) -> Nothing,
 ) {
-  private val bindingDependencies = mutableMapOf<IrTypeKey, Binding>()
-  // Track used unscoped bindings. We only need to generate a field if they're used more than
-  // once
-  private val usedUnscopedBindings = mutableSetOf<IrTypeKey>()
-  private val visitedBindings = mutableSetOf<IrTypeKey>()
+
+  private data class Node(val binding: Binding, var refCount: Int = 0) {
+    val needsField: Boolean
+      get() {
+        // Scoped, graph, and members injector bindings always need provider fields
+        if (binding.scope != null) return true
+        if (binding is Binding.GraphDependency) return true
+        if (binding is Binding.MembersInjected && !binding.isFromInjectorFunction) return true
+        // Multibindings are always created adhoc
+        if (binding is Binding.Multibinding) return false
+
+        // If it's unscoped but used more than once and not into a multibinding,
+        // we can generate a reusable field
+        if (refCount < 2) return false
+        val isMultibindingProvider =
+          (binding is Binding.BindingWithAnnotations) && binding.annotations.isIntoMultibinding
+        return !isMultibindingProvider
+      }
+  }
+
+  private val nodes = HashMap<IrTypeKey, Node>(128)
 
   fun collect(): Map<IrTypeKey, Binding> {
-    // Collect from roots
-    node.accessors.forEach { (accessor, contextualTypeKey) ->
-      findAndProcessBinding(
-        contextKey = contextualTypeKey,
-        stackEntry = IrBindingStack.Entry.requestedAt(contextualTypeKey, accessor.ir),
-      )
-    }
-    node.injectors.forEach { (accessor, typeKey) ->
-      val contextKey = IrContextualTypeKey(typeKey)
-      findAndProcessBinding(
-        contextKey = contextKey,
-        stackEntry = IrBindingStack.Entry.requestedAt(contextKey, accessor.ir),
-      )
-    }
+    processNodes()
 
     if (node.isExtendable) {
       // Ensure all scoped providers have fields in extendable graphs, even if they are not used in
       // this graph
-      graph.bindingsSnapshot().forEach { (_, binding) ->
-        if (binding is Binding.Provided && binding.annotations.isScoped) {
-          processBinding(binding)
+      graph
+        .bindingsSnapshot()
+        .values
+        .filterIsInstance<Binding.Provided>()
+        .filter { it.annotations.isScoped }
+        .forEach { it.mark() }
+    }
+
+    // Decide which bindings actually need provider fields
+    return buildMap(nodes.size) {
+      for ((key, node) in nodes) {
+        val binding = node.binding
+        if (node.needsField) {
+          put(key, binding)
         }
       }
     }
-
-    return bindingDependencies
   }
 
-  private fun findAndProcessBinding(
-    contextKey: IrContextualTypeKey,
-    stackEntry: IrBindingStack.Entry,
-  ) {
-    val key = contextKey.typeKey
-    // Skip if already visited
-    if (key in visitedBindings) {
-      if (key in usedUnscopedBindings && key !in bindingDependencies) {
-        // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key, bindingStack)
-      }
-      return
+  private fun processNodes() {
+    val queue =
+      ArrayDeque<Pair<IrContextualTypeKey, IrBindingStack>>(
+        (node.accessors.size + node.injectors.size) * 4
+      )
+
+    // TODO use graph.bindingSnapshot() directly
+    node.accessors.forEach { (accessor, contextualTypeKey) ->
+      val entry = IrBindingStack.Entry.requestedAt(contextualTypeKey, accessor.ir)
+      queue +=
+        contextualTypeKey to
+          IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
+    }
+    node.injectors.forEach { (injector, key) ->
+      val contextKey = IrContextualTypeKey(key)
+      val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
+      queue +=
+        contextKey to IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
     }
 
-    bindingStack.withEntry(stackEntry) {
-      val binding = graph.requireBinding(contextKey, bindingStack)
-      processBinding(binding)
+    while (queue.isNotEmpty()) {
+      val (contextKey, stack) = queue.removeFirst()
+      println("Reading binding $contextKey from stack: $stack")
+      val binding = graph.requireBinding(contextKey, stack)
+      if (binding.mark()) {
+        // already processed this binding
+        continue
+      }
+
+      binding.checkScope(stack)
+
+      // Enqueue dependencies
+      // TODO just read dependencies instead and look up from graph?
+      when (binding) {
+        is Binding.Assisted -> {
+          queue += binding.target to stack
+          continue
+        }
+        is Binding.Multibinding -> {
+          binding.sourceBindings.forEach { queue += IrContextualTypeKey(it) to stack }
+          continue
+        }
+        else -> {}
+      }
+
+      binding.parameters.nonInstanceParameters
+        .filterNot { it.isAssisted }
+        .forEach {
+          queue += it.contextualTypeKey to stack.copy().apply { push(it.bindingStackEntry) }
+        }
     }
   }
 
-  private fun processBinding(binding: Binding) {
-    val isMultibindingProvider =
-      (binding is Binding.Provided || binding is Binding.Alias) &&
-        binding.annotations.isIntoMultibinding
-    val key = binding.typeKey
+  /** @return true if we’ve seen this binding before. */
+  private fun Binding.mark(): Boolean {
+    val node = nodes.getOrPut(typeKey) { Node(this) }
+    // Increment visit
+    node.refCount++
+    return node.refCount > 1
+  }
 
-    // Skip if already visited
-    // TODO de-dupe with findAndProcessBinding
-    if (!isMultibindingProvider && key in visitedBindings) {
-      if (key in usedUnscopedBindings && key !in bindingDependencies) {
-        // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key, bindingStack)
-      }
-      return
-    }
-
-    val bindingScope = binding.scope
-
-    // Check scoping compatibility
-    // TODO FIR error?
+  // Check scoping compatibility
+  // TODO FIR error?
+  private fun Binding.checkScope(stack: IrBindingStack) {
+    val bindingScope = scope
     if (bindingScope != null) {
       if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
         val isUnscoped = node.scopes.isEmpty()
         // Error if there are mismatched scopes
         val declarationToReport = node.sourceGraph
-        bindingStack.push(
+        val binding = this
+        stack.push(
           IrBindingStack.Entry.simpleTypeRef(
             binding.contextualTypeKey,
             usage = "(scoped to '$bindingScope')",
@@ -109,7 +148,7 @@ internal class ProviderFieldCollector(
             )
           }
           appendLine()
-          appendBindingStack(bindingStack, short = false)
+          appendBindingStack(stack, short = false)
           if (!isUnscoped && binding is Binding.ConstructorInjected) {
             val matchingParent =
               node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
@@ -131,77 +170,6 @@ internal class ProviderFieldCollector(
         }
         onError(declarationToReport, message)
       }
-    }
-
-    visitedBindings += key
-
-    // Scoped, graph, and members injector bindings always need (provider) fields
-    if (
-      bindingScope != null ||
-        binding is Binding.GraphDependency ||
-        (binding is Binding.MembersInjected && !binding.isFromInjectorFunction)
-    ) {
-      bindingDependencies[key] = binding
-    }
-
-    when (binding) {
-      is Binding.Assisted -> {
-        // For assisted bindings, we need provider fields for the assisted factory impl type
-        // The factory impl type depends on a provider of the assisted type
-        val targetBinding = graph.requireBinding(binding.target, bindingStack)
-        bindingDependencies[key] = targetBinding
-        // TODO is this safe to end up as a provider field? Can someone create a
-        //  binding such that you have an assisted type on the DI graph that is
-        //  provided by a provider that depends on the assisted factory? I suspect
-        //  yes, so in that case we should probably track a separate field mapping
-        usedUnscopedBindings += binding.target.typeKey
-        // By definition, assisted parameters are not available on the graph
-        // But we _do_ need to process the target type's parameters!
-        processBinding(binding = targetBinding)
-        return
-      }
-
-      is Binding.Multibinding -> {
-        // For multibindings, we depend on anything the delegate providers depend on
-        if (bindingScope != null) {
-          // This is scoped so we want to keep an instance
-          // TODO are these allowed?
-          //  bindingDependencies[key] = buildMap {
-          //    for (provider in binding.providers) {
-          //      putAll(provider.dependencies)
-          //    }
-          //  }
-        } else {
-          // Process all providers deps, but don't need a specific dep for this one
-          // TODO eventually would be nice to just let a binding.dependencies lookup handle this
-          //  but currently the later logic uses parameters for lookups
-          for (providerKey in binding.sourceBindings) {
-            val provider = graph.requireBinding(providerKey, bindingStack)
-            processBinding(binding = provider)
-          }
-        }
-        return
-      }
-
-      else -> {
-        // Do nothing here
-      }
-    }
-
-    // Track dependencies before creating fields
-    if (bindingScope == null) {
-      usedUnscopedBindings += key
-    }
-
-    // Recursively process dependencies
-    for (param in binding.parameters.nonInstanceParameters) {
-      if (param.isAssisted) continue
-
-      // Process binding dependencies
-      findAndProcessBinding(
-        contextKey = param.contextualTypeKey,
-        stackEntry = param.bindingStackEntry,
-      )
     }
   }
 }
