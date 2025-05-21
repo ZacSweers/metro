@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
+private const val INITIAL_VALUE = 512
+
 /** Computes the set of bindings that must end up in provider fields. */
 internal class ProviderFieldCollector(
   private val node: DependencyGraphNode,
@@ -39,7 +41,7 @@ internal class ProviderFieldCollector(
     }
   }
 
-  private val nodes = HashMap<IrTypeKey, Node>(128)
+  private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
   fun collect(): Map<IrTypeKey, Binding> {
     processNodes()
@@ -68,7 +70,7 @@ internal class ProviderFieldCollector(
 
   private fun processNodes() {
     // one set for all the visited bookkeeping
-    val seen = HashSet<IrTypeKey>(500)
+    val seen = HashSet<IrTypeKey>(INITIAL_VALUE)
     val queue =
       ArrayDeque<Pair<IrContextualTypeKey, IrBindingStack>>(
         (node.accessors.size + node.injectors.size) * 4
