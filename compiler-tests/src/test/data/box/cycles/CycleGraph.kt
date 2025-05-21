@@ -1,5 +1,3 @@
-import kotlin.test.*
-
 /*
  A ← (E ← D ← B ← C ← Provider<A>, Lazy<A>), (B ← C ← Provider<A>, Lazy<A>)
  */

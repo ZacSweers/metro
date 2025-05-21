@@ -22,6 +22,8 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
     with(builder) {
       configurePlugin()
 
+      useSourcePreprocessor(::KotlinTestImportPreprocessor)
+
       defaultDirectives {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK

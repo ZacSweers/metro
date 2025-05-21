@@ -1,5 +1,3 @@
-import kotlin.test.*
-
 @SingleIn(AppScope::class)
 @DependencyGraph
 abstract class MultibindingGraphWithWithScopedMapProviderDeps {

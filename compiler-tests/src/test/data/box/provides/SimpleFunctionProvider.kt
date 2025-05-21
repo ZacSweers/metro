@@ -1,5 +1,3 @@
-import kotlin.test.assertEquals
-
 @DependencyGraph
 interface ExampleGraph {
   val provider: Provider<String>

@@ -1,7 +1,6 @@
 // WITH_ANVIL
 
 import com.squareup.anvil.annotations.ContributesBinding
-import kotlin.test.*
 
 interface ContributedInterface
 interface SecondInterface
