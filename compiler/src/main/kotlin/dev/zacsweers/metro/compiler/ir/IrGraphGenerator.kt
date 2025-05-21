@@ -325,7 +325,6 @@ internal class IrGraphGenerator(
 
       val baseGenerationContext =
         GraphGenerationContext(
-          bindingGraph,
           thisReceiverParameter,
           instanceFields,
           providerFields,
@@ -711,7 +710,7 @@ internal class IrGraphGenerator(
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
         val irFunction = this
-        val binding = context.graph.requireBinding(contextualTypeKey, context.bindingStack)
+        val binding = bindingGraph.requireBinding(contextualTypeKey, context.bindingStack)
         context.bindingStack.push(IrBindingStack.Entry.requestedAt(contextualTypeKey, function.ir))
         body =
           pluginContext.createIrBuilder(symbol).run {
@@ -745,7 +744,7 @@ internal class IrGraphGenerator(
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = regularParameters[0]
         val binding =
-          context.graph.requireBinding(typeKey, context.bindingStack) as Binding.MembersInjected
+          bindingGraph.requireBinding(typeKey, context.bindingStack) as Binding.MembersInjected
         context.bindingStack.push(
           IrBindingStack.Entry.requestedAt(IrContextualTypeKey(typeKey), this)
         )
@@ -778,7 +777,7 @@ internal class IrGraphGenerator(
                       add(irGet(targetParam))
                       for (parameter in parameters.regularParameters) {
                         val paramBinding =
-                          context.graph.requireBinding(
+                          bindingGraph.requireBinding(
                             parameter.contextualTypeKey,
                             context.bindingStack,
                           )
@@ -991,7 +990,7 @@ internal class IrGraphGenerator(
           generationContext.bindingStack.push(entry)
           // Generate binding code for each param
           val paramBinding =
-            generationContext.graph.requireBinding(
+            bindingGraph.requireBinding(
               contextualTypeKey,
               generationContext.bindingStack,
             )
@@ -1104,7 +1103,7 @@ internal class IrGraphGenerator(
       is Binding.Alias -> {
         // For binds functions, just use the backing type
         val aliasedBinding =
-          binding.aliasedBinding(generationContext.graph, generationContext.bindingStack)
+          binding.aliasedBinding(bindingGraph, generationContext.bindingStack)
         check(aliasedBinding != binding) { "Aliased binding aliases itself" }
         return generateBindingCode(aliasedBinding, generationContext)
       }
@@ -1167,7 +1166,7 @@ internal class IrGraphGenerator(
         }
 
         val targetBinding =
-          generationContext.graph.requireBinding(binding.target.typeKey, IrBindingStack.empty())
+          bindingGraph.requireBinding(binding.target.typeKey, IrBindingStack.empty())
         val delegateFactoryProvider = generateBindingCode(targetBinding, generationContext)
         val invokeCreateExpression =
           irInvoke(
@@ -1315,7 +1314,7 @@ internal class IrGraphGenerator(
     val (collectionProviders, individualProviders) =
       binding.sourceBindings
         .map {
-          generationContext.graph
+          bindingGraph
             .requireBinding(it, generationContext.bindingStack)
             .expectAs<Binding.BindingWithAnnotations>()
         }
@@ -1354,7 +1353,7 @@ internal class IrGraphGenerator(
         callee = symbols.setOfSingleton
         val provider =
           binding.sourceBindings.first().let {
-            generationContext.graph.requireBinding(it, generationContext.bindingStack)
+            bindingGraph.requireBinding(it, generationContext.bindingStack)
           }
         args = listOf(generateMultibindingArgument(provider, generationContext, fieldInitKey))
       }
@@ -1376,7 +1375,7 @@ internal class IrGraphGenerator(
               // This is the mutable set receiver
               val functionReceiver = function.extensionReceiverParameterCompat!!
               binding.sourceBindings
-                .map { generationContext.graph.requireBinding(it, generationContext.bindingStack) }
+                .map { bindingGraph.requireBinding(it, generationContext.bindingStack) }
                 .forEach { provider ->
                   +irInvoke(
                     dispatchReceiver = irGet(functionReceiver),
@@ -1563,7 +1562,7 @@ internal class IrGraphGenerator(
 
     val withProviders =
       binding.sourceBindings
-        .map { generationContext.graph.requireBinding(it, generationContext.bindingStack) }
+        .map { bindingGraph.requireBinding(it, generationContext.bindingStack) }
         .fold(builder) { receiver, sourceBinding ->
           val providerTypeMetadata = sourceBinding.contextualTypeKey
 
@@ -1625,7 +1624,6 @@ internal class IrGraphGenerator(
 }
 
 internal class GraphGenerationContext(
-  val graph: IrBindingGraph,
   val thisReceiver: IrValueParameter,
   // TODO we can end up in awkward situations where we
   //  have the same type keys in both instance and provider fields
@@ -1643,7 +1641,6 @@ internal class GraphGenerationContext(
   //  accessors/injectors
   fun withReceiver(receiver: IrValueParameter): GraphGenerationContext =
     GraphGenerationContext(
-      graph,
       receiver,
       instanceFields,
       providerFields,
