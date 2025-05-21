@@ -94,12 +94,13 @@ internal class IrGraphGenerator(
   private val contributionData: IrContributionData,
   private val dependencyGraphNodesByClass: MutableMap<ClassId, DependencyGraphNode>,
   private val providesTransformer: ProvidesTransformer,
+  // TODO move these accesses to irAttributes
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
 
-  fun generateMetroGraph(
+  fun generate(
     node: DependencyGraphNode,
     graphClass: IrClass,
     bindingGraph: IrBindingGraph,
@@ -131,10 +132,10 @@ internal class IrGraphGenerator(
             { initializer ->
               providerFields[param.typeKey] =
                 addField(
-                  fieldName = fieldNameAllocator.newName("${param.name}InstanceProvider"),
-                  fieldType = symbols.metroProvider.typeWith(param.type),
-                  fieldVisibility = DescriptorVisibilities.PRIVATE,
-                )
+                    fieldName = fieldNameAllocator.newName("${param.name}InstanceProvider"),
+                    fieldType = symbols.metroProvider.typeWith(param.type),
+                    fieldVisibility = DescriptorVisibilities.PRIVATE,
+                  )
                   .apply {
                     isFinal = true
                     this.initializer =
@@ -217,13 +218,13 @@ internal class IrGraphGenerator(
       // Expose the graph as a provider field
       providerFields[node.typeKey] =
         addField(
-          fieldName =
-            fieldNameAllocator.newName(
-              "${node.sourceGraph.name.asString().decapitalizeUS()}Provider"
-            ),
-          fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
-          fieldVisibility = DescriptorVisibilities.PRIVATE,
-        )
+            fieldName =
+              fieldNameAllocator.newName(
+                "${node.sourceGraph.name.asString().decapitalizeUS()}Provider"
+              ),
+            fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
+            fieldVisibility = DescriptorVisibilities.PRIVATE,
+          )
           .apply {
             isFinal = true
             initializer =
@@ -258,14 +259,14 @@ internal class IrGraphGenerator(
         for ((accessor, contextualTypeKey) in instanceAccessors) {
           instanceFields.getOrPut(contextualTypeKey.typeKey) {
             addField(
-              fieldName =
-                fieldNameAllocator.newName(
-                  contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() +
-                    "Instance"
-                ),
-              fieldType = contextualTypeKey.typeKey.type,
-              fieldVisibility = DescriptorVisibilities.PRIVATE,
-            )
+                fieldName =
+                  fieldNameAllocator.newName(
+                    contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() +
+                      "Instance"
+                  ),
+                fieldType = contextualTypeKey.typeKey.type,
+                fieldVisibility = DescriptorVisibilities.PRIVATE,
+              )
               .apply {
                 isFinal = true
                 initializer =
@@ -306,12 +307,14 @@ internal class IrGraphGenerator(
       val bindingStack =
         IrBindingStack(node.sourceGraph, metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen))
 
-      // First pass: collect bindings and their dependencies for provider field ordering
-      // Note we do this in two passes rather than keep a TreeMap because otherwise we'd be doing
-      // dependency lookups at each insertion
+      // Collect bindings and their dependencies for provider field ordering
       val bindingDependencies =
         parentTracer.traceNested("Collect bindings") {
-          collectBindings(node, bindingGraph, bindingStack)
+          IrBindingCollector(node, bindingGraph, bindingStack) { declaration, message ->
+              declaration.reportError(message)
+              exitProcessing()
+            }
+            .collect()
         }
 
       // Compute safe initialization order
@@ -336,13 +339,13 @@ internal class IrGraphGenerator(
             // Init a provider field pointing at this
             providerFields[key] =
               addField(
-                fieldName =
-                  fieldNameAllocator.newName(
-                    "${getter.name.asString().decapitalizeUS().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)}Provider"
-                  ),
-                fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
-                fieldVisibility = DescriptorVisibilities.PRIVATE,
-              )
+                  fieldName =
+                    fieldNameAllocator.newName(
+                      "${getter.name.asString().decapitalizeUS().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)}Provider"
+                    ),
+                  fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
+                  fieldVisibility = DescriptorVisibilities.PRIVATE,
+                )
                 .apply {
                   isFinal = true
                   initializer =
@@ -373,9 +376,9 @@ internal class IrGraphGenerator(
           val binding = bindingGraph.requireBinding(deferredTypeKey, IrBindingStack.empty())
           val field =
             addField(
-              fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
-              deferredTypeKey.type.wrapInProvider(symbols.metroProvider),
-            )
+                fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
+                deferredTypeKey.type.wrapInProvider(symbols.metroProvider),
+              )
               .apply {
                 isFinal = true
                 initializer =
@@ -420,11 +423,11 @@ internal class IrGraphGenerator(
 
           val field =
             addField(
-              fieldName =
-                fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
-              fieldType = fieldType,
-              fieldVisibility = DescriptorVisibilities.PRIVATE,
-            )
+                fieldName =
+                  fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
+                fieldType = fieldType,
+                fieldVisibility = DescriptorVisibilities.PRIVATE,
+              )
               .apply {
                 isFinal = true
                 initializer =
@@ -462,10 +465,10 @@ internal class IrGraphGenerator(
                 irGetField(irGet(thisReceiverParameter), field),
                 pluginContext.createIrBuilder(symbol).run {
                   generateBindingCode(
-                    binding,
-                    baseGenerationContext,
-                    fieldInitKey = deferredTypeKey,
-                  )
+                      binding,
+                      baseGenerationContext,
+                      fieldInitKey = deferredTypeKey,
+                    )
                     .letIf(binding.scope != null) {
                       // If it's scoped, wrap it in double-check
                       // DoubleCheck.provider(<provider>)
@@ -545,27 +548,25 @@ internal class IrGraphGenerator(
               serialized,
             )
           }
-          dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail]?.let {
-            it.proto = graphProto
-          }
+          dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail]?.let { it.proto = graphProto }
         }
 
         // Expose getters for provider and instance fields and expose them to metadata
         sequence {
-          for (entry in providerFields) {
-            val binding = bindingGraph.requireBinding(entry.key, bindingStack)
-            if (binding is Binding.GraphDependency && binding.isProviderFieldAccessor) {
-              // This'll get looked up directly by child graphs
-              continue
-            } else if (binding.scope == null && binding !is Binding.BoundInstance) {
-              // Don't expose redundant accessors for unscoped bindings. BoundInstance bindings
-              // still get passed on
-              continue
+            for (entry in providerFields) {
+              val binding = bindingGraph.requireBinding(entry.key, bindingStack)
+              if (binding is Binding.GraphDependency && binding.isProviderFieldAccessor) {
+                // This'll get looked up directly by child graphs
+                continue
+              } else if (binding.scope == null && binding !is Binding.BoundInstance) {
+                // Don't expose redundant accessors for unscoped bindings. BoundInstance bindings
+                // still get passed on
+                continue
+              }
+              yield(entry)
             }
-            yield(entry)
+            yieldAll(instanceFields.entries)
           }
-          yieldAll(instanceFields.entries)
-        }
           .filter {
             // Skip the graph instance field
             it.key != node.typeKey
@@ -578,11 +579,11 @@ internal class IrGraphGenerator(
           .forEach { (key, field) ->
             val getter =
               addFunction(
-                name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
-                returnType = field.type,
-                visibility = DescriptorVisibilities.PUBLIC,
-                origin = Origins.InstanceFieldAccessor,
-              )
+                  name = "${field.name.asString()}${Symbols.StringNames.METRO_ACCESSOR}",
+                  returnType = field.type,
+                  visibility = DescriptorVisibilities.PUBLIC,
+                  origin = Origins.InstanceFieldAccessor,
+                )
                 .apply {
                   key.qualifier?.let {
                     annotations +=
@@ -610,8 +611,6 @@ internal class IrGraphGenerator(
           }
       }
     }
-
-
 
   private fun DependencyGraphNode.toProto(
     bindingGraph: IrBindingGraph,
@@ -761,10 +760,10 @@ internal class IrGraphGenerator(
             // }
 
             for (type in
-            pluginContext
-              .referenceClass(binding.targetClassId)!!
-              .owner
-              .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
+              pluginContext
+                .referenceClass(binding.targetClassId)!!
+                .owner
+                .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)) {
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
@@ -882,270 +881,6 @@ internal class IrGraphGenerator(
       }
   }
 
-  private fun collectBindings(
-    node: DependencyGraphNode,
-    graph: IrBindingGraph,
-    bindingStack: IrBindingStack,
-  ): Map<IrTypeKey, Binding> {
-    val bindingDependencies = mutableMapOf<IrTypeKey, Binding>()
-    // Track used unscoped bindings. We only need to generate a field if they're used more than
-    // once
-    val usedUnscopedBindings = mutableSetOf<IrTypeKey>()
-    val visitedBindings = mutableSetOf<IrTypeKey>()
-
-    // Collect from roots
-    node.accessors.forEach { (accessor, contextualTypeKey) ->
-      findAndProcessBinding(
-        contextKey = contextualTypeKey,
-        stackEntry = IrBindingStack.Entry.requestedAt(contextualTypeKey, accessor.ir),
-        node = node,
-        graph = graph,
-        bindingStack = bindingStack,
-        bindingDependencies = bindingDependencies,
-        usedUnscopedBindings = usedUnscopedBindings,
-        visitedBindings = visitedBindings,
-      )
-    }
-    node.injectors.forEach { (accessor, typeKey) ->
-      val contextKey = IrContextualTypeKey(typeKey)
-      findAndProcessBinding(
-        contextKey = contextKey,
-        stackEntry = IrBindingStack.Entry.requestedAt(contextKey, accessor.ir),
-        node = node,
-        graph = graph,
-        bindingStack = bindingStack,
-        bindingDependencies = bindingDependencies,
-        usedUnscopedBindings = usedUnscopedBindings,
-        visitedBindings = visitedBindings,
-      )
-    }
-
-    if (node.isExtendable) {
-      // Ensure all scoped providers have fields in extendable graphs, even if they are not used in
-      // this graph
-      graph.bindingsSnapshot().forEach { (_, binding) ->
-        if (binding is Binding.Provided && binding.annotations.isScoped) {
-          processBinding(
-            binding,
-            node,
-            graph,
-            bindingStack,
-            bindingDependencies,
-            usedUnscopedBindings,
-            visitedBindings,
-          )
-        }
-      }
-    }
-
-    return bindingDependencies
-  }
-
-  private fun findAndProcessBinding(
-    contextKey: IrContextualTypeKey,
-    stackEntry: IrBindingStack.Entry,
-    node: DependencyGraphNode,
-    graph: IrBindingGraph,
-    bindingStack: IrBindingStack,
-    bindingDependencies: MutableMap<IrTypeKey, Binding>,
-    usedUnscopedBindings: MutableSet<IrTypeKey>,
-    visitedBindings: MutableSet<IrTypeKey>,
-  ) {
-    val key = contextKey.typeKey
-    // Skip if already visited
-    if (key in visitedBindings) {
-      if (key in usedUnscopedBindings && key !in bindingDependencies) {
-        // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key, bindingStack)
-      }
-      return
-    }
-
-    bindingStack.withEntry(stackEntry) {
-      val binding = graph.requireBinding(contextKey, bindingStack)
-      processBinding(
-        binding,
-        node,
-        graph,
-        bindingStack,
-        bindingDependencies,
-        usedUnscopedBindings,
-        visitedBindings,
-      )
-    }
-  }
-
-  private fun processBinding(
-    binding: Binding,
-    node: DependencyGraphNode,
-    graph: IrBindingGraph,
-    bindingStack: IrBindingStack,
-    bindingDependencies: MutableMap<IrTypeKey, Binding>,
-    usedUnscopedBindings: MutableSet<IrTypeKey>,
-    visitedBindings: MutableSet<IrTypeKey>,
-  ) {
-    val isMultibindingProvider =
-      (binding is Binding.Provided || binding is Binding.Alias) &&
-        binding.annotations.isIntoMultibinding
-    val key = binding.typeKey
-
-    // Skip if already visited
-    // TODO de-dupe with findAndProcessBinding
-    if (!isMultibindingProvider && key in visitedBindings) {
-      if (key in usedUnscopedBindings && key !in bindingDependencies) {
-        // Only add unscoped binding provider fields if they're used more than once
-        bindingDependencies[key] = graph.requireBinding(key, bindingStack)
-      }
-      return
-    }
-
-    val bindingScope = binding.scope
-
-    // Check scoping compatibility
-    // TODO FIR error?
-    if (bindingScope != null) {
-      if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
-        val isUnscoped = node.scopes.isEmpty()
-        // Error if there are mismatched scopes
-        val declarationToReport = node.sourceGraph
-        bindingStack.push(
-          IrBindingStack.Entry.simpleTypeRef(
-            binding.contextualTypeKey,
-            usage = "(scoped to '$bindingScope')",
-          )
-        )
-        val message = buildString {
-          append("[Metro/IncompatiblyScopedBindings] ")
-          append(declarationToReport.kotlinFqName)
-          if (isUnscoped) {
-            // Unscoped graph but scoped binding
-            append(" (unscoped) may not reference scoped bindings:")
-          } else {
-            // Scope mismatch
-            append(
-              " (scopes ${node.scopes.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
-            )
-          }
-          appendLine()
-          appendBindingStack(bindingStack, short = false)
-          if (!isUnscoped && binding is Binding.ConstructorInjected) {
-            val matchingParent =
-              node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
-            if (matchingParent != null) {
-              appendLine()
-              appendLine()
-              val shortTypeKey = binding.typeKey.render(short = true)
-              appendLine(
-                """
-                  (Hint)
-                  It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
-                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`).
-                  See https://github.com/ZacSweers/metro/issues/377 for more details.
-                """
-                  .trimIndent()
-              )
-            }
-          }
-        }
-        declarationToReport.reportError(message)
-        exitProcessing()
-      }
-    }
-
-    visitedBindings += key
-
-    // Scoped, graph, and members injector bindings always need (provider) fields
-    if (
-      bindingScope != null ||
-      binding is Binding.GraphDependency ||
-      (binding is Binding.MembersInjected && !binding.isFromInjectorFunction)
-    ) {
-      bindingDependencies[key] = binding
-    }
-
-    when (binding) {
-      is Binding.Assisted -> {
-        // For assisted bindings, we need provider fields for the assisted factory impl type
-        // The factory impl type depends on a provider of the assisted type
-        val targetBinding = graph.requireBinding(binding.target, bindingStack)
-        bindingDependencies[key] = targetBinding
-        // TODO is this safe to end up as a provider field? Can someone create a
-        //  binding such that you have an assisted type on the DI graph that is
-        //  provided by a provider that depends on the assisted factory? I suspect
-        //  yes, so in that case we should probably track a separate field mapping
-        usedUnscopedBindings += binding.target.typeKey
-        // By definition, assisted parameters are not available on the graph
-        // But we _do_ need to process the target type's parameters!
-        processBinding(
-          binding = targetBinding,
-          node = node,
-          graph = graph,
-          bindingStack = bindingStack,
-          bindingDependencies = bindingDependencies,
-          usedUnscopedBindings = usedUnscopedBindings,
-          visitedBindings = visitedBindings,
-        )
-        return
-      }
-
-      is Binding.Multibinding -> {
-        // For multibindings, we depend on anything the delegate providers depend on
-        if (bindingScope != null) {
-          // This is scoped so we want to keep an instance
-          // TODO are these allowed?
-          //  bindingDependencies[key] = buildMap {
-          //    for (provider in binding.providers) {
-          //      putAll(provider.dependencies)
-          //    }
-          //  }
-        } else {
-          // Process all providers deps, but don't need a specific dep for this one
-          // TODO eventually would be nice to just let a binding.dependencies lookup handle this
-          //  but currently the later logic uses parameters for lookups
-          for (providerKey in binding.sourceBindings) {
-            val provider = graph.requireBinding(providerKey, bindingStack)
-            processBinding(
-              binding = provider,
-              node = node,
-              graph = graph,
-              bindingStack = bindingStack,
-              bindingDependencies = bindingDependencies,
-              usedUnscopedBindings = usedUnscopedBindings,
-              visitedBindings = visitedBindings,
-            )
-          }
-        }
-        return
-      }
-
-      else -> {
-        // Do nothing here
-      }
-    }
-
-    // Track dependencies before creating fields
-    if (bindingScope == null) {
-      usedUnscopedBindings += key
-    }
-
-    // Recursively process dependencies
-    for (param in binding.parameters.nonInstanceParameters) {
-      if (param.isAssisted) continue
-
-      // Process binding dependencies
-      findAndProcessBinding(
-        contextKey = param.contextualTypeKey,
-        stackEntry = param.bindingStackEntry,
-        node = node,
-        graph = graph,
-        bindingStack = bindingStack,
-        bindingDependencies = bindingDependencies,
-        usedUnscopedBindings = usedUnscopedBindings,
-        visitedBindings = visitedBindings,
-      )
-    }
-  }
-
   private fun IrBuilderWithScope.generateBindingArguments(
     targetParams: Parameters<out Parameter>,
     function: IrFunction,
@@ -1157,7 +892,7 @@ internal class IrGraphGenerator(
     val paramsToMap = buildList {
       if (
         binding is Binding.Provided &&
-        targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
+          targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
       ) {
         targetParams.dispatchReceiverParameter?.let(::add)
       }
@@ -1165,7 +900,7 @@ internal class IrGraphGenerator(
     }
     if (
       binding is Binding.Provided &&
-      binding.providerFactory.providesFunction.correspondingPropertySymbol == null
+        binding.providerFactory.providesFunction.correspondingPropertySymbol == null
     ) {
       check(params.regularParameters.size == paramsToMap.size) {
         """
@@ -1204,8 +939,8 @@ internal class IrGraphGenerator(
           )
         } else if (
           binding is Binding.Provided &&
-          binding.isIntoMultibinding &&
-          binding in generationContext.multibindingProviderFields
+            binding.isIntoMultibinding &&
+            binding in generationContext.multibindingProviderFields
         ) {
           irGetField(
             irGet(generationContext.thisReceiver),
@@ -1319,8 +1054,8 @@ internal class IrGraphGenerator(
     // If we already have a provider field we can just return it
     if (
       binding is Binding.Provided &&
-      binding.isIntoMultibinding &&
-      binding in generationContext.multibindingProviderFields
+        binding.isIntoMultibinding &&
+        binding in generationContext.multibindingProviderFields
     ) {
       generationContext.multibindingProviderFields[binding]?.let {
         return irGetField(irGet(generationContext.thisReceiver), it).let {
@@ -1461,10 +1196,10 @@ internal class IrGraphGenerator(
         if (injectorClass == null) {
           // Return a noop
           irInvoke(
-            dispatchReceiver = irGetObject(symbols.metroMembersInjectors),
-            callee = symbols.metroMembersInjectorsNoOp,
-            typeArgs = listOf(injectedType),
-          )
+              dispatchReceiver = irGetObject(symbols.metroMembersInjectors),
+              callee = symbols.metroMembersInjectorsNoOp,
+              typeArgs = listOf(injectedType),
+            )
             .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         } else {
           val createFunction = injectorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
@@ -1476,22 +1211,22 @@ internal class IrGraphGenerator(
               generationContext,
             )
           instanceFactory(
-            injectedType,
-            // InjectableClass_MembersInjector.create(stringValueProvider,
-            // exampleComponentProvider)
-            irInvoke(
-              dispatchReceiver =
-                if (injectorClass.isObject) {
-                  irGetObject(injectorClass.symbol)
-                } else {
-                  // It's static from java, dagger interop
-                  check(createFunction.owner.isStatic)
-                  null
-                },
-              callee = createFunction,
-              args = args,
-            ),
-          )
+              injectedType,
+              // InjectableClass_MembersInjector.create(stringValueProvider,
+              // exampleComponentProvider)
+              irInvoke(
+                dispatchReceiver =
+                  if (injectorClass.isObject) {
+                    irGetObject(injectorClass.symbol)
+                  } else {
+                    // It's static from java, dagger interop
+                    check(createFunction.owner.isStatic)
+                    null
+                  },
+                callee = createFunction,
+                args = args,
+              ),
+            )
             .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         }
       }
@@ -1885,5 +1620,4 @@ internal class IrGraphGenerator(
       isGraphInstance = false,
     )
   }
-
 }
