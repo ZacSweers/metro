@@ -308,18 +308,16 @@ internal class IrGraphGenerator(
         IrBindingStack(node.sourceGraph, metroContext.loggerFor(MetroLogger.Type.GraphImplCodeGen))
 
       // Collect bindings and their dependencies for provider field ordering
-      val bindingDependencies =
+      val initOrder =
         parentTracer.traceNested("Collect bindings") {
-          IrBindingCollector(node, bindingGraph, bindingStack) { declaration, message ->
+          val providerFieldBindings = ProviderFieldCollector(node, bindingGraph, bindingStack) { declaration, message ->
               declaration.reportError(message)
               exitProcessing()
             }
             .collect()
+          // Compute safe initialization order
+          sealResult.sortedKeys.mapNotNull { providerFieldBindings[it] }.distinctBy { it.typeKey }
         }
-
-      // Compute safe initialization order
-      val initOrder =
-        sealResult.sortedKeys.mapNotNull { bindingDependencies[it] }.distinctBy { it.typeKey }
 
       val baseGenerationContext =
         GraphGenerationContext(

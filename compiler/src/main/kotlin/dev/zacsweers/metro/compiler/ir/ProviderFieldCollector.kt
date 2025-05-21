@@ -4,7 +4,7 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
-internal class IrBindingCollector(
+internal class ProviderFieldCollector(
   private val node: DependencyGraphNode,
   private val graph: IrBindingGraph,
   private val bindingStack: IrBindingStack,
