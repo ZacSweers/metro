@@ -31,6 +31,12 @@ internal class ProviderFieldCollector(
           (binding is Binding.BindingWithAnnotations) && binding.annotations.isIntoMultibinding
         return !isMultibindingProvider
       }
+
+    /** @return true if we’ve referenced this binding before. */
+    fun mark(): Boolean {
+      refCount++
+      return refCount > 1
+    }
   }
 
   private val nodes = HashMap<IrTypeKey, Node>(128)
@@ -61,28 +67,29 @@ internal class ProviderFieldCollector(
   }
 
   private fun processNodes() {
+    // one set for all the visited bookkeeping
+    val seen = HashSet<IrTypeKey>(500)
     val queue =
       ArrayDeque<Pair<IrContextualTypeKey, IrBindingStack>>(
         (node.accessors.size + node.injectors.size) * 4
       )
 
     // TODO use graph.bindingSnapshot() directly
-    node.accessors.forEach { (accessor, contextualTypeKey) ->
-      val entry = IrBindingStack.Entry.requestedAt(contextualTypeKey, accessor.ir)
-      queue +=
-        contextualTypeKey to
-          IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
-    }
-    node.injectors.forEach { (injector, key) ->
-      val contextKey = IrContextualTypeKey(key)
-      val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
-      queue +=
-        contextKey to IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
-    }
+    node.accessors
+      .plus(node.injectors.map { (injector, key) -> injector to IrContextualTypeKey(key) })
+      .forEach { (injector, contextKey) ->
+        if (seen.add(contextKey.typeKey)) {
+          val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
+          queue +=
+            contextKey to IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
+        } else {
+          // Increment the refCount still
+          contextKey.typeKey.mark()
+        }
+      }
 
     while (queue.isNotEmpty()) {
       val (contextKey, stack) = queue.removeFirst()
-      println("Reading binding $contextKey from stack: $stack")
       val binding = graph.requireBinding(contextKey, stack)
       if (binding.mark()) {
         // already processed this binding
@@ -93,32 +100,41 @@ internal class ProviderFieldCollector(
 
       // Enqueue dependencies
       // TODO just read dependencies instead and look up from graph?
-      when (binding) {
-        is Binding.Assisted -> {
-          queue += binding.target to stack
-          continue
+      val successors =
+        when (binding) {
+          is Binding.Assisted -> {
+            sequenceOf(binding.target to stack)
+          }
+          is Binding.Multibinding -> {
+            binding.sourceBindings.asSequence().map { IrContextualTypeKey(it) to stack }
+          }
+          else -> {
+            binding.parameters.nonInstanceParameters
+              .asSequence()
+              .filterNot { it.isAssisted }
+              .map { it.contextualTypeKey to stack.copy().apply { push(it.bindingStackEntry) } }
+          }
         }
-        is Binding.Multibinding -> {
-          binding.sourceBindings.forEach { queue += IrContextualTypeKey(it) to stack }
-          continue
-        }
-        else -> {}
-      }
 
-      binding.parameters.nonInstanceParameters
-        .filterNot { it.isAssisted }
-        .forEach {
-          queue += it.contextualTypeKey to stack.copy().apply { push(it.bindingStackEntry) }
+      successors.forEach { (contextKey, successorStack) ->
+        if (seen.add(contextKey.typeKey)) {
+          queue += contextKey to successorStack
+        } else {
+          // Increment the refCount still
+          contextKey.typeKey.mark()
         }
+      }
     }
   }
 
-  /** @return true if we’ve seen this binding before. */
+  private fun IrTypeKey.mark(): Boolean {
+    val binding = graph.requireBinding(this, IrBindingStack.empty())
+    return binding.mark()
+  }
+
   private fun Binding.mark(): Boolean {
     val node = nodes.getOrPut(typeKey) { Node(this) }
-    // Increment visit
-    node.refCount++
-    return node.refCount > 1
+    return node.mark()
   }
 
   // Check scoping compatibility
