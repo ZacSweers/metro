@@ -155,6 +155,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/multibindings")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Multibindings {
+    @Test
+    public void testAllFilesPresentInMultibindings() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
+    public void testMultibindingGraphWithWithScopedMapProviderDeps() {
+      runTest("compiler-tests/src/test/data/box/multibindings/MultibindingGraphWithWithScopedMapProviderDeps.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/provides")
   @TestDataPath("$PROJECT_ROOT")
   public class Provides {
