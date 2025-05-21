@@ -67,12 +67,10 @@ import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -780,15 +778,20 @@ internal class DependencyGraphTransformer(
 
       parentTracer.traceNested("Transform metro graph") { tracer ->
         IrGraphGenerator(
-          metroContext,
-          contributionData,
-          dependencyGraphNodesByClass,
-          providesTransformer,
-          injectConstructorTransformer,
-          membersInjectorTransformer,
-          assistedFactoryTransformer
-        )
-          .generate(node, metroGraph, bindingGraph, result, tracer)
+            metroContext,
+            contributionData,
+            dependencyGraphNodesByClass,
+            node,
+            metroGraph,
+            bindingGraph,
+            result,
+            tracer,
+            providesTransformer,
+            injectConstructorTransformer,
+            membersInjectorTransformer,
+            assistedFactoryTransformer,
+          )
+          .generate()
       }
     } catch (e: Exception) {
       if (e is ExitProcessingException) {

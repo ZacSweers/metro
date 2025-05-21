@@ -93,20 +93,19 @@ internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   private val contributionData: IrContributionData,
   private val dependencyGraphNodesByClass: MutableMap<ClassId, DependencyGraphNode>,
-  private val providesTransformer: ProvidesTransformer,
+  private val node: DependencyGraphNode,
+  private val graphClass: IrClass,
+  private val bindingGraph: IrBindingGraph,
+  private val sealResult: IrBindingGraph.BindingGraphResult,
+  private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
+  private val providesTransformer: ProvidesTransformer,
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
 
-  fun generate(
-    node: DependencyGraphNode,
-    graphClass: IrClass,
-    bindingGraph: IrBindingGraph,
-    sealResult: IrBindingGraph.BindingGraphResult,
-    parentTracer: Tracer,
-  ) =
+  fun generate() =
     with(graphClass) {
       val ctor = primaryConstructor!!
 
