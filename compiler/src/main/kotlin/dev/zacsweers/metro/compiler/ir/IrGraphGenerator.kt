@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.GraphGenerationContext
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ProvidesTransformer
@@ -59,6 +58,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.addArgument
@@ -1623,4 +1623,32 @@ internal class IrGraphGenerator(
       isGraphInstance = false,
     )
   }
+}
+
+internal class GraphGenerationContext(
+  val graph: IrBindingGraph,
+  val thisReceiver: IrValueParameter,
+  // TODO we can end up in awkward situations where we
+  //  have the same type keys in both instance and provider fields
+  //  this is tricky because depending on the context, it's not valid
+  //  to use an instance (for example - you need a provider). How can we
+  //  clean this up?
+  val instanceFields: Map<IrTypeKey, IrField>,
+  val providerFields: Map<IrTypeKey, IrField>,
+  val multibindingProviderFields: Map<Binding.Provided, IrField>,
+  val bindingStack: IrBindingStack,
+) {
+  // Each declaration in FIR is actually generated with a different "this" receiver, so we
+  // need to be able to specify this per-context.
+  // TODO not sure if this is really the best way to do this? Only necessary when implementing
+  //  accessors/injectors
+  fun withReceiver(receiver: IrValueParameter): GraphGenerationContext =
+    GraphGenerationContext(
+      graph,
+      receiver,
+      instanceFields,
+      providerFields,
+      multibindingProviderFields,
+      bindingStack,
+    )
 }
