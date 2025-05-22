@@ -18,7 +18,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
-import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -82,8 +81,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
   private val generatedFactories = mutableMapOf<FqName, ProviderFactory>()
   private val generatedFactoriesByClass = mutableMapOf<FqName, MutableList<ProviderFactory>>()
 
-  // TODO this class is a little wonky now because we support looking up sort of two different ways
-  //  we should streamline this now that we speak solely ProviderFactories
   fun visitClass(declaration: IrClass): List<ProviderFactory> {
     val declarationFqName = declaration.kotlinFqName
 
@@ -262,15 +259,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
     val constructorParametersToFields = assignConstructorParamsToFields(ctor, factoryCls)
 
-    // TODO This is ugly
-    var parameterIndexOffset = 0
-    if (!reference.isInObject) {
-      // These will always have an instance parameter
-      parameterIndexOffset++
-    }
-    if (reference.callee.owner.extensionReceiverParameterCompat != null) {
-      parameterIndexOffset++
-    }
     val sourceParametersToFields: Map<Parameter, IrField> =
       constructorParametersToFields.entries.associate { (irParam, field) ->
         val sourceParam =
@@ -281,8 +269,13 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
               "No source parameter found for $irParam. Index was somehow -1.\n${reference.parent.owner.dumpKotlinLike()}"
             )
           } else {
+            // Get all regular parameters from the source function
+            val regularParams =
+              reference.callee.owner.parameters.filter { it.kind == IrParameterKind.Regular }
+
+            // Find the corresponding source parameter by matching names
             sourceParameters.regularParameters.getOrNull(
-              irParam.indexInOldValueParameters - parameterIndexOffset
+              regularParams.indexOfFirst { it.name == irParam.name }
             )
               ?: error(
                 "No source parameter found for $irParam\nparam is ${irParam.name} in function ${ctor.dumpKotlinLike()}\n${reference.parent.owner.dumpKotlinLike()}"
