@@ -352,7 +352,8 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
   ): List<FirResolvedTypeRef> {
     val originClassSymbol =
       klass.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
-    val callableName = klass.name.asString().removeSuffix(Symbols.Names.MetroFactory.asString())
+    val callableName =
+      klass.name.asString().removeSuffix(Symbols.Names.MetroFactory.asString()).decapitalizeUS()
     val callable =
       originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
         val nameMatches =
