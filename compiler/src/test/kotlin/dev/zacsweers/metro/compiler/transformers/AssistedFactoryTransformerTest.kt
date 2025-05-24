@@ -827,4 +827,33 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       assertThat(exampleClass.call()).isEqualTo("Hello, 2")
     }
   }
+
+  @Test
+  fun `assisted factory with generic method works`() {
+    compile(
+      source(
+        """
+            class ExampleClass @Inject constructor(
+              @Assisted val count: Int,
+              val message: String,
+            ) : Callable<String> {
+              override fun call(): String = message + count
+            }
+
+            interface BaseFactory<B, T> {
+              fun create(b: B): T
+            }
+
+            @AssistedFactory
+            abstract class ExampleClassFactory : BaseFactory<Int, ExampleClass>
+          """
+          .trimIndent()
+      )
+    ) {
+      val exampleClassFactory =
+        ExampleClass.generatedFactoryClassAssisted().invokeCreate(provider { "Hello, " })
+      val exampleClass = exampleClassFactory.callFactoryInvoke<Callable<String>>(2)
+      assertThat(exampleClass.call()).isEqualTo("Hello, 2")
+    }
+  }
 }

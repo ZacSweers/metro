@@ -18,6 +18,10 @@ android {
     versionName = "1.0"
   }
 
+  buildFeatures {
+      viewBinding = true
+  }
+
   buildTypes { release { isMinifyEnabled = false } }
 
   compileOptions {
