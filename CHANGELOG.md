@@ -6,6 +6,7 @@ Changelog
 
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
 - **Fix:** Better handle generic assisted factory interfaces.
+- **Fix:** Use fully qualified names when generating hint files to avoid collisions.
 - Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
 
 0.3.2
