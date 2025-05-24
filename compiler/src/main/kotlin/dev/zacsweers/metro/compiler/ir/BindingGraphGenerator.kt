@@ -98,6 +98,7 @@ internal class BindingGraphGenerator(
         }
       val provider =
         Binding.Provided(
+          metroContext,
           providerFactory = providerFactory,
           contextualTypeKey = contextKey,
           parameters = providerFactory.parameters,
@@ -153,6 +154,7 @@ internal class BindingGraphGenerator(
 
       val binding =
         Binding.Alias(
+          metroContext,
           contextKey.typeKey,
           bindsImplType!!.typeKey,
           bindingCallable.ir,
@@ -208,6 +210,7 @@ internal class BindingGraphGenerator(
         graph.addBinding(
           superTypeKey,
           Binding.Alias(
+            metroContext,
             superTypeKey,
             aliasedType,
             null,

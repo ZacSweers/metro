@@ -275,22 +275,29 @@ internal open class MutableBindingGraph<
       return
     }
     if (key in bindings) {
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
-        )
-        val existing = bindings.getValue(key)
-        val duplicate = binding
-        appendLine("├─ Binding 1: ${existing.renderLocationDiagnostic()}")
-        appendLine("├─ Binding 2: ${duplicate.renderLocationDiagnostic()}")
-        if (existing === duplicate) {
-          appendLine("├─ Bindings are the same: $existing")
-        } else if (existing == duplicate) {
-          appendLine("├─ Bindings are equal: $existing")
+      val existing = bindings.getValue(key)
+      val duplicate = binding
+
+      if (existing.replaces(duplicate)) {
+        return
+      } else if (duplicate.replaces(existing)) {
+        // Do nothing, let it silently replace it below
+      } else {
+        val message = buildString {
+          appendLine(
+            "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+          )
+          appendLine("├─ Binding 1: ${existing.renderLocationDiagnostic()}")
+          appendLine("├─ Binding 2: ${duplicate.renderLocationDiagnostic()}")
+          if (existing === duplicate) {
+            appendLine("├─ Bindings are the same: $existing")
+          } else if (existing == duplicate) {
+            appendLine("├─ Bindings are equal: $existing")
+          }
+          appendBindingStack(bindingStack)
         }
-        appendBindingStack(bindingStack)
+        onError(message, bindingStack)
       }
-      onError(message, bindingStack)
     }
     bindings[binding.typeKey] = binding
   }

@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.ir.Binding.Absent
 import dev.zacsweers.metro.compiler.ir.Binding.Assisted
@@ -31,12 +33,18 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
+import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -78,6 +86,60 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
   sealed interface BindingWithAnnotations : Binding {
     val annotations: MetroAnnotations<IrAnnotation>
+  }
+
+  /**
+   * A base class for contributable bindings that can [replaces] other contributable bindings.
+   *
+   * This logic exists in IR despite the merging that happens in FIR because of a known limitation
+   * in the supertype generation phase of compilation where `replaces` from contributions in the
+   * _same_ compilation but _different_ files than the merging graph are not visible.
+   */
+  sealed class ContributableBinding(
+    metroContext: IrMetroContext,
+    private val bindingFunction: IrSimpleFunction?,
+  ) : Binding {
+
+    private val contributor: IrClass? = run {
+      // @Provides/@Binds fun -> $$MetroContribution -> origin
+      if (bindingFunction == null) return@run null
+      val functionToUse =
+        if (bindingFunction.isFakeOverride) {
+          bindingFunction
+            .overriddenSymbolsSequence()
+            .last()
+            .expectAs<IrSimpleFunctionSymbol>()
+            .owner
+            .propertyIfAccessor
+        } else {
+          bindingFunction
+        }
+      functionToUse.parentAsClass
+        .takeIf { it.name == Symbols.Names.MetroContribution }
+        ?.parentAsClass
+    }
+    private val contributorClassId = contributor?.classIdOrFail
+    // TODO cache these lookups in metrocontext?
+    private val replaces: Set<ClassId> by unsafeLazy {
+      if (contributor == null) return@unsafeLazy emptySet()
+      contributor
+        .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
+        .flatMapToSet {
+          it
+            .getValueArgument(Symbols.Names.replaces)
+            ?.expectAsOrNull<IrVararg>()
+            ?.elements
+            .orEmpty()
+            .asSequence()
+            .filterIsInstance<IrClassReference>()
+            .mapNotNull { it.classType.classOrNull?.owner?.classId }
+        }
+    }
+
+    final override fun replaces(other: BaseBinding<*, *, *>): Boolean {
+      if (other !is ContributableBinding) return false
+      return other.contributorClassId in replaces
+    }
   }
 
   sealed interface InjectedClassBinding<T : InjectedClassBinding<T>> :
@@ -162,11 +224,15 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
   @Poko
   class Provided(
+    metroContext: IrMetroContext,
     @Poko.Skip val providerFactory: ProviderFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters<ConstructorParameter>,
-  ) : Binding, BindingWithAnnotations {
+  ) :
+    ContributableBinding(metroContext, providerFactory.providesFunction),
+    Binding,
+    BindingWithAnnotations {
     override val dependencies: List<IrContextualTypeKey> =
       parameters.nonInstanceParameters.map { it.contextualTypeKey }
 
@@ -231,12 +297,13 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   /** Represents an aliased binding, i.e. `@Binds`. Can be a multibinding. */
   @Poko
   class Alias(
+    metroContext: IrMetroContext,
     override val typeKey: IrTypeKey,
     val aliasedType: IrTypeKey,
     @Poko.Skip val ir: IrSimpleFunction?,
     override val parameters: Parameters<out Parameter>,
     override val annotations: MetroAnnotations<IrAnnotation>,
-  ) : Binding, BindingWithAnnotations {
+  ) : ContributableBinding(metroContext, ir), Binding, BindingWithAnnotations {
 
     init {
       if (ir != null && !annotations.isBinds) {
