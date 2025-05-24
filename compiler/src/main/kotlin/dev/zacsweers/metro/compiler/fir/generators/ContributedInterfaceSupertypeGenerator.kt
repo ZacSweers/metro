@@ -283,7 +283,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .distinct()
       .forEach { replacedClassId ->
         val removed = contributions.remove(replacedClassId)
-        if (removed != null) {
+        if (removed == null) {
           unmatchedReplacements += replacedClassId
         }
       }
