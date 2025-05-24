@@ -191,7 +191,7 @@ object AppScope {
 
 }
 
-// FILE: metroHintsLoggedInGraphFactory1AppScope.kt
+// FILE: loggedInGraphFactory1AppScope.kt
 package metro.hints
 
 fun AppScope(contributed: Factory1) {
