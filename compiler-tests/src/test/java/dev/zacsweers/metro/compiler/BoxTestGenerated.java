@@ -42,6 +42,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
       runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
     }
+
+    @Test
+    @TestMetadata("ReplacesAcrossFilesWithContributesBinding.kt")
+    public void testReplacesAcrossFilesWithContributesBinding() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ReplacesAcrossFilesWithContributesBinding.kt");
+    }
   }
 
   @Nested
