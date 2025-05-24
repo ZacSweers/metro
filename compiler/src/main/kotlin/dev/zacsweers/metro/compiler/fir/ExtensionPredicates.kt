@@ -16,6 +16,11 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
       metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
     }
 
+  internal val scopesPredicate =
+    DeclarationPredicate.create {
+      metaAnnotated(classIds.scopeAnnotations.asFqNames(), includeItself = false)
+    }
+
   internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
   internal val contributesGraphExtensionPredicate =
     annotated(classIds.contributesGraphExtensionAnnotations.asFqNames())

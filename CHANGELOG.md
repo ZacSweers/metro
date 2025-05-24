@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Enable child graphs to depend on parent-scoped dependencies that are unused and not referenced in the parent scope. This involves generating hints for classes with scoped @Inject constructors and is gated on a new Metro option `enableInjectConstructorHints`.
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
 - Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
 

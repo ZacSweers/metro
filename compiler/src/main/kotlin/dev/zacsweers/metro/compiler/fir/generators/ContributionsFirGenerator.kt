@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.hasOrigin
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -23,6 +24,8 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.resolvedClassId
+import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -31,12 +34,18 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
+import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
+import org.jetbrains.kotlin.fir.expressions.buildUnaryArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
+import org.jetbrains.kotlin.fir.expressions.builder.buildClassReferenceExpression
+import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
 import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -49,14 +58,24 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeLookupTag
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.constructClassLikeType
+import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.isResolved
+import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.resolve.constants.ClassLiteralValue
 
 internal class ContributionsFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
@@ -68,6 +87,14 @@ internal class ContributionsFirGenerator(session: FirSession) :
       val contributionAnnotations =
         contributingClassSymbol.annotations
           .annotationsIn(session, session.classIds.allContributesAnnotations)
+          .ifEmpty {
+            // Fall back to direct scopes that apply to an @Inject constructor
+            if (session.metroFirBuiltIns.options.enableInjectConstructorHints) {
+              contributingClassSymbol.annotations.scopeAnnotations(session).map { it.fir }
+            } else {
+              emptySequence()
+            }
+          }
           .toList()
 
       val contributionNamesToScopeArgs = mutableMapOf<Name, FirGetClassCall?>()
@@ -78,7 +105,28 @@ internal class ContributionsFirGenerator(session: FirSession) :
         // $$MetroContribution2
         val nameAllocator = NameAllocator(mode = Mode.COUNT)
         contributionAnnotations
-          .mapNotNull { it.scopeArgument() }
+          .mapNotNull { annotation ->
+            annotation.scopeArgument()
+              ?: if (
+                session.metroFirBuiltIns.options.enableInjectConstructorHints &&
+                  annotation
+                    .toAnnotationClass(session)
+                    ?.isAnnotatedWithAny(session, session.classIds.scopeAnnotations) == true
+              ) {
+                // Normally we're accessing a scope as an existing class call e.g. 'Scope::class'
+                // In this case we have to construct our own from an annotation ref e.g. '@Scope'
+                val scopeClassCallArg =
+                  ClassLiteralValue(annotation.toAnnotationClassId(session)!!, 0)
+                    .toFirClassReferenceExpression() as FirExpression
+
+                buildGetClassCall {
+                  argumentList = buildUnaryArgumentList(scopeClassCallArg)
+                  coneTypeOrNull = scopeClassCallArg.resolvedType
+                }
+              } else {
+                null
+              }
+          }
           .distinctBy { it.scopeName(session) }
           .forEach { scopeArgument ->
             val nestedContributionName =
@@ -90,8 +138,36 @@ internal class ContributionsFirGenerator(session: FirSession) :
       contributionNamesToScopeArgs
     }
 
+  // Prior art from
+  // https://github.com/JetBrains/kotlin/blob/master/compiler/fir/fir-jvm/src/org/jetbrains/kotlin/fir/java/deserialization/AnnotationsLoader.kt#L34
+  private fun ClassLiteralValue.toFirClassReferenceExpression(): FirClassReferenceExpression? {
+    // toLookupTag will throw an exception if classId is local.
+    // This should only happen in annotations of local declarations, in which we aren't interested
+    // anyway, so it should be fine to just skip some of their arguments.
+    if (classId.isLocal) return null
+
+    val resolvedClassTypeRef = classId.toLookupTag().toDefaultResolvedTypeRef()
+    return buildClassReferenceExpression {
+      classTypeRef = resolvedClassTypeRef
+      coneTypeOrNull =
+        StandardClassIds.KClass.constructClassLikeType(
+          arrayOf(resolvedClassTypeRef.coneType),
+          false,
+        )
+    }
+  }
+
+  private fun ConeClassLikeLookupTag.toDefaultResolvedTypeRef(): FirResolvedTypeRef =
+    buildResolvedTypeRef {
+      coneType = constructClassType()
+    }
+
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-    register(session.predicates.contributesAnnotationPredicate)
+    register(
+      session.predicates.contributesAnnotationPredicate,
+      session.predicates.injectAnnotationPredicate,
+      session.predicates.scopesPredicate,
+    )
   }
 
   sealed interface Contribution {
@@ -106,6 +182,13 @@ internal class ContributionsFirGenerator(session: FirSession) :
     }
 
     data class ContributesTo(override val origin: ClassId) : Contribution
+
+    data class ScopedInjectConstructor(
+      override val origin: ClassId,
+      val annotation: FirAnnotation,
+    ) : Contribution {
+      val callableName: String = "defaultAccessor"
+    }
 
     data class ContributesBinding(
       override val annotatedType: FirClassSymbol<*>,
@@ -180,11 +263,14 @@ internal class ContributionsFirGenerator(session: FirSession) :
       }
     }
 
-    return if (contributions.isEmpty()) {
-      null
-    } else {
-      contributions
+    if (contributions.isEmpty() && session.metroFirBuiltIns.options.enableInjectConstructorHints) {
+      contributingSymbol.annotations.scopeAnnotations(session).toList().forEach { annotation ->
+        contributions +=
+          Contribution.ScopedInjectConstructor(contributingSymbol.classId, annotation.fir)
+      }
     }
+
+    return contributions.ifEmpty { null }
   }
 
   override fun getNestedClassifiersNames(
@@ -263,6 +349,19 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .filter { it.annotation.scopeArgument().scopeName(session) == scopeArg.scopeName(session) }
       .groupBy { it.callableName.asName() }
       .keys
+      .ifEmpty {
+        if (session.metroFirBuiltIns.options.enableInjectConstructorHints) {
+          contributions
+            .filterIsInstance<Contribution.ScopedInjectConstructor>()
+            .filter {
+              it.annotation.scopeArgument().scopeName(session) == scopeArg.scopeName(session)
+            }
+            .groupBy { it.callableName.asName() }
+            .keys
+        } else {
+          emptySet()
+        }
+      }
   }
 
   // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
@@ -294,11 +393,55 @@ internal class ContributionsFirGenerator(session: FirSession) :
         .scopeArgument()
         ?.resolvedClassId() ?: error("Could not find a contribution scope for ${owner.classId}")
 
-    return contributions
-      .filterIsInstance<Contribution.BindingContribution>()
-      .filter { it.callableName == callableId.callableName.identifier }
-      .filter { it.annotation.scopeArgument()?.resolvedClassId() == scopeId }
-      .map { contribution -> buildBindingProperty(owner, contribution) }
+    val bindingProps =
+      contributions
+        .filterIsInstance<Contribution.BindingContribution>()
+        .filter { it.callableName == callableId.callableName.identifier }
+        .filter { it.annotation.scopeArgument()?.resolvedClassId() == scopeId }
+        .map { contribution -> buildBindingProperty(owner, contribution) }
+
+    val shouldGenerateAccessorProp =
+      session.metroFirBuiltIns.options.enableInjectConstructorHints &&
+        (bindingProps.isNotEmpty() || contributions.hasScopedInject(scopeId))
+
+    return bindingProps +
+      if (shouldGenerateAccessorProp) {
+        listOf(buildUnusedBindingAccessorProperty(owner, origin.defaultType()))
+      } else {
+        emptyList()
+      }
+  }
+
+  private fun Set<Contribution>.hasScopedInject(scopeId: ClassId): Boolean {
+    return filterIsInstance<Contribution.ScopedInjectConstructor>().any {
+      it.annotation.resolvedScopeClassId() == scopeId ||
+        it.annotation.toAnnotationClassId(session) == scopeId
+    }
+  }
+
+  private fun buildUnusedBindingAccessorProperty(
+    owner: FirClassSymbol<*>,
+    containingClassType: ConeClassLikeType,
+  ): FirPropertySymbol {
+    val suffix = buildString {
+      containingClassType.classId
+        ?.joinSimpleNames("", camelCase = true)
+        ?.shortClassName
+        ?.capitalizeUS()
+        ?.let(::append)
+    }
+
+    return createMemberProperty(
+        owner,
+        Keys.MetroContributionCallableDeclaration,
+        "defaultAccessorFor$suffix".asName(),
+        returnType = containingClassType,
+        hasBackingField = false,
+      ) {
+        modality = Modality.ABSTRACT
+        extensionReceiverType(owner.defaultType())
+      }
+      .symbol
   }
 
   private fun buildBindingProperty(
