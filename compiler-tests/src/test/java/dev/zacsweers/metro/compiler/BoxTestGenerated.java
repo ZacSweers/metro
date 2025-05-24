@@ -180,6 +180,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("CapitalizedProvides.kt")
+    public void testCapitalizedProvides() {
+      runTest("compiler-tests/src/test/data/box/provides/CapitalizedProvides.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleFunctionProvider.kt")
     public void testSimpleFunctionProvider() {
       runTest("compiler-tests/src/test/data/box/provides/SimpleFunctionProvider.kt");
