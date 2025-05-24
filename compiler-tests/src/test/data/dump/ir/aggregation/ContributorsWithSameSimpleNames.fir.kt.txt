@@ -1,0 +1,71 @@
+// MODULE: lib
+// FILE: Impl1.kt
+package test1
+
+@ContributesTo(scope = AppScope::class)
+interface ContributedInterface {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface $$MetroContribution : ContributedInterface {
+  }
+
+}
+
+// FILE: Impl2.kt
+package test2
+
+@ContributesTo(scope = AppScope::class)
+interface ContributedInterface {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface $$MetroContribution : ContributedInterface {
+  }
+
+}
+
+// FILE: test1ContributedInterfaceAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ContributedInterface) {
+  return error(message = "Never called")
+}
+
+// FILE: test2ContributedInterfaceAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: ContributedInterface) {
+  return error(message = "Never called")
+}
+
+// MODULE: main
+// FILE: module_main_ContributorsWithSameSimpleNames.kt
+
+@DependencyGraph(scope = AppScope::class)
+interface ExampleGraph {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : ExampleGraph {
+    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
+    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+  }
+
+}
