@@ -1162,6 +1162,284 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `a scoped constructor-injected class can be accessed in a child graph without an explicit accessor when inject constructor hints enabled`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+
+          @Inject @SingleIn(AppScope::class) class Dependency
+          @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val childDependency: ChildDependency
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(enableInjectConstructorHints = true),
+    ) {
+      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
+    }
+  }
+
+  @Test
+  fun `a scoped @ContributesBinding class can be accessed in a child graph without an explicit accessor when inject constructor hints enabled`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+          interface Bob
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class)
+          class Dependency : Bob
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val childDependency: Bob
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(enableInjectConstructorHints = true),
+    ) {
+      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
+    }
+  }
+
+  @Test
+  fun `a scoped constructor-injected class can be accessed in a child graph without an explicit accessor when inject constructor hints enabled (direct scope like @Singleton used)`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+          @Scope annotation class Singleton
+
+          @Inject
+          @Singleton
+          class Dependency
+
+          @Singleton
+          @DependencyGraph(AppScope::class, isExtendable = true)
+          interface ExampleGraph
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val childDependency: Dependency
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(enableInjectConstructorHints = true),
+    ) {
+      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
+    }
+  }
+
+  @Test
+  fun `a scoped @ContributesBinding class can be accessed in a child graph without an explicit accessor when inject constructor hints enabled (multi-module)`() {
+    val injectDepCompilation =
+      compile(
+        source(
+          """
+          interface Bob
+
+          @Inject
+          @SingleIn(AppScope::class)
+          @ContributesBinding(AppScope::class)
+          class Dependency : Bob
+        """
+            .trimIndent()
+        ),
+        options = metroOptions.copy(enableInjectConstructorHints = true),
+      )
+
+    val graphExtensionCompilation =
+      compile(
+        source(
+          """
+          sealed interface LoggedInScope
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val childDependency: Bob
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+            .trimIndent()
+        ),
+        options = metroOptions.copy(enableInjectConstructorHints = true),
+        previousCompilationResult = injectDepCompilation,
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(enableInjectConstructorHints = true),
+      compilationBlock = {
+        addPreviousResultToClasspath(injectDepCompilation)
+        addPreviousResultToClasspath(graphExtensionCompilation)
+      },
+    ) {
+      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
+    }
+  }
+
+  @Test
+  fun `a scoped constructor-injected class can be accessed in a child graph without an explicit accessor when inject constructor hints enabled (multi-module & direct scope like @Singleton used)`() {
+    val injectDepCompilation =
+      compile(
+        source(
+          """
+          @Scope annotation class Singleton
+
+          @Inject
+          @Singleton
+          class Dependency
+        """
+            .trimIndent()
+        ),
+        options = metroOptions.copy(enableInjectConstructorHints = true),
+      )
+
+    val graphExtensionCompilation =
+      compile(
+        source(
+          """
+          sealed interface LoggedInScope
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val childDependency: Dependency
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+            .trimIndent()
+        ),
+        options = metroOptions.copy(enableInjectConstructorHints = true),
+        previousCompilationResult = injectDepCompilation,
+      )
+
+    compile(
+      source(
+        """
+          @Singleton
+          @DependencyGraph(AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(enableInjectConstructorHints = true),
+      compilationBlock = {
+        addPreviousResultToClasspath(injectDepCompilation)
+        addPreviousResultToClasspath(graphExtensionCompilation)
+      },
+    ) {
+      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
+    }
+  }
+
+  @Test
+  fun `a scoped constructor-injected class can be accessed in parallel child graphs without an explicit accessor when inject constructor hints enabled`() {
+    compile(
+      source(
+        """
+          interface LoggedInScope
+          interface OtherScope
+
+          @Inject
+          @SingleIn(AppScope::class)
+          class Dependency
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val childDependency: Dependency
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+
+          @ContributesGraphExtension(OtherScope::class)
+          interface OtherGraph {
+            val childDependency: Dependency
+
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createOtherGraph(): OtherGraph
+              }
+          }
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(enableInjectConstructorHints = true),
+    ) {
+      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph1 = parentGraph.callFunction<Any>("createLoggedInGraph")
+      val childGraph2 = parentGraph.callFunction<Any>("createOtherGraph")
+
+      val childGraph1Dep = childGraph1.callProperty<Any>("childDependency")
+      assertThat(childGraph1Dep).isNotNull()
+      assertThat(childGraph1Dep).isSameInstanceAs(childGraph2.callProperty<Any>("childDependency"))
+
+      val childGraph2Dep = childGraph2.callProperty<Any>("childDependency")
+      assertThat(childGraph2Dep).isNotNull()
+      assertThat(childGraph2Dep).isSameInstanceAs(childGraph1.callProperty<Any>("childDependency"))
+    }
+  }
+
+  @Test
   fun `ContributesGraphExtension can provide multibindings`() {
     compile(
       source(

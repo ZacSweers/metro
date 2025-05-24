@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.annotationsAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
@@ -15,6 +16,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
 import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.builder.buildPackageDirective
@@ -29,6 +31,7 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFile
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
@@ -61,9 +64,18 @@ internal class ContributionHintIrTransformer(
     if (!declaration.visibility.isPublicAPI) return
 
     val contributionScopes =
-      declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNull {
-        it.scopeOrNull()
-      }
+      declaration
+        .annotationsIn(symbols.classIds.allContributesAnnotations)
+        .mapNotNull { it.scopeOrNull() }
+        .ifEmpty {
+          if (metroContext.options.enableInjectConstructorHints) {
+            declaration.annotationsAnnotatedWithAny(symbols.classIds.scopeAnnotations).mapNotNull {
+              it.scopeOrNull() ?: it.annotationClass.classId
+            }
+          } else {
+            emptySequence()
+          }
+        }
     for (contributionScope in contributionScopes) {
       val callableName = contributionScope.joinSimpleNames().shortClassName
 
@@ -113,7 +125,11 @@ internal class ContributionHintIrTransformer(
       and we can keep an eye on https://youtrack.jetbrains.com/issue/KT-74778 for a better long term
       solution.
       */
-      val fakeNewPath = Path(declaration.fileEntry.name).parent.resolve(fileName)
+      val fakeNewPath =
+        Path(declaration.fileEntry.name).parent?.resolve(fileName)
+          // There's no parent path available when generating hints for a scoped @Inject top-level
+          // function
+          ?: Path(fileName)
       val hintFile =
         IrFileImpl(
             fileEntry = NaiveSourceBasedFileEntryImpl(fakeNewPath.absolutePathString()),

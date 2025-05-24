@@ -101,6 +101,7 @@ import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
@@ -954,7 +955,12 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
   return replaced.toSet()
 }
 
-internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
+internal fun FirGetClassCall.resolvedClassId(): ClassId? {
+  return (argument as? FirResolvedQualifier)?.classId
+    // Sometimes additional unwrapping is necessary e.g. when we're dealing with a directly applied
+    // scope annotation like @Singleton on a processed class
+    ?: (argument as? FirClassReferenceExpression)?.classTypeRef?.coneType?.classId
+}
 
 internal fun FirAnnotation.resolvedClassArgumentTarget(
   name: Name,
