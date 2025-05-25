@@ -386,7 +386,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           source(
             """
             @DependencyGraph(Unit::class)
-            interface ExamplGraph {
+            interface ExampleGraph {
               val set: Set<ContributedInterface>
             }
             interface ContributedInterface
@@ -429,7 +429,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Verify that the new contribution is included in the interfaces
     val classLoader = project.classLoader()
-    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
       .contains("test.NewContribution$$\$MetroContribution")
   }
@@ -444,7 +444,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           source(
             """
             @DependencyGraph(Unit::class)
-            interface ExamplGraph {
+            interface ExampleGraph {
               val set: Set<ContributedInterface>
             }
             interface ContributedInterface
@@ -474,7 +474,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Verify that the new contribution is included in the interfaces
     with(project.classLoader()) {
-      val exampleGraph = loadClass("test.ExamplGraph")
+      val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
         .contains("test.Impl2$$\$MetroContribution")
     }
@@ -494,7 +494,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Verify that the removed contribution is removed from supertypes
     val classLoader = project.classLoader()
-    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
       .doesNotContain("test.Impl2$$\$MetroContribution")
   }
@@ -511,7 +511,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           interface ContributedInterface
 
           @DependencyGraph(Unit::class)
-          interface ExamplGraph
+          interface ExampleGraph
           """
               .trimIndent()
           )
@@ -547,7 +547,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Check that ContributedInterface2 was added as a supertype
     val classLoader = project.classLoader()
-    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
       .contains("test.ContributedInterface2$$\$MetroContribution")
   }
@@ -564,7 +564,7 @@ class ICTests : BaseIncrementalCompilationTest() {
           interface ContributedInterface
 
           @DependencyGraph(Unit::class)
-          interface ExamplGraph
+          interface ExampleGraph
           """
               .trimIndent()
           )
@@ -587,7 +587,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
     with(project.classLoader()) {
-      val exampleGraph = loadClass("test.ExamplGraph")
+      val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
         .contains("test.ContributedInterface2$$\$MetroContribution")
     }
@@ -606,8 +606,101 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     // Check that ContributedInterface2 was removed as a supertype
     val classLoader = project.classLoader()
-    val exampleGraph = classLoader.loadClass("test.ExamplGraph")
+    val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
       .doesNotContain("test.ContributedInterface2$$\$MetroContribution")
+  }
+
+  @Test
+  fun scopingChangeOnProviderIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(exampleGraph, main)
+
+        val exampleGraph =
+          source(
+            """
+          @DependencyGraph(Unit::class)
+          abstract class ExampleGraph {
+            abstract val int: Int
+            
+            private var count: Int = 0
+            
+            @Provides fun provideInt(): Int = count++
+          }
+          """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Int {
+              val graph = createGraph<ExampleGraph>()
+              return graph.int + graph.int
+            }
+            """.trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
+      assertThat(int).isEqualTo(1)
+    }
+
+    project.modify(
+      fixture.exampleGraph,
+      """
+      @DependencyGraph(Unit::class)
+      abstract class ExampleGraph {
+        abstract val int: Int
+        
+        private var count: Int = 0
+        
+        @Provides @SingleIn(Unit::class) fun provideInt(): Int = count++
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Check that count is scoped now and never increments
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
+      assertThat(int).isEqualTo(0)
+    }
+
+    project.modify(
+      fixture.exampleGraph,
+      """
+      @DependencyGraph(Unit::class)
+      abstract class ExampleGraph {
+        abstract val int: Int
+        
+        private var count: Int = 0
+        
+        @Provides fun provideInt(): Int = count++
+      }
+      """
+        .trimIndent(),
+    )
+
+    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Check that count is unscoped again and increments
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
+      assertThat(int).isEqualTo(1)
+    }
   }
 }
