@@ -11,6 +11,6 @@ object GradlePlugins {
   val metro = Plugin("dev.zacsweers.metro", pluginVersion)
 
   object Kotlin {
-    val jvm = Plugin("org.jetbrains.kotlin.jvm", "2.1.20")
+    val jvm = Plugin("org.jetbrains.kotlin.jvm", "2.1.21")
   }
 }
