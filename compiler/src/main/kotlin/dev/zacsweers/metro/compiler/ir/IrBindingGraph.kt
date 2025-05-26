@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -22,6 +23,7 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -439,12 +441,18 @@ internal class ClassBindingLookup(
 
       if (irClass.isObject) {
         // TODO make these opt-in?
+        irClass.getSimpleFunction(Symbols.StringNames.CONSTRUCTOR_FUNCTION)?.owner?.let {
+          // We don't actually call this function but it stores information about qualifier/scope
+          // annotations, so reference it here so IC triggers
+          trackFunctionCall(sourceGraph, it)
+        }
         return Binding.ObjectClass(irClass, classAnnotations, key)
       }
 
       val classFactory = findClassFactory(irClass)
       return if (classFactory != null) {
-        // TODO why isn't this enough
+        // We don't actually call this function but it stores information about qualifier/scope
+        // annotations, so reference it here so IC triggers
         trackFunctionCall(sourceGraph, classFactory.function)
         Binding.ConstructorInjected(
           type = irClass,
