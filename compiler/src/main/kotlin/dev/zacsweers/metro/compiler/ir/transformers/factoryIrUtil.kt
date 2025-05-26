@@ -13,19 +13,24 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.stubExpression
+import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 /**
  * Implement a static `create()` function for a given [targetConstructor].
@@ -133,6 +138,19 @@ internal fun generateMetadataVisibleConstructorFunction(
         returnType = targetConstructor.returnType
       }
       .apply {
+        val scopeAndQualifierAnnotations = buildList {
+          val classMetroAnnotations =
+            factoryClass.parentAsClass.metroAnnotations(context.symbols.classIds)
+          classMetroAnnotations.scope?.ir?.let(::add)
+          classMetroAnnotations.qualifier?.ir?.let(::add)
+        }
+        if (scopeAndQualifierAnnotations.isNotEmpty()) {
+          val container =
+            object : IrAnnotationContainer {
+              override val annotations: List<IrConstructorCall> = scopeAndQualifierAnnotations
+            }
+          copyAnnotationsFrom(container)
+        }
         copyParametersFrom(targetConstructor)
         // The function's signature already matches the target constructor's signature, all we need
         // this for
