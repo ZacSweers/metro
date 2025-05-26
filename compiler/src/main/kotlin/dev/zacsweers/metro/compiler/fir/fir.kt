@@ -515,6 +515,7 @@ internal inline fun FirClass.validateApiDeclaration(
   context: CheckerContext,
   reporter: DiagnosticReporter,
   type: String,
+  checkConstructor: Boolean,
   onError: () -> Nothing,
 ) {
   if (isLocal) {
@@ -583,7 +584,7 @@ internal inline fun FirClass.validateApiDeclaration(
     )
     onError()
   }
-  if (isAbstract && classKind == ClassKind.CLASS) {
+  if (checkConstructor && isAbstract && classKind == ClassKind.CLASS) {
     primaryConstructorIfAny(context.session)?.validateVisibility(
       context,
       reporter,
