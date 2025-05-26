@@ -28,7 +28,7 @@ import java.util.PriorityQueue
  * - Add [onMissing] check
  * - Add [onCycle] for customizing how cycle errors are handled
  * - Add [isDeferrable] for indicating deferrable dependencies
- * - Implementation modified to instead use a Tarjan-processed SSC DAG
+ * - Implementation modified to instead use a Tarjan-processed SCC DAG
  *
  * @param sourceToTarget a function that returns nodes that should precede the argument in the
  *   result.
@@ -133,7 +133,7 @@ internal fun <V : Comparable<V>> topologicalSort(
 
   // Collapse the graph into strongly‑connected components
   val (components, componentOf) =
-    parentTracer.traceNested("Compute SSCs") { fullAdjacency.computeStronglyConnectedComponents() }
+    parentTracer.traceNested("Compute SCCs") { fullAdjacency.computeStronglyConnectedComponents() }
 
   // Check for cycles
   parentTracer.traceNested("Check for cycles") {

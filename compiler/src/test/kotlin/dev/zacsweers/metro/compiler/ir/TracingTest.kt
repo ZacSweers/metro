@@ -47,7 +47,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
-          ExampleGraph,Compute SSCs
+          ExampleGraph,Compute SCCs
           ExampleGraph,Check for cycles
           ExampleGraph,Build component DAG
           ExampleGraph,Topo sort component DAG
@@ -91,8 +91,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
-                        ▶ Compute SSCs
-                        ◀ Compute SSCs (xx ms)
+                        ▶ Compute SCCs
+                        ◀ Compute SCCs (xx ms)
                         ▶ Check for cycles
                         ◀ Check for cycles (xx ms)
                         ▶ Build component DAG
@@ -170,7 +170,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
-          ExampleGraph,Compute SSCs
+          ExampleGraph,Compute SCCs
           ExampleGraph,Check for cycles
           ExampleGraph,Build component DAG
           ExampleGraph,Topo sort component DAG
@@ -194,7 +194,7 @@ class TracingTest : MetroCompilerTest() {
           ChildGraph,Check self-cycles
           ChildGraph,Populate bindings
           ChildGraph,Build adjacency list
-          ChildGraph,Compute SSCs
+          ChildGraph,Compute SCCs
           ChildGraph,Check for cycles
           ChildGraph,Build component DAG
           ChildGraph,Topo sort component DAG
@@ -238,8 +238,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
-                        ▶ Compute SSCs
-                        ◀ Compute SSCs (xx ms)
+                        ▶ Compute SCCs
+                        ◀ Compute SCCs (xx ms)
                         ▶ Check for cycles
                         ◀ Check for cycles (xx ms)
                         ▶ Build component DAG
@@ -286,8 +286,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
-                        ▶ Compute SSCs
-                        ◀ Compute SSCs (xx ms)
+                        ▶ Compute SCCs
+                        ◀ Compute SCCs (xx ms)
                         ▶ Check for cycles
                         ◀ Check for cycles (xx ms)
                         ▶ Build component DAG
@@ -365,7 +365,7 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
-          ExampleGraph,Compute SSCs
+          ExampleGraph,Compute SCCs
           ExampleGraph,Check for cycles
           ExampleGraph,Build component DAG
           ExampleGraph,Topo sort component DAG
@@ -390,7 +390,7 @@ class TracingTest : MetroCompilerTest() {
           $${'$'}ContributedChildGraph,Check self-cycles
           $${'$'}ContributedChildGraph,Populate bindings
           $${'$'}ContributedChildGraph,Build adjacency list
-          $${'$'}ContributedChildGraph,Compute SSCs
+          $${'$'}ContributedChildGraph,Compute SCCs
           $${'$'}ContributedChildGraph,Check for cycles
           $${'$'}ContributedChildGraph,Build component DAG
           $${'$'}ContributedChildGraph,Topo sort component DAG
@@ -434,8 +434,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
-                        ▶ Compute SSCs
-                        ◀ Compute SSCs (xx ms)
+                        ▶ Compute SCCs
+                        ◀ Compute SCCs (xx ms)
                         ▶ Check for cycles
                         ◀ Check for cycles (xx ms)
                         ▶ Build component DAG
@@ -484,8 +484,8 @@ class TracingTest : MetroCompilerTest() {
                       ▶ Build adjacency list
                       ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
-                        ▶ Compute SSCs
-                        ◀ Compute SSCs (xx ms)
+                        ▶ Compute SCCs
+                        ◀ Compute SCCs (xx ms)
                         ▶ Check for cycles
                         ◀ Check for cycles (xx ms)
                         ▶ Build component DAG
