@@ -639,7 +639,8 @@ class ICTests : BaseIncrementalCompilationTest() {
               val graph = createGraph<ExampleGraph>()
               return graph.int + graph.int
             }
-            """.trimIndent()
+            """
+              .trimIndent()
           )
       }
     val project = fixture.gradleProject
@@ -701,6 +702,106 @@ class ICTests : BaseIncrementalCompilationTest() {
       val mainClass = loadClass("test.MainKt")
       val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
       assertThat(int).isEqualTo(1)
+    }
+  }
+
+  @Test
+  fun scopingChangeOnContributedClassIsDetected() {
+    val fixture =
+      object : MetroProject(debug = true) {
+        override fun sources() = listOf(exampleClass, exampleGraph, main)
+
+        val exampleClass =
+          source(
+            """
+          @ContributesBinding(Unit::class)
+          @Inject
+          class ExampleClass : Counter {
+            override var count: Int = 0
+          }
+          """
+              .trimIndent()
+          )
+
+        private val exampleGraph =
+          source(
+            """
+              interface Counter {
+                var count: Int
+              }
+          @DependencyGraph(Unit::class)
+          interface ExampleGraph {
+            val counter: Counter
+          }
+          """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Int {
+              val graph = createGraph<ExampleGraph>()
+              return graph.counter.count++ + graph.counter.count++
+            }
+            """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
+      assertThat(int).isEqualTo(0)
+    }
+
+    project.modify(
+      fixture.exampleClass,
+      """
+      @SingleIn(Unit::class)
+      @ContributesBinding(Unit::class)
+      @Inject
+      class ExampleClass : Counter {
+        override var count: Int = 0
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Check that count is scoped now and never increments
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
+      assertThat(int).isEqualTo(1)
+    }
+
+    project.modify(
+      fixture.exampleClass,
+      """
+      @ContributesBinding(Unit::class)
+      @Inject
+      class ExampleClass : Counter {
+        override var count: Int = 0
+      }
+      """
+        .trimIndent(),
+    )
+
+    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Check that count is unscoped again and increments
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val int = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Int
+      assertThat(int).isEqualTo(0)
     }
   }
 }
