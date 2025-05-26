@@ -21,7 +21,6 @@ import dev.zacsweers.metro.compiler.invokeNewInstance
 import dev.zacsweers.metro.provider
 import java.util.concurrent.Callable
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.test.Ignore
 import org.junit.Test
 
 class InjectConstructorTransformerTest : MetroCompilerTest() {

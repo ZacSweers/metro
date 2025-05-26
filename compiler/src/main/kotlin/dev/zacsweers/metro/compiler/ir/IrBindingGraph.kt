@@ -28,10 +28,12 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
+  sourceGraph: IrClass,
   newBindingStack: () -> IrBindingStack,
-  private val findClassFactory: (IrClass) -> ClassFactory?,
+  findClassFactory: (IrClass) -> ClassFactory?,
 ) {
 
+  private val classBindingLookup = ClassBindingLookup(metroContext, sourceGraph, findClassFactory)
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -43,7 +45,7 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBinding = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey, findClassFactory) },
+      computeBinding = classBindingLookup::lookup,
       onError = { message, stack ->
         val location = stack.lastEntryOrGraph.locationOrNull()
         metroContext.reportError(message, location)
@@ -422,42 +424,49 @@ internal class IrBindingGraph(
   }
 }
 
-/** Creates an expected class binding for the given [contextKey] or returns null. */
-internal fun IrMetroContext.injectedClassBindingOrNull(
-  contextKey: IrContextualTypeKey,
-  findClassFactory: (IrClass) -> ClassFactory?,
-): Binding? {
-  val key = contextKey.typeKey
-  val irClass = key.type.rawType()
-  val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+internal class ClassBindingLookup(
+  private val metroContext: IrMetroContext,
+  private val sourceGraph: IrClass,
+  private val findClassFactory: (IrClass) -> ClassFactory?,
+) {
 
-  if (irClass.isObject) {
-    // TODO make these opt-in?
-    return Binding.ObjectClass(irClass, classAnnotations, key)
-  }
+  /** Creates an expected class binding for the given [contextKey] or returns null. */
+  internal fun lookup(contextKey: IrContextualTypeKey): Binding? =
+    with(metroContext) {
+      val key = contextKey.typeKey
+      val irClass = key.type.rawType()
+      val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
-  val classFactory = findClassFactory(irClass)
-  return if (classFactory != null) {
-    Binding.ConstructorInjected(
-      type = irClass,
-      classFactory = classFactory,
-      annotations = classAnnotations,
-      typeKey = key,
-    )
-  } else if (classAnnotations.isAssistedFactory) {
-    val function = irClass.singleAbstractFunction(metroContext)
-    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
-    Binding.Assisted(
-      type = irClass,
-      function = function,
-      annotations = classAnnotations,
-      typeKey = key,
-      parameters = function.parameters(metroContext),
-      target = targetContextualTypeKey,
-    )
-  } else if (contextKey.hasDefault) {
-    Binding.Absent(key)
-  } else {
-    null
-  }
+      if (irClass.isObject) {
+        // TODO make these opt-in?
+        return Binding.ObjectClass(irClass, classAnnotations, key)
+      }
+
+      val classFactory = findClassFactory(irClass)
+      return if (classFactory != null) {
+        // TODO why isn't this enough
+        trackFunctionCall(sourceGraph, classFactory.function)
+        Binding.ConstructorInjected(
+          type = irClass,
+          classFactory = classFactory,
+          annotations = classAnnotations,
+          typeKey = key,
+        )
+      } else if (classAnnotations.isAssistedFactory) {
+        val function = irClass.singleAbstractFunction(metroContext)
+        val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
+        Binding.Assisted(
+          type = irClass,
+          function = function,
+          annotations = classAnnotations,
+          typeKey = key,
+          parameters = function.parameters(metroContext),
+          target = targetContextualTypeKey,
+        )
+      } else if (contextKey.hasDefault) {
+        Binding.Absent(key)
+      } else {
+        null
+      }
+    }
 }

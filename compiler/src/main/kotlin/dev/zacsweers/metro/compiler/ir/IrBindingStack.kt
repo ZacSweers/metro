@@ -134,7 +134,7 @@ internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey,
             val parentClassToReport =
               if (
                 functionToUse is IrSimpleFunction &&
-                functionToUse.name == Symbols.Names.constructorFunction
+                  functionToUse.name == Symbols.Names.constructorFunction
               ) {
                 treatAsConstructor = true
                 functionToUse.parentAsClass.parent

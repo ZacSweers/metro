@@ -125,8 +125,7 @@ internal class InjectConstructorTransformer(
             generatedFactories[injectedClassId] = wrapper
             return wrapper
           }
-        }
-        else if (doNotErrorOnMissing) {
+        } else if (doNotErrorOnMissing) {
           return null
         }
         declaration.reportError(

@@ -36,6 +36,7 @@ internal class BindingGraphGenerator(
     val graph =
       IrBindingGraph(
         this,
+        node.sourceGraph,
         newBindingStack = {
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
         },
