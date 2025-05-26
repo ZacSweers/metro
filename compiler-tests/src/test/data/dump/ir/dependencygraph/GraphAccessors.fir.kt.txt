@@ -1,0 +1,67 @@
+interface Accessors {
+  abstract val intProvider: Provider<Int>
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+
+@DependencyGraph
+interface ExampleGraph {
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    override fun create(@Includes accessors: Accessors): ExampleGraph {
+      return $$MetroGraph(accessors = accessors)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : ExampleGraph {
+    private /* final field */ val accessorsInstance: Accessors = accessors
+    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
+    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val accessorsGetIntProvider: Provider<Int> = <this>.#accessorsInstance.<get-intProvider>()
+    private /* final field */ val accessorsGetStringProvider: Provider<String> = provider<String>(provider = local fun <anonymous>(): String {
+      return <this>.#accessorsInstance.<get-string>()
+    }
+)
+    constructor(@Includes accessors: Accessors) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return <this>.#accessorsGetIntProvider.invoke()
+      }
+
+    override val string: String
+      override get(): String {
+        return <this>.#accessorsGetStringProvider.invoke()
+      }
+
+  }
+
+  @Factory
+  interface Factory {
+    abstract fun create(@Includes accessors: Accessors): ExampleGraph
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+}
+

@@ -83,4 +83,20 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       runTest("compiler-tests/src/test/data/dump/ir/cycles/SelfCycle.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Dependencygraph {
+    @Test
+    public void testAllFilesPresentInDependencygraph() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("GraphAccessors.kt")
+    public void testGraphAccessors() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphAccessors.kt");
+    }
+  }
 }
