@@ -4,11 +4,13 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Don't unnecessarily wrap `Provider` graph accessors.
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
 - **Fix:** Better handle generic assisted factory interfaces.
 - **Fix:** Use fully qualified names when generating hint files to avoid collisions.
 - **Fix:** Support provides functions with capitalized names.
-- Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
+- **Fix:** Prohibit consuming `Provider<Lazy<...>>` graph accessors.
+- [internal] Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
 
 0.3.2
 -----
