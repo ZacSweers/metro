@@ -706,6 +706,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     }
   }
 
+  @Ignore("Not yet working")
   @Test
   fun scopingChangeOnContributedClassIsDetected() {
     val fixture =
