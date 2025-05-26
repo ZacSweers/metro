@@ -224,7 +224,6 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("Enable once we support private inject constructors")
   @Test
   fun `an injected class with a private constructor is visible from another module`() {
     val otherModuleResult =

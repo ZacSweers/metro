@@ -5,10 +5,13 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -19,12 +22,14 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
   newBindingStack: () -> IrBindingStack,
+  private val findClassFactory: (IrClass) -> ClassFactory?,
 ) {
 
   private val realGraph =
@@ -38,7 +43,7 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBinding = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
+      computeBinding = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey, findClassFactory) },
       onError = { message, stack ->
         val location = stack.lastEntryOrGraph.locationOrNull()
         metroContext.reportError(message, location)
@@ -414,5 +419,45 @@ internal class IrBindingGraph(
         }
       }
     }
+  }
+}
+
+/** Creates an expected class binding for the given [contextKey] or returns null. */
+internal fun IrMetroContext.injectedClassBindingOrNull(
+  contextKey: IrContextualTypeKey,
+  findClassFactory: (IrClass) -> ClassFactory?,
+): Binding? {
+  val key = contextKey.typeKey
+  val irClass = key.type.rawType()
+  val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+
+  if (irClass.isObject) {
+    // TODO make these opt-in?
+    return Binding.ObjectClass(irClass, classAnnotations, key)
+  }
+
+  val classFactory = findClassFactory(irClass)
+  return if (classFactory != null) {
+    Binding.ConstructorInjected(
+      type = irClass,
+      classFactory = classFactory,
+      annotations = classAnnotations,
+      typeKey = key,
+    )
+  } else if (classAnnotations.isAssistedFactory) {
+    val function = irClass.singleAbstractFunction(metroContext)
+    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
+    Binding.Assisted(
+      type = irClass,
+      function = function,
+      annotations = classAnnotations,
+      typeKey = key,
+      parameters = function.parameters(metroContext),
+      target = targetContextualTypeKey,
+    )
+  } else if (contextKey.hasDefault) {
+    Binding.Absent(key)
+  } else {
+    null
   }
 }

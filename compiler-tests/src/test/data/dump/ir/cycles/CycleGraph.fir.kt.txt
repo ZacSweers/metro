@@ -35,6 +35,10 @@ class A {
 
     }
 
+    /* static */ fun constructorFunction(b: B, e: E): A {
+      return error(message = "Never called")
+    }
+
     override operator fun invoke(): A {
       return Companion.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
     }
@@ -79,6 +83,10 @@ class B {
       super/*Any*/()
       /* <init>() */
 
+    }
+
+    /* static */ fun constructorFunction(c: C): B {
+      return error(message = "Never called")
     }
 
     override operator fun invoke(): B {
@@ -136,6 +144,10 @@ class C {
       super/*Any*/()
       /* <init>() */
 
+    }
+
+    /* static */ fun constructorFunction(aProvider: Provider<A>): C {
+      return error(message = "Never called")
     }
 
     override operator fun invoke(): C {
@@ -225,6 +237,10 @@ class D {
 
     }
 
+    /* static */ fun constructorFunction(b: B): D {
+      return error(message = "Never called")
+    }
+
     override operator fun invoke(): D {
       return Companion.newInstance(b = <this>.#b.invoke())
     }
@@ -269,6 +285,10 @@ class E {
       super/*Any*/()
       /* <init>() */
 
+    }
+
+    /* static */ fun constructorFunction(d: D): E {
+      return error(message = "Never called")
     }
 
     override operator fun invoke(): E {
@@ -434,3 +454,4 @@ interface CycleGraph {
   }
 
 }
+
