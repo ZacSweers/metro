@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Use a simple numbered (but deterministic) naming for contributed graph classes to avoid long class names.
+
 0.3.3
 -----
 
