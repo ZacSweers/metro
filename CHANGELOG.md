@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
 - **Fix:** Better handle generic assisted factory interfaces.
 - **Fix:** Use fully qualified names when generating hint files to avoid collisions.
