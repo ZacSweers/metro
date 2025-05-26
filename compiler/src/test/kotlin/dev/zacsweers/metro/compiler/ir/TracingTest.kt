@@ -384,29 +384,29 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Generate Metro metadata
           ExampleGraph,Transform metro graph
           ExampleGraph,Transform dependency graph
-          $${'$'}ContributedTestChildGraph,Build DependencyGraphNode
-          $${'$'}ContributedTestChildGraph,Implement creator functions
-          $${'$'}ContributedTestChildGraph,Build binding graph
-          $${'$'}ContributedTestChildGraph,Check self-cycles
-          $${'$'}ContributedTestChildGraph,Populate bindings
-          $${'$'}ContributedTestChildGraph,Build adjacency list
-          $${'$'}ContributedTestChildGraph,Compute SSCs
-          $${'$'}ContributedTestChildGraph,Check for cycles
-          $${'$'}ContributedTestChildGraph,Build component DAG
-          $${'$'}ContributedTestChildGraph,Topo sort component DAG
-          $${'$'}ContributedTestChildGraph,Expand components
-          $${'$'}ContributedTestChildGraph,Topo sort
-          $${'$'}ContributedTestChildGraph,Sort and validate
-          $${'$'}ContributedTestChildGraph,Compute binding indices
-          $${'$'}ContributedTestChildGraph,seal graph
-          $${'$'}ContributedTestChildGraph,check empty multibindings
-          $${'$'}ContributedTestChildGraph,check for absent bindings
-          $${'$'}ContributedTestChildGraph,Validate graph
-          $${'$'}ContributedTestChildGraph,Validate binding graph
-          $${'$'}ContributedTestChildGraph,Collect bindings
-          $${'$'}ContributedTestChildGraph,Implement overrides
-          $${'$'}ContributedTestChildGraph,Transform metro graph
-          $${'$'}ContributedTestChildGraph,Transform dependency graph
+          $${'$'}ContributedChildGraph,Build DependencyGraphNode
+          $${'$'}ContributedChildGraph,Implement creator functions
+          $${'$'}ContributedChildGraph,Build binding graph
+          $${'$'}ContributedChildGraph,Check self-cycles
+          $${'$'}ContributedChildGraph,Populate bindings
+          $${'$'}ContributedChildGraph,Build adjacency list
+          $${'$'}ContributedChildGraph,Compute SSCs
+          $${'$'}ContributedChildGraph,Check for cycles
+          $${'$'}ContributedChildGraph,Build component DAG
+          $${'$'}ContributedChildGraph,Topo sort component DAG
+          $${'$'}ContributedChildGraph,Expand components
+          $${'$'}ContributedChildGraph,Topo sort
+          $${'$'}ContributedChildGraph,Sort and validate
+          $${'$'}ContributedChildGraph,Compute binding indices
+          $${'$'}ContributedChildGraph,seal graph
+          $${'$'}ContributedChildGraph,check empty multibindings
+          $${'$'}ContributedChildGraph,check for absent bindings
+          $${'$'}ContributedChildGraph,Validate graph
+          $${'$'}ContributedChildGraph,Validate binding graph
+          $${'$'}ContributedChildGraph,Collect bindings
+          $${'$'}ContributedChildGraph,Implement overrides
+          $${'$'}ContributedChildGraph,Transform metro graph
+          $${'$'}ContributedChildGraph,Transform dependency graph
         """
             .trimIndent()
         )
@@ -466,7 +466,7 @@ class TracingTest : MetroCompilerTest() {
                 ◀ Generate Metro metadata (xx ms)
               ◀ Transform metro graph (xx ms)
             [ExampleGraph] ◀ Transform dependency graph (xx ms)
-            [$${'$'}ContributedTestChildGraph] ▶ Transform dependency graph
+            [$${'$'}ContributedChildGraph] ▶ Transform dependency graph
               ▶ Build DependencyGraphNode
               ◀ Build DependencyGraphNode (xx ms)
               ▶ Implement creator functions
@@ -511,7 +511,7 @@ class TracingTest : MetroCompilerTest() {
                 ▶ Implement overrides
                 ◀ Implement overrides (xx ms)
               ◀ Transform metro graph (xx ms)
-            [$${'$'}ContributedTestChildGraph] ◀ Transform dependency graph (xx ms)
+            [$${'$'}ContributedChildGraph] ◀ Transform dependency graph (xx ms)
           """
             .trimIndent()
         )
