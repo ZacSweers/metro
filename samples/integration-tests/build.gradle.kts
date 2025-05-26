@@ -12,9 +12,6 @@ plugins {
 
 android {
   namespace = "dev.zacsweers.metro.test.integration.android"
-  compileSdk = 35
-
-  defaultConfig { minSdk = 28 }
 
   buildFeatures { viewBinding = true }
 
