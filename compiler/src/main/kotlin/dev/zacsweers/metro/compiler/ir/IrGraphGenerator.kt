@@ -142,7 +142,10 @@ internal class IrGraphGenerator(
             { initializer ->
               providerFields[param.typeKey] =
                 addField(
-                    fieldName = fieldNameAllocator.newName("${param.name}InstanceProvider"),
+                    fieldName =
+                      fieldNameAllocator.newName(
+                        "${param.name}".suffixIfNot("Instance").suffixIfNot("Provider")
+                      ),
                     fieldType = symbols.metroProvider.typeWith(param.type),
                     fieldVisibility = DescriptorVisibilities.PRIVATE,
                   )
@@ -398,7 +401,11 @@ internal class IrGraphGenerator(
 
       // Create fields in dependency-order
       initOrder
+        // Don't generate deferred types here, we'll generate them last
         .filterNot { it.typeKey in deferredFields }
+        // Don't generate fields for anything already provided in provider fields (i.e. bound
+        // instance types)
+        .filterNot { it.typeKey in providerFields }
         .filterNot {
           // We don't generate fields for these even though we do track them in dependencies above,
           // it's just for propagating their aliased type in sorting
