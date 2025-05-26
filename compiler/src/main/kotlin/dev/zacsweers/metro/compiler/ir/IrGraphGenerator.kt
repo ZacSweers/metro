@@ -124,6 +124,9 @@ internal class IrGraphGenerator(
   private val providerFields = mutableMapOf<IrTypeKey, IrField>()
   private val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
 
+  private val contributedGraphGenerator =
+    IrContributedGraphGenerator(metroContext, contributionData, node.sourceGraph)
+
   fun generate() =
     with(graphClass) {
       val ctor = primaryConstructor!!
@@ -233,7 +236,7 @@ internal class IrGraphGenerator(
         addField(
             fieldName =
               fieldNameAllocator.newName(
-                "${node.sourceGraph.name.asString().decapitalizeUS()}Provider"
+                node.sourceGraph.name.asString().decapitalizeUS().suffixIfNot("Provider")
               ),
             fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
             fieldVisibility = DescriptorVisibilities.PRIVATE,
@@ -820,33 +823,36 @@ internal class IrGraphGenerator(
       }
     }
 
-    // Implement no-op bodies for contributed graphs
-    contributedGraphs.forEach { (typeKey, function) ->
-      function.ir.apply {
-        val declarationToFinalize =
-          function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
-        if (declarationToFinalize.isFakeOverride) {
-          declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
-        }
-        val irFunction = this
-        val contributedGraph =
-          getOrBuildContributedGraph(typeKey, sourceGraph, function, parentTracer)
-        val ctor = contributedGraph.primaryConstructor!!
-        body =
-          pluginContext.createIrBuilder(symbol).run {
-            irExprBodySafe(
-              symbol,
-              irCallConstructor(ctor.symbol, emptyList()).apply {
-                // First arg is always the graph instance
-                arguments[0] = irGet(irFunction.dispatchReceiverParameter!!)
-                for (i in 0 until regularParameters.size) {
-                  arguments[i + 1] = irGet(irFunction.regularParameters[i])
-                }
-              },
-            )
+    // Implement bodies for contributed graphs
+    // Sort by keys when generating so they have deterministic ordering
+    contributedGraphs.entries
+      .sortedBy { it.key }
+      .forEach { (typeKey, function) ->
+        function.ir.apply {
+          val declarationToFinalize =
+            function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+          if (declarationToFinalize.isFakeOverride) {
+            declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
           }
+          val irFunction = this
+          val contributedGraph =
+            getOrBuildContributedGraph(typeKey, sourceGraph, function, parentTracer)
+          val ctor = contributedGraph.primaryConstructor!!
+          body =
+            pluginContext.createIrBuilder(symbol).run {
+              irExprBodySafe(
+                symbol,
+                irCallConstructor(ctor.symbol, emptyList()).apply {
+                  // First arg is always the graph instance
+                  arguments[0] = irGet(irFunction.dispatchReceiverParameter!!)
+                  for (i in 0 until regularParameters.size) {
+                    arguments[i + 1] = irGet(irFunction.regularParameters[i])
+                  }
+                },
+              )
+            }
+        }
       }
-    }
   }
 
   private fun getOrBuildContributedGraph(
@@ -858,7 +864,6 @@ internal class IrGraphGenerator(
     val classId = typeKey.type.rawType().classIdOrFail
     return parentGraph.nestedClasses.firstOrNull { it.classId == classId }
       ?: run {
-        val generator = IrContributedGraphGenerator(metroContext, contributionData)
         // Find the function declaration in the original @ContributesGraphExtension.Factory
         val sourceFunction =
           contributedAccessor.ir
@@ -874,8 +879,7 @@ internal class IrGraphGenerator(
         val sourceFactory = sourceFunction.parentAsClass
         val sourceGraph = sourceFactory.parentAsClass
         parentTracer.traceNested("Generate contributed graph ${sourceGraph.name}") {
-          generator.generateContributedGraph(
-            parentGraph = parentGraph,
+          contributedGraphGenerator.generateContributedGraph(
             sourceGraph = sourceGraph,
             sourceFactory = sourceFactory,
             factoryFunction = sourceFunction,

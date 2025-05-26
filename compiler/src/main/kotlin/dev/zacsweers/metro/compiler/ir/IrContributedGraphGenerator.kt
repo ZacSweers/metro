@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.joinSimpleNames
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -26,6 +27,7 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
@@ -37,11 +39,11 @@ import org.jetbrains.kotlin.ir.util.superClass
 internal class IrContributedGraphGenerator(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
+  private val parentGraph: IrClass,
 ) : IrMetroContext by context {
 
   @OptIn(DelicateIrParameterIndexSetter::class)
   fun generateContributedGraph(
-    parentGraph: IrClass,
     sourceGraph: IrClass,
     sourceFactory: IrClass,
     factoryFunction: IrSimpleFunction,
@@ -103,7 +105,16 @@ internal class IrContributedGraphGenerator(
     val contributedGraph =
       pluginContext.irFactory
         .buildClass {
-          name = "$\$Contributed${sourceGraph.name.capitalizeUS()}".asName()
+          // Ensure a unique name
+          name =
+            sourceGraph.classIdOrFail
+              .joinSimpleNames(separator = "", camelCase = true)
+              .asSingleFqName()
+              .pathSegments()
+              .joinToString(separator = "", prefix = "$\$Contributed") {
+                it.asString().capitalizeUS()
+              }
+              .asName()
           origin = Origins.ContributedGraph
           kind = ClassKind.CLASS
         }
