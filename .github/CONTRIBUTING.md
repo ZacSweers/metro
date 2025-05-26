@@ -18,12 +18,15 @@ There are a few primary subprojects to consider.
   - `:integration-tests` — self-explanatory.
   - `:multi-module-test` — A multi-module integration test.
 
-There is a useful `./metrow` helper CLI that can perform a few common commands across the various subprojects. Before submitting a PR, it is useful to run the following:
+There is a useful `./metrow` helper CLI that can perform a few common commands across the various subprojects.
 
-1. `./metrow format` — Runs all code formatters.
-2. `./metrow regen` — Regenerates `.api` files and runs all code formatters.
-3. `./metrow check` — Runs checks across all included Gradle projects (including samples and the Gradle plugin).
-4. `./metrow publish --local --version x.y.z` — Publishes to maven local with the specified `x.y.z` version (replace this with whatever you want, like `1.0.0-LOCAL01`.)
+> [!TIP]
+> Before submitting a PR, it is useful to run `regen` and `check`.
+
+* `./metrow format` — Runs all code formatters.
+* `./metrow regen` — Regenerates `.api` files and runs all code formatters.
+* `./metrow check` — Runs checks across all included Gradle projects (including samples and the Gradle plugin).
+* `./metrow publish --local --version x.y.z` — Publishes to maven local with the specified `x.y.z` version (replace this with whatever you want, like `1.0.0-LOCAL01`.)
 
 ## Testing
 
