@@ -2936,12 +2936,13 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-       expectedExitCode = ExitCode.COMPILATION_ERROR,
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
         """
           e: Accessors.kt:7:3 Provider<Lazy<T>> accessors are not supported.
-        """.trimIndent()
+        """
+          .trimIndent()
       )
     }
   }
