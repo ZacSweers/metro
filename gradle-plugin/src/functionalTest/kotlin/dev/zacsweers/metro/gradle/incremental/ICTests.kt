@@ -624,9 +624,9 @@ class ICTests : BaseIncrementalCompilationTest() {
           @DependencyGraph(Unit::class)
           abstract class ExampleGraph {
             abstract val int: Int
-            
+
             private var count: Int = 0
-            
+
             @Provides fun provideInt(): Int = count++
           }
           """
@@ -661,9 +661,9 @@ class ICTests : BaseIncrementalCompilationTest() {
       @DependencyGraph(Unit::class)
       abstract class ExampleGraph {
         abstract val int: Int
-        
+
         private var count: Int = 0
-        
+
         @Provides @SingleIn(Unit::class) fun provideInt(): Int = count++
       }
       """
@@ -686,9 +686,9 @@ class ICTests : BaseIncrementalCompilationTest() {
       @DependencyGraph(Unit::class)
       abstract class ExampleGraph {
         abstract val int: Int
-        
+
         private var count: Int = 0
-        
+
         @Provides fun provideInt(): Int = count++
       }
       """
