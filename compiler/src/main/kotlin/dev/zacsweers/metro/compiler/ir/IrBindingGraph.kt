@@ -33,10 +33,11 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
+  sourceGraph: IrClass,
   newBindingStack: () -> IrBindingStack,
 ) {
 
-  private val injectedClassLookup = InjectedClassLookUp(metroContext)
+  private val injectedClassLookup = InjectedClassLookUp(metroContext, sourceGraph)
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -429,7 +430,12 @@ internal class IrBindingGraph(
 
 internal class InjectedClassLookUp(
   private val metroContext: IrMetroContext,
+  private val sourceGraph: IrClass,
 ) {
+  private fun recordLookup(clazz: IrClass) {
+    // Track a lookup of the provider class for IC
+    with(metroContext) { trackClassLookup(sourceGraph, clazz) }
+  }
 
   /** Creates an expected class binding for the given [contextKey] or returns null. */
   fun lookup(contextKey: IrContextualTypeKey): Binding? {
@@ -438,6 +444,7 @@ internal class InjectedClassLookUp(
     val classAnnotations = irClass.metroAnnotations(metroContext.symbols.classIds)
 
     if (irClass.isObject) {
+      recordLookup(irClass)
       // TODO make these opt-in?
       return ObjectClass(irClass, classAnnotations, key)
     }
@@ -447,6 +454,8 @@ internal class InjectedClassLookUp(
         irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
       }
     return if (injectableConstructor != null) {
+      recordLookup(irClass)
+      recordLookup(irClass.requireNestedClass(Symbols.Names.MetroFactory))
       val parameters = injectableConstructor.parameters(metroContext)
       ConstructorInjected(
         type = irClass,
@@ -459,6 +468,8 @@ internal class InjectedClassLookUp(
     } else if (classAnnotations.isAssistedFactory) {
       val function = irClass.singleAbstractFunction(metroContext)
       val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
+      recordLookup(irClass)
+      recordLookup(irClass.requireNestedClass(Symbols.Names.MetroImpl))
       Assisted(
         type = irClass,
         function = function,

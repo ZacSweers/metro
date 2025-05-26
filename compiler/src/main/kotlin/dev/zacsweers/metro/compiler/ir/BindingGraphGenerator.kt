@@ -10,9 +10,6 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
-import kotlin.collections.first
-import kotlin.collections.orEmpty
-import kotlin.collections.reduce
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -34,6 +31,7 @@ internal class BindingGraphGenerator(
     val graph =
       IrBindingGraph(
         this,
+        node.sourceGraph,
         newBindingStack = {
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
         },
