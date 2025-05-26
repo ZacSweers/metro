@@ -20,8 +20,10 @@ There are a few primary subprojects to consider.
 
 There is a useful `./metrow` helper CLI that can perform a few common commands across the various subprojects. Before submitting a PR, it is useful to run the following:
 
-1. `./metrow regen` — This regenerates `.api` files and runs all code formatters.
-2. `./metrow check` — This runs checks across all included Gradle projects (including samples and the Gradle plugin).
+1. `./metrow format` — Runs all code formatters.
+2. `./metrow regen` — Regenerates `.api` files and runs all code formatters.
+3. `./metrow check` — Runs checks across all included Gradle projects (including samples and the Gradle plugin).
+4. `./metrow publish --local --version x.y.z` — Publishes to maven local with the specified `x.y.z` version (replace this with whatever you want, like `1.0.0-LOCAL01`.)
 
 ## Testing
 

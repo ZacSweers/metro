@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Enhancement:** Don't unnecessarily wrap `Provider` graph accessors.
+- **Enhancement:** Allow multiple contributed graphs to the same parent graph.
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
 - **Fix:** Better handle generic assisted factory interfaces.
 - **Fix:** Use fully qualified names when generating hint files to avoid collisions.
