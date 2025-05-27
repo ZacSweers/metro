@@ -1,4 +1,3 @@
-import kotlin.test.assertEquals
 import java.util.concurrent.atomic.AtomicInteger
 
 @DependencyGraph(AppScope::class)
