@@ -119,6 +119,36 @@ internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes
  * Returns the vertices in a valid topological order. Every edge in [fullAdjacency] is respected;
  * strict cycles throw, breakable cycles (those containing a deferrable edge) are deferred.
  *
+ * Two-phase binding graph validation pipeline:
+ *
+ * ```
+ * Binding Graph
+ *      │
+ *      ▼
+ * ┌─────────────────────┐
+ * │  Phase 1: Tarjan    │
+ * │  ┌─────────────────┐│
+ * │  │ Find SCCs       ││  ◄─── Detects cycles
+ * │  │ Classify cycles ││  ◄─── Hard vs Soft
+ * │  │ Build comp DAG  ││  ◄─── collapse the SCCs → nodes
+ * │  └─────────────────┘│
+ * └─────────────────────┘
+ *      │
+ *      ▼
+ * ┌──────────────────────┐
+ * │  Phase 2: Kahn       │
+ * │  ┌──────────────────┐│
+ * │  │ Topo sort DAG    ││  ◄─── Deterministic order
+ * │  │ Expand components││  ◄─── Components → vertices
+ * │  └──────────────────┘│
+ * └──────────────────────┘
+ *      │
+ *      ▼
+ * TopoSortResult
+ * ├─ sortedKeys (dependency order)
+ * └─ deferredTypes (Lazy/Provider)
+ * ```
+ *
  * @param fullAdjacency outgoing‑edge map (every vertex key must be present)
  * @param isDeferrable predicate for “edge may break a cycle”
  * @param onCycle called with the offending cycle if no deferrable edge
