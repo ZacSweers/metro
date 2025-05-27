@@ -10,12 +10,9 @@ plugins {
 
 android {
   namespace = "dev.zacsweers.metro.sample.androidviewmodel"
-  compileSdk = 35
 
   defaultConfig {
     applicationId = "dev.zacsweers.metro.sample.androidviewmodel"
-    minSdk = 28
-    targetSdk = 35
     versionCode = 1
     versionName = "1.0"
   }

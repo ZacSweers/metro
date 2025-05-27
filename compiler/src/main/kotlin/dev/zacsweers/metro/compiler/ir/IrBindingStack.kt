@@ -27,9 +27,10 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
-internal interface IrBindingStack : BaseBindingStack<IrClass, IrType, IrTypeKey, Entry> {
+internal interface IrBindingStack :
+  BaseBindingStack<IrClass, IrType, IrTypeKey, Entry, IrBindingStack> {
 
-  fun copy(): IrBindingStack
+  override fun copy(): IrBindingStack
 
   class Entry(
     override val contextKey: IrContextualTypeKey,
@@ -250,7 +251,8 @@ internal inline fun <
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   Entry : BaseBindingStack.BaseEntry<Type, TypeKey, *>,
-> BaseBindingStack<*, Type, TypeKey, Entry>.withEntry(entry: Entry?, block: () -> T): T {
+  Impl : BaseBindingStack<*, Type, TypeKey, Entry, Impl>,
+> Impl.withEntry(entry: Entry?, block: () -> T): T {
   if (entry == null) return block()
   push(entry)
   val result = block()
@@ -262,7 +264,7 @@ internal val IrBindingStack.lastEntryOrGraph
   get() = entries.firstOrNull()?.declaration ?: graph
 
 internal fun Appendable.appendBindingStack(
-  stack: BaseBindingStack<*, *, *, *>,
+  stack: BaseBindingStack<*, *, *, *, *>,
   indent: String = "    ",
   ellipse: Boolean = false,
   short: Boolean = true,

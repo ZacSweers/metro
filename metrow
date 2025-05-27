@@ -51,6 +51,12 @@ case "$1" in
        ./gradlew -p samples clean
        ;;
 
+   "format")
+       echo "Applying formatting..."
+       ./gradlew spotlessApply
+       ./gradlew -p samples spotlessApply
+       ;;
+
    "regen")
        echo "Applying formatting and API gen..."
        # Annoyingly, the apiDump task has some caching issues

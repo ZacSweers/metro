@@ -16,6 +16,14 @@ dependencyResolutionManagement {
   }
 }
 
+plugins { id("com.android.settings") version "8.9.3" }
+
+android {
+  compileSdk = 36
+  targetSdk = 36
+  minSdk = 28
+}
+
 rootProject.name = "metro-samples"
 
 include(

@@ -88,7 +88,7 @@ internal class ContributionHintIrTransformer(
         sequence {
             val classId = declaration.classIdOrFail
             yieldAll(classId.packageFqName.pathSegments())
-            yield(classId.joinSimpleNames(separator = "").shortClassName)
+            yield(classId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
             yield(callableName)
           }
           .joinToString(separator = "") { it.asString().capitalizeUS() }

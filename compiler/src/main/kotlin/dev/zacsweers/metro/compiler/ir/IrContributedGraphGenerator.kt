@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
@@ -37,11 +38,13 @@ import org.jetbrains.kotlin.ir.util.superClass
 internal class IrContributedGraphGenerator(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
+  private val parentGraph: IrClass,
 ) : IrMetroContext by context {
+
+  private val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
   @OptIn(DelicateIrParameterIndexSetter::class)
   fun generateContributedGraph(
-    parentGraph: IrClass,
     sourceGraph: IrClass,
     sourceFactory: IrClass,
     factoryFunction: IrSimpleFunction,
@@ -103,7 +106,11 @@ internal class IrContributedGraphGenerator(
     val contributedGraph =
       pluginContext.irFactory
         .buildClass {
-          name = "$\$Contributed${sourceGraph.name.capitalizeUS()}".asName()
+          // Ensure a unique name
+          name =
+            nameAllocator
+              .newName("$\$Contributed${sourceGraph.name.asString().capitalizeUS()}")
+              .asName()
           origin = Origins.ContributedGraph
           kind = ClassKind.CLASS
         }

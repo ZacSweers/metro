@@ -4,12 +4,28 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Use a simple numbered (but deterministic) naming for contributed graph classes to avoid long class names.
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts.
+- **Enhancement:** Move binding validation into graph validation step.
+- **Enhancement:** Avoid unnecessary BFS graph walk in provider field collection.
+- **Fix:** Fix provider field populating missing types that previously seen types dependent on.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
+
+0.3.3
+-----
+
+_2025-05-26_
+
+- **Enhancement:** Don't unnecessarily wrap `Provider` graph accessors.
+- **Enhancement:** Allow multiple contributed graphs to the same parent graph.
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
 - **Fix:** Better handle generic assisted factory interfaces.
 - **Fix:** Use fully qualified names when generating hint files to avoid collisions.
 - **Fix:** Support provides functions with capitalized names.
-- Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
+- **Fix:** Prohibit consuming `Provider<Lazy<...>>` graph accessors.
+- [internal] Migrate to new IR `parameters`/`arguments`/`typeArguments` compiler APIs.
+
+Special thanks to [@gabrielittner](https://github.com/gabrielittner) for contributing to this release!
 
 0.3.2
 -----
