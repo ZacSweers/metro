@@ -51,8 +51,10 @@ internal class IrBindingGraph(
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrTypeKey, IrBindingStack.Entry>()
 
+  val adjacency get() = realGraph.adjacency
+
   // Thin immutable view over the internal bindings
-  fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.snapshot
+  fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.bindings
 
   fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     accessors[key] = entry
@@ -176,7 +178,7 @@ internal class IrBindingGraph(
 
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
     parentTracer.traceNested("check for absent bindings") {
-      check(realGraph.snapshot.values.none { it is Binding.Absent }) {
+      check(realGraph.bindings.values.none { it is Binding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
@@ -184,7 +186,7 @@ internal class IrBindingGraph(
   }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
-    val multibindings = realGraph.snapshot.values.filterIsInstance<Binding.Multibinding>()
+    val multibindings = realGraph.bindings.values.filterIsInstance<Binding.Multibinding>()
     val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
@@ -307,7 +309,7 @@ internal class IrBindingGraph(
     }
 
     // Little more involved, iterate the bindings for ones with the same type
-    realGraph.snapshot.forEach { (bindingKey, binding) ->
+    realGraph.bindings.forEach { (bindingKey, binding) ->
       when {
         key.qualifier == null && bindingKey.type == key.type -> {
           similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Different qualifier"))
@@ -344,13 +346,13 @@ internal class IrBindingGraph(
 
   // TODO iterate on this more!
   internal fun dumpGraph(name: String, short: Boolean): String {
-    if (realGraph.snapshot.isEmpty()) return "Empty binding graph"
+    if (realGraph.bindings.isEmpty()) return "Empty binding graph"
 
     return buildString {
       append("Binding Graph: ")
       appendLine(name)
       // Sort by type key for consistent output
-      realGraph.snapshot.entries
+      realGraph.bindings.entries
         .sortedBy { it.key.toString() }
         .forEach { (_, binding) ->
           appendLine("─".repeat(50))

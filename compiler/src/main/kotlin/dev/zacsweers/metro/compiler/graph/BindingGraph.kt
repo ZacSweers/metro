@@ -16,7 +16,8 @@ internal interface BindingGraph<
   BindingStackEntry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
   BindingStack : BaseBindingStack<*, Type, TypeKey, BindingStackEntry>,
 > {
-  val snapshot: Map<TypeKey, Binding>
+  val bindings: Map<TypeKey, Binding>
+  val adjacency: Map<TypeKey, Set<TypeKey>>
 
   operator fun get(key: TypeKey): Binding?
 
@@ -50,8 +51,14 @@ internal open class MutableBindingGraph<
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
-  private val bindings = mutableMapOf<TypeKey, Binding>()
+  override val bindings = mutableMapOf<TypeKey, Binding>()
   private val bindingIndices = mutableMapOf<TypeKey, Int>()
+  private var _adjacency: Map<TypeKey, Set<TypeKey>>? = null
+  override val adjacency: Map<TypeKey, Set<TypeKey>>
+    get() {
+      check(sealed) { "Adjacency is only available after sealing" }
+      return _adjacency!!
+    }
 
   var sealed = false
     private set
@@ -256,9 +263,6 @@ internal open class MutableBindingGraph<
     }
     onError(message, stack)
   }
-
-  override val snapshot: Map<TypeKey, Binding>
-    get() = bindings
 
   fun replace(binding: Binding) {
     bindings[binding.typeKey] = binding
