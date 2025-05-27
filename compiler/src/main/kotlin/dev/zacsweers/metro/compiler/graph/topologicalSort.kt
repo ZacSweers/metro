@@ -70,7 +70,7 @@ internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T
   return true
 }
 
-internal fun <T> Iterable<T>.buildFullAdjacency(
+internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
   sourceToTarget: (T) -> Iterable<T>,
   onMissing: (source: T, missing: T) -> Unit,
 ): Map<T, List<T>> {
@@ -90,7 +90,12 @@ internal fun <T> Iterable<T>.buildFullAdjacency(
       listForVertex += targetKey
     }
   }
-  return adjacency
+
+  /**
+   * Sort our map keys and list values here for better performance later (avoiding needing to
+   * defensively sort in [computeStronglyConnectedComponents]).
+   */
+  return adjacency.mapValues { it.value.sorted() }.toSortedMap()
 }
 
 /**
@@ -98,7 +103,7 @@ internal fun <T> Iterable<T>.buildFullAdjacency(
  * * Keeps all edges (strict _and_ deferrable).
  * * Prunes edges whose target isn’t in [bindings], delegating the decision to [onMissing].
  */
-internal fun <TypeKey, Binding> buildFullAdjacency(
+internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
   bindings: Map<TypeKey, Binding>,
   dependenciesOf: (Binding) -> Iterable<TypeKey>,
   onMissing: (source: TypeKey, missing: TypeKey) -> Unit,
@@ -120,7 +125,6 @@ internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes
  * strict cycles throw, breakable cycles (those containing a deferrable edge) are deferred.
  *
  * Two-phase binding graph validation pipeline:
- *
  * ```
  * Binding Graph
  *      │
@@ -232,6 +236,9 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
 /**
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
  *
+ * NOTE: For performance and determinism, this implementation assumes [this] adjacency is already
+ * sorted (both keys and each list of values).
+ *
  * @param this A map representing the directed graph where the keys are vertices of type [V] and the
  *   values are lists of vertices to which each key vertex has outgoing edges.
  * @return A pair where the first element is a list of components (each containing an ID and its
@@ -241,7 +248,7 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
  */
-internal fun <V : Comparable<V>> Map<V, List<V>>.computeStronglyConnectedComponents():
+internal fun <V> Map<V, List<V>>.computeStronglyConnectedComponents():
   Pair<List<Component<V>>, Map<V, Int>> {
   var nextIndex = 0
   var nextComponentId = 0
@@ -270,7 +277,7 @@ internal fun <V : Comparable<V>> Map<V, List<V>>.computeStronglyConnectedCompone
     stack += v
     onStack += v
 
-    for (w in this[v].orEmpty().sorted()) {
+    for (w in this[v].orEmpty()) {
       if (w !in indexMap) {
         // Successor w has not yet been visited; recurse on it
         strongConnect(w)
@@ -301,7 +308,7 @@ internal fun <V : Comparable<V>> Map<V, List<V>>.computeStronglyConnectedCompone
   }
 
   // Sorted for determinism
-  for (v in keys.sorted()) {
+  for (v in keys) {
     if (v !in indexMap) {
       strongConnect(v)
     }
