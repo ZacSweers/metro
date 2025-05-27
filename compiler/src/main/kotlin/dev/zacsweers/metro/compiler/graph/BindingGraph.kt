@@ -45,9 +45,12 @@ internal open class MutableBindingGraph<
   private val absentBinding: (typeKey: TypeKey) -> Binding,
   /**
    * Creates bindings for keys not necessarily manually added to the graph (e.g.,
-   * constructor-injected types). Note one key may incur the creation of multiple bindings, so this returns a set.
+   * constructor-injected types). Note one key may incur the creation of multiple bindings, so this
+   * returns a set.
    */
-  private val computeBindings: (contextKey: ContextualTypeKey) -> Set<Binding> = { _ -> emptySet() },
+  private val computeBindings: (contextKey: ContextualTypeKey) -> Set<Binding> = { _ ->
+    emptySet()
+  },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {

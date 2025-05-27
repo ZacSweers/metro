@@ -540,7 +540,9 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 }
 
 /** Creates an expected class binding for the given [contextKey] or returns null. */
-internal fun IrMetroContext.injectedClassBindingOrNull(contextKey: IrContextualTypeKey): Set<Binding> {
+internal fun IrMetroContext.injectedClassBindingOrNull(
+  contextKey: IrContextualTypeKey
+): Set<Binding> {
   val key = contextKey.typeKey
   val irClass = key.type.rawType()
   val classAnnotations = irClass.metroAnnotations(symbols.classIds)
@@ -554,14 +556,15 @@ internal fun IrMetroContext.injectedClassBindingOrNull(contextKey: IrContextualT
     irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
   return if (injectableConstructor != null) {
     val parameters = injectableConstructor.parameters(metroContext)
-    val classBinding = ConstructorInjected(
-      type = irClass,
-      injectedConstructor = injectableConstructor,
-      annotations = classAnnotations,
-      isAssisted = parameters.regularParameters.any { it.isAssisted },
-      typeKey = key,
-      parameters = parameters,
-    )
+    val classBinding =
+      ConstructorInjected(
+        type = irClass,
+        injectedConstructor = injectableConstructor,
+        annotations = classAnnotations,
+        isAssisted = parameters.regularParameters.any { it.isAssisted },
+        typeKey = key,
+        parameters = parameters,
+      )
     return setOf(classBinding)
   } else if (classAnnotations.isAssistedFactory) {
     val function = irClass.singleAbstractFunction(metroContext)
