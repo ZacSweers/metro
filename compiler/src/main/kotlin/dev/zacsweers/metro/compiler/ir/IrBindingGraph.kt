@@ -573,6 +573,7 @@ internal class ClassBindingLookup(
       val irClass = key.type.rawType()
       val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
+      val bindings = mutableSetOf<Binding>()
       if (irClass.isObject) {
         // TODO make these opt-in?
         irClass.getSimpleFunction(Symbols.StringNames.CONSTRUCTOR_FUNCTION)?.owner?.let {
@@ -580,15 +581,16 @@ internal class ClassBindingLookup(
           // annotations, so reference it here so IC triggers
           trackFunctionCall(sourceGraph, it)
         }
-        return Binding.ObjectClass(irClass, classAnnotations, key)
+        bindings += Binding.ObjectClass(irClass, classAnnotations, key)
+        return bindings
       }
 
       val classFactory = findClassFactory(irClass)
-      return if (classFactory != null) {
+      if (classFactory != null) {
         // We don't actually call this function but it stores information about qualifier/scope
         // annotations, so reference it here so IC triggers
         trackFunctionCall(sourceGraph, classFactory.function)
-        Binding.ConstructorInjected(
+        bindings += Binding.ConstructorInjected(
           type = irClass,
           classFactory = classFactory,
           annotations = classAnnotations,
@@ -597,7 +599,7 @@ internal class ClassBindingLookup(
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction(metroContext)
         val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
-        Binding.Assisted(
+        bindings += Binding.Assisted(
           type = irClass,
           function = function,
           annotations = classAnnotations,
@@ -606,9 +608,10 @@ internal class ClassBindingLookup(
           target = targetContextualTypeKey,
         )
       } else if (contextKey.hasDefault) {
-        Binding.Absent(key)
+        bindings += Binding.Absent(key)
       } else {
-        null
+        // Do nothing
       }
+      return bindings
     }
 }
