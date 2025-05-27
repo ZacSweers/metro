@@ -560,7 +560,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          @DependencyGraph
+          @DependencyGraph(AppScope::class)
           abstract class ExampleGraph {
             @Provides
             @SingleIn(AppScope::class)
