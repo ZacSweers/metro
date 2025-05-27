@@ -9,7 +9,7 @@ internal interface BaseBindingStack<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   Entry : BaseBindingStack.BaseEntry<Type, TypeKey, *>,
-  Impl : BaseBindingStack<ClassType, Type, TypeKey, Entry, Impl>
+  Impl : BaseBindingStack<ClassType, Type, TypeKey, Entry, Impl>,
 > {
   val graph: ClassType
   val entries: List<Entry>

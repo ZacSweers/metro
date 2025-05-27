@@ -2,17 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.MetroLogger
-import dev.zacsweers.metro.compiler.decapitalizeUS
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-import org.jetbrains.kotlin.ir.util.kotlinFqName
-
 private const val INITIAL_VALUE = 512
 
 /** Computes the set of bindings that must end up in provider fields. */
-internal class ProviderFieldCollector(
-  private val graph: IrBindingGraph,
-) {
+internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
 
   private data class Node(val binding: Binding, var refCount: Int = 0) {
     val needsField: Boolean
