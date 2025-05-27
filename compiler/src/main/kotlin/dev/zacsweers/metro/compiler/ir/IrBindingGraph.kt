@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -36,7 +36,8 @@ internal class IrBindingGraph(
   findClassFactory: (IrClass) -> ClassFactory?,
 ) {
 
-  private val classBindingLookup = ClassBindingLookup(metroContext, node.sourceGraph, findClassFactory)
+  private val classBindingLookup =
+    ClassBindingLookup(metroContext, node.sourceGraph, findClassFactory)
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
