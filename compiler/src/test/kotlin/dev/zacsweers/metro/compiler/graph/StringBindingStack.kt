@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.graph
 import org.jetbrains.kotlin.name.FqName
 
 internal class StringBindingStack(override val graph: String) :
-  BaseBindingStack<String, String, StringTypeKey, StringBindingStack.Entry> {
+  BaseBindingStack<String, String, StringTypeKey, StringBindingStack.Entry, StringBindingStack> {
   override val entries = ArrayDeque<Entry>()
   override val graphFqName: FqName = FqName(graph)
 
@@ -15,6 +15,10 @@ internal class StringBindingStack(override val graph: String) :
 
   override fun pop() {
     entries.removeFirstOrNull() ?: error("Binding stack is empty!")
+  }
+
+  override fun copy(): StringBindingStack {
+    return StringBindingStack(graph).also { it.entries.addAll(entries) }
   }
 
   override fun entryFor(key: StringTypeKey): Entry? {
