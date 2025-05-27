@@ -40,7 +40,7 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBinding = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
+      computeBindings = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
       onError = ::onError,
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
     )
