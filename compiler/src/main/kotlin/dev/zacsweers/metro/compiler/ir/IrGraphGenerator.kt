@@ -96,7 +96,7 @@ import org.jetbrains.kotlin.name.ClassId
 //  move IR code gen out to IrGraphExpression?Generator
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
-  private val contributionData: IrContributionData,
+  contributionData: IrContributionData,
   private val dependencyGraphNodesByClass: MutableMap<ClassId, DependencyGraphNode>,
   private val node: DependencyGraphNode,
   private val graphClass: IrClass,
@@ -122,7 +122,6 @@ internal class IrGraphGenerator(
   // Fields for providers. May include both scoped and unscoped providers as well as bound
   // instances
   private val providerFields = mutableMapOf<IrTypeKey, IrField>()
-  private val multibindingProviderFields = mutableMapOf<Binding.Provided, IrField>()
 
   private val contributedGraphGenerator =
     IrContributedGraphGenerator(metroContext, contributionData, node.sourceGraph)
@@ -455,11 +454,7 @@ internal class IrGraphGenerator(
                     irExprBody(provider)
                   }
               }
-          if (binding is Binding.Provided && binding.isIntoMultibinding) {
-            multibindingProviderFields[binding] = field
-          } else {
-            providerFields[key] = field
-          }
+          providerFields[key] = field
         }
 
       // Add statements to our constructor's deferred fields _after_ we've added all provider
@@ -941,55 +936,7 @@ internal class IrGraphGenerator(
         if (typeKey in providerFields) {
           // If it's in provider fields, invoke that field
           irGetField(irGet(generationContext.thisReceiver), providerFields.getValue(typeKey))
-        } else if (
-          binding is Binding.Provided &&
-            binding.isIntoMultibinding &&
-            binding in multibindingProviderFields
-        ) {
-          irGetField(
-            irGet(generationContext.thisReceiver),
-            multibindingProviderFields.getValue(binding),
-          )
         } else {
-          val entry =
-            when (binding) {
-              is Binding.ConstructorInjected -> {
-                val constructor = binding.injectedConstructor
-                IrBindingStack.Entry.injectedAt(
-                  contextualTypeKey,
-                  constructor,
-                  constructor.regularParameters[i],
-                )
-              }
-
-              is Binding.ObjectClass -> error("Object classes cannot have dependencies")
-
-              is Binding.Provided,
-              is Binding.Alias -> {
-                IrBindingStack.Entry.injectedAt(
-                  contextualTypeKey,
-                  function,
-                  function.regularParameters[i],
-                )
-              }
-
-              is Binding.Assisted -> {
-                IrBindingStack.Entry.injectedAt(contextualTypeKey, function)
-              }
-
-              is Binding.MembersInjected -> {
-                IrBindingStack.Entry.injectedAt(contextualTypeKey, function)
-              }
-
-              is Binding.Multibinding -> {
-                // TODO can't be right?
-                IrBindingStack.Entry.injectedAt(contextualTypeKey, function)
-              }
-
-              is Binding.Absent,
-              is Binding.BoundInstance,
-              is Binding.GraphDependency -> error("Should never happen, logic is handled above")
-            }
           // Generate binding code for each param
           val paramBinding = bindingGraph.requireBinding(contextualTypeKey, IrBindingStack.empty())
 
@@ -1049,19 +996,6 @@ internal class IrGraphGenerator(
     }
 
     val metroProviderSymbols = symbols.providerSymbolsFor(contextualTypeKey)
-
-    // If we already have a provider field we can just return it
-    if (
-      binding is Binding.Provided &&
-        binding.isIntoMultibinding &&
-        binding in multibindingProviderFields
-    ) {
-      multibindingProviderFields[binding]?.let {
-        return irGetField(irGet(generationContext.thisReceiver), it).let {
-          with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
-        }
-      }
-    }
 
     // If we're initializing the field for this key, don't ever try to reach for an existing
     // provider for it.
