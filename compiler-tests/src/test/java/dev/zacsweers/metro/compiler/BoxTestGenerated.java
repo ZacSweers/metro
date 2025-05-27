@@ -206,5 +206,11 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testSimpleFunctionProvider() {
       runTest("compiler-tests/src/test/data/box/provides/SimpleFunctionProvider.kt");
     }
+
+    @Test
+    @TestMetadata("TransitiveSuccessorScope.kt")
+    public void testTransitiveSuccessorScope() {
+      runTest("compiler-tests/src/test/data/box/provides/TransitiveSuccessorScope.kt");
+    }
   }
 }
