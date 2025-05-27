@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Enhancement:** Use a simple numbered (but deterministic) naming for contributed graph classes to avoid long class names.
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts.
 
 0.3.3
 -----
