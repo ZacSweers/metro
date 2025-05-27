@@ -84,7 +84,7 @@ internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
   val adjacency = TreeMap<T, TreeSet<T>>()
 
   for (key in set) {
-    val listForVertex = adjacency.getOrPut(key, ::TreeSet)
+    val dependencies = adjacency.getOrPut(key, ::TreeSet)
 
     for (targetKey in sourceToTarget(key)) {
       if (targetKey !in set) {
@@ -93,7 +93,7 @@ internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
         // If we got here, this missing target is allowable (i.e. a default value). Just ignore it
         continue
       }
-      listForVertex += targetKey
+      dependencies += targetKey
     }
   }
 
