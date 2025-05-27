@@ -44,17 +44,16 @@ internal class ProviderFieldCollector(
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
   fun collect(): Map<IrTypeKey, Binding> {
-    processNodes()
+    val nodes = mutableMapOf<IrTypeKey, Node>()
 
-    if (node.isExtendable) {
-      // Ensure all scoped providers have fields in extendable graphs, even if they are not used in
-      // this graph
-      graph
-        .bindingsSnapshot()
-        .values
-        .filterIsInstance<Binding.Provided>()
-        .filter { it.annotations.isScoped }
-        .forEach { it.mark() }
+    // Count references for each dependency
+    for ((key, dependencies) in graph.adjacency) {
+      val binding = graph.requireBinding(key, IrBindingStack.empty())
+      // Ensure each key has a node
+      nodes.getOrPut(key) { Node(binding) }
+      for (dependency in dependencies) {
+        dependency.mark()
+      }
     }
 
     // Decide which bindings actually need provider fields
@@ -63,71 +62,6 @@ internal class ProviderFieldCollector(
         val binding = node.binding
         if (node.needsField) {
           put(key, binding)
-        }
-      }
-    }
-  }
-
-  private fun processNodes() {
-    // one set for all the visited bookkeeping
-    val seen = HashSet<IrTypeKey>(INITIAL_VALUE)
-    val queue =
-      ArrayDeque<Pair<IrContextualTypeKey, IrBindingStack>>(
-        (node.accessors.size + node.injectors.size) * 4
-      )
-
-    // TODO use graph.bindingSnapshot() directly
-    val roots =
-      node.accessors.plus(
-        node.injectors.map { (injector, key) -> injector to IrContextualTypeKey(key) }
-      )
-
-    for ((injector, contextKey) in roots) {
-      if (seen.add(contextKey.typeKey)) {
-        val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
-        queue +=
-          contextKey to IrBindingStack(node.sourceGraph, MetroLogger.NONE).apply { push(entry) }
-      } else {
-        // Don't increment the refCount on multiple roots because we still need to follow their deps
-        // avoids a situation where multiple accessors expose the same type key and results in
-        // them not being visited
-      }
-    }
-
-    while (queue.isNotEmpty()) {
-      val (contextKey, stack) = queue.removeFirst()
-      val binding = graph.requireBinding(contextKey, stack)
-      if (binding.mark()) {
-        // already processed this binding
-        continue
-      }
-
-      binding.checkScope(stack)
-
-      // Enqueue dependencies
-      // TODO just read dependencies instead and look up from graph?
-      val successors =
-        when (binding) {
-          is Binding.Assisted -> {
-            sequenceOf(binding.target to stack)
-          }
-          is Binding.Multibinding -> {
-            binding.sourceBindings.asSequence().map { IrContextualTypeKey(it) to stack }
-          }
-          else -> {
-            binding.parameters.nonInstanceParameters
-              .asSequence()
-              .filterNot { it.isAssisted }
-              .map { it.contextualTypeKey to stack.copy().apply { push(it.bindingStackEntry) } }
-          }
-        }
-
-      successors.forEach { (contextKey, successorStack) ->
-        if (seen.add(contextKey.typeKey)) {
-          queue += contextKey to successorStack
-        } else {
-          // Increment the refCount still
-          contextKey.typeKey.mark()
         }
       }
     }
