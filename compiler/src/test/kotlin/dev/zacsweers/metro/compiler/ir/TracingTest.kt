@@ -87,9 +87,9 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
+                    ▶ Build adjacency list
+                    ◀ Build adjacency list (xx ms)
                     ▶ Sort and validate
-                      ▶ Build adjacency list
-                      ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
                         ▶ Compute SCCs
                         ◀ Compute SCCs (xx ms)
@@ -234,9 +234,9 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
+                    ▶ Build adjacency list
+                    ◀ Build adjacency list (xx ms)
                     ▶ Sort and validate
-                      ▶ Build adjacency list
-                      ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
                         ▶ Compute SCCs
                         ◀ Compute SCCs (xx ms)
@@ -282,9 +282,9 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
+                    ▶ Build adjacency list
+                    ◀ Build adjacency list (xx ms)
                     ▶ Sort and validate
-                      ▶ Build adjacency list
-                      ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
                         ▶ Compute SCCs
                         ◀ Compute SCCs (xx ms)
@@ -430,9 +430,9 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
+                    ▶ Build adjacency list
+                    ◀ Build adjacency list (xx ms)
                     ▶ Sort and validate
-                      ▶ Build adjacency list
-                      ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
                         ▶ Compute SCCs
                         ◀ Compute SCCs (xx ms)
@@ -480,9 +480,9 @@ class TracingTest : MetroCompilerTest() {
                   ▶ seal graph
                     ▶ Populate bindings
                     ◀ Populate bindings (xx ms)
+                    ▶ Build adjacency list
+                    ◀ Build adjacency list (xx ms)
                     ▶ Sort and validate
-                      ▶ Build adjacency list
-                      ◀ Build adjacency list (xx ms)
                       ▶ Topo sort
                         ▶ Compute SCCs
                         ◀ Compute SCCs (xx ms)
