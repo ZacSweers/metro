@@ -321,12 +321,7 @@ internal class IrGraphGenerator(
       // Collect bindings and their dependencies for provider field ordering
       val initOrder =
         parentTracer.traceNested("Collect bindings") {
-          val providerFieldBindings =
-            ProviderFieldCollector(node, bindingGraph) { declaration, message ->
-                declaration.reportError(message)
-                exitProcessing()
-              }
-              .collect()
+          val providerFieldBindings = ProviderFieldCollector(bindingGraph).collect()
           buildList(providerFieldBindings.size) {
             for (key in sealResult.sortedKeys) {
               providerFieldBindings[key]?.let(::add)
