@@ -44,10 +44,13 @@ internal open class MutableBindingGraph<
     ) -> BindingStackEntry,
   private val absentBinding: (typeKey: TypeKey) -> Binding,
   /**
-   * Creates a binding for keys not necessarily manually added to the graph (e.g.,
-   * constructor-injected types).
+   * Creates bindings for keys not necessarily manually added to the graph (e.g.,
+   * constructor-injected types). Note one key may incur the creation of multiple bindings, so this
+   * returns a set.
    */
-  private val computeBinding: (contextKey: ContextualTypeKey) -> Binding? = { _ -> null },
+  private val computeBindings: (contextKey: ContextualTypeKey) -> Set<Binding> = { _ ->
+    emptySet()
+  },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
@@ -156,9 +159,11 @@ internal open class MutableBindingGraph<
     val missingBindings = mutableMapOf<TypeKey, BindingStack>()
     for ((contextKey, entry) in roots) {
       if (contextKey.typeKey !in bindings) {
-        val binding = computeBinding(contextKey)
-        if (binding != null) {
-          tryPut(binding, stack, contextKey.typeKey)
+        val bindings = computeBindings(contextKey)
+        if (bindings.isNotEmpty()) {
+          for (binding in bindings) {
+            tryPut(binding, stack, contextKey.typeKey)
+          }
         } else {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
         }
@@ -183,9 +188,11 @@ internal open class MutableBindingGraph<
             val typeKey = depKey.typeKey
             if (typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              val binding = computeBinding(depKey)
-              if (binding != null) {
-                bindingQueue.addLast(binding)
+              val bindings = computeBindings(depKey)
+              if (bindings.isNotEmpty()) {
+                for (binding in bindings) {
+                  bindingQueue.addLast(binding)
+                }
               } else {
                 missingBindings[typeKey] = stack.copy()
               }
@@ -332,15 +339,6 @@ internal open class MutableBindingGraph<
   // O(1) after seal()
   override fun TypeKey.dependsOn(other: TypeKey): Boolean {
     return bindingIndices.getValue(this) >= bindingIndices.getValue(other)
-  }
-
-  fun getOrCreateBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
-    return bindings[contextKey.typeKey]
-      ?: createBindingOrFail(contextKey, stack).also { tryPut(it, stack) }
-  }
-
-  fun createBindingOrFail(contextKey: ContextualTypeKey, stack: BindingStack): Binding {
-    return computeBinding(contextKey) ?: reportMissingBinding(contextKey.typeKey, stack)
   }
 
   fun requireBinding(contextKey: ContextualTypeKey, stack: BindingStack): Binding {

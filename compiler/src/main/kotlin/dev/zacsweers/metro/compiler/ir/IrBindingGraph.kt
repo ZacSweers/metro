@@ -49,7 +49,7 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBinding = classBindingLookup::lookup,
+      computeBindings = classBindingLookup::lookup,
       onError = ::onError,
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
     )
@@ -567,7 +567,7 @@ internal class ClassBindingLookup(
 ) {
 
   /** Creates an expected class binding for the given [contextKey] or returns null. */
-  internal fun lookup(contextKey: IrContextualTypeKey): Binding? =
+  internal fun lookup(contextKey: IrContextualTypeKey): Set<Binding> =
     with(metroContext) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
