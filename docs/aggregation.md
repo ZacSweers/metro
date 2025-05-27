@@ -91,7 +91,7 @@ For simple cases where there is a single supertype, that type is implicitly used
 class CacheImpl(...) : Cache
 ```
 
-For classes with multiple supertypes or advanced cases where you want to bind an ancestor type, you can explicitly define this via `binding` parameter.
+For advanced cases where you want to bind an ancestor type, you can explicitly define this via `binding` parameter. For example, if your class has multiple supertypes, you must define an explicit bound type for it.
 
 ```kotlin
 @Named("cache")
