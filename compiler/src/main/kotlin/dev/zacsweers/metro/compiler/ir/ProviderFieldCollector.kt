@@ -11,9 +11,7 @@ private const val INITIAL_VALUE = 512
 
 /** Computes the set of bindings that must end up in provider fields. */
 internal class ProviderFieldCollector(
-  private val node: DependencyGraphNode,
   private val graph: IrBindingGraph,
-  private val onError: (IrDeclaration, String) -> Nothing,
 ) {
 
   private data class Node(val binding: Binding, var refCount: Int = 0) {
@@ -44,14 +42,11 @@ internal class ProviderFieldCollector(
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
   fun collect(): Map<IrTypeKey, Binding> {
-    val nodes = mutableMapOf<IrTypeKey, Node>()
-
     // Count references for each dependency
-    for ((key, dependencies) in graph.adjacency) {
-      val binding = graph.requireBinding(key, IrBindingStack.empty())
+    for ((key, binding) in graph.bindingsSnapshot()) {
       // Ensure each key has a node
       nodes.getOrPut(key) { Node(binding) }
-      for (dependency in dependencies) {
+      for (dependency in binding.dependencies) {
         dependency.mark()
       }
     }
@@ -67,7 +62,7 @@ internal class ProviderFieldCollector(
     }
   }
 
-  private fun IrTypeKey.mark(): Boolean {
+  private fun IrContextualTypeKey.mark(): Boolean {
     val binding = graph.requireBinding(this, IrBindingStack.empty())
     return binding.mark()
   }
@@ -75,59 +70,5 @@ internal class ProviderFieldCollector(
   private fun Binding.mark(): Boolean {
     val node = nodes.getOrPut(typeKey) { Node(this) }
     return node.mark()
-  }
-
-  // Check scoping compatibility
-  // TODO FIR error?
-  private fun Binding.checkScope(stack: IrBindingStack) {
-    val bindingScope = scope
-    if (bindingScope != null) {
-      if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
-        val isUnscoped = node.scopes.isEmpty()
-        // Error if there are mismatched scopes
-        val declarationToReport = node.sourceGraph
-        val binding = this
-        stack.push(
-          IrBindingStack.Entry.simpleTypeRef(
-            binding.contextualTypeKey,
-            usage = "(scoped to '$bindingScope')",
-          )
-        )
-        val message = buildString {
-          append("[Metro/IncompatiblyScopedBindings] ")
-          append(declarationToReport.kotlinFqName)
-          if (isUnscoped) {
-            // Unscoped graph but scoped binding
-            append(" (unscoped) may not reference scoped bindings:")
-          } else {
-            // Scope mismatch
-            append(
-              " (scopes ${node.scopes.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
-            )
-          }
-          appendLine()
-          appendBindingStack(stack, short = false)
-          if (!isUnscoped && binding is Binding.ConstructorInjected) {
-            val matchingParent =
-              node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
-            if (matchingParent != null) {
-              appendLine()
-              appendLine()
-              val shortTypeKey = binding.typeKey.render(short = true)
-              appendLine(
-                """
-                  (Hint)
-                  It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
-                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`).
-                  See https://github.com/ZacSweers/metro/issues/377 for more details.
-                """
-                  .trimIndent()
-              )
-            }
-          }
-        }
-        onError(declarationToReport, message)
-      }
-    }
   }
 }
