@@ -45,6 +45,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/contributesgraphextension")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Contributesgraphextension {
+    @Test
+    public void testAllFilesPresentInContributesgraphextension() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ContributingMultipleGraphsToSameParent.kt")
+    public void testContributingMultipleGraphsToSameParent() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributingMultipleGraphsToSameParent.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/cycles")
   @TestDataPath("$PROJECT_ROOT")
   public class Cycles {
@@ -180,9 +196,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("CapitalizedProvides.kt")
+    public void testCapitalizedProvides() {
+      runTest("compiler-tests/src/test/data/box/provides/CapitalizedProvides.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleFunctionProvider.kt")
     public void testSimpleFunctionProvider() {
       runTest("compiler-tests/src/test/data/box/provides/SimpleFunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("TransitiveSuccessorScope.kt")
+    public void testTransitiveSuccessorScope() {
+      runTest("compiler-tests/src/test/data/box/provides/TransitiveSuccessorScope.kt");
     }
   }
 }

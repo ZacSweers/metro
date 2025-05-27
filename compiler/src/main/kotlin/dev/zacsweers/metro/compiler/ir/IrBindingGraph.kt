@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -24,6 +25,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
+  private val node: DependencyGraphNode,
   newBindingStack: () -> IrBindingStack,
 ) {
 
@@ -38,12 +40,8 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBinding = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
-      onError = { message, stack ->
-        val location = stack.lastEntryOrGraph.locationOrNull()
-        metroContext.reportError(message, location)
-        exitProcessing()
-      },
+      computeBindings = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
+      onError = ::onError,
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
     )
 
@@ -52,7 +50,7 @@ internal class IrBindingGraph(
   private val injectors = mutableMapOf<IrTypeKey, IrBindingStack.Entry>()
 
   // Thin immutable view over the internal bindings
-  fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.snapshot
+  fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.bindings
 
   fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     accessors[key] = entry
@@ -165,7 +163,9 @@ internal class IrBindingGraph(
 
   fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
     val (sortedKeys, deferredTypes) =
-      parentTracer.traceNested("seal graph") { tracer -> realGraph.seal(accessors, tracer) }
+      parentTracer.traceNested("seal graph") { tracer ->
+        realGraph.seal(accessors, tracer, validateBinding = ::checkScope)
+      }
 
     metroContext.writeDiagnostic("validatedKeys-${parentTracer.tag}.txt") {
       buildString { sortedKeys.joinTo(this, separator = "\n") { it.render(short = false) } }
@@ -176,7 +176,7 @@ internal class IrBindingGraph(
 
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
     parentTracer.traceNested("check for absent bindings") {
-      check(realGraph.snapshot.values.none { it is Binding.Absent }) {
+      check(realGraph.bindings.values.none { it is Binding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
@@ -184,7 +184,7 @@ internal class IrBindingGraph(
   }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
-    val multibindings = realGraph.snapshot.values.filterIsInstance<Binding.Multibinding>()
+    val multibindings = realGraph.bindings.values.filterIsInstance<Binding.Multibinding>()
     val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
@@ -307,7 +307,7 @@ internal class IrBindingGraph(
     }
 
     // Little more involved, iterate the bindings for ones with the same type
-    realGraph.snapshot.forEach { (bindingKey, binding) ->
+    realGraph.bindings.forEach { (bindingKey, binding) ->
       when {
         key.qualifier == null && bindingKey.type == key.type -> {
           similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Different qualifier"))
@@ -344,19 +344,153 @@ internal class IrBindingGraph(
 
   // TODO iterate on this more!
   internal fun dumpGraph(name: String, short: Boolean): String {
-    if (realGraph.snapshot.isEmpty()) return "Empty binding graph"
+    if (realGraph.bindings.isEmpty()) return "Empty binding graph"
 
     return buildString {
       append("Binding Graph: ")
       appendLine(name)
       // Sort by type key for consistent output
-      realGraph.snapshot.entries
+      realGraph.bindings.entries
         .sortedBy { it.key.toString() }
         .forEach { (_, binding) ->
           appendLine("─".repeat(50))
           appendBinding(binding, short, isNested = false)
         }
     }
+  }
+
+  private fun onError(message: String, stack: IrBindingStack): Nothing {
+    val location = stack.lastEntryOrGraph.locationOrNull()
+    metroContext.reportError(message, location)
+    exitProcessing()
+  }
+
+  // Check scoping compatibility
+  // TODO FIR error?
+  private fun checkScope(
+    binding: Binding,
+    stack: IrBindingStack,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+  ) {
+    val bindingScope = binding.scope
+    if (bindingScope != null) {
+      if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
+        val isUnscoped = node.scopes.isEmpty()
+        // Error if there are mismatched scopes
+        val declarationToReport = node.sourceGraph
+        val backTrace = buildRouteToRoot(binding.typeKey, roots, adjacency)
+        for (entry in backTrace) {
+          stack.push(entry)
+        }
+        stack.push(
+          IrBindingStack.Entry.simpleTypeRef(
+            binding.contextualTypeKey,
+            usage = "(scoped to '$bindingScope')",
+          )
+        )
+        val message = buildString {
+          append("[Metro/IncompatiblyScopedBindings] ")
+          append(declarationToReport.kotlinFqName)
+          if (isUnscoped) {
+            // Unscoped graph but scoped binding
+            append(" (unscoped) may not reference scoped bindings:")
+          } else {
+            // Scope mismatch
+            append(
+              " (scopes ${node.scopes.joinToString { "'$it'" }}) may not reference bindings from different scopes:"
+            )
+          }
+          appendLine()
+          appendBindingStack(stack, short = false)
+          if (!isUnscoped && binding is Binding.ConstructorInjected) {
+            val matchingParent =
+              node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
+            if (matchingParent != null) {
+              appendLine()
+              appendLine()
+              val shortTypeKey = binding.typeKey.render(short = true)
+              appendLine(
+                """
+                  (Hint)
+                  It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
+                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`).
+                  See https://github.com/ZacSweers/metro/issues/377 for more details.
+                """
+                  .trimIndent()
+              )
+            }
+          }
+        }
+        with(metroContext) { declarationToReport.reportError(message) }
+      }
+    }
+  }
+
+  /**
+   * Builds a route from this binding back to one of the root bindings. Useful for error messaging
+   * to show a trace back to an entry point.
+   */
+  private fun buildRouteToRoot(
+    key: IrTypeKey,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+  ): List<IrBindingStack.Entry> {
+    // Build who depends on what
+    val dependents = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
+    for ((key, deps) in adjacency) {
+      for (dep in deps) {
+        dependents.getOrPut(dep) { mutableSetOf() }.add(key)
+      }
+    }
+
+    // Walk backwards from this binding to find a root
+    val visited = mutableSetOf<IrTypeKey>()
+
+    fun walkToRoot(current: IrTypeKey, path: List<IrTypeKey>): List<IrTypeKey>? {
+      if (current in visited) return null // Cycle
+
+      // Is this a root?
+      if (roots.any { it.key.typeKey == current }) {
+        return path + current
+      }
+
+      visited.add(current)
+
+      // Try walking through each dependent
+      for (dependent in dependents[current].orEmpty()) {
+        walkToRoot(dependent, path + current)?.let {
+          return it
+        }
+      }
+
+      visited.remove(current)
+      return null
+    }
+
+    val path = walkToRoot(key, emptyList()) ?: return emptyList()
+
+    // Convert to stack entries - just create a simple stack and build it up
+    val result = mutableListOf<IrBindingStack.Entry>()
+
+    for (i in path.indices.reversed()) {
+      val typeKey = path[i]
+
+      if (i == path.lastIndex) {
+        // This is the root
+        val rootEntry = roots.entries.first { it.key.typeKey == typeKey }.value
+        result.add(0, rootEntry)
+      } else {
+        // Create an entry for this step
+        val callingBinding = realGraph.bindings.getValue(path[i + 1])
+        val contextKey = callingBinding.dependencies.first { it.typeKey == typeKey }
+        val entry = bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+        result.add(0, entry)
+      }
+    }
+
+    // Reverse the route as these will push onto the top of the stack
+    return result.asReversed()
   }
 
   private fun Appendable.appendBinding(binding: Binding, short: Boolean, isNested: Boolean) {

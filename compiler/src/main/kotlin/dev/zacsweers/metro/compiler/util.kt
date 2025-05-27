@@ -158,3 +158,6 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
   }
   return 0
 }
+
+internal fun String.suffixIfNot(suffix: String) =
+  if (this.endsWith(suffix)) this else "$this$suffix"

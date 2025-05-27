@@ -540,42 +540,48 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 }
 
 /** Creates an expected class binding for the given [contextKey] or returns null. */
-internal fun IrMetroContext.injectedClassBindingOrNull(contextKey: IrContextualTypeKey): Binding? {
+internal fun IrMetroContext.injectedClassBindingOrNull(
+  contextKey: IrContextualTypeKey
+): Set<Binding> {
   val key = contextKey.typeKey
   val irClass = key.type.rawType()
   val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
   if (irClass.isObject) {
     // TODO make these opt-in?
-    return ObjectClass(irClass, classAnnotations, key)
+    return setOf(ObjectClass(irClass, classAnnotations, key))
   }
 
   val injectableConstructor =
     irClass.findInjectableConstructor(onlyUsePrimaryConstructor = classAnnotations.isInject)
   return if (injectableConstructor != null) {
     val parameters = injectableConstructor.parameters(metroContext)
-    ConstructorInjected(
-      type = irClass,
-      injectedConstructor = injectableConstructor,
-      annotations = classAnnotations,
-      isAssisted = parameters.regularParameters.any { it.isAssisted },
-      typeKey = key,
-      parameters = parameters,
-    )
+    val classBinding =
+      ConstructorInjected(
+        type = irClass,
+        injectedConstructor = injectableConstructor,
+        annotations = classAnnotations,
+        isAssisted = parameters.regularParameters.any { it.isAssisted },
+        typeKey = key,
+        parameters = parameters,
+      )
+    return setOf(classBinding)
   } else if (classAnnotations.isAssistedFactory) {
     val function = irClass.singleAbstractFunction(metroContext)
     val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
-    Assisted(
-      type = irClass,
-      function = function,
-      annotations = classAnnotations,
-      typeKey = key,
-      parameters = function.parameters(metroContext),
-      target = targetContextualTypeKey,
+    setOf(
+      Assisted(
+        type = irClass,
+        function = function,
+        annotations = classAnnotations,
+        typeKey = key,
+        parameters = function.parameters(metroContext),
+        target = targetContextualTypeKey,
+      )
     )
   } else if (contextKey.hasDefault) {
-    Absent(key)
+    setOf(Absent(key))
   } else {
-    null
+    emptySet()
   }
 }

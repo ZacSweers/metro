@@ -20,7 +20,10 @@ abstract class MetroProject(private val debug: Boolean = false) : AbstractGradle
             if (debug) {
               withKotlin(
                 """
-                metro { debug.set(true) }
+                metro {
+                  debug.set(true)
+                  reportsDestination.set(layout.buildDirectory.dir("metro"))
+                }
                 """
                   .trimIndent()
               )

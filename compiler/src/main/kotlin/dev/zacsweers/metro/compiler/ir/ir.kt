@@ -608,19 +608,8 @@ internal fun IrExpression.doubleCheck(
     )
   }
 
-internal fun IrClass.allFunctions(pluginContext: IrPluginContext): Sequence<IrSimpleFunction> {
-  return sequence {
-    yieldAll(functions)
-    yieldAll(
-      getAllSuperTypes(pluginContext).mapNotNull(IrType::rawTypeOrNull).flatMap {
-        it.allFunctions(pluginContext)
-      }
-    )
-  }
-}
-
 internal fun IrClass.singleAbstractFunction(context: IrMetroContext): IrSimpleFunction {
-  return abstractFunctions(context).singleOrError {
+  return abstractFunctions().toList().singleOrError {
     buildString {
       append("Required a single abstract function for ")
       append(kotlinFqName)
@@ -643,29 +632,8 @@ internal fun IrSimpleFunction.isAbstractAndVisible(): Boolean {
     (visibility == DescriptorVisibilities.PUBLIC || visibility == DescriptorVisibilities.PROTECTED)
 }
 
-internal fun IrClass.abstractFunctions(context: IrMetroContext): List<IrSimpleFunction> {
-  return allFunctions(context.pluginContext)
-    // Don't exclude fake overrides as we want the final materialized one
-    // Merge inherited functions with matching signatures
-    .groupBy {
-      // Don't include the return type because overrides may have different ones
-      it.computeJvmDescriptorIsh(context, includeReturnType = false)
-    }
-    .mapValues { (_, functions) ->
-      val (abstract, implemented) = functions.partition { it.isAbstractAndVisible() }
-      if (abstract.isEmpty()) {
-        // All implemented, nothing to do
-        null
-      } else if (implemented.isNotEmpty()) {
-        // If there's one implemented one, it's not abstract anymore in our materialized type
-        null
-      } else {
-        // Only need one for the rest of this
-        abstract[0]
-      }
-    }
-    .values
-    .filterNotNull()
+internal fun IrClass.abstractFunctions(): Sequence<IrSimpleFunction> {
+  return functions.filter { it.isAbstractAndVisible() }
 }
 
 internal fun IrClass.implements(pluginContext: IrPluginContext, superType: ClassId): Boolean {

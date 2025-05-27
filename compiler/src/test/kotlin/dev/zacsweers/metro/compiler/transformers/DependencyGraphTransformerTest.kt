@@ -2914,4 +2914,36 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       )
     )
   }
+
+  @Test
+  fun `providers of lazy are not valid graph accessors`() {
+    compile(
+      source(
+        """
+          interface Accessors {
+            val intLazyProvider: Provider<Lazy<Int>>
+          }
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @DependencyGraph.Factory
+            interface Factory {
+              fun create(@Includes accessors: Accessors): ExampleGraph
+            }
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: Accessors.kt:7:3 Provider<Lazy<T>> accessors are not supported.
+        """
+          .trimIndent()
+      )
+    }
+  }
 }

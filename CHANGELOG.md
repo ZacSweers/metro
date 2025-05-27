@@ -5,8 +5,35 @@ Changelog
 --------------
 
 - **Enhancement**: Enable child graphs to depend on parent-scoped dependencies that are unused and not referenced in the parent scope. This involves generating hints for classes with scoped @Inject constructors and is gated on a new Metro option `enableInjectConstructorHints`.
+
+0.3.4
+-----
+
+_2025-05-27_
+
+- **Enhancement:** Use a simple numbered (but deterministic) naming for contributed graph classes to avoid long class names.
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts.
+- **Enhancement:** Move binding validation into graph validation step.
+- **Enhancement:** Avoid unnecessary BFS graph walk in provider field collection.
+- **Fix:** Fix provider field populating missing types that previously seen types dependent on.
+
+Special thanks to [@ChristianKatzmann](https://github.com/ChristianKatzmann) and [@madisp](https://github.com/madisp) for contributing to this release!
+
+0.3.3
+-----
+
+_2025-05-26_
+
+- **Enhancement:** Don't unnecessarily wrap `Provider` graph accessors.
+- **Enhancement:** Allow multiple contributed graphs to the same parent graph.
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
-- Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
+- **Fix:** Better handle generic assisted factory interfaces.
+- **Fix:** Use fully qualified names when generating hint files to avoid collisions.
+- **Fix:** Support provides functions with capitalized names.
+- **Fix:** Prohibit consuming `Provider<Lazy<...>>` graph accessors.
+- [internal] Migrate to new IR `parameters`/`arguments`/`typeArguments` compiler APIs.
+
+Special thanks to [@gabrielittner](https://github.com/gabrielittner) for contributing to this release!
 
 0.3.2
 -----

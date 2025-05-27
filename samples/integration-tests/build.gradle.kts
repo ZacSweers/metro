@@ -6,10 +6,24 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.android.library)
   id("dev.zacsweers.metro")
 }
 
+android {
+  namespace = "dev.zacsweers.metro.test.integration.android"
+
+  buildFeatures { viewBinding = true }
+
+  compileOptions {
+    val javaVersion = libs.versions.jvmTarget.get().let(JavaVersion::toVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+  }
+}
+
 kotlin {
+  androidTarget()
   jvm()
 
   js { browser() }
