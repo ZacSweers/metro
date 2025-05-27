@@ -1567,4 +1567,41 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     )
   }
+
+  @Test
+  fun `a graph extension can be contributed to a scope directly applied to its parent`() {
+    compile(
+      source(
+        """
+          sealed interface LoggedInScope
+          @Scope annotation class Singleton
+
+          @Inject
+          @Singleton
+          class Dependency
+
+          @Singleton
+          @DependencyGraph(isExtendable = true)
+          interface ExampleGraph {
+            val childDependency: Dependency
+          }
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val childDependency: Dependency
+
+              @ContributesGraphExtension.Factory(Singleton::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+          .trimIndent()
+      ),
+    ) {
+      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
+      assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
+    }
+  }
 }
