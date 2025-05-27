@@ -220,6 +220,7 @@ internal open class MutableBindingGraph<
         )
       }
 
+    _adjacency = fullAdjacency
     return result
   }
 
