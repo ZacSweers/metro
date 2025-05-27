@@ -87,14 +87,13 @@ internal class ContributionsFirGenerator(session: FirSession) :
       val contributionAnnotations =
         contributingClassSymbol.annotations
           .annotationsIn(session, session.classIds.allContributesAnnotations)
-          .ifEmpty {
-            // Fall back to direct scopes that apply to an @Inject constructor
+          .plus(
             if (session.metroFirBuiltIns.options.enableInjectConstructorHints) {
               contributingClassSymbol.annotations.scopeAnnotations(session).map { it.fir }
             } else {
               emptySequence()
             }
-          }
+          )
           .toList()
 
       val contributionNamesToScopeArgs = mutableMapOf<Name, FirGetClassCall?>()
@@ -263,7 +262,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
       }
     }
 
-    if (contributions.isEmpty() && session.metroFirBuiltIns.options.enableInjectConstructorHints) {
+    if (session.metroFirBuiltIns.options.enableInjectConstructorHints) {
       contributingSymbol.annotations.scopeAnnotations(session).toList().forEach { annotation ->
         contributions +=
           Contribution.ScopedInjectConstructor(contributingSymbol.classId, annotation.fir)
@@ -349,7 +348,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
       .filter { it.annotation.scopeArgument().scopeName(session) == scopeArg.scopeName(session) }
       .groupBy { it.callableName.asName() }
       .keys
-      .ifEmpty {
+      .plus(
         if (session.metroFirBuiltIns.options.enableInjectConstructorHints) {
           contributions
             .filterIsInstance<Contribution.ScopedInjectConstructor>()
@@ -361,7 +360,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
         } else {
           emptySet()
         }
-      }
+      )
   }
 
   // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
@@ -400,28 +399,29 @@ internal class ContributionsFirGenerator(session: FirSession) :
         .filter { it.annotation.scopeArgument()?.resolvedClassId() == scopeId }
         .map { contribution -> buildBindingProperty(owner, contribution) }
 
-    val shouldGenerateAccessorProp =
-      session.metroFirBuiltIns.options.enableInjectConstructorHints &&
-        (bindingProps.isNotEmpty() || contributions.hasScopedInject(scopeId))
-
-    return bindingProps +
-      if (shouldGenerateAccessorProp) {
-        listOf(buildUnusedBindingAccessorProperty(owner, origin.defaultType()))
+    val scopedAccessorProps =
+      if (session.metroFirBuiltIns.options.enableInjectConstructorHints) {
+        contributions
+          .filterIsInstance<Contribution.ScopedInjectConstructor>()
+          .filter { it.callableName == callableId.callableName.identifier }
+          .filter {
+            it.annotation.resolvedScopeClassId() == scopeId ||
+              it.annotation.toAnnotationClassId(session) == scopeId
+          }
+          .map { contribution ->
+            buildUnusedBindingAccessorProperty(owner, origin.defaultType(), contribution)
+          }
       } else {
         emptyList()
       }
-  }
 
-  private fun Set<Contribution>.hasScopedInject(scopeId: ClassId): Boolean {
-    return filterIsInstance<Contribution.ScopedInjectConstructor>().any {
-      it.annotation.resolvedScopeClassId() == scopeId ||
-        it.annotation.toAnnotationClassId(session) == scopeId
-    }
+    return bindingProps + scopedAccessorProps
   }
 
   private fun buildUnusedBindingAccessorProperty(
     owner: FirClassSymbol<*>,
     containingClassType: ConeClassLikeType,
+    contribution: Contribution.ScopedInjectConstructor,
   ): FirPropertySymbol {
     val suffix = buildString {
       containingClassType.classId
@@ -434,7 +434,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     return createMemberProperty(
         owner,
         Keys.MetroContributionCallableDeclaration,
-        "defaultAccessorFor$suffix".asName(),
+        "${contribution.callableName}For$suffix".asName(),
         returnType = containingClassType,
         hasBackingField = false,
       ) {
