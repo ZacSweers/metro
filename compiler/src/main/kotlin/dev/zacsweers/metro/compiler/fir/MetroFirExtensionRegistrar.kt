@@ -16,6 +16,10 @@ import dev.zacsweers.metro.compiler.fir.generators.LoggingFirDeclarationGenerati
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactorySupertypeGenerator
+import kotlin.io.path.appendText
+import kotlin.io.path.createFile
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.deleteIfExists
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
@@ -54,7 +58,28 @@ public class MetroFirExtensionRegistrar(
 
   private fun loggerFor(type: MetroLogger.Type, tag: String): MetroLogger {
     return if (type in options.enabledLoggers) {
-      MetroLogger(type, System.out::println, tag)
+      val reportsDir = options.reportsDestination
+      val output: (String) -> Unit =
+        if (reportsDir != null) {
+          val outputFile =
+            reportsDir.resolve("fir-${type.name.lowercase()}-$tag.txt").apply {
+              deleteIfExists()
+              createParentDirectories()
+              createFile()
+            }
+          val lambda: (String) -> Unit = { text: String ->
+            if (options.debug) {
+              println(text)
+            }
+            outputFile.appendText("\n$text")
+          }
+          lambda
+        } else if (options.debug) {
+          System.out::println
+        } else {
+          return MetroLogger.NONE
+        }
+      MetroLogger(type, output, tag)
     } else {
       MetroLogger.NONE
     }
