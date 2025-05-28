@@ -33,6 +33,7 @@ import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -221,6 +222,9 @@ internal class ContributionsFirGenerator(session: FirSession) :
       ) {
         // annoyingly not implicit from the class kind
         modality = Modality.ABSTRACT
+        // Explicitly copy visibility. Possibly redundant but we want IC to know if, say, the parent
+        // type changed and thus this one too
+        visibility = owner.visibility
         for (contribution in contributions) {
           if (contribution is Contribution.ContributesTo) {
             superType(contribution.origin.defaultType(emptyList()))
