@@ -444,12 +444,13 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
-  val enabledLoggers: Set<MetroLogger.Type> = if (debug) {
-    // Debug enables _all_
-    MetroLogger.Type.entries.filterNot { it == MetroLogger.Type.None }.toSet()
-  } else {
-    MetroOption.LOGGING.raw.defaultValue.expectAs()
-  },
+  val enabledLoggers: Set<MetroLogger.Type> =
+    if (debug) {
+      // Debug enables _all_
+      MetroLogger.Type.entries.filterNot { it == MetroLogger.Type.None }.toSet()
+    } else {
+      MetroOption.LOGGING.raw.defaultValue.expectAs()
+    },
   val enableDaggerRuntimeInterop: Boolean =
     MetroOption.ENABLE_DAGGER_RUNTIME_INTEROP.raw.defaultValue.expectAs(),
   // Intrinsics
