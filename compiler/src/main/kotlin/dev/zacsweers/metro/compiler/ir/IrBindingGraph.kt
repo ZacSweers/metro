@@ -590,23 +590,25 @@ internal class ClassBindingLookup(
         // We don't actually call this function but it stores information about qualifier/scope
         // annotations, so reference it here so IC triggers
         trackFunctionCall(sourceGraph, classFactory.function)
-        bindings += Binding.ConstructorInjected(
-          type = irClass,
-          classFactory = classFactory,
-          annotations = classAnnotations,
-          typeKey = key,
-        )
+        bindings +=
+          Binding.ConstructorInjected(
+            type = irClass,
+            classFactory = classFactory,
+            annotations = classAnnotations,
+            typeKey = key,
+          )
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction(metroContext)
         val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
-        bindings += Binding.Assisted(
-          type = irClass,
-          function = function,
-          annotations = classAnnotations,
-          typeKey = key,
-          parameters = function.parameters(metroContext),
-          target = targetContextualTypeKey,
-        )
+        bindings +=
+          Binding.Assisted(
+            type = irClass,
+            function = function,
+            annotations = classAnnotations,
+            typeKey = key,
+            parameters = function.parameters(metroContext),
+            target = targetContextualTypeKey,
+          )
       } else if (contextKey.hasDefault) {
         bindings += Binding.Absent(key)
       } else {
