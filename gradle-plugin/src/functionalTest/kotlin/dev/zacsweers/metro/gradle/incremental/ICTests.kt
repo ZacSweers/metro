@@ -807,4 +807,57 @@ class ICTests : BaseIncrementalCompilationTest() {
       assertThat(int).isEqualTo(0)
     }
   }
+
+  @Ignore("Not working yet")
+  @Test
+  fun classVisibilityChangeDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(exampleGraph, contributedClass)
+
+        private val exampleGraph =
+          source(
+            """
+          interface ContributedInterface
+
+          @DependencyGraph(Unit::class)
+          interface ExampleGraph
+          """
+              .trimIndent()
+          )
+
+        val contributedClass =
+          source(
+            """
+          @Inject
+          @ContributesBinding(Unit::class)
+          class ContributedInterfaceImpl : ContributedInterface
+          """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.contributedClass,
+      """
+      @Inject
+      @ContributesBinding(Unit::class)
+      internal class ContributedInterfaceImpl : ContributedInterface
+      """
+        .trimIndent(),
+    )
+
+    // Second build should fail correctly on class visibility
+    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+
+    // Verify that the build failed with the expected error message
+    assertThat(secondBuildResult.output)
+      .contains(
+        "ContributedInterface.kt:9:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterfaceImpl' is internal but graph declaration 'test.ExampleGraph' is public."
+      )
+  }
 }
