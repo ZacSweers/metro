@@ -8,6 +8,7 @@ import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
+import dev.zacsweers.metro.compiler.assertNoWarningsOrErrors
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.companionObjectInstance
@@ -1197,6 +1198,29 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       """
           .trimIndent()
       )
+    }
+  }
+
+  @Test
+  fun `base graph factory allows specifying multiple generic types`() {
+    compile(
+      source(
+        """
+            interface BaseFactory<T, R> {
+              fun create(@Provides value: T): R
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              @DependencyGraph.Factory
+              interface Factory : BaseFactory<Int, ExampleGraph>
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.OK,
+    ) {
+      assertNoWarningsOrErrors()
     }
   }
 
