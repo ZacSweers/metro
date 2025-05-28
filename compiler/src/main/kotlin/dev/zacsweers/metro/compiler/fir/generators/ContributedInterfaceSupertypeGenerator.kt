@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
+import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.singleOrError
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -91,8 +93,26 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           }
           .filterIsInstance<FirRegularClassSymbol>()
           .toList()
+      val scopedInjectClasses =
+        if (session.metroFirBuiltIns.options.enableInjectConstructorHints) {
+          allSessions
+            .flatMap {
+              it.predicateBasedProvider.getSymbolsByPredicate(
+                session.predicates.injectAnnotationPredicate
+              )
+            }
+            .filterIsInstance<FirRegularClassSymbol>()
+            .filter { it.annotations.scopeAnnotations(session).toList().isNotEmpty() }
+            .toList()
+        } else {
+          emptyList()
+        }
 
-      getScopedContributions(contributingClasses, scopeClassId, typeResolver)
+      getScopedContributions(
+        contributingClasses.plus(scopedInjectClasses).distinct(),
+        scopeClassId,
+        typeResolver,
+      )
     }
 
   private val generatedScopesToContributions: FirCache<ClassId, Set<ClassId>, TypeResolveService> =
@@ -175,6 +195,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         contributesAnnotationPredicate,
         contributesGraphExtensionPredicate,
         qualifiersPredicate,
+        injectAnnotationPredicate,
+        scopesPredicate,
       )
     }
   }
@@ -190,6 +212,11 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       buildSet {
           graphAnnotation.resolvedScopeClassId(typeResolver)?.let(::add)
           graphAnnotation.resolvedAdditionalScopesClassIds(typeResolver).let(::addAll)
+          // Scopes may be applied as direct annotations to the graph
+          classLikeDeclaration.annotations
+            .scopeAnnotations(session)
+            .mapNotNull { it.fir.toAnnotationClassId(session) }
+            .let(::addAll)
         }
         .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 

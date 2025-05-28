@@ -82,6 +82,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(lazyOption("generate-hint-properties", extension.generateHintProperties))
+        add(lazyOption("enable-inject-constructor-hints", extension.enableInjectConstructorHints))
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
