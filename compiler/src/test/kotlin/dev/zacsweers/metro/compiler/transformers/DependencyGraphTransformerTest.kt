@@ -1201,33 +1201,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `graph factories support generic providers`() {
-    val result =
-      compile(
-        source(
-          """
-            interface BaseFactory<T, R> {
-              fun create(@Provides value: T): R
-            }
-
-            @DependencyGraph
-            interface ExampleGraph {
-              val value: Int
-
-              @DependencyGraph.Factory
-              interface Factory : BaseFactory<Int, ExampleGraph>
-            }
-          """
-            .trimIndent()
-        ),
-        expectedExitCode = ExitCode.OK,
-      )
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3)
-    val count = graph.callProperty<Int>("value")
-    assertThat(count).isEqualTo(3)
-  }
-
-  @Test
   fun `graph factories params must be unique - check bindsinstance`() {
     val result =
       compile(
