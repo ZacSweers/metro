@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.callableDeclarations
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedInject
@@ -409,14 +410,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             Keys.InjectConstructorFactoryClassDeclaration,
             classKind = classKind,
           ) {
-            // TODO what about backward-referencing type params?
-            injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
-              typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                if (typeParameter.isBound) {
-                  typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                }
-              }
-            }
+            copyTypeParametersFrom(injectedClass.classSymbol, session)
 
             if (!injectedClass.isAssisted) {
               superType { typeParameterRefs ->
@@ -435,14 +429,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
         val injectedClass = membersInjectorClassIdsToInjectedClass[classId] ?: return null
 
         createNestedClass(owner, name.capitalizeUS(), Keys.MembersInjectorClassDeclaration) {
-            // TODO what about backward-referencing type params?
-            injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
-              typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                if (typeParameter.isBound) {
-                  typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                }
-              }
-            }
+            copyTypeParametersFrom(injectedClass.classSymbol, session)
 
             superType { typeParameterRefs ->
               Symbols.ClassIds.MembersInjector.constructClassLikeType(
@@ -737,13 +724,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                 returnType = session.builtinTypes.unitType.coneType,
               ) {
                 // Add any type args if necessary
-                injectedClass.classSymbol.typeParameterSymbols.forEach { typeParameter ->
-                  typeParameter(typeParameter.name, typeParameter.variance, key = Keys.Default) {
-                    if (typeParameter.isBound) {
-                      typeParameter.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                    }
-                  }
-                }
+                copyTypeParametersFrom(injectedClass.classSymbol, session)
 
                 // Add instance param
                 valueParameter(

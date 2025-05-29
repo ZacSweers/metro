@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.abstractFunctions
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
@@ -244,13 +245,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
         log("Generating graph class")
         createNestedClass(owner, name, Keys.MetroGraphDeclaration) {
             superType(owner::constructType)
-            for (typeParam in owner.typeParameterSymbols) {
-              typeParameter(typeParam.name, variance = typeParam.variance) {
-                for (bound in typeParam.resolvedBounds) {
-                  bound(bound.coneType)
-                }
-              }
-            }
+            copyTypeParametersFrom(owner, session)
           }
           .apply { markAsDeprecatedHidden(session) }
           .symbol
