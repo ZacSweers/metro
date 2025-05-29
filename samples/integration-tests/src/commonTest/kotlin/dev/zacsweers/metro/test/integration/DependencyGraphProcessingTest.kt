@@ -1189,8 +1189,7 @@ class DependencyGraphProcessingTest {
     assertNotNull(graph.manager)
   }
 
-  @Inject
-  class LocationAvailabilityManager<F> where F : CharSequence
+  @Inject class LocationAvailabilityManager<F> where F : CharSequence
 
   @DependencyGraph
   interface WhereClausesGraph {
