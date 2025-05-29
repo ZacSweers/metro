@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.abstractFunctions
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.containingFunctionSymbol
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
@@ -21,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
@@ -36,12 +38,21 @@ import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.ConeStarProjection
+import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.withArguments
 import org.jetbrains.kotlin.name.CallableId
@@ -339,9 +350,16 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                   name = valueParameterSymbol.name,
                   key = Keys.RegularParameter,
                   typeProvider = {
-                    valueParameterSymbol.resolvedReturnType.withArguments(
-                      it.mapToArray(FirTypeParameterRef::toConeType)
-                    )
+                    if (valueParameterSymbol.resolvedReturnType is ConeTypeParameterType) {
+                      valueParameterSymbol.resolveReturnTypeFrom(
+                        typeOwner = creator.classSymbol,
+                        session = session
+                      )
+                    } else {
+                      valueParameterSymbol.resolvedReturnType.withArguments(
+                        it.mapToArray(FirTypeParameterRef::toConeType)
+                      )
+                    }
                   },
                 )
               }
@@ -403,9 +421,19 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 name = parameter.name,
                 key = Keys.RegularParameter,
                 typeProvider = {
-                  parameter.resolvedReturnType.withArguments(
-                    it.mapToArray(FirTypeParameterRef::toConeType)
-                  )
+                  if (parameter.resolvedReturnType is ConeTypeParameterType) {
+                    val creator =
+                      graphObject(context.owner.requireContainingClassSymbol())
+                        ?.findCreator(session, "generateConstructors for ${context.owner.classId}", ::log)
+                    parameter.resolveReturnTypeFrom(
+                      typeOwner = creator?.classSymbol!!,
+                      session = session
+                    )
+                  } else {
+                    parameter.resolvedReturnType.withArguments(
+                      it.mapToArray(FirTypeParameterRef::toConeType)
+                    )
+                  }
                 },
               )
             }
@@ -547,4 +575,39 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       }
     }
   }
+}
+
+private fun FirValueParameterSymbol.resolveReturnTypeFrom(
+  typeOwner: FirClassSymbol<*>,
+  session: FirSession
+): ConeKotlinType {
+  val containingClassLookupTag = containingFunctionSymbol?.containingClassLookupTag()
+    ?: error("Could not get containing class lookup tag for SAM parameter: $name")
+
+  val originalSamFunctionOwnerSymbol = containingClassLookupTag.toSymbol(session)
+    ?: error("Could not resolve containing class symbol for SAM parameter: $name from tag $containingClassLookupTag")
+
+  val originalSamFunctionOwner = originalSamFunctionOwnerSymbol as? FirRegularClassSymbol
+    ?: error("Containing class for SAM parameter $name is not a FirRegularClassSymbol.")
+
+  // Find the specific superType reference from creator to originalSamFunctionOwner
+  val superTypeRefToSamOwner = typeOwner.resolvedSuperTypes
+    .find { superType ->
+      (superType as? ConeClassLikeType)?.lookupTag == originalSamFunctionOwner.toLookupTag()
+    }
+    as? ConeClassLikeType
+    ?: error("Could not find supertype reference from ${typeOwner.classId} to ${originalSamFunctionOwner.classId}")
+
+  val substitutionMap = originalSamFunctionOwner.typeParameterSymbols
+    .zip(superTypeRefToSamOwner.typeArguments)
+    .associate { (typeParamSymbol, typeProjection) ->
+      val actualType = when (typeProjection) {
+        is ConeKotlinTypeProjection -> typeProjection.type
+        is ConeStarProjection -> session.builtinTypes.nullableAnyType.coneType
+      }
+      typeParamSymbol to actualType
+    }
+
+  val substitutor = substitutorByMap(substitutionMap, session)
+  return substitutor.substituteOrSelf(resolvedReturnType)
 }
