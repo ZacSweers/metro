@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -138,9 +139,9 @@ internal fun generateMetadataVisibleConstructorFunction(
         returnType = targetConstructor.returnType
       }
       .apply {
+        val sourceClass = factoryClass.parentAsClass
         val scopeAndQualifierAnnotations = buildList {
-          val classMetroAnnotations =
-            factoryClass.parentAsClass.metroAnnotations(context.symbols.classIds)
+          val classMetroAnnotations = sourceClass.metroAnnotations(context.symbols.classIds)
           classMetroAnnotations.scope?.ir?.let(::add)
           classMetroAnnotations.qualifier?.ir?.let(::add)
         }
@@ -151,6 +152,7 @@ internal fun generateMetadataVisibleConstructorFunction(
             }
           copyAnnotationsFrom(container)
         }
+        copyTypeParametersFrom(sourceClass)
         copyParametersFrom(targetConstructor)
         // The function's signature already matches the target constructor's signature, all we need
         // this for
