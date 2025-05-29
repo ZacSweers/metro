@@ -1192,8 +1192,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: BaseFactory1.kt:7:7 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
-        e: BaseFactory1.kt:11:7 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
+        e: BaseFactory1.kt:17:13 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
       """
           .trimIndent()
       )
