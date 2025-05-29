@@ -6,6 +6,7 @@ Changelog
 
 - **Fix:** Support type parameters with `where` bounds.
 - **Fix:** Support injected class type parameters with any bounds.
+- **Fix:** Support generic graph factory interfaces.
 - **Fix:** In the presence of multiple contributing annotations to the same scope, ensure only hint function/file is generated.
 
 0.3.4
