@@ -346,7 +346,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 log("Generating SAM param ${valueParameterSymbol.name}")
                 val paramType =
                   if (valueParameterSymbol.resolvedReturnType is ConeTypeParameterType) {
-                    valueParameterSymbol.resolveReturnTypeFrom(
+                    valueParameterSymbol.materializeTypeParameterType(
                       typeOwner = creator.classSymbol,
                       session = session,
                     )
@@ -422,7 +422,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                         "generateConstructors for ${context.owner.classId}",
                         ::log,
                       )
-                  parameter.resolveReturnTypeFrom(
+                  parameter.materializeTypeParameterType(
                     typeOwner = creator?.classSymbol,
                     session = session,
                   )
@@ -571,7 +571,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
   }
 }
 
-private fun FirValueParameterSymbol.resolveReturnTypeFrom(
+private fun FirValueParameterSymbol.materializeTypeParameterType(
   typeOwner: FirClassSymbol<*>?,
   session: FirSession,
 ): ConeKotlinType {
