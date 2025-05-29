@@ -353,7 +353,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                     if (valueParameterSymbol.resolvedReturnType is ConeTypeParameterType) {
                       valueParameterSymbol.resolveReturnTypeFrom(
                         typeOwner = creator.classSymbol,
-                        session = session
+                        session = session,
                       )
                     } else {
                       valueParameterSymbol.resolvedReturnType.withArguments(
@@ -424,10 +424,14 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                   if (parameter.resolvedReturnType is ConeTypeParameterType) {
                     val creator =
                       graphObject(context.owner.requireContainingClassSymbol())
-                        ?.findCreator(session, "generateConstructors for ${context.owner.classId}", ::log)
+                        ?.findCreator(
+                          session,
+                          "generateConstructors for ${context.owner.classId}",
+                          ::log,
+                        )
                     parameter.resolveReturnTypeFrom(
                       typeOwner = creator?.classSymbol!!,
-                      session = session
+                      session = session,
                     )
                   } else {
                     parameter.resolvedReturnType.withArguments(
@@ -579,34 +583,42 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
 
 private fun FirValueParameterSymbol.resolveReturnTypeFrom(
   typeOwner: FirClassSymbol<*>,
-  session: FirSession
+  session: FirSession,
 ): ConeKotlinType {
-  val containingClassLookupTag = containingFunctionSymbol?.containingClassLookupTag()
-    ?: error("Could not get containing class lookup tag for SAM parameter: $name")
+  val containingClassLookupTag =
+    containingFunctionSymbol?.containingClassLookupTag()
+      ?: error("Could not get containing class lookup tag for SAM parameter: $name")
 
-  val originalSamFunctionOwnerSymbol = containingClassLookupTag.toSymbol(session)
-    ?: error("Could not resolve containing class symbol for SAM parameter: $name from tag $containingClassLookupTag")
+  val originalSamFunctionOwnerSymbol =
+    containingClassLookupTag.toSymbol(session)
+      ?: error(
+        "Could not resolve containing class symbol for SAM parameter: $name from tag $containingClassLookupTag"
+      )
 
-  val originalSamFunctionOwner = originalSamFunctionOwnerSymbol as? FirRegularClassSymbol
-    ?: error("Containing class for SAM parameter $name is not a FirRegularClassSymbol.")
+  val originalSamFunctionOwner =
+    originalSamFunctionOwnerSymbol as? FirRegularClassSymbol
+      ?: error("Containing class for SAM parameter $name is not a FirRegularClassSymbol.")
 
   // Find the specific superType reference from creator to originalSamFunctionOwner
-  val superTypeRefToSamOwner = typeOwner.resolvedSuperTypes
-    .find { superType ->
+  val superTypeRefToSamOwner =
+    typeOwner.resolvedSuperTypes.find { superType ->
       (superType as? ConeClassLikeType)?.lookupTag == originalSamFunctionOwner.toLookupTag()
-    }
-    as? ConeClassLikeType
-    ?: error("Could not find supertype reference from ${typeOwner.classId} to ${originalSamFunctionOwner.classId}")
+    } as? ConeClassLikeType
+      ?: error(
+        "Could not find supertype reference from ${typeOwner.classId} to ${originalSamFunctionOwner.classId}"
+      )
 
-  val substitutionMap = originalSamFunctionOwner.typeParameterSymbols
-    .zip(superTypeRefToSamOwner.typeArguments)
-    .associate { (typeParamSymbol, typeProjection) ->
-      val actualType = when (typeProjection) {
-        is ConeKotlinTypeProjection -> typeProjection.type
-        is ConeStarProjection -> session.builtinTypes.nullableAnyType.coneType
+  val substitutionMap =
+    originalSamFunctionOwner.typeParameterSymbols
+      .zip(superTypeRefToSamOwner.typeArguments)
+      .associate { (typeParamSymbol, typeProjection) ->
+        val actualType =
+          when (typeProjection) {
+            is ConeKotlinTypeProjection -> typeProjection.type
+            is ConeStarProjection -> session.builtinTypes.nullableAnyType.coneType
+          }
+        typeParamSymbol to actualType
       }
-      typeParamSymbol to actualType
-    }
 
   val substitutor = substitutorByMap(substitutionMap, session)
   return substitutor.substituteOrSelf(resolvedReturnType)

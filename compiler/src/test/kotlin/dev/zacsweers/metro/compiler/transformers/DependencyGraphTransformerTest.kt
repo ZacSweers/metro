@@ -8,15 +8,12 @@ import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.assertDiagnostics
-import dev.zacsweers.metro.compiler.assertNoWarningsOrErrors
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.companionObjectInstance
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
-import dev.zacsweers.metro.compiler.generatedFactoryClass
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
-import dev.zacsweers.metro.compiler.invokeCreate
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
 import dev.zacsweers.metro.compiler.newInstanceStrict
@@ -1216,7 +1213,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
             @DependencyGraph
             interface ExampleGraph {
               val value: Int
-            
+
               @DependencyGraph.Factory
               interface Factory : BaseFactory<Int, ExampleGraph>
             }
