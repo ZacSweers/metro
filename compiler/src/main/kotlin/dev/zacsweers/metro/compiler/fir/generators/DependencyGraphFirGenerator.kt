@@ -430,7 +430,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                           ::log,
                         )
                     parameter.resolveReturnTypeFrom(
-                      typeOwner = creator?.classSymbol!!,
+                      typeOwner = creator?.classSymbol,
                       session = session,
                     )
                   } else {
@@ -582,22 +582,16 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
 }
 
 private fun FirValueParameterSymbol.resolveReturnTypeFrom(
-  typeOwner: FirClassSymbol<*>,
+  typeOwner: FirClassSymbol<*>?,
   session: FirSession,
 ): ConeKotlinType {
-  val containingClassLookupTag =
-    containingFunctionSymbol?.containingClassLookupTag()
-      ?: error("Could not get containing class lookup tag for SAM parameter: $name")
-
-  val originalSamFunctionOwnerSymbol =
-    containingClassLookupTag.toSymbol(session)
-      ?: error(
-        "Could not resolve containing class symbol for SAM parameter: $name from tag $containingClassLookupTag"
-      )
-
   val originalSamFunctionOwner =
-    originalSamFunctionOwnerSymbol as? FirRegularClassSymbol
-      ?: error("Containing class for SAM parameter $name is not a FirRegularClassSymbol.")
+    containingFunctionSymbol
+      ?.containingClassLookupTag()
+      ?.toSymbol(session) as? FirRegularClassSymbol
+  if (typeOwner == null || originalSamFunctionOwner == null) {
+    return resolvedReturnType
+  }
 
   // Find the specific superType reference from creator to originalSamFunctionOwner
   val superTypeRefToSamOwner =
