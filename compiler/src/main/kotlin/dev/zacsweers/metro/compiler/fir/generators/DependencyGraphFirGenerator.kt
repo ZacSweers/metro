@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
-import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
@@ -54,7 +53,6 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.constructType
-import org.jetbrains.kotlin.fir.types.withArguments
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
@@ -346,14 +344,15 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
               log("Generating graph SAM - ${samFunction?.callableId}")
               samFunction?.valueParameterSymbols?.forEach { valueParameterSymbol ->
                 log("Generating SAM param ${valueParameterSymbol.name}")
-                val paramType = if (valueParameterSymbol.resolvedReturnType is ConeTypeParameterType) {
-                  valueParameterSymbol.resolveReturnTypeFrom(
-                    typeOwner = creator.classSymbol,
-                    session = session,
-                  )
-                } else {
-                  valueParameterSymbol.resolvedReturnType
-                }
+                val paramType =
+                  if (valueParameterSymbol.resolvedReturnType is ConeTypeParameterType) {
+                    valueParameterSymbol.resolveReturnTypeFrom(
+                      typeOwner = creator.classSymbol,
+                      session = session,
+                    )
+                  } else {
+                    valueParameterSymbol.resolvedReturnType
+                  }
                 valueParameter(
                   name = valueParameterSymbol.name,
                   key = Keys.RegularParameter,
@@ -414,26 +413,23 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             log("Generating ${function.valueParameterSymbols.size} parameters?")
             for (parameter in function.valueParameterSymbols) {
               log("Generating parameter ${parameter.name}")
-              val paramType = if (parameter.resolvedReturnType is ConeTypeParameterType) {
-                val creator =
-                  graphObject(context.owner.requireContainingClassSymbol())
-                    ?.findCreator(
-                      session,
-                      "generateConstructors for ${context.owner.classId}",
-                      ::log,
-                    )
-                parameter.resolveReturnTypeFrom(
-                  typeOwner = creator?.classSymbol,
-                  session = session,
-                )
-              } else {
-                parameter.resolvedReturnType
-              }
-              valueParameter(
-                name = parameter.name,
-                key = Keys.RegularParameter,
-                type = paramType,
-              )
+              val paramType =
+                if (parameter.resolvedReturnType is ConeTypeParameterType) {
+                  val creator =
+                    graphObject(context.owner.requireContainingClassSymbol())
+                      ?.findCreator(
+                        session,
+                        "generateConstructors for ${context.owner.classId}",
+                        ::log,
+                      )
+                  parameter.resolveReturnTypeFrom(
+                    typeOwner = creator?.classSymbol,
+                    session = session,
+                  )
+                } else {
+                  parameter.resolvedReturnType
+                }
+              valueParameter(name = parameter.name, key = Keys.RegularParameter, type = paramType)
             }
           }
           .apply {
@@ -580,9 +576,8 @@ private fun FirValueParameterSymbol.resolveReturnTypeFrom(
   session: FirSession,
 ): ConeKotlinType {
   val originalSamFunctionOwner =
-    containingFunctionSymbol
-      ?.containingClassLookupTag()
-      ?.toSymbol(session) as? FirRegularClassSymbol
+    containingFunctionSymbol?.containingClassLookupTag()?.toSymbol(session)
+      as? FirRegularClassSymbol
   if (typeOwner == null || originalSamFunctionOwner == null) {
     return resolvedReturnType
   }
