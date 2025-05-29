@@ -346,21 +346,18 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
               log("Generating graph SAM - ${samFunction?.callableId}")
               samFunction?.valueParameterSymbols?.forEach { valueParameterSymbol ->
                 log("Generating SAM param ${valueParameterSymbol.name}")
+                val paramType = if (valueParameterSymbol.resolvedReturnType is ConeTypeParameterType) {
+                  valueParameterSymbol.resolveReturnTypeFrom(
+                    typeOwner = creator.classSymbol,
+                    session = session,
+                  )
+                } else {
+                  valueParameterSymbol.resolvedReturnType
+                }
                 valueParameter(
                   name = valueParameterSymbol.name,
                   key = Keys.RegularParameter,
-                  typeProvider = {
-                    if (valueParameterSymbol.resolvedReturnType is ConeTypeParameterType) {
-                      valueParameterSymbol.resolveReturnTypeFrom(
-                        typeOwner = creator.classSymbol,
-                        session = session,
-                      )
-                    } else {
-                      valueParameterSymbol.resolvedReturnType.withArguments(
-                        it.mapToArray(FirTypeParameterRef::toConeType)
-                      )
-                    }
-                  },
+                  type = paramType,
                 )
               }
             }
@@ -417,28 +414,25 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             log("Generating ${function.valueParameterSymbols.size} parameters?")
             for (parameter in function.valueParameterSymbols) {
               log("Generating parameter ${parameter.name}")
+              val paramType = if (parameter.resolvedReturnType is ConeTypeParameterType) {
+                val creator =
+                  graphObject(context.owner.requireContainingClassSymbol())
+                    ?.findCreator(
+                      session,
+                      "generateConstructors for ${context.owner.classId}",
+                      ::log,
+                    )
+                parameter.resolveReturnTypeFrom(
+                  typeOwner = creator?.classSymbol,
+                  session = session,
+                )
+              } else {
+                parameter.resolvedReturnType
+              }
               valueParameter(
                 name = parameter.name,
                 key = Keys.RegularParameter,
-                typeProvider = {
-                  if (parameter.resolvedReturnType is ConeTypeParameterType) {
-                    val creator =
-                      graphObject(context.owner.requireContainingClassSymbol())
-                        ?.findCreator(
-                          session,
-                          "generateConstructors for ${context.owner.classId}",
-                          ::log,
-                        )
-                    parameter.resolveReturnTypeFrom(
-                      typeOwner = creator?.classSymbol,
-                      session = session,
-                    )
-                  } else {
-                    parameter.resolvedReturnType.withArguments(
-                      it.mapToArray(FirTypeParameterRef::toConeType)
-                    )
-                  }
-                },
+                type = paramType,
               )
             }
           }
