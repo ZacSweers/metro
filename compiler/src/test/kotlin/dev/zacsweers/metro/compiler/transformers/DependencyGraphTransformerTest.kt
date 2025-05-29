@@ -14,7 +14,9 @@ import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.companionObjectInstance
 import dev.zacsweers.metro.compiler.createGraphViaFactory
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
+import dev.zacsweers.metro.compiler.generatedFactoryClass
 import dev.zacsweers.metro.compiler.generatedMetroGraphClass
+import dev.zacsweers.metro.compiler.invokeCreate
 import dev.zacsweers.metro.compiler.invokeInstanceMethod
 import dev.zacsweers.metro.compiler.invokeMain
 import dev.zacsweers.metro.compiler.newInstanceStrict
@@ -1203,25 +1205,29 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
   @Test
   fun `base graph factory allows specifying multiple generic types`() {
-    compile(
-      source(
-        """
+    val result =
+      compile(
+        source(
+          """
             interface BaseFactory<T, R> {
               fun create(@Provides value: T): R
             }
 
             @DependencyGraph
             interface ExampleGraph {
+              val value: Int
+            
               @DependencyGraph.Factory
               interface Factory : BaseFactory<Int, ExampleGraph>
             }
           """
-          .trimIndent()
-      ),
-      expectedExitCode = ExitCode.OK,
-    ) {
-      assertNoWarningsOrErrors()
-    }
+            .trimIndent()
+        ),
+        expectedExitCode = ExitCode.OK,
+      )
+    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphViaFactory(3)
+    val count = graph.callProperty<Int>("value")
+    assertThat(count).isEqualTo(3)
   }
 
   @Test
