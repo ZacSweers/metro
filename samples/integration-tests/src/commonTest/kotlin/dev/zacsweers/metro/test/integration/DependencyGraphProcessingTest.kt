@@ -28,6 +28,7 @@ import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -1179,6 +1180,39 @@ class DependencyGraphProcessingTest {
         fun create(intValue: Int): ExampleClass
       }
     }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/312
+  @Test
+  fun `where clauses work`() {
+    val graph = createGraph<WhereClausesGraph>()
+    assertNotNull(graph.manager)
+  }
+
+  @Inject
+  class LocationAvailabilityManager<F> where F : CharSequence
+
+  @DependencyGraph
+  interface WhereClausesGraph {
+    val manager: LocationAvailabilityManager<String>
+
+    @Provides fun provideString(): String = "Hello"
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/498
+  @Test
+  fun `type parameter with bounds`() {
+    val graph = createGraph<TypeParameterBoundsGraph>()
+    assertNotNull(graph.example)
+  }
+
+  @Inject class ExampleWithBoundTypeParameter<T : Any>
+
+  @DependencyGraph
+  interface TypeParameterBoundsGraph {
+    val example: ExampleWithBoundTypeParameter<String>
+
+    @Provides fun provideString(): String = "Hello"
   }
 
   enum class Seasoning {
