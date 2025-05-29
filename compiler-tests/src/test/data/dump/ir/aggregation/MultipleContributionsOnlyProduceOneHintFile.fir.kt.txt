@@ -1,0 +1,151 @@
+// FILE: base1ImplAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Base1Impl) {
+  return error(message = "Never called")
+}
+
+// FILE: file0.kt
+
+interface Base1 {
+}
+
+interface Base2 {
+}
+
+interface Base3 {
+}
+
+// FILE: file1.kt
+
+@SingleIn(scope = AppScope::class)
+@ContributesIntoSet(scope = AppScope::class, binding = binding<Base3>())
+@ContributesIntoSet(scope = AppScope::class, binding = binding<Base2>())
+@ContributesBinding(scope = AppScope::class, binding = binding<Base1>())
+@Inject
+class Base1Impl : Base1, Base2, Base3 {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object $$MetroFactory : Factory<Base1Impl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<Base1Impl> {
+      return $$MetroFactory
+    }
+
+    fun newInstance(): Base1Impl {
+      return Base1Impl()
+    }
+
+    override operator fun invoke(): Base1Impl {
+      return $$MetroFactory.newInstance()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface $$MetroContribution {
+    @Binds
+    abstract val Base1Impl.bindAsBase1: Base1
+      abstract get
+
+    @IntoSet
+    @Binds
+    abstract val Base1Impl.bindIntoSetAsBase2: Base2
+      abstract get
+
+    @IntoSet
+    @Binds
+    abstract val Base1Impl.bindIntoSetAsBase3: Base3
+      abstract get
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: file2.kt
+
+@DependencyGraph(scope = AppScope::class)
+interface ExampleGraph : $$MetroContribution {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : ExampleGraph {
+    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
+    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val base1ImplProvider: Provider<Base1Impl> = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = $$MetroFactory.create())
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    override val Base1Impl.bindAsBase1: Base1
+      override get(): Base1 {
+        return error(message = "Never called")
+      }
+
+    @IntoSet
+    @Binds
+    override val Base1Impl.bindIntoSetAsBase2: Base2
+      override get(): Base2 {
+        return error(message = "Never called")
+      }
+
+    @IntoSet
+    @Binds
+    override val Base1Impl.bindIntoSetAsBase3: Base3
+      override get(): Base3 {
+        return error(message = "Never called")
+      }
+
+    override val cacheHolders: Set<Base2>
+      override get(): Set<Base2> {
+        return setOf<Base2>(element = <this>.#base1ImplProvider.invoke())
+      }
+
+    override val composerPrefs: Base1
+      override get(): Base1 {
+        return <this>.#base1ImplProvider.invoke()
+      }
+
+    override val prewarms: Set<Base3>
+      override get(): Set<Base3> {
+        return setOf<Base3>(element = <this>.#base1ImplProvider.invoke())
+      }
+
+  }
+
+  abstract val cacheHolders: Set<Base2>
+    abstract get
+
+  abstract val composerPrefs: Base1
+    abstract get
+
+  abstract val prewarms: Set<Base3>
+    abstract get
+
+}

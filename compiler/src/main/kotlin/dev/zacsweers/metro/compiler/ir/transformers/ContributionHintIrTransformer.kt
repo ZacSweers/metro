@@ -61,7 +61,9 @@ internal class ContributionHintIrTransformer(
     if (!declaration.visibility.isPublicAPI) return
 
     val contributionScopes =
-      declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNull {
+      declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNullTo(
+        mutableSetOf()
+      ) {
         it.scopeOrNull()
       }
     for (contributionScope in contributionScopes) {

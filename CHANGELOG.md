@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Support type parameters with `where` bounds.
+- **Fix:** Support injected class type parameters with any bounds.
+- **Fix:** In the presence of multiple contributing annotations to the same scope, ensure only hint function/file is generated.
+
 0.3.4
 -----
 

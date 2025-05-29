@@ -19,6 +19,7 @@ public interface MetroLogger {
     None,
     FirSupertypeGeneration,
     FirDeclarationGeneration,
+    FirCheckers,
     GraphNodeConstruction,
     BindingGraphConstruction,
     CycleDetection,
