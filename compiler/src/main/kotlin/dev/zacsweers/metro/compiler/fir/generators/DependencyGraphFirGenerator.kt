@@ -578,18 +578,16 @@ private fun FirValueParameterSymbol.resolveReturnTypeFrom(
   val originalSamFunctionOwner =
     containingFunctionSymbol?.containingClassLookupTag()?.toSymbol(session)
       as? FirRegularClassSymbol
-  if (typeOwner == null || originalSamFunctionOwner == null) {
-    return resolvedReturnType
-  }
 
   // Find the specific superType reference from creator to originalSamFunctionOwner
   val superTypeRefToSamOwner =
-    typeOwner.resolvedSuperTypes.find { superType ->
-      (superType as? ConeClassLikeType)?.lookupTag == originalSamFunctionOwner.toLookupTag()
+    typeOwner?.resolvedSuperTypes?.find { superType ->
+      (superType as? ConeClassLikeType)?.lookupTag == originalSamFunctionOwner?.toLookupTag()
     } as? ConeClassLikeType
-      ?: error(
-        "Could not find supertype reference from ${typeOwner.classId} to ${originalSamFunctionOwner.classId}"
-      )
+
+  if (typeOwner == null || originalSamFunctionOwner == null || superTypeRefToSamOwner == null) {
+    return resolvedReturnType
+  }
 
   val substitutionMap =
     originalSamFunctionOwner.typeParameterSymbols
