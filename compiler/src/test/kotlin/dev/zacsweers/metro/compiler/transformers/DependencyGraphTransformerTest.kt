@@ -1201,7 +1201,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `base graph factory allows specifying multiple generic types`() {
+  fun `graph factories support generic providers`() {
     val result =
       compile(
         source(
