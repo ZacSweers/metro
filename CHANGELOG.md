@@ -8,6 +8,7 @@ Changelog
 - **Fix:** Support injected class type parameters with any bounds.
 - **Fix:** Support generic graph factory interfaces.
 - **Fix:** In the presence of multiple contributing annotations to the same scope, ensure only hint function/file is generated.
+- **Fix:** Improve shading to avoid packaging in stdlib and other dependency classes.
 
 0.3.4
 -----

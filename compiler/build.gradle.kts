@@ -61,6 +61,15 @@ val shadowJar =
         // or we'll get two artifacts that have the same classifier
         archiveClassifier.set("ignored")
       }
+      // TODO these are relocated, do we need to/can we exclude these?
+      //  exclude("META-INF/wire-runtime.kotlin_module")
+      //  exclude("META-INF/okio.kotlin_module")
+      dependencies {
+        exclude(dependency("org.jetbrains:.*"))
+        exclude(dependency("org.intellij:.*"))
+        exclude(dependency("org.jetbrains.kotlin:.*"))
+        exclude(dependency("dev.drewhamilton.poko:.*"))
+      }
       relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
       relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
       relocate(
@@ -71,6 +80,7 @@ val shadowJar =
         "com.jakewharton.crossword",
         "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
       )
+      relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
     }
   }
 
@@ -82,8 +92,8 @@ artifacts {
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
-  implementation(libs.picnic) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
-  shadow(libs.wire.runtime) { exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib") }
+  implementation(libs.picnic)
+  shadow(libs.wire.runtime)
 
   testImplementation(project(":runtime"))
   testImplementation(project(":interop-dagger"))
