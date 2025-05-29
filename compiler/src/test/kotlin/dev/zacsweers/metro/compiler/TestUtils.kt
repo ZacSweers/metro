@@ -422,7 +422,7 @@ fun Class<*>.createGraphWithNoArgs(): Any {
 fun Class<*>.createGraphViaFactory(vararg args: Any): Any {
   val factoryInstance = invokeGraphFactory()
   return factoryInstance.javaClass.declaredMethods
-    .first { it.name == Symbols.StringNames.CREATE }
+    .single { it.name == Symbols.StringNames.CREATE && Modifier.isFinal(it.modifiers) }
     .invoke(factoryInstance, *args)
 }
 
