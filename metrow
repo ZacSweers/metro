@@ -53,15 +53,15 @@ case "$1" in
 
    "format")
        echo "Applying formatting..."
-       ./gradlew spotlessApply
-       ./gradlew -p samples spotlessApply
+       ./gradlew spotlessApply --no-configuration-cache
+       ./gradlew -p samples spotlessApply --no-configuration-cache
        ;;
 
    "regen")
        echo "Applying formatting and API gen..."
        # Annoyingly, the apiDump task has some caching issues
-       ./gradlew spotlessApply apiDump kotlinUpgradeYarnLock --rerun-tasks --no-build-cache
-       ./gradlew -p samples spotlessApply kotlinUpgradeYarnLock
+       ./gradlew spotlessApply apiDump kotlinUpgradeYarnLock --rerun-tasks --no-build-cache --no-configuration-cache
+       ./gradlew -p samples spotlessApply kotlinUpgradeYarnLock --no-configuration-cache
        ;;
 
    *)

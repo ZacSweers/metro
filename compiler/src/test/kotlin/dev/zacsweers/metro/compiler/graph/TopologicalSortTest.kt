@@ -201,8 +201,8 @@ class TopologicalSortTest {
   fun verticesInsideComponentComeOutInNaturalOrder() {
     val full =
       mapOf(
-        "a" to setOf("b"), // deferrable
-        "b" to setOf("a"), // strict
+        "a" to listOf("b"), // deferrable
+        "b" to listOf("a"), // strict
       )
     val isDeferrable = { f: String, t: String -> f == "a" && t == "b" }
 

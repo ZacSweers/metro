@@ -10,7 +10,7 @@ class SccTest {
 
   @Test
   fun singleNodeNoEdges() {
-    val graph = mapOf<Int, Set<Int>>()
+    val graph = mapOf<Int, List<Int>>()
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(0, components.size)
@@ -19,7 +19,7 @@ class SccTest {
 
   @Test
   fun singleNodeSelfLoop() {
-    val graph = mapOf(1 to setOf(1))
+    val graph = mapOf(1 to listOf(1))
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(1, components.size)
@@ -29,7 +29,7 @@ class SccTest {
 
   @Test
   fun multipleDisconnectedNodes() {
-    val graph = mapOf(1 to emptySet<Int>(), 2 to emptySet(), 3 to emptySet())
+    val graph = mapOf(1 to emptyList<Int>(), 2 to emptyList(), 3 to emptyList())
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(3, components.size)
@@ -41,7 +41,7 @@ class SccTest {
 
   @Test
   fun simpleGraph() {
-    val graph = mapOf(1 to setOf(2), 2 to setOf(3), 3 to setOf(1))
+    val graph = mapOf(1 to listOf(2), 2 to listOf(3), 3 to listOf(1))
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(1, components.size)
@@ -55,12 +55,12 @@ class SccTest {
   fun multipleComponents() {
     val graph =
       mapOf(
-        1 to setOf(2),
-        2 to setOf(1),
-        3 to setOf(4),
-        4 to setOf(5),
-        5 to setOf(3),
-        6 to emptySet(),
+        1 to listOf(2),
+        2 to listOf(1),
+        3 to listOf(4),
+        4 to listOf(5),
+        5 to listOf(3),
+        6 to emptyList(),
       )
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
@@ -79,7 +79,7 @@ class SccTest {
 
   @Test
   fun graphWithMultipleSelfLoops() {
-    val graph = mapOf(1 to setOf(1), 2 to setOf(2), 3 to setOf(4), 4 to setOf(3))
+    val graph = mapOf(1 to listOf(1), 2 to listOf(2), 3 to listOf(4), 4 to listOf(3))
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(3, components.size)
@@ -95,7 +95,7 @@ class SccTest {
 
   @Test
   fun throwsOnInvalidGraph() {
-    val graph = mapOf(1 to setOf(2))
+    val graph = mapOf(1 to listOf(2))
 
     assertFailsWith<NoSuchElementException> {
       graph.computeStronglyConnectedComponents()

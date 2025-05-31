@@ -233,11 +233,12 @@ internal fun FirExtension.buildNewInstanceFunction(
 }
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
-  return collectAbstractFunctions(session)?.singleOrNull()
+  return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()
 }
 
 internal fun FirClassSymbol<*>.collectAbstractFunctions(
-  session: FirSession
+  session: FirSession,
+  exitOnAbstractProperties: Boolean = false,
 ): Collection<FirNamedFunctionSymbol>? {
   val scope =
     unsubstitutedScope(
@@ -246,6 +247,8 @@ internal fun FirClassSymbol<*>.collectAbstractFunctions(
       withForcedTypeCalculator = false,
       memberRequiredPhase = null,
     )
-  if (scope.collectAllProperties().any { it.isAbstract }) return null
+  if (exitOnAbstractProperties) {
+    if (scope.collectAllProperties().any { it.isAbstract }) return null
+  }
   return scope.collectAllFunctions().filter { it.isAbstract }
 }

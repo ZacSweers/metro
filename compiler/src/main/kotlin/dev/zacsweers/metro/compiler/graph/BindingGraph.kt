@@ -87,7 +87,7 @@ internal open class MutableBindingGraph<
         Binding,
         BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
-        adjacency: Map<TypeKey, Set<TypeKey>>,
+        adjacency: Map<TypeKey, List<TypeKey>>,
       ) -> Unit =
       { binding, stack, roots, adjacency -> /* noop */
       },
@@ -207,7 +207,7 @@ internal open class MutableBindingGraph<
 
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
-    fullAdjacency: Map<TypeKey, Set<TypeKey>>,
+    fullAdjacency: Map<TypeKey, List<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {
