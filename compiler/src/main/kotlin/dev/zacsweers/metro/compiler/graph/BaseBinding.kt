@@ -21,4 +21,6 @@ internal interface BaseBinding<
     get() = false
 
   fun renderLocationDiagnostic(): String
+
+  fun replaces(other: BaseBinding<*, *, *>): Boolean = false
 }
