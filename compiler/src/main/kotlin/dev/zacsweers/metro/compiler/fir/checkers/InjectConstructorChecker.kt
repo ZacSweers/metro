@@ -19,7 +19,9 @@ import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 
 internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common) {
-  override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirClass) {
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -28,7 +30,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       declaration.annotationsIn(session, classIds.injectAnnotations).toList()
 
     val injectedConstructor =
-      declaration.symbol.findInjectConstructor(session, context, reporter, checkClass = false) {
+      declaration.symbol.findInjectConstructor(session, checkClass = false) {
         return
       }
 
@@ -38,7 +40,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
       ?.let {
-        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR, context)
+        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR)
         return
       }
 
@@ -46,7 +48,6 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
       reporter.reportOn(
         injectedConstructor.source,
         FirMetroErrors.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
-        context,
       )
       return
     }
@@ -56,7 +57,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     }
 
     val constructorToValidate = injectedConstructor ?: declaration.primaryConstructorIfAny(session)
-    constructorToValidate?.validateVisibility(context, reporter, "Injected constructors") {
+    constructorToValidate?.validateVisibility("Injected constructors") {
       return
     }
   }

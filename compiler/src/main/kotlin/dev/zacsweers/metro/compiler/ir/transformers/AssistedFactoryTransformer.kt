@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -33,7 +34,6 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -108,7 +108,7 @@ internal class AssistedFactoryTransformer(
     val creatorFunction =
       implClass.functions
         .filter { it.modality == Modality.ABSTRACT }
-        .single { it.isFakeOverride && !it.isFakeOverriddenFromAny() }
+        .single { it.isFakeOverride && !it.isInheritedFromAny(pluginContext.irBuiltIns) }
         .let { function -> function.toAssistedFactoryFunction(this, function) }
 
     val returnType = creatorFunction.returnType

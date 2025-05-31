@@ -15,11 +15,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionC
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 
 internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
-  override fun check(
-    declaration: FirSimpleFunction,
-    context: CheckerContext,
-    reporter: DiagnosticReporter,
-  ) {
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirSimpleFunction) {
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -32,18 +29,27 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
         source,
         FUNCTION_INJECT_TYPE_PARAMETERS_ERROR,
         "Injected functions cannot be generic.",
-        context,
       )
     }
 
     // TODO eventually check context receivers too
-    declaration.symbol.receiverParameter?.let { param ->
+    declaration.symbol.receiverParameterSymbol?.let { param ->
       reporter.reportOn(
         param.source ?: source,
         FUNCTION_INJECT_ERROR,
         "Injected functions cannot have receiver parameters.",
-        context,
       )
+    }
+
+    val contextParams = declaration.symbol.contextParameterSymbols
+    if (contextParams.isNotEmpty()) {
+      for (param in contextParams) {
+        reporter.reportOn(
+          param.source ?: source,
+          FUNCTION_INJECT_ERROR,
+          "Injected functions cannot have context parameters.",
+        )
+      }
     }
 
     val scope = declaration.symbol.metroAnnotations(session).scope
@@ -53,7 +59,6 @@ internal object FunctionInjectionChecker : FirSimpleFunctionChecker(MppCheckerKi
         scope.fir.source ?: source,
         FUNCTION_INJECT_ERROR,
         "Injected functions are stateless and should not be scoped.",
-        context,
       )
     }
   }
