@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.ir.util.render
 internal class IrTypeKey(override val type: IrType, override val qualifier: IrAnnotation? = null) :
   BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
-  private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
+  private val cachedRender by unsafeLazy { render(short = true, includeQualifier = true) }
 
   override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey {
     return IrTypeKey(type, qualifier)
