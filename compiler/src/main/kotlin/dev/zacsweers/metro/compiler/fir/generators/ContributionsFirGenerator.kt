@@ -223,9 +223,6 @@ internal class ContributionsFirGenerator(session: FirSession) :
       ) {
         // annoyingly not implicit from the class kind
         modality = Modality.ABSTRACT
-        // Explicitly copy visibility. Possibly redundant but we want IC to know if, say, the parent
-        // type changed and thus this one too
-        visibility = owner.visibility
         for (contribution in contributions) {
           if (contribution is Contribution.ContributesTo) {
             superType(contribution.origin.defaultType(emptyList()))
