@@ -8,10 +8,7 @@ import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
-import org.jetbrains.kotlin.ir.types.typeOrNull
-import org.jetbrains.kotlin.ir.util.render
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 @Poko
@@ -28,7 +25,7 @@ internal class IrTypeKey(override val type: IrType, override val qualifier: IrAn
 
   override fun compareTo(other: IrTypeKey): Int {
     if (this == other) return 0
-    return COMPARATOR.compare(this, other)
+    return cachedRender.compareTo(other.cachedRender)
   }
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
@@ -38,34 +35,7 @@ internal class IrTypeKey(override val type: IrType, override val qualifier: IrAn
         append(" ")
       }
     }
-    val typeString =
-      if (short) {
-        type.renderShort()
-      } else {
-        type.render()
-      }
-    append(typeString)
-  }
-
-  private fun IrType.renderShort(): String = buildString {
-    append(simpleName)
-    if (isMarkedNullable()) {
-      append("?")
-    }
-    if (this@renderShort is IrSimpleType) {
-      arguments
-        .takeUnless { it.isEmpty() }
-        ?.joinToString(", ", prefix = "<", postfix = ">") {
-          it.typeOrNull?.renderShort() ?: "<error>"
-        }
-        ?.let { append(it) }
-    }
-  }
-
-  private companion object {
-    private val COMPARATOR = compareBy<IrTypeKey> { it.cachedRender }
-      .thenBy { it.type.hashCode() }
-      .thenBy { it.qualifier?.hashCode() ?: 0 }
+    type.renderTo(this, short)
   }
 }
 

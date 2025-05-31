@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- [internal] Make internal renderings of `IrType` more deterministic.
+
 0.3.5
 -----
 

@@ -13,11 +13,8 @@ import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.isClassWithFqName
-import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -47,11 +44,7 @@ internal class IrContextualTypeKey(
         if (type == typeKey.type) {
           typeKey.render(short, includeQualifier)
         } else {
-          if (short) {
-            type.renderShort()
-          } else {
-            type.render()
-          }
+          type.render(short)
         }
       }
     )
@@ -261,24 +254,4 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
     }
 
   return WrappedType.Canonical(adjustedType)
-}
-
-private fun IrType.renderShort(): String = buildString {
-  append(simpleName)
-  if (isMarkedNullable()) {
-    append("?")
-  }
-  if (this@renderShort is IrSimpleType) {
-    arguments
-      .takeUnless { it.isEmpty() }
-      ?.joinToString(", ", prefix = "<", postfix = ">") {
-        when (it) {
-          is IrStarProjection -> "*"
-          is IrTypeProjection -> {
-            it.type.renderShort()
-          }
-        }
-      }
-      ?.let { append(it) }
-  }
 }
