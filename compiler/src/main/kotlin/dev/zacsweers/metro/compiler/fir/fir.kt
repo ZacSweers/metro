@@ -459,7 +459,8 @@ context(context: CheckerContext, reporter: DiagnosticReporter)
 internal inline fun FirClass.validateApiDeclaration(
   type: String,
   checkConstructor: Boolean,
-  onError: () -> Nothing) {
+  onError: () -> Nothing,
+) {
   if (isLocal) {
     reporter.reportOn(
       source,
