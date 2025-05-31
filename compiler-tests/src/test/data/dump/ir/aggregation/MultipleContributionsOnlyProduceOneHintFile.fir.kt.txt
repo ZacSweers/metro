@@ -1,10 +1,3 @@
-// FILE: base1ImplAppScope.kt
-package metro.hints
-
-fun AppScope(contributed: Base1Impl) {
-  return error(message = "Never called")
-}
-
 // FILE: file0.kt
 
 interface Base1 {
@@ -149,3 +142,11 @@ interface ExampleGraph : $$MetroContribution {
     abstract get
 
 }
+
+// FILE: base1ImplAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Base1Impl) {
+  return error(message = "Never called")
+}
+

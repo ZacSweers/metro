@@ -33,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -77,7 +78,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getValueArgument
-import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -390,7 +390,9 @@ internal class DependencyGraphTransformer(
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
-      if (declaration is IrFunction && declaration.isFakeOverriddenFromAny()) continue
+      if (declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)) {
+        continue
+      }
       val annotations = metroAnnotationsOf(declaration)
       if (annotations.isProvides) continue
       when (declaration) {

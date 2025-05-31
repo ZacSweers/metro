@@ -314,12 +314,16 @@ internal class BindingGraphGenerator(
 
           val graphImpl = depNode.sourceGraph.metroGraphOrFail
           for (accessor in graphImpl.functions) {
-            // TODO exclude toString/equals/hashCode or use marker annotation?
+            // Exclude toString/equals/hashCode or use marker annotation?
+            if (accessor.isInheritedFromAny(pluginContext.irBuiltIns)) {
+              continue
+            }
             when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
               in providerFieldsSet -> {
                 val metroFunction = metroFunctionOf(accessor)
                 providerFieldAccessorsByName[metroFunction.ir.name] = metroFunction
               }
+
               in instanceFieldsSet -> {
                 val metroFunction = metroFunctionOf(accessor)
                 instanceFieldAccessorsByName[metroFunction.ir.name] = metroFunction

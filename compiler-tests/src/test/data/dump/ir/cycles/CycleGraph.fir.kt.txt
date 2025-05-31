@@ -367,7 +367,7 @@ interface ChildCycleGraph {
 
 }
 
-@DependencyGraph(, isExtendable = true)
+@DependencyGraph(isExtendable = true)
 interface CycleGraph {
   companion object Companion {
     private constructor() /* primary */ {

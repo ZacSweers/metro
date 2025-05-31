@@ -71,6 +71,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("CannotHaveContextParams.kt")
+    public void testCannotHaveContextParams() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveContextParams.kt");
+    }
+
+    @Test
     @TestMetadata("CannotHaveExtensionReceivers.kt")
     public void testCannotHaveExtensionReceivers() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveExtensionReceivers.kt");

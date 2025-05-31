@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
@@ -120,6 +121,7 @@ internal class AssistedFactoryFirGenerator(session: FirSession) :
   }
 
   // Called for generating nested names
+  @OptIn(DirectDeclarationsAccess::class)
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,

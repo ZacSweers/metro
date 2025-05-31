@@ -4,12 +4,12 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.metroAnnotations
-import dev.zacsweers.metro.compiler.orElse
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -17,23 +17,23 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
-import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirConstructor
-import org.jetbrains.kotlin.fir.declarations.FirEnumEntry
-import org.jetbrains.kotlin.fir.declarations.FirProperty
-import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.fromPrimaryConstructor
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
-import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirEnumEntrySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.isMarkedNullable
 import org.jetbrains.kotlin.fir.types.isUnit
 
 // TODO
 //  suggest private?
 internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
-  override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
 
@@ -49,9 +49,9 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val isInClass = declaration.classKind == ClassKind.CLASS
 
-    for (callable in declaration.declarations.filterIsInstance<FirCallableDeclaration>()) {
-      if (callable is FirConstructor || callable is FirEnumEntry) continue
-      val annotations = callable.symbol.metroAnnotations(session)
+    for (callable in declaration.symbol.directCallableSymbols()) {
+      if (callable is FirConstructorSymbol || callable is FirEnumEntrySymbol) continue
+      val annotations = callable.metroAnnotations(session)
       if (!annotations.isInject) continue
 
       if (!isInClass) {
@@ -59,37 +59,33 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           callable.source,
           FirMetroErrors.MEMBERS_INJECT_ERROR,
           "Only regular classes can have member injections but containing class was ${declaration.classKind}.",
-          context,
         )
         continue
       } else if (callable.isAbstract) {
         reporter.reportOn(
-          callable.status.source ?: callable.source,
+          callable.resolvedStatus.source ?: callable.source,
           FirMetroErrors.MEMBERS_INJECT_STATUS_ERROR,
           "Injected members cannot be abstract.",
-          context,
         )
         continue
-      } else if (callable is FirProperty && callable.fromPrimaryConstructor == true) {
+      } else if (callable is FirPropertySymbol && callable.fromPrimaryConstructor) {
         reporter.reportOn(
           callable.source,
           FirMetroErrors.MEMBERS_INJECT_STATUS_ERROR,
           "Constructor property parameters should not be annotated with `@Inject`. Annotate the constructor or class instead.",
-          context,
         )
         continue
       }
 
       if (
-        callable is FirProperty &&
-          !callable.returnTypeRef.coneTypeOrNull?.isMarkedNullable.orElse(false) &&
+        callable is FirPropertySymbol &&
+          !callable.resolvedReturnTypeRef.coneType.isMarkedNullable &&
           isConstructorInjected
       ) {
         reporter.reportOn(
           callable.source,
           FirMetroErrors.MEMBERS_INJECT_WARNING,
           "Non-null injected member property in constructor-injected class should usually be moved to the inject constructor. If this has a default value, use Metro's default values support.",
-          context,
         )
       }
 
@@ -98,27 +94,22 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           callable.source,
           FirMetroErrors.MEMBERS_INJECT_ERROR,
           "Injected functions cannot be suspend functions.",
-          context,
         )
       } else if (annotations.isComposable) {
         reporter.reportOn(
           callable.source,
           FirMetroErrors.MEMBERS_INJECT_ERROR,
           "Injected members cannot be composable functions.",
-          context,
         )
       }
 
-      if (callable is FirSimpleFunction) {
-        callable.returnTypeRef.coneTypeOrNull?.let {
-          if (!it.isUnit) {
-            reporter.reportOn(
-              callable.returnTypeRef.source,
-              FirMetroErrors.MEMBERS_INJECT_RETURN_TYPE_WARNING,
-              "Return types for injected member functions will always be ignored.",
-              context,
-            )
-          }
+      if (callable is FirNamedFunctionSymbol) {
+        if (!callable.resolvedReturnType.isUnit) {
+          reporter.reportOn(
+            callable.resolvedReturnTypeRef.source,
+            FirMetroErrors.MEMBERS_INJECT_RETURN_TYPE_WARNING,
+            "Return types for injected member functions will always be ignored.",
+          )
         }
       }
     }

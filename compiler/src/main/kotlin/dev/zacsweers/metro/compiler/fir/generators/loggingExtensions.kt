@@ -204,11 +204,11 @@ internal class LoggingFirSupertypeGenerationExtension(
   override fun computeAdditionalSupertypesForGeneratedNestedClass(
     klass: FirRegularClass,
     typeResolver: TypeResolveService,
-  ): List<FirResolvedTypeRef> {
+  ): List<ConeKotlinType> {
     val additionalSupertypes =
       delegate.computeAdditionalSupertypesForGeneratedNestedClass(klass, typeResolver)
     logger.log {
-      "computeAdditionalSupertypesForGeneratedNestedClass: ${additionalSupertypes.size} additional supertypes for nested ${klass.classId}: ${additionalSupertypes.joinToString { it.coneType.classId!!.asString() }}"
+      "computeAdditionalSupertypesForGeneratedNestedClass: ${additionalSupertypes.size} additional supertypes for nested ${klass.classId}: ${additionalSupertypes.joinToString { it.classId!!.asString() }}"
     }
     return additionalSupertypes
   }
