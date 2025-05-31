@@ -116,10 +116,6 @@ internal class InjectedClassFirGenerator(session: FirSession) :
    *
    * Annotations and `suspend` modifiers will be copied over as well.
    */
-  // TODO
-  //  private works
-  //  visibility of params and return type
-  //  no extension receivers
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
     if (!session.metroFirBuiltIns.options.enableTopLevelFunctionInjection) return emptySet()
@@ -138,7 +134,6 @@ internal class InjectedClassFirGenerator(session: FirSession) :
             add(buildInjectAnnotation())
             add(buildInjectedFunctionClassAnnotation(function.callableId))
             annotations.qualifier?.fir?.let(::add)
-            annotations.scope?.fir?.let(::add)
             if (annotations.isComposable) {
               add(buildStableAnnotation())
             }

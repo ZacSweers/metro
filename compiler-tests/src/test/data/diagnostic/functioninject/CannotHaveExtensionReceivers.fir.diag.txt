@@ -1,0 +1,1 @@
+/CannotHaveExtensionReceivers.kt:(73,79): error: Injected functions cannot have receiver parameters.
