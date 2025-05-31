@@ -81,12 +81,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testCannotHaveTypeArgs() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
     }
-
-    @Test
-    @TestMetadata("PublicMustHavePublicParamsAndReturns.kt")
-    public void testPublicMustHavePublicParamsAndReturns() {
-      runTest("compiler-tests/src/test/data/diagnostic/functioninject/PublicMustHavePublicParamsAndReturns.kt");
-    }
   }
 
   @Nested

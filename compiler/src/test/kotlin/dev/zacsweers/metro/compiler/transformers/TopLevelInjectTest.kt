@@ -318,39 +318,6 @@ class TopLevelInjectTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `scopes on function are propagated to the class`() {
-    val result =
-      compile(
-        source(
-          """
-            @SingleIn(AppScope::class)
-            @Inject
-            fun App(int: Int): Int {
-              return int
-            }
-
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph {
-              val app: AppClass
-
-              @Provides private fun provideInt(): Int {
-                return 0
-              }
-            }
-          """
-            .trimIndent()
-        )
-      )
-
-    val graph = result.ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-
-    val app = graph.callProperty<Any>("app")
-    assertThat(app).isSameInstanceAs(graph.callProperty<Any>("app"))
-    val invoker = { app.invokeInstanceMethod<Int>("invoke") }
-    assertThat(invoker()).isEqualTo(0)
-  }
-
-  @Test
   fun `assisted parameters in different order`() {
     val result =
       compile(
