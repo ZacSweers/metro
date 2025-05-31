@@ -116,7 +116,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
             extensionReceiver = createExpression,
             callee = metroContext.symbols.daggerSymbols.asMetroProvider,
           )
-          .apply { putTypeArgument(0, factoryClass.typeWith()) }
+          .apply { typeArguments[0] = factoryClass.typeWith() }
       } else {
         createExpression
       }
