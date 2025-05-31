@@ -28,7 +28,7 @@ internal class IrTypeKey(override val type: IrType, override val qualifier: IrAn
 
   override fun compareTo(other: IrTypeKey): Int {
     if (this == other) return 0
-    return cachedRender.compareTo(other.cachedRender)
+    return COMPARATOR.compare(this, other)
   }
 
   override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
@@ -60,6 +60,12 @@ internal class IrTypeKey(override val type: IrType, override val qualifier: IrAn
         }
         ?.let { append(it) }
     }
+  }
+
+  private companion object {
+    private val COMPARATOR = compareBy<IrTypeKey> { it.cachedRender }
+      .thenBy { it.type.hashCode() }
+      .thenBy { it.qualifier?.hashCode() ?: 0 }
   }
 }
 
