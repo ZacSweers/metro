@@ -19,6 +19,7 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.PriorityQueue
+import java.util.SortedSet
 
 /**
  * Returns a new list where each element is preceded by its results in [sourceToTarget]. The first
@@ -70,15 +71,19 @@ internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T
   return true
 }
 
-internal fun <T> Iterable<T>.buildFullAdjacency(
+internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
   sourceToTarget: (T) -> Iterable<T>,
   onMissing: (source: T, missing: T) -> Unit,
-): Map<T, List<T>> {
+): Map<T, SortedSet<T>> {
   val set = toSet()
-  val adjacency = mutableMapOf<T, MutableList<T>>()
+  /**
+   * Sort our map keys and list values here for better performance later (avoiding needing to
+   * defensively sort in [computeStronglyConnectedComponents]).
+   */
+  val adjacency = mutableMapOf<T, SortedSet<T>>()
 
   for (key in set) {
-    val dependencies = adjacency.getOrPut(key, ::mutableListOf)
+    val dependencies = adjacency.getOrPut(key, ::sortedSetOf)
 
     for (targetKey in sourceToTarget(key)) {
       if (targetKey !in set) {
@@ -102,7 +107,7 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
   bindings: Map<TypeKey, Binding>,
   dependenciesOf: (Binding) -> Iterable<TypeKey>,
   onMissing: (source: TypeKey, missing: TypeKey) -> Unit,
-): Map<TypeKey, List<TypeKey>> {
+): Map<TypeKey, SortedSet<TypeKey>> {
   return bindings.keys.buildFullAdjacency(
     sourceToTarget = { key -> dependenciesOf(bindings.getValue(key)) },
     onMissing = onMissing,
@@ -153,7 +158,7 @@ internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes
  * @param onCycle called with the offending cycle if no deferrable edge
  */
 internal fun <V : Comparable<V>> topologicalSort(
-  fullAdjacency: Map<V, List<V>>,
+  fullAdjacency: Map<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Nothing,
   parentTracer: Tracer = Tracer.NONE,
@@ -226,13 +231,17 @@ internal fun <V : Comparable<V>> topologicalSort(
   )
 }
 
+// TODO can this move to a set of vertices
 internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
 
 /**
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
  *
+ * NOTE: For performance and determinism, this implementation assumes [this] adjacency is already
+ * sorted (both keys and each set of values).
+ *
  * @param this A map representing the directed graph where the keys are vertices of type [V] and the
- *   values are lists of vertices to which each key vertex has outgoing edges.
+ *   values are sets of vertices to which each key vertex has outgoing edges.
  * @return A pair where the first element is a list of components (each containing an ID and its
  *   associated vertices) and the second element is a map that associates each vertex with the ID of
  *   its component.
@@ -240,7 +249,7 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
  */
-internal fun <V : Comparable<V>> Map<V, List<V>>.computeStronglyConnectedComponents():
+internal fun <V : Comparable<V>> Map<V, SortedSet<V>>.computeStronglyConnectedComponents():
   Pair<List<Component<V>>, Map<V, Int>> {
   var nextIndex = 0
   var nextComponentId = 0
@@ -269,7 +278,7 @@ internal fun <V : Comparable<V>> Map<V, List<V>>.computeStronglyConnectedCompone
     stack += v
     onStack += v
 
-    for (w in this[v].orEmpty().sorted()) {
+    for (w in this[v].orEmpty()) {
       if (w !in indexMap) {
         // Successor w has not yet been visited; recurse on it
         strongConnect(w)
@@ -323,7 +332,7 @@ internal fun <V : Comparable<V>> Map<V, List<V>>.computeStronglyConnectedCompone
  *   SCCs it depends on.
  */
 private fun <V> buildComponentDag(
-  originalEdges: Map<V, List<V>>,
+  originalEdges: Map<V, Set<V>>,
   componentOf: Map<V, Int>,
 ): Map<Int, Set<Int>> {
   val dag = mutableMapOf<Int, MutableSet<Int>>()

@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import java.util.SortedSet
 
 internal interface BindingGraph<
   Type : Any,
@@ -87,7 +88,7 @@ internal open class MutableBindingGraph<
         Binding,
         BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
-        adjacency: Map<TypeKey, List<TypeKey>>,
+        adjacency: Map<TypeKey, Set<TypeKey>>,
       ) -> Unit =
       { binding, stack, roots, adjacency -> /* noop */
       },
@@ -207,7 +208,7 @@ internal open class MutableBindingGraph<
 
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
-    fullAdjacency: Map<TypeKey, List<TypeKey>>,
+    fullAdjacency: Map<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {
