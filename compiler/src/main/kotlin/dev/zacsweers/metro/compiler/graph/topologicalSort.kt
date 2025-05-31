@@ -19,8 +19,6 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.PriorityQueue
-import java.util.TreeMap
-import java.util.TreeSet
 
 /**
  * Returns a new list where each element is preceded by its results in [sourceToTarget]. The first
@@ -72,19 +70,15 @@ internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T
   return true
 }
 
-internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
+internal fun <T> Iterable<T>.buildFullAdjacency(
   sourceToTarget: (T) -> Iterable<T>,
   onMissing: (source: T, missing: T) -> Unit,
-): Map<T, Set<T>> {
+): Map<T, List<T>> {
   val set = toSet()
-  /**
-   * Sort our map keys and list values here for better performance later (avoiding needing to
-   * defensively sort in [computeStronglyConnectedComponents]).
-   */
-  val adjacency = TreeMap<T, TreeSet<T>>()
+  val adjacency = mutableMapOf<T, MutableList<T>>()
 
   for (key in set) {
-    val dependencies = adjacency.getOrPut(key, ::TreeSet)
+    val dependencies = adjacency.getOrPut(key, ::mutableListOf)
 
     for (targetKey in sourceToTarget(key)) {
       if (targetKey !in set) {
@@ -96,7 +90,6 @@ internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
       dependencies += targetKey
     }
   }
-
   return adjacency
 }
 
@@ -105,11 +98,11 @@ internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
  * * Keeps all edges (strict _and_ deferrable).
  * * Prunes edges whose target isn't in [bindings], delegating the decision to [onMissing].
  */
-internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
+internal fun <TypeKey, Binding> buildFullAdjacency(
   bindings: Map<TypeKey, Binding>,
   dependenciesOf: (Binding) -> Iterable<TypeKey>,
   onMissing: (source: TypeKey, missing: TypeKey) -> Unit,
-): Map<TypeKey, Set<TypeKey>> {
+): Map<TypeKey, List<TypeKey>> {
   return bindings.keys.buildFullAdjacency(
     sourceToTarget = { key -> dependenciesOf(bindings.getValue(key)) },
     onMissing = onMissing,
@@ -160,7 +153,7 @@ internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes
  * @param onCycle called with the offending cycle if no deferrable edge
  */
 internal fun <V : Comparable<V>> topologicalSort(
-  fullAdjacency: Map<V, Set<V>>,
+  fullAdjacency: Map<V, List<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Nothing,
   parentTracer: Tracer = Tracer.NONE,
@@ -238,11 +231,8 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
 /**
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
  *
- * NOTE: For performance and determinism, this implementation assumes [this] adjacency is already
- * sorted (both keys and each set of values).
- *
  * @param this A map representing the directed graph where the keys are vertices of type [V] and the
- *   values are sets of vertices to which each key vertex has outgoing edges.
+ *   values are lists of vertices to which each key vertex has outgoing edges.
  * @return A pair where the first element is a list of components (each containing an ID and its
  *   associated vertices) and the second element is a map that associates each vertex with the ID of
  *   its component.
@@ -250,7 +240,7 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
  */
-internal fun <V> Map<V, Set<V>>.computeStronglyConnectedComponents():
+internal fun <V : Comparable<V>> Map<V, List<V>>.computeStronglyConnectedComponents():
   Pair<List<Component<V>>, Map<V, Int>> {
   var nextIndex = 0
   var nextComponentId = 0
@@ -279,7 +269,7 @@ internal fun <V> Map<V, Set<V>>.computeStronglyConnectedComponents():
     stack += v
     onStack += v
 
-    for (w in this[v].orEmpty()) {
+    for (w in this[v].orEmpty().sorted()) {
       if (w !in indexMap) {
         // Successor w has not yet been visited; recurse on it
         strongConnect(w)
@@ -310,7 +300,7 @@ internal fun <V> Map<V, Set<V>>.computeStronglyConnectedComponents():
   }
 
   // Sorted for determinism
-  for (v in keys) {
+  for (v in keys.sorted()) {
     if (v !in indexMap) {
       strongConnect(v)
     }
@@ -333,7 +323,7 @@ internal fun <V> Map<V, Set<V>>.computeStronglyConnectedComponents():
  *   SCCs it depends on.
  */
 private fun <V> buildComponentDag(
-  originalEdges: Map<V, Set<V>>,
+  originalEdges: Map<V, List<V>>,
   componentOf: Map<V, Int>,
 ): Map<Int, Set<Int>> {
   val dag = mutableMapOf<Int, MutableSet<Int>>()
