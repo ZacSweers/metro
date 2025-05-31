@@ -30,7 +30,7 @@ class X {
 
     }
 
-    /* static */ fun constructorFunction(y: Y): X {
+    fun constructorFunction(y: Y): X {
       return error(message = "Never called")
     }
 
@@ -85,7 +85,7 @@ class Y {
 
     }
 
-    /* static */ fun constructorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
+    fun constructorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
       return error(message = "Never called")
     }
 

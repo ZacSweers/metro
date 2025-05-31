@@ -36,7 +36,7 @@ class S {
 
     }
 
-    /* static */ fun constructorFunction(sProvider: Provider<S>): S {
+    fun constructorFunction(sProvider: Provider<S>): S {
       return error(message = "Never called")
     }
 

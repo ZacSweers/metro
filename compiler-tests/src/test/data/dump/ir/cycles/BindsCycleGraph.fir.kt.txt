@@ -30,7 +30,7 @@ class Bar : Foo {
 
     }
 
-    /* static */ fun constructorFunction(fooProvider: Provider<Foo>): Bar {
+    fun constructorFunction(fooProvider: Provider<Foo>): Bar {
       return error(message = "Never called")
     }
 

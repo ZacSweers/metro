@@ -18,7 +18,7 @@ class TaskImpl1 : Task {
       return TaskImpl1()
     }
 
-    /* static */ fun constructorFunction(): TaskImpl1 {
+    fun constructorFunction(): TaskImpl1 {
       return error(message = "Never called")
     }
 
@@ -54,7 +54,7 @@ class TaskImpl2 : Task {
       return TaskImpl2()
     }
 
-    /* static */ fun constructorFunction(): TaskImpl2 {
+    fun constructorFunction(): TaskImpl2 {
       return error(message = "Never called")
     }
 

@@ -25,7 +25,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 
     }
 
-    /* static */ fun <T : Any?, V : Any?, E : V> constructorFunction(): ClassWithBackRefs<T, V, E> {
+    fun <T : Any?, V : Any?, E : V> constructorFunction(): ClassWithBackRefs<T, V, E> {
       return error(message = "Never called")
     }
 
@@ -70,7 +70,7 @@ class ClassWithBounds<T : Any> {
 
     }
 
-    /* static */ fun <T : Any> constructorFunction(): ClassWithBounds<T> {
+    fun <T : Any> constructorFunction(): ClassWithBounds<T> {
       return error(message = "Never called")
     }
 
@@ -115,7 +115,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
 
     }
 
-    /* static */ fun <T : Any?, V : Any?, E : Any?> constructorFunction(): ClassWithMultiple<T, V, E> {
+    fun <T : Any?, V : Any?, E : Any?> constructorFunction(): ClassWithMultiple<T, V, E> {
       return error(message = "Never called")
     }
 
@@ -160,7 +160,7 @@ class ClassWithNullable<T : Any?, E : T?> {
 
     }
 
-    /* static */ fun <T : Any?, E : T?> constructorFunction(): ClassWithNullable<T, E> {
+    fun <T : Any?, E : T?> constructorFunction(): ClassWithNullable<T, E> {
       return error(message = "Never called")
     }
 
@@ -205,7 +205,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 
     }
 
-    /* static */ fun <T : Any?, V : Any?, E : V> constructorFunction(): ClassWithWheres<T, V, E> {
+    fun <T : Any?, V : Any?, E : V> constructorFunction(): ClassWithWheres<T, V, E> {
       return error(message = "Never called")
     }
 
@@ -250,7 +250,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 
     }
 
-    /* static */ fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> constructorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
+    fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> constructorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
       return error(message = "Never called")
     }
 
@@ -295,7 +295,7 @@ class SimpleClass<T : Any?> {
 
     }
 
-    /* static */ fun <T : Any?> constructorFunction(): SimpleClass<T> {
+    fun <T : Any?> constructorFunction(): SimpleClass<T> {
       return error(message = "Never called")
     }
 
@@ -312,4 +312,3 @@ class SimpleClass<T : Any?> {
   }
 
 }
-
