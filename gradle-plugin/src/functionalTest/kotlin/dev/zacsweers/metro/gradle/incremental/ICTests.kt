@@ -764,7 +764,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.exampleClass,
       """
-      @Singleton
+      @SingleIn(AppScope::class)
       @ContributesBinding(Unit::class)
       @Inject
       class ExampleClass : Counter {
