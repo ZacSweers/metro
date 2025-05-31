@@ -55,6 +55,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         generateAssistedFactories =
           MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives,
         transformProvidersToPrivate = transformProvidersToPrivate,
+        enableTopLevelFunctionInjection = MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives,
         publicProviderSeverity =
           if (transformProvidersToPrivate) {
             MetroOptions.DiagnosticSeverity.NONE

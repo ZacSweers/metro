@@ -1,4 +1,5 @@
 // RENDER_DIAGNOSTICS_FULL_TEXT
+// ENABLE_TOP_LEVEL_FUNCTION_INJECTION
 <!FUNCTION_INJECT_ERROR!>@SingleIn(AppScope::class)<!>
 @Inject
 fun Example() {
