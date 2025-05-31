@@ -706,7 +706,6 @@ class ICTests : BaseIncrementalCompilationTest() {
     }
   }
 
-  // TODO switch back to @SingleIn after Kotlin 2.2
   @Test
   fun scopingChangeOnContributedClassIsDetected() {
     val fixture =
@@ -731,8 +730,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               interface Counter {
                 var count: Int
               }
-          @Scope annotation class Singleton
-          @Singleton
+          @SingleIn(AppScope::class)
           @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val counter: Counter
