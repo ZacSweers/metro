@@ -231,7 +231,6 @@ internal fun <V : Comparable<V>> topologicalSort(
   )
 }
 
-// TODO can this move to a set of vertices
 internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
 
 /**
