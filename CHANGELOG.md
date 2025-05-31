@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **New:** Implement top-level function injection checkers.
+- **Change:** Disallow top-level function injections to be scoped.
 - **Fix:** Support type parameters with `where` bounds.
 - **Fix:** Support injected class type parameters with any bounds.
 - **Fix:** Support generic graph factory interfaces.
