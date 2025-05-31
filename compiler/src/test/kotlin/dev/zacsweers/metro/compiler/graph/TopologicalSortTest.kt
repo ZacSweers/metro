@@ -17,6 +17,7 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
+import java.util.SortedSet
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -200,9 +201,9 @@ class TopologicalSortTest {
   @Test
   fun verticesInsideComponentComeOutInNaturalOrder() {
     val full =
-      mapOf(
-        "a" to sortedSetOf("b"), // deferrable
-        "b" to sortedSetOf("a"), // strict
+      sortedMapOf(
+        "a" to sortedSetOf("b") as SortedSet<String>, // deferrable
+        "b" to sortedSetOf("a") as SortedSet<String>, // strict
       )
     val isDeferrable = { f: String, t: String -> f == "a" && t == "b" }
 

@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - [internal] Make internal renderings of `IrType` more deterministic.
 
 0.3.5

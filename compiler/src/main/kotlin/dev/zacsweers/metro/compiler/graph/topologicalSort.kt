@@ -19,6 +19,7 @@ package dev.zacsweers.metro.compiler.graph
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.PriorityQueue
+import java.util.SortedMap
 import java.util.SortedSet
 
 /**
@@ -74,13 +75,13 @@ internal fun <T> List<T>.isTopologicallySorted(sourceToTarget: (T) -> Iterable<T
 internal fun <T : Comparable<T>> Iterable<T>.buildFullAdjacency(
   sourceToTarget: (T) -> Iterable<T>,
   onMissing: (source: T, missing: T) -> Unit,
-): Map<T, SortedSet<T>> {
+): SortedMap<T, SortedSet<T>> {
   val set = toSet()
   /**
    * Sort our map keys and list values here for better performance later (avoiding needing to
    * defensively sort in [computeStronglyConnectedComponents]).
    */
-  val adjacency = mutableMapOf<T, SortedSet<T>>()
+  val adjacency = sortedMapOf<T, SortedSet<T>>()
 
   for (key in set) {
     val dependencies = adjacency.getOrPut(key, ::sortedSetOf)
@@ -107,7 +108,7 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
   bindings: Map<TypeKey, Binding>,
   dependenciesOf: (Binding) -> Iterable<TypeKey>,
   onMissing: (source: TypeKey, missing: TypeKey) -> Unit,
-): Map<TypeKey, SortedSet<TypeKey>> {
+): SortedMap<TypeKey, SortedSet<TypeKey>> {
   return bindings.keys.buildFullAdjacency(
     sourceToTarget = { key -> dependenciesOf(bindings.getValue(key)) },
     onMissing = onMissing,
@@ -158,7 +159,7 @@ internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes
  * @param onCycle called with the offending cycle if no deferrable edge
  */
 internal fun <V : Comparable<V>> topologicalSort(
-  fullAdjacency: Map<V, SortedSet<V>>,
+  fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Nothing,
   parentTracer: Tracer = Tracer.NONE,
@@ -248,7 +249,7 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
  */
-internal fun <V : Comparable<V>> Map<V, SortedSet<V>>.computeStronglyConnectedComponents():
+internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents():
   Pair<List<Component<V>>, Map<V, Int>> {
   var nextIndex = 0
   var nextComponentId = 0
@@ -308,7 +309,7 @@ internal fun <V : Comparable<V>> Map<V, SortedSet<V>>.computeStronglyConnectedCo
   }
 
   // Sorted for determinism
-  for (v in keys.sorted()) {
+  for (v in keys) {
     if (v !in indexMap) {
       strongConnect(v)
     }
