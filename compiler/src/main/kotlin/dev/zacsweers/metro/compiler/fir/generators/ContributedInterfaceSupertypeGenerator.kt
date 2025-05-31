@@ -397,8 +397,13 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     return if (fir.resolveState.resolvePhase == FirResolvePhase.RAW_FIR) {
         // When processing bindings in the same module or compilation, we need to handle supertypes
         // that have not been resolved yet
-        (this as FirClassSymbol<*>).fir.superTypeRefs.map {
-          typeResolver.resolveUserType(it as FirUserTypeRef).coneType
+        (this as FirClassSymbol<*>).fir.superTypeRefs.map { superTypeRef ->
+          if (superTypeRef is FirUserTypeRef) {
+              typeResolver.resolveUserType(superTypeRef)
+            } else {
+              superTypeRef
+            }
+            .coneType
         }
       } else {
         (this as FirClassSymbol<*>).resolvedSuperTypes

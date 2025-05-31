@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
 import org.jetbrains.kotlin.fakeElement
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -28,9 +29,14 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.plugin.DeclarationBuildingContext
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
+import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
@@ -180,4 +186,37 @@ internal fun FirExtension.buildSimpleValueParameter(
     this.isVararg = isVararg
     body()
   }
+}
+
+internal fun DeclarationBuildingContext<*>.copyTypeParametersFrom(
+  classSymbol: FirClassSymbol<*>,
+  session: FirSession,
+  // This is disabled by default because in all our type parameter lookups, we are generating
+  // declarations where we don't actually need bounds to be present/visible to the user and they are
+  // usually not resolved at the time we look. We can revisit in the future if there's a way added
+  // to call resolvedBounds without it throwing (such as an "isResolved" or something first)
+  includeBounds: Boolean = false,
+) {
+  for (parameter in classSymbol.typeParameterSymbols) {
+    typeParameter(name = parameter.name, variance = parameter.variance) {
+      if (includeBounds) {
+        for (bound in parameter.resolvedBounds) {
+          bound { typeParameters ->
+            val arguments = typeParameters.map { it.toConeType() }
+            val substitutor = substitutor(classSymbol, arguments, session)
+            substitutor.substituteOrSelf(bound.coneType)
+          }
+        }
+      }
+    }
+  }
+}
+
+internal fun substitutor(
+  classSymbol: FirClassLikeSymbol<*>,
+  builderArguments: List<ConeKotlinType>,
+  session: FirSession,
+): ConeSubstitutor {
+  val typeParameters = classSymbol.typeParameterSymbols
+  return substitutorByMap(typeParameters.zip(builderArguments).toMap(), session)
 }

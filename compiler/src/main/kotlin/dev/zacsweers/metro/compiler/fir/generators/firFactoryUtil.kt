@@ -11,17 +11,25 @@ import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.builder.buildTypeParameterCopy
 import org.jetbrains.kotlin.fir.declarations.origin
+import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createConstructor
+import org.jetbrains.kotlin.fir.resolve.ScopeSession
+import org.jetbrains.kotlin.fir.scopes.collectAllFunctions
+import org.jetbrains.kotlin.fir.scopes.collectAllProperties
+import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
@@ -222,4 +230,25 @@ internal fun FirExtension.buildNewInstanceFunction(
       }
     }
     .symbol
+}
+
+internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
+  return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()
+}
+
+internal fun FirClassSymbol<*>.collectAbstractFunctions(
+  session: FirSession,
+  exitOnAbstractProperties: Boolean = false,
+): Collection<FirNamedFunctionSymbol>? {
+  val scope =
+    unsubstitutedScope(
+      session,
+      ScopeSession(),
+      withForcedTypeCalculator = false,
+      memberRequiredPhase = null,
+    )
+  if (exitOnAbstractProperties) {
+    if (scope.collectAllProperties().any { it.isAbstract }) return null
+  }
+  return scope.collectAllFunctions().filter { it.isAbstract }
 }
