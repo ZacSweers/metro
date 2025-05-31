@@ -130,8 +130,12 @@ internal interface IrMetroContext {
   fun IrAnnotationContainer?.scopeAnnotations() =
     annotationsAnnotatedWith(symbols.scopeAnnotations).mapToSet(::IrAnnotation)
 
-  fun IrAnnotationContainer.mapKeyAnnotation() =
+  /** Returns the `@MapKey` annotation itself, not any annotations annotated _with_ `@MapKey`. */
+  fun IrAnnotationContainer.explicitMapKeyAnnotation() =
     annotationsIn(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+
+  fun IrAnnotationContainer.mapKeyAnnotation() =
+    annotationsAnnotatedWith(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
 
   private fun IrAnnotationContainer?.annotationsAnnotatedWith(
     annotationsToLookFor: Collection<ClassId>

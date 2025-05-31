@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.ir.transformers.ContributionBindPropertiesIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -28,6 +29,9 @@ public class MetroIrGenerationExtension(
       // First - collect all the contributions in this round
       val contributionData = IrContributionData(context)
       moduleFragment.accept(IrContributionVisitor(context), contributionData)
+
+      // First.5 - transform $$MetroContribution interfaces to add their binds functions
+      moduleFragment.transform(ContributionBindPropertiesIrTransformer(context), null)
 
       // Second - transform the dependency graphs
       val dependencyGraphTransformer =
