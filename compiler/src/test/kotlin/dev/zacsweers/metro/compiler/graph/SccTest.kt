@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-import dev.zacsweers.metro.compiler.graph.computeStronglyConnectedComponents
 import java.util.SortedSet
-import java.util.TreeSet
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -32,7 +30,12 @@ class SccTest {
 
   @Test
   fun multipleDisconnectedNodes() {
-    val graph = sortedMapOf(1 to untypedSortedSetOf<Int>(), 2 to untypedSortedSetOf(), 3 to untypedSortedSetOf())
+    val graph =
+      sortedMapOf(
+        1 to untypedSortedSetOf<Int>(),
+        2 to untypedSortedSetOf(),
+        3 to untypedSortedSetOf(),
+      )
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(3, components.size)
@@ -44,7 +47,12 @@ class SccTest {
 
   @Test
   fun simpleGraph() {
-    val graph = sortedMapOf(1 to untypedSortedSetOf(2), 2 to untypedSortedSetOf(3), 3 to untypedSortedSetOf(1))
+    val graph =
+      sortedMapOf(
+        1 to untypedSortedSetOf(2),
+        2 to untypedSortedSetOf(3),
+        3 to untypedSortedSetOf(1),
+      )
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(1, components.size)
@@ -82,7 +90,13 @@ class SccTest {
 
   @Test
   fun graphWithMultipleSelfLoops() {
-    val graph = sortedMapOf(1 to untypedSortedSetOf(1), 2 to untypedSortedSetOf(2), 3 to untypedSortedSetOf(4), 4 to untypedSortedSetOf(3))
+    val graph =
+      sortedMapOf(
+        1 to untypedSortedSetOf(1),
+        2 to untypedSortedSetOf(2),
+        3 to untypedSortedSetOf(4),
+        4 to untypedSortedSetOf(3),
+      )
     val (components, componentOf) = graph.computeStronglyConnectedComponents()
 
     assertEquals(3, components.size)
