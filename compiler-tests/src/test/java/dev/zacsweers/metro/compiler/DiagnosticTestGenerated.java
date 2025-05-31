@@ -56,6 +56,34 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/functioninject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Functioninject {
+    @Test
+    public void testAllFilesPresentInFunctioninject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/functioninject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CannotBeScoped.kt")
+    public void testCannotBeScoped() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotBeScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveExtensionReceivers.kt")
+    public void testCannotHaveExtensionReceivers() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveExtensionReceivers.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveTypeArgs.kt")
+    public void testCannotHaveTypeArgs() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/provides")
   @TestDataPath("$PROJECT_ROOT")
   public class Provides {

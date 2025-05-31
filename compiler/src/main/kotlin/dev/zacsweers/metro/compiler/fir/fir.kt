@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.mapToArray
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
@@ -41,7 +42,6 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
-import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.deserialization.toQualifiedPropertyAccessExpression
@@ -79,9 +79,7 @@ import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
-import org.jetbrains.kotlin.fir.scopes.jvm.computeJvmDescriptor
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -210,22 +208,6 @@ internal inline fun Visibility.checkVisibility(
   }
 }
 
-internal fun FirClassSymbol<*>.allFunctions(session: FirSession): Sequence<FirNamedFunctionSymbol> {
-  return sequence {
-    yieldAll(declarationSymbols.filterIsInstance<FirNamedFunctionSymbol>())
-    yieldAll(
-      lookupSuperTypes(
-          symbol = this@allFunctions,
-          lookupInterfaces = true,
-          deep = true,
-          useSiteSession = session,
-        )
-        .mapNotNull { it.toClassSymbol(session) }
-        .flatMap { it.allFunctions(session) }
-    )
-  }
-}
-
 internal fun FirClassSymbol<*>.callableDeclarations(
   session: FirSession,
   includeSelf: Boolean,
@@ -268,42 +250,6 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   }
 }
 
-@OptIn(SymbolInternals::class) // TODO is there a non-internal API?
-internal fun FirClassSymbol<*>.abstractFunctions(
-  session: FirSession
-): List<FirNamedFunctionSymbol> {
-  return allFunctions(session)
-    // Merge inherited functions with matching signatures
-    .groupBy {
-      // Don't include the return type because overrides may have different ones
-      it.fir.computeJvmDescriptor(includeReturnType = false)
-    }
-    .mapValues { (_, functions) ->
-      val (abstract, implemented) =
-        functions.partition {
-          it.modality == Modality.ABSTRACT &&
-            it.fir.body == null &&
-            (it.visibility == Visibilities.Public || it.visibility == Visibilities.Protected)
-        }
-      if (abstract.isEmpty()) {
-        // All implemented, nothing to do
-        null
-      } else if (implemented.isNotEmpty()) {
-        // If there's one implemented one, it's not abstract anymore in our materialized type
-        null
-      } else {
-        // Only need one for the rest of this
-        abstract.first {
-          // If it's declared in our class, grab that one. Otherwise grab the first non-overridden
-          // one
-          it.getContainingClassSymbol() == this || !it.isOverride
-        }
-      }
-    }
-    .values
-    .filterNotNull()
-}
-
 internal inline fun FirClass.singleAbstractFunction(
   session: FirSession,
   context: CheckerContext,
@@ -312,7 +258,7 @@ internal inline fun FirClass.singleAbstractFunction(
   allowProtected: Boolean = false,
   onError: () -> Nothing,
 ): FirNamedFunctionSymbol {
-  val abstractFunctions = symbol.abstractFunctions(session)
+  val abstractFunctions = symbol.collectAbstractFunctions(session).orEmpty()
   if (abstractFunctions.size != 1) {
     if (abstractFunctions.isEmpty()) {
       reporter.reportOn(

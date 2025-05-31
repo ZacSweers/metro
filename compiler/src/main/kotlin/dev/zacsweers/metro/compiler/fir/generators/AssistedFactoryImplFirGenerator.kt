@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
-import dev.zacsweers.metro.compiler.fir.abstractFunctions
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
@@ -66,7 +65,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
     @OptIn(SymbolInternals::class)
     fun computeTargetType(session: FirSession) {
       if (computed) return
-      val createFunction = source.abstractFunctions(session).single()
+      val createFunction = source.findSamFunction(session) ?: return
 
       val returnTypeClass = createFunction.resolvedReturnType.toClassSymbol(session)
       if (returnTypeClass != null) {

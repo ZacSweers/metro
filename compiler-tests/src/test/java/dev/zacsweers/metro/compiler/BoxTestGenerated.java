@@ -116,6 +116,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphFactoriesSupportGenericProviders.kt")
+    public void testGraphFactoriesSupportGenericProviders() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/GraphFactoriesSupportGenericProviders.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedSetDeps.kt")
     public void testMultibindingGraphWithWithScopedSetDeps() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultibindingGraphWithWithScopedSetDeps.kt");
