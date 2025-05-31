@@ -30,6 +30,7 @@ _2025-05-27_
 - **Enhancement:** Move binding validation into graph validation step.
 - **Enhancement:** Avoid unnecessary BFS graph walk in provider field collection.
 - **Fix:** Fix provider field populating missing types that previously seen types dependent on.
+- **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 
 Special thanks to [@ChristianKatzmann](https://github.com/ChristianKatzmann) and [@madisp](https://github.com/madisp) for contributing to this release!
 

@@ -18,6 +18,10 @@ class TaskImpl1 : Task {
       return TaskImpl1()
     }
 
+    /* static */ fun constructorFunction(): TaskImpl1 {
+      return error(message = "Never called")
+    }
+
     override operator fun invoke(): TaskImpl1 {
       return $$MetroFactory.newInstance()
     }
@@ -48,6 +52,10 @@ class TaskImpl2 : Task {
 
     fun newInstance(): TaskImpl2 {
       return TaskImpl2()
+    }
+
+    /* static */ fun constructorFunction(): TaskImpl2 {
+      return error(message = "Never called")
     }
 
     override operator fun invoke(): TaskImpl2 {
