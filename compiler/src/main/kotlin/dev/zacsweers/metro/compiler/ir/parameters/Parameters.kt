@@ -29,17 +29,15 @@ import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
-// TODO make this a regular class again
-internal sealed interface Parameters : Comparable<Parameters> {
-  val callableId: CallableId
-  val dispatchReceiverParameter: Parameter?
-  val extensionReceiverParameter: Parameter?
-  val regularParameters: List<Parameter>
-  val contextParameters: List<Parameter>
-  val ir: IrFunction?
-
-  val nonDispatchParameters: List<Parameter>
-  val allParameters: List<Parameter>
+@Poko
+internal class Parameters(
+  val callableId: CallableId,
+  val dispatchReceiverParameter: Parameter?,
+  val extensionReceiverParameter: Parameter?,
+  val regularParameters: List<Parameter>,
+  val contextParameters: List<Parameter>,
+  @Poko.Skip val ir: IrFunction? = null,
+) : Comparable<Parameters> {
 
   val isProperty: Boolean
     get() = (ir as? IrSimpleFunction?)?.isPropertyAccessor == true
@@ -56,69 +54,19 @@ internal sealed interface Parameters : Comparable<Parameters> {
   val extensionOrFirstParameter: Parameter?
     get() = extensionReceiverParameter ?: regularParameters.firstOrNull()
 
-  fun with(ir: IrFunction): Parameters
-
-  fun mergeValueParametersWithAll(others: List<Parameters>): Parameters {
-    return listOf(this).reduce { current, next ->
-      @Suppress("UNCHECKED_CAST") (current.mergeValueParametersWithUntyped(next))
+  val nonDispatchParameters: List<Parameter> by unsafeLazy {
+    buildList {
+      extensionReceiverParameter?.let(::add)
+      addAll(regularParameters)
     }
   }
 
-  fun mergeValueParametersWith(other: Parameters): Parameters {
-    return mergeValueParametersWithUntyped(other)
+  val allParameters: List<Parameter> by unsafeLazy {
+    buildList {
+      dispatchReceiverParameter?.let(::add)
+      addAll(nonDispatchParameters)
+    }
   }
-
-  fun mergeValueParametersWithUntyped(other: Parameters): Parameters {
-    return ParametersImpl(
-      callableId,
-      dispatchReceiverParameter,
-      extensionReceiverParameter,
-      regularParameters + other.regularParameters,
-      contextParameters + other.contextParameters,
-    )
-  }
-
-  override fun compareTo(other: Parameters): Int = COMPARATOR.compare(this, other)
-
-  companion object {
-    private val EMPTY: Parameters =
-      ParametersImpl(
-        CallableId(PACKAGE_FQ_NAME_FOR_LOCAL, null, SpecialNames.NO_NAME_PROVIDED),
-        null,
-        null,
-        emptyList(),
-        emptyList(),
-      )
-
-    fun empty(): Parameters = EMPTY
-
-    val COMPARATOR: Comparator<Parameters> =
-      compareBy<Parameters> { it.dispatchReceiverParameter }
-        .thenBy { it.extensionReceiverParameter }
-        .thenComparator { a, b -> a.regularParameters.compareTo(b.regularParameters) }
-
-    operator fun invoke(
-      callableId: CallableId,
-      instance: Parameter?,
-      extensionReceiver: Parameter?,
-      regularParameters: List<Parameter>,
-      contextParameters: List<Parameter>,
-      ir: IrFunction?,
-    ): Parameters =
-      ParametersImpl(callableId, instance, extensionReceiver, regularParameters, contextParameters)
-        .apply { ir?.let { this.ir = it } }
-  }
-}
-
-@Poko
-private class ParametersImpl(
-  override val callableId: CallableId,
-  override val dispatchReceiverParameter: Parameter?,
-  override val extensionReceiverParameter: Parameter?,
-  override val regularParameters: List<Parameter>,
-  override val contextParameters: List<Parameter>,
-) : Parameters {
-  override var ir: IrFunction? = null
 
   private val cachedToString by unsafeLazy {
     buildString {
@@ -167,32 +115,62 @@ private class ParametersImpl(
     }
   }
 
-  override fun with(ir: IrFunction): Parameters {
-    return ParametersImpl(
-        callableId,
-        dispatchReceiverParameter,
-        extensionReceiverParameter,
-        regularParameters,
-        contextParameters,
-      )
-      .apply { this.ir = ir }
-  }
-
-  override val nonDispatchParameters: List<Parameter> by unsafeLazy {
-    buildList {
-      extensionReceiverParameter?.let(::add)
-      addAll(regularParameters)
-    }
-  }
-
-  override val allParameters: List<Parameter> by unsafeLazy {
-    buildList {
-      dispatchReceiverParameter?.let(::add)
-      addAll(nonDispatchParameters)
-    }
+  fun with(ir: IrFunction): Parameters {
+    return Parameters(
+      callableId,
+      dispatchReceiverParameter,
+      extensionReceiverParameter,
+      regularParameters,
+      contextParameters,
+      ir,
+    )
   }
 
   override fun toString(): String = cachedToString
+
+  fun mergeValueParametersWith(other: Parameters): Parameters {
+    return mergeValueParametersWithUntyped(other)
+  }
+
+  fun mergeValueParametersWithUntyped(other: Parameters): Parameters {
+    return Parameters(
+      callableId,
+      dispatchReceiverParameter,
+      extensionReceiverParameter,
+      regularParameters + other.regularParameters,
+      contextParameters + other.contextParameters,
+    )
+  }
+
+  override fun compareTo(other: Parameters): Int = COMPARATOR.compare(this, other)
+
+  companion object {
+    private val EMPTY: Parameters =
+      Parameters(
+        CallableId(PACKAGE_FQ_NAME_FOR_LOCAL, null, SpecialNames.NO_NAME_PROVIDED),
+        null,
+        null,
+        emptyList(),
+        emptyList(),
+      )
+
+    fun empty(): Parameters = EMPTY
+
+    val COMPARATOR: Comparator<Parameters> =
+      compareBy<Parameters> { it.dispatchReceiverParameter }
+        .thenBy { it.extensionReceiverParameter }
+        .thenComparator { a, b -> a.regularParameters.compareTo(b.regularParameters) }
+
+    operator fun invoke(
+      callableId: CallableId,
+      instance: Parameter?,
+      extensionReceiver: Parameter?,
+      regularParameters: List<Parameter>,
+      contextParameters: List<Parameter>,
+      ir: IrFunction?,
+    ): Parameters =
+      Parameters(callableId, instance, extensionReceiver, regularParameters, contextParameters, ir)
+  }
 }
 
 internal fun IrFunction.parameters(
