@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -91,6 +92,8 @@ import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.makeNotNull
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.classId
@@ -778,6 +781,21 @@ internal fun IrType.renderTo(
   if (type.isMarkedNullable()) {
     appendable.append("?")
   }
+}
+
+/**
+ * Canonicalizes an [IrType].
+ * - If it's seen as a flexible nullable type from java, assume not null here
+ * - Remove annotations
+ */
+internal fun IrType.canonicalize(): IrType {
+  return if (type.isWithFlexibleNullability()) {
+      // Java types may be "Flexible" nullable types, assume not null here
+      type.makeNotNull()
+    } else {
+      type
+    }
+    .removeAnnotations()
 }
 
 internal val IrProperty.allAnnotations: List<IrConstructorCall>

@@ -12,7 +12,8 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 @Poko
-internal class IrTypeKey(override val type: IrType, override val qualifier: IrAnnotation? = null) :
+internal class IrTypeKey
+private constructor(override val type: IrType, override val qualifier: IrAnnotation?) :
   BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
@@ -36,6 +37,13 @@ internal class IrTypeKey(override val type: IrType, override val qualifier: IrAn
       }
     }
     type.renderTo(this, short)
+  }
+
+  companion object {
+    operator fun invoke(type: IrType, qualifier: IrAnnotation? = null): IrTypeKey {
+      // Canonicalize on the way through
+      return IrTypeKey(type.canonicalize(), qualifier)
+    }
   }
 }
 
