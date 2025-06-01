@@ -6,6 +6,7 @@ Changelog
 
 - **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
 - **Enhancement:** Check for context parameters in top-level function injection checker.
+- **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure annotation changes on constructor-injected classes trigger incremental compilation.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
