@@ -3,23 +3,27 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.callableId
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.Name
 
 @Poko
@@ -27,20 +31,10 @@ internal class MembersInjectParameter(
   override val kind: IrParameterKind,
   override val name: Name,
   override val contextualTypeKey: IrContextualTypeKey,
-  override val hasDefault: Boolean,
   @Poko.Skip override val bindingStackEntry: IrBindingStack.Entry,
   @Poko.Skip override val originalName: Name,
-  @Poko.Skip override val providerType: IrType,
-  @Poko.Skip override val lazyType: IrType,
-  @Poko.Skip override val symbols: Symbols,
-  @Poko.Skip override val location: CompilerMessageSourceLocation?,
   @Poko.Skip override val ir: IrValueParameter,
 ) : Parameter {
-  override val typeKey: IrTypeKey = contextualTypeKey.typeKey
-  override val type: IrType = contextualTypeKey.typeKey.type
-  override val isWrappedInProvider: Boolean = contextualTypeKey.isWrappedInProvider
-  override val isWrappedInLazy: Boolean = contextualTypeKey.isWrappedInLazy
-  override val isLazyWrappedInProvider: Boolean = contextualTypeKey.isLazyWrappedInProvider
   override val isAssisted: Boolean = false
   override val assistedIdentifier: String = ""
   override val assistedParameterKey: Parameter.AssistedParameterKey =
@@ -67,7 +61,7 @@ internal class MembersInjectParameter(
 
 internal fun List<IrValueParameter>.mapToMemberInjectParameters(
   context: IrMetroContext,
-  nameAllocator: dev.zacsweers.metro.compiler.NameAllocator,
+  nameAllocator: NameAllocator,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): List<MembersInjectParameter> {
   return map { valueParameter ->
@@ -116,12 +110,7 @@ internal fun IrProperty.toMemberInjectParameter(
     name = uniqueName,
     originalName = name,
     contextualTypeKey = contextKey,
-    hasDefault = defaultValue != null,
     bindingStackEntry = IrBindingStack.Entry.memberInjectedAt(contextKey, this),
-    providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.metroProvider),
-    lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
-    symbols = context.symbols,
-    location = locationOrNull(),
     ir = setterParam!!,
   )
 }
@@ -150,7 +139,6 @@ internal fun IrValueParameter.toMemberInjectParameter(
     name = uniqueName,
     originalName = name,
     contextualTypeKey = contextKey,
-    hasDefault = defaultValue != null,
     bindingStackEntry =
       IrBindingStack.Entry.injectedAt(
         contextKey,
@@ -158,10 +146,56 @@ internal fun IrValueParameter.toMemberInjectParameter(
         param = this,
         declaration = (this.parent as IrFunction).propertyIfAccessor,
       ),
-    providerType = contextKey.typeKey.type.wrapInProvider(context.symbols.metroProvider),
-    lazyType = contextKey.typeKey.type.wrapInLazy(context.symbols),
-    symbols = context.symbols,
-    location = locationOrNull(),
+    ir = this,
+  )
+}
+
+context(context: IrMetroContext)
+internal fun IrFunction.memberInjectParameters(
+  nameAllocator: NameAllocator,
+  parentClass: IrClass = parentClassOrNull!!,
+  originClass: IrTypeParametersContainer? = null,
+): Parameters<MembersInjectParameter> {
+  val mapper =
+    if (originClass != null) {
+      val typeParameters = parentClass.typeParameters
+      val srcToDstParameterMap: Map<IrTypeParameter, IrTypeParameter> =
+        originClass.typeParameters.zip(typeParameters).associate { (src, target) -> src to target }
+      // Returning this inline breaks kotlinc for some reason
+      val innerMapper: ((IrType) -> IrType) = { type ->
+        type.remapTypeParameters(originClass, parentClass, srcToDstParameterMap)
+      }
+      innerMapper
+    } else {
+      null
+    }
+
+  val valueParams =
+    if (isPropertyAccessor) {
+      val property = propertyIfAccessor as IrProperty
+      listOf(
+        property.toMemberInjectParameter(
+          context = context,
+          uniqueName = nameAllocator.newName(property.name.asString()).asName(),
+          kind = IrParameterKind.Regular,
+          typeParameterRemapper = mapper,
+        )
+      )
+    } else {
+      regularParameters.mapToMemberInjectParameters(
+        context = context,
+        nameAllocator = nameAllocator,
+        typeParameterRemapper = mapper,
+      )
+    }
+
+  return Parameters(
+    callableId = callableId,
+    instance = null,
+    regularParameters = valueParams,
+    // TODO not supported for now
+    extensionReceiver = null,
+    contextParameters = emptyList(),
     ir = this,
   )
 }

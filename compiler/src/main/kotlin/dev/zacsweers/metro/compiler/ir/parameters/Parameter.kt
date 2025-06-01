@@ -18,27 +18,23 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val kind: IrParameterKind
   val name: Name
   val originalName: Name
-  // TODO make this just alias to contextualtypekey?
-  val type: IrType
-  val providerType: IrType
   val contextualTypeKey: IrContextualTypeKey
-  val lazyType: IrType
-  val isWrappedInProvider: Boolean
-  val isWrappedInLazy: Boolean
-  val isLazyWrappedInProvider: Boolean
   val isAssisted: Boolean
   val assistedIdentifier: String
   val assistedParameterKey: AssistedParameterKey
-  val symbols: Symbols
-  val typeKey: IrTypeKey
   val isGraphInstance: Boolean
   val isBindsInstance: Boolean
   val isIncludes: Boolean
   val isExtends: Boolean
-  val hasDefault: Boolean
-  val location: CompilerMessageSourceLocation?
   val ir: IrValueParameter
   val bindingStackEntry: IrBindingStack.Entry
+
+  val typeKey: IrTypeKey get() = contextualTypeKey.typeKey
+  val type: IrType get() = contextualTypeKey.typeKey.type
+  val isWrappedInProvider: Boolean get() = contextualTypeKey.isWrappedInProvider
+  val isWrappedInLazy: Boolean get() = contextualTypeKey.isWrappedInLazy
+  val isLazyWrappedInProvider: Boolean get() = contextualTypeKey.isLazyWrappedInProvider
+  val hasDefault: Boolean get() = contextualTypeKey.hasDefault
 
   override fun compareTo(other: Parameter): Int = COMPARATOR.compare(this, other)
 

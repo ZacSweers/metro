@@ -3,8 +3,6 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.NameAllocator
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compareTo
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -235,56 +233,6 @@ internal fun IrFunction.parameters(
       ),
     regularParameters = regularParameters.mapToConstructorParameters(context, mapper),
     contextParameters = contextParameters.mapToConstructorParameters(context, mapper),
-    ir = this,
-  )
-}
-
-context(context: IrMetroContext)
-internal fun IrFunction.memberInjectParameters(
-  nameAllocator: NameAllocator,
-  parentClass: IrClass = parentClassOrNull!!,
-  originClass: IrTypeParametersContainer? = null,
-): Parameters<MembersInjectParameter> {
-  val mapper =
-    if (originClass != null) {
-      val typeParameters = parentClass.typeParameters
-      val srcToDstParameterMap: Map<IrTypeParameter, IrTypeParameter> =
-        originClass.typeParameters.zip(typeParameters).associate { (src, target) -> src to target }
-      // Returning this inline breaks kotlinc for some reason
-      val innerMapper: ((IrType) -> IrType) = { type ->
-        type.remapTypeParameters(originClass, parentClass, srcToDstParameterMap)
-      }
-      innerMapper
-    } else {
-      null
-    }
-
-  val valueParams =
-    if (isPropertyAccessor) {
-      val property = propertyIfAccessor as IrProperty
-      listOf(
-        property.toMemberInjectParameter(
-          context = context,
-          uniqueName = nameAllocator.newName(property.name.asString()).asName(),
-          kind = IrParameterKind.Regular,
-          typeParameterRemapper = mapper,
-        )
-      )
-    } else {
-      regularParameters.mapToMemberInjectParameters(
-        context = context,
-        nameAllocator = nameAllocator,
-        typeParameterRemapper = mapper,
-      )
-    }
-
-  return Parameters(
-    callableId = callableId,
-    instance = null,
-    regularParameters = valueParams,
-    // TODO not supported for now
-    extensionReceiver = null,
-    contextParameters = emptyList(),
     ir = this,
   )
 }

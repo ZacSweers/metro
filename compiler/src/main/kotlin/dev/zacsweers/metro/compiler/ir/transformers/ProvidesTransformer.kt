@@ -227,12 +227,8 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           name = Name.identifier("graph"),
           contextualTypeKey = contextualTypeKey,
           originalName = Name.identifier("graph"),
-          // This type is always the instance type
-          providerType = graphType,
-          lazyType = graphType,
           isAssisted = false,
           assistedIdentifier = "",
-          symbols = symbols,
           isGraphInstance = true,
           isExtends = false,
           isIncludes = false,
@@ -242,8 +238,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           // and needs access to the graph instance.
           bindingStackEntry = IrBindingStack.Entry.simpleTypeRef(contextualTypeKey),
           isBindsInstance = false,
-          hasDefault = false,
-          location = null,
         )
       } else {
         null
