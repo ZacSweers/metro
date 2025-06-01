@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compareTo
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -238,9 +239,9 @@ internal fun IrFunction.parameters(
   )
 }
 
+context(context: IrMetroContext)
 internal fun IrFunction.memberInjectParameters(
-  context: IrMetroContext,
-  nameAllocator: dev.zacsweers.metro.compiler.NameAllocator,
+  nameAllocator: NameAllocator,
   parentClass: IrClass = parentClassOrNull!!,
   originClass: IrTypeParametersContainer? = null,
 ): Parameters<MembersInjectParameter> {

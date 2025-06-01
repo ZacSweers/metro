@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.MembersInjectParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -26,6 +27,11 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.memoized
+import dev.zacsweers.metro.compiler.proto.InjectableMember
+import dev.zacsweers.metro.compiler.proto.InjectableMembers
+import dev.zacsweers.metro.compiler.proto.MemberInjectInfo
+import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -45,6 +51,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
 
 internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroContext by context {
@@ -84,13 +91,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     val isExternal = declaration.isExternalParent
 
-    /*
-    Generates an implementation of a MembersInjector for the given target type. This includes
-    - Dependencies as provider params
-    - A static create() to instantiate it
-    - An implementation of MembersInjector.injectMembers()
-    - Static inject* functions for each member of the target class's _declared_ members.
-    */
     val injectorClass =
       declaration.nestedClasses.singleOrNull {
         val isMetroImpl = it.name == Symbols.Names.MetroMembersInjector
@@ -119,10 +119,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     val companionObject = injectorClass.companionObject()!!
 
-    // TODO this is expensive can we store it somewhere from FIR via metadata?
-    // Loop through _declared_ member inject params. Collect and use to create unique names
-    val injectedMembersByClass = declaration.memberInjectParameters(this)
+    // Use cached member inject parameters if available, otherwise fall back to fresh lookup
+    val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters()
     val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
+
     val declaredInjectFunctions =
       parameterGroupsForClass.associateBy { params ->
         val name =
@@ -250,6 +250,95 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       generatedInjectors[injectedClassId] = it
     }
   }
+
+  private fun IrClass.getOrComputeMemberInjectParameters():
+    Map<ClassId, List<Parameters<MembersInjectParameter>>> {
+    val metadata = metroMetadata
+    val memberInjectInfo = metadata?.member_inject_info
+
+    // Compute supertypes once - we'll need them for either cached lookup or fresh computation
+    val allTypes =
+      getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)
+        .mapNotNull { it.rawTypeOrNull() }
+        .filterNot { it.isInterface }
+        .memoized()
+
+    if (memberInjectInfo != null && memberInjectInfo.injectable_members_by_class.isNotEmpty()) {
+      // Metadata is present - check if we have any injectable members at all
+      return lookupMemberInjectParameters(memberInjectInfo, allTypes)
+    } else if (metadata != null) {
+      // There _is_ metadata but no member injections here, so there are also no injectable members
+      // here
+      return emptyMap()
+    }
+
+    // No metadata available, fall back to (somehwat expensive) computation
+    val computed = memberInjectParameters(allTypes)
+
+    // Cache the results for future use (including empty results)
+    cacheMemberInjectParameters(computed, allTypes)
+
+    return computed
+  }
+
+  private fun lookupMemberInjectParameters(
+    memberInjectInfo: MemberInjectInfo,
+    allTypes: Sequence<IrClass>,
+  ): Map<ClassId, List<Parameters<MembersInjectParameter>>> {
+    return processTypes(allTypes) { clazz, classId, nameAllocator ->
+      // Do we have injectable members in this class?
+      val cachedMembers = memberInjectInfo.injectable_members_by_class[classId.toString()]
+
+      if (cachedMembers != null && cachedMembers.members.isNotEmpty()) {
+        cachedMembers.members.map { cachedMember ->
+          // Find the actual IR member by name
+          getIrMemberByName(clazz, cachedMember.name, cachedMember.is_property)
+            .memberInjectParameters(nameAllocator, clazz)
+        }
+      } else {
+        // Cache is present but empty, or class not in cache - no injectable members
+        emptyList()
+      }
+    }
+  }
+
+  private fun IrClass.cacheMemberInjectParameters(
+    membersByClass: Map<ClassId, List<Parameters<MembersInjectParameter>>>,
+    allTypes: Sequence<IrClass>,
+  ) {
+    val injectableMembersByClass = mutableMapOf<String, InjectableMembers>()
+
+    for ((classId, parametersList) in membersByClass) {
+      val members =
+        parametersList.map { params ->
+          InjectableMember(
+            name =
+              if (params.isProperty) {
+                params.irProperty!!.name.asString()
+              } else {
+                params.callableId.callableName.asString()
+              },
+            is_property = params.isProperty,
+            is_lateinit = if (params.isProperty) params.irProperty!!.isLateinit else false,
+          )
+        }
+
+      injectableMembersByClass[classId.toString()] = InjectableMembers(members = members)
+    }
+
+    // Cache negative results (null for classes with no injectable members)
+    for (clazz in allTypes) {
+      val classId = clazz.classIdOrFail.toString()
+      if (classId !in injectableMembersByClass) {
+        injectableMembersByClass[classId] = InjectableMembers(members = emptyList())
+      }
+    }
+
+    val memberInjectInfo = MemberInjectInfo(injectable_members_by_class = injectableMembersByClass)
+
+    // Store the metadata
+    metroMetadata = MetroMetadata(member_inject_info = memberInjectInfo)
+  }
 }
 
 internal fun IrBlockBodyBuilder.addMemberInjection(
@@ -274,41 +363,58 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
   }
 }
 
-internal fun IrClass.memberInjectParameters(
-  context: IrMetroContext
+context(context: IrMetroContext)
+internal fun memberInjectParameters(
+  types: Sequence<IrClass>
+): Map<ClassId, List<Parameters<MembersInjectParameter>>> {
+  return processTypes(types) { clazz, _, nameAllocator ->
+    clazz
+      .declaredCallableMembers(
+        functionFilter = { it.isAnnotatedWithAny(context.symbols.injectAnnotations) },
+        propertyFilter = {
+          (it.isVar || it.isLateinit) &&
+            (it.isAnnotatedWithAny(context.symbols.injectAnnotations) ||
+              it.setter?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true ||
+              it.backingField?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true)
+        },
+      )
+      .map { it.ir.memberInjectParameters(nameAllocator, clazz) }
+      .toList()
+  }
+}
+
+/**
+ * Common logic for processing types and collecting injectable member parameters.
+ *
+ * @param types The precomputed list of types to process
+ * @param memberExtractor Function that takes (clazz, classId, nameAllocator) and returns a list of
+ *   Parameters for that class
+ */
+private fun processTypes(
+  types: Sequence<IrClass>,
+  memberExtractor: (IrClass, ClassId, NameAllocator) -> List<Parameters<MembersInjectParameter>>,
 ): Map<ClassId, List<Parameters<MembersInjectParameter>>> {
   return buildList {
       val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
-      for (type in
-        getAllSuperTypes(context.pluginContext, excludeSelf = false, excludeAny = true)) {
-        val clazz = type.rawTypeOrNull() ?: continue
-        // TODO revisit - can we support this now? Interfaces can declare mutable vars that may not
-        // be implemented in
-        //  the consuming class if using class delegation
-        if (clazz.isInterface) continue
 
-        val injectedMembers =
-          clazz
-            .declaredCallableMembers(
-              context = context,
-              functionFilter = { it.isAnnotatedWithAny(context.symbols.injectAnnotations) },
-              propertyFilter = {
-                (it.isVar || it.isLateinit) &&
-                  (it.isAnnotatedWithAny(context.symbols.injectAnnotations) ||
-                    it.setter?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true ||
-                    it.backingField?.isAnnotatedWithAny(context.symbols.injectAnnotations) == true)
-              },
-            )
-            .map { it.ir.memberInjectParameters(context, nameAllocator, clazz) }
-            // TODO extension receivers not supported. What about overrides?
-            .toList()
+      for (clazz in types) {
+        val classId = clazz.classIdOrFail
+        val injectedMembers = memberExtractor(clazz, classId, nameAllocator)
 
         if (injectedMembers.isNotEmpty()) {
-          add(clazz.classIdOrFail to injectedMembers)
+          add(classId to injectedMembers)
         }
       }
     }
     // Reverse it such that the supertypes are first
     .asReversed()
     .associate { it.first to it.second }
+}
+
+private fun getIrMemberByName(clazz: IrClass, name: String, isProperty: Boolean): IrSimpleFunction {
+  return if (isProperty) {
+    clazz.properties.first { it.name.asString() == name }.setter!!
+  } else {
+    clazz.requireSimpleFunction(name).owner
+  }
 }
