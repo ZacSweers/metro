@@ -85,12 +85,12 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
     override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey }
+      parameters.nonDispatchParameters.associateBy { it.typeKey }
 
     val isAssisted by unsafeLazy { parameters.regularParameters.any { it.isAssisted } }
 
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
-      parameters.nonInstanceParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey }
+      parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey }
     }
 
     override val scope: IrAnnotation?
@@ -157,10 +157,10 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters,
   ) : Binding, BindingWithAnnotations {
     override val dependencies: List<IrContextualTypeKey> =
-      parameters.nonInstanceParameters.map { it.contextualTypeKey }
+      parameters.nonDispatchParameters.map { it.contextualTypeKey }
 
     override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey }
+      parameters.nonDispatchParameters.associateBy { it.typeKey }
 
     override val scope: IrAnnotation?
       get() = annotations.scope
@@ -240,7 +240,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
     override val scope: IrAnnotation? = null
     override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey }
+      parameters.nonDispatchParameters.associateBy { it.typeKey }
     override val dependencies: List<IrContextualTypeKey> =
       listOf(IrContextualTypeKey.create(aliasedType))
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
@@ -520,9 +520,9 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
     override val dependencies: List<IrContextualTypeKey> =
-      parameters.nonInstanceParameters.map { it.contextualTypeKey }
+      parameters.nonDispatchParameters.map { it.contextualTypeKey }
     override val parametersByKey: Map<IrTypeKey, Parameter> =
-      parameters.nonInstanceParameters.associateBy { it.typeKey }
+      parameters.nonDispatchParameters.associateBy { it.typeKey }
     override val scope: IrAnnotation? = null
 
     override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"

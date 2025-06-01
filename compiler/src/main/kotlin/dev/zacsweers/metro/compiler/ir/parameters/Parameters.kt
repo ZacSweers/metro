@@ -38,7 +38,7 @@ internal sealed interface Parameters : Comparable<Parameters> {
   val contextParameters: List<Parameter>
   val ir: IrFunction?
 
-  val nonInstanceParameters: List<Parameter>
+  val nonDispatchParameters: List<Parameter>
   val allParameters: List<Parameter>
 
   val isProperty: Boolean
@@ -178,7 +178,7 @@ private class ParametersImpl(
       .apply { this.ir = ir }
   }
 
-  override val nonInstanceParameters: List<Parameter> by unsafeLazy {
+  override val nonDispatchParameters: List<Parameter> by unsafeLazy {
     buildList {
       extensionReceiverParameter?.let(::add)
       addAll(regularParameters)
@@ -188,7 +188,7 @@ private class ParametersImpl(
   override val allParameters: List<Parameter> by unsafeLazy {
     buildList {
       dispatchReceiverParameter?.let(::add)
-      addAll(nonInstanceParameters)
+      addAll(nonDispatchParameters)
     }
   }
 
