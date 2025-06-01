@@ -422,6 +422,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     return when (this) {
       is FirUserTypeRef ->
         typeResolver.resolveUserType(this).takeUnless { it is FirErrorTypeRef }?.coneType
+      is FirFunctionTypeRef -> createFunctionType(this, typeResolver)
       else -> coneTypeOrNull
     }
   }

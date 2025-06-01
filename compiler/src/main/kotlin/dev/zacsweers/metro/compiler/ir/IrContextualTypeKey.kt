@@ -7,19 +7,10 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import org.jetbrains.kotlin.backend.jvm.JvmSymbols
-import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
-import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
-import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeProjection
-import org.jetbrains.kotlin.ir.types.isClassWithFqName
-import org.jetbrains.kotlin.ir.types.isMarkedNullable
-import org.jetbrains.kotlin.ir.types.makeNotNull
-import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
@@ -47,11 +38,7 @@ internal class IrContextualTypeKey(
         if (type == typeKey.type) {
           typeKey.render(short, includeQualifier)
         } else {
-          if (short) {
-            type.renderShort()
-          } else {
-            type.render()
-          }
+          type.render(short)
         }
       }
     )
@@ -250,35 +237,5 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
   }
 
   // If it's not a special type, it's a canonical type
-  val adjustedType =
-    if (isWithFlexibleNullability()) {
-      // Java types may be "Flexible" nullable types, assume not null here
-      makeNotNull().removeAnnotations {
-        it.annotationClass.isClassWithFqName(JvmSymbols.FLEXIBLE_NULLABILITY_ANNOTATION_FQ_NAME)
-      }
-    } else {
-      this
-    }
-
-  return WrappedType.Canonical(adjustedType)
-}
-
-private fun IrType.renderShort(): String = buildString {
-  append(simpleName)
-  if (isMarkedNullable()) {
-    append("?")
-  }
-  if (this@renderShort is IrSimpleType) {
-    arguments
-      .takeUnless { it.isEmpty() }
-      ?.joinToString(", ", prefix = "<", postfix = ">") {
-        when (it) {
-          is IrStarProjection -> "*"
-          is IrTypeProjection -> {
-            it.type.renderShort()
-          }
-        }
-      }
-      ?.let { append(it) }
-  }
+  return WrappedType.Canonical(canonicalize())
 }

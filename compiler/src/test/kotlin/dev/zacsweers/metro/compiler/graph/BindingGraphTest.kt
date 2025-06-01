@@ -352,7 +352,7 @@ private fun newStringBindingGraph(
 ): StringGraph {
   return StringGraph(
     newBindingStack = { StringBindingStack(graph) },
-    newBindingStackEntry = { contextKey, binding, roots -> StringBindingStack.Entry(contextKey) },
+    newBindingStackEntry = { contextKey, _, _ -> StringBindingStack.Entry(contextKey) },
     computeBinding = computeBinding,
   )
 }

@@ -6,8 +6,11 @@ Changelog
 
 - **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
 - **Enhancement:** Check for context parameters in top-level function injection checker.
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
-- **Fix:** Ensure annotation changes on constructor-injected classes trigger incremental compilation.
+- **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
+- **Fix:** Support constructing nested function return types for provider functions.
+- [internal] Make internal renderings of `IrType` more deterministic.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
 
@@ -37,7 +40,6 @@ _2025-05-27_
 - **Enhancement:** Move binding validation into graph validation step.
 - **Enhancement:** Avoid unnecessary BFS graph walk in provider field collection.
 - **Fix:** Fix provider field populating missing types that previously seen types dependent on.
-- **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 
 Special thanks to [@ChristianKatzmann](https://github.com/ChristianKatzmann) and [@madisp](https://github.com/madisp) for contributing to this release!
 

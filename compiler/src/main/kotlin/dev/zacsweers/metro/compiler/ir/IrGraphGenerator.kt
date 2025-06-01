@@ -298,7 +298,7 @@ internal class IrGraphGenerator(
                             it
                           }
                         }
-                        .let(::IrTypeKey)
+                        .let(IrTypeKey.Companion::invoke)
                     irExprBody(
                       irInvoke(
                         dispatchReceiver =
