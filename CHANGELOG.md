@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
+- **Fix:** Support constructing nested function return types for provider functions.
 - [internal] Make internal renderings of `IrType` more deterministic.
 
 0.3.5
