@@ -525,7 +525,7 @@ internal class IrGraphGenerator(
                   .map { it.name.asString() }
                   .sorted(),
             )
-          val metroMetadata = MetroMetadata(METRO_VERSION, graphProto)
+          val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = graphProto)
 
           writeDiagnostic({
             "graph-metadata-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt"

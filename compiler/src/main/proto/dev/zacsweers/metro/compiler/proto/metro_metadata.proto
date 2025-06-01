@@ -41,9 +41,17 @@ message BindsCallableId {
   bool is_property = 3;
 }
 
+message InjectedClassProto {
+  bool has_member_injections = 1;
+  repeated string member_inject_function_names = 2;
+}
+
 message MetroMetadata {
   string version = 1;
 
-  // Optional DependencyGraphProto field
-  optional DependencyGraphProto dependency_graph = 2;
+  oneof MetadataType {
+    DependencyGraphProto dependency_graph = 2;
+
+    InjectedClassProto injected_class = 3;
+  }
 }
