@@ -660,6 +660,10 @@ internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
     ?: return emptySet()
 }
 
+internal fun IrConstructorCall.requireScope(): ClassId {
+  return scopeOrNull() ?: error("No scope found for ${dumpKotlinLike()}")
+}
+
 internal fun IrConstructorCall.scopeOrNull(): ClassId? {
   return scopeClassOrNull()?.classIdOrFail
 }

@@ -6,58 +6,39 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.NameAllocator.Mode
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.anvilIgnoreQualifier
-import dev.zacsweers.metro.compiler.fir.anvilKClassBoundTypeArgument
-import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
-import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
-import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
-import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
-import dev.zacsweers.metro.compiler.joinSimpleNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
-import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
-import org.jetbrains.kotlin.fir.plugin.createMemberProperty
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
-import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
-import org.jetbrains.kotlin.fir.types.FirTypeRef
-import org.jetbrains.kotlin.fir.types.classId
-import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isResolved
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
+// TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
 internal class ContributionsFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 
@@ -113,7 +94,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
       override val buildAnnotations: () -> List<FirAnnotation>,
     ) : Contribution, BindingContribution {
       override val origin: ClassId = annotatedType.classId
-      override val callableName: String = "bind"
+      override val callableName: String = "binds"
     }
 
     data class ContributesIntoSetBinding(
@@ -242,118 +223,6 @@ internal class ContributionsFirGenerator(session: FirSession) :
             )
           }
         replaceAnnotations(annotations + listOf(metroContributionAnnotation))
-      }
-      .symbol
-  }
-
-  override fun getCallableNamesForClass(
-    classSymbol: FirClassSymbol<*>,
-    context: MemberGenerationContext,
-  ): Set<Name> {
-    if (!classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptySet()
-    val origin = classSymbol.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptySet()
-    val contributions = findContributions(origin) ?: return emptySet()
-    val scopeArg =
-      classSymbol.resolvedCompilerAnnotationsWithClassIds
-        .single { it.toAnnotationClassId(session) == Symbols.ClassIds.metroContribution }
-        .scopeArgument()
-    // Note the names we supply here are not final, we just need to know if we're going to generate
-    // _any_ names for this type. We will return n >= 1 properties in generateProperties later.
-    return contributions
-      .filterIsInstance<Contribution.BindingContribution>()
-      .filter { it.annotation.scopeArgument().scopeName(session) == scopeArg.scopeName(session) }
-      .groupBy { it.callableName.asName() }
-      .keys
-  }
-
-  // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
-  // checks for non-interop
-  private fun FirAnnotation.bindingTypeOrNull(): Pair<FirTypeRef?, Boolean> {
-    // Return a binding defined using Metro's API
-    argumentAsOrNull<FirFunctionCall>(Symbols.Names.binding, 1)?.let { bindingType ->
-      return bindingType.typeArguments
-        .getOrNull(0)
-        ?.expectAsOrNull<FirTypeProjectionWithVariance>()
-        ?.typeRef
-        ?.takeUnless { it == session.builtinTypes.nothingType } to false
-    }
-    // Return a boundType defined using anvil KClass
-    return anvilKClassBoundTypeArgument(session) to anvilIgnoreQualifier(session)
-  }
-
-  override fun generateProperties(
-    callableId: CallableId,
-    context: MemberGenerationContext?,
-  ): List<FirPropertySymbol> {
-    val owner = context?.owner ?: return emptyList()
-    if (!owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
-    val origin = owner.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
-    val contributions = findContributions(origin) ?: return emptyList()
-    val scopeId =
-      owner.resolvedCompilerAnnotationsWithClassIds
-        .single { it.toAnnotationClassId(session) == Symbols.ClassIds.metroContribution }
-        .scopeArgument()
-        ?.resolvedClassId() ?: error("Could not find a contribution scope for ${owner.classId}")
-
-    return contributions
-      .filterIsInstance<Contribution.BindingContribution>()
-      .filter { it.callableName == callableId.callableName.identifier }
-      .filter { it.annotation.scopeArgument()?.resolvedClassId() == scopeId }
-      .map { contribution -> buildBindingProperty(owner, contribution) }
-  }
-
-  private fun buildBindingProperty(
-    owner: FirClassSymbol<*>,
-    contribution: Contribution.BindingContribution,
-  ): FirPropertySymbol {
-    val (bindingTypeRef, ignoreQualifier) = contribution.annotation.bindingTypeOrNull()
-    // Standard annotation on the class itself, look for a single bound type
-    val bindingType =
-      (bindingTypeRef ?: contribution.annotatedType.resolvedSuperTypeRefs.single()).coneType
-
-    val qualifier =
-      if (!ignoreQualifier) {
-        bindingTypeRef?.annotations?.qualifierAnnotation(session)
-          ?: contribution.annotatedType.qualifierAnnotation(session)
-      } else {
-        null
-      }
-
-    val mapKey =
-      if (bindingTypeRef == null) {
-        contribution.annotatedType.mapKeyAnnotation(session)
-      } else {
-        // Call back to the class if the bound type doesn't have one
-        bindingTypeRef.annotations.mapKeyAnnotation(session)
-          ?: contribution.annotatedType.mapKeyAnnotation(session)
-      }
-
-    val suffix = buildString {
-      qualifier?.hashString()?.let(::append)
-
-      bindingType.classId
-        ?.joinSimpleNames("", camelCase = true)
-        ?.shortClassName
-        ?.capitalizeUS()
-        ?.let(::append)
-    }
-
-    return createMemberProperty(
-        owner,
-        Keys.MetroContributionCallableDeclaration,
-        (contribution.callableName + "As" + suffix).asName(),
-        returnType = bindingType,
-        hasBackingField = false,
-      ) {
-        modality = Modality.ABSTRACT
-        extensionReceiverType(contribution.origin.defaultType(emptyList()))
-      }
-      .also { property ->
-        val newAnnotations = mutableListOf<FirAnnotation>()
-        newAnnotations.addAll(contribution.buildAnnotations())
-        qualifier?.fir?.let(newAnnotations::add)
-        mapKey?.fir?.let(newAnnotations::add)
-        property.replaceAnnotationsSafe(newAnnotations)
       }
       .symbol
   }
