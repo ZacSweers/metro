@@ -30,6 +30,10 @@ class X {
 
     }
 
+    fun constructorFunction(y: Y): X {
+      return error(message = "Never called")
+    }
+
     override operator fun invoke(): X {
       return Companion.newInstance(y = <this>.#y.invoke())
     }
@@ -79,6 +83,10 @@ class Y {
       super/*Any*/()
       /* <init>() */
 
+    }
+
+    fun constructorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
+      return error(message = "Never called")
     }
 
     override operator fun invoke(): Y {
@@ -160,3 +168,4 @@ interface CycleMapGraph {
     abstract get
 
 }
+

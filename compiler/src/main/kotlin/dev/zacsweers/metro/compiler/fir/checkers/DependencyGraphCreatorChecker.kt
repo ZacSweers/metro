@@ -61,7 +61,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     }
 
     declaration.validateApiDeclaration(
-      "${annotationClassId.relativeClassName.asString()} declarations"
+      "${annotationClassId.relativeClassName.asString()} declarations",
+      checkConstructor = true,
     ) {
       return
     }

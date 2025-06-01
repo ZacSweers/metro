@@ -84,7 +84,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
             val nestedContributionName =
               nameAllocator.newName(Symbols.Names.MetroContribution.identifier).asName()
 
-            contributionNamesToScopeArgs.put(nestedContributionName, scopeArgument)
+            contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
           }
       }
       contributionNamesToScopeArgs
@@ -237,7 +237,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
                 val originalScopeArg =
                   contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
                     ?: error("Could not find a contribution scope for ${owner.classId}.$name")
-                this.mapping.put(Symbols.Names.scope, originalScopeArg)
+                this.mapping[Symbols.Names.scope] = originalScopeArg
               }
             )
           }

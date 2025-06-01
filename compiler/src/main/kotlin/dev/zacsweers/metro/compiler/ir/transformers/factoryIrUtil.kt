@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir.transformers
 
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -11,16 +12,31 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
+import dev.zacsweers.metro.compiler.ir.stubExpression
+import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
+import org.jetbrains.kotlin.ir.util.copyParametersFrom
+import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 /**
  * Implement a static `create()` function for a given [targetConstructor].
@@ -109,4 +125,59 @@ internal fun generateStaticNewInstanceFunction(
         irExprBodySafe(symbol, buildBody(this@apply))
       }
   }
+}
+
+/**
+ * Generates a metadata-visible function in the factory class that matches the signature of the
+ * target constructor. This function is used in downstream compilations to read the constructor's
+ * signature.
+ */
+internal fun generateMetadataVisibleConstructorFunction(
+  context: IrMetroContext,
+  factoryClass: IrClass,
+  targetConstructor: IrConstructor,
+): IrSimpleFunction {
+  val function =
+    factoryClass
+      .addFunction {
+        name = Symbols.Names.constructorFunction
+        returnType = targetConstructor.returnType
+      }
+      .apply {
+        val sourceClass = factoryClass.parentAsClass
+        val scopeAndQualifierAnnotations = buildList {
+          val classMetroAnnotations = sourceClass.metroAnnotations(context.symbols.classIds)
+          classMetroAnnotations.scope?.ir?.let(::add)
+          classMetroAnnotations.qualifier?.ir?.let(::add)
+        }
+        if (scopeAndQualifierAnnotations.isNotEmpty()) {
+          val container =
+            object : IrAnnotationContainer {
+              override val annotations: List<IrConstructorCall> = scopeAndQualifierAnnotations
+            }
+          copyAnnotationsFrom(container)
+        }
+        copyTypeParametersFrom(sourceClass)
+        copyParametersFrom(targetConstructor)
+        setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
+
+        regularParameters.forEach {
+          // If it has a default value expression, just replace it with a stub. We don't need it to
+          // be functional, we just need it to be indicated
+          if (it.hasDefaultValue()) {
+            it.defaultValue =
+              context.pluginContext.createIrBuilder(symbol).run {
+                irExprBody(stubExpression(context))
+              }
+          }
+        }
+        // The function's signature already matches the target constructor's signature, all we need
+        // this for
+        body =
+          context.pluginContext.createIrBuilder(symbol).run {
+            irExprBodySafe(symbol, stubExpression(context))
+          }
+      }
+  context.pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+  return function
 }

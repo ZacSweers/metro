@@ -83,7 +83,8 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     }
 
     declaration.validateApiDeclaration(
-      "${graphAnnotationClassId.shortClassName.asString()} declarations"
+      "${graphAnnotationClassId.shortClassName.asString()} declarations",
+      checkConstructor = true,
     ) {
       return
     }

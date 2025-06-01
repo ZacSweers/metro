@@ -33,6 +33,11 @@ class Base1Impl : Base1, Base2, Base3 {
       return Base1Impl()
     }
 
+    @SingleIn(scope = AppScope::class)
+    fun constructorFunction(): Base1Impl {
+      return error(message = "Never called")
+    }
+
     override operator fun invoke(): Base1Impl {
       return $$MetroFactory.newInstance()
     }

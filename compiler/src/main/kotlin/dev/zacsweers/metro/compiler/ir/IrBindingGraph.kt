@@ -3,13 +3,17 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -20,6 +24,8 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.getSimpleFunction
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
@@ -27,8 +33,11 @@ internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
   private val node: DependencyGraphNode,
   newBindingStack: () -> IrBindingStack,
+  findClassFactory: (IrClass) -> ClassFactory?,
 ) {
 
+  private val classBindingLookup =
+    ClassBindingLookup(metroContext, node.sourceGraph, findClassFactory)
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -40,7 +49,7 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBindings = { contextKey -> metroContext.injectedClassBindingOrNull(contextKey) },
+      computeBindings = classBindingLookup::lookup,
       onError = ::onError,
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
     )
@@ -549,4 +558,62 @@ internal class IrBindingGraph(
       }
     }
   }
+}
+
+internal class ClassBindingLookup(
+  private val metroContext: IrMetroContext,
+  private val sourceGraph: IrClass,
+  private val findClassFactory: (IrClass) -> ClassFactory?,
+) {
+
+  /** Creates an expected class binding for the given [contextKey] or returns null. */
+  internal fun lookup(contextKey: IrContextualTypeKey): Set<Binding> =
+    with(metroContext) {
+      val key = contextKey.typeKey
+      val irClass = key.type.rawType()
+      val classAnnotations = irClass.metroAnnotations(symbols.classIds)
+
+      val bindings = mutableSetOf<Binding>()
+      if (irClass.isObject) {
+        // TODO make these opt-in?
+        irClass.getSimpleFunction(Symbols.StringNames.CONSTRUCTOR_FUNCTION)?.owner?.let {
+          // We don't actually call this function but it stores information about qualifier/scope
+          // annotations, so reference it here so IC triggers
+          trackFunctionCall(sourceGraph, it)
+        }
+        bindings += Binding.ObjectClass(irClass, classAnnotations, key)
+        return bindings
+      }
+
+      val classFactory = findClassFactory(irClass)
+      if (classFactory != null) {
+        // We don't actually call this function but it stores information about qualifier/scope
+        // annotations, so reference it here so IC triggers
+        trackFunctionCall(sourceGraph, classFactory.function)
+        bindings +=
+          Binding.ConstructorInjected(
+            type = irClass,
+            classFactory = classFactory,
+            annotations = classAnnotations,
+            typeKey = key,
+          )
+      } else if (classAnnotations.isAssistedFactory) {
+        val function = irClass.singleAbstractFunction(metroContext)
+        val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
+        bindings +=
+          Binding.Assisted(
+            type = irClass,
+            function = function,
+            annotations = classAnnotations,
+            typeKey = key,
+            parameters = function.parameters(metroContext),
+            target = targetContextualTypeKey,
+          )
+      } else if (contextKey.hasDefault) {
+        bindings += Binding.Absent(key)
+      } else {
+        // Do nothing
+      }
+      return bindings
+    }
 }

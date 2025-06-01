@@ -456,7 +456,11 @@ internal fun FirCallableSymbol<*>.allAnnotations(): Sequence<FirAnnotation> {
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
-internal inline fun FirClass.validateApiDeclaration(type: String, onError: () -> Nothing) {
+internal inline fun FirClass.validateApiDeclaration(
+  type: String,
+  checkConstructor: Boolean,
+  onError: () -> Nothing,
+) {
   if (isLocal) {
     reporter.reportOn(
       source,
@@ -518,7 +522,7 @@ internal inline fun FirClass.validateApiDeclaration(type: String, onError: () ->
     )
     onError()
   }
-  if (isAbstract && classKind == ClassKind.CLASS) {
+  if (checkConstructor && isAbstract && classKind == ClassKind.CLASS) {
     primaryConstructorIfAny(context.session)?.validateVisibility("$type' primary constructor") {
       onError()
     }
