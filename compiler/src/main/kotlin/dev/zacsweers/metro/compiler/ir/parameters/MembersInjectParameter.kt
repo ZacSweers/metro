@@ -31,7 +31,6 @@ internal class MembersInjectParameter(
   override val kind: IrParameterKind,
   override val name: Name,
   override val contextualTypeKey: IrContextualTypeKey,
-  @Poko.Skip override val bindingStackEntry: IrBindingStack.Entry,
   @Poko.Skip override val originalName: Name,
   @Poko.Skip override val ir: IrValueParameter,
 ) : Parameter {
@@ -110,7 +109,6 @@ internal fun IrProperty.toMemberInjectParameter(
     name = uniqueName,
     originalName = name,
     contextualTypeKey = contextKey,
-    bindingStackEntry = IrBindingStack.Entry.memberInjectedAt(contextKey, this),
     ir = setterParam!!,
   )
 }
@@ -139,13 +137,6 @@ internal fun IrValueParameter.toMemberInjectParameter(
     name = uniqueName,
     originalName = name,
     contextualTypeKey = contextKey,
-    bindingStackEntry =
-      IrBindingStack.Entry.injectedAt(
-        contextKey,
-        this.parent as IrFunction,
-        param = this,
-        declaration = (this.parent as IrFunction).propertyIfAccessor,
-      ),
     ir = this,
   )
 }

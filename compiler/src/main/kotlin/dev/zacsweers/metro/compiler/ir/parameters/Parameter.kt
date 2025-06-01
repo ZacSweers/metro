@@ -27,7 +27,6 @@ internal sealed interface Parameter : Comparable<Parameter> {
   val isIncludes: Boolean
   val isExtends: Boolean
   val ir: IrValueParameter
-  val bindingStackEntry: IrBindingStack.Entry
 
   val typeKey: IrTypeKey get() = contextualTypeKey.typeKey
   val type: IrType get() = contextualTypeKey.typeKey.type
@@ -38,7 +37,7 @@ internal sealed interface Parameter : Comparable<Parameter> {
 
   override fun compareTo(other: Parameter): Int = COMPARATOR.compare(this, other)
 
-  // @Assisted parameters are equal, if the type and the identifier match. This subclass makes
+  // @Assisted parameters are equal if the type and the identifier match. This subclass makes
   // diffing the parameters easier.
   data class AssistedParameterKey(val typeKey: IrTypeKey, val assistedIdentifier: String) {
     companion object {

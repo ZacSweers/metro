@@ -232,11 +232,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
           isGraphInstance = true,
           isExtends = false,
           isIncludes = false,
-          // This creates a binding stack entry for the graph instance parameter.
-          // This is used for cycle detection in the dependency graph.
-          // This code path is executed when a provider function is not in an object
-          // and needs access to the graph instance.
-          bindingStackEntry = IrBindingStack.Entry.simpleTypeRef(contextualTypeKey),
           isBindsInstance = false,
         )
       } else {

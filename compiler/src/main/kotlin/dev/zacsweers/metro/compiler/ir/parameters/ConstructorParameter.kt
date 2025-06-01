@@ -32,7 +32,6 @@ internal class ConstructorParameter(
   override val assistedParameterKey: Parameter.AssistedParameterKey =
     Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
   @Poko.Skip override val originalName: Name,
-  @Poko.Skip override val bindingStackEntry: IrBindingStack.Entry,
 ) : Parameter {
   override lateinit var ir: IrValueParameter
 
@@ -108,8 +107,6 @@ internal fun IrValueParameter.toConstructorParameter(
 
   val assistedIdentifier = assistedAnnotation?.constArgumentOfTypeAt<String>(0).orEmpty()
 
-  val ownerFunction = this.parent as IrFunction // TODO is this safe
-
   return ConstructorParameter(
       kind = kind,
       name = uniqueName,
@@ -118,7 +115,6 @@ internal fun IrValueParameter.toConstructorParameter(
       isAssisted = assistedAnnotation != null,
       assistedIdentifier = assistedIdentifier,
       isGraphInstance = false,
-      bindingStackEntry = IrBindingStack.Entry.injectedAt(contextKey, ownerFunction, this),
       isBindsInstance = isProvides,
       isExtends = isExtends,
       isIncludes = isIncludes,
