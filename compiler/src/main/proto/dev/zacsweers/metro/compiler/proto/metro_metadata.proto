@@ -41,17 +41,27 @@ message BindsCallableId {
   bool is_property = 3;
 }
 
-message InjectedClassProto {
-  bool has_member_injections = 1;
-  repeated string member_inject_function_names = 2;
+message MemberInjectInfo {
+  // Map of ClassId (string) to list of injectable member names
+  map<string, InjectableMembers> injectable_members_by_class = 1;
+}
+
+message InjectableMembers {
+  repeated InjectableMember members = 1;
+}
+
+message InjectableMember {
+  // Member name
+  string name = 1;
+  bool is_property = 2;
+  // For properties
+  bool is_lateinit = 3;
 }
 
 message MetroMetadata {
   string version = 1;
 
-  oneof MetadataType {
-    DependencyGraphProto dependency_graph = 2;
+  DependencyGraphProto dependency_graph = 2;
 
-    InjectedClassProto injected_class = 3;
-  }
+  MemberInjectInfo member_inject_info = 3;  // Add this
 }
