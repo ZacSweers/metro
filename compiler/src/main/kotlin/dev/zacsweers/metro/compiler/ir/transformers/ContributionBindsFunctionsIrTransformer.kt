@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -15,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
+import dev.zacsweers.metro.compiler.ir.requireScope
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -36,7 +38,6 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.getValueArgument
-import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
@@ -48,14 +49,32 @@ import org.jetbrains.kotlin.name.ClassId
  *    overrides of them.
  */
 // TODO can we inline this into DependencyGraphTransformer for single-pass?
-internal class ContributionBindPropertiesIrTransformer(private val context: IrMetroContext) :
+internal class ContributionBindsFunctionsIrTransformer(private val context: IrMetroContext) :
   IrElementTransformerVoid(), IrMetroContext by context {
 
   private val transformedContributions = mutableSetOf<ClassId>()
 
+  /**
+   * Lookup cache of contributions.
+   *
+   * ```
+   * MutableMap<
+   *   ClassId <-- contributor class id
+   *   Map<
+   *     ClassId <-- scope class id
+   *     Set<Contribution> <-- contributions to that scope
+   *   >
+   * >
+   * ```
+   */
+  private val contributionsByClass = mutableMapOf<ClassId, Map<ClassId, Set<Contribution>>>()
+
   override fun visitClass(declaration: IrClass): IrStatement {
     if (declaration.origin == Origins.MetroContributionClassDeclaration) {
-      transformContributionClass(declaration)
+      transformContributionClass(
+        declaration,
+        declaration.findAnnotations(Symbols.ClassIds.metroContribution).first(),
+      )
     } else if (declaration.isAnnotatedWithAny(context.symbols.classIds.graphLikeAnnotations)) {
       transformGraphLike(declaration)
     }
@@ -63,12 +82,16 @@ internal class ContributionBindPropertiesIrTransformer(private val context: IrMe
     return super.visitClass(declaration)
   }
 
-  private fun transformContributionClass(declaration: IrClass) {
+  private fun transformContributionClass(
+    declaration: IrClass,
+    contributionAnnotation: IrConstructorCall,
+  ) {
     val classId = declaration.classIdOrFail
     if (classId !in transformedContributions) {
       val contributor = declaration.parentAsClass
       // TODO If ContributesTo, return emptySet()?
-      val contributions = findContributions(contributor).orEmpty()
+      val scope = contributionAnnotation.requireScope()
+      val contributions = getOrFindContributions(contributor, scope).orEmpty()
       val bindsFunctions = mutableSetOf<IrSimpleFunction>()
       for (contribution in contributions) {
         if (contribution !is Contribution.BindingContribution) continue
@@ -87,8 +110,11 @@ internal class ContributionBindPropertiesIrTransformer(private val context: IrMe
       .getAllSuperTypes(pluginContext)
       .filterNot { it.rawTypeOrNull()?.isExternalParent == true }
       .mapNotNull { it.rawTypeOrNull() }
-      .filter { it.hasAnnotation(Symbols.ClassIds.metroContribution) }
-      .forEach { transformContributionClass(it) }
+      .forEach {
+        val contributionMarker =
+          it.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull() ?: return@forEach
+        transformContributionClass(it, contributionMarker)
+      }
 
     // Add fake overrides. This should only add missing ones
     declaration.addFakeOverrides(irTypeSystemContext)
@@ -102,12 +128,14 @@ internal class ContributionBindPropertiesIrTransformer(private val context: IrMe
 
   sealed interface Contribution {
     val origin: ClassId
+    val annotation: IrConstructorCall
 
     sealed interface BindingContribution : Contribution {
       val callableName: String
       val annotatedType: IrClass
-      val annotation: IrConstructorCall
       val buildAnnotations: IrFunction.() -> List<IrConstructorCall>
+      override val origin: ClassId
+        get() = annotatedType.classIdOrFail
 
       fun IrClass.generateBindingFunction(metroContext: IrMetroContext): IrSimpleFunction =
         with(metroContext) {
@@ -158,14 +186,16 @@ internal class ContributionBindPropertiesIrTransformer(private val context: IrMe
         }
     }
 
-    data class ContributesTo(override val origin: ClassId) : Contribution
+    data class ContributesTo(
+      override val origin: ClassId,
+      override val annotation: IrConstructorCall,
+    ) : Contribution
 
     data class ContributesBinding(
       override val annotatedType: IrClass,
       override val annotation: IrConstructorCall,
       override val buildAnnotations: IrFunction.() -> List<IrConstructorCall>,
     ) : Contribution, BindingContribution {
-      override val origin: ClassId = annotatedType.classIdOrFail
       override val callableName: String = "binds"
     }
 
@@ -174,7 +204,6 @@ internal class ContributionBindPropertiesIrTransformer(private val context: IrMe
       override val annotation: IrConstructorCall,
       override val buildAnnotations: IrFunction.() -> List<IrConstructorCall>,
     ) : Contribution, BindingContribution {
-      override val origin: ClassId = annotatedType.classIdOrFail
       override val callableName: String = "bindIntoSet"
     }
 
@@ -183,9 +212,25 @@ internal class ContributionBindPropertiesIrTransformer(private val context: IrMe
       override val annotation: IrConstructorCall,
       override val buildAnnotations: IrFunction.() -> List<IrConstructorCall>,
     ) : Contribution, BindingContribution {
-      override val origin: ClassId = annotatedType.classIdOrFail
       override val callableName: String = "bindIntoMap"
     }
+  }
+
+  private fun getOrFindContributions(
+    contributingSymbol: IrClass,
+    scope: ClassId,
+  ): Set<Contribution>? {
+    val contributorClassId = contributingSymbol.classIdOrFail
+    if (contributorClassId !in contributionsByClass) {
+      val allContributions = findContributions(contributingSymbol)
+      contributionsByClass[contributorClassId] =
+        if (allContributions.isNullOrEmpty()) {
+          emptyMap()
+        } else {
+          allContributions.groupBy { it.annotation.requireScope() }.mapValues { it.value.toSet() }
+        }
+    }
+    return contributionsByClass[contributorClassId]?.get(scope)
   }
 
   private fun findContributions(contributingSymbol: IrClass): Set<Contribution>? {
@@ -198,7 +243,7 @@ internal class ContributionBindPropertiesIrTransformer(private val context: IrMe
       val annotationClassId = annotation.annotationClass.classId ?: continue
       when (annotationClassId) {
         in contributesToAnnotations -> {
-          contributions += Contribution.ContributesTo(contributingSymbol.classIdOrFail)
+          contributions += Contribution.ContributesTo(contributingSymbol.classIdOrFail, annotation)
         }
         in contributesBindingAnnotations -> {
           contributions +=
