@@ -3,14 +3,12 @@
 package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.unsafeLazy
-import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
@@ -31,8 +29,9 @@ internal class ConstructorParameter(
   override val assistedIdentifier: String,
   override val assistedParameterKey: Parameter.AssistedParameterKey =
     Parameter.AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
-  @Poko.Skip override val originalName: Name,
 ) : Parameter {
+  override val originalName: Name = name
+
   override lateinit var ir: IrValueParameter
 
   private val cachedToString by unsafeLazy {
@@ -59,7 +58,6 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
     valueParameter.toConstructorParameter(
       context,
       IrParameterKind.Regular,
-      valueParameter.name,
       typeParameterRemapper,
     )
   }
@@ -68,7 +66,6 @@ internal fun List<IrValueParameter>.mapToConstructorParameters(
 internal fun IrValueParameter.toConstructorParameter(
   context: IrMetroContext,
   kind: IrParameterKind = IrParameterKind.Regular,
-  uniqueName: Name = this.name,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): ConstructorParameter {
   // Remap type parameters in underlying types to the new target container. This is important for
@@ -109,8 +106,7 @@ internal fun IrValueParameter.toConstructorParameter(
 
   return ConstructorParameter(
       kind = kind,
-      name = uniqueName,
-      originalName = name,
+      name = name,
       contextualTypeKey = contextKey,
       isAssisted = assistedAnnotation != null,
       assistedIdentifier = assistedIdentifier,
