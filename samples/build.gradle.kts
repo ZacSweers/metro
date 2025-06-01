@@ -22,8 +22,16 @@ plugins {
   alias(libs.plugins.kotlin.plugin.serialization) apply false
 }
 
+val ktfmtVersion = libs.versions.ktfmt.get()
+
 allprojects {
   apply(plugin = "com.diffplug.spotless")
+  configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+      substitute(module("com.facebook:ktfmt:$ktfmtVersion"))
+        .using(module("com.github.facebook:ktfmt:v$ktfmtVersion"))
+    }
+  }
   configure<SpotlessExtension> {
     format("misc") {
       target("*.gradle", "*.md", ".gitignore")

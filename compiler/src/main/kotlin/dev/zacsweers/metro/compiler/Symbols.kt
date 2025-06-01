@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -59,6 +58,7 @@ internal class Symbols(
     const val BINDING = "binding"
     const val BOUND_TYPE = "boundType"
     const val COMPOSABLE = "Composable"
+    const val CONSTRUCTOR_FUNCTION = "constructorFunction"
     const val CONTRIBUTED = "contributed"
     const val CREATE = "create"
     const val CREATE_FACTORY_PROVIDER = "createFactoryProvider"
@@ -162,6 +162,7 @@ internal class Symbols(
     val asContribution = "asContribution".asName()
     val binding = StringNames.BINDING.asName()
     val boundType = StringNames.BOUND_TYPE.asName()
+    val constructorFunction = StringNames.CONSTRUCTOR_FUNCTION.asName()
     val contributed = StringNames.CONTRIBUTED.asName()
     val create = StringNames.CREATE.asName()
     val createFactoryProvider = StringNames.CREATE_FACTORY_PROVIDER.asName()

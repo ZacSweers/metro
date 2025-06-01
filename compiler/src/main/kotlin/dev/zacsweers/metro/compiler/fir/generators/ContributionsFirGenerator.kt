@@ -47,7 +47,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     FirCache<FirClassSymbol<*>, Map<Name, FirGetClassCall?>, Unit> =
     session.firCachesFactory.createCache { contributingClassSymbol, _ ->
       val contributionAnnotations =
-        contributingClassSymbol.annotations
+        contributingClassSymbol.resolvedCompilerAnnotationsWithClassIds
           .annotationsIn(session, session.classIds.allContributesAnnotations)
           .toList()
 
@@ -65,7 +65,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
             val nestedContributionName =
               nameAllocator.newName(Symbols.Names.MetroContribution.identifier).asName()
 
-            contributionNamesToScopeArgs.put(nestedContributionName, scopeArgument)
+            contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
           }
       }
       contributionNamesToScopeArgs
@@ -122,7 +122,8 @@ internal class ContributionsFirGenerator(session: FirSession) :
     val contributesIntoSetAnnotations = session.classIds.contributesIntoSetAnnotations
     val contributesIntoMapAnnotations = session.classIds.contributesIntoMapAnnotations
     val contributions = mutableSetOf<Contribution>()
-    for (annotation in contributingSymbol.annotations.filter { it.isResolved }) {
+    for (annotation in
+      contributingSymbol.resolvedCompilerAnnotationsWithClassIds.filter { it.isResolved }) {
       val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
       when (annotationClassId) {
         in contributesToAnnotations -> {
@@ -217,7 +218,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
                 val originalScopeArg =
                   contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
                     ?: error("Could not find a contribution scope for ${owner.classId}.$name")
-                this.mapping.put(Symbols.Names.scope, originalScopeArg)
+                this.mapping[Symbols.Names.scope] = originalScopeArg
               }
             )
           }

@@ -6,6 +6,7 @@ import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
@@ -129,10 +130,23 @@ internal interface IrBindingStack :
           if (functionToUse == null) {
             "<intrinsic>"
           } else {
-            val targetFqName = functionToUse.parent.kotlinFqName
+            // If it's a synthetic signature holder in a ClassFactory, use the parent class
+            var treatAsConstructor = functionToUse is IrConstructor
+            val parentClassToReport =
+              if (
+                functionToUse is IrSimpleFunction &&
+                  functionToUse.name == Symbols.Names.constructorFunction
+              ) {
+                treatAsConstructor = true
+                functionToUse.parentAsClass.parent
+              } else {
+                functionToUse.parent
+              }
+            val targetFqName = parentClassToReport.kotlinFqName
             val middle =
               when {
                 functionToUse is IrConstructor -> ""
+                treatAsConstructor -> ""
                 functionToUse.isPropertyAccessor ->
                   "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
                 else -> "#${functionToUse.name.asString()}"
@@ -399,7 +413,7 @@ internal fun bindingStackEntryForDependency(
     is Binding.ConstructorInjected -> {
       Entry.injectedAt(
         contextKey,
-        callingBinding.injectedConstructor,
+        callingBinding.classFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
       )
@@ -415,7 +429,7 @@ internal fun bindingStackEntryForDependency(
     is Binding.Provided -> {
       Entry.injectedAt(
         contextKey,
-        callingBinding.providerFactory.providesFunction,
+        callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
       )

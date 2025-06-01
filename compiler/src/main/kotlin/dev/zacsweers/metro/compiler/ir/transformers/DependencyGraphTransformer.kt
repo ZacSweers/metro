@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
+import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
@@ -32,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -76,7 +78,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getValueArgument
-import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -389,7 +390,9 @@ internal class DependencyGraphTransformer(
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
-      if (declaration is IrFunction && declaration.isFakeOverriddenFromAny()) continue
+      if (declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)) {
+        continue
+      }
       val annotations = metroAnnotationsOf(declaration)
       if (annotations.isProvides) continue
       when (declaration) {
@@ -718,7 +721,13 @@ internal class DependencyGraphTransformer(
 
     val bindingGraph =
       parentTracer.traceNested("Build binding graph") {
-        BindingGraphGenerator(metroContext, node, membersInjectorTransformer).generate()
+        BindingGraphGenerator(
+            metroContext,
+            node,
+            injectConstructorTransformer,
+            membersInjectorTransformer,
+          )
+          .generate()
       }
 
     try {
@@ -779,7 +788,6 @@ internal class DependencyGraphTransformer(
             result,
             tracer,
             providesTransformer,
-            injectConstructorTransformer,
             membersInjectorTransformer,
             assistedFactoryTransformer,
           )

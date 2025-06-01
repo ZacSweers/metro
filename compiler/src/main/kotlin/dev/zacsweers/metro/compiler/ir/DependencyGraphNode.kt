@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
-import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy

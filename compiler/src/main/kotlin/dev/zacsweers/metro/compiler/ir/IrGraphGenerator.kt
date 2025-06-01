@@ -17,7 +17,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ProvidesTransformer
 import dev.zacsweers.metro.compiler.letIf
@@ -105,7 +104,6 @@ internal class IrGraphGenerator(
   private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
   private val providesTransformer: ProvidesTransformer,
-  private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
@@ -414,13 +412,7 @@ internal class IrGraphGenerator(
           // Provider<*> fields
           val fieldType =
             if (binding is Binding.ConstructorInjected && binding.isAssisted) {
-              val factory =
-                injectConstructorTransformer.getOrGenerateFactory(
-                  binding.type,
-                  binding.injectedConstructor,
-                ) ?: return@forEach
-
-              factory.factoryClass.typeWith() // TODO generic factories?
+              binding.classFactory.factoryClass.typeWith() // TODO generic factories?
             } else {
               symbols.metroProvider.typeWith(key.type)
             }
@@ -897,7 +889,7 @@ internal class IrGraphGenerator(
     }
     if (
       binding is Binding.Provided &&
-        binding.providerFactory.providesFunction.correspondingPropertySymbol == null
+        binding.providerFactory.function.correspondingPropertySymbol == null
     ) {
       check(params.regularParameters.size == paramsToMap.size) {
         """
@@ -1006,10 +998,7 @@ internal class IrGraphGenerator(
     return when (binding) {
       is Binding.ConstructorInjected -> {
         // Example_Factory.create(...)
-        val injectableConstructor = binding.injectedConstructor
-        val factory =
-          injectConstructorTransformer.getOrGenerateFactory(binding.type, injectableConstructor)
-            ?: return stubExpression(metroContext)
+        val factory = binding.classFactory
 
         with(factory) {
           invokeCreateExpression { createFunction ->

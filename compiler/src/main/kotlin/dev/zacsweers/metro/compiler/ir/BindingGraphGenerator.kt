@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import kotlin.collections.first
 import kotlin.collections.orEmpty
@@ -28,6 +29,7 @@ internal class BindingGraphGenerator(
   metroContext: IrMetroContext,
   private val node: DependencyGraphNode,
   // TODO preprocess these instead and just lookup via irAttribute
+  private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
@@ -37,6 +39,13 @@ internal class BindingGraphGenerator(
         node,
         newBindingStack = {
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
+        },
+        findClassFactory = { clazz ->
+          injectConstructorTransformer.getOrGenerateFactory(
+            clazz,
+            previouslyFoundConstructor = null,
+            doNotErrorOnMissing = true,
+          )
         },
       )
 
@@ -106,13 +115,13 @@ internal class BindingGraphGenerator(
         )
 
       if (provider.isIntoMultibinding) {
-        val originalQualifier = providerFactory.providesFunction.qualifierAnnotation()
+        val originalQualifier = providerFactory.function.qualifierAnnotation()
         graph
           .getOrCreateMultibinding(
             pluginContext = pluginContext,
             annotations = providerFactory.annotations,
             contextKey = contextKey,
-            declaration = providerFactory.providesFunction,
+            declaration = providerFactory.function,
             originalQualifier = originalQualifier,
             bindingStack = bindingStack,
           )
@@ -305,12 +314,16 @@ internal class BindingGraphGenerator(
 
           val graphImpl = depNode.sourceGraph.metroGraphOrFail
           for (accessor in graphImpl.functions) {
-            // TODO exclude toString/equals/hashCode or use marker annotation?
+            // Exclude toString/equals/hashCode or use marker annotation?
+            if (accessor.isInheritedFromAny(pluginContext.irBuiltIns)) {
+              continue
+            }
             when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
               in providerFieldsSet -> {
                 val metroFunction = metroFunctionOf(accessor)
                 providerFieldAccessorsByName[metroFunction.ir.name] = metroFunction
               }
+
               in instanceFieldsSet -> {
                 val metroFunction = metroFunctionOf(accessor)
                 instanceFieldAccessorsByName[metroFunction.ir.name] = metroFunction

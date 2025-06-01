@@ -30,6 +30,10 @@ class Bar : Foo {
 
     }
 
+    fun constructorFunction(fooProvider: Provider<Foo>): Bar {
+      return error(message = "Never called")
+    }
+
     override operator fun invoke(): Bar {
       return Companion.newInstance(fooProvider = <this>.#fooProvider)
     }
@@ -92,3 +96,4 @@ interface BindsCycleGraph {
 
 interface Foo {
 }
+
