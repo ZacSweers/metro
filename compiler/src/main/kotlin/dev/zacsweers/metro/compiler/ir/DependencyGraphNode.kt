@@ -63,17 +63,17 @@ internal data class DependencyGraphNode(
 
   sealed interface Creator {
     val function: IrFunction
-    val parameters: Parameters<ConstructorParameter>
+    val parameters: Parameters
 
     data class Constructor(
       override val function: IrConstructor,
-      override val parameters: Parameters<ConstructorParameter>,
+      override val parameters: Parameters,
     ) : Creator
 
     data class Factory(
       val type: IrClass,
       override val function: IrSimpleFunction,
-      override val parameters: Parameters<ConstructorParameter>,
+      override val parameters: Parameters,
     ) : Creator
   }
 }

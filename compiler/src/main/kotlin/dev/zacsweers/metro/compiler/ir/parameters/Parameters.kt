@@ -29,12 +29,13 @@ import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
-internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> {
+// TODO make this a regular class again
+internal sealed interface Parameters : Comparable<Parameters> {
   val callableId: CallableId
   val dispatchReceiverParameter: Parameter?
-  val extensionReceiverParameter: T?
-  val regularParameters: List<T>
-  val contextParameters: List<T>
+  val extensionReceiverParameter: Parameter?
+  val regularParameters: List<Parameter>
+  val contextParameters: List<Parameter>
   val ir: IrFunction?
 
   val nonInstanceParameters: List<Parameter>
@@ -52,26 +53,22 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
       }
     }
 
-  val extensionOrFirstParameter: T?
+  val extensionOrFirstParameter: Parameter?
     get() = extensionReceiverParameter ?: regularParameters.firstOrNull()
 
-  fun with(ir: IrFunction): Parameters<T>
+  fun with(ir: IrFunction): Parameters
 
-  fun mergeValueParametersWithAll(
-    others: List<Parameters<out Parameter>>
-  ): Parameters<out Parameter> {
+  fun mergeValueParametersWithAll(others: List<Parameters>): Parameters {
     return listOf(this).reduce { current, next ->
-      @Suppress("UNCHECKED_CAST")
-      current.mergeValueParametersWithUntyped(next) as Parameters<T>
+      @Suppress("UNCHECKED_CAST") (current.mergeValueParametersWithUntyped(next))
     }
   }
 
-  fun mergeValueParametersWith(other: Parameters<*>): Parameters<T> {
-    @Suppress("UNCHECKED_CAST")
-    return mergeValueParametersWithUntyped(other) as Parameters<T>
+  fun mergeValueParametersWith(other: Parameters): Parameters {
+    return mergeValueParametersWithUntyped(other)
   }
 
-  fun mergeValueParametersWithUntyped(other: Parameters<*>): Parameters<*> {
+  fun mergeValueParametersWithUntyped(other: Parameters): Parameters {
     return ParametersImpl(
       callableId,
       dispatchReceiverParameter,
@@ -81,10 +78,10 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
     )
   }
 
-  override fun compareTo(other: Parameters<*>): Int = COMPARATOR.compare(this, other)
+  override fun compareTo(other: Parameters): Int = COMPARATOR.compare(this, other)
 
   companion object {
-    private val EMPTY: Parameters<*> =
+    private val EMPTY: Parameters =
       ParametersImpl(
         CallableId(PACKAGE_FQ_NAME_FOR_LOCAL, null, SpecialNames.NO_NAME_PROVIDED),
         null,
@@ -93,39 +90,39 @@ internal sealed interface Parameters<T : Parameter> : Comparable<Parameters<*>> 
         emptyList(),
       )
 
-    @Suppress("UNCHECKED_CAST") fun <T : Parameter> empty(): Parameters<T> = EMPTY as Parameters<T>
+    fun empty(): Parameters = EMPTY
 
-    val COMPARATOR: Comparator<Parameters<*>> =
-      compareBy<Parameters<*>> { it.dispatchReceiverParameter }
+    val COMPARATOR: Comparator<Parameters> =
+      compareBy<Parameters> { it.dispatchReceiverParameter }
         .thenBy { it.extensionReceiverParameter }
         .thenComparator { a, b -> a.regularParameters.compareTo(b.regularParameters) }
 
-    operator fun <T : Parameter> invoke(
+    operator fun invoke(
       callableId: CallableId,
       instance: Parameter?,
-      extensionReceiver: T?,
-      regularParameters: List<T>,
-      contextParameters: List<T>,
+      extensionReceiver: Parameter?,
+      regularParameters: List<Parameter>,
+      contextParameters: List<Parameter>,
       ir: IrFunction?,
-    ): Parameters<T> =
+    ): Parameters =
       ParametersImpl(callableId, instance, extensionReceiver, regularParameters, contextParameters)
         .apply { ir?.let { this.ir = it } }
   }
 }
 
 @Poko
-private class ParametersImpl<T : Parameter>(
+private class ParametersImpl(
   override val callableId: CallableId,
   override val dispatchReceiverParameter: Parameter?,
-  override val extensionReceiverParameter: T?,
-  override val regularParameters: List<T>,
-  override val contextParameters: List<T>,
-) : Parameters<T> {
+  override val extensionReceiverParameter: Parameter?,
+  override val regularParameters: List<Parameter>,
+  override val contextParameters: List<Parameter>,
+) : Parameters {
   override var ir: IrFunction? = null
 
   private val cachedToString by unsafeLazy {
     buildString {
-      if (ir is IrConstructor || regularParameters.firstOrNull() is MembersInjectParameter) {
+      if (ir is IrConstructor || regularParameters.firstOrNull()?.isMember == true) {
         append("@Inject ")
       }
       // TODO render context receivers
@@ -170,7 +167,7 @@ private class ParametersImpl<T : Parameter>(
     }
   }
 
-  override fun with(ir: IrFunction): Parameters<T> {
+  override fun with(ir: IrFunction): Parameters {
     return ParametersImpl(
         callableId,
         dispatchReceiverParameter,
@@ -181,7 +178,7 @@ private class ParametersImpl<T : Parameter>(
       .apply { this.ir = ir }
   }
 
-  override val nonInstanceParameters: List<T> by unsafeLazy {
+  override val nonInstanceParameters: List<Parameter> by unsafeLazy {
     buildList {
       extensionReceiverParameter?.let(::add)
       addAll(regularParameters)
@@ -202,7 +199,7 @@ internal fun IrFunction.parameters(
   context: IrMetroContext,
   parentClass: IrClass? = parentClassOrNull,
   originClass: IrTypeParametersContainer? = null,
-): Parameters<ConstructorParameter> {
+): Parameters {
   val mapper =
     if (this is IrConstructor && originClass != null && parentClass != null) {
       val typeParameters = parentClass.typeParameters

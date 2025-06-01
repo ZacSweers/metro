@@ -404,7 +404,7 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   context: IrMetroContext,
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
 ): List<IrExpression?> {
@@ -528,7 +528,7 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
 }
 
 internal fun IrMetroContext.assignConstructorParamsToFields(
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   clazz: IrClass,
 ): Map<Parameter, IrField> {
   return buildMap {
