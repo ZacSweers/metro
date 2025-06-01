@@ -47,14 +47,12 @@ import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.tracer
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.tracing.Tracer
-import dev.zacsweers.metro.compiler.tracing.trace
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.IrStatement
@@ -94,6 +92,7 @@ internal class DependencyGraphTransformer(
   context: IrMetroContext,
   moduleFragment: IrModuleFragment,
   private val contributionData: IrContributionData,
+  private val parentTracer: Tracer,
 ) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -677,12 +676,10 @@ internal class DependencyGraphTransformer(
       return
     }
 
-    val tracer =
-      tracer(
-        dependencyGraphDeclaration.kotlinFqName.shortName().asString(),
-        "Transform dependency graph",
-      )
-    tracer.trace { tracer ->
+    parentTracer.traceNested(
+      "Transform dependency graph",
+      dependencyGraphDeclaration.kotlinFqName.shortName().asString(),
+    ) { tracer ->
       transformDependencyGraph(
         graphClassId,
         dependencyGraphDeclaration,

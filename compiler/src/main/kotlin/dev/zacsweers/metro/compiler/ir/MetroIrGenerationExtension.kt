@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionBindsFunctionsIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
+import dev.zacsweers.metro.compiler.tracing.trace
+import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
@@ -26,17 +28,30 @@ public class MetroIrGenerationExtension(
     val context = IrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
 
     try {
-      // First - collect all the contributions in this round
-      val contributionData = IrContributionData(context)
-      moduleFragment.accept(IrContributionVisitor(context), contributionData)
+      context
+        .tracer(
+          moduleFragment.name.asString().removePrefix("<").removeSuffix(">"),
+          "Metro compiler",
+        )
+        .trace { tracer ->
+          // First - collect all the contributions in this round
+          val contributionData = IrContributionData(context)
+          tracer.traceNested("Collecting contributions") {
+            moduleFragment.accept(IrContributionVisitor(context), contributionData)
+          }
 
-      // First.5 - transform $$MetroContribution interfaces to add their binds functions
-      moduleFragment.transform(ContributionBindsFunctionsIrTransformer(context), null)
+          // First.5 - transform $$MetroContribution interfaces to add their binds functions
+          tracer.traceNested("Transforming Metro contributions") {
+            moduleFragment.transform(ContributionBindsFunctionsIrTransformer(context), null)
+          }
 
-      // Second - transform the dependency graphs
-      val dependencyGraphTransformer =
-        DependencyGraphTransformer(context, moduleFragment, contributionData)
-      moduleFragment.transform(dependencyGraphTransformer, null)
+          // Second - transform the dependency graphs
+          tracer.traceNested("Core transformers") { nestedTracer ->
+            val dependencyGraphTransformer =
+              DependencyGraphTransformer(context, moduleFragment, contributionData, nestedTracer)
+            moduleFragment.transform(dependencyGraphTransformer, null)
+          }
+        }
     } catch (_: ExitProcessingException) {
       // Reported internally
       return
