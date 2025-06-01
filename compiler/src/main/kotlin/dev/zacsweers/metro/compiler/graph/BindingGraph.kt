@@ -80,23 +80,30 @@ internal open class MutableBindingGraph<
    *
    * Calls [onError] if a strict dependency cycle or missing binding is encountered during
    * validation.
+   *
+   * @param onPopulated a callback for when the graph is fully populated but not yet validated.
+   * @param validateBinding a callback to perform optional extra validation on a given binding in
+   *   context.
    */
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     tracer: Tracer = Tracer.NONE,
+    onPopulated: () -> Unit = {},
     validateBinding:
       (
-        Binding,
-        BindingStack,
+        binding: Binding,
+        stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
         adjacency: Map<TypeKey, Set<TypeKey>>,
       ) -> Unit =
-      { binding, stack, roots, adjacency -> /* noop */
+      { _, _, _, _ -> /* noop */
       },
   ): TopoSortResult<TypeKey> {
     val stack = newBindingStack()
 
     val missingBindings = populateGraph(roots, stack, tracer)
+
+    onPopulated()
 
     sealed = true
 

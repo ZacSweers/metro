@@ -164,14 +164,23 @@ internal class IrBindingGraph(
   fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
     val (sortedKeys, deferredTypes) =
       parentTracer.traceNested("seal graph") { tracer ->
-        realGraph.seal(accessors, tracer, validateBinding = ::checkScope)
+        realGraph.seal(
+          roots = accessors,
+          tracer = tracer,
+          onPopulated = {
+            metroContext.writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
+              realGraph.bindings.keys.sorted().joinToString("\n")
+            }
+          },
+          validateBinding = ::checkScope,
+        )
       }
 
-    metroContext.writeDiagnostic("validatedKeys-${parentTracer.tag}.txt") {
-      buildString { sortedKeys.joinTo(this, separator = "\n") { it.render(short = false) } }
+    metroContext.writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
+      sortedKeys.joinToString(separator = "\n")
     }
-    metroContext.writeDiagnostic("deferredTypes-${parentTracer.tag}.txt") {
-      buildString { deferredTypes.joinTo(this, separator = "\n") { it.render(short = false) } }
+    metroContext.writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
+      deferredTypes.joinToString(separator = "\n")
     }
 
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
