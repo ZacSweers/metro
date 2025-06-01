@@ -117,11 +117,12 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       val metroMetadata =
         MetroMetadata(
           METRO_VERSION,
-          dependency_graph = DependencyGraphProto(
-            is_graph = false,
-            provider_factory_classes =
-              generatedFactories.map { it.clazz.classIdOrFail.asString() }.sorted(),
-          ),
+          dependency_graph =
+            DependencyGraphProto(
+              is_graph = false,
+              provider_factory_classes =
+                generatedFactories.map { it.clazz.classIdOrFail.asString() }.sorted(),
+            ),
         )
       val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
       pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
