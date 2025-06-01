@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -33,6 +34,7 @@ import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
@@ -158,6 +160,17 @@ internal fun generateMetadataVisibleConstructorFunction(
         copyTypeParametersFrom(sourceClass)
         copyParametersFrom(targetConstructor)
         setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
+
+        regularParameters.forEach {
+          // If it has a default value expression, just replace it with a stub. We don't need it to
+          // be functional, we just need it to be indicated
+          if (it.hasDefaultValue()) {
+            it.defaultValue =
+              context.pluginContext.createIrBuilder(symbol).run {
+                irExprBody(stubExpression(context))
+              }
+          }
+        }
         // The function's signature already matches the target constructor's signature, all we need
         // this for
         body =
