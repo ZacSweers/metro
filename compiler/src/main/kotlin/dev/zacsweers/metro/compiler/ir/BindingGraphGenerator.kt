@@ -422,7 +422,6 @@ internal class BindingGraphGenerator(
                 null,
                 parameters.regularParameters,
                 parameters.contextParameters,
-                null,
               ),
             reportableLocation = injector.ir.location(),
             function = injector.ir,
