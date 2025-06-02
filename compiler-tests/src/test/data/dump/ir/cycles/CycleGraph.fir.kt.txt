@@ -329,6 +329,7 @@ interface ChildCycleGraph {
     private /* final field */ val childCycleGraphProvider: Provider<ChildCycleGraph> = Companion.invoke<ChildCycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     constructor(@Extends cycleGraph: CycleGraph) /* primary */ {
       super/*Any*/()
@@ -337,13 +338,13 @@ interface ChildCycleGraph {
       when {
         cycleGraph !is $$MetroGraph -> throw illegalArgumentException(arg0 = "Constructor parameter cycleGraph _must_ be a Metro-compiler-generated instance of CycleGraph but was " + cycleGraph.toString())
       }
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazy = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazyProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override val a: A
       override get(): A {
-        return Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))).invoke()
+        return <this>.#aProvider.invoke()
       }
 
     override val obj: Any
@@ -389,17 +390,18 @@ interface CycleGraph {
     private /* final field */ val cycleGraphProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazy = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazyProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override fun a(): A {
-      return Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))).invoke()
+      return <this>.#aProvider.invoke()
     }
 
     override fun c(): C {
@@ -452,4 +454,3 @@ interface CycleGraph {
   }
 
 }
-

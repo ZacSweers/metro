@@ -11,6 +11,7 @@ Changelog
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 - **Fix:** Support constructing nested function return types for provider functions.
+- **Fix:** Report member injection dependencies when looking up constructor-injected classes during graph population.
 - [internal] Make internal renderings of `IrType` more deterministic.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.

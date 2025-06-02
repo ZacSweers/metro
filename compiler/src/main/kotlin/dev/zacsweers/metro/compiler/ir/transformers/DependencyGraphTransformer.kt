@@ -41,6 +41,7 @@ import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
@@ -429,7 +430,8 @@ internal class DependencyGraphTransformer(
             // key is the injected type wrapped in MembersInjector
             val typeKey =
               IrTypeKey(
-                symbols.metroMembersInjector.typeWith(declaration.regularParameters[0].type)
+                declaration.regularParameters[0].type.wrapInMembersInjector(),
+                annotations.qualifier,
               )
             injectors += (metroFunction to typeKey)
           } else {

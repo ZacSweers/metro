@@ -11,9 +11,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
-import kotlin.collections.first
-import kotlin.collections.orEmpty
-import kotlin.collections.reduce
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -47,6 +44,7 @@ internal class BindingGraphGenerator(
             doNotErrorOnMissing = true,
           )
         },
+        findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
       )
 
     // Add explicit bindings from @Provides methods
@@ -402,27 +400,17 @@ internal class BindingGraphGenerator(
       graph.addInjector(typeKey, entry)
       bindingStack.withEntry(entry) {
         val targetClass = injector.ir.regularParameters.single().type.rawType()
+        // Don't return null on missing because it's legal to inject a class with no member
+        // injections
+        // TODO warn on this?
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
-        val allParams = generatedInjector?.injectFunctions?.values?.toList().orEmpty()
-        val parameters =
-          when (allParams.size) {
-            0 -> Parameters.empty()
-            1 -> allParams.first()
-            else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
-          }
+        val params = generatedInjector?.allParameters ?: Parameters.empty()
 
         val binding =
           Binding.MembersInjected(
             contextKey,
             // Need to look up the injector class and gather all params
-            parameters =
-              Parameters(
-                injector.callableId,
-                null,
-                null,
-                parameters.regularParameters,
-                parameters.contextParameters,
-              ),
+            parameters = params.withCallableId(injector.callableId),
             reportableLocation = injector.ir.location(),
             function = injector.ir,
             isFromInjectorFunction = true,
