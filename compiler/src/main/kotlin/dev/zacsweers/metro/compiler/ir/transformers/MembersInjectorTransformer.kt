@@ -174,7 +174,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
               null,
               it.regularParameters,
               it.contextParameters,
-              null,
             )
           },
       providerFunction = null,
