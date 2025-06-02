@@ -4,6 +4,7 @@ import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.flatMap
 import dev.zacsweers.metro.map
 import dev.zacsweers.metro.memoize
+import dev.zacsweers.metro.memoizeAsLazy
 import dev.zacsweers.metro.provider
 import dev.zacsweers.metro.providerOf
 import dev.zacsweers.metro.zip
@@ -128,8 +129,8 @@ class ProviderTest {
     var counter = 0
     val provider = provider { counter++ }
     val memoized = provider.memoize()
-    assertEquals(0, memoized.value)
-    assertEquals(0, memoized.value)
+    assertEquals(0, memoized())
+    assertEquals(0, memoized())
   }
 
   @Test
@@ -140,8 +141,8 @@ class ProviderTest {
       List(1000) { it * 2 }.sum()
     }
     val memoized = provider.memoize()
-    val result1 = memoized.value
-    val result2 = memoized.value
+    val result1 = memoized()
+    val result2 = memoized()
     assertEquals(result1, result2)
     assertEquals(1, computationCount)
   }
@@ -150,7 +151,39 @@ class ProviderTest {
   fun `memoize on already memoized provider should return same instance`() {
     val provider = providerOf("test")
     val memoized1 = provider.memoize()
-    @Suppress("UNCHECKED_CAST") val doubleMemoized = (memoized1 as Provider<String>).memoize()
+    val doubleMemoized = memoized1.memoize()
+    assertSame(memoized1, doubleMemoized)
+  }
+
+  @Test
+  fun `memoizeAsLazy should return same value on subsequent calls`() {
+    var counter = 0
+    val provider = provider { counter++ }
+    val memoized = provider.memoizeAsLazy()
+    assertEquals(0, memoized.value)
+    assertEquals(0, memoized.value)
+  }
+
+  @Test
+  fun `memoizeAsLazy should cache complex computations`() {
+    var computationCount = 0
+    val provider = provider {
+      computationCount++
+      List(1000) { it * 2 }.sum()
+    }
+    val memoized = provider.memoizeAsLazy()
+    val result1 = memoized.value
+    val result2 = memoized.value
+    assertEquals(result1, result2)
+    assertEquals(1, computationCount)
+  }
+
+  @Test
+  fun `memoizeAsLazy on already memoized provider should return same instance`() {
+    val provider = providerOf("test")
+    val memoized1 = provider.memoize()
+    val memoized2 = memoized1.memoizeAsLazy()
+    @Suppress("UNCHECKED_CAST") val doubleMemoized = (memoized2 as Provider<String>).memoize()
     assertSame(memoized1, doubleMemoized)
   }
 }
