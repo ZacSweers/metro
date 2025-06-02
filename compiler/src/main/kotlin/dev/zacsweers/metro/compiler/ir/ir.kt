@@ -227,6 +227,14 @@ internal fun IrBuilderWithScope.irInvoke(
       call.typeArguments[i] = typeArg
     }
   }
+
+  var argSize = args.size
+  if (dispatchReceiver != null) argSize++
+  if (extensionReceiver != null) argSize++
+  check(callee.owner.parameters.size == argSize) {
+    "Expected ${callee.owner.parameters.size} arguments but got ${args.size}"
+  }
+
   var index = 0
   dispatchReceiver?.let { call.arguments[index++] = it }
   extensionReceiver?.let { call.arguments[index++] = it }
