@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **New:** Add new `Provider.map`, `Provider.flatMap`, `Provider.zip`, and `Provider.memoize` utility APIs.
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - **Fix:** Support constructing nested function return types for provider functions.
 - **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
