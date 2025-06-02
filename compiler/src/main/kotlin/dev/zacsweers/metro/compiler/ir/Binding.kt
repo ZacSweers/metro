@@ -513,7 +513,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
     override val reportableLocation: CompilerMessageSourceLocation?,
-    val function: IrFunction,
+    // Only present for inject() functions
+    val function: IrFunction?,
     val isFromInjectorFunction: Boolean,
     val targetClassId: ClassId,
   ) : Binding {
