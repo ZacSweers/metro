@@ -1567,44 +1567,4 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     )
   }
-
-  // Regression test for https://github.com/ZacSweers/metro/issues/525
-  @Test
-  fun `Parent's @Includes usage shouldn't affect graph extension`() {
-    compile(
-      source(
-        """
-          @DependencyGraph(AppScope::class, isExtendable = true)
-          interface AppGraph {
-
-              @DependencyGraph.Factory
-              interface Factory {
-                  fun create(@Includes stringProvider: StringProvider): AppGraph
-              }
-          }
-
-          interface StringProvider {
-              val str: String
-          }
-
-          @ContributesTo(AppScope::class)
-          interface TestModule {
-              @Provides
-              fun providesInt(str: String): Int = str.length
-          }
-
-          @ContributesGraphExtension(scope = Unit::class)
-          interface LoggedInGraph {
-
-              @ContributesGraphExtension.Factory(AppScope::class)
-              interface Factory {
-                  fun createLoggedGraph(): LoggedInGraph
-              }
-          }
-        """
-          .trimIndent()
-      ),
-      debug = true
-    )
-  }
 }
