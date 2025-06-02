@@ -54,7 +54,7 @@ internal fun generateStaticCreateFunction(
   parentClass: IrClass,
   targetClass: IrClass,
   targetConstructor: IrConstructorSymbol,
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   providerFunction: IrFunction?,
   patchCreationParams: Boolean = true,
 ): IrSimpleFunction {
