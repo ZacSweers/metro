@@ -16,7 +16,6 @@ import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporary
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -244,7 +243,7 @@ internal class InjectConstructorTransformer(
     invokeFunction: IrSimpleFunction,
     thisReceiver: IrValueParameter,
     newInstanceFunction: IrSimpleFunction,
-    constructorParameters: Parameters<ConstructorParameter>,
+    constructorParameters: Parameters,
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     parametersToFields: Map<Parameter, IrField>,
   ) {
@@ -333,10 +332,7 @@ internal class InjectConstructorTransformer(
       }
   }
 
-  private fun possiblyImplementInvoke(
-    declaration: IrClass,
-    constructorParameters: Parameters<ConstructorParameter>,
-  ) {
+  private fun possiblyImplementInvoke(declaration: IrClass, constructorParameters: Parameters) {
     val injectedFunctionClass =
       declaration.getAnnotation(Symbols.ClassIds.metroInjectedFunctionClass.asSingleFqName())
     if (injectedFunctionClass != null) {
@@ -426,8 +422,8 @@ internal class InjectConstructorTransformer(
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
     targetConstructor: IrConstructorSymbol,
-    constructorParameters: Parameters<ConstructorParameter>,
-    allParameters: List<Parameters<out Parameter>>,
+    constructorParameters: Parameters,
+    allParameters: List<Parameters>,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT

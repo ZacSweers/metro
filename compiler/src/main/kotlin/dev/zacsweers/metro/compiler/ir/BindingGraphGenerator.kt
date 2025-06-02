@@ -192,7 +192,11 @@ internal class BindingGraphGenerator(
       // not directly available
       if (creatorParam.isBindsInstance || creatorParam.isExtends) {
         val paramTypeKey = creatorParam.typeKey
-        graph.addBinding(paramTypeKey, Binding.BoundInstance(creatorParam), bindingStack)
+        graph.addBinding(
+          paramTypeKey,
+          Binding.BoundInstance(creatorParam, creatorParam.ir.location()),
+          bindingStack,
+        )
       }
     }
 
@@ -418,7 +422,6 @@ internal class BindingGraphGenerator(
                 null,
                 parameters.regularParameters,
                 parameters.contextParameters,
-                null,
               ),
             reportableLocation = injector.ir.location(),
             function = injector.ir,

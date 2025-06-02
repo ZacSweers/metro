@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
@@ -63,17 +62,17 @@ internal data class DependencyGraphNode(
 
   sealed interface Creator {
     val function: IrFunction
-    val parameters: Parameters<ConstructorParameter>
+    val parameters: Parameters
 
     data class Constructor(
       override val function: IrConstructor,
-      override val parameters: Parameters<ConstructorParameter>,
+      override val parameters: Parameters,
     ) : Creator
 
     data class Factory(
       val type: IrClass,
       override val function: IrSimpleFunction,
-      override val parameters: Parameters<ConstructorParameter>,
+      override val parameters: Parameters,
     ) : Creator
   }
 }

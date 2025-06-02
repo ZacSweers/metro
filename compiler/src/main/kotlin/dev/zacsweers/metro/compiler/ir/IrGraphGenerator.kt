@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.WrappedType
-import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -525,7 +524,7 @@ internal class IrGraphGenerator(
                   .map { it.name.asString() }
                   .sorted(),
             )
-          val metroMetadata = MetroMetadata(METRO_VERSION, graphProto)
+          val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = graphProto)
 
           writeDiagnostic({
             "graph-metadata-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt"
@@ -871,7 +870,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateBindingArguments(
-    targetParams: Parameters<out Parameter>,
+    targetParams: Parameters,
     function: IrFunction,
     binding: Binding,
     generationContext: GraphGenerationContext,

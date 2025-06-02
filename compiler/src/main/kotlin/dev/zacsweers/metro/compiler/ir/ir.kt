@@ -227,6 +227,14 @@ internal fun IrBuilderWithScope.irInvoke(
       call.typeArguments[i] = typeArg
     }
   }
+
+  var argSize = args.size
+  if (dispatchReceiver != null) argSize++
+  if (extensionReceiver != null) argSize++
+  check(callee.owner.parameters.size == argSize) {
+    "Expected ${callee.owner.parameters.size} arguments but got ${args.size}"
+  }
+
   var index = 0
   dispatchReceiver?.let { call.arguments[index++] = it }
   extensionReceiver?.let { call.arguments[index++] = it }
@@ -292,13 +300,12 @@ private fun IrExpression.computeHashSource(): Any? {
 }
 
 // TODO create an instance of this that caches lookups?
+context(context: IrMetroContext)
 internal fun IrClass.declaredCallableMembers(
-  context: IrMetroContext,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
 ): Sequence<MetroSimpleFunction> =
   allCallableMembers(
-    context,
     excludeAnyFunctions = true,
     excludeInheritedMembers = true,
     excludeCompanionObjectMembers = true,
@@ -307,8 +314,8 @@ internal fun IrClass.declaredCallableMembers(
   )
 
 // TODO create an instance of this that caches lookups?
+context(context: IrMetroContext)
 internal fun IrClass.allCallableMembers(
-  context: IrMetroContext,
   excludeAnyFunctions: Boolean = true,
   excludeInheritedMembers: Boolean = false,
   excludeCompanionObjectMembers: Boolean = false,
@@ -330,7 +337,6 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              context,
               excludeAnyFunctions,
               excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
@@ -406,7 +412,7 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   context: IrMetroContext,
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
 ): List<IrExpression?> {
@@ -530,7 +536,7 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
 }
 
 internal fun IrMetroContext.assignConstructorParamsToFields(
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   clazz: IrClass,
 ): Map<Parameter, IrField> {
   return buildMap {

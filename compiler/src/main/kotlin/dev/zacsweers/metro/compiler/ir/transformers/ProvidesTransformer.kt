@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.Binding
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
-import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -27,7 +26,6 @@ import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
-import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -117,11 +115,12 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       val metroMetadata =
         MetroMetadata(
           METRO_VERSION,
-          DependencyGraphProto(
-            is_graph = false,
-            provider_factory_classes =
-              generatedFactories.map { it.clazz.classIdOrFail.asString() }.sorted(),
-          ),
+          dependency_graph =
+            DependencyGraphProto(
+              is_graph = false,
+              provider_factory_classes =
+                generatedFactories.map { it.clazz.classIdOrFail.asString() }.sorted(),
+            ),
         )
       val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
       pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
@@ -221,28 +220,17 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     val instanceParam =
       if (!reference.isInObject) {
         val contextualTypeKey = IrContextualTypeKey.create(typeKey = IrTypeKey(graphType))
-        ConstructorParameter(
+        Parameter.regular(
           kind = IrParameterKind.Regular,
           name = Name.identifier("graph"),
           contextualTypeKey = contextualTypeKey,
-          originalName = Name.identifier("graph"),
-          // This type is always the instance type
-          providerType = graphType,
-          lazyType = graphType,
           isAssisted = false,
           assistedIdentifier = "",
-          symbols = symbols,
           isGraphInstance = true,
           isExtends = false,
           isIncludes = false,
-          // This creates a binding stack entry for the graph instance parameter.
-          // This is used for cycle detection in the dependency graph.
-          // This code path is executed when a provider function is not in an object
-          // and needs access to the graph instance.
-          bindingStackEntry = IrBindingStack.Entry.simpleTypeRef(contextualTypeKey),
           isBindsInstance = false,
-          hasDefault = false,
-          location = null,
+          ir = null,
         )
       } else {
         null
@@ -414,7 +402,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     factoryCls: IrClass,
     factoryConstructor: IrConstructorSymbol,
     reference: CallableReference,
-    factoryParameters: Parameters<ConstructorParameter>,
+    factoryParameters: Parameters,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
@@ -473,7 +461,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     val fqName: FqName,
     val name: Name,
     val isPropertyAccessor: Boolean,
-    val parameters: Parameters<ConstructorParameter>,
+    val parameters: Parameters,
     val typeKey: IrTypeKey,
     val isNullable: Boolean,
     val parent: IrClassSymbol,

@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -37,7 +36,7 @@ internal sealed interface IrMetroFactory {
 internal sealed interface ClassFactory : IrMetroFactory {
   val factoryClass: IrClass
   val invokeFunctionSymbol: IrFunctionSymbol
-  val targetFunctionParameters: Parameters<ConstructorParameter>
+  val targetFunctionParameters: Parameters
 
   fun IrBuilderWithScope.invokeCreateExpression(
     computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
@@ -45,7 +44,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
 
   class MetroFactory(
     override val factoryClass: IrClass,
-    override val targetFunctionParameters: Parameters<ConstructorParameter>,
+    override val targetFunctionParameters: Parameters,
   ) : ClassFactory {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
 
@@ -77,7 +76,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
   class DaggerFactory(
     private val metroContext: IrMetroContext,
     override val factoryClass: IrClass,
-    override val targetFunctionParameters: Parameters<ConstructorParameter>,
+    override val targetFunctionParameters: Parameters,
   ) : ClassFactory {
     override val function: IrConstructor = targetFunctionParameters.ir!! as IrConstructor
     override val invokeFunctionSymbol: IrFunctionSymbol

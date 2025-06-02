@@ -223,7 +223,6 @@ internal class DependencyGraphTransformer(
           graphDeclaration
             .metroGraphOrFail // Doesn't cover contributed graphs but they're not visible anyway
             .allCallableMembers(
-              metroContext,
               excludeInheritedMembers = false,
               excludeCompanionObjectMembers = true,
             )
@@ -232,7 +231,6 @@ internal class DependencyGraphTransformer(
             it
               .rawType()
               .allCallableMembers(
-                metroContext,
                 excludeInheritedMembers = true,
                 excludeCompanionObjectMembers = true,
               )
