@@ -4,6 +4,7 @@ import dev.zacsweers.metro.flatMap
 import dev.zacsweers.metro.map
 import dev.zacsweers.metro.provider
 import dev.zacsweers.metro.providerOf
+import dev.zacsweers.metro.zip
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -72,5 +73,50 @@ class ProviderTest {
     assertFalse(evaluated)
     assertEquals("detseN", nestedProvider())
     assertTrue(evaluated)
+  }
+
+  @Test
+  fun `zip should combine two providers`() {
+    val provider1 = providerOf("Hello")
+    val provider2 = providerOf(42)
+    val zipped = provider1.zip(provider2) { str, num -> "$str $num" }
+    assertEquals("Hello 42", zipped())
+  }
+
+  @Test
+  fun `zip should be lazily evaluated`() {
+    var evaluated1 = false
+    var evaluated2 = false
+    val provider1 = provider {
+      evaluated1 = true
+      "Hello"
+    }
+    val provider2 = provider {
+      evaluated2 = true
+      42
+    }
+    val zipped = provider1.zip(provider2) { str, num -> "$str $num" }
+
+    assertFalse(evaluated1)
+    assertFalse(evaluated2)
+    assertEquals("Hello 42", zipped())
+    assertTrue(evaluated1)
+    assertTrue(evaluated2)
+  }
+
+  @Test
+  fun `zip should work with complex transformations`() {
+    val provider1 = providerOf(listOf(1, 2, 3))
+    val provider2 = providerOf(listOf(4, 5, 6))
+    val zipped = provider1.zip(provider2) { list1, list2 -> (list1 + list2).sum() }
+    assertEquals(21, zipped())
+  }
+
+  @Test
+  fun `zip should handle null values`() {
+    val provider1 = providerOf(null as String?)
+    val provider2 = providerOf("World")
+    val zipped = provider1.zip(provider2) { str1, str2 -> "${str1 ?: "Hello"} $str2" }
+    assertEquals("Hello World", zipped())
   }
 }
