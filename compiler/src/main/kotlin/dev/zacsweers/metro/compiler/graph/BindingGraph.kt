@@ -50,9 +50,11 @@ internal open class MutableBindingGraph<
    * constructor-injected types). Note one key may incur the creation of multiple bindings, so this
    * returns a set.
    */
-  private val computeBindings: (contextKey: ContextualTypeKey) -> Set<Binding> = { _ ->
-    emptySet()
-  },
+  private val computeBindings:
+    (contextKey: ContextualTypeKey, currentBindings: Set<TypeKey>) -> Set<Binding> =
+    { _, _ ->
+      emptySet()
+    },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
@@ -168,10 +170,10 @@ internal open class MutableBindingGraph<
     val missingBindings = mutableMapOf<TypeKey, BindingStack>()
     for ((contextKey, entry) in roots) {
       if (contextKey.typeKey !in bindings) {
-        val bindings = computeBindings(contextKey)
+        val bindings = computeBindings(contextKey, bindings.keys)
         if (bindings.isNotEmpty()) {
           for (binding in bindings) {
-            tryPut(binding, stack, contextKey.typeKey)
+            tryPut(binding, stack, binding.typeKey)
           }
         } else {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
@@ -197,7 +199,7 @@ internal open class MutableBindingGraph<
             val typeKey = depKey.typeKey
             if (typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              val bindings = computeBindings(depKey)
+              val bindings = computeBindings(depKey, bindings.keys)
               if (bindings.isNotEmpty()) {
                 for (binding in bindings) {
                   bindingQueue.addLast(binding)
