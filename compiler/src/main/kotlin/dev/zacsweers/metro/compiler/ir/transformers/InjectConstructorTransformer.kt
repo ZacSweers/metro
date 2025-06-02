@@ -332,10 +332,7 @@ internal class InjectConstructorTransformer(
       }
   }
 
-  private fun possiblyImplementInvoke(
-    declaration: IrClass,
-    constructorParameters: Parameters,
-  ) {
+  private fun possiblyImplementInvoke(declaration: IrClass, constructorParameters: Parameters) {
     val injectedFunctionClass =
       declaration.getAnnotation(Symbols.ClassIds.metroInjectedFunctionClass.asSingleFqName())
     if (injectedFunctionClass != null) {

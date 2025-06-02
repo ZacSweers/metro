@@ -351,7 +351,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   ) : Binding {
     constructor(
       parameter: Parameter,
-      reportableLocation: CompilerMessageSourceLocation?
+      reportableLocation: CompilerMessageSourceLocation?,
     ) : this(parameter.typeKey, "${parameter.name.asString()}Instance", reportableLocation)
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()

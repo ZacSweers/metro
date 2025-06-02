@@ -6,7 +6,6 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -16,9 +15,7 @@ import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
 import kotlin.getValue
-import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -61,7 +58,8 @@ private constructor(
 
   // TODO just make this nullable
   private val _ir = ir
-  val ir: IrValueParameter get() = _ir ?: error("Parameter $name has no backing IR value parameter!")
+  val ir: IrValueParameter
+    get() = _ir ?: error("Parameter $name has no backing IR value parameter!")
 
   private val cachedToString by unsafeLazy {
     buildString {

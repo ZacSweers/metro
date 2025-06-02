@@ -195,7 +195,7 @@ internal class BindingGraphGenerator(
         graph.addBinding(
           paramTypeKey,
           Binding.BoundInstance(creatorParam, creatorParam.ir.location()),
-          bindingStack
+          bindingStack,
         )
       }
     }
