@@ -1574,15 +1574,12 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     compile(
       source(
         """
-          interface TestScope
-          interface LoggedInScope
-
-          @DependencyGraph(TestScope::class, isExtendable = true)
-          interface TestGraph {
+          @DependencyGraph(AppScope::class, isExtendable = true)
+          interface AppGraph {
 
               @DependencyGraph.Factory
               interface Factory {
-                  fun create(@Includes stringProvider: StringProvider): TestGraph
+                  fun create(@Includes stringProvider: StringProvider): AppGraph
               }
           }
 
@@ -1590,23 +1587,24 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
               val str: String
           }
 
-          @ContributesTo(TestScope::class)
+          @ContributesTo(AppScope::class)
           interface TestModule {
               @Provides
               fun providesInt(str: String): Int = str.length
           }
 
-          @ContributesGraphExtension(scope = LoggedInScope::class)
+          @ContributesGraphExtension(scope = Unit::class)
           interface LoggedInGraph {
 
-              @ContributesGraphExtension.Factory(TestScope::class)
+              @ContributesGraphExtension.Factory(AppScope::class)
               interface Factory {
                   fun createLoggedGraph(): LoggedInGraph
               }
           }
         """
           .trimIndent()
-      )
+      ),
+      debug = true
     )
   }
 }
