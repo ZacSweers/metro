@@ -9,9 +9,12 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import kotlin.collections.first
+import kotlin.collections.orEmpty
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -24,6 +27,7 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
@@ -34,10 +38,11 @@ internal class IrBindingGraph(
   private val node: DependencyGraphNode,
   newBindingStack: () -> IrBindingStack,
   findClassFactory: (IrClass) -> ClassFactory?,
+  findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
 ) {
 
   private val classBindingLookup =
-    ClassBindingLookup(metroContext, node.sourceGraph, findClassFactory)
+    ClassBindingLookup(metroContext, node.sourceGraph, findClassFactory, findMemberInjectors)
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -49,7 +54,9 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBindings = classBindingLookup::lookup,
+      computeBindings = { contextKey, currentBindings ->
+        classBindingLookup.lookup(contextKey, currentBindings)
+      },
       onError = ::onError,
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
     )
@@ -573,10 +580,14 @@ internal class ClassBindingLookup(
   private val metroContext: IrMetroContext,
   private val sourceGraph: IrClass,
   private val findClassFactory: (IrClass) -> ClassFactory?,
+  private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
 ) {
 
   /** Creates an expected class binding for the given [contextKey] or returns null. */
-  internal fun lookup(contextKey: IrContextualTypeKey): Set<Binding> =
+  internal fun lookup(
+    contextKey: IrContextualTypeKey,
+    currentBindings: Set<IrTypeKey>,
+  ): Set<Binding> =
     with(metroContext) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
@@ -594,6 +605,23 @@ internal class ClassBindingLookup(
         return bindings
       }
 
+      fun addMemberInjectors() {
+        findMemberInjectors(irClass).forEach { generatedInjector ->
+          if (generatedInjector.typeKey !in currentBindings) {
+            bindings +=
+              Binding.MembersInjected(
+                IrContextualTypeKey(generatedInjector.typeKey),
+                // Need to look up the injector class and gather all params
+                parameters = generatedInjector.allParameters,
+                reportableLocation = irClass.location(),
+                function = null,
+                isFromInjectorFunction = true,
+                targetClassId = irClass.classIdOrFail,
+              )
+          }
+        }
+      }
+
       val classFactory = findClassFactory(irClass)
       if (classFactory != null) {
         // We don't actually call this function but it stores information about qualifier/scope
@@ -606,6 +634,7 @@ internal class ClassBindingLookup(
             annotations = classAnnotations,
             typeKey = key,
           )
+        addMemberInjectors()
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction(metroContext)
         val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)

@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
@@ -23,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.memberInjectParameters
 import dev.zacsweers.metro.compiler.ir.parameters.toMemberInjectParameter
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -32,6 +34,7 @@ import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -46,6 +49,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -60,9 +64,19 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   data class MemberInjectClass(
     val ir: IrClass,
+    val typeKey: IrTypeKey,
     val parameters: Map<ClassId, List<Parameters>>,
     val injectFunctions: Map<IrSimpleFunction, Parameters>,
-  )
+  ) {
+    val allParameters by unsafeLazy {
+      val allParams = injectFunctions.values.toList()
+      when (allParams.size) {
+        0 -> Parameters.empty()
+        1 -> allParams.first()
+        else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
+      }
+    }
+  }
 
   private val generatedInjectors = mutableMapOf<ClassId, MemberInjectClass?>()
   private val injectorParamsByClass = mutableMapOf<ClassId, List<Parameters>>()
@@ -93,6 +107,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     }
 
     val isExternal = declaration.isExternalParent
+
+    val typeKey =
+      IrTypeKey(declaration.defaultType.wrapInMembersInjector(), declaration.qualifierAnnotation())
 
     val injectorClass =
       declaration.nestedClasses.singleOrNull {
@@ -138,7 +155,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       }
 
     if (declaration.isExternalParent) {
-      return MemberInjectClass(injectorClass, injectedMembersByClass, declaredInjectFunctions)
+      return MemberInjectClass(
+          injectorClass,
+          typeKey,
+          injectedMembersByClass,
+          declaredInjectFunctions,
+        )
         .also { generatedInjectors[injectedClassId] = it }
     }
 
@@ -245,9 +267,13 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     injectorClass.dumpToMetroLog()
 
-    return MemberInjectClass(injectorClass, injectedMembersByClass, declaredInjectFunctions).also {
-      generatedInjectors[injectedClassId] = it
-    }
+    return MemberInjectClass(
+        injectorClass,
+        typeKey,
+        injectedMembersByClass,
+        declaredInjectFunctions,
+      )
+      .also { generatedInjectors[injectedClassId] = it }
   }
 
   private fun IrClass.getOrComputeMemberInjectParameters(): Map<ClassId, List<Parameters>> {
