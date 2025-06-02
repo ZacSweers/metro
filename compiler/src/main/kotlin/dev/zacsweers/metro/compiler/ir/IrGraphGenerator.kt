@@ -871,7 +871,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateBindingArguments(
-    targetParams: Parameters<out Parameter>,
+    targetParams: Parameters,
     function: IrFunction,
     binding: Binding,
     generationContext: GraphGenerationContext,
