@@ -68,6 +68,17 @@ internal class Parameters(
     }
   }
 
+  fun withCallableId(callableId: CallableId): Parameters {
+    return Parameters(
+      callableId,
+      dispatchReceiverParameter,
+      extensionReceiverParameter,
+      regularParameters,
+      contextParameters,
+      ir,
+    )
+  }
+
   private val cachedToString by unsafeLazy {
     buildString {
       if (ir is IrConstructor || regularParameters.firstOrNull()?.isMember == true) {
