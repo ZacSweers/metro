@@ -133,8 +133,8 @@ internal fun generateStaticNewInstanceFunction(
  * target function. This function is used in downstream compilations to read the function's
  * signature and also dirty IC.
  */
+context(context: IrMetroContext)
 internal fun generateMetadataVisibleMirrorFunction(
-  context: IrMetroContext,
   factoryClass: IrClass,
   target: IrFunction,
 ): IrSimpleFunction {
@@ -179,7 +179,7 @@ internal fun generateMetadataVisibleMirrorFunction(
           if (it.hasDefaultValue()) {
             it.defaultValue =
               context.pluginContext.createIrBuilder(symbol).run {
-                irExprBody(stubExpression(context))
+                irExprBody(stubExpression())
               }
           }
         }
@@ -187,7 +187,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         // this for
         body =
           context.pluginContext.createIrBuilder(symbol).run {
-            irExprBodySafe(symbol, stubExpression(context))
+            irExprBodySafe(symbol, stubExpression())
           }
       }
   context.pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)

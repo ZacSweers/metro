@@ -223,7 +223,6 @@ internal class InjectConstructorTransformer(
     // This is used in downstream compilations to read the constructor's signature
     val mirrorFunction =
       generateMetadataVisibleMirrorFunction(
-        context = metroContext,
         factoryClass = factoryCls,
         target = targetConstructor,
       )

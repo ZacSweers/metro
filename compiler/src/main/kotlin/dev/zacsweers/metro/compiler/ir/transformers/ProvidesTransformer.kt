@@ -301,7 +301,6 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     // This is used in downstream compilations to read the provider's signature
     val mirrorFunction =
       generateMetadataVisibleMirrorFunction(
-        context = metroContext,
         factoryClass = factoryCls,
         target = providesFunction,
       )
