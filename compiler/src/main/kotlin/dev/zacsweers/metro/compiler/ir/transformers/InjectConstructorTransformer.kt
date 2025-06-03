@@ -222,11 +222,7 @@ internal class InjectConstructorTransformer(
     // Generate a metadata-visible function that matches the signature of the target constructor
     // This is used in downstream compilations to read the constructor's signature
     val mirrorFunction =
-      generateMetadataVisibleMirrorFunction(
-        context = metroContext,
-        factoryClass = factoryCls,
-        target = targetConstructor,
-      )
+      generateMetadataVisibleMirrorFunction(factoryClass = factoryCls, target = targetConstructor)
 
     factoryCls.dumpToMetroLog()
 

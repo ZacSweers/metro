@@ -800,7 +800,7 @@ internal class IrGraphGenerator(
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
-        body = stubExpressionBody(metroContext)
+        body = stubExpressionBody()
       }
     }
 
@@ -1024,8 +1024,7 @@ internal class IrGraphGenerator(
 
       is Binding.Provided -> {
         val factoryClass =
-          providesTransformer.getOrLookupFactoryClass(binding)?.clazz
-            ?: return stubExpression(metroContext)
+          providesTransformer.getOrLookupFactoryClass(binding)?.clazz ?: return stubExpression()
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {
@@ -1053,8 +1052,7 @@ internal class IrGraphGenerator(
       is Binding.Assisted -> {
         // Example9_Factory_Impl.create(example9Provider);
         val implClass =
-          assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
-            ?: return stubExpression(metroContext)
+          assistedFactoryTransformer.getOrGenerateImplClass(binding.type) ?: return stubExpression()
 
         val dispatchReceiver: IrExpression?
         val createFunction: IrSimpleFunctionSymbol

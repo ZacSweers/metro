@@ -47,6 +47,7 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -57,11 +58,15 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -75,6 +80,7 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.isFakeOverride
@@ -83,6 +89,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -793,6 +800,31 @@ internal class DependencyGraphTransformer(
       }
     } catch (e: Exception) {
       if (e is ExitProcessingException) {
+        // Implement unimplemented overrides to reduce noise in failure output
+        // Otherwise compiler may complain that these are invalid bytecode
+        node.accessors
+          .map { it.first }
+          .plus(node.injectors.map { it.first })
+          .plus(node.bindsFunctions.map { it.first })
+          .plus(node.contributedGraphs.map { it.value })
+          .forEach { function ->
+            with(function.ir) {
+              val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+              if (declarationToFinalize.isFakeOverride) {
+                declarationToFinalize.finalizeFakeOverride(
+                  metroGraph.thisReceiverOrFail.copyTo(this)
+                )
+                body =
+                  if (returnType != pluginContext.irBuiltIns.unitType) {
+                    stubExpressionBody()
+                  } else {
+                    pluginContext.createIrBuilder(symbol).run {
+                      irBlockBody { +irReturn(irGetObject(pluginContext.irBuiltIns.unitClass)) }
+                    }
+                  }
+              }
+            }
+          }
         throw e
       }
       throw AssertionError(

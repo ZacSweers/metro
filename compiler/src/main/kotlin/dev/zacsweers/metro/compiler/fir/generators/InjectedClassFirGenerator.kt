@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
@@ -159,11 +160,8 @@ internal class InjectedClassFirGenerator(session: FirSession) :
     var isConstructorInjected: Boolean,
     val constructorParameters: List<MetroFirValueParameter>,
   ) {
-    private val parameterNameAllocator = dev.zacsweers.metro.compiler.NameAllocator()
-    private val memberNameAllocator =
-      dev.zacsweers.metro.compiler.NameAllocator(
-        mode = dev.zacsweers.metro.compiler.NameAllocator.Mode.COUNT
-      )
+    private val parameterNameAllocator = NameAllocator()
+    private val memberNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
     private var declaredInjectedMembersPopulated = false
     private var ancestorInjectedMembersPopulated = false
 

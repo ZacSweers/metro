@@ -64,6 +64,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testParentIncludesArePropgatedToExtensions() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ParentIncludesArePropgatedToExtensions.kt");
     }
+
+    @Test
+    @TestMetadata("QualifiedMemberInjectionPropagatesAcrossModules.kt")
+    public void testQualifiedMemberInjectionPropagatesAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
+    }
   }
 
   @Nested

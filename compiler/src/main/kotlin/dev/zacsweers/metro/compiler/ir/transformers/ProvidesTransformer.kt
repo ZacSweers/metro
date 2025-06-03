@@ -300,11 +300,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     // Generate a metadata-visible function that matches the signature of the target provider
     // This is used in downstream compilations to read the provider's signature
     val mirrorFunction =
-      generateMetadataVisibleMirrorFunction(
-        context = metroContext,
-        factoryClass = factoryCls,
-        target = providesFunction,
-      )
+      generateMetadataVisibleMirrorFunction(factoryClass = factoryCls, target = providesFunction)
 
     val providerFactory =
       ProviderFactory(

@@ -897,12 +897,12 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
   }
 }
 
-internal fun IrFunction.stubExpressionBody(context: IrMetroContext) =
-  context.pluginContext.createIrBuilder(symbol).run {
-    irExprBodySafe(symbol, stubExpression(context))
-  }
+context(context: IrMetroContext)
+internal fun IrFunction.stubExpressionBody() =
+  context.pluginContext.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
 
-internal fun IrBuilderWithScope.stubExpression(context: IrMetroContext) =
+context(context: IrMetroContext)
+internal fun IrBuilderWithScope.stubExpression() =
   irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))
 
 internal fun IrPluginContext.buildAnnotation(
