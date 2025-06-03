@@ -595,8 +595,7 @@ internal class ClassBindingLookup(
 
       val bindings = mutableSetOf<Binding>()
       if (irClass.isObject) {
-        // TODO make these opt-in?
-        irClass.getSimpleFunction(Symbols.StringNames.CONSTRUCTOR_FUNCTION)?.owner?.let {
+        irClass.getSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION)?.owner?.let {
           // We don't actually call this function but it stores information about qualifier/scope
           // annotations, so reference it here so IC triggers
           trackFunctionCall(sourceGraph, it)

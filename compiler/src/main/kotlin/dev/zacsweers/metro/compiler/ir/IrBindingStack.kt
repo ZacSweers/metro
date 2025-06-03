@@ -118,6 +118,7 @@ internal interface IrBindingStack :
         declaration: IrDeclaration? = param,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
+        isMirrorFunction: Boolean = false,
       ): Entry {
         // TODO make some of this lazily evaluated
         val functionToUse =
@@ -133,11 +134,8 @@ internal interface IrBindingStack :
             // If it's a synthetic signature holder in a ClassFactory, use the parent class
             var treatAsConstructor = functionToUse is IrConstructor
             val parentClassToReport =
-              if (
-                functionToUse is IrSimpleFunction &&
-                  functionToUse.name == Symbols.Names.constructorFunction
-              ) {
-                treatAsConstructor = true
+              if (functionToUse is IrSimpleFunction && isMirrorFunction) {
+                treatAsConstructor = functionToUse.name == Symbols.Names.mirrorFunction
                 functionToUse.parentAsClass.parent
               } else {
                 functionToUse.parent
@@ -416,6 +414,7 @@ internal fun bindingStackEntryForDependency(
         callingBinding.classFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
+        isMirrorFunction = true,
       )
     }
     is Binding.Alias -> {
@@ -432,6 +431,7 @@ internal fun bindingStackEntryForDependency(
         callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
+        isMirrorFunction = true,
       )
     }
     is Binding.Assisted -> {

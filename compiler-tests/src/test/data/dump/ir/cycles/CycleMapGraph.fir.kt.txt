@@ -30,12 +30,12 @@ class X {
 
     }
 
-    fun constructorFunction(y: Y): X {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): X {
       return Companion.newInstance(y = <this>.#y.invoke())
+    }
+
+    fun mirrorFunction(y: Y): X {
+      return error(message = "Never called")
     }
 
   }
@@ -85,12 +85,12 @@ class Y {
 
     }
 
-    fun constructorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): Y {
       return Companion.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
+    }
+
+    fun mirrorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
+      return error(message = "Never called")
     }
 
   }

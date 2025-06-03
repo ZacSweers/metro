@@ -15,6 +15,7 @@ Changelog
 - **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
 - **Fix:** Report member injection dependencies when looking up constructor-injected classes during graph population.
 - **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
+- **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
 - [internal] Make internal renderings of `IrType` more deterministic.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.

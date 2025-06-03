@@ -25,12 +25,12 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 
     }
 
-    fun <T : Any?, V : Any?, E : V> constructorFunction(): ClassWithBackRefs<T, V, E> {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): ClassWithBackRefs<T, V, E> {
       return Companion.newInstance<ClassWithBackRefs<T, V, E>, /* null */, /* null */>()
+    }
+
+    fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithBackRefs<T, V, E> {
+      return error(message = "Never called")
     }
 
   }
@@ -70,12 +70,12 @@ class ClassWithBounds<T : Any> {
 
     }
 
-    fun <T : Any> constructorFunction(): ClassWithBounds<T> {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): ClassWithBounds<T> {
       return Companion.newInstance<ClassWithBounds<T>>()
+    }
+
+    fun <T : Any> mirrorFunction(): ClassWithBounds<T> {
+      return error(message = "Never called")
     }
 
   }
@@ -115,12 +115,12 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
 
     }
 
-    fun <T : Any?, V : Any?, E : Any?> constructorFunction(): ClassWithMultiple<T, V, E> {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): ClassWithMultiple<T, V, E> {
       return Companion.newInstance<ClassWithMultiple<T, V, E>, /* null */, /* null */>()
+    }
+
+    fun <T : Any?, V : Any?, E : Any?> mirrorFunction(): ClassWithMultiple<T, V, E> {
+      return error(message = "Never called")
     }
 
   }
@@ -160,12 +160,12 @@ class ClassWithNullable<T : Any?, E : T?> {
 
     }
 
-    fun <T : Any?, E : T?> constructorFunction(): ClassWithNullable<T, E> {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): ClassWithNullable<T, E> {
       return Companion.newInstance<ClassWithNullable<T, E>, /* null */>()
+    }
+
+    fun <T : Any?, E : T?> mirrorFunction(): ClassWithNullable<T, E> {
+      return error(message = "Never called")
     }
 
   }
@@ -205,12 +205,12 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 
     }
 
-    fun <T : Any?, V : Any?, E : V> constructorFunction(): ClassWithWheres<T, V, E> {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): ClassWithWheres<T, V, E> {
       return Companion.newInstance<ClassWithWheres<T, V, E>, /* null */, /* null */>()
+    }
+
+    fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithWheres<T, V, E> {
+      return error(message = "Never called")
     }
 
   }
@@ -250,12 +250,12 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 
     }
 
-    fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> constructorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): ComplexMonster<T, V, E, LongName, NullableLongName> {
       return Companion.newInstance<ComplexMonster<T, V, E, LongName, NullableLongName>, /* null */, /* null */, /* null */, /* null */>()
+    }
+
+    fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> mirrorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
+      return error(message = "Never called")
     }
 
   }
@@ -295,12 +295,12 @@ class SimpleClass<T : Any?> {
 
     }
 
-    fun <T : Any?> constructorFunction(): SimpleClass<T> {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): SimpleClass<T> {
       return Companion.newInstance<SimpleClass<T>>()
+    }
+
+    fun <T : Any?> mirrorFunction(): SimpleClass<T> {
+      return error(message = "Never called")
     }
 
   }
@@ -312,3 +312,4 @@ class SimpleClass<T : Any?> {
   }
 
 }
+

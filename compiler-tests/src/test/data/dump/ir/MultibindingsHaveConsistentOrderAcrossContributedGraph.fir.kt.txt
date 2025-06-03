@@ -18,12 +18,12 @@ class TaskImpl1 : Task {
       return TaskImpl1()
     }
 
-    fun constructorFunction(): TaskImpl1 {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): TaskImpl1 {
       return $$MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): TaskImpl1 {
+      return error(message = "Never called")
     }
 
   }
@@ -54,12 +54,12 @@ class TaskImpl2 : Task {
       return TaskImpl2()
     }
 
-    fun constructorFunction(): TaskImpl2 {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): TaskImpl2 {
       return $$MetroFactory.newInstance()
+    }
+
+    fun mirrorFunction(): TaskImpl2 {
+      return error(message = "Never called")
     }
 
   }

@@ -145,10 +145,7 @@ internal class InjectConstructorTransformer(
     //  external but no factory is found?
     if (isExternal) {
       val parameters =
-        factoryCls
-          .requireSimpleFunction(Symbols.StringNames.CONSTRUCTOR_FUNCTION)
-          .owner
-          .parameters(this)
+        factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters(this)
       val wrapper = ClassFactory.MetroFactory(factoryCls, parameters)
       generatedFactories[injectedClassId] = wrapper
       return wrapper
@@ -224,17 +221,16 @@ internal class InjectConstructorTransformer(
 
     // Generate a metadata-visible function that matches the signature of the target constructor
     // This is used in downstream compilations to read the constructor's signature
-    val constructorFunction =
-      generateMetadataVisibleConstructorFunction(
+    val mirrorFunction =
+      generateMetadataVisibleMirrorFunction(
         context = metroContext,
         factoryClass = factoryCls,
-        targetConstructor = targetConstructor,
+        target = targetConstructor,
       )
 
     factoryCls.dumpToMetroLog()
 
-    val wrapper =
-      ClassFactory.MetroFactory(factoryCls, constructorFunction.parameters(metroContext))
+    val wrapper = ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters(metroContext))
     generatedFactories[injectedClassId] = wrapper
     return wrapper
   }

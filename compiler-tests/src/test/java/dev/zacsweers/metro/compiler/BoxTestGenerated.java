@@ -214,9 +214,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
+    public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
+      runTest("compiler-tests/src/test/data/box/provides/ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleFunctionProvider.kt")
     public void testSimpleFunctionProvider() {
       runTest("compiler-tests/src/test/data/box/provides/SimpleFunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("StatusTransformedPrivateProviderAnnotationsArePropagated.kt")
+    public void testStatusTransformedPrivateProviderAnnotationsArePropagated() {
+      runTest("compiler-tests/src/test/data/box/provides/StatusTransformedPrivateProviderAnnotationsArePropagated.kt");
     }
 
     @Test
