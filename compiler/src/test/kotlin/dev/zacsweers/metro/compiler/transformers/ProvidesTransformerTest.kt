@@ -573,7 +573,8 @@ class ProvidesTransformerTest : MetroCompilerTest() {
           """
             private var count = 0
             interface EnabledProvider {
-
+            
+              @Named("Hi")
               @SingleIn(AppScope::class)
               @Provides
               private fun provideInt(): Int = count++
@@ -588,6 +589,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
         """
             @DependencyGraph(AppScope::class)
             interface ExampleGraph : EnabledProvider {
+              @Named("Hi")
               val value: Int
             }
           """
