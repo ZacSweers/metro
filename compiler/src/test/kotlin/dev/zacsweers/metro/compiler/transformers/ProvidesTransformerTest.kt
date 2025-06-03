@@ -515,7 +515,8 @@ class ProvidesTransformerTest : MetroCompilerTest() {
             }
           """
             .trimIndent(),
-          extraImports = arrayOf("kotlin.annotation.AnnotationRetention.BINARY", "javax.inject.Qualifier")
+          extraImports =
+            arrayOf("kotlin.annotation.AnnotationRetention.BINARY", "javax.inject.Qualifier"),
         )
       )
 
@@ -560,6 +561,44 @@ class ProvidesTransformerTest : MetroCompilerTest() {
       assertThat(graph.callProperty<Int?>("nullableInt")).isEqualTo(null)
       assertThat(graph.callProperty<String>("string")).isEqualTo("Hello")
       assertThat(graph.callProperty<String?>("nullableString")).isEqualTo("NullableHello")
+    }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/444
+  @Test
+  fun `private provider annotations are propagated - explicitly private`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+            private var count = 0
+            interface EnabledProvider {
+
+              @SingleIn(AppScope::class)
+              @Provides
+              private fun provideInt(): Int = count++
+            }
+          """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+            @DependencyGraph(AppScope::class)
+            interface ExampleGraph : EnabledProvider {
+              val value: Int
+            }
+          """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+    ) {
+      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
+      // Scope annotation is properly recognized across compilation boundary
+      assertThat(graph.callProperty<Int>("value")).isEqualTo(0)
+      assertThat(graph.callProperty<Int>("value")).isEqualTo(0)
     }
   }
 
