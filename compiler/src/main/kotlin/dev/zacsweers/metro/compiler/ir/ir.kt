@@ -899,9 +899,7 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 
 context(context: IrMetroContext)
 internal fun IrFunction.stubExpressionBody() =
-  context.pluginContext.createIrBuilder(symbol).run {
-    irExprBodySafe(symbol, stubExpression())
-  }
+  context.pluginContext.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
 
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.stubExpression() =

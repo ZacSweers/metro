@@ -809,19 +809,19 @@ internal class DependencyGraphTransformer(
           .plus(node.contributedGraphs.map { it.value })
           .forEach { function ->
             with(function.ir) {
-              val declarationToFinalize =
-                propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+              val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
               if (declarationToFinalize.isFakeOverride) {
                 declarationToFinalize.finalizeFakeOverride(
                   metroGraph.thisReceiverOrFail.copyTo(this)
                 )
-                body = if (returnType != pluginContext.irBuiltIns.unitType) {
-                  stubExpressionBody()
-                } else {
-                  pluginContext.createIrBuilder(symbol).run {
-                    irBlockBody { +irReturn(irGetObject(pluginContext.irBuiltIns.unitClass)) }
+                body =
+                  if (returnType != pluginContext.irBuiltIns.unitType) {
+                    stubExpressionBody()
+                  } else {
+                    pluginContext.createIrBuilder(symbol).run {
+                      irBlockBody { +irReturn(irGetObject(pluginContext.irBuiltIns.unitClass)) }
+                    }
                   }
-                }
               }
             }
           }

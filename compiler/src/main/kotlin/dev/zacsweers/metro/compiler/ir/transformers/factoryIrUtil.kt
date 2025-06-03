@@ -178,9 +178,7 @@ internal fun generateMetadataVisibleMirrorFunction(
           // be functional, we just need it to be indicated
           if (it.hasDefaultValue()) {
             it.defaultValue =
-              context.pluginContext.createIrBuilder(symbol).run {
-                irExprBody(stubExpression())
-              }
+              context.pluginContext.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
           }
         }
         // The function's signature already matches the target function's signature, all we need
