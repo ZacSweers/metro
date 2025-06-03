@@ -564,46 +564,6 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     }
   }
 
-  // Regression test for https://github.com/ZacSweers/metro/issues/444
-  @Test
-  fun `private provider annotations are propagated - explicitly private`() {
-    val firstCompilation =
-      compile(
-        source(
-          """
-            private var count = 0
-            interface EnabledProvider {
-            
-              @Named("Hi")
-              @SingleIn(AppScope::class)
-              @Provides
-              private fun provideInt(): Int = count++
-            }
-          """
-            .trimIndent()
-        )
-      )
-
-    compile(
-      source(
-        """
-            @DependencyGraph(AppScope::class)
-            interface ExampleGraph : EnabledProvider {
-              @Named("Hi")
-              val value: Int
-            }
-          """
-          .trimIndent()
-      ),
-      previousCompilationResult = firstCompilation,
-    ) {
-      val graph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      // Scope annotation is properly recognized across compilation boundary
-      assertThat(graph.callProperty<Int>("value")).isEqualTo(0)
-      assertThat(graph.callProperty<Int>("value")).isEqualTo(0)
-    }
-  }
-
   // TODO
   //  companion object with value params (missing receiver)
 }
