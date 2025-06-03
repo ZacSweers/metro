@@ -326,8 +326,7 @@ internal class DependencyGraphTransformer(
 
           // Read scopes from annotations
           // We copy scope annotations from parents onto this graph if it's extendable so we only
-          // need
-          // to copy once
+          // need to copy once
           scopes.addAll(graphDeclaration.scopeAnnotations())
 
           includedGraphNodes.putAll(
