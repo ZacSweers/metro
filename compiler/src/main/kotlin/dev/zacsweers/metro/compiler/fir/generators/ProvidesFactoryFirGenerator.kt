@@ -71,6 +71,7 @@ import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.functionTypeService
 import org.jetbrains.kotlin.fir.types.parametersCount
 import org.jetbrains.kotlin.fir.types.toLookupTag
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -291,6 +292,24 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
                 is FirPropertySymbol -> true
                 else -> false
               },
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+        mapping[Name.identifier("startOffset")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Int,
+            value = sourceCallable.symbol.source?.startOffset ?: UNDEFINED_OFFSET,
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+        mapping[Name.identifier("endOffset")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Int,
+            value = sourceCallable.symbol.source?.endOffset ?: UNDEFINED_OFFSET,
             annotations = null,
             setType = true,
             prefix = null,
