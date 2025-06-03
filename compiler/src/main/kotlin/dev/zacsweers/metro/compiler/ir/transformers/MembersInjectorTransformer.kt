@@ -49,6 +49,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -206,6 +207,17 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     for ((function, params) in declaredInjectFunctions) {
       function.apply {
         val instanceParam = regularParameters[0]
+
+        // Copy any qualifier annotations over to propagate them
+        for ((i, param) in regularParameters.drop(1).withIndex()) {
+          val injectedParam = params.regularParameters[i]
+          injectedParam.typeKey.qualifier?.let { qualifier ->
+            pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+              param,
+              qualifier.ir.deepCopyWithSymbols(),
+            )
+          }
+        }
 
         body =
           pluginContext.createIrBuilder(symbol).run {
