@@ -24,7 +24,6 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
-import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -47,8 +46,6 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
-import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -299,36 +296,23 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
       }
 
     val providesFunction = reference.callee.owner
-    if (providesFunction.isEffectivelyPrivate()) {
-      // If any annotations have IrClassReference arguments, the compiler barfs
-      var hasErrors = false
-      for (annotation in providesFunction.annotations) {
-        for (arg in annotation.arguments) {
-          if (arg is IrClassReference) {
-            // https://youtrack.jetbrains.com/issue/KT-76257/
-            val message =
-              "Private provider functions with KClass annotation arguments are not supported: " +
-                "${providesFunction.kotlinFqName}. Make this function public to work around this for now."
-            reportError(message, providesFunction.location())
-            hasErrors = true
-          }
-        }
-      }
 
-      if (!hasErrors) {
-        pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(
-          providesFunction as IrSimpleFunction
-        )
-      }
-    }
+    // Generate a metadata-visible function that matches the signature of the target provider
+    // This is used in downstream compilations to read the provider's signature
+    val mirrorFunction =
+      generateMetadataVisibleMirrorFunction(
+        context = metroContext,
+        factoryClass = factoryCls,
+        target = providesFunction,
+      )
 
     val providerFactory =
       ProviderFactory(
-        metroContext,
-        reference.typeKey,
-        factoryCls,
-        providesFunction as IrSimpleFunction,
-        reference.annotations,
+        context = metroContext,
+        sourceTypeKey = reference.typeKey,
+        clazz = factoryCls,
+        mirrorFunction = mirrorFunction,
+        sourceAnnotations = reference.annotations,
       )
 
     factoryCls.dumpToMetroLog()
@@ -584,6 +568,13 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
     val typeKey = IrTypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
-    return ProviderFactory(metroContext, typeKey, factoryCls, null, null)
+    val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+    return ProviderFactory(
+      metroContext,
+      typeKey,
+      factoryCls,
+      mirrorFunction,
+      mirrorFunction.metroAnnotations(symbols.classIds),
+    )
   }
 }

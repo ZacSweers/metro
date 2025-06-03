@@ -95,6 +95,7 @@ internal class BindingGraphGenerator(
     providerFactoriesToAdd.forEach { (typeKey, providerFactory) ->
       // Track a lookup of the provider class for IC
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
+      trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
 
       val contextKey =
         if (providerFactory.annotations.isIntoMultibinding) {

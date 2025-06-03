@@ -21,11 +21,14 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
 
@@ -127,7 +130,7 @@ internal class ProviderFactory(
   val context: IrMetroContext,
   sourceTypeKey: IrTypeKey,
   val clazz: IrClass,
-  sourceCallable: IrSimpleFunction?,
+  val mirrorFunction: IrSimpleFunction,
   sourceAnnotations: MetroAnnotations<IrAnnotation>?,
 ) : IrMetroFactory {
   val callableId: CallableId
@@ -148,10 +151,18 @@ internal class ProviderFactory(
       providesCallableIdAnno.getConstBooleanArgumentOrNull(
         Symbols.StringNames.IS_PROPERTY_ACCESSOR.asName()
       ) ?: false
+    // Fake a reference to the "real" function by making a copy of this mirror that reflects the
+    // real one
     function =
-      sourceCallable
-        ?: context.pluginContext.referenceFunctions(callableId).firstOrNull()?.owner
-        ?: error("No matching provider function found for $callableId")
+      mirrorFunction.deepCopyWithSymbols().apply {
+        name = callableId.callableName
+        parent = clazz
+        // Point at the original class
+        setDispatchReceiver(clazz.parentAsClass.thisReceiverOrFail.copyTo(this))
+        // Read back the original offsets in the original source
+        startOffset = providesCallableIdAnno.constArgumentOfTypeAt<Int>(2)!!
+        endOffset = providesCallableIdAnno.constArgumentOfTypeAt<Int>(3)!!
+      }
     annotations = sourceAnnotations ?: function.metroAnnotations(context.symbols.classIds)
     typeKey = sourceTypeKey.copy(qualifier = annotations.qualifier)
   }
