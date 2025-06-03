@@ -36,14 +36,14 @@ class S {
 
     }
 
-    fun constructorFunction(sProvider: Provider<S>): S {
-      return error(message = "Never called")
-    }
-
     override operator fun invoke(): S {
       val tmp_0: S = Companion.newInstance(sProvider = <this>.#sProvider)
       Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy</* null */, /* null */>(provider = <this>.#sLazy))
       return tmp_0
+    }
+
+    fun mirrorFunction(sProvider: Provider<S>): S {
+      return error(message = "Never called")
     }
 
   }
