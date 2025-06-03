@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **New:** Add new `Provider.map`, `Provider.flatMap`, `Provider.zip`, and `Provider.memoize` utility APIs.
 - **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
 - **Enhancement:** Check for context parameters in top-level function injection checker.
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
@@ -11,6 +12,7 @@ Changelog
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 - **Fix:** Support constructing nested function return types for provider functions.
+- **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
 - **Fix:** Report member injection dependencies when looking up constructor-injected classes during graph population.
 - [internal] Make internal renderings of `IrType` more deterministic.
 - [internal] Significantly refactor + simplify IR parameter handling.

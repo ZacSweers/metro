@@ -120,8 +120,13 @@ public abstract interface class dev/zacsweers/metro/Provider {
 }
 
 public final class dev/zacsweers/metro/ProviderKt {
+	public static final fun flatMap (Ldev/zacsweers/metro/Provider;Lkotlin/jvm/functions/Function1;)Ldev/zacsweers/metro/Provider;
+	public static final fun map (Ldev/zacsweers/metro/Provider;Lkotlin/jvm/functions/Function1;)Ldev/zacsweers/metro/Provider;
+	public static final fun memoize (Ldev/zacsweers/metro/Provider;)Ldev/zacsweers/metro/Provider;
+	public static final fun memoizeAsLazy (Ldev/zacsweers/metro/Provider;)Lkotlin/Lazy;
 	public static final fun provider (Lkotlin/jvm/functions/Function0;)Ldev/zacsweers/metro/Provider;
 	public static final fun providerOf (Ljava/lang/Object;)Ldev/zacsweers/metro/Provider;
+	public static final fun zip (Ldev/zacsweers/metro/Provider;Ldev/zacsweers/metro/Provider;Lkotlin/jvm/functions/Function2;)Ldev/zacsweers/metro/Provider;
 }
 
 public abstract interface annotation class dev/zacsweers/metro/Provides : java/lang/annotation/Annotation {

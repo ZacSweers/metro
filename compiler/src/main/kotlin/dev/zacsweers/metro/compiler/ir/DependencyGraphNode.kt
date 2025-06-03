@@ -86,6 +86,12 @@ private fun DependencyGraphNode.recurseIncludedNodes(
       node.recurseIncludedNodes(builder)
     }
   }
+  // Propagate included nodes from parent graphs
+  for (node in extendedGraphNodes.values) {
+    for (includedFromParent in node.allIncludedNodes) {
+      builder[includedFromParent.typeKey] = includedFromParent
+    }
+  }
 }
 
 private fun DependencyGraphNode.recurseParents(

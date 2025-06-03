@@ -58,6 +58,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testContributingMultipleGraphsToSameParent() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributingMultipleGraphsToSameParent.kt");
     }
+
+    @Test
+    @TestMetadata("ParentIncludesArePropgatedToExtensions.kt")
+    public void testParentIncludesArePropgatedToExtensions() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ParentIncludesArePropgatedToExtensions.kt");
+    }
   }
 
   @Nested
