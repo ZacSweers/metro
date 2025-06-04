@@ -69,7 +69,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
     kotlinCompilation.compileTaskProvider.configure { task ->
       task.doFirst { innerTask ->
         val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
-        val languageVersion = compilerOptions.languageVersion.get()
+        val languageVersion = compilerOptions.languageVersion.orNull ?: return@doFirst
         check(languageVersion >= gradleMetroKotlinVersion) {
           "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${gradleMetroKotlinVersion.version}' or later."
         }
