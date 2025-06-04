@@ -8,6 +8,7 @@ Changelog
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - **Fix:** Support constructing nested function return types for provider functions.
 - **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
+- **Fix:** Reparent copied lambda default values in IR.
 - [internal] Make internal renderings of `IrType` more deterministic.
 
 0.3.5
