@@ -4,6 +4,7 @@ package dev.zacsweers.metro.gradle
 
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
@@ -11,8 +12,15 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
+  private companion object {
+    val gradleMetroKotlinVersion by
+      lazy(LazyThreadSafetyMode.NONE) {
+        KotlinVersion.fromVersion(BASE_KOTLIN_VERSION.substringBeforeLast('.'))
+      }
+  }
 
   override fun apply(target: Project) {
     target.extensions.create("metro", MetroPluginExtension::class.java, target.layout)
@@ -56,6 +64,17 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
+
+    // Ensure that the languageVersion is 2.x
+    kotlinCompilation.compileTaskProvider.configure { task ->
+      task.doFirst { innerTask ->
+        val compilerOptions = (innerTask as KotlinCompilationTask<*>).compilerOptions
+        val languageVersion = compilerOptions.languageVersion.get()
+        check(languageVersion >= gradleMetroKotlinVersion) {
+          "Compilation task '${innerTask.name}' targets language version '${languageVersion.version}' but Metro requires Kotlin '${gradleMetroKotlinVersion.version}' or later."
+        }
+      }
+    }
 
     project.dependencies.add(
       kotlinCompilation.implementationConfigurationName,
