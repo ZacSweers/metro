@@ -143,20 +143,16 @@ public class BoxTestGenerated extends AbstractBoxTest {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
     }
 
-    @Nested
-    @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
-    @TestDataPath("$PROJECT_ROOT")
-    public class Assisted {
-      @Test
-      public void testAllFilesPresentInAssisted() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-      }
+    @Test
+    @TestMetadata("InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt")
+    public void testInjectedFunInterfaceParametersWithLambdaDefaultsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt");
+    }
 
-      @Test
-      @TestMetadata("AssistedParametersWithFunctionTypesWork.kt")
-      public void testAssistedParametersWithFunctionTypesWork() {
-        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedParametersWithFunctionTypesWork.kt");
-      }
+    @Test
+    @TestMetadata("InjectedFunctionParametersWithLambdaDefaultsWork.kt")
+    public void testInjectedFunctionParametersWithLambdaDefaultsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedFunctionParametersWithLambdaDefaultsWork.kt");
     }
   }
 
