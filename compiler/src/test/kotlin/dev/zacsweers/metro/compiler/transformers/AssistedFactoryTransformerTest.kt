@@ -856,4 +856,88 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       assertThat(exampleClass.call()).isEqualTo("Hello, 2")
     }
   }
+
+  @Test
+  fun `assisted types cannot be depended on directly - class`() {
+    compile(
+      source(
+        """
+            class ExampleClass @Inject constructor(
+              @Assisted val count: Int,
+              val message: String,
+            )
+
+            @AssistedFactory
+            interface ExampleClassFactory {
+              fun create(count: Int): ExampleClass
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClassFactory: ExampleClassFactory
+              val exampleClass: Consumer
+              
+              @Provides val string: String get() = "Hello, world!"
+            }
+
+            @Inject
+            class Consumer(val exampleClass: ExampleClass)
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleClass.kt:25:16 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+
+          (Hint)
+          It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `assisted types cannot be depended on directly - provider`() {
+    compile(
+      source(
+        """
+            class ExampleClass @Inject constructor(
+              @Assisted val count: Int,
+              val message: String,
+            )
+
+            @AssistedFactory
+            interface ExampleClassFactory {
+              fun create(count: Int): ExampleClass
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              val exampleClassFactory: ExampleClassFactory
+              val exampleClass: Consumer
+              
+              @Provides val string: String get() = "Hello, world!"
+              @Provides fun provideConsumer(exampleClass: ExampleClass): Consumer = Consumer(exampleClass)
+            }
+
+            class Consumer(val exampleClass: ExampleClass)
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleClass.kt:22:33 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+
+          (Hint)
+          It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+        """
+          .trimIndent()
+      )
+    }
+  }
 }
