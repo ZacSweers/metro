@@ -905,8 +905,8 @@ class ICTests : BaseIncrementalCompilationTest() {
     val project = fixture.gradleProject
 
     fun buildAndAssertOutput() {
-      val firstBuildResult = build(project.rootDir, "compileKotlin")
-      assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+      val buildResult = build(project.rootDir, "compileKotlin")
+      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
       val mainClass = project.classLoader().loadClass("test.MainKt")
       val string = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
