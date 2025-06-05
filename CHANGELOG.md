@@ -6,6 +6,7 @@ Changelog
 
 - **New:** Add new `Provider.map`, `Provider.flatMap`, `Provider.zip`, and `Provider.memoize` utility APIs.
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
+- **Enhancement:** Fail eagerly with a clear error message if `languageVersion` is too old.
 - **Fix:** Support constructing nested function return types for provider functions.
 - **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
 - **Fix:** Reparent copied lambda default values in IR.
