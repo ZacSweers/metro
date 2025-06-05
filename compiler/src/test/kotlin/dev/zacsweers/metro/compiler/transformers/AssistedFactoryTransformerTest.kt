@@ -876,7 +876,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
             interface ExampleGraph {
               val exampleClassFactory: ExampleClassFactory
               val exampleClass: Consumer
-              
+
               @Provides val string: String get() = "Hello, world!"
             }
 
@@ -918,7 +918,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
             interface ExampleGraph {
               val exampleClassFactory: ExampleClassFactory
               val exampleClass: Consumer
-              
+
               @Provides val string: String get() = "Hello, world!"
               @Provides fun provideConsumer(exampleClass: ExampleClass): Consumer = Consumer(exampleClass)
             }
@@ -960,7 +960,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
             interface ExampleGraph {
               val exampleClassFactory: ExampleClassFactory
               fun inject(exampleClass: Consumer)
-              
+
               @Provides val string: String get() = "Hello, world!"
             }
 
@@ -1003,7 +1003,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
             interface ExampleGraph {
               val exampleClassFactory: ExampleClassFactory
               val exampleClass: ExampleClass
-              
+
               @Provides val string: String get() = "Hello, world!"
             }
           """
