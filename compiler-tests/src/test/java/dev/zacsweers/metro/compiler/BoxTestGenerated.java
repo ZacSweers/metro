@@ -160,6 +160,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testInjectedFunctionParametersWithLambdaDefaultsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedFunctionParametersWithLambdaDefaultsWork.kt");
     }
+
+    @Test
+    @TestMetadata("InjectedConstructorParametersWithGenericsWork.kt")
+    public void testInjectedConstructorParametersWithGenericsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedConstructorParametersWithGenericsWork.kt");
+    }
   }
 
   @Nested
