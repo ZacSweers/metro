@@ -940,4 +940,6 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       )
     }
   }
+
+  // TODO roots - accessor and injector
 }
