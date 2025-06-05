@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFile
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
@@ -98,6 +99,12 @@ internal class ContributionHintIrTransformer(
 
       val fileName = "${fileNameWithoutExtension}.kt"
       val firFile = buildFile {
+        val metadataSource = declaration.metadata as? FirMetadataSource.Class
+        if (metadataSource == null) {
+          declaration.reportError(
+            "Class ${declaration.classId} does not have a valid metadata source. Found ${declaration.metadata?.javaClass?.canonicalName}."
+          )
+        }
         moduleData = (declaration.metadata as FirMetadataSource.Class).fir.moduleData
         origin = FirDeclarationOrigin.Synthetic.PluginFile
         packageDirective = buildPackageDirective {

@@ -141,6 +141,28 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/inject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Inject {
+    @Test
+    public void testAllFilesPresentInInject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt")
+    public void testInjectedFunInterfaceParametersWithLambdaDefaultsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("InjectedFunctionParametersWithLambdaDefaultsWork.kt")
+    public void testInjectedFunctionParametersWithLambdaDefaultsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedFunctionParametersWithLambdaDefaultsWork.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/interop")
   @TestDataPath("$PROJECT_ROOT")
   public class Interop {
