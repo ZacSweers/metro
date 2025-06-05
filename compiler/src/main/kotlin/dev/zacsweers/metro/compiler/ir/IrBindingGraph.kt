@@ -172,7 +172,7 @@ internal class IrBindingGraph(
               realGraph.bindings.keys.sorted().joinToString("\n")
             }
           },
-          validateBinding = ::checkScope,
+          validateBindings = ::validateBindings,
         )
       }
 
@@ -376,6 +376,34 @@ internal class IrBindingGraph(
 
   // Check scoping compatibility
   // TODO FIR error?
+  private fun validateBindings(
+    bindings: Map<IrTypeKey, Binding>,
+    stack: IrBindingStack,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+  ) {
+    val reverseAdjacency = buildReverseAdjacency(adjacency)
+    val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
+    for (binding in bindings.values) {
+      checkScope(binding, stack, roots, adjacency)
+      validateAssistedInjection(binding, bindings, stack, rootsByTypeKey, reverseAdjacency)
+    }
+  }
+
+  private fun buildReverseAdjacency(
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>
+  ): Map<IrTypeKey, Set<IrTypeKey>> {
+    val reverse = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
+    for ((from, tos) in adjacency) {
+      for (to in tos) {
+        reverse.getOrPut(to) { mutableSetOf() }.add(from)
+      }
+    }
+    return reverse
+  }
+
+  // Check scoping compatibility
+  // TODO FIR error?
   private fun checkScope(
     binding: Binding,
     stack: IrBindingStack,
@@ -434,6 +462,51 @@ internal class IrBindingGraph(
         with(metroContext) { declarationToReport.reportError(message) }
       }
     }
+  }
+
+  private fun validateAssistedInjection(
+    binding: Binding,
+    bindings: Map<IrTypeKey, Binding>,
+    stack: IrBindingStack,
+    roots: Map<IrTypeKey, IrBindingStack.Entry>,
+    reverseAdjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+  ) {
+    if (binding !is Binding.ConstructorInjected || !binding.isAssisted) return
+
+    // TODO build a stack?
+    val dependents = reverseAdjacency[binding.typeKey] ?: return
+    for (dependentKey in dependents) {
+      val dependentBinding = bindings[dependentKey] ?: continue
+      if (dependentBinding !is Binding.Assisted) {
+        // Look up the assisted factory as a hint
+        val assistedFactory =
+          bindings.values.find { it is Binding.Assisted && it.target.typeKey == binding.typeKey }
+        // Report an error for anything that isn't an assisted binding depending on this
+        val message = buildString {
+          append("[Metro/InvalidBinding] ")
+          append(
+            "'${binding.typeKey}' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead."
+          )
+          if (assistedFactory != null) {
+            appendLine()
+            appendLine()
+            appendLine("(Hint)")
+            appendLine(
+              "It looks like the @AssistedFactory for '${binding.typeKey}' is '${assistedFactory.typeKey}'."
+            )
+          }
+        }
+        with(metroContext) {
+          reportError(
+            message,
+            dependentBinding.parametersByKey[binding.typeKey]?.location
+              ?: dependentBinding.reportableLocation,
+          )
+        }
+      }
+    }
+
+    // TODO check roots
   }
 
   /**
