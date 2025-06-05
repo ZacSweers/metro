@@ -859,4 +859,85 @@ class ICTests : BaseIncrementalCompilationTest() {
         "ContributedInterface.kt:9:11 DependencyGraph declarations may not extend declarations with narrower visibility. Contributed supertype 'test.ContributedInterfaceImpl' is internal but graph declaration 'test.ExampleGraph' is public."
       )
   }
+
+  @Test
+  fun fieldWrappedWithLazyIsDetected() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(exampleGraph, exampleClass, main)
+
+        private val exampleGraph =
+          source(
+            """
+          @DependencyGraph
+          interface ExampleGraph {
+            fun inject(exampleClass: ExampleClass)
+
+            @Provides fun provideString(): String = "Hello, world!"
+          }
+            """
+              .trimIndent()
+          )
+
+        val exampleClass =
+          source(
+            """
+          class ExampleClass {
+            @Inject lateinit var string: String
+          }
+          """
+              .trimIndent()
+          )
+
+        val main =
+          source(
+            """
+            fun main(): String {
+              val graph = createGraph<ExampleGraph>()
+              val exampleClass = ExampleClass()
+              graph.inject(exampleClass)
+              return exampleClass.string
+            }
+            """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    fun buildAndAssertOutput() {
+      val firstBuildResult = build(project.rootDir, "compileKotlin")
+      assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+      val mainClass = project.classLoader().loadClass("test.MainKt")
+      val string = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(string).isEqualTo("Hello, world!")
+    }
+
+    buildAndAssertOutput()
+
+    project.modify(
+      fixture.exampleClass,
+      """
+      class ExampleClass {
+        @Inject lateinit var string: Lazy<String>
+      }
+      """
+        .trimIndent(),
+    )
+
+    project.modify(
+      fixture.main,
+      """
+      fun main(): String {
+        val graph = createGraph<ExampleGraph>()
+        val exampleClass = ExampleClass()
+        graph.inject(exampleClass)
+        return exampleClass.string.value
+      }
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertOutput()
+  }
 }
