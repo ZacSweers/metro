@@ -86,16 +86,16 @@ internal open class MutableBindingGraph<
    * validation.
    *
    * @param onPopulated a callback for when the graph is fully populated but not yet validated.
-   * @param validateBinding a callback to perform optional extra validation on a given binding in
-   *   context.
+   * @param validateBindings a callback to perform optional extra validation on bindings
+   *   post-adjacency build.
    */
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
-    validateBinding:
+    validateBindings:
       (
-        binding: Binding,
+        bindings: Map<TypeKey, Binding>,
         stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
         adjacency: Map<TypeKey, Set<TypeKey>>,
@@ -143,9 +143,7 @@ internal open class MutableBindingGraph<
     missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
 
     // Validate bindings
-    for (binding in bindings.values) {
-      validateBinding(binding, stack, roots, fullAdjacency)
-    }
+    validateBindings(bindings, stack, roots, fullAdjacency)
 
     val topo =
       tracer.traceNested("Sort and validate") { sortAndValidate(roots, fullAdjacency, stack, it) }

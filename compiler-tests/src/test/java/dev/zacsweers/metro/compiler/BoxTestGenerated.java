@@ -166,6 +166,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testInjectedFunctionParametersWithLambdaDefaultsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedFunctionParametersWithLambdaDefaultsWork.kt");
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/inject/assisted")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Assisted {
+      @Test
+      public void testAllFilesPresentInAssisted() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
+      public void testAssistedTypesCanBeExplicitlyProvided() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
+      }
+    }
   }
 
   @Nested

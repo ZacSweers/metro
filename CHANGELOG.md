@@ -4,26 +4,35 @@ Changelog
 **Unreleased**
 --------------
 
-- **New:** Add new `Provider.map`, `Provider.flatMap`, `Provider.zip`, and `Provider.memoize` utility APIs.
+0.3.6
+-----
+
 - **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
 - **Enhancement:** Check for context parameters in top-level function injection checker.
-- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
-- **Enhancement:** Fail eagerly with a clear error message if `languageVersion` is too old.
 - **Fix:** Fix support for generic injected constructor parameters.
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
-- **Fix:** Support constructing nested function return types for provider functions.
-- **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
 - **Fix:** Report member injection dependencies when looking up constructor-injected classes during graph population.
 - **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
-- **Fix:** Reparent copied lambda default values in IR.
 - **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
-- [internal] Make internal renderings of `IrType` more deterministic.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
+
+_2025-06-06_
+
+- **New:** Add new `Provider.map`, `Provider.flatMap`, `Provider.zip`, and `Provider.memoize` utility APIs.
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
+- **Enhancement:** Fail eagerly with a clear error message if `languageVersion` is too old.
+- **Enhancement:** Validate improperly depending on assisted-injected classes directly at compile-time.
+- **Fix:** Support constructing nested function return types for provider functions.
+- **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
+- **Fix:** Reparent copied lambda default values in IR.
+- [internal] Make internal renderings of `IrType` more deterministic.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar) for contributing to this release!
 
 0.3.5
 -----
