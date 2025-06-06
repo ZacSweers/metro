@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+0.3.6
+-----
+
+_2025-06-06_
+
 - **New:** Add new `Provider.map`, `Provider.flatMap`, `Provider.zip`, and `Provider.memoize` utility APIs.
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - **Enhancement:** Fail eagerly with a clear error message if `languageVersion` is too old.
@@ -12,6 +17,8 @@ Changelog
 - **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
 - **Fix:** Reparent copied lambda default values in IR.
 - [internal] Make internal renderings of `IrType` more deterministic.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar) for contributing to this release!
 
 0.3.5
 -----
