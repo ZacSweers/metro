@@ -152,12 +152,12 @@ internal class InjectConstructorTransformer(
     }
 
     val injectors = membersInjectorTransformer.getOrGenerateAllInjectorsFor(declaration)
-    val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten() }
+    val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
     val targetConstructor =
       previouslyFoundConstructor
         ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
-    val constructorParameters = targetConstructor.parameters(metroContext, factoryCls, declaration)
+    val constructorParameters = targetConstructor.parameters(metroContext)
     val allParameters =
       buildList {
           add(constructorParameters)
@@ -297,7 +297,7 @@ internal class InjectConstructorTransformer(
         if (injectors.isNotEmpty()) {
           val instance = irTemporary(newInstance)
           for (injector in injectors) {
-            for ((function, parameters) in injector.injectFunctions) {
+            for ((function, parameters) in injector.declaredInjectFunctions) {
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,

@@ -10,6 +10,7 @@ Changelog
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
 - **Enhancement:** Fail eagerly with a clear error message if `languageVersion` is too old.
+- **Fix:** Fix support for generic injected constructor parameters.
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 - **Fix:** Support constructing nested function return types for provider functions.
@@ -18,6 +19,7 @@ Changelog
 - **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
 - **Fix:** Reparent copied lambda default values in IR.
+- **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
 - [internal] Make internal renderings of `IrType` more deterministic.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.

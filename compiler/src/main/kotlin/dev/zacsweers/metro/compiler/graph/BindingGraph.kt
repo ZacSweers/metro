@@ -51,8 +51,10 @@ internal open class MutableBindingGraph<
    * returns a set.
    */
   private val computeBindings:
-    (contextKey: ContextualTypeKey, currentBindings: Set<TypeKey>) -> Set<Binding> =
-    { _, _ ->
+    (contextKey: ContextualTypeKey, currentBindings: Set<TypeKey>, stack: BindingStack) -> Set<
+        Binding
+      > =
+    { _, _, _ ->
       emptySet()
     },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
@@ -170,7 +172,7 @@ internal open class MutableBindingGraph<
     val missingBindings = mutableMapOf<TypeKey, BindingStack>()
     for ((contextKey, entry) in roots) {
       if (contextKey.typeKey !in bindings) {
-        val bindings = computeBindings(contextKey, bindings.keys)
+        val bindings = computeBindings(contextKey, bindings.keys, stack)
         if (bindings.isNotEmpty()) {
           for (binding in bindings) {
             tryPut(binding, stack, binding.typeKey)
@@ -199,7 +201,7 @@ internal open class MutableBindingGraph<
             val typeKey = depKey.typeKey
             if (typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              val bindings = computeBindings(depKey, bindings.keys)
+              val bindings = computeBindings(depKey, bindings.keys, stack)
               if (bindings.isNotEmpty()) {
                 for (binding in bindings) {
                   bindingQueue.addLast(binding)

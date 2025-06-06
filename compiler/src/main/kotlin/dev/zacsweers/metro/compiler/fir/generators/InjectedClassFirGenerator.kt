@@ -55,6 +55,7 @@ import org.jetbrains.kotlin.fir.plugin.createMemberFunction
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -67,7 +68,6 @@ import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.type
-import org.jetbrains.kotlin.fir.types.withArguments
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -655,14 +655,14 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           Symbols.Names.create -> {
             buildFactoryCreateFunction(
               nonNullContext,
-              {
+              { typeParams ->
                 if (injectedClass.isAssisted) {
-                  targetClass.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
+                  targetClass.constructType(typeParams.mapToArray(FirTypeParameterRef::toConeType))
                 } else {
                   Symbols.ClassIds.metroFactory.constructClassLikeType(
                     arrayOf(
                       injectedClass.classSymbol.constructType(
-                        it.mapToArray(FirTypeParameterRef::toConeType)
+                        typeParams.mapToArray(FirTypeParameterRef::toConeType)
                       )
                     )
                   )
@@ -727,32 +727,30 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                   typeProvider = injectedClass.classSymbol::constructType,
                   key = Keys.RegularParameter, // Or should this be instance?
                 )
+
+                val classTypeParamsByName =
+                  injectedClass.classSymbol.typeParameterSymbols.associateBy { it.name }
+
                 // Add its parameters
                 for (param in parameters) {
                   valueParameter(
                     param.name,
                     typeProvider = { typeParameters ->
-                      // TODO this is hacky at best. Look into ConeSubstitutor
                       val resolvedType = param.symbol.resolvedReturnType
                       if (typeParameters.isEmpty()) {
                         resolvedType
-                      } else if (
-                        resolvedType.typeArguments.none { it.type is ConeTypeParameterType }
-                      ) {
+                      } else if (resolvedType !is ConeTypeParameterType) {
                         resolvedType
                       } else {
-                        val availableTypes = typeParameters.associateBy { it.symbol.name }
-                        val finalTypeParameters =
-                          resolvedType.typeArguments.map { typeArg ->
-                            val typeArgType = typeArg.type ?: return@map typeArg
-                            if (typeArgType is ConeTypeParameterType) {
-                              availableTypes[typeArgType.lookupTag.name]?.toConeType()
-                                ?: typeArgType
-                            } else {
-                              typeArgType
-                            }
-                          }
-                        resolvedType.withArguments(finalTypeParameters.toTypedArray())
+                        val substitutor =
+                          substitutorByMap(
+                            typeParameters.associate {
+                              classTypeParamsByName.getValue(it.symbol.name) to
+                                it.symbol.constructType()
+                            },
+                            session,
+                          )
+                        substitutor.substituteOrSelf(resolvedType)
                       }
                     },
                     key = Keys.RegularParameter,

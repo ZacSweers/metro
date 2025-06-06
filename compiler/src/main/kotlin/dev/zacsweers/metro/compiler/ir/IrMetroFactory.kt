@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -29,6 +30,7 @@ import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
 
@@ -40,6 +42,9 @@ internal sealed interface ClassFactory : IrMetroFactory {
   val factoryClass: IrClass
   val invokeFunctionSymbol: IrFunctionSymbol
   val targetFunctionParameters: Parameters
+
+  context(context: IrMetroContext)
+  fun remapTypes(typeRemapper: TypeRemapper): ClassFactory
 
   fun IrBuilderWithScope.invokeCreateExpression(
     computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>
@@ -53,6 +58,16 @@ internal sealed interface ClassFactory : IrMetroFactory {
 
     override val invokeFunctionSymbol: IrFunctionSymbol by unsafeLazy {
       factoryClass.requireSimpleFunction(Symbols.StringNames.INVOKE)
+    }
+
+    context(context: IrMetroContext)
+    override fun remapTypes(typeRemapper: TypeRemapper): MetroFactory {
+      if (factoryClass.typeParameters.isEmpty()) return this
+
+      // TODO can we pass the remapper in?
+      val newFunction =
+        function.deepCopyWithSymbols(factoryClass).also { it.remapTypes(typeRemapper) }
+      return MetroFactory(factoryClass, newFunction.parameters(context))
     }
 
     override fun IrBuilderWithScope.invokeCreateExpression(
@@ -84,6 +99,16 @@ internal sealed interface ClassFactory : IrMetroFactory {
     override val function: IrConstructor = targetFunctionParameters.ir!! as IrConstructor
     override val invokeFunctionSymbol: IrFunctionSymbol
       get() = factoryClass.requireSimpleFunction(Symbols.StringNames.GET)
+
+    context(context: IrMetroContext)
+    override fun remapTypes(typeRemapper: TypeRemapper): DaggerFactory {
+      if (factoryClass.typeParameters.isEmpty()) return this
+
+      // TODO can we pass the remapper in?
+      val newFunction =
+        function.deepCopyWithSymbols(factoryClass).also { it.remapTypes(typeRemapper) }
+      return DaggerFactory(metroContext, factoryClass, newFunction.parameters(context))
+    }
 
     override fun IrBuilderWithScope.invokeCreateExpression(
       computeArgs: IrBuilderWithScope.(createFunction: IrSimpleFunction) -> List<IrExpression?>

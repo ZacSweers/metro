@@ -6,24 +6,20 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.compareTo
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.extensionReceiverParameterCompat
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
-import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
-import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
-import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
-import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
@@ -186,39 +182,24 @@ internal class Parameters(
 
 internal fun IrFunction.parameters(
   context: IrMetroContext,
-  parentClass: IrClass? = parentClassOrNull,
-  originClass: IrTypeParametersContainer? = null,
+  remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
 ): Parameters {
-  val mapper =
-    if (this is IrConstructor && originClass != null && parentClass != null) {
-      val typeParameters = parentClass.typeParameters
-      val srcToDstParameterMap: Map<IrTypeParameter, IrTypeParameter> =
-        originClass.typeParameters.zip(typeParameters).associate { (src, target) -> src to target }
-      // Returning this inline breaks kotlinc for some reason
-      val innerMapper: ((IrType) -> IrType) = { type ->
-        type.remapTypeParameters(originClass, parentClass, srcToDstParameterMap)
-      }
-      innerMapper
-    } else {
-      null
-    }
-
   return Parameters(
     callableId = callableId,
     instance =
       dispatchReceiverParameter?.toConstructorParameter(
         context,
         IrParameterKind.DispatchReceiver,
-        typeParameterRemapper = mapper,
+        remapper = remapper,
       ),
     extensionReceiver =
       extensionReceiverParameterCompat?.toConstructorParameter(
         context,
         IrParameterKind.ExtensionReceiver,
-        typeParameterRemapper = mapper,
+        remapper = remapper,
       ),
-    regularParameters = regularParameters.mapToConstructorParameters(context, mapper),
-    contextParameters = contextParameters.mapToConstructorParameters(context, mapper),
+    regularParameters = regularParameters.mapToConstructorParameters(context, remapper),
+    contextParameters = contextParameters.mapToConstructorParameters(context, remapper),
     ir = this,
   )
 }

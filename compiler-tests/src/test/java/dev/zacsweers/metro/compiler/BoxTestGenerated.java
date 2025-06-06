@@ -150,6 +150,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedConstructorParametersWithGenericsWork.kt")
+    public void testInjectedConstructorParametersWithGenericsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedConstructorParametersWithGenericsWork.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt")
     public void testInjectedFunInterfaceParametersWithLambdaDefaultsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt");
@@ -190,6 +196,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DaggerFactoryClassCanBeLoadedJakarta.kt")
       public void testDaggerFactoryClassCanBeLoadedJakarta() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoadedJakarta.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
+      public void testGenericDaggerFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
       }
     }
   }
