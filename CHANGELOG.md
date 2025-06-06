@@ -18,6 +18,7 @@ Changelog
 - **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
 - **Fix:** Reparent copied lambda default values in IR.
+- **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
 - [internal] Make internal renderings of `IrType` more deterministic.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.

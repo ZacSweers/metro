@@ -9,11 +9,11 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 
       }
 
-      fun <T : Any?, V : Any?, E : Any?> create(): Factory<ClassWithBackRefs<T, V, E>> {
+      fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithBackRefs<T, V, E>> {
         return $$MetroFactory<T, V, E>()
       }
 
-      fun <T : Any?, V : Any?, E : Any?> newInstance(): ClassWithBackRefs<T, V, E> {
+      fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithBackRefs<T, V, E> {
         return ClassWithBackRefs()
       }
 
@@ -54,11 +54,11 @@ class ClassWithBounds<T : Any> {
 
       }
 
-      fun <T : Any?> create(): Factory<ClassWithBounds<T>> {
+      fun <T : Any> create(): Factory<ClassWithBounds<T>> {
         return $$MetroFactory<T>()
       }
 
-      fun <T : Any?> newInstance(): ClassWithBounds<T> {
+      fun <T : Any> newInstance(): ClassWithBounds<T> {
         return ClassWithBounds()
       }
 
@@ -144,11 +144,11 @@ class ClassWithNullable<T : Any?, E : T?> {
 
       }
 
-      fun <T : Any?, E : Any?> create(): Factory<ClassWithNullable<T, E>> {
+      fun <T : Any?, E : T?> create(): Factory<ClassWithNullable<T, E>> {
         return $$MetroFactory<T, E>()
       }
 
-      fun <T : Any?, E : Any?> newInstance(): ClassWithNullable<T, E> {
+      fun <T : Any?, E : T?> newInstance(): ClassWithNullable<T, E> {
         return ClassWithNullable()
       }
 
@@ -189,11 +189,11 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 
       }
 
-      fun <T : Any?, V : Any?, E : Any?> create(): Factory<ClassWithWheres<T, V, E>> {
+      fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithWheres<T, V, E>> {
         return $$MetroFactory<T, V, E>()
       }
 
-      fun <T : Any?, V : Any?, E : Any?> newInstance(): ClassWithWheres<T, V, E> {
+      fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithWheres<T, V, E> {
         return ClassWithWheres()
       }
 
@@ -234,11 +234,11 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 
       }
 
-      fun <T : Any?, V : Any?, E : Any?, LongName : Any?, NullableLongName : Any?> create(): Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
+      fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> create(): Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
         return $$MetroFactory<T, V, E, LongName, NullableLongName>()
       }
 
-      fun <T : Any?, V : Any?, E : Any?, LongName : Any?, NullableLongName : Any?> newInstance(): ComplexMonster<T, V, E, LongName, NullableLongName> {
+      fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> newInstance(): ComplexMonster<T, V, E, LongName, NullableLongName> {
         return ComplexMonster()
       }
 

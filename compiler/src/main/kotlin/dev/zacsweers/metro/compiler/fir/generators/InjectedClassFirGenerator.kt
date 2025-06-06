@@ -655,14 +655,14 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           Symbols.Names.create -> {
             buildFactoryCreateFunction(
               nonNullContext,
-              {
+              { typeParams ->
                 if (injectedClass.isAssisted) {
-                  targetClass.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
+                  targetClass.constructType(typeParams.mapToArray(FirTypeParameterRef::toConeType))
                 } else {
                   Symbols.ClassIds.metroFactory.constructClassLikeType(
                     arrayOf(
                       injectedClass.classSymbol.constructType(
-                        it.mapToArray(FirTypeParameterRef::toConeType)
+                        typeParams.mapToArray(FirTypeParameterRef::toConeType)
                       )
                     )
                   )
