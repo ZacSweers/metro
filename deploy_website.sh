@@ -25,10 +25,12 @@ if ! [[ ${local} ]]; then
   cd ${DIR}
 
   # Generate the API docs
-  ./gradlew :dokkaGenerate
+  # --rerun-tasks because Dokka has bugs :(
+  ./gradlew :dokkaGenerate --rerun-tasks
 
   cd ..
   rm -rf ${DIR}
+  rm -rf site
 fi
 
 # Copy in special files that GitHub wants in the project root.
@@ -48,4 +50,5 @@ fi
 if ! [[ ${local} ]]; then
   cd ..
   rm -rf ${DIR}
+  rm -rf site
 fi
