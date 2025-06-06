@@ -512,7 +512,7 @@ internal class IrBindingGraph(
       val dependentBinding = bindings[dependentKey] ?: continue
       if (dependentBinding !is Binding.Assisted) {
         reportInvalidBinding(
-          dependentBinding.parametersByKey[binding.typeKey]?.location
+          dependentBinding.parametersByKey[binding.typeKey]?.ir?.location()
             ?: dependentBinding.reportableLocation
         )
       }
