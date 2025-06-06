@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Fix:** Record lookups of generated static member inject functions for IC.
+- **Fix:** Dedupe merged overrides of `@Includes` accessors.
 
 0.3.6
 -----
