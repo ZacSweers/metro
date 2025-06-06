@@ -13,8 +13,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.M
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import kotlin.collections.first
-import kotlin.collections.orEmpty
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -54,8 +52,8 @@ internal class IrBindingGraph(
         }
       },
       absentBinding = { key -> Binding.Absent(key) },
-      computeBindings = { contextKey, currentBindings ->
-        classBindingLookup.lookup(contextKey, currentBindings)
+      computeBindings = { contextKey, currentBindings, stack ->
+        classBindingLookup.lookup(contextKey, currentBindings, stack)
       },
       onError = ::onError,
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
@@ -587,10 +585,15 @@ internal class ClassBindingLookup(
   internal fun lookup(
     contextKey: IrContextualTypeKey,
     currentBindings: Set<IrTypeKey>,
+    stack: IrBindingStack,
   ): Set<Binding> =
     with(metroContext) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
+
+      val substitutionMap = irClass.buildSubstitutionMapFor(key.type)
+
+      val remapper = typeRemapperFor(substitutionMap)
       val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
       val bindings = mutableSetOf<Binding>()
@@ -606,6 +609,7 @@ internal class ClassBindingLookup(
 
       fun addMemberInjectors() {
         findMemberInjectors(irClass).forEach { generatedInjector ->
+          // TODO remap type args
           if (generatedInjector.typeKey !in currentBindings) {
             bindings +=
               Binding.MembersInjected(
@@ -621,11 +625,28 @@ internal class ClassBindingLookup(
         }
       }
 
-      val classFactory = findClassFactory(irClass)
+      // TODO can we pass remapper to findClassFactory() instead?
+      val classFactory = findClassFactory(irClass)?.remapTypes(remapper)
       if (classFactory != null) {
         // We don't actually call this function but it stores information about qualifier/scope
         // annotations, so reference it here so IC triggers
         trackFunctionCall(sourceGraph, classFactory.function)
+
+        // Not sure this can ever happen but report a detailed error in case.
+        if (
+          irClass.typeParameters.isNotEmpty() &&
+            (key.type as? IrSimpleType)?.arguments.isNullOrEmpty()
+        ) {
+          val message = buildString {
+            appendLine(
+              "Class factory for type ${key.type} has type parameters but no type arguments provided at calling site."
+            )
+            appendBindingStack(stack)
+          }
+          irClass.reportError(message)
+          exitProcessing()
+        }
+
         bindings +=
           Binding.ConstructorInjected(
             type = irClass,

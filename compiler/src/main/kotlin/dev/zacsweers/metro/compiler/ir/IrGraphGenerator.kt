@@ -26,12 +26,6 @@ import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.iterator
-import kotlin.collections.mutableMapOf
-import kotlin.collections.plus
-import kotlin.collections.set
 import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrStatement
@@ -86,6 +80,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
@@ -1001,9 +996,13 @@ internal class IrGraphGenerator(
 
         with(factory) {
           invokeCreateExpression { createFunction ->
+            val remapper = createFunction.typeRemapperFor(binding.typeKey.type)
             generateBindingArguments(
-              createFunction.parameters(metroContext),
-              createFunction,
+              createFunction.parameters(metroContext, remapper = remapper),
+              createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
+                it.parent = createFunction.parent
+                it.remapTypes(remapper)
+              },
               binding,
               generationContext,
             )

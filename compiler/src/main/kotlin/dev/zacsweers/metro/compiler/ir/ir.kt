@@ -58,6 +58,7 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -93,11 +94,14 @@ import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
+import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -1038,4 +1042,73 @@ internal fun IrFunction.isHashCodeOnAny(): Boolean {
 internal fun IrFunction.isToStringOnAny(): Boolean {
   return name == StandardNames.TO_STRING_NAME &&
     hasShape(dispatchReceiver = true, regularParameters = 0)
+}
+
+internal val NOOP_TYPE_REMAPPER =
+  object : TypeRemapper {
+    override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+    override fun leaveScope() {}
+
+    override fun remapType(type: IrType): IrType {
+      return type
+    }
+  }
+
+internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
+  type: IrType
+): Map<IrTypeParameterSymbol, IrType> {
+  return if (type is IrSimpleType && type.arguments.isNotEmpty()) {
+    buildMap {
+      typeParameters.zip(type.arguments).forEach { (param, arg) ->
+        when (arg) {
+          is IrTypeProjection -> put(param.symbol, arg.type)
+          else -> null
+        }
+      }
+    }
+  } else {
+    emptyMap()
+  }
+}
+
+internal fun IrTypeParametersContainer.typeRemapperFor(type: IrType): TypeRemapper {
+  val substitutionMap = buildSubstitutionMapFor(type)
+  return typeRemapperFor(substitutionMap)
+}
+
+internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>): TypeRemapper {
+  val remapper =
+    object : TypeRemapper {
+      override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+      override fun leaveScope() {}
+
+      override fun remapType(type: IrType): IrType {
+        return when (type) {
+          is IrSimpleType -> {
+            val classifier = type.classifier
+            if (classifier is IrTypeParameterSymbol) {
+              val substitution = substitutionMap[classifier]
+              substitution?.let { remapType(it) } ?: type
+            } else if (type.arguments.isEmpty()) {
+              type
+            } else {
+              val newArguments =
+                type.arguments.map { arg ->
+                  when (arg) {
+                    is IrTypeProjection -> makeTypeProjection(remapType(arg.type), arg.variance)
+                    else -> arg
+                  }
+                }
+              // TODO impl use
+              type.buildSimpleType { arguments = newArguments }
+            }
+          }
+          else -> type
+        }
+      }
+    }
+
+  return remapper
 }

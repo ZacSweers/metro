@@ -16,10 +16,12 @@ internal class StringGraph(
    * constructor-injected types).
    */
   computeBinding:
-    (contextKey: StringContextualTypeKey, currentBindings: Set<StringTypeKey>) -> Set<
-        StringBinding
-      > =
-    { _, _ ->
+    (
+      contextKey: StringContextualTypeKey,
+      currentBindings: Set<StringTypeKey>,
+      stack: StringBindingStack,
+    ) -> Set<StringBinding> =
+    { _, _, _ ->
       emptySet()
     },
 ) :

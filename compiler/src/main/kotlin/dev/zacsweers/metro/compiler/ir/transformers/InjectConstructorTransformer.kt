@@ -157,7 +157,7 @@ internal class InjectConstructorTransformer(
     val targetConstructor =
       previouslyFoundConstructor
         ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
-    val constructorParameters = targetConstructor.parameters(metroContext, factoryCls, declaration)
+    val constructorParameters = targetConstructor.parameters(metroContext)
     val allParameters =
       buildList {
           add(constructorParameters)

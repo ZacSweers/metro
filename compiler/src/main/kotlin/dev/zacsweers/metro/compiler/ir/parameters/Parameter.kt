@@ -9,12 +9,12 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
-import kotlin.getValue
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -164,23 +165,21 @@ private constructor(
 
 internal fun List<IrValueParameter>.mapToConstructorParameters(
   context: IrMetroContext,
-  typeParameterRemapper: ((IrType) -> IrType)? = null,
+  remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
 ): List<Parameter> {
   return map { valueParameter ->
-    valueParameter.toConstructorParameter(context, IrParameterKind.Regular, typeParameterRemapper)
+    valueParameter.toConstructorParameter(context, IrParameterKind.Regular, remapper)
   }
 }
 
 internal fun IrValueParameter.toConstructorParameter(
   context: IrMetroContext,
   kind: IrParameterKind = IrParameterKind.Regular,
-  typeParameterRemapper: ((IrType) -> IrType)? = null,
+  remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
 ): Parameter {
   // Remap type parameters in underlying types to the new target container. This is important for
   // type mangling
-  val declaredType =
-    typeParameterRemapper?.invoke(this@toConstructorParameter.type)
-      ?: this@toConstructorParameter.type
+  val declaredType = remapper.remapType(this@toConstructorParameter.type)
 
   val contextKey =
     declaredType.asContextualTypeKey(
