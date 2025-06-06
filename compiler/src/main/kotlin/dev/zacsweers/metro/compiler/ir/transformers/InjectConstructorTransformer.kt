@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -283,6 +284,8 @@ internal class InjectConstructorTransformer(
           val instance = irTemporary(newInstance)
           for (injector in injectors) {
             for ((function, parameters) in injector.injectFunctions) {
+              // Record for IC
+              trackFunctionCall(invokeFunction, function)
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,

@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Record lookups of generated static member inject functions for IC.
+
 0.3.6
 -----
 
