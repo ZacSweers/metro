@@ -10,6 +10,7 @@ Changelog
 - **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
 - **Enhancement:** Fail eagerly with a clear error message if `languageVersion` is too old.
+- **Fix:** Fix support for generic injected constructor parameters.
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
 - **Fix:** Support constructing nested function return types for provider functions.
