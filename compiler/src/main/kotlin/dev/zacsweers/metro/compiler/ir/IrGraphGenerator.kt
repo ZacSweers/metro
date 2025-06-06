@@ -750,7 +750,7 @@ internal class IrGraphGenerator(
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
-              for ((function, parameters) in generatedInjector.injectFunctions) {
+              for ((function, parameters) in generatedInjector.declaredInjectFunctions) {
                 +irInvoke(
                   dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                   callee = function.symbol,

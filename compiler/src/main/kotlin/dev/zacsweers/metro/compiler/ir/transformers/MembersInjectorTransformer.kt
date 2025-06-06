@@ -66,11 +66,11 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   data class MemberInjectClass(
     val ir: IrClass,
     val typeKey: IrTypeKey,
-    val parameters: Map<ClassId, List<Parameters>>,
-    val injectFunctions: Map<IrSimpleFunction, Parameters>,
+    val requiredParametersByClass: Map<ClassId, List<Parameters>>,
+    val declaredInjectFunctions: Map<IrSimpleFunction, Parameters>,
   ) {
     val allParameters by unsafeLazy {
-      val allParams = injectFunctions.values.toList()
+      val allParams = declaredInjectFunctions.values.toList()
       when (allParams.size) {
         0 -> Parameters.empty()
         1 -> allParams.first()
@@ -254,7 +254,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
         // This is what generates supertypes lazily as needed
         val functions =
-          requireInjector(pluginContext.referenceClass(classId)!!.owner).injectFunctions
+          requireInjector(pluginContext.referenceClass(classId)!!.owner).declaredInjectFunctions
 
         putAll(functions)
       }
