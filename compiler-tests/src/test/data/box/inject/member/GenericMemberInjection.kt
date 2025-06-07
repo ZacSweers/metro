@@ -1,20 +1,22 @@
 // TODO
 //  - Member injectors (especially deep ancestors)
-//    - Functions
+//  - inject()
 @Inject
 class ExampleClass<T : Any> {
   @Inject lateinit var value: T
   @Inject lateinit var values: List<T>
   @Inject lateinit var mapValues: Map<T, List<T>>
+
+  // Setter mid-properties to ensure ordering doesn't matter
+  lateinit var functionSet: T
+
+  @Inject
+  fun functionMemberInject(value: T) {
+    functionSet = value
+  }
+
   lateinit var setterSet: T
     @Inject set
-  // TODO
-  //  also TODO - FIR check on no custom type params on inject functions?
-  //  lateinit var functionSet: T
-  //
-  //  @Inject fun functionMemberInject(value: T) {
-  //    functionSet = value
-  //  }
 }
 
 @DependencyGraph
@@ -35,7 +37,6 @@ fun box(): String {
   assertEquals(exampleClass.setterSet, 3)
   assertEquals(exampleClass.values, listOf(3))
   assertEquals(exampleClass.mapValues, mapOf(3 to listOf(3)))
-  // TODO
-  //  assertEquals(exampleClass.functionSet, 3)
+  assertEquals(exampleClass.functionSet, 3)
   return "OK"
 }
