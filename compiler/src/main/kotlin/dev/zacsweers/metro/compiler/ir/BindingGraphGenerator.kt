@@ -400,26 +400,24 @@ internal class BindingGraphGenerator(
 
       graph.addInjector(typeKey, entry)
       bindingStack.withEntry(entry) {
-        val targetClass = injector.ir.regularParameters.single().type.rawType()
+        val paramType = injector.ir.regularParameters.single().type
+        val targetClass = paramType.rawType()
         // Don't return null on missing because it's legal to inject a class with no member
         // injections
         // TODO warn on this?
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
-        // Create a remapper for the target class type parameters
-        val paramType = injector.ir.regularParameters.single().type
-        val substitutionMap = targetClass.buildSubstitutionMapFor(paramType)
-        val remapper = typeRemapperFor(substitutionMap)
-        val params = generatedInjector?.mergedParameters(remapper) ?: Parameters.empty()
 
-        // Remap the parameters using the remapper
         val remappedParams =
-          params.let { p ->
-            if (p.ir != null) {
-              p.ir.parameters(this, remapper).withCallableId(injector.callableId)
+          if (targetClass.typeParameters.isEmpty()) {
+              generatedInjector!!.mergedParameters(NOOP_TYPE_REMAPPER)
             } else {
-              p.withCallableId(injector.callableId)
+              // Create a remapper for the target class type parameters
+              val substitutionMap = targetClass.buildSubstitutionMapFor(paramType)
+              val remapper = typeRemapperFor(substitutionMap)
+              val params = generatedInjector?.mergedParameters(remapper) ?: Parameters.empty()
+              params.ir?.parameters(this, remapper) ?: params
             }
-          }
+            .withCallableId(injector.callableId)
 
         val binding =
           Binding.MembersInjected(
