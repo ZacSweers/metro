@@ -42,14 +42,14 @@ interface AppGraph {
 fun box(): String {
   val graph = createGraph<AppGraph>()
   val exampleClass = graph.exampleClass
-  assertEquals(exampleClass.value, 3)
-  assertEquals(exampleClass.setterSet, 3)
-  assertEquals(exampleClass.values, listOf(3))
-  assertEquals(exampleClass.mapValues, mapOf(3 to listOf(3)))
-  assertEquals(exampleClass.functionSet, 3)
-  assertEquals(exampleClass.parentT, 3)
-  assertEquals(exampleClass.parentR, "Hello, world!")
-  assertEquals(exampleClass.grandParentT, "Hello, world!")
-  assertEquals(exampleClass.grandParentR, 3)
+  assertEquals(3, exampleClass.value)
+  assertEquals(3, exampleClass.setterSet)
+  assertEquals(listOf(3), exampleClass.values)
+  assertEquals(mapOf(3 to listOf(3)), exampleClass.mapValues)
+  assertEquals(3, exampleClass.functionSet)
+  assertEquals(3, exampleClass.parentT)
+  assertEquals("Hello, world!", exampleClass.parentR)
+  assertEquals("Hello, world!", exampleClass.grandParentT)
+  assertEquals(3, exampleClass.grandParentR)
   return "OK"
 }
