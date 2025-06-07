@@ -7,6 +7,8 @@ import dev.zacsweers.metro.compiler.ir.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import java.util.SortedMap
+import java.util.SortedSet
 
 internal interface BindingGraph<
   Type : Any,
@@ -78,23 +80,30 @@ internal open class MutableBindingGraph<
    *
    * Calls [onError] if a strict dependency cycle or missing binding is encountered during
    * validation.
+   *
+   * @param onPopulated a callback for when the graph is fully populated but not yet validated.
+   * @param validateBindings a callback to perform optional extra validation on bindings
+   *   post-adjacency build.
    */
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     tracer: Tracer = Tracer.NONE,
-    validateBinding:
+    onPopulated: () -> Unit = {},
+    validateBindings:
       (
-        Binding,
-        BindingStack,
+        bindings: Map<TypeKey, Binding>,
+        stack: BindingStack,
         roots: Map<ContextualTypeKey, BindingStackEntry>,
-        adjacency: Map<TypeKey, List<TypeKey>>,
+        adjacency: Map<TypeKey, Set<TypeKey>>,
       ) -> Unit =
-      { binding, stack, roots, adjacency -> /* noop */
+      { _, _, _, _ -> /* noop */
       },
   ): TopoSortResult<TypeKey> {
     val stack = newBindingStack()
 
     val missingBindings = populateGraph(roots, stack, tracer)
+
+    onPopulated()
 
     sealed = true
 
@@ -130,9 +139,7 @@ internal open class MutableBindingGraph<
     missingBindings.forEach { (key, stack) -> reportMissingBinding(key, stack) }
 
     // Validate bindings
-    for (binding in bindings.values) {
-      validateBinding(binding, stack, roots, fullAdjacency)
-    }
+    validateBindings(bindings, stack, roots, fullAdjacency)
 
     val topo =
       tracer.traceNested("Sort and validate") { sortAndValidate(roots, fullAdjacency, stack, it) }
@@ -207,7 +214,7 @@ internal open class MutableBindingGraph<
 
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
-    fullAdjacency: Map<TypeKey, List<TypeKey>>,
+    fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {

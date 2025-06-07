@@ -300,7 +300,7 @@ internal class IrGraphGenerator(
                             it
                           }
                         }
-                        .let(::IrTypeKey)
+                        .let(IrTypeKey.Companion::invoke)
                     irExprBody(
                       irInvoke(
                         dispatchReceiver =
@@ -503,7 +503,7 @@ internal class IrGraphGenerator(
           val graphProto =
             node.toProto(
               bindingGraph = bindingGraph,
-              supertypeClasses =
+              includedGraphClasses =
                 node.allIncludedNodes
                   .filter { it.isExtendable }
                   .mapToSet { it.sourceGraph.classIdOrFail.asString() },
@@ -616,7 +616,7 @@ internal class IrGraphGenerator(
 
   private fun DependencyGraphNode.toProto(
     bindingGraph: IrBindingGraph,
-    supertypeClasses: Set<String>,
+    includedGraphClasses: Set<String>,
     parentGraphClasses: Set<String>,
     providerFields: List<String>,
     instanceFields: List<String>,
@@ -679,7 +679,7 @@ internal class IrGraphGenerator(
             .thenBy { it.is_property }
         ),
       accessor_callable_names = accessorNames,
-      included_classes = supertypeClasses.sorted(),
+      included_classes = includedGraphClasses.sorted(),
       parent_graph_classes = parentGraphClasses.sorted(),
       multibinding_accessor_indices = multibindingAccessors,
     )
@@ -765,6 +765,8 @@ internal class IrGraphGenerator(
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
               for ((function, parameters) in generatedInjector.injectFunctions) {
+                // Record for IC
+                trackFunctionCall(this@apply, function)
                 +irInvoke(
                   dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                   callee = function.symbol,

@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -164,14 +165,23 @@ internal class IrBindingGraph(
   fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
     val (sortedKeys, deferredTypes) =
       parentTracer.traceNested("seal graph") { tracer ->
-        realGraph.seal(accessors, tracer, validateBinding = ::checkScope)
+        realGraph.seal(
+          roots = accessors,
+          tracer = tracer,
+          onPopulated = {
+            metroContext.writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
+              realGraph.bindings.keys.sorted().joinToString("\n")
+            }
+          },
+          validateBindings = ::validateBindings,
+        )
       }
 
-    metroContext.writeDiagnostic("validatedKeys-${parentTracer.tag}.txt") {
-      buildString { sortedKeys.joinTo(this, separator = "\n") { it.render(short = false) } }
+    metroContext.writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
+      sortedKeys.joinToString(separator = "\n")
     }
-    metroContext.writeDiagnostic("deferredTypes-${parentTracer.tag}.txt") {
-      buildString { deferredTypes.joinTo(this, separator = "\n") { it.render(short = false) } }
+    metroContext.writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
+      deferredTypes.joinToString(separator = "\n")
     }
 
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
@@ -365,13 +375,39 @@ internal class IrBindingGraph(
     exitProcessing()
   }
 
+  private fun validateBindings(
+    bindings: Map<IrTypeKey, Binding>,
+    stack: IrBindingStack,
+    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+  ) {
+    val reverseAdjacency = buildReverseAdjacency(adjacency)
+    val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
+    for (binding in bindings.values) {
+      checkScope(binding, stack, roots, adjacency)
+      validateAssistedInjection(binding, bindings, rootsByTypeKey, reverseAdjacency)
+    }
+  }
+
+  private fun buildReverseAdjacency(
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>
+  ): Map<IrTypeKey, Set<IrTypeKey>> {
+    val reverse = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
+    for ((from, tos) in adjacency) {
+      for (to in tos) {
+        reverse.getOrPut(to) { mutableSetOf() }.add(from)
+      }
+    }
+    return reverse
+  }
+
   // Check scoping compatibility
   // TODO FIR error?
   private fun checkScope(
     binding: Binding,
     stack: IrBindingStack,
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, List<IrTypeKey>>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ) {
     val bindingScope = binding.scope
     if (bindingScope != null) {
@@ -427,6 +463,49 @@ internal class IrBindingGraph(
     }
   }
 
+  private fun validateAssistedInjection(
+    binding: Binding,
+    bindings: Map<IrTypeKey, Binding>,
+    roots: Map<IrTypeKey, IrBindingStack.Entry>,
+    reverseAdjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+  ) {
+    if (binding !is Binding.ConstructorInjected || !binding.isAssisted) return
+
+    fun reportInvalidBinding(location: CompilerMessageSourceLocation?) {
+      // Look up the assisted factory as a hint
+      val assistedFactory =
+        bindings.values.find { it is Binding.Assisted && it.target.typeKey == binding.typeKey }
+      // Report an error for anything that isn't an assisted binding depending on this
+      val message = buildString {
+        append("[Metro/InvalidBinding] ")
+        append(
+          "'${binding.typeKey}' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead."
+        )
+        if (assistedFactory != null) {
+          appendLine()
+          appendLine()
+          appendLine("(Hint)")
+          appendLine(
+            "It looks like the @AssistedFactory for '${binding.typeKey}' is '${assistedFactory.typeKey}'."
+          )
+        }
+      }
+      with(metroContext) { reportError(message, location) }
+    }
+
+    val dependents = reverseAdjacency[binding.typeKey] ?: return
+    for (dependentKey in dependents) {
+      val dependentBinding = bindings[dependentKey] ?: continue
+      if (dependentBinding !is Binding.Assisted) {
+        reportInvalidBinding(
+          dependentBinding.parametersByKey[binding.typeKey]?.location
+            ?: dependentBinding.reportableLocation
+        )
+      }
+    }
+    roots[binding.typeKey]?.let { reportInvalidBinding(it.declaration?.locationOrNull()) }
+  }
+
   /**
    * Builds a route from this binding back to one of the root bindings. Useful for error messaging
    * to show a trace back to an entry point.
@@ -434,7 +513,7 @@ internal class IrBindingGraph(
   private fun buildRouteToRoot(
     key: IrTypeKey,
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, List<IrTypeKey>>,
+    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ): List<IrBindingStack.Entry> {
     // Build who depends on what
     val dependents = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()

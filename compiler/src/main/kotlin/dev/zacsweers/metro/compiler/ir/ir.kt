@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -78,13 +79,21 @@ import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
+import org.jetbrains.kotlin.ir.types.IrDynamicType
+import org.jetbrains.kotlin.ir.types.IrErrorType
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrStarProjection
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeArgument
+import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
+import org.jetbrains.kotlin.ir.types.makeNotNull
+import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.classId
@@ -107,6 +116,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.Variance
 
 /** Finds the line and column of [this] within its file. */
 internal fun IrDeclaration.location(): CompilerMessageSourceLocation {
@@ -705,20 +715,88 @@ internal fun IrFunction.buildBlockBody(
   body = context.createIrBuilder(symbol).irBlockBody(body = blockBody)
 }
 
-internal val IrType.simpleName: String
-  get() =
-    when (val classifier = classifierOrNull) {
-      is IrClassSymbol -> {
-        classifier.owner.name.asString()
-      }
+internal fun IrType.render(short: Boolean, includeAnnotations: Boolean = false): String {
+  return StringBuilder().also { renderTo(it, short, includeAnnotations) }.toString()
+}
 
-      is IrScriptSymbol -> error("No simple name for script symbol: ${dumpKotlinLike()}")
-      is IrTypeParameterSymbol -> {
-        classifier.owner.name.asString()
-      }
-
-      null -> error("No classifier for ${dumpKotlinLike()}")
+internal fun IrType.renderTo(
+  appendable: Appendable,
+  short: Boolean,
+  includeAnnotations: Boolean = false,
+) {
+  val type = this
+  if (includeAnnotations && type.annotations.isNotEmpty()) {
+    type.annotations.joinTo(appendable, separator = " ", postfix = " ") {
+      IrAnnotation(it).render(short)
     }
+  }
+  when (type) {
+    is IrDynamicType -> appendable.append("dynamic")
+    is IrErrorType -> {
+      // TODO IrErrorType.symbol?
+      appendable.append("<error>")
+    }
+    is IrSimpleType -> {
+      val name =
+        when (val classifier = type.classifier) {
+          is IrClassSymbol ->
+            if (short) {
+              classifier.owner.name.asString()
+            } else {
+              classifier.owner.kotlinFqName.asString()
+            }
+          is IrScriptSymbol -> error("No simple name for script symbol: ${type.dumpKotlinLike()}")
+          is IrTypeParameterSymbol -> {
+            classifier.owner.name.asString()
+          }
+        }
+      appendable.append(name)
+      if (type.arguments.isNotEmpty()) {
+        var first = true
+        appendable.append('<')
+        for (typeArg in type.arguments) {
+          if (first) {
+            first = false
+          } else {
+            appendable.append(", ")
+          }
+          when (typeArg) {
+            is IrStarProjection -> appendable.append("*")
+            is IrTypeProjection -> {
+              when (typeArg.variance) {
+                Variance.INVARIANT -> {
+                  // do nothing
+                }
+                Variance.IN_VARIANCE -> appendable.append("in ")
+                Variance.OUT_VARIANCE -> appendable.append("out ")
+              }
+              typeArg.type.renderTo(appendable, short)
+            }
+          }
+        }
+        appendable.append('>')
+      }
+    }
+  }
+  if (type.isMarkedNullable()) {
+    appendable.append("?")
+  }
+}
+
+/**
+ * Canonicalizes an [IrType].
+ * - If it's seen as a flexible nullable type from java, assume not null here
+ * - Remove annotations
+ */
+internal fun IrType.canonicalize(): IrType {
+  return if (type.isWithFlexibleNullability()) {
+      // Java types may be "Flexible" nullable types, assume not null here
+      type.makeNotNull()
+    } else {
+      type
+    }
+    .removeAnnotations()
+}
 
 internal val IrProperty.allAnnotations: List<IrConstructorCall>
   get() {

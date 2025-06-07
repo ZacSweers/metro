@@ -52,7 +52,21 @@ private fun StringBuilder.renderAsAnnotation(irAnnotation: IrConstructorCall, sh
       ?.let { if (short) it.name.asString() else it.kotlinFqName.asString() } ?: "<unbound>"
   append(annotationClassName)
 
-  // TODO type args not supported
+  if (irAnnotation.typeArguments.isNotEmpty()) {
+    appendIterableWith(
+      0 until irAnnotation.typeArguments.size,
+      separator = ", ",
+      prefix = "<",
+      postfix = ">",
+    ) { index ->
+      val typeArg = irAnnotation.typeArguments[index]
+      if (typeArg == null) {
+        append("null")
+      } else {
+        typeArg.renderTo(this, short = short)
+      }
+    }
+  }
 
   if (irAnnotation.arguments.isEmpty()) return
 

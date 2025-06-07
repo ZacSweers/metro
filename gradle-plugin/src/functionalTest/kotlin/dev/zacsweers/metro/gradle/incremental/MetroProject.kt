@@ -10,6 +10,8 @@ import com.autonomousapps.kit.Source
 abstract class MetroProject(private val debug: Boolean = false) : AbstractGradleProject() {
   protected abstract fun sources(): List<Source>
 
+  open fun StringBuilder.onBuildScript() {}
+
   val gradleProject: GradleProject
     get() =
       newGradleProjectBuilder(DslKind.KOTLIN)
@@ -17,17 +19,23 @@ abstract class MetroProject(private val debug: Boolean = false) : AbstractGradle
           sources = this@MetroProject.sources()
           withBuildScript {
             plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro)
-            if (debug) {
-              withKotlin(
-                """
-                metro {
-                  debug.set(true)
-                  reportsDestination.set(layout.buildDirectory.dir("metro"))
+            withKotlin(
+              buildString {
+                onBuildScript()
+                if (debug) {
+                  // language=kotlin
+                  appendLine(
+                    """
+                    metro {
+                      debug.set(true)
+                      reportsDestination.set(layout.buildDirectory.dir("metro"))
+                    }
+                    """
+                      .trimIndent()
+                  )
                 }
-                """
-                  .trimIndent()
-              )
-            }
+              }
+            )
           }
         }
         .write()
