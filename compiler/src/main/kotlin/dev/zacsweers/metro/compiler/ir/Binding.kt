@@ -532,6 +532,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
       parameters.nonDispatchParameters.associateBy { it.typeKey }
     override val scope: IrAnnotation? = null
 
-    override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
+    override val nameHint: String =
+      "${typeKey.type.expectAs<IrSimpleType>().rawType().name}MembersInjector"
   }
 }
