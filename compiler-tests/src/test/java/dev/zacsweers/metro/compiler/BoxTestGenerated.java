@@ -188,6 +188,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/inject/member")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Member {
+      @Test
+      public void testAllFilesPresentInMember() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("GenericMemberInjection.kt")
+      public void testGenericMemberInjection() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjection.kt");
+      }
+    }
   }
 
   @Nested
