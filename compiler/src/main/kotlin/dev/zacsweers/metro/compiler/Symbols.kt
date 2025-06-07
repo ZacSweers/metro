@@ -49,6 +49,7 @@ internal class Symbols(
 
   object StringNames {
     const val ADDITIONAL_SCOPES = "additionalScopes"
+    const val ASSISTED = "Assisted"
     const val AS_DAGGER_INTERNAL_PROVIDER = "asDaggerInternalProvider"
     const val AS_DAGGER_MEMBERS_INJECTOR = "asDaggerMembersInjector"
     const val AS_JAKARTA_PROVIDER = "asJakartaProvider"
@@ -133,6 +134,7 @@ internal class Symbols(
     val ProvidesCallableId =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.PROVIDES_CALLABLE_ID.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
+    val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)
     val metroContribution =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
