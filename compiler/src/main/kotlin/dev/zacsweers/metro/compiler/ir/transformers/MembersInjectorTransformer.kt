@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
+import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -269,6 +270,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         pluginContext.createIrBuilder(symbol).irBlockBody {
           addMemberInjection(
             context = metroContext,
+            callingFunction = this@apply,
             instanceReceiver = regularParameters[0],
             injectorReceiver = dispatchReceiverParameter!!,
             injectFunctions = injectFunctions,
@@ -435,12 +437,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
 internal fun IrBlockBodyBuilder.addMemberInjection(
   context: IrMetroContext,
+  callingFunction: IrSimpleFunction,
   injectFunctions: Map<IrSimpleFunction, Parameters>,
   parametersToFields: Map<Parameter, IrField>,
   instanceReceiver: IrValueParameter,
   injectorReceiver: IrValueParameter,
 ) {
   for ((function, parameters) in injectFunctions) {
+    context.trackFunctionCall(callingFunction, function)
     +irInvoke(
       dispatchReceiver = irGetObject(function.parentAsClass.symbol),
       callee = function.symbol,

@@ -73,6 +73,7 @@ import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
@@ -237,13 +238,21 @@ internal class DependencyGraphTransformer(
               excludeCompanionObjectMembers = true,
             )
         } else {
-          supertypes.asSequence().flatMap {
-            it
+          // Track overridden symbols so that we dedupe merged overrides in the final class
+          val seenSymbols = mutableSetOf<IrSymbol>()
+          supertypes.asSequence().flatMap { type ->
+            type
               .rawType()
               .allCallableMembers(
-                excludeInheritedMembers = true,
+                excludeInheritedMembers = false,
                 excludeCompanionObjectMembers = true,
+                functionFilter = { it.symbol !in seenSymbols },
+                propertyFilter = {
+                  val getterSymbol = it.getter?.symbol
+                  getterSymbol != null && getterSymbol !in seenSymbols
+                },
               )
+              .onEach { seenSymbols += it.ir.overriddenSymbols }
           }
         }
 

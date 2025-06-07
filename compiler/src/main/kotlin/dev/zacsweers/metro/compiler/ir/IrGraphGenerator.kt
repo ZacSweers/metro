@@ -751,6 +751,8 @@ internal class IrGraphGenerator(
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
               for ((function, parameters) in generatedInjector.declaredInjectFunctions) {
+                // Record for IC
+                trackFunctionCall(this@apply, function)
                 +irInvoke(
                   dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                   callee = function.symbol,

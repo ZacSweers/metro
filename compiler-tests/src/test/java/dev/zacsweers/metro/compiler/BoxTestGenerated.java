@@ -138,6 +138,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testMultibindingGraphWithWithScopedSetDeps() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultibindingGraphWithWithScopedSetDeps.kt");
     }
+
+    @Test
+    @TestMetadata("OverrideCompatibleBindingAccessors.kt")
+    public void testOverrideCompatibleBindingAccessors() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
+    }
   }
 
   @Nested
