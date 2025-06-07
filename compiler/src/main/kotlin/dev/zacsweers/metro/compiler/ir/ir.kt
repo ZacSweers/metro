@@ -106,6 +106,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -120,6 +121,7 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.Variance
@@ -1072,9 +1074,15 @@ internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
   }
 }
 
+context(context: IrMetroContext)
 internal fun IrTypeParametersContainer.typeRemapperFor(type: IrType): TypeRemapper {
-  val substitutionMap = buildSubstitutionMapFor(type)
-  return typeRemapperFor(substitutionMap)
+  if (this is IrClass) {
+    return deepRemapperFor(type)
+  } else {
+    // TODO can we consolidate function logic?
+    val substitutionMap = buildSubstitutionMapFor(type)
+    return typeRemapperFor(substitutionMap)
+  }
 }
 
 internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>): TypeRemapper {
@@ -1111,4 +1119,120 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
     }
 
   return remapper
+}
+
+/**
+ * Returns a (possibly new) [IrSimpleFunction] with any generic parameters and return type
+ * substituted appropriately as they would be materialized in the [subtype].
+ */
+context(context: IrMetroContext)
+internal fun IrSimpleFunction.asMemberOf(subtype: IrType): IrSimpleFunction {
+  // Should be caught in FIR
+  check(typeParameters.isEmpty()) { "Generic functions are not supported: ${dumpKotlinLike()}" }
+
+  val containingClass =
+    parent as? IrClass ?: throw IllegalArgumentException("Function must be declared in a class")
+
+  // If the containingClass has no type parameters, nothing to substitute
+  if (containingClass.typeParameters.isEmpty()) {
+    return this
+  }
+
+  val remapper = containingClass.deepRemapperFor(subtype)
+
+  // Apply transformation if needed
+  return if (remapper === NOOP_TYPE_REMAPPER) {
+    this
+  } else {
+    deepCopyWithSymbols(initialParent = parent).apply {
+      this.parent = this@asMemberOf.parent
+      remapTypes(remapper)
+    }
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
+  // Check cache for existing substitutor
+  val cacheKey = classIdOrFail to subtype
+  return context.typeRemapperCache.getOrPut(cacheKey) {
+    // Build deep substitution map
+    val substitutionMap = buildDeepSubstitutionMap(this, subtype)
+    if (substitutionMap.isEmpty()) {
+      NOOP_TYPE_REMAPPER
+    } else {
+      DeepTypeSubstitutor(substitutionMap)
+    }
+  }
+}
+
+private fun buildDeepSubstitutionMap(
+  targetClass: IrClass,
+  concreteType: IrType,
+): Map<IrTypeParameterSymbol, IrType> {
+  val result = mutableMapOf<IrTypeParameterSymbol, IrType>()
+
+  fun collectSubstitutions(currentClass: IrClass, currentType: IrType) {
+    if (currentType !is IrSimpleType) return
+
+    // Add substitutions for current class's type parameters
+    currentClass.typeParameters.zip(currentType.arguments).forEach { (param, arg) ->
+      if (arg is IrTypeProjection) {
+        result[param.symbol] = arg.type
+      }
+    }
+
+    // Walk up the hierarchy
+    currentClass.superTypes.forEach { superType ->
+      val superClass = superType.classOrNull?.owner ?: return@forEach
+
+      // Apply current substitutions to the supertype
+      val substitutedSuperType = superType.substitute(result)
+
+      // Recursively collect from supertypes
+      collectSubstitutions(superClass, substitutedSuperType)
+    }
+  }
+
+  collectSubstitutions(targetClass, concreteType)
+  return result
+}
+
+private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParameterSymbol, IrType>) :
+  TypeRemapper {
+  private val cache = mutableMapOf<IrType, IrType>()
+
+  override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+  override fun leaveScope() {}
+
+  override fun remapType(type: IrType): IrType {
+    return cache.getOrPut(type) {
+      when (type) {
+        is IrSimpleType -> {
+          val classifier = type.classifier
+          if (classifier is IrTypeParameterSymbol) {
+            substitutionMap[classifier]?.let { remapType(it) } ?: type
+          } else {
+            val newArgs =
+              type.arguments.map { arg ->
+                when (arg) {
+                  is IrTypeProjection -> makeTypeProjection(remapType(arg.type), arg.variance)
+                  else -> arg
+                }
+              }
+            if (newArgs == type.arguments) type else type.buildSimpleType { arguments = newArgs }
+          }
+        }
+        else -> type
+      }
+    }
+  }
+}
+
+// Extension to substitute types in an IrType
+private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>): IrType {
+  if (substitutions.isEmpty()) return this
+  val remapper = DeepTypeSubstitutor(substitutions)
+  return remapper.remapType(this)
 }

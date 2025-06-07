@@ -1,5 +1,3 @@
-// TODO
-//  - Member injectors (especially deep ancestors)
 @Inject
 class ExampleClass<T : Any> {
   @Inject lateinit var value: T
@@ -32,10 +30,10 @@ interface AppGraph {
 fun box(): String {
   val graph = createGraph<AppGraph>()
   val exampleClass = graph.exampleClass
-  assertEquals(exampleClass.value, 3)
-  assertEquals(exampleClass.setterSet, 3)
-  assertEquals(exampleClass.values, listOf(3))
-  assertEquals(exampleClass.mapValues, mapOf(3 to listOf(3)))
-  assertEquals(exampleClass.functionSet, 3)
+  assertEquals(3, exampleClass.value)
+  assertEquals(3, exampleClass.setterSet)
+  assertEquals(listOf(3), exampleClass.values)
+  assertEquals(mapOf(3 to listOf(3)), exampleClass.mapValues)
+  assertEquals(3, exampleClass.functionSet)
   return "OK"
 }
