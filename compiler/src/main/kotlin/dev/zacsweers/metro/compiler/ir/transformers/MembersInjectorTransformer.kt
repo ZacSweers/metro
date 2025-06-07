@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.memberInjectParameters
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.toMemberInjectParameter
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
@@ -31,11 +32,11 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
-import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -44,9 +45,13 @@ import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -70,9 +75,33 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     val requiredParametersByClass: Map<ClassId, List<Parameters>>,
     val declaredInjectFunctions: Map<IrSimpleFunction, Parameters>,
   ) {
-    val allParameters by unsafeLazy {
-      val allParams = declaredInjectFunctions.values.toList()
-      when (allParams.size) {
+    context(context: IrMetroContext)
+    fun mergedParameters(remapper: TypeRemapper): Parameters {
+      // $$MembersInjector -> origin class
+      val classTypeParams = ir.parentAsClass.typeParameters.associateBy { it.name }
+      val allParams =
+        declaredInjectFunctions.map { (function, _) ->
+          // Need a composite remapper
+          // 1. Once to remap function type args -> substituted/matching parent class params
+          // 2. The custom remapper we're receiving that uses parent class params
+          val substitutionMap =
+            function.typeParameters.associate {
+              it.symbol to classTypeParams.getValue(it.name).defaultType
+            }
+          val typeParamRemapper = typeRemapperFor(substitutionMap)
+          val compositeRemapper =
+            object : TypeRemapper {
+              override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+              override fun leaveScope() {}
+
+              override fun remapType(type: IrType): IrType {
+                return remapper.remapType(typeParamRemapper.remapType(type))
+              }
+            }
+          function.parameters(context, compositeRemapper)
+        }
+      return when (allParams.size) {
         0 -> Parameters.empty()
         1 -> allParams.first()
         else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
