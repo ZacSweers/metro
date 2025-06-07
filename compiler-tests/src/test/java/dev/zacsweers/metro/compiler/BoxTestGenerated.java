@@ -203,6 +203,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testGenericMemberInjection() {
         runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjection.kt");
       }
+
+      @Test
+      @TestMetadata("GenericMemberInjectionFromGraph.kt")
+      public void testGenericMemberInjectionFromGraph() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectionFromGraph.kt");
+      }
     }
   }
 

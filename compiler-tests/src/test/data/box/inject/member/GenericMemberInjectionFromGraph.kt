@@ -1,6 +1,3 @@
-// TODO
-//  - Member injectors (especially deep ancestors)
-@Inject
 class ExampleClass<T : Any> {
   @Inject lateinit var value: T
   @Inject lateinit var values: List<T>
@@ -20,7 +17,7 @@ class ExampleClass<T : Any> {
 
 @DependencyGraph
 interface AppGraph {
-  val exampleClass: ExampleClass<Int>
+  fun inject(exampleClass: ExampleClass<Int>)
 
   @Provides fun provideInt(): Int = 3
 
@@ -31,7 +28,8 @@ interface AppGraph {
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  val exampleClass = graph.exampleClass
+  val exampleClass = ExampleClass<Int>()
+  graph.inject(exampleClass)
   assertEquals(exampleClass.value, 3)
   assertEquals(exampleClass.setterSet, 3)
   assertEquals(exampleClass.values, listOf(3))
