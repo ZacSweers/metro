@@ -4,12 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
-- **Fix:** Record lookups of generated static member inject functions for IC.
-- **Fix:** Dedupe merged overrides of `@Includes` accessors.
-
-0.3.6
------
-
+- **New:** Add diagnostic to prohibit type parameters on injected member functions.
 - **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
 - **Enhancement:** Check for context parameters in top-level function injection checker.
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
@@ -20,9 +15,15 @@ Changelog
 - **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
 - **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
+- **Fix:** Record lookups of generated static member inject functions for IC.
+- **Fix:** Dedupe merged overrides of `@Includes` accessors.
+- **Fix:** Improved support for generic member injection. There may still be issues with complex generic inheritance.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
+
+0.3.6
+-----
 
 _2025-06-06_
 

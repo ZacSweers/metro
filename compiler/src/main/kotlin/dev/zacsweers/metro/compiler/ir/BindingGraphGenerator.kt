@@ -400,18 +400,31 @@ internal class BindingGraphGenerator(
 
       graph.addInjector(typeKey, entry)
       bindingStack.withEntry(entry) {
-        val targetClass = injector.ir.regularParameters.single().type.rawType()
+        val paramType = injector.ir.regularParameters.single().type
+        val targetClass = paramType.rawType()
         // Don't return null on missing because it's legal to inject a class with no member
         // injections
         // TODO warn on this?
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
-        val params = generatedInjector?.allParameters ?: Parameters.empty()
+
+        val remappedParams =
+          if (targetClass.typeParameters.isEmpty()) {
+              generatedInjector?.mergedParameters(NOOP_TYPE_REMAPPER)
+            } else {
+              // Create a remapper for the target class type parameters
+              val substitutionMap = targetClass.buildSubstitutionMapFor(paramType)
+              val remapper = typeRemapperFor(substitutionMap)
+              val params = generatedInjector?.mergedParameters(remapper)
+              params?.ir?.parameters(this, remapper) ?: params
+            }
+            .let { it ?: Parameters.empty() }
+            .withCallableId(injector.callableId)
 
         val binding =
           Binding.MembersInjected(
             contextKey,
             // Need to look up the injector class and gather all params
-            parameters = params.withCallableId(injector.callableId),
+            parameters = remappedParams,
             reportableLocation = injector.ir.location(),
             function = injector.ir,
             isFromInjectorFunction = true,

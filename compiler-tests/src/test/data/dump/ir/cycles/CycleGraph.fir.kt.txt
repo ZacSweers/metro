@@ -174,11 +174,11 @@ class C {
         return $$MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
-      fun injectALazy(instance: C, aLazy: Lazy<A>) {
+      fun injectALazy(@Assisted instance: C, aLazy: Lazy<A>) {
         return instance.#aLazy = aLazy
       }
 
-      fun injectALazyProvider(instance: C, aLazyProvider: Provider<Lazy<A>>) {
+      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Provider<Lazy<A>>) {
         return instance.#aLazyProvider = aLazyProvider
       }
 

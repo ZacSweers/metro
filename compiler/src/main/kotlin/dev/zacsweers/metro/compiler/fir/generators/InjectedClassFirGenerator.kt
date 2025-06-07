@@ -64,10 +64,8 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.constructType
-import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -739,8 +737,6 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                       val resolvedType = param.symbol.resolvedReturnType
                       if (typeParameters.isEmpty()) {
                         resolvedType
-                      } else if (resolvedType !is ConeTypeParameterType) {
-                        resolvedType
                       } else {
                         val substitutor =
                           substitutorByMap(
@@ -757,6 +753,12 @@ internal class InjectedClassFirGenerator(session: FirSession) :
                   )
                 }
               }
+              .apply {
+                // Mark the instance parameter as assisted since this is always provided at runtime
+                valueParameters[0].apply {
+                  replaceAnnotationsSafe(annotations + buildAssistedAnnotation())
+                }
+              }
               .symbol
           }
         }
@@ -771,6 +773,10 @@ internal class InjectedClassFirGenerator(session: FirSession) :
 
   private fun buildInjectAnnotation(): FirAnnotation {
     return buildSimpleAnnotation { session.metroFirBuiltIns.injectClassSymbol }
+  }
+
+  private fun buildAssistedAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation { session.metroFirBuiltIns.assistedClassSymbol }
   }
 
   private fun buildComposableAnnotation(): FirAnnotation {

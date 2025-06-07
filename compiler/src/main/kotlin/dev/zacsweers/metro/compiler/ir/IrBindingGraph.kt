@@ -512,8 +512,9 @@ internal class IrBindingGraph(
       val dependentBinding = bindings[dependentKey] ?: continue
       if (dependentBinding !is Binding.Assisted) {
         reportInvalidBinding(
-          dependentBinding.parametersByKey[binding.typeKey]?.ir?.location()
-            ?: dependentBinding.reportableLocation
+          dependentBinding.parametersByKey[binding.typeKey]?.ir?.location()?.takeIf {
+            it.line != 0 || it.column != 0
+          } ?: dependentBinding.reportableLocation
         )
       }
     }
@@ -679,13 +680,16 @@ internal class ClassBindingLookup(
 
       fun addMemberInjectors() {
         findMemberInjectors(irClass).forEach { generatedInjector ->
-          // TODO remap type args
-          if (generatedInjector.typeKey !in currentBindings) {
+          val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
+          if (mappedTypeKey !in currentBindings) {
+            // Remap type args using the same remapper used for the class
+            val remappedParameters = generatedInjector.mergedParameters(remapper)
+
             bindings +=
               Binding.MembersInjected(
-                IrContextualTypeKey(generatedInjector.typeKey),
+                IrContextualTypeKey(mappedTypeKey),
                 // Need to look up the injector class and gather all params
-                parameters = generatedInjector.allParameters,
+                parameters = remappedParameters,
                 reportableLocation = irClass.location(),
                 function = null,
                 isFromInjectorFunction = true,
