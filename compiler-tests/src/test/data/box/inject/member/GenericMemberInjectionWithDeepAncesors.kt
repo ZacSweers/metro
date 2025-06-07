@@ -1,28 +1,28 @@
 abstract class GrandParent<T : Any, R : Any> {
-  @Inject lateinit var grandParentT: T
-  @Inject lateinit var grandParentR: R
+  @Inject lateinit var grandParentT: T // becomes String
+  @Inject lateinit var grandParentR: R // becomes Int
 }
 
 abstract class Parent<T : Any, R : Any> : GrandParent<R, T>() {
-  @Inject lateinit var parentT: T
-  @Inject lateinit var parentR: R
+  @Inject lateinit var parentT: T // becomes Int
+  @Inject lateinit var parentR: R // becomes String
 }
 
 @Inject
 class ExampleClass<T : Any> : Parent<T, String>() {
-  @Inject lateinit var value: T
-  @Inject lateinit var values: List<T>
-  @Inject lateinit var mapValues: Map<T, List<T>>
+  @Inject lateinit var value: T // becomes Int
+  @Inject lateinit var values: List<T> // becomes List<Int>
+  @Inject lateinit var mapValues: Map<T, List<T>> // becomes Map<Int, List<Int>>
 
   // Setter mid-properties to ensure ordering doesn't matter
-  lateinit var functionSet: T
+  lateinit var functionSet: T // becomes Int
 
   @Inject
-  fun functionMemberInject(value: T) {
+  fun functionMemberInject(value: T) { // becomes Int
     functionSet = value
   }
 
-  lateinit var setterSet: T
+  lateinit var setterSet: T // becomes Int
     @Inject set
 }
 
