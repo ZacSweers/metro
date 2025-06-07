@@ -19,6 +19,9 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
 
+  val hasTypeArgs: Boolean
+    get() = type is IrSimpleType && type.arguments.isNotEmpty()
+
   fun remapTypes(typeRemapper: TypeRemapper): IrTypeKey {
     if (type !is IrSimpleType) return this
     if (type.arguments.isEmpty()) return this
