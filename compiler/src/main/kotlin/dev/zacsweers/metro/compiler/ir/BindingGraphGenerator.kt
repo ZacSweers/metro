@@ -409,14 +409,15 @@ internal class BindingGraphGenerator(
 
         val remappedParams =
           if (targetClass.typeParameters.isEmpty()) {
-              generatedInjector!!.mergedParameters(NOOP_TYPE_REMAPPER)
+              generatedInjector?.mergedParameters(NOOP_TYPE_REMAPPER)
             } else {
               // Create a remapper for the target class type parameters
               val substitutionMap = targetClass.buildSubstitutionMapFor(paramType)
               val remapper = typeRemapperFor(substitutionMap)
-              val params = generatedInjector?.mergedParameters(remapper) ?: Parameters.empty()
-              params.ir?.parameters(this, remapper) ?: params
+              val params = generatedInjector?.mergedParameters(remapper)
+              params?.ir?.parameters(this, remapper) ?: params
             }
+            .let { it ?: Parameters.empty() }
             .withCallableId(injector.callableId)
 
         val binding =
