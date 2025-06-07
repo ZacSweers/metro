@@ -38,6 +38,7 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -298,12 +299,14 @@ internal class InjectConstructorTransformer(
         if (injectors.isNotEmpty()) {
           val instance = irTemporary(newInstance)
           for (injector in injectors) {
+            val typeArgs = injector.ir.parentAsClass.typeParameters.map { it.defaultType }
             for ((function, parameters) in injector.declaredInjectFunctions) {
               // Record for IC
               trackFunctionCall(invokeFunction, function)
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,
+                typeArgs = typeArgs,
                 args =
                   buildList {
                     add(irGet(instance))

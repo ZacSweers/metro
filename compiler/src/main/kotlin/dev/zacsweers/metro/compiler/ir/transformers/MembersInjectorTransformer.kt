@@ -295,10 +295,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
     // Override injectMembers()
     injectorClass.requireSimpleFunction(Symbols.StringNames.INJECT_MEMBERS).owner.apply {
       finalizeFakeOverride(injectorClass.thisReceiverOrFail)
+      val typeArgs = declaration.typeParameters.map { it.defaultType }
       body =
         pluginContext.createIrBuilder(symbol).irBlockBody {
           addMemberInjection(
             context = metroContext,
+            typeArgs = typeArgs,
             callingFunction = this@apply,
             instanceReceiver = regularParameters[0],
             injectorReceiver = dispatchReceiverParameter!!,
@@ -358,6 +360,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
                   },
                 )
                 .map { it.ir.memberInjectParameters(nameAllocator, clazz) }
+                // Stable sort properties first
+                // TODO this implicit ordering requirement is brittle
+                .sortedBy { !it.isProperty }
                 .toList()
 
             // Cache function names derived from computed parameters
@@ -466,6 +471,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
 internal fun IrBlockBodyBuilder.addMemberInjection(
   context: IrMetroContext,
+  typeArgs: List<IrType>?,
   callingFunction: IrSimpleFunction,
   injectFunctions: Map<IrSimpleFunction, Parameters>,
   parametersToFields: Map<Parameter, IrField>,
@@ -477,6 +483,7 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
     +irInvoke(
       dispatchReceiver = irGetObject(function.parentAsClass.symbol),
       callee = function.symbol,
+      typeArgs = typeArgs,
       args =
         buildList {
           add(irGet(instanceReceiver))
