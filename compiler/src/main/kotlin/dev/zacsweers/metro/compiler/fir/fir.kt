@@ -228,21 +228,20 @@ internal fun FirClassSymbol<*>.callableDeclarations(
       yieldAll(declaredMembers)
     }
     if (includeAncestors) {
-      yieldAll(
-        getSuperTypes(session)
-          .asSequence()
-          .mapNotNull { it.toClassSymbol(session) }
-          .flatMap {
-            // If we're recursing up, we no longer want to include ancestors because we're handling
-            // that here
-            it.callableDeclarations(
-              session = session,
-              includeSelf = true,
-              includeAncestors = false,
-              yieldAncestorsFirst = yieldAncestorsFirst,
-            )
-          }
-      )
+      val superTypes = getSuperTypes(session)
+      val superTypesToCheck = if (yieldAncestorsFirst) superTypes.asReversed() else superTypes
+      for (superType in superTypesToCheck.mapNotNull { it.toClassSymbol(session) }) {
+        yieldAll(
+          // If we're recursing up, we no longer want to include ancestors because we're handling
+          // that here
+          superType.callableDeclarations(
+            session = session,
+            includeSelf = true,
+            includeAncestors = false,
+            yieldAncestorsFirst = yieldAncestorsFirst,
+          )
+        )
+      }
     }
     if (includeSelf && yieldAncestorsFirst) {
       yieldAll(declaredMembers)
