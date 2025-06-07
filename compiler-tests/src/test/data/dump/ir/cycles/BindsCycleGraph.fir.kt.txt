@@ -34,6 +34,10 @@ class Bar : Foo {
       return Companion.newInstance(fooProvider = <this>.#fooProvider)
     }
 
+    fun mirrorFunction(fooProvider: Provider<Foo>): Bar {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(fooProvider: Provider<Foo>) /* primary */ {
@@ -92,3 +96,4 @@ interface BindsCycleGraph {
 
 interface Foo {
 }
+

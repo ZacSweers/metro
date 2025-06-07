@@ -42,6 +42,10 @@ class S {
       return tmp_0
     }
 
+    fun mirrorFunction(sProvider: Provider<S>): S {
+      return error(message = "Never called")
+    }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -121,3 +125,4 @@ interface SelfCycleGraph {
   abstract fun s(): S
 
 }
+

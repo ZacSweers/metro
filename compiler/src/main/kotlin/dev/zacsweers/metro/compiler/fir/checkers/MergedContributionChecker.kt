@@ -25,7 +25,9 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.StandardClassIds
 
 internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Common) {
-  override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -59,7 +61,6 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
           supertype.source,
           FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
           "${dependencyGraphAnno.toAnnotationClassIdSafe(session)?.shortClassName?.asString()} declarations may not extend declarations with narrower visibility. Contributed supertype '${contributedType.classId.asFqNameString()}' is$supertypeVis $effectiveSuperVis but graph declaration '${declaration.classId.asFqNameString()}' is$declarationVis ${effectiveVisibility}.",
-          context,
         )
       }
     }

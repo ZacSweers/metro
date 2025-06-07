@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.collectAllFunctions
 import org.jetbrains.kotlin.fir.scopes.collectAllProperties
 import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
@@ -35,6 +36,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
@@ -116,17 +118,21 @@ internal fun FirExtension.buildFactoryCreateFunction(
 
       val ownerToCopyTypeParametersFrom =
         if (context.owner.isCompanion) {
-          context.owner.getContainingClassSymbol()!!
+          // companion -> class factory -> original class
+          context.owner.getContainingClassSymbol()!!.getContainingClassSymbol()!!
         } else {
-          context.owner
+          // object factory -> original class
+          context.owner.getContainingClassSymbol()!!
         }
+      val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
       for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
         typeParameters +=
           buildTypeParameterCopy(typeParameter.fir) {
-            origin = Keys.Default.origin
-            this.symbol = FirTypeParameterSymbol()
-            containingDeclarationSymbol = thisFunctionSymbol
-          }
+              origin = Keys.Default.origin
+              this.symbol = FirTypeParameterSymbol()
+              containingDeclarationSymbol = thisFunctionSymbol
+            }
+            .also { classTypeArgsToReplace[typeParameter] = it.symbol.constructType() }
       }
 
       instanceReceiver?.let {
@@ -160,8 +166,11 @@ internal fun FirExtension.buildFactoryCreateFunction(
         // Will be copied in IR
         copyParameterDefaults = false,
       ) { original ->
+        val type = original.contextKey.typeKey.type
+        val substitutor = substitutorByMap(classTypeArgsToReplace, session)
+        val copiedType = substitutor.substituteOrNull(type) ?: type
         this.returnTypeRef =
-          original.contextKey.typeKey.type
+          copiedType
             .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
             .toFirResolvedTypeRef()
       }
@@ -188,17 +197,21 @@ internal fun FirExtension.buildNewInstanceFunction(
 
       val ownerToCopyTypeParametersFrom =
         if (context.owner.isCompanion) {
-          context.owner.getContainingClassSymbol()!!
+          // companion -> class factory -> original class
+          context.owner.getContainingClassSymbol()!!.getContainingClassSymbol()!!
         } else {
-          context.owner
+          // object factory -> original class
+          context.owner.getContainingClassSymbol()!!
         }
+      val classTypeArgsToReplace = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
       for (typeParameter in ownerToCopyTypeParametersFrom.typeParameterSymbols) {
         typeParameters +=
           buildTypeParameterCopy(typeParameter.fir) {
-            origin = Keys.Default.origin
-            this.symbol = FirTypeParameterSymbol()
-            containingDeclarationSymbol = thisFunctionSymbol
-          }
+              origin = Keys.Default.origin
+              this.symbol = FirTypeParameterSymbol()
+              containingDeclarationSymbol = thisFunctionSymbol
+            }
+            .also { classTypeArgsToReplace[typeParameter] = it.symbol.constructType() }
       }
 
       instanceReceiver?.let {
@@ -226,7 +239,10 @@ internal fun FirExtension.buildNewInstanceFunction(
         // Will be copied in IR
         copyParameterDefaults = false,
       ) { original ->
-        this.returnTypeRef = original.contextKey.originalType(session).toFirResolvedTypeRef()
+        val type = original.contextKey.originalType(session)
+        val substitutor = substitutorByMap(classTypeArgsToReplace, session)
+        val copiedType = substitutor.substituteOrNull(type) ?: type
+        this.returnTypeRef = copiedType.toFirResolvedTypeRef()
       }
     }
     .symbol

@@ -35,7 +35,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
   private val NON_INCLUDES_KINDS = setOf(ClassKind.ENUM_CLASS, ClassKind.ANNOTATION_CLASS)
 
-  override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -54,16 +55,14 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           declaration.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations can only be interfaces.",
-          context,
         )
         return
       }
     }
 
     declaration.validateApiDeclaration(
-      context,
-      reporter,
       "${annotationClassId.relativeClassName.asString()} declarations",
+      checkConstructor = true,
     ) {
       return
     }
@@ -71,7 +70,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     val createFunction =
       declaration.singleAbstractFunction(
         session,
-        context,
         reporter,
         "@${annotationClassId.relativeClassName.asString()} declarations",
       ) {
@@ -81,7 +79,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     val targetGraph = createFunction.resolvedReturnType.toClassSymbol(session)
     val targetGraphAnnotation =
       targetGraph
-        ?.annotations
+        ?.resolvedCompilerAnnotationsWithClassIds
         ?.annotationsIn(session, classIds.graphLikeAnnotations)
         ?.singleOrNull()
     targetGraph?.let {
@@ -90,7 +88,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           createFunction.resolvedReturnTypeRef.source ?: declaration.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
-          context,
         )
         return
       }
@@ -105,7 +102,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             targetGraphAnnotation.source ?: declaration.source,
             FirMetroErrors.GRAPH_CREATORS_ERROR,
             "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a contributed graph extension but found ${it.classId.asSingleFqName()}.",
-            context,
           )
           return
         }
@@ -115,7 +111,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             targetGraphAnnotation.source ?: declaration.source,
             FirMetroErrors.GRAPH_CREATORS_ERROR,
             "${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${declaration.getContainingClassSymbol()?.classId?.asSingleFqName() ?: "top-level"}.",
-            context,
           )
           return
         }
@@ -124,7 +119,11 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
 
     val targetGraphScopes = targetGraphAnnotation?.allScopeClassIds().orEmpty()
     val targetGraphScopeAnnotations =
-      targetGraph?.annotations?.scopeAnnotations(session).orEmpty().toSet()
+      targetGraph
+        ?.resolvedCompilerAnnotationsWithClassIds
+        ?.scopeAnnotations(session)
+        .orEmpty()
+        .toSet()
 
     if (isContributed) {
       val contributedScopes = graphFactoryAnnotation.allScopeClassIds()
@@ -135,7 +134,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           graphFactoryAnnotation.source ?: declaration.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.asFqNameString() }.single()}'.",
-          context,
         )
         return
       }
@@ -152,7 +150,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           param.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters must be unique.",
-          context,
         )
         continue
       }
@@ -160,7 +157,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       var isIncludes = false
       var isProvides = false
       var isExtends = false
-      for (annotation in param.annotations) {
+      for (annotation in param.resolvedCompilerAnnotationsWithClassIds) {
         if (!annotation.isResolved) continue
         val annotationClassId = annotation.toAnnotationClassIdSafe(session) ?: continue
         when (annotationClassId) {
@@ -183,7 +180,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           param.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends.",
-          context,
         )
       }
       if ((isIncludes && isProvides) || (isIncludes && isExtends) || (isProvides && isExtends)) {
@@ -199,7 +195,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           param.resolvedReturnTypeRef.source ?: param.source ?: declaration.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations cannot have their target graph type as parameters.",
-          context,
         )
         continue
       }
@@ -211,7 +206,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
               param.source,
               FirMetroErrors.GRAPH_CREATORS_ERROR,
               "@Includes cannot be applied to enums, annotations, or platform types.",
-              context,
             )
           }
         }
@@ -220,7 +214,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         }
         isExtends -> {
           val dependencyGraphAnno =
-            type.annotations
+            type.resolvedCompilerAnnotationsWithClassIds
               .annotationsIn(session, classIds.dependencyGraphAnnotations)
               .firstOrNull()
           when {
@@ -229,7 +223,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                 param.source,
                 FirMetroErrors.GRAPH_CREATORS_ERROR,
                 "@Extends types must be annotated with @DependencyGraph.",
-                context,
               )
             }
 
@@ -238,7 +231,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                 param.source,
                 FirMetroErrors.GRAPH_CREATORS_ERROR,
                 "@Extends graphs must be extendable (set DependencyGraph.isExtendable to true).",
-                context,
               )
             }
 
@@ -258,7 +250,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       appendLine(overlap.asSingleFqName().asString())
                     }
                   },
-                  context,
                 )
               }
               for (parentScope in parentScopes) {
@@ -278,7 +269,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       append("Parent 2: ")
                       appendLine(parentClassId.asSingleFqName())
                     },
-                    context,
                   )
                   return
                 }
@@ -286,7 +276,8 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             }
 
             targetGraphScopeAnnotations.isNotEmpty() -> {
-              val parentScopeAnnotations = type.annotations.scopeAnnotations(session).toSet()
+              val parentScopeAnnotations =
+                type.resolvedCompilerAnnotationsWithClassIds.scopeAnnotations(session).toSet()
               val overlaps = parentScopeAnnotations.intersect(targetGraphScopeAnnotations)
               if (overlaps.isNotEmpty()) {
                 reporter.reportOn(
@@ -301,7 +292,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       appendLine(overlap.simpleString())
                     }
                   },
-                  context,
                 )
                 return
               }
@@ -324,7 +314,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                       append("Parent 2: ")
                       appendLine(parentClassId.asSingleFqName())
                     },
-                    context,
                   )
                 }
               }

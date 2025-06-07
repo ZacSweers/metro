@@ -19,11 +19,13 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
+import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
+import org.jetbrains.kotlin.ir.IrBuiltIns
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -56,6 +58,7 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -91,11 +94,14 @@ import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
+import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -107,7 +113,7 @@ import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
-import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
+import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -225,6 +231,14 @@ internal fun IrBuilderWithScope.irInvoke(
       call.typeArguments[i] = typeArg
     }
   }
+
+  var argSize = args.size
+  if (dispatchReceiver != null) argSize++
+  if (extensionReceiver != null) argSize++
+  check(callee.owner.parameters.size == argSize) {
+    "Expected ${callee.owner.parameters.size} arguments but got ${args.size}"
+  }
+
   var index = 0
   dispatchReceiver?.let { call.arguments[index++] = it }
   extensionReceiver?.let { call.arguments[index++] = it }
@@ -290,13 +304,12 @@ private fun IrExpression.computeHashSource(): Any? {
 }
 
 // TODO create an instance of this that caches lookups?
+context(context: IrMetroContext)
 internal fun IrClass.declaredCallableMembers(
-  context: IrMetroContext,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
 ): Sequence<MetroSimpleFunction> =
   allCallableMembers(
-    context,
     excludeAnyFunctions = true,
     excludeInheritedMembers = true,
     excludeCompanionObjectMembers = true,
@@ -305,8 +318,8 @@ internal fun IrClass.declaredCallableMembers(
   )
 
 // TODO create an instance of this that caches lookups?
+context(context: IrMetroContext)
 internal fun IrClass.allCallableMembers(
-  context: IrMetroContext,
   excludeAnyFunctions: Boolean = true,
   excludeInheritedMembers: Boolean = false,
   excludeCompanionObjectMembers: Boolean = false,
@@ -314,7 +327,9 @@ internal fun IrClass.allCallableMembers(
   propertyFilter: (IrProperty) -> Boolean = { true },
 ): Sequence<MetroSimpleFunction> {
   return functions
-    .letIf(excludeAnyFunctions) { it.filterNot { function -> function.isFakeOverriddenFromAny() } }
+    .letIf(excludeAnyFunctions) {
+      it.filterNot { function -> function.isInheritedFromAny(context.pluginContext.irBuiltIns) }
+    }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
     .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
@@ -326,7 +341,6 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              context,
               excludeAnyFunctions,
               excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
@@ -402,7 +416,7 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   context: IrMetroContext,
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
 ): List<IrExpression?> {
@@ -526,7 +540,7 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
 }
 
 internal fun IrMetroContext.assignConstructorParamsToFields(
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   clazz: IrClass,
 ): Map<Parameter, IrField> {
   return buildMap {
@@ -664,6 +678,10 @@ internal fun IrConstructorCall.replacesArgument() =
 internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
   return replacesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
     ?: return emptySet()
+}
+
+internal fun IrConstructorCall.requireScope(): ClassId {
+  return scopeOrNull() ?: error("No scope found for ${dumpKotlinLike()}")
 }
 
 internal fun IrConstructorCall.scopeOrNull(): ClassId? {
@@ -883,12 +901,12 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
   }
 }
 
-internal fun IrFunction.stubExpressionBody(context: IrMetroContext) =
-  context.pluginContext.createIrBuilder(symbol).run {
-    irExprBodySafe(symbol, stubExpression(context))
-  }
+context(context: IrMetroContext)
+internal fun IrFunction.stubExpressionBody() =
+  context.pluginContext.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
 
-internal fun IrBuilderWithScope.stubExpression(context: IrMetroContext) =
+context(context: IrMetroContext)
+internal fun IrBuilderWithScope.stubExpression() =
   irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))
 
 internal fun IrPluginContext.buildAnnotation(
@@ -1002,3 +1020,95 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
   get() {
     return parameters.filter { it.kind == IrParameterKind.Regular }
   }
+
+internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns): Boolean {
+  return isEqualsOnAny(irBuiltIns) || isHashCodeOnAny() || isToStringOnAny()
+}
+
+internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
+  return name == StandardNames.EQUALS_NAME &&
+    hasShape(
+      dispatchReceiver = true,
+      regularParameters = 1,
+      parameterTypes = listOf(null, irBuiltIns.anyNType),
+    )
+}
+
+internal fun IrFunction.isHashCodeOnAny(): Boolean {
+  return name == StandardNames.HASHCODE_NAME &&
+    hasShape(dispatchReceiver = true, regularParameters = 0)
+}
+
+internal fun IrFunction.isToStringOnAny(): Boolean {
+  return name == StandardNames.TO_STRING_NAME &&
+    hasShape(dispatchReceiver = true, regularParameters = 0)
+}
+
+internal val NOOP_TYPE_REMAPPER =
+  object : TypeRemapper {
+    override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+    override fun leaveScope() {}
+
+    override fun remapType(type: IrType): IrType {
+      return type
+    }
+  }
+
+internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
+  type: IrType
+): Map<IrTypeParameterSymbol, IrType> {
+  return if (type is IrSimpleType && type.arguments.isNotEmpty()) {
+    buildMap {
+      typeParameters.zip(type.arguments).forEach { (param, arg) ->
+        when (arg) {
+          is IrTypeProjection -> put(param.symbol, arg.type)
+          else -> null
+        }
+      }
+    }
+  } else {
+    emptyMap()
+  }
+}
+
+internal fun IrTypeParametersContainer.typeRemapperFor(type: IrType): TypeRemapper {
+  val substitutionMap = buildSubstitutionMapFor(type)
+  return typeRemapperFor(substitutionMap)
+}
+
+internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>): TypeRemapper {
+  val remapper =
+    object : TypeRemapper {
+      override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+      override fun leaveScope() {}
+
+      override fun remapType(type: IrType): IrType {
+        return when (type) {
+          is IrSimpleType -> {
+            val classifier = type.classifier
+            if (classifier is IrTypeParameterSymbol) {
+              val substitution = substitutionMap[classifier]
+              substitution?.let { remapType(it) } ?: type
+            } else if (type.arguments.isEmpty()) {
+              type
+            } else {
+              val newArguments =
+                type.arguments.map { arg ->
+                  when (arg) {
+                    is IrTypeProjection -> makeTypeProjection(remapType(arg.type), arg.variance)
+                    else -> arg
+                  }
+                }
+              // TODO impl use
+              type.buildSimpleType { arguments = newArguments }
+            }
+          }
+          else -> type
+        }
+      }
+    }
+
+  return remapper
+}
