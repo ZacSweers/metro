@@ -7,6 +7,7 @@ Changelog
 - **New:** Add diagnostic to prohibit type parameters on injected member functions.
 - **Fix:** Record lookups of generated static member inject functions for IC.
 - **Fix:** Dedupe merged overrides of `@Includes` accessors.
+- **Fix:** Improved support for generic member injection. There may still be issues with complex generic inheritance.
 
 0.3.6
 -----
