@@ -138,6 +138,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testOverrideCompatibleBindingAccessors() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
     }
+
+    @Test
+    @TestMetadata("IncludesDeepInheritedInterfacesWork.kt")
+    public void testIncludesDeepInheritedInterfacesWork() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDeepInheritedInterfacesWork.kt");
+    }
   }
 
   @Nested
