@@ -252,7 +252,7 @@ internal class DependencyGraphTransformer(
                   getterSymbol != null && getterSymbol !in seenSymbols
                 },
               )
-              .onEach { seenSymbols += it.ir.overriddenSymbols }
+              .onEach { seenSymbols += it.ir.overriddenSymbolsSequence() }
           }
         }
 
