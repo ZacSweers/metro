@@ -742,6 +742,10 @@ internal class IrGraphGenerator(
             // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
             // }
 
+            // Extract the type from MembersInjector<T>
+            val wrappedType =
+              typeKey.copy(typeKey.type.expectAs<IrSimpleType>().arguments[0].typeOrFail)
+
             for (type in
               pluginContext
                 .referenceClass(binding.targetClassId)!!
@@ -750,7 +754,14 @@ internal class IrGraphGenerator(
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
-              for ((function, parameters) in generatedInjector.declaredInjectFunctions) {
+              for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
+                val parameters =
+                  if (typeKey.hasTypeArgs) {
+                    val remapper = function.typeRemapperFor(wrappedType.type)
+                    function.parameters(metroContext, remapper)
+                  } else {
+                    unmappedParams
+                  }
                 // Record for IC
                 trackFunctionCall(this@apply, function)
                 +irInvoke(
@@ -759,7 +770,9 @@ internal class IrGraphGenerator(
                   args =
                     buildList {
                       add(irGet(targetParam))
-                      for (parameter in parameters.regularParameters) {
+                      // Always drop the first parameter when calling inject, as the first is the
+                      // instance param
+                      for (parameter in parameters.regularParameters.drop(1)) {
                         val paramBinding =
                           bindingGraph.requireBinding(
                             parameter.contextualTypeKey,

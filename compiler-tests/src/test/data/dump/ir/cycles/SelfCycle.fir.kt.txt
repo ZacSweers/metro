@@ -62,7 +62,7 @@ class S {
         return $$MetroMembersInjector(sLazy = sLazy)
       }
 
-      fun injectSLazy(instance: S, sLazy: Lazy<S>) {
+      fun injectSLazy(@Assisted instance: S, sLazy: Lazy<S>) {
         return instance.#sLazy = sLazy
       }
 

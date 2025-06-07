@@ -111,6 +111,14 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             "Return types for injected member functions will always be ignored.",
           )
         }
+
+        if (callable.typeParameterSymbols.isNotEmpty()) {
+          reporter.reportOn(
+            callable.source,
+            FirMetroErrors.MEMBERS_INJECT_TYPE_PARAMETERS_ERROR,
+            "Injected member functions cannot have type parameters.",
+          )
+        }
       }
     }
   }
