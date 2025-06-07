@@ -662,9 +662,7 @@ internal class ClassBindingLookup(
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
 
-      val substitutionMap = irClass.buildSubstitutionMapFor(key.type)
-
-      val remapper = typeRemapperFor(substitutionMap)
+      val remapper = irClass.deepRemapperFor(key.type)
       val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
       val bindings = mutableSetOf<Binding>()

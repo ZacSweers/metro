@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -65,6 +66,8 @@ internal interface IrMetroContext {
   val logFile: Path?
   val traceLogFile: Path?
   val timingsFile: Path?
+
+  val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
 
   fun log(message: String) {
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
@@ -232,6 +235,8 @@ internal interface IrMetroContext {
           }
         }
       }
+
+      override val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper> = mutableMapOf()
     }
   }
 }
