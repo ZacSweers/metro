@@ -236,7 +236,8 @@ internal interface IrMetroContext {
         }
       }
 
-      override val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper> = mutableMapOf()
+      override val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper> =
+        mutableMapOf()
     }
   }
 }

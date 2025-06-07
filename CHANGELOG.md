@@ -17,7 +17,7 @@ Changelog
 - **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
 - **Fix:** Record lookups of generated static member inject functions for IC.
 - **Fix:** Dedupe merged overrides of `@Includes` accessors.
-- **Fix:** Improved support for generic member injection. There may still be issues with complex generic inheritance.
+- **Fix:** Improved support for generic member injection.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
