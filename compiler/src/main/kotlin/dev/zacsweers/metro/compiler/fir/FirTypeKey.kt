@@ -42,15 +42,27 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
   }
 
   companion object {
-    fun from(session: FirSession, property: FirProperty, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
+    fun from(
+      session: FirSession,
+      property: FirProperty,
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty,
+    ): FirTypeKey {
       return from(session, property.returnTypeRef, property.annotations, substitutor)
     }
 
-    fun from(session: FirSession, parameter: FirValueParameter, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
+    fun from(
+      session: FirSession,
+      parameter: FirValueParameter,
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty,
+    ): FirTypeKey {
       return from(session, parameter.symbol, substitutor)
     }
 
-    fun from(session: FirSession, parameter: FirValueParameterSymbol, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
+    fun from(
+      session: FirSession,
+      parameter: FirValueParameterSymbol,
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty,
+    ): FirTypeKey {
       val annotations = parameter.resolvedCompilerAnnotationsWithClassIds
       return from(session, parameter.resolvedReturnTypeRef, annotations, substitutor)
     }
@@ -59,7 +71,7 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
       session: FirSession,
       parameter: FirReceiverParameter,
       target: FirCallableDeclaration,
-      substitutor: ConeSubstitutor = ConeSubstitutor.Empty
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty,
     ): FirTypeKey {
       val receiverAnnotations =
         parameter.annotations +
@@ -67,7 +79,11 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
       return from(session, parameter.typeRef, receiverAnnotations, substitutor)
     }
 
-    fun from(session: FirSession, function: FirSimpleFunction, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
+    fun from(
+      session: FirSession,
+      function: FirSimpleFunction,
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty,
+    ): FirTypeKey {
       return from(session, function.returnTypeRef, function.annotations, substitutor)
     }
 
@@ -75,7 +91,7 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
       session: FirSession,
       typeRef: FirTypeRef,
       annotations: List<FirAnnotation>,
-      substitutor: ConeSubstitutor = ConeSubstitutor.Empty
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty,
     ): FirTypeKey {
       val qualifier = annotations.qualifierAnnotation(session)
       return FirTypeKey(substitutor.substituteOrSelf(typeRef.coneType), qualifier)
