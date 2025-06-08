@@ -327,6 +327,7 @@ fun generateSourceCode(module: ModuleSpec): String {
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.anvil.annotations.ContributesSubcomponent
+import dev.zacsweers.metro.ContributesGraphExtension
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 import javax.inject.Inject
@@ -338,6 +339,7 @@ import javax.inject.Inject
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.anvil.annotations.ContributesSubcomponent
+import com.squareup.anvil.annotations.ContributesTo
 import javax.inject.Inject
 import javax.inject.Singleton
 """
@@ -437,10 +439,10 @@ fun generateSetMultibindingContribution(className: String, index: Int): String {
     }
 
   return """
-interface ${className}Initializer
+interface ${className}Initializer$index
 
 @ContributesMultibinding($scopeParam)
-class ${className}Initializer$index @Inject constructor() : ${className}Initializer {
+class ${className}InitializerImpl$index @Inject constructor() : ${className}Initializer$index {
   fun initialize() = println("Initializing ${className.lowercase()} $index")
 }
 """
@@ -458,7 +460,12 @@ fun generateSubcomponent(module: ModuleSpec): String {
   scope = ${className}Scope::class,
   parentScope = AppScope::class
 )
-interface ${className}Subcomponent
+interface ${className}Subcomponent {
+  @ContributesGraphExtension.Factory(AppScope::class)
+  interface Factory {
+    fun create${className}Subcomponent(): ${className}Subcomponent
+  }
+}
 
 object ${className}Scope
 """
@@ -466,9 +473,9 @@ object ${className}Scope
       """
 @ContributesSubcomponent(parentScope = Unit::class)
 interface ${className}Subcomponent {
-  @ContributesSubcomponent.Factory
+  @ContributesTo(AppScope::class)
   interface Factory {
-    fun create(): ${className}Subcomponent
+    fun create${className}Subcomponent(): ${className}Subcomponent
   }
 }
 """
@@ -538,13 +545,13 @@ ${appModules.take(10).joinToString("\n") { "  implementation(project(\":app:${it
         """
 package dev.zacsweers.metro.benchmark.app.component
 
-import com.squareup.anvil.annotations.MergeComponent
+import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraph
 
 @SingleIn(AppScope::class)
-@MergeComponent(AppScope::class)
+@DependencyGraph(AppScope::class, isExtendable = true)
 interface AppComponent
 
 fun main() {
