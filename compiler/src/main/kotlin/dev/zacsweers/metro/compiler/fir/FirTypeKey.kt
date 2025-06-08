@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.fir.declarations.FirReceiverParameter
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
@@ -41,41 +42,43 @@ internal class FirTypeKey(val type: ConeKotlinType, val qualifier: MetroFirAnnot
   }
 
   companion object {
-    fun from(session: FirSession, property: FirProperty): FirTypeKey {
-      return from(session, property.returnTypeRef, property.annotations)
+    fun from(session: FirSession, property: FirProperty, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
+      return from(session, property.returnTypeRef, property.annotations, substitutor)
     }
 
-    fun from(session: FirSession, parameter: FirValueParameter): FirTypeKey {
-      return from(session, parameter.symbol)
+    fun from(session: FirSession, parameter: FirValueParameter, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
+      return from(session, parameter.symbol, substitutor)
     }
 
-    fun from(session: FirSession, parameter: FirValueParameterSymbol): FirTypeKey {
+    fun from(session: FirSession, parameter: FirValueParameterSymbol, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
       val annotations = parameter.resolvedCompilerAnnotationsWithClassIds
-      return from(session, parameter.resolvedReturnTypeRef, annotations)
+      return from(session, parameter.resolvedReturnTypeRef, annotations, substitutor)
     }
 
     fun from(
       session: FirSession,
       parameter: FirReceiverParameter,
       target: FirCallableDeclaration,
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty
     ): FirTypeKey {
       val receiverAnnotations =
         parameter.annotations +
           target.annotations.filter { it.useSiteTarget == AnnotationUseSiteTarget.RECEIVER }
-      return from(session, parameter.typeRef, receiverAnnotations)
+      return from(session, parameter.typeRef, receiverAnnotations, substitutor)
     }
 
-    fun from(session: FirSession, function: FirSimpleFunction): FirTypeKey {
-      return from(session, function.returnTypeRef, function.annotations)
+    fun from(session: FirSession, function: FirSimpleFunction, substitutor: ConeSubstitutor = ConeSubstitutor.Empty): FirTypeKey {
+      return from(session, function.returnTypeRef, function.annotations, substitutor)
     }
 
     fun from(
       session: FirSession,
       typeRef: FirTypeRef,
       annotations: List<FirAnnotation>,
+      substitutor: ConeSubstitutor = ConeSubstitutor.Empty
     ): FirTypeKey {
       val qualifier = annotations.qualifierAnnotation(session)
-      return FirTypeKey(typeRef.coneType, qualifier)
+      return FirTypeKey(substitutor.substituteOrSelf(typeRef.coneType), qualifier)
     }
 
     fun from(
