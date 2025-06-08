@@ -471,13 +471,19 @@ object ${className}Scope
 """
     BuildMode.ANVIL ->
       """
-@ContributesSubcomponent(parentScope = Unit::class)
+@Singleton
+@ContributesSubcomponent(
+  scope = ${className}Scope::class,
+  parentScope = Unit::class
+)
 interface ${className}Subcomponent {
-  @ContributesTo(AppScope::class)
+  @ContributesTo(Unit::class)
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
   }
 }
+
+object ${className}Scope
 """
   }.trimIndent()
 }
@@ -582,14 +588,12 @@ fun main() {
 package dev.zacsweers.metro.benchmark.app.component
 
 import com.squareup.anvil.annotations.MergeComponent
-import dagger.Component
 import javax.inject.Singleton
 
 @Singleton
-@Component
 @MergeComponent(Unit::class)
 interface AppComponent {
-  @Component.Factory
+  @MergeComponent.Factory
   interface Factory {
     fun create(): AppComponent
   }
