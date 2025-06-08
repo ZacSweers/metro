@@ -292,15 +292,24 @@ metro {
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.ksp)
+  alias(libs.plugins.anvil)
 }
 
 dependencies {
   implementation("javax.inject:javax.inject:1")
   implementation("dev.zacsweers.anvil:annotations:0.4.1")
   implementation(libs.dagger.runtime)
+  // TODO still needed?
   ksp("dev.zacsweers.anvil:compiler:0.4.1")
   ksp(libs.dagger.compiler)
 $dependencies
+}
+
+anvil {
+  useKsp(
+    contributesAndFactoryGeneration = true,
+    componentMerging = true,
+  )
 }
 """
         .trimIndent()
@@ -530,6 +539,7 @@ metro {
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.ksp)
+  alias(libs.plugins.anvil)
   application
 }
 
@@ -542,6 +552,13 @@ dependencies {
 
   // Depend on all generated modules to aggregate everything
 ${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
+}
+
+anvil {
+  useKsp(
+    contributesAndFactoryGeneration = true,
+    componentMerging = true,
+  )
 }
 
 application {

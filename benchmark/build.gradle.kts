@@ -10,6 +10,7 @@ plugins {
   alias(libs.plugins.ksp) apply false
   id("dev.zacsweers.metro") apply false
   alias(libs.plugins.spotless)
+  alias(libs.plugins.anvil) apply false
   alias(libs.plugins.mavenPublish) apply false // wat
 }
 
