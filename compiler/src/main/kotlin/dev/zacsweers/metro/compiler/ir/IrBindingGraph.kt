@@ -662,7 +662,6 @@ internal class ClassBindingLookup(
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
 
-      val remapper = irClass.deepRemapperFor(key.type)
       val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
       val bindings = mutableSetOf<Binding>()
@@ -676,33 +675,14 @@ internal class ClassBindingLookup(
         return bindings
       }
 
-      fun addMemberInjectors() {
-        findMemberInjectors(irClass).forEach { generatedInjector ->
-          val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
-          if (mappedTypeKey !in currentBindings) {
-            // Remap type args using the same remapper used for the class
-            val remappedParameters = generatedInjector.mergedParameters(remapper)
-
-            bindings +=
-              Binding.MembersInjected(
-                IrContextualTypeKey(mappedTypeKey),
-                // Need to look up the injector class and gather all params
-                parameters = remappedParameters,
-                reportableLocation = irClass.location(),
-                function = null,
-                isFromInjectorFunction = true,
-                targetClassId = irClass.classIdOrFail,
-              )
-          }
-        }
-      }
-
-      // TODO can we pass remapper to findClassFactory() instead?
-      val classFactory = findClassFactory(irClass)?.remapTypes(remapper)
+      val classFactory = findClassFactory(irClass)
       if (classFactory != null) {
         // We don't actually call this function but it stores information about qualifier/scope
         // annotations, so reference it here so IC triggers
         trackFunctionCall(sourceGraph, classFactory.function)
+
+        val remapper = irClass.deepRemapperFor(key.type)
+        val mappedFactory = classFactory.remapTypes(remapper)
 
         // Not sure this can ever happen but report a detailed error in case.
         if (
@@ -722,13 +702,31 @@ internal class ClassBindingLookup(
         bindings +=
           Binding.ConstructorInjected(
             type = irClass,
-            classFactory = classFactory,
+            classFactory = mappedFactory,
             annotations = classAnnotations,
             typeKey = key,
           )
-        addMemberInjectors()
+
+        for (generatedInjector in findMemberInjectors(irClass)) {
+          val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
+          if (mappedTypeKey !in currentBindings) {
+            // Remap type args using the same remapper used for the class
+            val remappedParameters = generatedInjector.mergedParameters(remapper)
+
+            bindings +=
+              Binding.MembersInjected(
+                IrContextualTypeKey(mappedTypeKey),
+                // Need to look up the injector class and gather all params
+                parameters = remappedParameters,
+                reportableLocation = irClass.location(),
+                function = null,
+                isFromInjectorFunction = true,
+                targetClassId = irClass.classIdOrFail,
+              )
+          }
+        }
       } else if (classAnnotations.isAssistedFactory) {
-        val function = irClass.singleAbstractFunction(metroContext)
+        val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)
         val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
         bindings +=
           Binding.Assisted(
