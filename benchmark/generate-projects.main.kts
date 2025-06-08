@@ -494,6 +494,7 @@ fun generateAppComponent() {
 plugins {
   id("org.jetbrains.kotlin.jvm")
   id("dev.zacsweers.metro")
+  application
 }
 
 dependencies {
@@ -505,7 +506,12 @@ dependencies {
 ${appModules.take(10).joinToString("\n") { "  implementation(project(\":app:${it.name}\"))" }}
 }
 
+application {
+  mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
+}
+
 metro {
+  reportsDestination.set(layout.buildDirectory.dir("metro"))
   interop {
     includeJavax()
     includeAnvil()
@@ -518,6 +524,7 @@ metro {
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.ksp)
+  application
 }
 
 dependencies {
@@ -529,6 +536,10 @@ dependencies {
 
   // Depend on all app layer modules to aggregate everything
 ${appModules.take(10).joinToString("\n") { "  implementation(project(\":app:${it.name}\"))" }}
+}
+
+application {
+  mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
 }
 """
     }
@@ -556,6 +567,7 @@ interface AppComponent
 
 fun main() {
   val graph = createGraph<AppComponent>()
+  println("Successfully created benchmark graph with ${'$'}{graph.javaClass.declaredFields.size} fields")
   println("Successfully created benchmark graph with ${'$'}{graph.javaClass.declaredMethods.size} providers")
 }
 """
