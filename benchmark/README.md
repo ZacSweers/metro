@@ -46,6 +46,9 @@ kotlin generate-projects.main.kts --mode metro --count 1000
 # Generate a smaller project for quick testing
 kotlin generate-projects.main.kts --mode anvil --count 100
 
+# Generate a project using kapt for dagger-compiler
+kotlin generate-projects.main.kts --mode anvil --processor kapt
+
 # Build the entire benchmark
 ./gradlew build
 
