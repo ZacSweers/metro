@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.generatedClass
-import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -23,13 +22,18 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer.AssistedFactoryFunction.Companion.toAssistedFactoryFunction
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -105,16 +109,36 @@ internal class AssistedFactoryTransformer(
       return implClass
     }
 
-    val creatorFunction =
+    val samFunction =
       implClass.functions
         .filter { it.modality == Modality.ABSTRACT }
         .single { it.isFakeOverride && !it.isInheritedFromAny(pluginContext.irBuiltIns) }
-        .let { function -> function.toAssistedFactoryFunction(this, function) }
 
-    val returnType = creatorFunction.returnType
+    val returnType = samFunction.returnType
     val targetType = returnType.rawType()
     val injectConstructor =
       targetType.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
+
+    // Extract type substitutions from the factory's type args and SAM return type
+    val typeSubstitutions = mutableMapOf<IrTypeParameterSymbol, IrType>()
+    if (returnType is IrSimpleType && returnType.arguments.isNotEmpty()) {
+      // Map constructor type parameters to concrete types
+      targetType.typeParameters.zip(returnType.arguments).forEach { (param, arg) ->
+        if (arg is IrTypeProjection) {
+          typeSubstitutions[param.symbol] = arg.type
+        }
+      }
+
+      // Also map factory type parameters to the same concrete types
+      declaration.typeParameters.zip(returnType.arguments).forEach { (factoryParam, arg) ->
+        if (arg is IrTypeProjection) {
+          typeSubstitutions[factoryParam.symbol] = arg.type
+        }
+      }
+    }
+    val remapper = typeRemapperFor(typeSubstitutions)
+
+    val creatorFunction = samFunction.toAssistedFactoryFunction(this, samFunction, remapper)
 
     val generatedFactory =
       injectConstructorTransformer.getOrGenerateFactory(
@@ -126,8 +150,15 @@ internal class AssistedFactoryTransformer(
     val constructorParams = injectConstructor.parameters(this)
     val assistedParameters =
       constructorParams.regularParameters.filter { parameter -> parameter.isAssisted }
+
+    // Apply substitutions when creating assisted parameter keys
     val assistedParameterKeys =
-      assistedParameters.map { parameter -> parameter.assistedParameterKey }
+      assistedParameters.map { parameter ->
+        val substitutedTypeKey = parameter.typeKey.remapTypes(remapper)
+        parameter
+          .copy(contextualTypeKey = parameter.contextualTypeKey.withTypeKey(substitutedTypeKey))
+          .assistedParameterKey
+      }
 
     val ctor = implClass.primaryConstructor!!
     implClass.apply {
@@ -136,9 +167,8 @@ internal class AssistedFactoryTransformer(
       creatorFunction.originalFunction.apply {
         finalizeFakeOverride(implClass.thisReceiverOrFail)
         val functionParams =
-          regularParameters.associateBy { valueParam ->
-            val key = IrContextualTypeKey.from(metroContext, valueParam).typeKey
-            valueParam.toAssistedParameterKey(symbols, key)
+          regularParameters.zip(creatorFunction.parameterKeys).associate { (valueParam, paramKey) ->
+            paramKey to valueParam
           }
         body =
           pluginContext.createIrBuilder(symbol).run {
@@ -207,17 +237,19 @@ internal class AssistedFactoryTransformer(
       fun IrSimpleFunction.toAssistedFactoryFunction(
         context: IrMetroContext,
         originalDeclaration: IrSimpleFunction,
+        remapper: TypeRemapper? = null,
       ): AssistedFactoryFunction {
         val params = parameters(context)
         return AssistedFactoryFunction(
           simpleName = originalDeclaration.name.asString(),
           qualifiedName = originalDeclaration.kotlinFqName.asString(),
-          // TODO FIR validate return type is a graph
           returnType = returnType,
           originalFunction = originalDeclaration,
           parameterKeys =
             originalDeclaration.regularParameters.mapIndexed { index, param ->
-              param.toAssistedParameterKey(context.symbols, params.regularParameters[index].typeKey)
+              val baseTypeKey = params.regularParameters[index].typeKey
+              val substitutedTypeKey = remapper?.let { baseTypeKey.remapTypes(it) } ?: baseTypeKey
+              param.toAssistedParameterKey(context.symbols, substitutedTypeKey)
             },
         )
       }
