@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.ksp) apply false
+  alias(libs.plugins.kotlin.kapt) apply false
   id("dev.zacsweers.metro") apply false
   alias(libs.plugins.spotless)
   alias(libs.plugins.anvil) apply false
