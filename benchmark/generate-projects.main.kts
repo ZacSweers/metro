@@ -275,6 +275,7 @@ dependencies {
   implementation("javax.inject:javax.inject:1")
   implementation("dev.zacsweers.anvil:annotations:0.4.1")
   implementation("dev.zacsweers.metro:runtime:+")
+  implementation(project(":core:foundation"))
 $dependencies
 }
 
@@ -299,6 +300,7 @@ dependencies {
   implementation("javax.inject:javax.inject:1")
   implementation("dev.zacsweers.anvil:annotations:0.4.1")
   implementation(libs.dagger.runtime)
+  implementation(project(":core:foundation"))
   // TODO still needed?
   ksp("dev.zacsweers.anvil:compiler:0.4.1")
   ksp(libs.dagger.compiler)
@@ -329,6 +331,21 @@ fun generateSourceCode(module: ModuleSpec): String {
       generateSubcomponent(module)
     } else ""
 
+  // Generate imports for dependent API classes if this module has subcomponents
+  val dependencyImports = if (module.hasSubcomponent) {
+    module.dependencies.mapNotNull { dep ->
+      val parts = dep.split(":")
+      if (parts.size >= 2) {
+        val layerName = parts[0] // "features", "core", "app"
+        val moduleName = parts[1] // "auth-feature-10", "platform-55", etc.
+        val cleanModuleName = moduleName.replace("-", "")
+        val packagePath = "dev.zacsweers.metro.benchmark.$layerName.$cleanModuleName"
+        val apiName = "${moduleName.toCamelCase()}Api"
+        "import $packagePath.$apiName"
+      } else null
+    }.joinToString("\n")
+  } else ""
+
   val imports =
     when (buildMode) {
       BuildMode.METRO ->
@@ -340,6 +357,7 @@ import dev.zacsweers.metro.ContributesGraphExtension
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 import javax.inject.Inject
+$dependencyImports
 """
           .trimIndent()
 
@@ -352,6 +370,7 @@ import com.squareup.anvil.annotations.ContributesTo
 import javax.inject.Inject
 import javax.inject.Scope
 import javax.inject.Singleton
+$dependencyImports
 """
           .trimIndent()
     }
@@ -372,6 +391,8 @@ import javax.inject.Singleton
 package $packageName
 
 $imports
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
 
 // Main module interface
 interface ${className}Api
@@ -390,8 +411,10 @@ $subcomponent
 
 fun generateContribution(module: ModuleSpec, index: Int): String {
   val className = module.name.toCamelCase()
-
-  return when (Random.nextInt(3)) {
+  
+  // Use deterministic random based on module name and index for consistency
+  val moduleRandom = Random(module.name.hashCode() + index)
+  return when (moduleRandom.nextInt(3)) {
     0 -> generateBindingContribution(className, index)
     1 -> generateMultibindingContribution(className, index)
     else -> generateSetMultibindingContribution(className, index)
@@ -429,11 +452,11 @@ fun generateMultibindingContribution(className: String, index: Int): String {
     }
 
   return """
-interface ${className}Plugin$index {
-  fun execute(): String
+interface ${className}Plugin$index : Plugin {
+  override fun execute(): String
 }
 
-@ContributesMultibinding($scopeParam)
+@ContributesMultibinding($scopeParam, boundType = Plugin::class)
 class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$index {
   override fun execute() = "${className.lowercase()}-plugin-$index"
 }
@@ -449,11 +472,13 @@ fun generateSetMultibindingContribution(className: String, index: Int): String {
     }
 
   return """
-interface ${className}Initializer$index
+interface ${className}Initializer$index : Initializer {
+  override fun initialize()
+}
 
-@ContributesMultibinding($scopeParam)
+@ContributesMultibinding($scopeParam, boundType = Initializer::class)
 class ${className}InitializerImpl$index @Inject constructor() : ${className}Initializer$index {
-  fun initialize() = println("Initializing ${className.lowercase()} $index")
+  override fun initialize() = println("Initializing ${className.lowercase()} $index")
 }
 """
     .trimIndent()
@@ -461,16 +486,48 @@ class ${className}InitializerImpl$index @Inject constructor() : ${className}Init
 
 fun generateSubcomponent(module: ModuleSpec): String {
   val className = module.name.toCamelCase()
+  
+  // Only use dependencies that this module actually depends on
+  val availableDependencies = module.dependencies.mapNotNull { dep ->
+    // Extract module name from dependency path like ":features:auth-feature-11" -> "AuthFeature11Api"
+    val moduleName = dep.split(":").lastOrNull()?.toCamelCase()
+    if (moduleName != null) "${moduleName}Api" else null
+  }.take(2) // Limit to 2 to avoid too many dependencies
+  
+  val parentAccessors = availableDependencies.joinToString("\n") { "  fun get$it(): $it" }
+  
+  // Generate some subcomponent-scoped bindings
+  val subcomponentAccessors = (1..3).joinToString("\n") { 
+    "  fun get${className}LocalService$it(): ${className}LocalService$it" 
+  }
 
   return when (buildMode) {
     BuildMode.METRO ->
       """
+// Subcomponent-scoped services that depend on parent scope
+${(1..3).joinToString("\n") { i ->
+  val dependencyParams = if (availableDependencies.isNotEmpty()) {
+    availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
+  } else {
+    "// No parent dependencies available"
+  }
+  
+  """interface ${className}LocalService$i
+
+@SingleIn(${className}Scope::class)
+@ContributesBinding(${className}Scope::class)
+class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+}}
+
 @SingleIn(${className}Scope::class)
 @ContributesSubcomponent(
   scope = ${className}Scope::class,
   parentScope = AppScope::class
 )
 interface ${className}Subcomponent {
+  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
+$subcomponentAccessors
+  
   @ContributesGraphExtension.Factory(AppScope::class)
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
@@ -481,11 +538,30 @@ object ${className}Scope
 """
     BuildMode.ANVIL ->
       """
+// Subcomponent-scoped services that depend on parent scope
+${(1..3).joinToString("\n") { i ->
+  val dependencyParams = if (availableDependencies.isNotEmpty()) {
+    availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
+  } else {
+    "// No parent dependencies available"
+  }
+  
+  """interface ${className}LocalService$i
+
+@${className}Scope
+@ContributesBinding(${className}Scope::class)
+class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+}}
+
+@${className}Scope
 @ContributesSubcomponent(
   scope = ${className}Scope::class,
   parentScope = Unit::class
 )
 interface ${className}Subcomponent {
+  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
+$subcomponentAccessors
+  
   @ContributesTo(Unit::class)
   interface Factory {
     fun create${className}Subcomponent(): ${className}Subcomponent
@@ -497,6 +573,68 @@ interface ${className}Subcomponent {
 annotation class ${className}Scope
 """
   }.trimIndent()
+}
+
+fun generateAccessors(): String {
+  // Generate accessors for services that actually exist in each module
+  val scopedBindings = allModules.flatMap { module ->
+    (1..module.contributionsCount).mapNotNull { index ->
+      // Use the same deterministic random logic as generateContribution
+      val moduleRandom = Random(module.name.hashCode() + index)
+      when (moduleRandom.nextInt(3)) {
+        0 -> "${module.name.toCamelCase()}Service$index" // binding contribution
+        else -> null // multibindings and other types don't need individual accessors
+      }
+    }
+  }
+
+  // Group into chunks to avoid extremely long interfaces
+  return scopedBindings.chunked(50).mapIndexed { chunkIndex, chunk ->
+    val accessors = chunk.joinToString("\n") { "  fun get$it(): $it" }
+    """
+// Accessor interface $chunkIndex to force generation of scoped bindings
+interface AccessorInterface$chunkIndex {
+$accessors
+}"""
+  }.joinToString("\n\n")
+}
+
+fun generateFoundationModule() {
+  val foundationDir = File("core/foundation")
+  foundationDir.mkdirs()
+
+  // Create build.gradle.kts
+  val buildFile = File(foundationDir, "build.gradle.kts")
+  val buildScript = """
+plugins {
+  id("org.jetbrains.kotlin.jvm")
+}
+
+dependencies {
+  implementation("javax.inject:javax.inject:1")
+}
+"""
+  buildFile.writeText(buildScript.trimIndent())
+
+  // Create source directory
+  val srcDir = File(foundationDir, "src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation")
+  srcDir.mkdirs()
+
+  // Create common interfaces
+  val sourceFile = File(srcDir, "CommonInterfaces.kt")
+  val sourceCode = """
+package dev.zacsweers.metro.benchmark.core.foundation
+
+// Common interfaces for multibindings
+interface Plugin {
+  fun execute(): String
+}
+
+interface Initializer {
+  fun initialize()
+}
+"""
+  sourceFile.writeText(sourceCode.trimIndent())
 }
 
 fun generateAppComponent() {
@@ -518,6 +656,7 @@ dependencies {
   implementation("javax.inject:javax.inject:1")
   implementation("dev.zacsweers.anvil:annotations:0.4.1")
   implementation("dev.zacsweers.metro:runtime:+")
+  implementation(project(":core:foundation"))
 
   // Depend on all generated modules to aggregate everything
 ${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
@@ -549,6 +688,7 @@ dependencies {
   implementation("javax.inject:javax.inject:1")
   implementation("dev.zacsweers.anvil:annotations:0.4.1")
   implementation(libs.dagger.runtime)
+  implementation(project(":core:foundation"))
   ksp("dev.zacsweers.anvil:compiler:0.4.1")
   ksp(libs.dagger.compiler)
 
@@ -575,6 +715,21 @@ application {
   srcDir.mkdirs()
 
   val sourceFile = File(srcDir, "AppComponent.kt")
+  // Generate imports for all the service classes that will have accessors
+  val serviceImports = allModules.flatMap { module ->
+    (1..module.contributionsCount).mapNotNull { index ->
+      val moduleRandom = Random(module.name.hashCode() + index)
+      when (moduleRandom.nextInt(3)) {
+        0 -> {
+          val packageName = "dev.zacsweers.metro.benchmark.${module.layer.path}.${module.name.replace("-", "")}"
+          val serviceName = "${module.name.toCamelCase()}Service$index"
+          "import $packageName.$serviceName"
+        }
+        else -> null
+      }
+    }
+  }.joinToString("\n")
+
   val sourceCode =
     when (buildMode) {
       BuildMode.METRO ->
@@ -584,19 +739,43 @@ package dev.zacsweers.metro.benchmark.app.component
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.createGraph
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
+$serviceImports
+
+${generateAccessors()}
 
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class, isExtendable = true)
-interface AppComponent
+interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+  // Multibinding accessors
+  fun getAllPlugins(): Set<Plugin>
+  fun getAllInitializers(): Set<Initializer>
+  
+  // Multibind declarations
+  @Multibinds
+  fun bindPlugins(): Set<Plugin>
+  
+  @Multibinds
+  fun bindInitializers(): Set<Initializer>
+}
 
 fun main() {
   val graph = createGraph<AppComponent>()
   val fields = graph.javaClass.declaredFields.size
   val methods = graph.javaClass.declaredMethods.size
+  
+  // Exercise some accessors to ensure bindings are generated
+  val plugins = graph.getAllPlugins()
+  val initializers = graph.getAllInitializers()
+  
   println("Metro benchmark graph successfully created!")
   println("  - Fields: ${'$'}fields")
   println("  - Methods: ${'$'}methods")
+  println("  - Plugins: ${'$'}{plugins.size}")
+  println("  - Initializers: ${'$'}{initializers.size}")
   println("  - Total modules: ${allModules.size}")
   println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 }
@@ -608,23 +787,50 @@ package dev.zacsweers.metro.benchmark.app.component
 
 import com.squareup.anvil.annotations.MergeComponent
 import javax.inject.Singleton
+import dagger.multibindings.Multibinds
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
+$serviceImports
+
+${generateAccessors()}
 
 @Singleton
 @MergeComponent(Unit::class)
-interface AppComponent {
+interface AppComponent : ${(0 until (allModules.size / 50 + 1)).joinToString(", ") { "AccessorInterface$it" }} {
+  // Multibinding accessors
+  fun getAllPlugins(): Set<Plugin>
+  fun getAllInitializers(): Set<Initializer>
+
   @MergeComponent.Factory
   interface Factory {
     fun create(): AppComponent
   }
 }
 
+// Multibind declarations for Dagger
+@dagger.Module
+interface AppComponentMultibinds {
+  @Multibinds
+  fun bindPlugins(): Set<Plugin>
+  
+  @Multibinds
+  fun bindInitializers(): Set<Initializer>
+}
+
 fun main() {
   val component = DaggerAppComponent.factory().create()
   val fields = component.javaClass.declaredFields.size
   val methods = component.javaClass.declaredMethods.size
+  
+  // Exercise some accessors to ensure bindings are generated
+  val plugins = component.getAllPlugins()
+  val initializers = component.getAllInitializers()
+  
   println("Anvil benchmark graph successfully created!")
   println("  - Fields: ${'$'}fields")
   println("  - Methods: ${'$'}methods")
+  println("  - Plugins: ${'$'}{plugins.size}")
+  println("  - Initializers: ${'$'}{initializers.size}")
   println("  - Total modules: ${allModules.size}")
   println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 }
@@ -636,7 +842,7 @@ fun main() {
 
 fun writeSettingsFile() {
   val settingsFile = File("generated-projects.txt")
-  val includes = allModules.map { ":${it.layer.path}:${it.name}" } + ":app:component"
+  val includes = listOf(":core:foundation") + allModules.map { ":${it.layer.path}:${it.name}" } + ":app:component"
   val content = includes.joinToString("\n")
   settingsFile.writeText(content)
 }
@@ -653,6 +859,10 @@ println("Cleaning previous generated files...")
 listOf("core", "features", "app").forEach { layer ->
   File(layer).takeIf { it.exists() }?.deleteRecursively()
 }
+
+// Generate foundation module first
+println("Generating foundation module...")
+generateFoundationModule()
 
 // Generate all modules
 println("Generating ${allModules.size} modules...")
