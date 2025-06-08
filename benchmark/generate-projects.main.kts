@@ -350,6 +350,7 @@ import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.anvil.annotations.ContributesSubcomponent
 import com.squareup.anvil.annotations.ContributesTo
 import javax.inject.Inject
+import javax.inject.Scope
 import javax.inject.Singleton
 """
           .trimIndent()
@@ -480,7 +481,6 @@ object ${className}Scope
 """
     BuildMode.ANVIL ->
       """
-@Singleton
 @ContributesSubcomponent(
   scope = ${className}Scope::class,
   parentScope = Unit::class
@@ -492,7 +492,9 @@ interface ${className}Subcomponent {
   }
 }
 
-object ${className}Scope
+@Scope
+@Retention(AnnotationRetention.RUNTIME)
+annotation class ${className}Scope
 """
   }.trimIndent()
 }
