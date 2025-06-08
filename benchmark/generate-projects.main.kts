@@ -502,8 +502,8 @@ dependencies {
   implementation("dev.zacsweers.anvil:annotations:0.4.1")
   implementation("dev.zacsweers.metro:runtime:+")
 
-  // Depend on all app layer modules to aggregate everything
-${appModules.take(10).joinToString("\n") { "  implementation(project(\":app:${it.name}\"))" }}
+  // Depend on all generated modules to aggregate everything
+${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
 }
 
 application {
@@ -534,8 +534,8 @@ dependencies {
   ksp("dev.zacsweers.anvil:compiler:0.4.1")
   ksp(libs.dagger.compiler)
 
-  // Depend on all app layer modules to aggregate everything
-${appModules.take(10).joinToString("\n") { "  implementation(project(\":app:${it.name}\"))" }}
+  // Depend on all generated modules to aggregate everything
+${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
 }
 
 application {
@@ -567,8 +567,13 @@ interface AppComponent
 
 fun main() {
   val graph = createGraph<AppComponent>()
-  println("Successfully created benchmark graph with ${'$'}{graph.javaClass.declaredFields.size} fields")
-  println("Successfully created benchmark graph with ${'$'}{graph.javaClass.declaredMethods.size} providers")
+  val fields = graph.javaClass.declaredFields.size
+  val methods = graph.javaClass.declaredMethods.size
+  println("Metro benchmark graph successfully created!")
+  println("  - Fields: ${'$'}fields")
+  println("  - Methods: ${'$'}methods")
+  println("  - Total modules: ${allModules.size}")
+  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 }
 """
 
@@ -592,9 +597,13 @@ interface AppComponent {
 
 fun main() {
   val component = DaggerAppComponent.factory().create()
-  // Count the number of methods as a proxy for the number of providers
-  val providerCount = component.javaClass.declaredMethods.size
-  println("Successfully created benchmark graph with ${'$'}providerCount providers")
+  val fields = component.javaClass.declaredFields.size
+  val methods = component.javaClass.declaredMethods.size
+  println("Anvil benchmark graph successfully created!")
+  println("  - Fields: ${'$'}fields")
+  println("  - Methods: ${'$'}methods")
+  println("  - Total modules: ${allModules.size}")
+  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 }
 """
     }
