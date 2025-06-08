@@ -173,7 +173,16 @@ internal fun CompilerMessageSourceLocation.render(): String? {
 /** Returns the raw [IrClass] of this [IrType] or throws. */
 internal fun IrType.rawType(): IrClass {
   return rawTypeOrNull()
-    ?: run { error("Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})") }
+    ?: run {
+      val message =
+        when {
+          this is IrErrorType -> "Error type encountered: ${dumpKotlinLike()}"
+          classifierOrNull is IrTypeParameterSymbol ->
+            "Type parameter encountered: ${dumpKotlinLike()}"
+          else -> "Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})"
+        }
+      error(message)
+    }
 }
 
 /** Returns the raw [IrClass] of this [IrType] or null. */
@@ -1076,12 +1085,12 @@ internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
 
 context(context: IrMetroContext)
 internal fun IrTypeParametersContainer.typeRemapperFor(type: IrType): TypeRemapper {
-  if (this is IrClass) {
-    return deepRemapperFor(type)
+  return if (this is IrClass) {
+    deepRemapperFor(type)
   } else {
     // TODO can we consolidate function logic?
     val substitutionMap = buildSubstitutionMapFor(type)
-    return typeRemapperFor(substitutionMap)
+    typeRemapperFor(substitutionMap)
   }
 }
 
