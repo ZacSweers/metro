@@ -3,11 +3,53 @@
 import java.io.File
 import kotlin.random.Random
 
+// Parse command line arguments
+var mode = "metro"
+var totalModules = 500
+
+var i = 0
+
+while (i < args.size) {
+  when (args[i]) {
+    "--mode" -> {
+      mode = args.getOrNull(i + 1) ?: "metro"
+      i += 2
+    }
+    "--count" -> {
+      totalModules = args.getOrNull(i + 1)?.toIntOrNull() ?: 500
+      i += 2
+    }
+    else -> {
+      println("Unknown argument: ${args[i]}")
+      println("Usage: kotlin generate-projects.main.kts [--mode metro|anvil] [--count <number>]")
+      kotlin.system.exitProcess(1)
+    }
+  }
+}
+
+enum class BuildMode {
+  METRO,
+  ANVIL;
+
+  companion object {
+    fun from(str: String) =
+      when (str.lowercase()) {
+        "anvil" -> ANVIL
+        "metro" -> METRO
+        else -> error("Unknown mode: $str. Use 'anvil' or 'metro'")
+      }
+  }
+}
+
+val buildMode = BuildMode.from(mode)
+
+println("Generating benchmark project for mode: $buildMode with $totalModules modules")
+
 /**
- * Generates a benchmark project with ~500 modules organized in layers:
- * - Core layer (80 modules): fundamental utilities, data models, networking
- * - Features layer (350 modules): business logic features
- * - App layer (70 modules): glue code, dependency wiring, UI integration
+ * Generates a benchmark project with configurable number of modules organized in layers:
+ * - Core layer (~16% of total): fundamental utilities, data models, networking
+ * - Features layer (~70% of total): business logic features
+ * - App layer (~14% of total): glue code, dependency wiring, UI integration
  */
 data class ModuleSpec(
   val name: String,
@@ -23,17 +65,23 @@ enum class Layer(val path: String) {
   APP("app"),
 }
 
+// Calculate layer sizes based on total modules
+val coreCount = (totalModules * 0.16).toInt().coerceAtLeast(5)
+val featuresCount = (totalModules * 0.70).toInt().coerceAtLeast(5)
+val appCount = (totalModules - coreCount - featuresCount).coerceAtLeast(1)
+
 // Module architecture design
 val coreModules =
-  (1..80).map { i ->
+  (1..coreCount).map { i ->
+    val categorySize = coreCount / 6
     ModuleSpec(
       name =
         when {
-          i <= 10 -> "common-$i"
-          i <= 20 -> "network-$i"
-          i <= 35 -> "data-$i"
-          i <= 50 -> "utils-$i"
-          i <= 65 -> "platform-$i"
+          i <= categorySize -> "common-$i"
+          i <= categorySize * 2 -> "network-$i"
+          i <= categorySize * 3 -> "data-$i"
+          i <= categorySize * 4 -> "utils-$i"
+          i <= categorySize * 5 -> "platform-$i"
           else -> "shared-$i"
         },
       layer = Layer.CORE,
@@ -41,94 +89,151 @@ val coreModules =
   }
 
 val featureModules =
-  (1..350).map { i ->
+  (1..featuresCount).map { i ->
+    val categorySize = featuresCount / 6
+    val coreCategory = coreCount / 6
+
+    // Calculate actual ranges based on what modules exist
+    val commonRange = 1..(coreCategory.coerceAtLeast(1))
+    val networkRange = (coreCategory + 1)..(coreCategory * 2).coerceAtLeast(2)
+    val dataRange = (coreCategory * 2 + 1)..(coreCategory * 3).coerceAtLeast(3)
+    val utilsRange = (coreCategory * 3 + 1)..(coreCategory * 4).coerceAtLeast(4)
+    val platformRange = (coreCategory * 4 + 1)..(coreCategory * 5).coerceAtLeast(5)
+    val sharedRange = (coreCategory * 5 + 1)..coreCount
+
+    val authRange = 1..(categorySize.coerceAtLeast(1))
+    val userRange = (categorySize + 1)..(categorySize * 2).coerceAtLeast(2)
+    val contentRange = (categorySize * 2 + 1)..(categorySize * 3).coerceAtLeast(3)
+    val socialRange = (categorySize * 3 + 1)..(categorySize * 4).coerceAtLeast(4)
+    val commerceRange = (categorySize * 4 + 1)..(categorySize * 5).coerceAtLeast(5)
+
     ModuleSpec(
       name =
         when {
-          i <= 50 -> "auth-feature-$i"
-          i <= 100 -> "user-feature-$i"
-          i <= 150 -> "content-feature-$i"
-          i <= 200 -> "social-feature-$i"
-          i <= 250 -> "commerce-feature-$i"
-          i <= 300 -> "analytics-feature-$i"
-          else -> "misc-feature-$i"
+          i <= categorySize -> "auth-feature-$i"
+          i <= categorySize * 2 -> "user-feature-$i"
+          i <= categorySize * 3 -> "content-feature-$i"
+          i <= categorySize * 4 -> "social-feature-$i"
+          i <= categorySize * 5 -> "commerce-feature-$i"
+          else -> "analytics-feature-$i"
         },
       layer = Layer.FEATURES,
       dependencies =
         when {
-          i <= 50 ->
-            listOf("core:common-${Random.nextInt(1, 11)}", "core:network-${Random.nextInt(11, 21)}")
-          i <= 100 ->
+          i <= categorySize &&
+            commonRange.first <= commonRange.last &&
+            networkRange.first <= networkRange.last ->
+            listOf("core:common-${commonRange.random()}", "core:network-${networkRange.random()}")
+          i <= categorySize * 2 &&
+            dataRange.first <= dataRange.last &&
+            authRange.first <= authRange.last ->
+            listOf("core:data-${dataRange.random()}", "features:auth-feature-${authRange.random()}")
+          i <= categorySize * 3 &&
+            utilsRange.first <= utilsRange.last &&
+            userRange.first <= userRange.last ->
             listOf(
-              "core:data-${Random.nextInt(21, 36)}",
-              "features:auth-feature-${Random.nextInt(1, 11)}",
+              "core:utils-${utilsRange.random()}",
+              "features:user-feature-${userRange.random()}",
             )
-          i <= 150 ->
+          i <= categorySize * 4 &&
+            platformRange.first <= platformRange.last &&
+            contentRange.first <= contentRange.last ->
             listOf(
-              "core:utils-${Random.nextInt(36, 51)}",
-              "features:user-feature-${Random.nextInt(51, 76)}",
+              "core:platform-${platformRange.random()}",
+              "features:content-feature-${contentRange.random()}",
             )
-          i <= 200 ->
+          i <= categorySize * 5 &&
+            socialRange.first <= socialRange.last &&
+            userRange.first <= userRange.last ->
             listOf(
-              "core:platform-${Random.nextInt(51, 66)}",
-              "features:content-feature-${Random.nextInt(101, 126)}",
-            )
-          i <= 250 ->
-            listOf(
-              "features:social-feature-${Random.nextInt(151, 176)}",
-              "features:user-feature-${Random.nextInt(51, 101)}",
-            )
-          i <= 300 ->
-            listOf(
-              "features:commerce-feature-${Random.nextInt(201, 226)}",
-              "core:data-${Random.nextInt(21, 36)}",
+              "features:social-feature-${socialRange.random()}",
+              "features:user-feature-${userRange.random()}",
             )
           else ->
-            listOf(
-              "features:analytics-feature-${Random.nextInt(251, 276)}",
-              "core:shared-${Random.nextInt(66, 81)}",
-            )
+            if (
+              commerceRange.first <= commerceRange.last && sharedRange.first <= sharedRange.last
+            ) {
+              listOf(
+                "features:commerce-feature-${commerceRange.random()}",
+                "core:shared-${sharedRange.random()}",
+              )
+            } else emptyList()
         },
     )
   }
 
 val appModules =
-  (1..70).map { i ->
+  (1..appCount).map { i ->
+    val categorySize = appCount / 4
+    val featureCategory = featuresCount / 6
+    val coreCategory = coreCount / 6
+
+    // Calculate actual ranges for features
+    val authRange = 1..(featureCategory.coerceAtLeast(1))
+    val userRange = (featureCategory + 1)..(featureCategory * 2).coerceAtLeast(2)
+    val contentRange = (featureCategory * 2 + 1)..(featureCategory * 3).coerceAtLeast(3)
+    val socialRange = (featureCategory * 3 + 1)..(featureCategory * 4).coerceAtLeast(4)
+    val commerceRange = (featureCategory * 4 + 1)..(featureCategory * 5).coerceAtLeast(5)
+    val analyticsRange = (featureCategory * 5 + 1)..featuresCount
+
+    // Calculate actual ranges for core
+    val commonRange = 1..(coreCategory.coerceAtLeast(1))
+    val platformRange = (coreCategory * 4 + 1)..(coreCategory * 5).coerceAtLeast(5)
+
+    // Calculate actual ranges for app
+    val uiRange = 1..(categorySize.coerceAtLeast(1))
+    val navigationRange = (categorySize + 1)..(categorySize * 2).coerceAtLeast(2)
+    val integrationRange = (categorySize * 2 + 1)..(categorySize * 3).coerceAtLeast(3)
+
     ModuleSpec(
       name =
         when {
-          i <= 20 -> "ui-$i"
-          i <= 40 -> "navigation-$i"
-          i <= 55 -> "integration-$i"
+          i <= categorySize -> "ui-$i"
+          i <= categorySize * 2 -> "navigation-$i"
+          i <= categorySize * 3 -> "integration-$i"
           else -> "app-glue-$i"
         },
       layer = Layer.APP,
       dependencies =
         when {
-          i <= 20 ->
+          i <= categorySize &&
+            authRange.first <= authRange.last &&
+            userRange.first <= userRange.last &&
+            platformRange.first <= platformRange.last ->
             listOf(
-              "features:auth-feature-${Random.nextInt(1, 51)}",
-              "features:user-feature-${Random.nextInt(51, 101)}",
-              "core:platform-${Random.nextInt(51, 66)}",
+              "features:auth-feature-${authRange.random()}",
+              "features:user-feature-${userRange.random()}",
+              "core:platform-${platformRange.random()}",
             )
-          i <= 40 ->
+          i <= categorySize * 2 &&
+            contentRange.first <= contentRange.last &&
+            uiRange.first <= uiRange.last ->
             listOf(
-              "features:content-feature-${Random.nextInt(101, 151)}",
-              "app:ui-${Random.nextInt(1, 21)}",
+              "features:content-feature-${contentRange.random()}",
+              "app:ui-${uiRange.random()}",
             )
-          i <= 55 ->
+          i <= categorySize * 3 &&
+            commerceRange.first <= commerceRange.last &&
+            analyticsRange.first <= analyticsRange.last &&
+            navigationRange.first <= navigationRange.last ->
             listOf(
-              "features:commerce-feature-${Random.nextInt(201, 251)}",
-              "features:analytics-feature-${Random.nextInt(251, 301)}",
-              "app:navigation-${Random.nextInt(21, 41)}",
+              "features:commerce-feature-${commerceRange.random()}",
+              "features:analytics-feature-${analyticsRange.random()}",
+              "app:navigation-${navigationRange.random()}",
             )
           else ->
-            listOf(
-              "app:integration-${Random.nextInt(41, 56)}",
-              "core:common-${Random.nextInt(1, 11)}",
-            )
+            if (
+              integrationRange.first <= integrationRange.last &&
+                commonRange.first <= commonRange.last
+            ) {
+              listOf(
+                "app:integration-${integrationRange.random()}",
+                "core:common-${commonRange.random()}",
+              )
+            } else emptyList()
         },
-      hasSubcomponent = i <= 5, // First 5 app modules have subcomponents
+      hasSubcomponent =
+        i <= (appCount * 0.1).toInt().coerceAtLeast(1), // ~10% of app modules have subcomponents
     )
   }
 
@@ -158,7 +263,9 @@ fun generateBuildScript(module: ModuleSpec): String {
   val dependencies =
     module.dependencies.joinToString("\n") { dep -> "  implementation(project(\":$dep\"))" }
 
-  return """
+  return when (buildMode) {
+    BuildMode.METRO ->
+      """
 plugins {
   id("org.jetbrains.kotlin.jvm")
   id("dev.zacsweers.metro")
@@ -178,7 +285,26 @@ metro {
   }
 }
 """
-    .trimIndent()
+        .trimIndent()
+
+    BuildMode.ANVIL ->
+      """
+plugins {
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.ksp)
+}
+
+dependencies {
+  implementation("javax.inject:javax.inject:1")
+  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation(libs.dagger.runtime)
+  ksp("dev.zacsweers.anvil:compiler:0.4.1")
+  ksp(libs.dagger.compiler)
+$dependencies
+}
+"""
+        .trimIndent()
+  }
 }
 
 fun generateSourceCode(module: ModuleSpec): String {
@@ -194,22 +320,53 @@ fun generateSourceCode(module: ModuleSpec): String {
       generateSubcomponent(module)
     } else ""
 
-  return """
-package $packageName
-
+  val imports =
+    when (buildMode) {
+      BuildMode.METRO ->
+        """
 import com.squareup.anvil.annotations.ContributesBinding
 import com.squareup.anvil.annotations.ContributesMultibinding
 import com.squareup.anvil.annotations.ContributesSubcomponent
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 import javax.inject.Inject
+"""
+          .trimIndent()
+
+      BuildMode.ANVIL ->
+        """
+import com.squareup.anvil.annotations.ContributesBinding
+import com.squareup.anvil.annotations.ContributesMultibinding
+import com.squareup.anvil.annotations.ContributesSubcomponent
+import javax.inject.Inject
+import javax.inject.Singleton
+"""
+          .trimIndent()
+    }
+
+  val scopeAnnotation =
+    when (buildMode) {
+      BuildMode.METRO -> "@SingleIn(AppScope::class)"
+      BuildMode.ANVIL -> "@Singleton"
+    }
+
+  val scopeParam =
+    when (buildMode) {
+      BuildMode.METRO -> "AppScope::class"
+      BuildMode.ANVIL -> "Unit::class"
+    }
+
+  return """
+package $packageName
+
+$imports
 
 // Main module interface
 interface ${className}Api
 
 // Implementation
-@SingleIn(AppScope::class)
-@ContributesBinding(AppScope::class)
+$scopeAnnotation
+@ContributesBinding($scopeParam)
 class ${className}Impl @Inject constructor() : ${className}Api
 
 $contributions
@@ -230,23 +387,41 @@ fun generateContribution(module: ModuleSpec, index: Int): String {
 }
 
 fun generateBindingContribution(className: String, index: Int): String {
+  val scopeAnnotation =
+    when (buildMode) {
+      BuildMode.METRO -> "@SingleIn(AppScope::class)"
+      BuildMode.ANVIL -> "@Singleton"
+    }
+
+  val scopeParam =
+    when (buildMode) {
+      BuildMode.METRO -> "AppScope::class"
+      BuildMode.ANVIL -> "Unit::class"
+    }
+
   return """
 interface ${className}Service$index
 
-@SingleIn(AppScope::class)
-@ContributesBinding(AppScope::class)
+$scopeAnnotation
+@ContributesBinding($scopeParam)
 class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$index
 """
     .trimIndent()
 }
 
 fun generateMultibindingContribution(className: String, index: Int): String {
+  val scopeParam =
+    when (buildMode) {
+      BuildMode.METRO -> "AppScope::class"
+      BuildMode.ANVIL -> "Unit::class"
+    }
+
   return """
 interface ${className}Plugin$index {
   fun execute(): String
 }
 
-@ContributesMultibinding(AppScope::class)
+@ContributesMultibinding($scopeParam)
 class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$index {
   override fun execute() = "${className.lowercase()}-plugin-$index"
 }
@@ -255,9 +430,17 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
 }
 
 fun generateSetMultibindingContribution(className: String, index: Int): String {
+  val scopeParam =
+    when (buildMode) {
+      BuildMode.METRO -> "AppScope::class"
+      BuildMode.ANVIL -> "Unit::class"
+    }
+
   return """
-@ContributesMultibinding(AppScope::class)
-class ${className}Initializer$index @Inject constructor() {
+interface ${className}Initializer
+
+@ContributesMultibinding($scopeParam)
+class ${className}Initializer$index @Inject constructor() : ${className}Initializer {
   fun initialize() = println("Initializing ${className.lowercase()} $index")
 }
 """
@@ -267,7 +450,9 @@ class ${className}Initializer$index @Inject constructor() {
 fun generateSubcomponent(module: ModuleSpec): String {
   val className = module.name.toCamelCase()
 
-  return """
+  return when (buildMode) {
+    BuildMode.METRO ->
+      """
 @SingleIn(${className}Scope::class)
 @ContributesSubcomponent(
   scope = ${className}Scope::class,
@@ -277,7 +462,17 @@ interface ${className}Subcomponent
 
 object ${className}Scope
 """
-    .trimIndent()
+    BuildMode.ANVIL ->
+      """
+@ContributesSubcomponent(parentScope = Unit::class)
+interface ${className}Subcomponent {
+  @ContributesSubcomponent.Factory
+  interface Factory {
+    fun create(): ${className}Subcomponent
+  }
+}
+"""
+  }.trimIndent()
 }
 
 fun generateAppComponent() {
@@ -285,8 +480,10 @@ fun generateAppComponent() {
   appDir.mkdirs()
 
   val buildFile = File(appDir, "build.gradle.kts")
-  buildFile.writeText(
-    """
+  val buildScript =
+    when (buildMode) {
+      BuildMode.METRO ->
+        """
 plugins {
   id("org.jetbrains.kotlin.jvm")
   id("dev.zacsweers.metro")
@@ -308,15 +505,37 @@ metro {
   }
 }
 """
-      .trimIndent()
-  )
+
+      BuildMode.ANVIL ->
+        """
+plugins {
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.ksp)
+}
+
+dependencies {
+  implementation("javax.inject:javax.inject:1")
+  implementation("dev.zacsweers.anvil:annotations:0.4.1")
+  implementation(libs.dagger.runtime)
+  ksp("dev.zacsweers.anvil:compiler:0.4.1")
+  ksp(libs.dagger.compiler)
+
+  // Depend on all app layer modules to aggregate everything
+${appModules.take(10).joinToString("\n") { "  implementation(project(\":app:${it.name}\"))" }}
+}
+"""
+    }
+
+  buildFile.writeText(buildScript.trimIndent())
 
   val srcDir = File(appDir, "src/main/kotlin/dev/zacsweers/metro/benchmark/app/component")
   srcDir.mkdirs()
 
   val sourceFile = File(srcDir, "AppComponent.kt")
-  sourceFile.writeText(
-    """
+  val sourceCode =
+    when (buildMode) {
+      BuildMode.METRO ->
+        """
 package dev.zacsweers.metro.benchmark.app.component
 
 import com.squareup.anvil.annotations.MergeComponent
@@ -333,8 +552,35 @@ fun main() {
   println("Successfully created benchmark graph with ${'$'}{graph.javaClass.declaredMethods.size} providers")
 }
 """
-      .trimIndent()
-  )
+
+      BuildMode.ANVIL ->
+        """
+package dev.zacsweers.metro.benchmark.app.component
+
+import com.squareup.anvil.annotations.MergeComponent
+import dagger.Component
+import javax.inject.Singleton
+
+@Singleton
+@Component
+@MergeComponent(Unit::class)
+interface AppComponent {
+  @Component.Factory
+  interface Factory {
+    fun create(): AppComponent
+  }
+}
+
+fun main() {
+  val component = DaggerAppComponent.factory().create()
+  // Count the number of methods as a proxy for the number of providers
+  val providerCount = component.javaClass.declaredMethods.size
+  println("Successfully created benchmark graph with ${'$'}providerCount providers")
+}
+"""
+    }
+
+  sourceFile.writeText(sourceCode.trimIndent())
 }
 
 fun writeSettingsFile() {
@@ -348,6 +594,13 @@ fun String.toCamelCase(): String {
   return split("-", "_").joinToString("") { word ->
     word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
   }
+}
+
+// Clean up previous generation
+println("Cleaning previous generated files...")
+
+listOf("core", "features", "app").forEach { layer ->
+  File(layer).takeIf { it.exists() }?.deleteRecursively()
 }
 
 // Generate all modules
@@ -369,11 +622,17 @@ println("Generated benchmark project with ${allModules.size} modules!")
 
 println("Modules by layer:")
 
-println("- Core: ${coreModules.size}")
+println(
+  "- Core: ${coreModules.size} (${String.format("%.1f", coreModules.size.toDouble() / allModules.size * 100)}%)"
+)
 
-println("- Features: ${featureModules.size}")
+println(
+  "- Features: ${featureModules.size} (${String.format("%.1f", featureModules.size.toDouble() / allModules.size * 100)}%)"
+)
 
-println("- App: ${appModules.size}")
+println(
+  "- App: ${appModules.size} (${String.format("%.1f", appModules.size.toDouble() / allModules.size * 100)}%)"
+)
 
 println("Total contributions: ${allModules.sumOf { it.contributionsCount }}")
 
