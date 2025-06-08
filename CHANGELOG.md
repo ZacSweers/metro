@@ -15,12 +15,20 @@ Changelog
 - **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
 - **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
 - **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
-- **Fix:** Record lookups of generated static member inject functions for IC.
-- **Fix:** Dedupe merged overrides of `@Includes` accessors.
 - **Fix:** Improved support for generic member injection.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
+
+0.3.7
+-----
+
+_2025-06-08_
+
+- **Fix:** Record lookups of generated static member inject functions for IC.
+- **Fix:** Dedupe merged overrides of `@Includes` accessors.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar) for contributing to this release!
 
 0.3.6
 -----
