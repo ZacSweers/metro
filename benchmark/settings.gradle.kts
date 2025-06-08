@@ -21,6 +21,7 @@ rootProject.name = "metro-benchmark"
 includeBuild("..")
 
 val generatedProjects = file("generated-projects.txt")
+
 if (generatedProjects.exists()) {
   for (p in generatedProjects.readLines()) {
     if (p.isBlank()) continue
