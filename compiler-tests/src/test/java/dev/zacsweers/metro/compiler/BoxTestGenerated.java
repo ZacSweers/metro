@@ -134,6 +134,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludesDeepInheritedInterfacesWork.kt")
+    public void testIncludesDeepInheritedInterfacesWork() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDeepInheritedInterfacesWork.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedSetDeps.kt")
     public void testMultibindingGraphWithWithScopedSetDeps() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultibindingGraphWithWithScopedSetDeps.kt");
@@ -143,12 +149,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("OverrideCompatibleBindingAccessors.kt")
     public void testOverrideCompatibleBindingAccessors() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
-    }
-
-    @Test
-    @TestMetadata("IncludesDeepInheritedInterfacesWork.kt")
-    public void testIncludesDeepInheritedInterfacesWork() {
-      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDeepInheritedInterfacesWork.kt");
     }
   }
 
@@ -192,6 +192,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericAssistedParams.kt")
+      public void testGenericAssistedParams() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");
       }
     }
 

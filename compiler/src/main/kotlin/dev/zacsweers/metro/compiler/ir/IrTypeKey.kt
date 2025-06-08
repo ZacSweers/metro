@@ -24,7 +24,6 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
 
   fun remapTypes(typeRemapper: TypeRemapper): IrTypeKey {
     if (type !is IrSimpleType) return this
-    if (type.arguments.isEmpty()) return this
     return IrTypeKey(typeRemapper.remapType(type), qualifier)
   }
 
