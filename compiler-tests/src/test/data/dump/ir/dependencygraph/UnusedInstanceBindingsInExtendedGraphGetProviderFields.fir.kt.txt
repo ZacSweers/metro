@@ -1,5 +1,5 @@
 @SingleIn(scope = AppScope::class)
-@DependencyGraph(, isExtendable = true)
+@DependencyGraph(isExtendable = true)
 interface AppGraph {
   companion object Companion : Factory {
     private constructor() /* primary */ {
@@ -33,7 +33,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false)
+  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false, startOffset = 117, endOffset = 160)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -61,6 +61,10 @@ interface AppGraph {
 
     override operator fun invoke(): Int {
       return Companion.provideInt(instance = <this>.#instance)
+    }
+
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
     }
 
   }

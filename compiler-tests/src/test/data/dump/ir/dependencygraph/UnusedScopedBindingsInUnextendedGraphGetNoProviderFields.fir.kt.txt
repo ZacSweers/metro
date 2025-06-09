@@ -33,7 +33,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false)
+  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false, startOffset = 170, endOffset = 213)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -63,10 +63,14 @@ interface AppGraph {
       return Companion.provideInt(instance = <this>.#instance)
     }
 
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideString", isPropertyAccessor = false)
+  @ProvidesCallableId(callableName = "provideString", isPropertyAccessor = false, startOffset = 96, endOffset = 167)
   class ProvideString$$MetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -96,6 +100,11 @@ interface AppGraph {
       return Companion.provideString(instance = <this>.#instance)
     }
 
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
   }
 
   @Provides
@@ -105,7 +114,7 @@ interface AppGraph {
 
   @Provides
   @SingleIn(scope = AppScope::class)
-  fun provideString(): String {
+  private fun provideString(): String {
     return "Hi"
   }
 
@@ -113,3 +122,4 @@ interface AppGraph {
     abstract get
 
 }
+

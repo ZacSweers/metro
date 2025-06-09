@@ -414,7 +414,7 @@ interface CycleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideObjectWithCycle", isPropertyAccessor = false, startOffset = 443, endOffset = 540)
+  @ProvidesCallableId(callableName = "provideObjectWithCycle", isPropertyAccessor = false, startOffset = 468, endOffset = 565)
   class ProvideObjectWithCycle$$MetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj
