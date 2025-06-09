@@ -27,8 +27,18 @@ interface AppGraph {
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun appGraphProvider_metroAccessor(): Provider<AppGraph> {
+      return <this>.#appGraphProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     fun provideStringProvider_metroAccessor(): Provider<String> {
       return <this>.#provideStringProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun thisGraphInstance_metroAccessor(): AppGraph {
+      return <this>.#thisGraphInstance
     }
 
     override val int: Int

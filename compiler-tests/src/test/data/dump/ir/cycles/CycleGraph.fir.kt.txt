@@ -325,6 +325,7 @@ interface ChildCycleGraph {
   class $$MetroGraph : ChildCycleGraph {
     private /* final field */ val cycleGraphInstance: CycleGraph = cycleGraph
     private /* final field */ val cycleGraphInstanceProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = cycleGraph)
+    private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
     private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
@@ -336,6 +337,7 @@ interface ChildCycleGraph {
       when {
         cycleGraph !is $$MetroGraph -> throw illegalArgumentException(arg0 = "Constructor parameter cycleGraph _must_ be a Metro-compiler-generated instance of CycleGraph but was " + cycleGraph.toString())
       }
+      Companion.setDelegate<MembersInjector<C>>(delegateFactory = <this>.#membersInjectorMembersInjectorProvider, delegate = Companion.invoke<C>(value = Companion.create(aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider)))
       Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
@@ -386,6 +388,7 @@ interface CycleGraph {
   class $$MetroGraph : CycleGraph {
     private /* final field */ val thisGraphInstance: CycleGraph = <this>
     private /* final field */ val cycleGraphProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
     private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
@@ -394,8 +397,19 @@ interface CycleGraph {
       super/*Any*/()
       /* <init>() */
 
+      Companion.setDelegate<MembersInjector<C>>(delegateFactory = <this>.#membersInjectorMembersInjectorProvider, delegate = Companion.invoke<C>(value = Companion.create(aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider)))
       Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun cycleGraphProvider_metroAccessor(): Provider<CycleGraph> {
+      return <this>.#cycleGraphProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun thisGraphInstance_metroAccessor(): CycleGraph {
+      return <this>.#thisGraphInstance
     }
 
     override fun a(): A {

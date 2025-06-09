@@ -106,11 +106,13 @@ interface SelfCycleGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : SelfCycleGraph {
+    private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<S>> = DelegateFactory<MembersInjector<S>>()
     private /* final field */ val sProvider: Provider<S> = DelegateFactory<S>()
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
+      Companion.setDelegate<MembersInjector<S>>(delegateFactory = <this>.#membersInjectorMembersInjectorProvider, delegate = Companion.invoke<S>(value = Companion.create(sLazy = <this>.#sProvider)))
       Companion.setDelegate<S>(delegateFactory = <this>.#sProvider, delegate = Companion.create(sProvider = <this>.#sProvider, sLazy = <this>.#sProvider))
     }
 
