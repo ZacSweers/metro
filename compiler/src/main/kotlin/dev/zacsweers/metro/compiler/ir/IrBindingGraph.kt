@@ -726,23 +726,18 @@ internal class ClassBindingLookup(
           exitProcessing()
         }
 
-        bindings +=
-          Binding.ConstructorInjected(
-            type = irClass,
-            classFactory = mappedFactory,
-            annotations = classAnnotations,
-            typeKey = key,
-          )
-
+        val injectedMembers = mutableSetOf<IrContextualTypeKey>()
         for (generatedInjector in findMemberInjectors(irClass)) {
           val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
           if (mappedTypeKey !in currentBindings) {
             // Remap type args using the same remapper used for the class
             val remappedParameters = generatedInjector.mergedParameters(remapper)
+            val contextKey = IrContextualTypeKey(mappedTypeKey)
+            injectedMembers += contextKey
 
             bindings +=
               Binding.MembersInjected(
-                IrContextualTypeKey(mappedTypeKey),
+                contextKey,
                 // Need to look up the injector class and gather all params
                 parameters = remappedParameters,
                 reportableLocation = irClass.location(),
@@ -752,6 +747,15 @@ internal class ClassBindingLookup(
               )
           }
         }
+
+        bindings +=
+          Binding.ConstructorInjected(
+            type = irClass,
+            classFactory = mappedFactory,
+            annotations = classAnnotations,
+            typeKey = key,
+            injectedMembers = injectedMembers,
+          )
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)
         val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)

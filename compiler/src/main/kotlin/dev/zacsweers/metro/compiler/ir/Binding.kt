@@ -81,6 +81,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     @Poko.Skip val classFactory: ClassFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
+    val injectedMembers: Set<IrContextualTypeKey>
   ) : Binding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
@@ -90,7 +91,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     val isAssisted by unsafeLazy { parameters.regularParameters.any { it.isAssisted } }
 
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
-      parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey }
+      parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } + injectedMembers
     }
 
     override val scope: IrAnnotation?
@@ -103,8 +104,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
       get() = type.locationOrNull()
 
     fun parameterFor(typeKey: IrTypeKey) =
-      classFactory.function.regularParameters[
-          parameters.regularParameters.indexOfFirst { it.typeKey == typeKey }]
+      classFactory.function.regularParameters.getOrNull(parameters.regularParameters.indexOfFirst { it.typeKey == typeKey })
 
     override fun toString() = buildString {
       append("@Inject ")
@@ -118,6 +118,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
         classFactory,
         annotations.copy(mapKeys = annotations.mapKeys + mapKey),
         typeKey,
+        injectedMembers,
       )
     }
   }
