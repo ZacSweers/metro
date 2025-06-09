@@ -281,7 +281,8 @@ internal class BindingGraphGenerator(
         }
 
         // Add a ref to the included graph if not already present
-        // Only add it if it's a directly included node. Indirect will be propagated by metro accessors
+        // Only add it if it's a directly included node. Indirect will be propagated by metro
+        // accessors
         if (depNode.typeKey !in graph && depNode.typeKey in node.includedGraphNodes) {
           graph.addBinding(
             depNode.typeKey,

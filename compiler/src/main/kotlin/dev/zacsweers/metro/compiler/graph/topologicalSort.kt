@@ -120,7 +120,11 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
  * @param deferredTypes Vertices that sit inside breakable cycles.
  * @param reachableKeys Vertices that were deemed reachable by any input roots.
  */
-internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes: List<T>, val reachableKeys: Set<T>)
+internal data class TopoSortResult<T>(
+  val sortedKeys: List<T>,
+  val deferredTypes: List<T>,
+  val reachableKeys: Set<T>,
+)
 
 /**
  * Returns the vertices in a valid topological order. Every edge in [fullAdjacency] is respected;
@@ -178,8 +182,7 @@ internal fun <V : Comparable<V>> topologicalSort(
 
   // Only vertices visited by SCC will be in componentOf
   // TODO single pass this
-  val reachableKeys = fullAdjacency.filterKeys { it in componentOf }
-    .toSortedMap()
+  val reachableKeys = fullAdjacency.filterKeys { it in componentOf }.toSortedMap()
 
   // Check for cycles
   parentTracer.traceNested("Check for cycles") {
@@ -269,7 +272,7 @@ internal data class TarjanResult<V : Comparable<V>>(
  *   algorithm</a>
  */
 internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
-  roots: SortedSet<V> = sortedSetOf(),
+  roots: SortedSet<V> = sortedSetOf()
 ): TarjanResult<V> {
   var nextIndex = 0
   var nextComponentId = 0
