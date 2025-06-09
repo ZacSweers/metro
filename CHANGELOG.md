@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+- **New:** If reporting is enabled, write unused bindings diagnostics to `keys-unused-*.txt`.
+- **Enhancement:** Avoid writing providers fields in graphs for unused bindings.
+- **Enhancement:** Improve missing binding trace originating from root member injectors.
+- **Fix:** Propagate qualifiers on graph member injector functions.
+
 0.3.7
 -----
 
