@@ -386,6 +386,11 @@ interface CycleGraph {
       return <this>.#cProvider.invoke()
     }
 
+    override val objWithCycle: Any
+      override get(): Any {
+        return <this>.#provideObjectWithCycleProvider.invoke()
+      }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -430,5 +435,8 @@ interface CycleGraph {
   private final fun provideObjectWithCycle(obj: Provider<Any>): Any {
     return "object"
   }
+
+  abstract val objWithCycle: Any
+    abstract get
 
 }
