@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.SortedMap
 import java.util.SortedSet
+import java.util.TreeSet
 
 internal interface BindingGraph<
   Type : Any,
@@ -84,9 +85,11 @@ internal open class MutableBindingGraph<
    * @param onPopulated a callback for when the graph is fully populated but not yet validated.
    * @param validateBindings a callback to perform optional extra validation on bindings
    *   post-adjacency build.
+   * @param keep optional set of keys to keep, even if they are unused.
    */
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
+    keep: Set<TypeKey> = emptySet(),
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
     validateBindings:
@@ -142,7 +145,7 @@ internal open class MutableBindingGraph<
     validateBindings(bindings, stack, roots, fullAdjacency)
 
     val topo =
-      tracer.traceNested("Sort and validate") { sortAndValidate(roots, fullAdjacency, stack, it) }
+      tracer.traceNested("Sort and validate") { sortAndValidate(roots, keep, fullAdjacency,  stack, it) }
 
     tracer.traceNested("Compute binding indices") {
       // If it depends itself or something that comes later in the topo sort, it
@@ -214,15 +217,22 @@ internal open class MutableBindingGraph<
 
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
+    keep: Set<TypeKey> = emptySet(),
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {
+    val sortedRootKeys = TreeSet<TypeKey>().apply {
+      roots.keys.forEach { add(it.typeKey) }
+      addAll(keep)
+    }
+
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
       parentTracer.traceNested("Topo sort") { nestedTracer ->
         topologicalSort(
           fullAdjacency = fullAdjacency,
+          roots = sortedRootKeys,
           isDeferrable = { from, to ->
             bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
           },

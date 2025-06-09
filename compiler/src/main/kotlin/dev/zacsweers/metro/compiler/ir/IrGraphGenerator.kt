@@ -324,7 +324,9 @@ internal class IrGraphGenerator(
           val providerFieldBindings = ProviderFieldCollector(bindingGraph).collect()
           buildList(providerFieldBindings.size) {
             for (key in sealResult.sortedKeys) {
-              providerFieldBindings[key]?.let(::add)
+              if (key in sealResult.reachableKeys) {
+                providerFieldBindings[key]?.let(::add)
+              }
             }
           }
         }
