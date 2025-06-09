@@ -29,7 +29,7 @@ internal data class DependencyGraphNode(
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val bindsFunctions: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   // TypeKey key is the injected type wrapped in MembersInjector
-  val injectors: List<Pair<MetroSimpleFunction, IrTypeKey>>,
+  val injectors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
   val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
