@@ -1,0 +1,84 @@
+@SingleIn(scope = AppScope::class)
+@DependencyGraph
+interface AppGraph {
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    override fun create(@Provides string: String): AppGraph {
+      return $$MetroGraph(string = string)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : AppGraph {
+    private /* final field */ val stringInstanceProvider: Provider<String> = Companion.invoke<String>(value = string)
+    private /* final field */ val thisGraphInstance: AppGraph = <this>
+    private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
+    constructor(@Provides string: String) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return Companion.create(instance = <this>.#thisGraphInstance).invoke()
+      }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false)
+  class ProvideInt$$MetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(instance: AppGraph): Factory<Int> {
+        return ProvideInt$$MetroFactory(instance = instance)
+      }
+
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): Int {
+      return Companion.provideInt(instance = <this>.#instance)
+    }
+
+  }
+
+  @Factory
+  interface Factory {
+    abstract fun create(@Provides string: String): AppGraph
+
+  }
+
+  @Provides
+  private final fun provideInt(): Int {
+    return 3
+  }
+
+  abstract val int: Int
+    abstract get
+
+}
+
