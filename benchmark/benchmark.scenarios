@@ -7,6 +7,7 @@
 # 1. Metro mode
 # 2. Anvil + KSP mode  
 # 3. Anvil + KAPT mode
+# 4. Kotlin-inject + Anvil mode
 #
 # Each with ABI and non-ABI change permutations, plus raw app component compilation scenarios.
 
@@ -110,6 +111,39 @@ anvil_kapt_raw_compilation {
 }
 
 # ====================================
+# KOTLIN-INJECT + ANVIL MODE SCENARIOS
+# ====================================
+
+kotlin_inject_anvil_abi_change {
+    title = "Kotlin-inject + Anvil - ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
+}
+
+kotlin_inject_anvil_non_abi_change {
+    title = "Kotlin-inject + Anvil - Non-ABI"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    
+    apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
+}
+
+kotlin_inject_anvil_raw_compilation {
+    title = "Kotlin-inject + Anvil - Raw Compilation Performance"
+    warm-ups = 3
+    iterations = 5
+    
+    tasks = [":app:component:compileKotlin"]
+    gradle-args = ["--rerun-tasks", "-a"]
+}
+
+# ====================================
 # USAGE INSTRUCTIONS
 # ====================================
 
@@ -123,3 +157,4 @@ anvil_kapt_raw_compilation {
 #   kotlin generate-projects.main.kts --mode metro --count 500
 #   kotlin generate-projects.main.kts --mode anvil --processor ksp --count 500  
 #   kotlin generate-projects.main.kts --mode anvil --processor kapt --count 500
+#   kotlin generate-projects.main.kts --mode kotlin-inject-anvil --count 500
