@@ -279,9 +279,25 @@ internal class BindingGraphGenerator(
           // We'll handle this farther down
           continue
         }
+
+        // Add a ref to the included graph if not already present
+        // Only add it if it's a directly included node. Indirect will be propagated by metro accessors
+        if (depNode.typeKey !in graph && depNode.typeKey in node.includedGraphNodes) {
+          graph.addBinding(
+            depNode.typeKey,
+            Binding.BoundInstance(
+              depNode.typeKey,
+              "${depNode.sourceGraph.name}Provider",
+              depNode.sourceGraph.location(),
+            ),
+            bindingStack,
+          )
+        }
+
         graph.addBinding(
           contextualTypeKey.typeKey,
           Binding.GraphDependency(
+            ownerKey = depNode.typeKey,
             graph = depNode.sourceGraph,
             getter = getter.ir,
             isProviderFieldAccessor = false,
@@ -335,6 +351,7 @@ internal class BindingGraphGenerator(
             graph.addBinding(
               contextualTypeKey.typeKey,
               Binding.GraphDependency(
+                ownerKey = depNode.typeKey,
                 graph = depNode.sourceGraph,
                 getter = accessor.ir,
                 isProviderFieldAccessor = true,
@@ -363,6 +380,7 @@ internal class BindingGraphGenerator(
             graph.addBinding(
               contextualTypeKey.typeKey,
               Binding.GraphDependency(
+                ownerKey = depNode.typeKey,
                 graph = depNode.sourceGraph,
                 getter = accessor.ir,
                 isProviderFieldAccessor = true,

@@ -168,7 +168,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters<ConstructorParameter>,
   ) : Binding, BindingWithAnnotations {
     override val dependencies: List<IrContextualTypeKey> =
-      parameters.nonInstanceParameters.map { it.contextualTypeKey }
+      parameters.allParameters.map { it.contextualTypeKey }
 
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonInstanceParameters.associateBy { it.typeKey }
@@ -387,13 +387,14 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
   @Poko
   class GraphDependency(
+    val ownerKey: IrTypeKey,
     @Poko.Skip val graph: IrClass,
     @Poko.Skip val getter: IrSimpleFunction,
     val isProviderFieldAccessor: Boolean,
     override val typeKey: IrTypeKey,
     val callableId: CallableId = getter.callableId,
   ) : Binding {
-    override val dependencies: List<IrContextualTypeKey> = emptyList()
+    override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(ownerKey))
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
       append(graph.name)

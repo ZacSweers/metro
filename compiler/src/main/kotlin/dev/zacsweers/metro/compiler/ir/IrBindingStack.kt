@@ -431,7 +431,9 @@ internal fun bindingStackEntryForDependency(
     }
     is Binding.ObjectClass -> TODO()
     is Binding.BoundInstance -> TODO()
-    is Binding.GraphDependency -> TODO()
+    is Binding.GraphDependency -> {
+      Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
+    }
     is Binding.Absent -> error("Should never happen")
   }
 }

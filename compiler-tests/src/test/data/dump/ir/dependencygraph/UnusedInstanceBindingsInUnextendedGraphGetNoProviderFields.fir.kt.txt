@@ -1,5 +1,5 @@
 @SingleIn(scope = AppScope::class)
-@DependencyGraph(, isExtendable = true)
+@DependencyGraph
 interface AppGraph {
   companion object Companion : Factory {
     private constructor() /* primary */ {
@@ -80,4 +80,3 @@ interface AppGraph {
     abstract get
 
 }
-

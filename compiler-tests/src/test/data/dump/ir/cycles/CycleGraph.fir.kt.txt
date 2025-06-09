@@ -305,8 +305,6 @@ interface ChildCycleGraph {
   class $$MetroGraph : ChildCycleGraph {
     private /* final field */ val cycleGraphInstance: CycleGraph = cycleGraph
     private /* final field */ val cycleGraphInstanceProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = cycleGraph)
-    private /* final field */ val thisGraphInstance: ChildCycleGraph = <this>
-    private /* final field */ val childCycleGraphProvider: Provider<ChildCycleGraph> = Companion.invoke<ChildCycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
@@ -440,3 +438,4 @@ interface CycleGraph {
     abstract get
 
 }
+
