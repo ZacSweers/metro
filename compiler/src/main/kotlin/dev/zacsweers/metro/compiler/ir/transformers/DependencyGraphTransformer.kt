@@ -447,9 +447,7 @@ internal class DependencyGraphTransformer(
             // key is the injected type wrapped in MembersInjector
             val contextKey = IrContextualTypeKey.from(this, declaration.regularParameters[0])
             val memberInjectorTypeKey =
-              contextKey.typeKey.copy(
-                contextKey.typeKey.type.wrapInMembersInjector()
-              )
+              contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
             val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
             injectors += (metroFunction to finalContextKey)
           } else {
