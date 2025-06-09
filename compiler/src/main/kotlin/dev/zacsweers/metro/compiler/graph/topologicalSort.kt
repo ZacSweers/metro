@@ -234,6 +234,11 @@ internal fun <V : Comparable<V>> topologicalSort(
 
 internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
 
+internal data class TarjanResult<V : Comparable<V>>(
+  val components: List<Component<V>>,
+  val componentOf: Map<V, Int>,
+)
+
 /**
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
  *
@@ -250,7 +255,7 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
  *   algorithm</a>
  */
 internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents():
-  Pair<List<Component<V>>, Map<V, Int>> {
+  TarjanResult<V> {
   var nextIndex = 0
   var nextComponentId = 0
 
@@ -315,7 +320,7 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
     }
   }
 
-  return components to componentOf
+  return TarjanResult(components, componentOf)
 }
 
 /**
