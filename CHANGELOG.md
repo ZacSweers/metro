@@ -4,9 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
-- **New:** Add diagnostic to prohibit type parameters on injected member functions.
 - **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
 - **New:** If reporting is enabled, write unused bindings diagnostics to `keys-unused-*.txt`.
+- **New:** Support for generic assisted injection.
+- **New:** Support for generic member injection.
+- **New:** Add diagnostic to prohibit type parameters on injected member functions.
 - **Enhancement:** Check for context parameters in top-level function injection checker.
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
 - **Enhancement:** Avoid writing providers fields in graphs for unused bindings.

@@ -74,7 +74,9 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.processAllCallables
 import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
@@ -89,10 +91,12 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
@@ -1018,4 +1022,66 @@ internal fun MemberGenerationContext.directCallableSymbols(): List<FirCallableSy
   val collected = mutableListOf<FirCallableSymbol<*>>()
   this.declaredScope?.processAllCallables { collected += it }
   return collected
+}
+
+// Build a complete substitution map that includes mappings for ancestor type parameters
+internal fun buildShallowSubstitutionMap(
+  targetClass: FirClassSymbol<*>,
+  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
+  session: FirSession,
+): Map<FirTypeParameterSymbol, ConeKotlinType> {
+  return buildSubstitutionMapInner(targetClass, directMappings, session, full = false)
+}
+
+// Build a complete substitution map that includes mappings for ancestor type parameters
+internal fun buildFullSubstitutionMap(
+  targetClass: FirClassSymbol<*>,
+  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
+  session: FirSession,
+): Map<FirTypeParameterSymbol, ConeKotlinType> {
+  return buildSubstitutionMapInner(targetClass, directMappings, session, full = true)
+}
+
+private fun buildSubstitutionMapInner(
+  targetClass: FirClassSymbol<*>,
+  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
+  session: FirSession,
+  full: Boolean,
+): Map<FirTypeParameterSymbol, ConeKotlinType> {
+  val result = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+
+  // Start with the direct mappings for the target class
+  result.putAll(directMappings)
+
+  // Walk up the inheritance chain and collect substitutions
+  var currentClass: FirClassSymbol<*>? = targetClass
+  while (currentClass != null) {
+    val superType =
+      currentClass.resolvedSuperTypes.firstOrNull {
+        it.classId != session.builtinTypes.anyType.coneType.classId
+      }
+
+    if (superType is ConeClassLikeType && superType.typeArguments.isNotEmpty()) {
+      val superClass = superType.toRegularClassSymbol(session)
+      if (superClass != null) {
+        // Map ancestor type parameters to their concrete types in the inheritance chain
+        superClass.typeParameterSymbols.zip(superType.typeArguments).forEach { (param, arg) ->
+          if (arg is ConeKotlinTypeProjection) {
+            // Apply existing substitutions to the argument type
+            val substitutor = substitutorByMap(result, session)
+            val substitutedType = substitutor.substituteOrNull(arg.type) ?: arg.type
+            result[param] = substitutedType
+          }
+        }
+      }
+      currentClass = superClass
+    } else if (!full) {
+      // Shallow one-layer
+      break
+    } else {
+      break
+    }
+  }
+
+  return result
 }

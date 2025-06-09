@@ -23,7 +23,13 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.scopes.impl.toConeType
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 
 internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
@@ -98,9 +104,37 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       return
     }
 
+    // Extract concrete type arguments from the factory's return type
+    val returnType = function.resolvedReturnTypeRef.coneType
+    val targetSubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+
+    if (returnType is ConeClassLikeType && returnType.typeArguments.isNotEmpty()) {
+      targetType.typeParameters.zip(returnType.typeArguments).forEach { (param, arg) ->
+        if (arg is ConeKotlinTypeProjection) {
+          targetSubstitutionMap[param.symbol] = arg.type
+        }
+      }
+    }
+
+    // Build unified substitution map for factory parameters
+    val factorySubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+
+    // Map factory type parameters to the same concrete types
+    declaration.typeParameters.forEachIndexed { index, factoryTypeParam ->
+      val targetTypeParam = targetType.typeParameters.getOrNull(index)
+      if (targetTypeParam != null) {
+        // Use the concrete type from the return type if available
+        val concreteType =
+          targetSubstitutionMap[targetTypeParam.symbol] ?: targetTypeParam.toConeType()
+        factorySubstitutionMap[factoryTypeParam.symbol] = concreteType
+      }
+    }
+
+    val functionSubstitutor = substitutorByMap(factorySubstitutionMap, session)
+
     val (factoryKeys, dupeFactoryKeys) =
       functionParams.mapToSetWithDupes {
-        it.toAssistedParameterKey(session, FirTypeKey.from(session, it))
+        it.toAssistedParameterKey(session, FirTypeKey.from(session, it, functionSubstitutor))
       }
 
     if (dupeFactoryKeys.isNotEmpty()) {
@@ -112,9 +146,10 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       return
     }
 
+    val constructorSubstitutor = substitutorByMap(targetSubstitutionMap, session)
     val (constructorKeys, dupeConstructorKeys) =
       constructorAssistedParams.mapToSetWithDupes {
-        it.toAssistedParameterKey(session, FirTypeKey.from(session, it))
+        it.toAssistedParameterKey(session, FirTypeKey.from(session, it, constructorSubstitutor))
       }
 
     if (dupeConstructorKeys.isNotEmpty()) {
@@ -147,7 +182,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             appendLine(missingFromFactory)
           }
           if (missingFromConstructor.isNotEmpty()) {
-            append("  Missing from factory: ")
+            append("  Missing from constructor: ")
             appendLine(missingFromConstructor)
           }
         },

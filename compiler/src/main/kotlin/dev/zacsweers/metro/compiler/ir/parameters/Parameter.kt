@@ -77,6 +77,38 @@ private constructor(
 
   override fun toString(): String = cachedToString
 
+  fun copy(
+    kind: IrParameterKind = this.kind,
+    name: Name = this.name,
+    originalName: Name = this.originalName,
+    contextualTypeKey: IrContextualTypeKey = this.contextualTypeKey,
+    isAssisted: Boolean = this.isAssisted,
+    assistedIdentifier: String = this.assistedIdentifier,
+    assistedParameterKey: AssistedParameterKey =
+      AssistedParameterKey(contextualTypeKey.typeKey, assistedIdentifier),
+    isGraphInstance: Boolean = this.isGraphInstance,
+    isBindsInstance: Boolean = this.isBindsInstance,
+    isIncludes: Boolean = this.isIncludes,
+    isExtends: Boolean = this.isExtends,
+    isMember: Boolean = this.isMember,
+    ir: IrValueParameter? = this._ir,
+  ) =
+    Parameter(
+      kind = kind,
+      name = name,
+      originalName = originalName,
+      contextualTypeKey = contextualTypeKey,
+      isAssisted = isAssisted,
+      assistedIdentifier = assistedIdentifier,
+      assistedParameterKey = assistedParameterKey,
+      isGraphInstance = isGraphInstance,
+      isBindsInstance = isBindsInstance,
+      isIncludes = isIncludes,
+      isExtends = isExtends,
+      isMember = isMember,
+      ir = ir,
+    )
+
   override fun compareTo(other: Parameter): Int = COMPARATOR.compare(this, other)
 
   // @Assisted parameters are equal if the type and the identifier match. This subclass makes

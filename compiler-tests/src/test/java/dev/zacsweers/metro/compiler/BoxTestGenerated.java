@@ -193,6 +193,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testAssistedTypesCanBeExplicitlyProvided() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
       }
+
+      @Test
+      @TestMetadata("GenericAssistedParams.kt")
+      public void testGenericAssistedParams() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");
+      }
     }
 
     @Nested

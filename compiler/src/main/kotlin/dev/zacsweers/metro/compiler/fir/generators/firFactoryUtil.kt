@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.MetroFirValueParameter
+import dev.zacsweers.metro.compiler.fir.buildFullSubstitutionMap
 import dev.zacsweers.metro.compiler.fir.buildSimpleValueParameter
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.copyParameters
@@ -25,7 +26,6 @@ import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
-import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.collectAllFunctions
 import org.jetbrains.kotlin.fir.scopes.collectAllProperties
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
@@ -38,7 +38,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
-import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
@@ -203,47 +202,6 @@ internal fun FirExtension.buildFactoryCreateFunction(
       }
     }
     .symbol
-}
-
-// Build a complete substitution map that includes mappings for ancestor type parameters
-private fun buildFullSubstitutionMap(
-  targetClass: FirClassSymbol<*>,
-  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
-  session: FirSession,
-): Map<FirTypeParameterSymbol, ConeKotlinType> {
-  val result = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
-
-  // Start with the direct mappings for the target class
-  result.putAll(directMappings)
-
-  // Walk up the inheritance chain and collect substitutions
-  var currentClass: FirClassSymbol<*>? = targetClass
-  while (currentClass != null) {
-    val superType =
-      currentClass.resolvedSuperTypes.firstOrNull {
-        it.classId != session.builtinTypes.anyType.coneType.classId
-      }
-
-    if (superType is ConeClassLikeType && superType.typeArguments.isNotEmpty()) {
-      val superClass = superType.toRegularClassSymbol(session)
-      if (superClass != null) {
-        // Map ancestor type parameters to their concrete types in the inheritance chain
-        superClass.typeParameterSymbols.zip(superType.typeArguments).forEach { (param, arg) ->
-          if (arg is ConeKotlinTypeProjection) {
-            // Apply existing substitutions to the argument type
-            val substitutor = substitutorByMap(result, session)
-            val substitutedType = substitutor.substituteOrNull(arg.type) ?: arg.type
-            result[param] = substitutedType
-          }
-        }
-      }
-      currentClass = superClass
-    } else {
-      break
-    }
-  }
-
-  return result
 }
 
 @OptIn(SymbolInternals::class)
