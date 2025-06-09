@@ -575,10 +575,6 @@ internal class IrGraphGenerator(
             }
             yieldAll(instanceFields.entries)
           }
-          .filter {
-            // Skip the graph instance field
-            it.key != node.typeKey
-          }
           .distinctBy {
             // Only generate once per field. Can happen for cases
             // where we add convenience keys for graph instance supertypes.
@@ -1150,7 +1146,10 @@ internal class IrGraphGenerator(
             )
             .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         } else {
-          val createFunction = injectorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
+          val injectorCreatorClass =
+            if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
+          val createFunction =
+            injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
           val args =
             generateBindingArguments(
               binding.parameters,
@@ -1164,8 +1163,8 @@ internal class IrGraphGenerator(
               // exampleComponentProvider)
               irInvoke(
                 dispatchReceiver =
-                  if (injectorClass.isObject) {
-                    irGetObject(injectorClass.symbol)
+                  if (injectorCreatorClass.isObject) {
+                    irGetObject(injectorCreatorClass.symbol)
                   } else {
                     // It's static from java, dagger interop
                     check(createFunction.owner.isStatic)
