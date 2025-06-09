@@ -33,7 +33,7 @@ internal fun IrFunction.computeJvmDescriptorIsh(
       if (includeInstanceReceiver) {
         allParameters
       } else {
-        nonInstanceParameters
+        nonDispatchParameters
       }
     }
   for (parameter in paramsToInclude) {

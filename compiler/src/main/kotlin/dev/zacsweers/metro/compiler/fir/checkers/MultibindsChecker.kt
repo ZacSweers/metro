@@ -23,11 +23,9 @@ import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.StandardClassIds
 
 internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
-  override fun check(
-    declaration: FirCallableDeclaration,
-    context: CheckerContext,
-    reporter: DiagnosticReporter,
-  ) {
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirCallableDeclaration) {
     val source = declaration.source ?: return
     val session = context.session
 
@@ -43,7 +41,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         annotations.mapKeys.first().fir.source ?: source,
         FirMetroErrors.MULTIBINDS_ERROR,
         "`@MapKey` annotations are only allowed on `@IntoMap` declarations.",
-        context,
       )
       return
     }
@@ -58,7 +55,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         source,
         FirMetroErrors.MULTIBINDS_ERROR,
         "Only one of `@Multibinds`, `@ElementsIntoSet`, `@IntoMap`, or `@IntoSet` is allowed.",
-        context,
       )
       return
     }
@@ -69,7 +65,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         source,
         FirMetroErrors.MULTIBINDS_OVERRIDE_ERROR,
         "Multibinding contributors cannot be overrides.",
-        context,
       )
       return
     }
@@ -81,7 +76,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           source,
           FirMetroErrors.MULTIBINDS_ERROR,
           "`@Multibinds` declarations must be abstract.",
-          context,
         )
         return
       }
@@ -92,7 +86,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           source,
           FirMetroErrors.MULTIBINDS_ERROR,
           "`@Multibinds` declarations cannot also be annotated with `@Provides` or `@Binds` annotations.",
-          context,
         )
         return
       }
@@ -103,7 +96,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           scopeAnnotation.fir.source,
           FirMetroErrors.MULTIBINDS_ERROR,
           "@Multibinds declarations cannot be scoped.",
-          context,
         )
         return
       }
@@ -120,7 +112,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           declaration.returnTypeRef.source ?: source,
           FirMetroErrors.MULTIBINDS_ERROR,
           "`@Multibinds` declarations can only return a `Map` or `Set`.",
-          context,
         )
         return
       } else if (returnTypeClassId == StandardClassIds.Map) {
@@ -130,7 +121,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
               declaration.returnTypeRef.source ?: source,
               FirMetroErrors.MULTIBINDS_ERROR,
               "Multibinding Map keys cannot be star projections. Use a concrete type instead.",
-              context,
             )
             return
           }
@@ -140,7 +130,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
                 declaration.returnTypeRef.source ?: source,
                 FirMetroErrors.MULTIBINDS_ERROR,
                 "Multibinding map keys cannot be nullable. Use a non-nullable type instead.",
-                context,
               )
               return
             }
@@ -161,7 +150,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
             declaration.returnTypeRef.source ?: source,
             FirMetroErrors.MULTIBINDS_ERROR,
             "Multibinding Map values cannot be star projections. Use a concrete type instead.",
-            context,
           )
           return
         }
@@ -171,7 +159,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
             declaration.returnTypeRef.source ?: source,
             FirMetroErrors.MULTIBINDS_ERROR,
             "Multibinding Set elements cannot be star projections. Use a concrete type instead.",
-            context,
           )
           return
         }
@@ -185,7 +172,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         source,
         FirMetroErrors.MULTIBINDS_ERROR,
         "`@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.",
-        context,
       )
       return
     }
@@ -199,7 +185,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
             source,
             FirMetroErrors.MULTIBINDS_ERROR,
             "`@ElementsIntoSet` must return a Collection.",
-            context,
           )
           return
         }
@@ -213,7 +198,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           key.fir.source,
           FirMetroErrors.MULTIBINDS_ERROR,
           "Only one @MapKey should be be used on a given @IntoMap declaration.",
-          context,
         )
       }
       return
@@ -222,7 +206,6 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         source,
         FirMetroErrors.MULTIBINDS_ERROR,
         "`@IntoMap` declarations must define a @MapKey annotation.",
-        context,
       )
       return
     }

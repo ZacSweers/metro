@@ -52,7 +52,7 @@ kotlin {
         if (target.platformType == KotlinPlatformType.js) {
           compilerOptions.freeCompilerArgs.add(
             // These are all read at compile-time
-            "-Xsuppress-warning=RUNTIME_ANNOTATION_NOT_SUPPORTED"
+            "-Xwarning-level=RUNTIME_ANNOTATION_NOT_SUPPORTED:disabled"
           )
         }
       }

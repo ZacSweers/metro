@@ -1,0 +1,315 @@
+@Inject
+class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithBackRefs<T, V, E>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithBackRefs<T, V, E>> {
+        return $$MetroFactory<T, V, E>()
+      }
+
+      fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithBackRefs<T, V, E> {
+        return ClassWithBackRefs()
+      }
+
+    }
+
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ClassWithBackRefs<T, V, E> {
+      return Companion.newInstance<ClassWithBackRefs<T, V, E>, /* null */, /* null */>()
+    }
+
+    fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithBackRefs<T, V, E> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ClassWithBounds<T : Any> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory<T : Any?> : Factory<ClassWithBounds<T>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun <T : Any> create(): Factory<ClassWithBounds<T>> {
+        return $$MetroFactory<T>()
+      }
+
+      fun <T : Any> newInstance(): ClassWithBounds<T> {
+        return ClassWithBounds()
+      }
+
+    }
+
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ClassWithBounds<T> {
+      return Companion.newInstance<ClassWithBounds<T>>()
+    }
+
+    fun <T : Any> mirrorFunction(): ClassWithBounds<T> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithMultiple<T, V, E>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun <T : Any?, V : Any?, E : Any?> create(): Factory<ClassWithMultiple<T, V, E>> {
+        return $$MetroFactory<T, V, E>()
+      }
+
+      fun <T : Any?, V : Any?, E : Any?> newInstance(): ClassWithMultiple<T, V, E> {
+        return ClassWithMultiple()
+      }
+
+    }
+
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ClassWithMultiple<T, V, E> {
+      return Companion.newInstance<ClassWithMultiple<T, V, E>, /* null */, /* null */>()
+    }
+
+    fun <T : Any?, V : Any?, E : Any?> mirrorFunction(): ClassWithMultiple<T, V, E> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ClassWithNullable<T : Any?, E : T?> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory<T : Any?, E : Any?> : Factory<ClassWithNullable<T, E>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun <T : Any?, E : T?> create(): Factory<ClassWithNullable<T, E>> {
+        return $$MetroFactory<T, E>()
+      }
+
+      fun <T : Any?, E : T?> newInstance(): ClassWithNullable<T, E> {
+        return ClassWithNullable()
+      }
+
+    }
+
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ClassWithNullable<T, E> {
+      return Companion.newInstance<ClassWithNullable<T, E>, /* null */>()
+    }
+
+    fun <T : Any?, E : T?> mirrorFunction(): ClassWithNullable<T, E> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ClassWithWheres<T : Any?, V : Any?, E : V> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory<T : Any?, V : Any?, E : Any?> : Factory<ClassWithWheres<T, V, E>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun <T : Any?, V : Any?, E : V> create(): Factory<ClassWithWheres<T, V, E>> {
+        return $$MetroFactory<T, V, E>()
+      }
+
+      fun <T : Any?, V : Any?, E : V> newInstance(): ClassWithWheres<T, V, E> {
+        return ClassWithWheres()
+      }
+
+    }
+
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ClassWithWheres<T, V, E> {
+      return Companion.newInstance<ClassWithWheres<T, V, E>, /* null */, /* null */>()
+    }
+
+    fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithWheres<T, V, E> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory<T : Any?, V : Any?, E : Any?, LongName : Any?, NullableLongName : Any?> : Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> create(): Factory<ComplexMonster<T, V, E, LongName, NullableLongName>> {
+        return $$MetroFactory<T, V, E, LongName, NullableLongName>()
+      }
+
+      fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> newInstance(): ComplexMonster<T, V, E, LongName, NullableLongName> {
+        return ComplexMonster()
+      }
+
+    }
+
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ComplexMonster<T, V, E, LongName, NullableLongName> {
+      return Companion.newInstance<ComplexMonster<T, V, E, LongName, NullableLongName>, /* null */, /* null */, /* null */, /* null */>()
+    }
+
+    fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> mirrorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SimpleClass<T : Any?> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory<T : Any?> : Factory<SimpleClass<T>> {
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun <T : Any?> create(): Factory<SimpleClass<T>> {
+        return $$MetroFactory<T>()
+      }
+
+      fun <T : Any?> newInstance(): SimpleClass<T> {
+        return SimpleClass()
+      }
+
+    }
+
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): SimpleClass<T> {
+      return Companion.newInstance<SimpleClass<T>>()
+    }
+
+    fun <T : Any?> mirrorFunction(): SimpleClass<T> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+

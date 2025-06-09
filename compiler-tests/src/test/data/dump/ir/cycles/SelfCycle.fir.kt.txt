@@ -42,6 +42,10 @@ class S {
       return tmp_0
     }
 
+    fun mirrorFunction(sProvider: Provider<S>): S {
+      return error(message = "Never called")
+    }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -58,7 +62,7 @@ class S {
         return $$MetroMembersInjector(sLazy = sLazy)
       }
 
-      fun injectSLazy(instance: S, sLazy: Lazy<S>) {
+      fun injectSLazy(@Assisted instance: S, sLazy: Lazy<S>) {
         return instance.#sLazy = sLazy
       }
 

@@ -43,8 +43,16 @@ dokka {
   }
 }
 
+val ktfmtVersion = libs.versions.ktfmt.get()
+
 allprojects {
   apply(plugin = "com.diffplug.spotless")
+  configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+      substitute(module("com.facebook:ktfmt:$ktfmtVersion"))
+        .using(module("com.github.facebook:ktfmt:v$ktfmtVersion"))
+    }
+  }
   configure<SpotlessExtension> {
     format("misc") {
       target("*.gradle", "*.md", ".gitignore")
@@ -63,7 +71,7 @@ allprojects {
     }
     kotlin {
       target("src/**/*.kt")
-      ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
@@ -71,7 +79,7 @@ allprojects {
     }
     kotlinGradle {
       target("*.kts")
-      ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       licenseHeaderFile(

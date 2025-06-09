@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
+import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.appendBindingStack
@@ -32,6 +33,7 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
 import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
@@ -39,28 +41,32 @@ import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.tracer
 import dev.zacsweers.metro.compiler.ir.withEntry
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.tracing.Tracer
-import dev.zacsweers.metro.compiler.tracing.trace
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
@@ -75,18 +81,20 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getValueArgument
-import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.platform.isJs
 import org.jetbrains.kotlin.platform.isWasm
 import org.jetbrains.kotlin.platform.konan.isNative
 
@@ -94,6 +102,7 @@ internal class DependencyGraphTransformer(
   context: IrMetroContext,
   moduleFragment: IrModuleFragment,
   private val contributionData: IrContributionData,
+  private val parentTracer: Tracer,
 ) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -123,11 +132,12 @@ internal class DependencyGraphTransformer(
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM compilation hint gen can't be done until
+    // Native/WASM/JS compilation hint gen can't be done until
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints =
       options.generateHintProperties &&
         !pluginContext.platform.isNative() &&
+        !pluginContext.platform.isJs() &&
         !pluginContext.platform.isWasm()
     if (generateHints) {
       contributionHintIrTransformer.visitClass(declaration)
@@ -224,7 +234,6 @@ internal class DependencyGraphTransformer(
           graphDeclaration
             .metroGraphOrFail // Doesn't cover contributed graphs but they're not visible anyway
             .allCallableMembers(
-              metroContext,
               excludeInheritedMembers = false,
               excludeCompanionObjectMembers = true,
             )
@@ -235,7 +244,6 @@ internal class DependencyGraphTransformer(
             type
               .rawType()
               .allCallableMembers(
-                metroContext,
                 excludeInheritedMembers = false,
                 excludeCompanionObjectMembers = true,
                 functionFilter = { it.symbol !in seenSymbols },
@@ -397,7 +405,9 @@ internal class DependencyGraphTransformer(
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
-      if (declaration is IrFunction && declaration.isFakeOverriddenFromAny()) continue
+      if (declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)) {
+        continue
+      }
       val annotations = metroAnnotationsOf(declaration)
       if (annotations.isProvides) continue
       when (declaration) {
@@ -438,7 +448,7 @@ internal class DependencyGraphTransformer(
             val contextKey = IrContextualTypeKey.from(this, declaration.regularParameters[0])
             val memberInjectorTypeKey =
               contextKey.typeKey.copy(
-                symbols.metroMembersInjector.typeWith(contextKey.typeKey.type)
+                contextKey.typeKey.type.wrapInMembersInjector()
               )
             val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
             injectors += (metroFunction to finalContextKey)
@@ -684,12 +694,10 @@ internal class DependencyGraphTransformer(
       return
     }
 
-    val tracer =
-      tracer(
-        dependencyGraphDeclaration.kotlinFqName.shortName().asString(),
-        "Transform dependency graph",
-      )
-    tracer.trace { tracer ->
+    parentTracer.traceNested(
+      "Transform dependency graph",
+      dependencyGraphDeclaration.kotlinFqName.shortName().asString(),
+    ) { tracer ->
       transformDependencyGraph(
         graphClassId,
         dependencyGraphDeclaration,
@@ -728,7 +736,13 @@ internal class DependencyGraphTransformer(
 
     val bindingGraph =
       parentTracer.traceNested("Build binding graph") {
-        BindingGraphGenerator(metroContext, node, membersInjectorTransformer).generate()
+        BindingGraphGenerator(
+            metroContext,
+            node,
+            injectConstructorTransformer,
+            membersInjectorTransformer,
+          )
+          .generate()
       }
 
     try {
@@ -789,7 +803,6 @@ internal class DependencyGraphTransformer(
             result,
             tracer,
             providesTransformer,
-            injectConstructorTransformer,
             membersInjectorTransformer,
             assistedFactoryTransformer,
           )
@@ -797,6 +810,31 @@ internal class DependencyGraphTransformer(
       }
     } catch (e: Exception) {
       if (e is ExitProcessingException) {
+        // Implement unimplemented overrides to reduce noise in failure output
+        // Otherwise compiler may complain that these are invalid bytecode
+        node.accessors
+          .map { it.first }
+          .plus(node.injectors.map { it.first })
+          .plus(node.bindsFunctions.map { it.first })
+          .plus(node.contributedGraphs.map { it.value })
+          .forEach { function ->
+            with(function.ir) {
+              val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+              if (declarationToFinalize.isFakeOverride) {
+                declarationToFinalize.finalizeFakeOverride(
+                  metroGraph.thisReceiverOrFail.copyTo(this)
+                )
+                body =
+                  if (returnType != pluginContext.irBuiltIns.unitType) {
+                    stubExpressionBody()
+                  } else {
+                    pluginContext.createIrBuilder(symbol).run {
+                      irBlockBody { +irReturn(irGetObject(pluginContext.irBuiltIns.unitClass)) }
+                    }
+                  }
+              }
+            }
+          }
         throw e
       }
       throw AssertionError(

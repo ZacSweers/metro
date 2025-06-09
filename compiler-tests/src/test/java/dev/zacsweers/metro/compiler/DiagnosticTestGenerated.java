@@ -71,6 +71,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("CannotHaveContextParams.kt")
+    public void testCannotHaveContextParams() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveContextParams.kt");
+    }
+
+    @Test
     @TestMetadata("CannotHaveExtensionReceivers.kt")
     public void testCannotHaveExtensionReceivers() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveExtensionReceivers.kt");
@@ -80,6 +86,32 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("CannotHaveTypeArgs.kt")
     public void testCannotHaveTypeArgs() {
       runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/inject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Inject {
+    @Test
+    public void testAllFilesPresentInInject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/inject/member")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Member {
+      @Test
+      public void testAllFilesPresentInMember() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("FunctionMemberInjectsCannotHaveTypeParams.kt")
+      public void testFunctionMemberInjectsCannotHaveTypeParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/FunctionMemberInjectsCannotHaveTypeParams.kt");
+      }
     }
   }
 

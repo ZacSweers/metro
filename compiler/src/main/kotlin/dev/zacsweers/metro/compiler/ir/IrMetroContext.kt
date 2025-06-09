@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -65,6 +66,8 @@ internal interface IrMetroContext {
   val logFile: Path?
   val traceLogFile: Path?
   val timingsFile: Path?
+
+  val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
 
   fun log(message: String) {
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
@@ -130,8 +133,12 @@ internal interface IrMetroContext {
   fun IrAnnotationContainer?.scopeAnnotations() =
     annotationsAnnotatedWith(symbols.scopeAnnotations).mapToSet(::IrAnnotation)
 
-  fun IrAnnotationContainer.mapKeyAnnotation() =
+  /** Returns the `@MapKey` annotation itself, not any annotations annotated _with_ `@MapKey`. */
+  fun IrAnnotationContainer.explicitMapKeyAnnotation() =
     annotationsIn(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+
+  fun IrAnnotationContainer.mapKeyAnnotation() =
+    annotationsAnnotatedWith(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
 
   private fun IrAnnotationContainer?.annotationsAnnotatedWith(
     annotationsToLookFor: Collection<ClassId>
@@ -228,6 +235,9 @@ internal interface IrMetroContext {
           }
         }
       }
+
+      override val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper> =
+        mutableMapOf()
     }
   }
 }

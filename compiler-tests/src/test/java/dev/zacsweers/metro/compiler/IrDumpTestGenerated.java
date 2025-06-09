@@ -129,4 +129,20 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedBindingsInUnextendedGraphGetNoProviderFields.kt");
     }
   }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/injectconstructor")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Injectconstructor {
+    @Test
+    public void testAllFilesPresentInInjectconstructor() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ConstructorFunctionSignatures.kt")
+    public void testConstructorFunctionSignatures() {
+      runTest("compiler-tests/src/test/data/dump/ir/injectconstructor/ConstructorFunctionSignatures.kt");
+    }
+  }
 }

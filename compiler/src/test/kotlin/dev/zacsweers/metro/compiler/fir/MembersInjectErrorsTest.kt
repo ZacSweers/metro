@@ -215,9 +215,6 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
 
               }
             }
-            annotation class AnnotationClass(
-              @Inject val int: Int
-            )
             object ObjectClass {
               @Inject fun intFunction(int: Int) {
 
@@ -234,9 +231,8 @@ class MembersInjectErrorsTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: NonClasses.kt:8:15 Only regular classes can have member injections but containing class was ENUM_CLASS.
-          e: NonClasses.kt:13:15 Only regular classes can have member injections but containing class was ANNOTATION_CLASS.
-          e: NonClasses.kt:16:15 Only regular classes can have member injections but containing class was OBJECT.
-          e: NonClasses.kt:21:15 Only regular classes can have member injections but containing class was INTERFACE.
+          e: NonClasses.kt:13:15 Only regular classes can have member injections but containing class was OBJECT.
+          e: NonClasses.kt:18:15 Only regular classes can have member injections but containing class was INTERFACE.
         """
           .trimIndent()
       )

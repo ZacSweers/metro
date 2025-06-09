@@ -34,6 +34,10 @@ class X {
       return Companion.newInstance(y = <this>.#y.invoke())
     }
 
+    fun mirrorFunction(y: Y): X {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(y: Y) /* primary */ {
@@ -83,6 +87,10 @@ class Y {
 
     override operator fun invoke(): Y {
       return Companion.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
+    }
+
+    fun mirrorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
+      return error(message = "Never called")
     }
 
   }

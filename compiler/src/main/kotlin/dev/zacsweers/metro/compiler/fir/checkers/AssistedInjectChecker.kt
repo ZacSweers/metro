@@ -26,7 +26,9 @@ import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 
 internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
-  override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirClass) {
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -37,7 +39,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     if (!isAssistedFactory) return
 
-    declaration.validateApiDeclaration(context, reporter, "@Assisted.Factory declarations") {
+    declaration.validateApiDeclaration("@Assisted.Factory declarations", checkConstructor = true) {
       return
     }
 
@@ -45,7 +47,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     val function =
       declaration.singleAbstractFunction(
         session,
-        context,
         reporter,
         "@AssistedFactory declarations",
         allowProtected = true,
@@ -59,7 +60,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         function.source ?: source,
         ASSISTED_INJECTION_ERROR,
         "`@AssistedFactory` functions cannot have type parameters.",
-        context,
       )
       return
     }
@@ -67,7 +67,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // Ensure target type has an inject constructor
     val targetType = function.resolvedReturnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
-      targetType.symbol.findInjectConstructor(session, context, reporter, checkClass = true) {
+      targetType.symbol.findInjectConstructor(session, checkClass = true) {
         return
       }
     if (injectConstructor == null) {
@@ -75,7 +75,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         function.source ?: source,
         ASSISTED_INJECTION_ERROR,
         "Invalid return type: ${targetType.symbol.classId.asSingleFqName()}. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
-        context,
       )
       return
     }
@@ -95,7 +94,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         targetType.source,
         ASSISTED_INJECTION_ERROR,
         "Assisted parameter mismatch. Expected ${functionParams.size} assisted parameters but found ${constructorAssistedParams.size}.",
-        context,
       )
       return
     }
@@ -110,7 +108,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         targetType.source,
         ASSISTED_INJECTION_ERROR,
         "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
-        context,
       )
       return
     }
@@ -125,7 +122,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         targetType.source,
         ASSISTED_INJECTION_ERROR,
         "Assisted constructor parameters must be unique. Found duplicates: $dupeConstructorKeys",
-        context,
       )
       return
     }
@@ -155,7 +151,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             appendLine(missingFromConstructor)
           }
         },
-        context,
       )
       return
     }
@@ -184,7 +179,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       ): FirAssistedParameterKey {
         return FirAssistedParameterKey(
           typeKey,
-          annotations
+          resolvedCompilerAnnotationsWithClassIds
             .annotationsIn(session, session.classIds.assistedAnnotations)
             .singleOrNull()
             ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)

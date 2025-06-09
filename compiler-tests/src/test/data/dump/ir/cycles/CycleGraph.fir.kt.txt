@@ -39,6 +39,10 @@ class A {
       return Companion.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
     }
 
+    fun mirrorFunction(b: B, e: E): A {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(b: B, e: E) /* primary */ {
@@ -83,6 +87,10 @@ class B {
 
     override operator fun invoke(): B {
       return Companion.newInstance(c = <this>.#c.invoke())
+    }
+
+    fun mirrorFunction(c: C): B {
+      return error(message = "Never called")
     }
 
   }
@@ -145,6 +153,10 @@ class C {
       return tmp_0
     }
 
+    fun mirrorFunction(aProvider: Provider<A>): C {
+      return error(message = "Never called")
+    }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -162,11 +174,11 @@ class C {
         return $$MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
-      fun injectALazy(instance: C, aLazy: Lazy<A>) {
+      fun injectALazy(@Assisted instance: C, aLazy: Lazy<A>) {
         return instance.#aLazy = aLazy
       }
 
-      fun injectALazyProvider(instance: C, aLazyProvider: Provider<Lazy<A>>) {
+      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Provider<Lazy<A>>) {
         return instance.#aLazyProvider = aLazyProvider
       }
 
@@ -229,6 +241,10 @@ class D {
       return Companion.newInstance(b = <this>.#b.invoke())
     }
 
+    fun mirrorFunction(b: B): D {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(b: B) /* primary */ {
@@ -275,6 +291,10 @@ class E {
       return Companion.newInstance(d = <this>.#d.invoke())
     }
 
+    fun mirrorFunction(d: D): E {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(d: D) /* primary */ {
@@ -307,6 +327,7 @@ interface ChildCycleGraph {
     private /* final field */ val cycleGraphInstanceProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = cycleGraph)
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     constructor(@Extends cycleGraph: CycleGraph) /* primary */ {
       super/*Any*/()
@@ -315,13 +336,13 @@ interface ChildCycleGraph {
       when {
         cycleGraph !is $$MetroGraph -> throw illegalArgumentException(arg0 = "Constructor parameter cycleGraph _must_ be a Metro-compiler-generated instance of CycleGraph but was " + cycleGraph.toString())
       }
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazy = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazyProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override val a: A
       override get(): A {
-        return Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))).invoke()
+        return <this>.#aProvider.invoke()
       }
 
     override val obj: Any
@@ -345,7 +366,7 @@ interface ChildCycleGraph {
 
 }
 
-@DependencyGraph(, isExtendable = true)
+@DependencyGraph(isExtendable = true)
 interface CycleGraph {
   companion object Companion {
     private constructor() /* primary */ {
@@ -367,17 +388,18 @@ interface CycleGraph {
     private /* final field */ val cycleGraphProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazy = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazyProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override fun a(): A {
-      return Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))).invoke()
+      return <this>.#aProvider.invoke()
     }
 
     override fun c(): C {
@@ -392,7 +414,7 @@ interface CycleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideObjectWithCycle", isPropertyAccessor = false)
+  @ProvidesCallableId(callableName = "provideObjectWithCycle", isPropertyAccessor = false, startOffset = 443, endOffset = 540)
   class ProvideObjectWithCycle$$MetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj
@@ -421,6 +443,10 @@ interface CycleGraph {
 
     override operator fun invoke(): Any {
       return Companion.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
+    }
+
+    fun mirrorFunction(obj: Provider<Any>): Any {
+      return error(message = "Never called")
     }
 
   }
