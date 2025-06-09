@@ -185,11 +185,17 @@ internal class IrBindingGraph(
           putAll(injectors)
         }
 
-        // If it's extendable, we need to add keeps for scoped providers
+        // If it's extendable, we need to add keeps for providers, including extended graphs'
+        // providers
         val keep =
           if (node.isExtendable) {
             buildSet {
-              addAll(node.providerFactories.map { it.first })
+              for ((key) in node.providerFactories) {
+                add(key)
+              }
+              for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
+                add(key)
+              }
               // TODO when adding discovered scoped class bindings, it would go here
             }
           } else {
