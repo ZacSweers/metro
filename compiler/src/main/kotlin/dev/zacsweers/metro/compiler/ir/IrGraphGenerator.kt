@@ -745,6 +745,7 @@ internal class IrGraphGenerator(
 
     // Implement abstract injectors
     injectors.forEach { (overriddenFunction, contextKey) ->
+      val typeKey = contextKey.typeKey
       overriddenFunction.ir.apply {
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = regularParameters[0]
