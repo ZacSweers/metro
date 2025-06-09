@@ -17,7 +17,7 @@ class GenerateProjectsCommand : CliktCommand() {
   }
 
   private val mode by
-    option("--mode", "-m", help = "Build mode: metro or anvil")
+    option("--mode", "-m", help = "Build mode: metro, anvil, or kotlin-inject-anvil")
       .enum<BuildMode>(ignoreCase = true)
       .default(BuildMode.METRO)
 
@@ -266,6 +266,7 @@ class GenerateProjectsCommand : CliktCommand() {
   enum class BuildMode {
     METRO,
     ANVIL,
+    KOTLIN_INJECT_ANVIL,
   }
 
   enum class ProcessorMode {
@@ -348,6 +349,25 @@ metro {
     includeJavax()
     includeAnvil()
   }
+}
+"""
+          .trimIndent()
+
+      BuildMode.KOTLIN_INJECT_ANVIL ->
+        """
+plugins {
+  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.ksp)
+}
+
+dependencies {
+  implementation("me.tatarka.inject:kotlin-inject-runtime:0.8.0")
+  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime:0.1.6")
+  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime-optional:0.1.6")
+  implementation(project(":core:foundation"))
+  ksp("me.tatarka.inject:kotlin-inject-compiler-ksp:0.8.0")
+  ksp("software.amazon.lastmile.kotlin.inject.anvil:compiler:0.1.6")
+$dependencies
 }
 """
           .trimIndent()
@@ -460,6 +480,18 @@ $dependencyImports
 """
             .trimIndent()
 
+        BuildMode.KOTLIN_INJECT_ANVIL ->
+          """
+import software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding
+import software.amazon.lastmile.kotlin.inject.anvil.ContributesSubcomponent
+import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
+import software.amazon.lastmile.kotlin.inject.anvil.AppScope
+import me.tatarka.inject.annotations.Inject
+import me.tatarka.inject.annotations.Scope
+$dependencyImports
+"""
+            .trimIndent()
+
         BuildMode.ANVIL ->
           """
 import com.squareup.anvil.annotations.ContributesBinding
@@ -477,12 +509,14 @@ $dependencyImports
     val scopeAnnotation =
       when (buildMode) {
         BuildMode.METRO -> "@SingleIn(AppScope::class)"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.ANVIL -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
 
@@ -524,12 +558,14 @@ $subcomponent
     val scopeAnnotation =
       when (buildMode) {
         BuildMode.METRO -> "@SingleIn(AppScope::class)"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.ANVIL -> "@Singleton"
       }
 
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
 
@@ -551,15 +587,21 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
+
+    val multibindingAnnotation = when (buildMode) {
+      BuildMode.KOTLIN_INJECT_ANVIL -> "@ContributesBinding($scopeParam, boundType = Plugin::class, multibinding = true)"
+      else -> "@ContributesMultibinding($scopeParam, boundType = Plugin::class)"
+    }
 
     return """
 interface ${className}Plugin$index : Plugin {
   override fun execute(): String
 }
 
-@ContributesMultibinding($scopeParam, boundType = Plugin::class)
+$multibindingAnnotation
 class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$index {
   override fun execute() = "${className.lowercase()}-plugin-$index"
 }
@@ -575,15 +617,21 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
+        BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.ANVIL -> "Unit::class"
       }
+
+    val multibindingAnnotation = when (buildMode) {
+      BuildMode.KOTLIN_INJECT_ANVIL -> "@ContributesBinding($scopeParam, boundType = Initializer::class, multibinding = true)"
+      else -> "@ContributesMultibinding($scopeParam, boundType = Initializer::class)"
+    }
 
     return """
 interface ${className}Initializer$index : Initializer {
   override fun initialize()
 }
 
-@ContributesMultibinding($scopeParam, boundType = Initializer::class)
+$multibindingAnnotation
 class ${className}InitializerImpl$index @Inject constructor() : ${className}Initializer$index {
   override fun initialize() = println("Initializing ${className.lowercase()} $index")
 }
@@ -648,6 +696,42 @@ $subcomponentAccessors
 
 object ${className}Scope
 """
+      BuildMode.KOTLIN_INJECT_ANVIL ->
+        """
+// Subcomponent-scoped services that depend on parent scope
+${(1..3).joinToString("\n") { i ->
+          val dependencyParams = if (availableDependencies.isNotEmpty()) {
+            availableDependencies.joinToString(",\n  ") { "private val $it: $it" }
+          } else {
+            "// No parent dependencies available"
+          }
+
+          """interface ${className}LocalService$i
+
+@${className}Scope
+@ContributesBinding(${className}Scope::class)
+class ${className}LocalServiceImpl$i @Inject constructor(${if (availableDependencies.isNotEmpty()) "\n  $dependencyParams\n" else ""}) : ${className}LocalService$i"""
+        }}
+
+@${className}Scope
+@ContributesSubcomponent(
+  scope = ${className}Scope::class
+)
+interface ${className}Subcomponent {
+  ${if (availableDependencies.isNotEmpty()) "// Access parent scope bindings\n$parentAccessors\n  \n" else ""}// Access subcomponent scope bindings
+$subcomponentAccessors
+  
+  @ContributesSubcomponent.Factory(AppScope::class)
+  interface Factory {
+    fun create${className}Subcomponent(): ${className}Subcomponent
+  }
+}
+
+@Scope
+@Retention(AnnotationRetention.RUNTIME)
+annotation class ${className}Scope
+"""
+
       BuildMode.ANVIL ->
         """
 // Subcomponent-scoped services that depend on parent scope
@@ -798,6 +882,31 @@ metro {
 }
 """
 
+        BuildMode.KOTLIN_INJECT_ANVIL ->
+          """
+plugins {
+  id("org.jetbrains.kotlin.jvm")
+  alias(libs.plugins.ksp)
+  application
+}
+
+dependencies {
+  implementation("me.tatarka.inject:kotlin-inject-runtime:0.8.0")
+  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime:0.1.6")
+  implementation("software.amazon.lastmile.kotlin.inject.anvil:runtime-optional:0.1.6")
+  implementation(project(":core:foundation"))
+  ksp("me.tatarka.inject:kotlin-inject-compiler-ksp:0.8.0")
+  ksp("software.amazon.lastmile.kotlin.inject.anvil:compiler:0.1.6")
+
+  // Depend on all generated modules to aggregate everything
+${allModules.joinToString("\n") { "  implementation(project(\":${it.layer.path}:${it.name}\"))" }}
+}
+
+application {
+  mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
+}
+"""
+
         BuildMode.ANVIL ->
           when (processor) {
             ProcessorMode.KSP ->
@@ -935,6 +1044,46 @@ fun main() {
   val initializers = graph.getAllInitializers()
   
   println("Metro benchmark graph successfully created!")
+  println("  - Fields: ${'$'}fields")
+  println("  - Methods: ${'$'}methods")
+  println("  - Plugins: ${'$'}{plugins.size}")
+  println("  - Initializers: ${'$'}{initializers.size}")
+  println("  - Total modules: ${allModules.size}")
+  println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
+}
+"""
+
+        BuildMode.KOTLIN_INJECT_ANVIL ->
+          """
+package dev.zacsweers.metro.benchmark.app.component
+
+import me.tatarka.inject.annotations.Component
+import me.tatarka.inject.annotations.Provides
+import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
+import software.amazon.lastmile.kotlin.inject.anvil.AppScope
+import software.amazon.lastmile.kotlin.inject.anvil.MergeComponent
+import dev.zacsweers.metro.benchmark.core.foundation.Plugin
+import dev.zacsweers.metro.benchmark.core.foundation.Initializer
+$serviceImports
+
+@SingleIn(AppScope::class)
+@MergeComponent(AppScope::class)
+abstract class AppComponent {
+  // Multibinding accessors
+  abstract val allPlugins: Set<Plugin>
+  abstract val allInitializers: Set<Initializer>
+}
+
+fun main() {
+  val appComponent = AppComponent::class.create()
+  val fields = appComponent.javaClass.declaredFields.size
+  val methods = appComponent.javaClass.declaredMethods.size
+  
+  // Exercise some accessors to ensure bindings are generated
+  val plugins = appComponent.allPlugins
+  val initializers = appComponent.allInitializers
+  
+  println("Pure Kotlin-inject-anvil benchmark graph successfully created!")
   println("  - Fields: ${'$'}fields")
   println("  - Methods: ${'$'}methods")
   println("  - Plugins: ${'$'}{plugins.size}")

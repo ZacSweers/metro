@@ -79,6 +79,8 @@ generate_projects() {
     if [ "$mode" = "anvil" ]; then
         print_status "Using $processor processor"
         kotlin generate-projects.main.kts --mode "$mode" --processor "$processor" --count "$count"
+    elif [ "$mode" = "kotlin-inject-anvil" ]; then
+        kotlin generate-projects.main.kts --mode "kotlin-inject-anvil" --count "$count"
     else
         kotlin generate-projects.main.kts --mode "$mode" --count "$count"
     fi
@@ -97,12 +99,19 @@ run_scenarios() {
     local processor=${2:-""}
     
     local scenario_prefix
+    local mode_name
     if [ "$mode" = "metro" ]; then
         scenario_prefix="metro"
+        mode_name="metro"
     elif [ "$mode" = "anvil" ] && [ "$processor" = "ksp" ]; then
         scenario_prefix="anvil_ksp"
+        mode_name="anvil_ksp"
     elif [ "$mode" = "anvil" ] && [ "$processor" = "kapt" ]; then
         scenario_prefix="anvil_kapt"
+        mode_name="anvil_kapt"
+    elif [ "$mode" = "kotlin-inject-anvil" ]; then
+        scenario_prefix="kotlin_inject_anvil"
+        mode_name="kotlin_inject_anvil"
     else
         print_error "Invalid mode/processor combination: $mode/$processor"
         exit 1
@@ -114,16 +123,18 @@ run_scenarios() {
         "${scenario_prefix}_raw_compilation"
     )
     
-    local output_file="$RESULTS_DIR/${mode}_${processor}_${TIMESTAMP}.html"
+    # Create mode-specific results directory to avoid overwrites
+    local mode_results_dir="$RESULTS_DIR/${mode_name}_${TIMESTAMP}"
+    mkdir -p "$mode_results_dir"
     
     print_status "Running scenarios for $mode${processor:+ with $processor}: ${scenarios[*]}"
-    print_status "Results will be saved to: $output_file"
+    print_status "Results will be saved to: $mode_results_dir"
     
     # Run gradle-profiler with the scenarios
     gradle-profiler \
         --benchmark \
         --scenario-file benchmark.scenarios \
-        --output-dir "$RESULTS_DIR" \
+        --output-dir "$mode_results_dir" \
         --gradle-user-home ~/.gradle \
         "${scenarios[@]}" \
         || {
@@ -134,6 +145,40 @@ run_scenarios() {
     print_success "Benchmark completed for $mode mode"
 }
 
+# Function to merge benchmark results
+merge_benchmark_results() {
+    local timestamp=$1
+    
+    print_header "Merging Benchmark Results"
+    
+    # Define test types
+    local test_types=("abi_change" "non_abi_change" "raw_compilation")
+    
+    for test_type in "${test_types[@]}"; do
+        print_status "Checking for $test_type results to merge"
+        
+        # Check if we have multiple mode directories for this timestamp
+        local mode_count=0
+        for mode_dir in "$RESULTS_DIR"/*"$timestamp"; do
+            if [ -d "$mode_dir" ] && [ -f "$mode_dir/benchmark.html" ]; then
+                ((mode_count++))
+            fi
+        done
+        
+        if [ $mode_count -gt 1 ]; then
+            print_status "Merging $test_type results from $mode_count modes"
+            
+            if ./merge_benchmarks.sh "$test_type" "$timestamp" "$RESULTS_DIR"; then
+                print_success "Successfully merged $test_type results"
+            else
+                print_warning "Failed to merge $test_type results"
+            fi
+        else
+            print_warning "Not enough modes to merge for $test_type (found $mode_count)"
+        fi
+    done
+}
+
 # Function to run all benchmarks
 run_all_benchmarks() {
     local count=${1:-$DEFAULT_MODULE_COUNT}
@@ -142,6 +187,12 @@ run_all_benchmarks() {
     print_status "Module count: $count"
     print_status "Results directory: $RESULTS_DIR"
     print_status "Timestamp: $TIMESTAMP"
+    
+    # Wipe existing results directory if present
+    if [ -d "$RESULTS_DIR" ]; then
+        print_status "Wiping existing results directory"
+        rm -rf "$RESULTS_DIR"
+    fi
     
     # Create results directory
     mkdir -p "$RESULTS_DIR"
@@ -161,6 +212,11 @@ run_all_benchmarks() {
     generate_projects "anvil" "kapt" "$count"
     run_scenarios "anvil" "kapt"
     
+    # 4. Kotlin-inject + Anvil Mode
+    print_header "Running Kotlin-inject + Anvil Mode Benchmarks"
+    generate_projects "kotlin-inject-anvil" "" "$count"
+    run_scenarios "kotlin-inject-anvil"
+    
     print_header "Benchmark Suite Complete"
     print_success "All benchmarks completed successfully!"
     print_status "Results are available in: $RESULTS_DIR"
@@ -170,6 +226,9 @@ run_all_benchmarks() {
         print_status "Generated result files:"
         ls -la "$RESULTS_DIR"/*"$TIMESTAMP"* | sed 's/^/  /'
     fi
+    
+    # Merge results across modes
+    merge_benchmark_results "$TIMESTAMP"
 }
 
 # Function to run specific mode benchmarks
@@ -200,6 +259,7 @@ show_usage() {
     echo "  metro [COUNT]                 Run only Metro mode benchmarks"
     echo "  anvil-ksp [COUNT]            Run only Anvil + KSP mode benchmarks"
     echo "  anvil-kapt [COUNT]           Run only Anvil + KAPT mode benchmarks"
+    echo "  kotlin-inject-anvil [COUNT]  Run only Kotlin-inject + Anvil mode benchmarks"
     echo "  help                         Show this help message"
     echo ""
     echo "Options:"
@@ -252,6 +312,11 @@ main() {
             local count=${2:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
             run_mode_benchmark "anvil" "kapt" "$count"
+            ;;
+        "kotlin-inject-anvil")
+            local count=${2:-$DEFAULT_MODULE_COUNT}
+            validate_count "$count"
+            run_mode_benchmark "kotlin-inject-anvil" "" "$count"
             ;;
         "help"|"-h"|"--help")
             show_usage
