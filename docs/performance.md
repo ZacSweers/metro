@@ -16,9 +16,19 @@ Metro's compiler plugin is designed to be _fast_. Running as a compiler plugin a
 
 To benchmark against Anvil-KSP, Dagger (KSP or KAPT), and Kotlin-Inject (+ Anvil), there is a [benchmark](https://github.com/ZacSweers/metro/tree/main/benchmark) directory with a generator script. There are more details in its README, but in short it generates a nontrivial multi-module project (default is 500 modules but is configurable) and benchmarks with gradle-profiler.
 
-Results as of Metro `0.3.7`, Anvil-KSP `0.4.1`, Dagger `2.56.2`, and Kotlin-Inject `0.8.0` with kotlin-inject-anvil `0.1.6` are as follows.
+!!! tip "Summary"
+    Results as of Metro `0.3.7`, Anvil-KSP `0.4.1`, Dagger `2.56.2`, and Kotlin-Inject `0.8.0` with kotlin-inject-anvil `0.1.6` are as follows.
+    
+    _(Median times in seconds)_
+    
+    |                      | Metro | Anvil KSP     | Anvil Kapt    | Kotlin-Inject |
+    |----------------------|-------|---------------|---------------|---------------|
+    | **ABI**              | 5.3s  | 40.5s (+663%) | 25.3s (+377%) | 10.3s (+94%)  | 
+    | **Non-ABI**          | 2.6s  | 3.8s (+45%)   | 7.1s (+171%)  | 3.3s (+26%)   | 
+    | **Graph processing** | 6.9s  | 28.9s (+318%) | 8.7s (+25%)   | 11s (+59%)    |
 
-**Modes**
+#### Modes
+
 - Metro: Purely running metro
 - Anvil KSP: Running dagger-ksp with anvil-ksp for contribution merging.
 - Anvil KAPT: Running dagger with kapt with anvil-ksp for contribution merging.
@@ -28,23 +38,11 @@ Results as of Metro `0.3.7`, Anvil-KSP `0.4.1`, Dagger `2.56.2`, and Kotlin-Inje
 
 This benchmark makes ABI-breaking source changes in a lower level module. This is where Metro shines the most.
 
-(Median times)
-
-| Metro | Anvil KSP     | Anvil Kapt    | Kotlin-Inject |
-|-------|---------------|---------------|---------------|
-| 5.3s  | 40.5s (+663%) | 25.3s (+377%) | 10.3s (+94%)  | 
-
 ![](benchmark_images/benchmark_abi.png)
 
 #### Non-ABI Change
 
 This benchmark makes non-ABI-breaking source changes in a lower level module. The differences are less significant here as KSP is quite good at compilation avoidance now too. The outlier here is KAPT, which still has to run stub gen + apt and cannot fully avoid it.
-
-(Median times)
-
-| Metro | Anvil KSP   | Anvil Kapt   | Kotlin-Inject |
-|-------|-------------|--------------|---------------|
-| 2.6s  | 3.8s (+45%) | 7.1s (+171%) | 3.3s (+26%)   | 
 
 ![](benchmark_images/benchmark_noabi.png)
 
@@ -53,12 +51,6 @@ This benchmark makes non-ABI-breaking source changes in a lower level module. Th
 This benchmark reruns the top-level merging graph/component where all the downstream contributions are merged. This also builds the full dependency graph and any contributed graph extensions/subcomponents.
 
 Metro again shines here. Dagger-KSP seems to have a bottleneck that disproportionately affects it here too.
-
-(Median times)
-
-| Metro | Anvil KSP     | Anvil Kapt  | Kotlin-Inject |
-|-------|---------------|-------------|---------------|
-| 6.9s  | 28.9s (+318%) | 8.7s (+25%) | 11s (+59%)    | 
 
 ![](benchmark_images/benchmark_graph_component.png)
 
