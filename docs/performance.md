@@ -1,13 +1,10 @@
 # Performance
 
-Metro strives to be a performant solution with minimal overhead at build-time and generating fast, efficient code at
-runtime. As build performance is the primary consideration for most developers considering this, most of this doc will
-be focused on that.
+Metro strives to be a performant solution with minimal overhead at build-time and generating fast, efficient code at runtime. As build performance is the primary consideration for most developers considering this, most of this doc will be focused on that.
 
 ## Build Performance
 
 Metro's compiler plugin is designed to be _fast_. Running as a compiler plugin allows it to:
-
 - Avoid generating new sources that need to be compiled
 - Avoid running KSP/KAPT
 - Generate IR that lowers directly into target platforms
@@ -17,16 +14,11 @@ Metro's compiler plugin is designed to be _fast_. Running as a compiler plugin a
 
 ### Benchmarking
 
-To benchmark against Anvil-KSP, Dagger (KSP or KAPT), and Kotlin-Inject (+ Anvil), there is
-a [benchmark](https://github.com/ZacSweers/metro/tree/main/benchmark) directory with a generator script. There are more
-details in its README, but in short it generates a nontrivial multi-module project (default is 500 modules but is
-configurable) and benchmarks with gradle-profiler.
+To benchmark against Anvil-KSP, Dagger (KSP or KAPT), and Kotlin-Inject (+ Anvil), there is a [benchmark](https://github.com/ZacSweers/metro/tree/main/benchmark) directory with a generator script. There are more details in its README, but in short it generates a nontrivial multi-module project (default is 500 modules but is configurable) and benchmarks with gradle-profiler.
 
-Results as of Metro `0.3.7`, Anvil-KSP `0.4.1`, Dagger `2.56.2`, and Kotlin-Inject `0.8.0` with kotlin-inject-anvil
-`0.1.6` are as follows.
+Results as of Metro `0.3.7`, Anvil-KSP `0.4.1`, Dagger `2.56.2`, and Kotlin-Inject `0.8.0` with kotlin-inject-anvil `0.1.6` are as follows.
 
 **Modes**
-
 - Metro: Purely running metro
 - Anvil KSP: Running dagger-ksp with anvil-ksp for contribution merging.
 - Anvil KAPT: Running dagger with kapt with anvil-ksp for contribution merging.
@@ -46,9 +38,7 @@ This benchmark makes ABI-breaking source changes in a lower level module. This i
 
 #### Non-ABI Change
 
-This benchmark makes non-ABI-breaking source changes in a lower level module. The differences are less significant here
-as KSP is quite good at compilation avoidance now too. The outlier here is KAPT, which still has to run stub gen + apt
-and cannot fully avoid it.
+This benchmark makes non-ABI-breaking source changes in a lower level module. The differences are less significant here as KSP is quite good at compilation avoidance now too. The outlier here is KAPT, which still has to run stub gen + apt and cannot fully avoid it.
 
 (Median times)
 
@@ -60,8 +50,7 @@ and cannot fully avoid it.
 
 #### Raw Graph/Component Processing
 
-This benchmark reruns the top-level merging graph/component where all the downstream contributions are merged. This also
-builds the full dependency graph and any contributed graph extensions/subcomponents.
+This benchmark reruns the top-level merging graph/component where all the downstream contributions are merged. This also builds the full dependency graph and any contributed graph extensions/subcomponents.
 
 Metro again shines here. Dagger-KSP seems to have a bottleneck that disproportionately affects it here too.
 
@@ -77,9 +66,9 @@ Metro again shines here. Dagger-KSP seems to have a bottleneck that disproportio
 
 Below are some results from real-world projects, shared with the developers' permission.
 
-!!! note "Gabriel Ittner from Freeletics shared"
-I've got Metro working on our code base now using the Kotlin 2.2.0 preview
-
+!!! note "Gabriel Ittner from Freeletics"
+    I've got Metro working on our code base now using the Kotlin 2.2.0 preview
+    
     Background numbers
     
     - 551 modules total
@@ -94,13 +83,12 @@ I've got Metro working on our code base now using the Kotlin 2.2.0 preview
     - ABI changes in other modules ~ 40% - 55% faster
     - non ABI changes in other modules unchanged or minimally faster
 
-!!! note "Madis Pink from emulator.wtf shared"
-I got our monorepo migrated over from anvil, it sliced off one third of our Gradle tasks and `./gradlew classes` from
-clean is ~4x faster
+!!! note "Madis Pink from emulator.wtf"
+    I got our monorepo migrated over from anvil, it sliced off one third of our Gradle tasks and `./gradlew classes` from clean is ~4x faster
 
-!!! note "Kevin Chiu from BandLab shared"
-We migrated our main project at BandLab to metro, finally!
-
+!!! note "Kevin Chiu from BandLab"
+    We migrated our main project at BandLab to metro, finally!
+    
     Some context about our project:
 
     - We use Dagger + Anvil KSP
@@ -109,15 +97,14 @@ We migrated our main project at BandLab to metro, finally!
 
     | Build                             | Dagger + Anvil KSP | Metro (Δ)              |
     |-----------------------------------|--------------------|------------------------|
-    | UiKit ABI change (Incremental)    | 59.7 s             | 26.9 s (55 % faster)   |
-    | Root ABI change (Incremental)     | 95.7 s             | 48.1 s (49.8 % faster) |
-    | Root non-ABI change (Incremental) | 70.9 s             | 38.9 s (45.2 % faster) |
-    | Clean build                       | 327 s              | 288 s (11.7 % faster)  |
+    | UiKit ABI change (Incremental)    | 59.7 s             | 26.9 s (55% faster)   |
+    | Root ABI change (Incremental)     | 95.7 s             | 48.1 s (49.8% faster) |
+    | Root non-ABI change (Incremental) | 70.9 s             | 38.9 s (45.2% faster) |
+    | Clean build                       | 327 s              | 288 s (11.7% faster)  |
 
 ### Reporting
 
-If you want to investigate the performance of different stages of Metro's compiler pipeline, you can enable reporting in
-the Gradle DSL.
+If you want to investigate the performance of different stages of Metro's compiler pipeline, you can enable reporting in the Gradle DSL.
 
 ```kotlin
 metro {
@@ -180,8 +167,6 @@ Among the reports written there, there will also be a trace log that dumps a sim
 
 Metro’s compiler generates Dagger-style factory classes for every injection site.
 
-The same factory classes are reused across modules and downstream builds, so there’s no duplicated glue code or runtime
-discovery cost.
+The same factory classes are reused across modules and downstream builds, so there’s no duplicated glue code or runtime discovery cost.
 
-Because the full dependency graph is wired at compile-time, each binding is accessed through a direct field reference in
-the generated code. No reflection, no hashmap lookups, no runtime service locator hops, etc.
+Because the full dependency graph is wired at compile-time, each binding is accessed through a direct field reference in the generated code. No reflection, no hashmap lookups, no runtime service locator hops, etc.
