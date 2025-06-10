@@ -591,10 +591,12 @@ class ${className}ServiceImpl$index @Inject constructor() : ${className}Service$
         BuildMode.ANVIL -> "Unit::class"
       }
 
-    val multibindingAnnotation = when (buildMode) {
-      BuildMode.KOTLIN_INJECT_ANVIL -> "@ContributesBinding($scopeParam, boundType = Plugin::class, multibinding = true)"
-      else -> "@ContributesMultibinding($scopeParam, boundType = Plugin::class)"
-    }
+    val multibindingAnnotation =
+      when (buildMode) {
+        BuildMode.KOTLIN_INJECT_ANVIL ->
+          "@ContributesBinding($scopeParam, boundType = Plugin::class, multibinding = true)"
+        else -> "@ContributesMultibinding($scopeParam, boundType = Plugin::class)"
+      }
 
     return """
 interface ${className}Plugin$index : Plugin {
@@ -621,10 +623,12 @@ class ${className}PluginImpl$index @Inject constructor() : ${className}Plugin$in
         BuildMode.ANVIL -> "Unit::class"
       }
 
-    val multibindingAnnotation = when (buildMode) {
-      BuildMode.KOTLIN_INJECT_ANVIL -> "@ContributesBinding($scopeParam, boundType = Initializer::class, multibinding = true)"
-      else -> "@ContributesMultibinding($scopeParam, boundType = Initializer::class)"
-    }
+    val multibindingAnnotation =
+      when (buildMode) {
+        BuildMode.KOTLIN_INJECT_ANVIL ->
+          "@ContributesBinding($scopeParam, boundType = Initializer::class, multibinding = true)"
+        else -> "@ContributesMultibinding($scopeParam, boundType = Initializer::class)"
+      }
 
     return """
 interface ${className}Initializer$index : Initializer {
