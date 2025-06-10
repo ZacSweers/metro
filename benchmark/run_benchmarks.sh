@@ -261,6 +261,8 @@ run_mode_benchmark() {
     run_scenarios "$mode" "$processor"
     
     print_success "$mode${processor:+ + $processor} benchmark completed!"
+
+    ./generate_performance_summary.sh "${TIMESTAMP}" "$RESULTS_DIR"
 }
 
 # Function to show usage information
