@@ -110,6 +110,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testSmokeTest() {
       runTest("compiler-tests/src/test/data/box/cycles/SmokeTest.kt");
     }
+
+    @Test
+    @TestMetadata("AssistedFactoryCycle.kt")
+    public void testAssistedFactoryCycle() {
+      runTest("compiler-tests/src/test/data/box/cycles/AssistedFactoryCycle.kt");
+    }
   }
 
   @Nested
