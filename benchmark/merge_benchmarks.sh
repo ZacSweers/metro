@@ -22,14 +22,8 @@ print_success() {
 extract_json() {
     local html_file="$1"
     
-    # Extract JSON between "const benchmarkResult =" and "};"
-    sed -n '/const benchmarkResult =/,/^};$/p' "$html_file" | \
-    sed '1s/^const benchmarkResult =//' | \
-    sed '$s/;$//' | \
-    # Remove any trailing whitespace and ensure proper JSON format
-    sed '/^$/d' | \
-    head -n -1 | \
-    tail -n +1
+    # Extract JSON between "const benchmarkResult =" and the closing "}"
+    awk '/const benchmarkResult =/{flag=1; next} flag && /^}$/{print; exit} flag' "$html_file"
 }
 
 # Function to create merged HTML from JSON data
@@ -236,26 +230,29 @@ merge_benchmarks() {
     local json_files=()
     local scenarios=()
     
-    # Extract JSON from each mode's HTML file
+    # Extract JSON from each mode's scenario-specific HTML file
     for mode_dir in "$results_dir"/*"$timestamp"; do
         if [ -d "$mode_dir" ]; then
-            local html_file="$mode_dir/benchmark.html"
-            if [ -f "$html_file" ]; then
-                local json_file="$temp_dir/$(basename "$mode_dir").json"
-                
-                print_status "Extracting JSON from $html_file"
-                if extract_json "$html_file" > "$json_file"; then
-                    # Filter scenarios for this test type and add to scenarios array
-                    local filtered_scenarios=$(jq --arg test_type "$test_type" '
-                        .scenarios | map(select(.definition.name | contains($test_type)))
-                    ' "$json_file")
-                    
-                    if [ "$filtered_scenarios" != "[]" ]; then
-                        scenarios+=("$filtered_scenarios")
-                        json_files+=("$json_file")
+            # Look for scenario directories containing the test type
+            for scenario_dir in "$mode_dir"/*"$test_type"; do
+                if [ -d "$scenario_dir" ]; then
+                    local html_file="$scenario_dir/benchmark.html"
+                    if [ -f "$html_file" ]; then
+                        local json_file="$temp_dir/$(basename "$mode_dir")_$(basename "$scenario_dir").json"
+                        
+                        print_status "Extracting JSON from $html_file"
+                        if extract_json "$html_file" > "$json_file"; then
+                            # Use the scenarios from this file directly (should already be filtered for this test type)
+                            local scenarios_data=$(jq '.scenarios' "$json_file")
+                            
+                            if [ "$scenarios_data" != "[]" ] && [ "$scenarios_data" != "null" ]; then
+                                scenarios+=("$scenarios_data")
+                                json_files+=("$json_file")
+                            fi
+                        fi
                     fi
                 fi
-            fi
+            done
         fi
     done
     
@@ -272,7 +269,7 @@ merge_benchmarks() {
     local template_file="${json_files[0]}"
     jq --argjson scenarios "$(printf '%s\n' "${scenarios[@]}" | jq -s 'add')" '
         .scenarios = $scenarios |
-        .date = now | strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        .date = (now | todate)
     ' "$template_file" > "$merged_json_file"
     
     # Create output HTML

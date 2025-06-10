@@ -78,11 +78,11 @@ generate_projects() {
     print_status "Generating $count modules for $mode mode"
     if [ "$mode" = "anvil" ]; then
         print_status "Using $processor processor"
-        kotlin generate-projects.main.kts --mode "$mode" --processor "$processor" --count "$count"
+        kotlin generate-projects.main.kts --mode "ANVIL" --processor "$(echo $processor | tr '[:lower:]' '[:upper:]')" --count "$count"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
-        kotlin generate-projects.main.kts --mode "kotlin-inject-anvil" --count "$count"
+        kotlin generate-projects.main.kts --mode "KOTLIN_INJECT_ANVIL" --count "$count"
     else
-        kotlin generate-projects.main.kts --mode "$mode" --count "$count"
+        kotlin generate-projects.main.kts --mode "$(echo $mode | tr '[:lower:]' '[:upper:]')" --count "$count"
     fi
     
     if [ $? -eq 0 ]; then
@@ -130,19 +130,28 @@ run_scenarios() {
     print_status "Running scenarios for $mode${processor:+ with $processor}: ${scenarios[*]}"
     print_status "Results will be saved to: $mode_results_dir"
     
-    # Run gradle-profiler with the scenarios
-    gradle-profiler \
-        --benchmark \
-        --scenario-file benchmark.scenarios \
-        --output-dir "$mode_results_dir" \
-        --gradle-user-home ~/.gradle \
-        "${scenarios[@]}" \
-        || {
-            print_error "Benchmark failed for $mode mode"
-            return 1
-        }
+    # Run each scenario individually to avoid overwriting results
+    for scenario in "${scenarios[@]}"; do
+        local scenario_output_dir="$mode_results_dir/$scenario"
+        mkdir -p "$scenario_output_dir"
+        
+        print_status "Running scenario: $scenario"
+        
+        gradle-profiler \
+            --benchmark \
+            --scenario-file benchmark.scenarios \
+            --output-dir "$scenario_output_dir" \
+            --gradle-user-home ~/.gradle \
+            "$scenario" \
+            || {
+                print_error "Benchmark failed for scenario $scenario in $mode mode"
+                return 1
+            }
+        
+        print_success "Completed scenario: $scenario"
+    done
     
-    print_success "Benchmark completed for $mode mode"
+    print_success "All scenarios completed for $mode mode"
 }
 
 # Function to merge benchmark results
@@ -160,8 +169,14 @@ merge_benchmark_results() {
         # Check if we have multiple mode directories for this timestamp
         local mode_count=0
         for mode_dir in "$RESULTS_DIR"/*"$timestamp"; do
-            if [ -d "$mode_dir" ] && [ -f "$mode_dir/benchmark.html" ]; then
-                ((mode_count++))
+            # Look for scenario subdirectories with the test type
+            if [ -d "$mode_dir" ]; then
+                for scenario_dir in "$mode_dir"/*"$test_type"; do
+                    if [ -d "$scenario_dir" ] && [ -f "$scenario_dir/benchmark.html" ]; then
+                        ((mode_count++))
+                        break  # Only count each mode once per test type
+                    fi
+                done
             fi
         done
         
