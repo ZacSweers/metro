@@ -339,7 +339,6 @@ plugins {
 dependencies {
   implementation("javax.inject:javax.inject:1")
   implementation("dev.zacsweers.anvil:annotations:0.4.1")
-  implementation("dev.zacsweers.metro:runtime:+")
   implementation(project(":core:foundation"))
 $dependencies
 }
