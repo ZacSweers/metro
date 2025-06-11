@@ -4,10 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
-import org.jetbrains.kotlin.test.cli.CliArtifact
 import org.jetbrains.kotlin.test.cli.CliDirectives.CHECK_COMPILER_OUTPUT
-import org.jetbrains.kotlin.test.cli.CliMetaInfoHandler
-import org.jetbrains.kotlin.test.cli.CliOutputHandler
 import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
@@ -26,8 +23,6 @@ open class AbstractIrDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest()
     with(builder) {
       configurePlugin()
 
-      // TODO does this get CLI output files directly? Seems not
-      handlersStep(CliArtifact.Kind) { useHandlers(::CliMetaInfoHandler, ::CliOutputHandler) }
       enableMetaInfoHandler()
 
       defaultDirectives {
