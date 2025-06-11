@@ -132,25 +132,28 @@ internal class IrGraphGenerator(
           //  together
           val irParam = ctor.regularParameters[i]
 
-          val addBoundInstanceField: (initializer: IrBuilderWithScope.() -> IrExpression) -> Unit =
-            { initializer ->
-              providerFields[param.typeKey] =
-                addField(
-                    fieldName =
-                      fieldNameAllocator.newName(
-                        "${param.name}".suffixIfNot("Instance").suffixIfNot("Provider")
-                      ),
-                    fieldType = symbols.metroProvider.typeWith(param.type),
-                    fieldVisibility = DescriptorVisibilities.PRIVATE,
-                  )
-                  .apply {
-                    isFinal = true
-                    this.initializer =
-                      pluginContext.createIrBuilder(symbol).run {
-                        irExprBody(instanceFactory(param.type, initializer()))
-                      }
-                  }
-            }
+          fun addBoundInstanceField(initializer: IrBuilderWithScope.() -> IrExpression) {
+            // Don't add it if it's not used
+            if (param.typeKey !in sealResult.reachableKeys) return
+
+            providerFields[param.typeKey] =
+              addField(
+                  fieldName =
+                    fieldNameAllocator.newName(
+                      "${param.name}".suffixIfNot("Instance").suffixIfNot("Provider")
+                    ),
+                  fieldType = symbols.metroProvider.typeWith(param.type),
+                  fieldVisibility = DescriptorVisibilities.PRIVATE,
+                )
+                .apply {
+                  isFinal = true
+                  this.initializer =
+                    pluginContext.createIrBuilder(symbol).run {
+                      irExprBody(instanceFactory(param.type, initializer()))
+                    }
+                }
+          }
+
           if (isBindsInstance) {
             addBoundInstanceField { irGet(irParam) }
           } else {
@@ -160,6 +163,10 @@ internal class IrGraphGenerator(
               node.includedGraphNodes[param.typeKey]
                 ?: node.extendedGraphNodes[param.typeKey]
                 ?: error("Undefined graph node ${param.typeKey}")
+
+            // Don't add it if it's not used
+            if (param.typeKey !in sealResult.reachableKeys) continue
+
             val graphDepField =
               addSimpleInstanceField(
                 fieldNameAllocator.newName(
@@ -213,40 +220,47 @@ internal class IrGraphGenerator(
       }
 
       val thisReceiverParameter = thisReceiverOrFail
-      val thisGraphField =
-        addSimpleInstanceField(
-          fieldNameAllocator.newName("thisGraphInstance"),
-          node.typeKey.type,
-          { irGet(thisReceiverParameter) },
-        )
 
-      instanceFields[node.typeKey] = thisGraphField
-
-      // Expose the graph as a provider field
-      providerFields[node.typeKey] =
-        addField(
-            fieldName =
-              fieldNameAllocator.newName(
-                node.sourceGraph.name.asString().decapitalizeUS().suffixIfNot("Provider")
-              ),
-            fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
-            fieldVisibility = DescriptorVisibilities.PRIVATE,
+      // Don't add it if it's not used
+      if (node.typeKey in sealResult.reachableKeys) {
+        val thisGraphField =
+          addSimpleInstanceField(
+            fieldNameAllocator.newName("thisGraphInstance"),
+            node.typeKey.type,
+            { irGet(thisReceiverParameter) },
           )
-          .apply {
-            isFinal = true
-            initializer =
-              pluginContext.createIrBuilder(symbol).run {
-                irExprBody(
-                  instanceFactory(
-                    node.typeKey.type,
-                    irGetField(irGet(thisReceiverParameter), thisGraphField),
+
+        instanceFields[node.typeKey] = thisGraphField
+
+        // Expose the graph as a provider field
+        // TODO this isn't always actually needed but different than the instance field above
+        //  would be nice if we could determine if this field is unneeded
+        providerFields[node.typeKey] =
+          addField(
+              fieldName =
+                fieldNameAllocator.newName(
+                  node.sourceGraph.name.asString().decapitalizeUS().suffixIfNot("Provider")
+                ),
+              fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
+              fieldVisibility = DescriptorVisibilities.PRIVATE,
+            )
+            .apply {
+              isFinal = true
+              initializer =
+                pluginContext.createIrBuilder(symbol).run {
+                  irExprBody(
+                    instanceFactory(
+                      node.typeKey.type,
+                      irGetField(irGet(thisReceiverParameter), thisGraphField),
+                    )
                   )
-                )
-              }
-          }
+                }
+            }
+      }
 
       // Add instance fields for all the parent graphs
       for (parent in node.allExtendedNodes.values) {
+        // TODO make this an error?
         if (!parent.isExtendable) continue
         // DependencyGraphTransformer ensures this is generated by now
         val proto = parent.proto!!
@@ -264,6 +278,8 @@ internal class IrGraphGenerator(
               metroFunction to contextKey
             }
         for ((accessor, contextualTypeKey) in instanceAccessors) {
+          if (node.typeKey in sealResult.reachableKeys) continue
+
           instanceFields.getOrPut(contextualTypeKey.typeKey) {
             addField(
                 fieldName =
@@ -316,7 +332,9 @@ internal class IrGraphGenerator(
           val providerFieldBindings = ProviderFieldCollector(bindingGraph).collect()
           buildList(providerFieldBindings.size) {
             for (key in sealResult.sortedKeys) {
-              providerFieldBindings[key]?.let(::add)
+              if (key in sealResult.reachableKeys) {
+                providerFieldBindings[key]?.let(::add)
+              }
             }
           }
         }
@@ -390,15 +408,17 @@ internal class IrGraphGenerator(
 
       // Create fields in dependency-order
       initOrder
-        // Don't generate deferred types here, we'll generate them last
-        .filterNot { it.typeKey in deferredFields }
-        // Don't generate fields for anything already provided in provider fields (i.e. bound
-        // instance types)
-        .filterNot { it.typeKey in providerFields }
+        .asSequence()
         .filterNot {
-          // We don't generate fields for these even though we do track them in dependencies above,
-          // it's just for propagating their aliased type in sorting
-          it is Binding.Alias
+          // Don't generate deferred types here, we'll generate them last
+          it.typeKey in deferredFields ||
+            // Don't generate fields for anything already provided in provider/instance fields (i.e.
+            // bound instance types)
+            it.typeKey in instanceFields ||
+            it.typeKey in providerFields ||
+            // We don't generate fields for these even though we do track them in dependencies
+            // above, it's just for propagating their aliased type in sorting
+            it is Binding.Alias
         }
         .forEach { binding ->
           val key = binding.typeKey
@@ -554,10 +574,6 @@ internal class IrGraphGenerator(
               yield(entry)
             }
             yieldAll(instanceFields.entries)
-          }
-          .filter {
-            // Skip the graph instance field
-            it.key != node.typeKey
           }
           .distinctBy {
             // Only generate once per field. Can happen for cases
@@ -724,12 +740,13 @@ internal class IrGraphGenerator(
     }
 
     // Implement abstract injectors
-    injectors.forEach { (overriddenFunction, typeKey) ->
+    injectors.forEach { (overriddenFunction, contextKey) ->
+      val typeKey = contextKey.typeKey
       overriddenFunction.ir.apply {
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = regularParameters[0]
         val binding =
-          bindingGraph.requireBinding(typeKey, IrBindingStack.empty()) as Binding.MembersInjected
+          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) as Binding.MembersInjected
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly
@@ -1129,7 +1146,10 @@ internal class IrGraphGenerator(
             )
             .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
         } else {
-          val createFunction = injectorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
+          val injectorCreatorClass =
+            if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!
+          val createFunction =
+            injectorCreatorClass.requireSimpleFunction(Symbols.StringNames.CREATE)
           val args =
             generateBindingArguments(
               binding.parameters,
@@ -1143,8 +1163,8 @@ internal class IrGraphGenerator(
               // exampleComponentProvider)
               irInvoke(
                 dispatchReceiver =
-                  if (injectorClass.isObject) {
-                    irGetObject(injectorClass.symbol)
+                  if (injectorCreatorClass.isObject) {
+                    irGetObject(injectorCreatorClass.symbol)
                   } else {
                     // It's static from java, dagger interop
                     check(createFunction.owner.isStatic)
@@ -1164,12 +1184,12 @@ internal class IrGraphGenerator(
       }
 
       is Binding.BoundInstance -> {
-        // Should never happen, this should get handled in the provider fields logic above.
+        // Should never happen, this should get handled in the provider/instance fields logic above.
         error("Unable to generate code for unexpected BoundInstance binding: $binding")
       }
 
       is Binding.GraphDependency -> {
-        val ownerKey = IrTypeKey(binding.graph.defaultType)
+        val ownerKey = binding.ownerKey
         val graphInstanceField =
           instanceFields[ownerKey]
             ?: run {

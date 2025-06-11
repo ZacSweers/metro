@@ -401,7 +401,7 @@ internal class DependencyGraphTransformer(
     val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
     val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
 
-    val injectors = mutableListOf<Pair<MetroSimpleFunction, IrTypeKey>>()
+    val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
@@ -445,12 +445,11 @@ internal class DependencyGraphTransformer(
             // It's an injector
             val metroFunction = metroFunctionOf(declaration, annotations)
             // key is the injected type wrapped in MembersInjector
-            val typeKey =
-              IrTypeKey(
-                declaration.regularParameters[0].type.wrapInMembersInjector(),
-                annotations.qualifier,
-              )
-            injectors += (metroFunction to typeKey)
+            val contextKey = IrContextualTypeKey.from(this, declaration.regularParameters[0])
+            val memberInjectorTypeKey =
+              contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
+            val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
+            injectors += (metroFunction to finalContextKey)
           } else {
             // Accessor or binds
             val metroFunction = metroFunctionOf(declaration, annotations)

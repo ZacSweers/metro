@@ -121,8 +121,6 @@ interface CycleMapGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : CycleMapGraph {
-    private /* final field */ val thisGraphInstance: CycleMapGraph = <this>
-    private /* final field */ val cycleMapGraphProvider: Provider<CycleMapGraph> = Companion.invoke<CycleMapGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val yProvider: Provider<Y> = DelegateFactory<Y>()
     constructor() /* primary */ {
       super/*Any*/()
