@@ -462,21 +462,21 @@ internal class BindingGraphGenerator(
     }
 
     // Add bindings for scoped @Inject classes which don't have contributions
-    // TODO(zac) move this
     if (node.isExtendable) {
       node.scopes.forEach { scope ->
         val scopedClasses = scopedInjectClassData[scope]
         scopedClasses.forEach { scopedClass ->
           val contextKey = scopedClass.asContextualTypeKey(this, null, false)
-
-          val bindings =
-            classBindingLookup.lookup(
-              contextKey,
-              graph.bindingsSnapshot().keys,
-              IrBindingStack.empty(),
-            )
-          bindings.forEach { binding ->
-            graph.addBinding(contextKey.typeKey, binding, IrBindingStack.empty())
+          if (contextKey.typeKey !in graph) {
+            val bindings =
+              classBindingLookup.lookup(
+                contextKey,
+                graph.bindingsSnapshot().keys,
+                IrBindingStack.empty(),
+              )
+            bindings.forEach { binding ->
+              graph.addBinding(contextKey.typeKey, binding, IrBindingStack.empty())
+            }
           }
         }
       }
