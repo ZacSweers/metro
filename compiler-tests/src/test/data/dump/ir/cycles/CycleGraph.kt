@@ -20,6 +20,8 @@ interface CycleGraph {
 
   fun c(): C
 
+  val objWithCycle: Any
+
   @Provides
   private fun provideObjectWithCycle(obj: Provider<Any>): Any {
     return "object"
