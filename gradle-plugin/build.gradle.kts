@@ -58,6 +58,7 @@ dependencies {
   functionalTestImplementation(libs.kotlin.stdlib)
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)
+  functionalTestImplementation(libs.kotlin.compilerEmbeddable)
   functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
 }

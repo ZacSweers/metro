@@ -28,15 +28,13 @@ internal class BindingGraphGenerator(
   // TODO preprocess these instead and just lookup via irAttribute
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
+  private val scopedInjectClassData: IrScopedInjectClassData,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
-    val graph =
-      IrBindingGraph(
-        this,
-        node,
-        newBindingStack = {
-          IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
-        },
+    val classBindingLookup =
+      ClassBindingLookup(
+        metroContext,
+        node.sourceGraph,
         findClassFactory = { clazz ->
           injectConstructorTransformer.getOrGenerateFactory(
             clazz,
@@ -45,6 +43,16 @@ internal class BindingGraphGenerator(
           )
         },
         findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
+      )
+
+    val graph =
+      IrBindingGraph(
+        this,
+        node,
+        newBindingStack = {
+          IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
+        },
+        classBindingLookup = classBindingLookup,
       )
 
     // Add explicit bindings from @Provides methods
@@ -431,6 +439,26 @@ internal class BindingGraphGenerator(
           )
 
         graph.addBinding(typeKey, binding, bindingStack)
+      }
+    }
+
+    // Add bindings for scoped @Inject classes which don't have contributions
+    if (node.isExtendable) {
+      node.scopes.forEach { scope ->
+        val scopedClasses = scopedInjectClassData[scope]
+        scopedClasses.forEach { scopedClass ->
+          val contextKey = scopedClass.asContextualTypeKey(this, null, false)
+
+          val bindings =
+            classBindingLookup.lookup(
+              contextKey,
+              graph.bindingsSnapshot().keys,
+              IrBindingStack.empty(),
+            )
+          bindings.forEach { binding ->
+            graph.addBinding(contextKey.typeKey, binding, IrBindingStack.empty())
+          }
+        }
       }
     }
 

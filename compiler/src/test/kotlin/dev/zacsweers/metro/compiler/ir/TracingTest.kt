@@ -43,6 +43,7 @@ class TracingTest : MetroCompilerTest() {
           """
           main,Collecting contributions
           main,Transforming Metro contributions
+          main,Transforming scoped @Inject classes
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
@@ -82,6 +83,8 @@ class TracingTest : MetroCompilerTest() {
               ◀ Collecting contributions (xx ms)
               ▶ Transforming Metro contributions
               ◀ Transforming Metro contributions (xx ms)
+              ▶ Transforming scoped @Inject classes
+              ◀ Transforming scoped @Inject classes (xx ms)
               ▶ Core transformers
                 ▶ Transform dependency graph
                   ▶ Build DependencyGraphNode
@@ -178,6 +181,7 @@ class TracingTest : MetroCompilerTest() {
           """
           main,Collecting contributions
           main,Transforming Metro contributions
+          main,Transforming scoped @Inject classes
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
@@ -241,6 +245,8 @@ class TracingTest : MetroCompilerTest() {
               ◀ Collecting contributions (xx ms)
               ▶ Transforming Metro contributions
               ◀ Transforming Metro contributions (xx ms)
+              ▶ Transforming scoped @Inject classes
+              ◀ Transforming scoped @Inject classes (xx ms)
               ▶ Core transformers
                 ▶ Transform dependency graph
                   ▶ Build DependencyGraphNode
@@ -385,6 +391,7 @@ class TracingTest : MetroCompilerTest() {
           $$$"""
           main,Collecting contributions
           main,Transforming Metro contributions
+          main,Transforming scoped @Inject classes
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
@@ -449,6 +456,8 @@ class TracingTest : MetroCompilerTest() {
               ◀ Collecting contributions (xx ms)
               ▶ Transforming Metro contributions
               ◀ Transforming Metro contributions (xx ms)
+              ▶ Transforming scoped @Inject classes
+              ◀ Transforming scoped @Inject classes (xx ms)
               ▶ Core transformers
                 ▶ Transform dependency graph
                   ▶ Build DependencyGraphNode

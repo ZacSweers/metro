@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrScopedInjectClassData
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
@@ -65,7 +66,6 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -100,9 +100,10 @@ import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
-  moduleFragment: IrModuleFragment,
   private val contributionData: IrContributionData,
+  private val scopedInjectClassData: IrScopedInjectClassData,
   private val parentTracer: Tracer,
+  private val hintGenerator: LookupHintGenerator,
 ) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -112,7 +113,7 @@ internal class DependencyGraphTransformer(
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
   private val contributionHintIrTransformer by unsafeLazy {
-    ContributionHintIrTransformer(context, moduleFragment)
+    ContributionHintIrTransformer(context, hintGenerator)
   }
 
   // Keyed by the source declaration
@@ -740,6 +741,7 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
+            scopedInjectClassData,
           )
           .generate()
       }
