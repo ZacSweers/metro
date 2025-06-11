@@ -940,4 +940,132 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     buildAndAssertOutput()
   }
+
+  @Test
+  fun icWorksWhenChangingAContributionScope() {
+    val fixture =
+      object : MetroProject(debug = true) {
+        override fun sources() =
+          listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
+
+        val unusedScope =
+          source(
+            """
+              interface UnusedScope
+              interface Foo
+            """
+              .trimIndent()
+          )
+
+        val exampleClass =
+          source(
+            """
+              @Inject
+              @ContributesBinding(UnusedScope::class)
+              class ExampleClass : Foo
+            """
+              .trimIndent()
+          )
+
+        private val exampleGraph =
+          source(
+            """
+              @DependencyGraph(scope = AppScope::class, isExtendable = true)
+              interface ExampleGraph
+            """
+              .trimIndent()
+          )
+
+        private val loggedInGraph =
+          source(
+            """
+                sealed interface LoggedInScope
+
+                @ContributesGraphExtension(LoggedInScope::class)
+                interface LoggedInGraph {
+                  val childDependency: Foo
+
+                    @ContributesGraphExtension.Factory(AppScope::class)
+                    interface Factory {
+                        fun createLoggedInGraph(): LoggedInGraph
+                    }
+                }
+              """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Any {
+              val graph = createGraph<ExampleGraph>().createLoggedInGraph()
+              return graph.childDependency
+            }
+            """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    // First build should fail because [ExampleClass] is not contributed to the scopes of either graph
+    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+
+    assertThat(firstBuildResult.output.cleanOutputLine())
+      .contains(
+        """
+e: LoggedInScope.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+
+    test.Foo is requested at
+        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+        """
+          .trimIndent()
+      )
+
+    // Change to contribute to the scope of the root graph node -- will pass
+    project.modify(
+      fixture.exampleClass,
+      """
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class ExampleClass : Foo
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val scopedDep = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+      assertThat(scopedDep).isNotNull()
+    }
+
+    // Change back to the original state -- should fail again for a missing binding
+    project.modify(
+      fixture.exampleClass,
+      """
+        @Inject
+        @ContributesBinding(UnusedScope::class)
+        class ExampleClass : Foo
+      """
+        .trimIndent(),
+    )
+
+    // this build should fail but currently ends up passing (resulting in the test failing)
+    // What appears to be happening is that once we have a successful build, the following IC builds
+    // do not trigger regenerating the graph if only an annotation argument changes. However,
+    // adding or removing an annotation will trigger the graph getting regenerated.
+    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.output.cleanOutputLine())
+      .contains(
+        """
+e: LoggedInScope.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+
+    test.Foo is requested at
+        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+        """
+          .trimIndent()
+      )
+  }
 }
