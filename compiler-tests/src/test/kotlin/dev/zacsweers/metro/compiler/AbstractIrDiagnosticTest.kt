@@ -23,15 +23,9 @@ open class AbstractIrDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest()
     with(builder) {
       configurePlugin()
 
-      enableMetaInfoHandler()
-
       defaultDirectives {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK
-        +WITH_STDLIB
-        +CHECK_COMPILER_OUTPUT
-
-        +IGNORE_DEXING // Avoids loading R8 from the classpath.
       }
     }
   }
