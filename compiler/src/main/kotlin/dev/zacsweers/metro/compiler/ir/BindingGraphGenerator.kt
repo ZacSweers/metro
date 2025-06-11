@@ -301,7 +301,7 @@ internal class BindingGraphGenerator(
             Binding.BoundInstance(
               depNode.typeKey,
               "${depNode.sourceGraph.name}Provider",
-              depNode.sourceGraph.location(),
+              depNode.sourceGraph.locationOrNull(),
             ),
             bindingStack,
           )
