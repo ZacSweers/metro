@@ -19,11 +19,13 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
+import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
+import org.jetbrains.kotlin.ir.IrBuiltIns
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -56,6 +58,7 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
@@ -91,15 +94,19 @@ import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.classifierOrNull
 import org.jetbrains.kotlin.ir.types.createType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
+import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -107,13 +114,14 @@ import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
-import org.jetbrains.kotlin.ir.util.isFakeOverriddenFromAny
+import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.properties
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.Variance
@@ -165,7 +173,16 @@ internal fun CompilerMessageSourceLocation.render(): String? {
 /** Returns the raw [IrClass] of this [IrType] or throws. */
 internal fun IrType.rawType(): IrClass {
   return rawTypeOrNull()
-    ?: run { error("Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})") }
+    ?: run {
+      val message =
+        when {
+          this is IrErrorType -> "Error type encountered: ${dumpKotlinLike()}"
+          classifierOrNull is IrTypeParameterSymbol ->
+            "Type parameter encountered: ${dumpKotlinLike()}"
+          else -> "Unrecognized type! ${dumpKotlinLike()} (${classifierOrNull?.javaClass})"
+        }
+      error(message)
+    }
 }
 
 /** Returns the raw [IrClass] of this [IrType] or null. */
@@ -225,6 +242,14 @@ internal fun IrBuilderWithScope.irInvoke(
       call.typeArguments[i] = typeArg
     }
   }
+
+  var argSize = args.size
+  if (dispatchReceiver != null) argSize++
+  if (extensionReceiver != null) argSize++
+  check(callee.owner.parameters.size == argSize) {
+    "Expected ${callee.owner.parameters.size} arguments but got ${args.size}"
+  }
+
   var index = 0
   dispatchReceiver?.let { call.arguments[index++] = it }
   extensionReceiver?.let { call.arguments[index++] = it }
@@ -290,13 +315,12 @@ private fun IrExpression.computeHashSource(): Any? {
 }
 
 // TODO create an instance of this that caches lookups?
+context(context: IrMetroContext)
 internal fun IrClass.declaredCallableMembers(
-  context: IrMetroContext,
   functionFilter: (IrSimpleFunction) -> Boolean = { true },
   propertyFilter: (IrProperty) -> Boolean = { true },
 ): Sequence<MetroSimpleFunction> =
   allCallableMembers(
-    context,
     excludeAnyFunctions = true,
     excludeInheritedMembers = true,
     excludeCompanionObjectMembers = true,
@@ -305,8 +329,8 @@ internal fun IrClass.declaredCallableMembers(
   )
 
 // TODO create an instance of this that caches lookups?
+context(context: IrMetroContext)
 internal fun IrClass.allCallableMembers(
-  context: IrMetroContext,
   excludeAnyFunctions: Boolean = true,
   excludeInheritedMembers: Boolean = false,
   excludeCompanionObjectMembers: Boolean = false,
@@ -314,7 +338,9 @@ internal fun IrClass.allCallableMembers(
   propertyFilter: (IrProperty) -> Boolean = { true },
 ): Sequence<MetroSimpleFunction> {
   return functions
-    .letIf(excludeAnyFunctions) { it.filterNot { function -> function.isFakeOverriddenFromAny() } }
+    .letIf(excludeAnyFunctions) {
+      it.filterNot { function -> function.isInheritedFromAny(context.pluginContext.irBuiltIns) }
+    }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
     .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
@@ -326,7 +352,6 @@ internal fun IrClass.allCallableMembers(
         companionObject()?.let { companionObject ->
           asFunctions +
             companionObject.allCallableMembers(
-              context,
               excludeAnyFunctions,
               excludeInheritedMembers,
               excludeCompanionObjectMembers = false,
@@ -402,7 +427,7 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   context: IrMetroContext,
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
 ): List<IrExpression?> {
@@ -526,7 +551,7 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
 }
 
 internal fun IrMetroContext.assignConstructorParamsToFields(
-  parameters: Parameters<out Parameter>,
+  parameters: Parameters,
   clazz: IrClass,
 ): Map<Parameter, IrField> {
   return buildMap {
@@ -664,6 +689,10 @@ internal fun IrConstructorCall.replacesArgument() =
 internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
   return replacesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
     ?: return emptySet()
+}
+
+internal fun IrConstructorCall.requireScope(): ClassId {
+  return scopeOrNull() ?: error("No scope found for ${dumpKotlinLike()}")
 }
 
 internal fun IrConstructorCall.scopeOrNull(): ClassId? {
@@ -883,12 +912,12 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
   }
 }
 
-internal fun IrFunction.stubExpressionBody(context: IrMetroContext) =
-  context.pluginContext.createIrBuilder(symbol).run {
-    irExprBodySafe(symbol, stubExpression(context))
-  }
+context(context: IrMetroContext)
+internal fun IrFunction.stubExpressionBody() =
+  context.pluginContext.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
 
-internal fun IrBuilderWithScope.stubExpression(context: IrMetroContext) =
+context(context: IrMetroContext)
+internal fun IrBuilderWithScope.stubExpression() =
   irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))
 
 internal fun IrPluginContext.buildAnnotation(
@@ -1002,3 +1031,217 @@ internal val IrFunction.regularParameters: List<IrValueParameter>
   get() {
     return parameters.filter { it.kind == IrParameterKind.Regular }
   }
+
+internal fun IrFunction.isInheritedFromAny(irBuiltIns: IrBuiltIns): Boolean {
+  return isEqualsOnAny(irBuiltIns) || isHashCodeOnAny() || isToStringOnAny()
+}
+
+internal fun IrFunction.isEqualsOnAny(irBuiltIns: IrBuiltIns): Boolean {
+  return name == StandardNames.EQUALS_NAME &&
+    hasShape(
+      dispatchReceiver = true,
+      regularParameters = 1,
+      parameterTypes = listOf(null, irBuiltIns.anyNType),
+    )
+}
+
+internal fun IrFunction.isHashCodeOnAny(): Boolean {
+  return name == StandardNames.HASHCODE_NAME &&
+    hasShape(dispatchReceiver = true, regularParameters = 0)
+}
+
+internal fun IrFunction.isToStringOnAny(): Boolean {
+  return name == StandardNames.TO_STRING_NAME &&
+    hasShape(dispatchReceiver = true, regularParameters = 0)
+}
+
+internal val NOOP_TYPE_REMAPPER =
+  object : TypeRemapper {
+    override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+    override fun leaveScope() {}
+
+    override fun remapType(type: IrType): IrType {
+      return type
+    }
+  }
+
+internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
+  type: IrType
+): Map<IrTypeParameterSymbol, IrType> {
+  return if (type is IrSimpleType && type.arguments.isNotEmpty()) {
+    buildMap {
+      typeParameters.zip(type.arguments).forEach { (param, arg) ->
+        when (arg) {
+          is IrTypeProjection -> put(param.symbol, arg.type)
+          else -> null
+        }
+      }
+    }
+  } else {
+    emptyMap()
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrTypeParametersContainer.typeRemapperFor(type: IrType): TypeRemapper {
+  return if (this is IrClass) {
+    deepRemapperFor(type)
+  } else {
+    // TODO can we consolidate function logic?
+    val substitutionMap = buildSubstitutionMapFor(type)
+    typeRemapperFor(substitutionMap)
+  }
+}
+
+internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>): TypeRemapper {
+  val remapper =
+    object : TypeRemapper {
+      override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+      override fun leaveScope() {}
+
+      override fun remapType(type: IrType): IrType {
+        return when (type) {
+          is IrSimpleType -> {
+            val classifier = type.classifier
+            if (classifier is IrTypeParameterSymbol) {
+              val substitution = substitutionMap[classifier]
+              substitution?.let { remapType(it) } ?: type
+            } else if (type.arguments.isEmpty()) {
+              type
+            } else {
+              val newArguments =
+                type.arguments.map { arg ->
+                  when (arg) {
+                    is IrTypeProjection -> makeTypeProjection(remapType(arg.type), arg.variance)
+                    else -> arg
+                  }
+                }
+              // TODO impl use
+              type.buildSimpleType { arguments = newArguments }
+            }
+          }
+          else -> type
+        }
+      }
+    }
+
+  return remapper
+}
+
+/**
+ * Returns a (possibly new) [IrSimpleFunction] with any generic parameters and return type
+ * substituted appropriately as they would be materialized in the [subtype].
+ */
+context(context: IrMetroContext)
+internal fun IrSimpleFunction.asMemberOf(subtype: IrType): IrSimpleFunction {
+  // Should be caught in FIR
+  check(typeParameters.isEmpty()) { "Generic functions are not supported: ${dumpKotlinLike()}" }
+
+  val containingClass =
+    parent as? IrClass ?: throw IllegalArgumentException("Function must be declared in a class")
+
+  // If the containingClass has no type parameters, nothing to substitute
+  if (containingClass.typeParameters.isEmpty()) {
+    return this
+  }
+
+  val remapper = containingClass.deepRemapperFor(subtype)
+
+  // Apply transformation if needed
+  return if (remapper === NOOP_TYPE_REMAPPER) {
+    this
+  } else {
+    deepCopyWithSymbols(initialParent = parent).apply {
+      this.parent = this@asMemberOf.parent
+      remapTypes(remapper)
+    }
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.deepRemapperFor(subtype: IrType): TypeRemapper {
+  // Check cache for existing substitutor
+  val cacheKey = classIdOrFail to subtype
+  return context.typeRemapperCache.getOrPut(cacheKey) {
+    // Build deep substitution map
+    val substitutionMap = buildDeepSubstitutionMap(this, subtype)
+    if (substitutionMap.isEmpty()) {
+      NOOP_TYPE_REMAPPER
+    } else {
+      DeepTypeSubstitutor(substitutionMap)
+    }
+  }
+}
+
+private fun buildDeepSubstitutionMap(
+  targetClass: IrClass,
+  concreteType: IrType,
+): Map<IrTypeParameterSymbol, IrType> {
+  val result = mutableMapOf<IrTypeParameterSymbol, IrType>()
+
+  fun collectSubstitutions(currentClass: IrClass, currentType: IrType) {
+    if (currentType !is IrSimpleType) return
+
+    // Add substitutions for current class's type parameters
+    currentClass.typeParameters.zip(currentType.arguments).forEach { (param, arg) ->
+      if (arg is IrTypeProjection) {
+        result[param.symbol] = arg.type
+      }
+    }
+
+    // Walk up the hierarchy
+    currentClass.superTypes.forEach { superType ->
+      val superClass = superType.classOrNull?.owner ?: return@forEach
+
+      // Apply current substitutions to the supertype
+      val substitutedSuperType = superType.substitute(result)
+
+      // Recursively collect from supertypes
+      collectSubstitutions(superClass, substitutedSuperType)
+    }
+  }
+
+  collectSubstitutions(targetClass, concreteType)
+  return result
+}
+
+private class DeepTypeSubstitutor(private val substitutionMap: Map<IrTypeParameterSymbol, IrType>) :
+  TypeRemapper {
+  private val cache = mutableMapOf<IrType, IrType>()
+
+  override fun enterScope(irTypeParametersContainer: IrTypeParametersContainer) {}
+
+  override fun leaveScope() {}
+
+  override fun remapType(type: IrType): IrType {
+    return cache.getOrPut(type) {
+      when (type) {
+        is IrSimpleType -> {
+          val classifier = type.classifier
+          if (classifier is IrTypeParameterSymbol) {
+            substitutionMap[classifier]?.let { remapType(it) } ?: type
+          } else {
+            val newArgs =
+              type.arguments.map { arg ->
+                when (arg) {
+                  is IrTypeProjection -> makeTypeProjection(remapType(arg.type), arg.variance)
+                  else -> arg
+                }
+              }
+            if (newArgs == type.arguments) type else type.buildSimpleType { arguments = newArgs }
+          }
+        }
+        else -> type
+      }
+    }
+  }
+}
+
+// Extension to substitute types in an IrType
+private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>): IrType {
+  if (substitutions.isEmpty()) return this
+  val remapper = DeepTypeSubstitutor(substitutions)
+  return remapper.remapType(this)
+}

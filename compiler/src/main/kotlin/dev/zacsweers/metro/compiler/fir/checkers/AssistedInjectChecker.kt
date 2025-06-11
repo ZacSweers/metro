@@ -23,10 +23,18 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
+import org.jetbrains.kotlin.fir.scopes.impl.toConeType
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 
 internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
-  override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirClass) {
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -37,7 +45,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
     if (!isAssistedFactory) return
 
-    declaration.validateApiDeclaration(context, reporter, "@Assisted.Factory declarations") {
+    declaration.validateApiDeclaration("@Assisted.Factory declarations", checkConstructor = true) {
       return
     }
 
@@ -45,7 +53,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     val function =
       declaration.singleAbstractFunction(
         session,
-        context,
         reporter,
         "@AssistedFactory declarations",
         allowProtected = true,
@@ -59,7 +66,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         function.source ?: source,
         ASSISTED_INJECTION_ERROR,
         "`@AssistedFactory` functions cannot have type parameters.",
-        context,
       )
       return
     }
@@ -67,7 +73,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
     // Ensure target type has an inject constructor
     val targetType = function.resolvedReturnTypeRef.firClassLike(session) as? FirClass? ?: return
     val injectConstructor =
-      targetType.symbol.findInjectConstructor(session, context, reporter, checkClass = true) {
+      targetType.symbol.findInjectConstructor(session, checkClass = true) {
         return
       }
     if (injectConstructor == null) {
@@ -75,7 +81,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         function.source ?: source,
         ASSISTED_INJECTION_ERROR,
         "Invalid return type: ${targetType.symbol.classId.asSingleFqName()}. `@AssistedFactory` target classes must have a single `@Inject`-annotated constructor or be annotated `@Inject` with only a primary constructor.",
-        context,
       )
       return
     }
@@ -95,14 +100,41 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         targetType.source,
         ASSISTED_INJECTION_ERROR,
         "Assisted parameter mismatch. Expected ${functionParams.size} assisted parameters but found ${constructorAssistedParams.size}.",
-        context,
       )
       return
     }
 
+    // Extract concrete type arguments from the factory's return type
+    val returnType = function.resolvedReturnTypeRef.coneType
+    val targetSubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+
+    if (returnType is ConeClassLikeType && returnType.typeArguments.isNotEmpty()) {
+      targetType.typeParameters.zip(returnType.typeArguments).forEach { (param, arg) ->
+        if (arg is ConeKotlinTypeProjection) {
+          targetSubstitutionMap[param.symbol] = arg.type
+        }
+      }
+    }
+
+    // Build unified substitution map for factory parameters
+    val factorySubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+
+    // Map factory type parameters to the same concrete types
+    declaration.typeParameters.forEachIndexed { index, factoryTypeParam ->
+      val targetTypeParam = targetType.typeParameters.getOrNull(index)
+      if (targetTypeParam != null) {
+        // Use the concrete type from the return type if available
+        val concreteType =
+          targetSubstitutionMap[targetTypeParam.symbol] ?: targetTypeParam.toConeType()
+        factorySubstitutionMap[factoryTypeParam.symbol] = concreteType
+      }
+    }
+
+    val functionSubstitutor = substitutorByMap(factorySubstitutionMap, session)
+
     val (factoryKeys, dupeFactoryKeys) =
       functionParams.mapToSetWithDupes {
-        it.toAssistedParameterKey(session, FirTypeKey.from(session, it))
+        it.toAssistedParameterKey(session, FirTypeKey.from(session, it, functionSubstitutor))
       }
 
     if (dupeFactoryKeys.isNotEmpty()) {
@@ -110,14 +142,14 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         targetType.source,
         ASSISTED_INJECTION_ERROR,
         "Assisted factory parameters must be unique. Found duplicates: ${dupeFactoryKeys.joinToString(", ")}",
-        context,
       )
       return
     }
 
+    val constructorSubstitutor = substitutorByMap(targetSubstitutionMap, session)
     val (constructorKeys, dupeConstructorKeys) =
       constructorAssistedParams.mapToSetWithDupes {
-        it.toAssistedParameterKey(session, FirTypeKey.from(session, it))
+        it.toAssistedParameterKey(session, FirTypeKey.from(session, it, constructorSubstitutor))
       }
 
     if (dupeConstructorKeys.isNotEmpty()) {
@@ -125,7 +157,6 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         targetType.source,
         ASSISTED_INJECTION_ERROR,
         "Assisted constructor parameters must be unique. Found duplicates: $dupeConstructorKeys",
-        context,
       )
       return
     }
@@ -151,11 +182,10 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             appendLine(missingFromFactory)
           }
           if (missingFromConstructor.isNotEmpty()) {
-            append("  Missing from factory: ")
+            append("  Missing from constructor: ")
             appendLine(missingFromConstructor)
           }
         },
-        context,
       )
       return
     }
@@ -184,7 +214,7 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       ): FirAssistedParameterKey {
         return FirAssistedParameterKey(
           typeKey,
-          annotations
+          resolvedCompilerAnnotationsWithClassIds
             .annotationsIn(session, session.classIds.assistedAnnotations)
             .singleOrNull()
             ?.getStringArgument(StandardNames.DEFAULT_VALUE_PARAMETER, session)

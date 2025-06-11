@@ -84,7 +84,7 @@ internal class ContributionHintIrTransformer(
                 type = declaration.defaultType
                 kind = IrParameterKind.Regular
               }
-            body = stubExpressionBody(metroContext)
+            body = stubExpressionBody()
           }
 
       val fileNameWithoutExtension =

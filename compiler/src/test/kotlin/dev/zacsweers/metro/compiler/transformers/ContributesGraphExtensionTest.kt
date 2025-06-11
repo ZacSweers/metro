@@ -1142,13 +1142,13 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-          e: LoggedInScope.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+        $$$"""
+          e: LoggedInScope.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.Dependency (scoped to '@SingleIn(AppScope::class)')
               test.Dependency is injected at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.ChildDependency(…, dep)
+                  [test.ExampleGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
               test.ChildDependency is requested at
-                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+                  [test.ExampleGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
 
 
           (Hint)
@@ -1159,6 +1159,31 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           .trimIndent()
       )
     }
+  }
+
+  @Test
+  fun `contributed graph with qualified provider`() {
+    compile(
+      source(
+        """
+          abstract class Parent
+
+          @ContributesGraphExtension(Parent::class, isExtendable = true)
+          interface ParentGraph {
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun create(
+                  @Provides @ForScope(Parent::class) string: String
+              ): ParentGraph
+            }
+          }
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph
+        """
+          .trimIndent()
+      )
+    )
   }
 
   @Test

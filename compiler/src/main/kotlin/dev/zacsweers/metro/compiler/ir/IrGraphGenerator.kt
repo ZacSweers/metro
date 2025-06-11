@@ -12,12 +12,10 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.WrappedType
-import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.ProvidesTransformer
 import dev.zacsweers.metro.compiler.letIf
@@ -28,12 +26,6 @@ import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import kotlin.collections.component1
-import kotlin.collections.component2
-import kotlin.collections.iterator
-import kotlin.collections.mutableMapOf
-import kotlin.collections.plus
-import kotlin.collections.set
 import org.jetbrains.kotlin.backend.common.lower.irThrow
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrStatement
@@ -88,6 +80,7 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
@@ -105,7 +98,6 @@ internal class IrGraphGenerator(
   private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
   private val providesTransformer: ProvidesTransformer,
-  private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
@@ -414,13 +406,7 @@ internal class IrGraphGenerator(
           // Provider<*> fields
           val fieldType =
             if (binding is Binding.ConstructorInjected && binding.isAssisted) {
-              val factory =
-                injectConstructorTransformer.getOrGenerateFactory(
-                  binding.type,
-                  binding.injectedConstructor,
-                ) ?: return@forEach
-
-              factory.factoryClass.typeWith() // TODO generic factories?
+              binding.classFactory.factoryClass.typeWith() // TODO generic factories?
             } else {
               symbols.metroProvider.typeWith(key.type)
             }
@@ -533,7 +519,7 @@ internal class IrGraphGenerator(
                   .map { it.name.asString() }
                   .sorted(),
             )
-          val metroMetadata = MetroMetadata(METRO_VERSION, graphProto)
+          val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = graphProto)
 
           writeDiagnostic({
             "graph-metadata-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt"
@@ -756,6 +742,10 @@ internal class IrGraphGenerator(
             // val memberInjectParameters = injectors.flatMap { it.parameters.values.flatten()
             // }
 
+            // Extract the type from MembersInjector<T>
+            val wrappedType =
+              typeKey.copy(typeKey.type.expectAs<IrSimpleType>().arguments[0].typeOrFail)
+
             for (type in
               pluginContext
                 .referenceClass(binding.targetClassId)!!
@@ -764,7 +754,14 @@ internal class IrGraphGenerator(
               val clazz = type.rawType()
               val generatedInjector =
                 membersInjectorTransformer.getOrGenerateInjector(clazz) ?: continue
-              for ((function, parameters) in generatedInjector.injectFunctions) {
+              for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
+                val parameters =
+                  if (typeKey.hasTypeArgs) {
+                    val remapper = function.typeRemapperFor(wrappedType.type)
+                    function.parameters(metroContext, remapper)
+                  } else {
+                    unmappedParams
+                  }
                 // Record for IC
                 trackFunctionCall(this@apply, function)
                 +irInvoke(
@@ -773,7 +770,9 @@ internal class IrGraphGenerator(
                   args =
                     buildList {
                       add(irGet(targetParam))
-                      for (parameter in parameters.regularParameters) {
+                      // Always drop the first parameter when calling inject, as the first is the
+                      // instance param
+                      for (parameter in parameters.regularParameters.drop(1)) {
                         val paramBinding =
                           bindingGraph.requireBinding(
                             parameter.contextualTypeKey,
@@ -811,7 +810,7 @@ internal class IrGraphGenerator(
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
-        body = stubExpressionBody(metroContext)
+        body = stubExpressionBody()
       }
     }
 
@@ -881,7 +880,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateBindingArguments(
-    targetParams: Parameters<out Parameter>,
+    targetParams: Parameters,
     function: IrFunction,
     binding: Binding,
     generationContext: GraphGenerationContext,
@@ -899,7 +898,7 @@ internal class IrGraphGenerator(
     }
     if (
       binding is Binding.Provided &&
-        binding.providerFactory.providesFunction.correspondingPropertySymbol == null
+        binding.providerFactory.function.correspondingPropertySymbol == null
     ) {
       check(params.regularParameters.size == paramsToMap.size) {
         """
@@ -1008,16 +1007,17 @@ internal class IrGraphGenerator(
     return when (binding) {
       is Binding.ConstructorInjected -> {
         // Example_Factory.create(...)
-        val injectableConstructor = binding.injectedConstructor
-        val factory =
-          injectConstructorTransformer.getOrGenerateFactory(binding.type, injectableConstructor)
-            ?: return stubExpression(metroContext)
+        val factory = binding.classFactory
 
         with(factory) {
           invokeCreateExpression { createFunction ->
+            val remapper = createFunction.typeRemapperFor(binding.typeKey.type)
             generateBindingArguments(
-              createFunction.parameters(metroContext),
-              createFunction,
+              createFunction.parameters(metroContext, remapper = remapper),
+              createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
+                it.parent = createFunction.parent
+                it.remapTypes(remapper)
+              },
               binding,
               generationContext,
             )
@@ -1038,8 +1038,7 @@ internal class IrGraphGenerator(
 
       is Binding.Provided -> {
         val factoryClass =
-          providesTransformer.getOrLookupFactoryClass(binding)?.clazz
-            ?: return stubExpression(metroContext)
+          providesTransformer.getOrLookupFactoryClass(binding)?.clazz ?: return stubExpression()
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {
@@ -1067,8 +1066,7 @@ internal class IrGraphGenerator(
       is Binding.Assisted -> {
         // Example9_Factory_Impl.create(example9Provider);
         val implClass =
-          assistedFactoryTransformer.getOrGenerateImplClass(binding.type)
-            ?: return stubExpression(metroContext)
+          assistedFactoryTransformer.getOrGenerateImplClass(binding.type) ?: return stubExpression()
 
         val dispatchReceiver: IrExpression?
         val createFunction: IrSimpleFunctionSymbol

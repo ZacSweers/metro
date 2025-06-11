@@ -38,6 +38,12 @@ Tests are spread across a few areas.
 * `samples/` — Some samples have tests! This is useful to assert that these samples work as expected.
     * `integration-tests/` — Integration tests. These should only be functional in nature and not test error cases (error cases won't compile!). Note that new integration tests should usually be written in `compiler-tests`. Some scenarios, such as multi-compilation tests across Gradle, may make more sense to write here.
 
+To publish to a local maven repo, run this:
+
+```bash
+./metrow publish --local --version 1.0.0-LOCAL01 # whatever version you want
+```
+
 ## Compiler Plugin Design
 
 The compiler plugin is implemented primarily in two parts.

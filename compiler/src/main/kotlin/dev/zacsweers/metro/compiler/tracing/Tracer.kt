@@ -15,7 +15,7 @@ internal interface Tracer {
 
   fun stop()
 
-  fun nested(description: String): Tracer
+  fun nested(description: String, tag: String = this.tag): Tracer
 
   companion object {
     val NONE: Tracer =
@@ -31,7 +31,7 @@ internal interface Tracer {
           // No op
         }
 
-        override fun nested(description: String): Tracer {
+        override fun nested(description: String, tag: String): Tracer {
           return NONE
         }
       }
@@ -66,13 +66,17 @@ private class SimpleTracer(
     log("$tagPrefix${"  ".repeat(level)}◀ $description (${elapsed.inWholeMilliseconds} ms)")
   }
 
-  override fun nested(description: String): Tracer =
+  override fun nested(description: String, tag: String): Tracer =
     SimpleTracer(tag, description, level + 1, log, onFinished)
 }
 
-internal fun <T> Tracer.traceNested(description: String, block: (Tracer) -> T): T {
+internal fun <T> Tracer.traceNested(
+  description: String,
+  tag: String = this.tag,
+  block: (Tracer) -> T,
+): T {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-  return nested(description).trace(block)
+  return nested(description, tag).trace(block)
 }
 
 internal fun <T> Tracer.trace(block: (Tracer) -> T): T {

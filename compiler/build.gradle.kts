@@ -13,6 +13,7 @@ plugins {
 
 kotlin {
   compilerOptions {
+    freeCompilerArgs.add("-Xcontext-parameters")
     optIn.addAll(
       "dev.drewhamilton.poko.SkipSupport",
       "kotlin.contracts.ExperimentalContracts",
@@ -92,7 +93,7 @@ artifacts {
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
-  implementation(libs.picnic)
+  shadow(libs.picnic)
   shadow(libs.wire.runtime)
 
   testImplementation(project(":runtime"))

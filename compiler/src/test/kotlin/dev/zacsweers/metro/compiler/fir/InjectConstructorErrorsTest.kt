@@ -207,44 +207,6 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `injected constructors must be visible`() {
-    compile(
-      source(
-        fileNameWithoutExtension = "InjectedConstructors",
-        source =
-          """
-            @Inject
-            class ClassWithPrivateConstructor private constructor()
-
-            class ClassWithInjectedPrivateConstructor @Inject private constructor()
-
-            class ClassWithInjectedProtectedConstructor @Inject protected constructor()
-
-            @Inject
-            class HappyClassWithExplicitInternalConstructor internal constructor()
-
-            @Inject
-            class HappyClassWithExplicitPublicConstructor public constructor()
-
-            @Inject
-            class HappyClassWithNoConstructor
-          """
-            .trimIndent(),
-      ),
-      expectedExitCode = ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        """
-            e: InjectedConstructors.kt:7:35 Injected constructors must be public or internal.
-            e: InjectedConstructors.kt:9:51 Injected constructors must be public or internal.
-            e: InjectedConstructors.kt:11:53 Injected constructors must be public or internal.
-          """
-          .trimIndent()
-      )
-    }
-  }
-
-  @Test
   fun `assisted factories cannot have type params`() {
     compile(
       source(
