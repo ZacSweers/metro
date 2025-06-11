@@ -1,9 +1,10 @@
 // RUN_PIPELINE_TILL: BACKEND
 // RENDER_ALL_DIAGNOSTICS_FULL_TEXT
+// RENDER_DIAGNOSTICS_FULL_TEXT
 package test
 
 @DependencyGraph
-interface CharSequenceGraph {
+interface <!GRAPH_DEPENDENCY_CYCLE!>CharSequenceGraph<!> {
 
   fun value(): CharSequence
 
@@ -17,7 +18,7 @@ interface CharSequenceGraph {
 }
 
 @DependencyGraph
-interface StringGraph {
+interface <!GRAPH_DEPENDENCY_CYCLE!>StringGraph<!> {
 
   val string: String
 
