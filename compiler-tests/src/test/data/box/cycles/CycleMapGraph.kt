@@ -1,5 +1,3 @@
-import kotlin.test.*
-
 /*
  S ← Provider<S>, Lazy<S>
  */

@@ -5,9 +5,9 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
-import dev.zacsweers.metro.compiler.fir.abstractFunctions
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.predicates
@@ -65,7 +65,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
     @OptIn(SymbolInternals::class)
     fun computeTargetType(session: FirSession) {
       if (computed) return
-      val createFunction = source.abstractFunctions(session).single()
+      val createFunction = source.findSamFunction(session) ?: return
 
       val returnTypeClass = createFunction.resolvedReturnType.toClassSymbol(session)
       if (returnTypeClass != null) {
@@ -135,14 +135,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
       Symbols.Names.MetroImpl -> {
         // TODO if there's no assisted params, we could optimize this to just be an object?
         createNestedClass(owner, name, Keys.AssistedFactoryImplClassDeclaration) {
-            for (typeParam in owner.typeParameterSymbols) {
-              typeParameter(typeParam.name, typeParam.variance, key = Keys.Default) {
-                if (typeParam.isBound) {
-                  typeParam.resolvedBounds.forEach { bound -> bound(bound.coneType) }
-                }
-              }
-            }
-
+            copyTypeParametersFrom(owner, session)
             superType(owner::constructType)
           }
           .symbol

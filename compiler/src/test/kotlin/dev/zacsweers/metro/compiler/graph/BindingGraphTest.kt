@@ -348,11 +348,11 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
-  computeBinding: (StringContextualTypeKey) -> StringBinding? = { _ -> null },
+  computeBinding: (StringContextualTypeKey) -> Set<StringBinding> = { _ -> emptySet() },
 ): StringGraph {
   return StringGraph(
     newBindingStack = { StringBindingStack(graph) },
-    newBindingStackEntry = { contextKey, binding, roots -> StringBindingStack.Entry(contextKey) },
+    newBindingStackEntry = { contextKey, _, _ -> StringBindingStack.Entry(contextKey) },
     computeBinding = computeBinding,
   )
 }
@@ -377,7 +377,7 @@ private fun buildChainedGraph(
 internal class StringGraphBuilder {
   private val constructorInjectedTypes = mutableMapOf<StringTypeKey, StringBinding>()
   private val graph = newStringBindingGraph { contextKey ->
-    constructorInjectedTypes[contextKey.typeKey]
+    setOfNotNull(constructorInjectedTypes[contextKey.typeKey])
   }
 
   fun binding(key: String): String {

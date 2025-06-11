@@ -35,6 +35,28 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/aggregation")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Aggregation {
+    @Test
+    public void testAllFilesPresentInAggregation() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ContributorsWithSameSimpleNames.kt")
+    public void testContributorsWithSameSimpleNames() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/ContributorsWithSameSimpleNames.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleContributionsOnlyProduceOneHintFile.kt")
+    public void testMultipleContributionsOnlyProduceOneHintFile() {
+      runTest("compiler-tests/src/test/data/dump/ir/aggregation/MultipleContributionsOnlyProduceOneHintFile.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/ir/cycles")
   @TestDataPath("$PROJECT_ROOT")
   public class Cycles {
@@ -65,6 +87,22 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("SelfCycle.kt")
     public void testSelfCycle() {
       runTest("compiler-tests/src/test/data/dump/ir/cycles/SelfCycle.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/dependencygraph")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Dependencygraph {
+    @Test
+    public void testAllFilesPresentInDependencygraph() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("GraphAccessors.kt")
+    public void testGraphAccessors() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphAccessors.kt");
     }
   }
 }

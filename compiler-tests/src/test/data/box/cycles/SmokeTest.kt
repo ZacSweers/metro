@@ -1,5 +1,3 @@
-import kotlin.test.*
-
 @DependencyGraph
 interface SmokeTestGraph {
   val bar: Bar

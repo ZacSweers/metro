@@ -1132,8 +1132,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: BaseFactory1.kt:7:7 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
-        e: BaseFactory1.kt:11:7 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
+        e: BaseFactory1.kt:17:13 @DependencyGraph.Factory declarations must have exactly one abstract function but found 2.
       """
           .trimIndent()
       )
@@ -2853,5 +2852,37 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     )
+  }
+
+  @Test
+  fun `providers of lazy are not valid graph accessors`() {
+    compile(
+      source(
+        """
+          interface Accessors {
+            val intLazyProvider: Provider<Lazy<Int>>
+          }
+
+          @DependencyGraph
+          interface ExampleGraph {
+            val int: Int
+
+            @DependencyGraph.Factory
+            interface Factory {
+              fun create(@Includes accessors: Accessors): ExampleGraph
+            }
+          }
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: Accessors.kt:7:3 Provider<Lazy<T>> accessors are not supported.
+        """
+          .trimIndent()
+      )
+    }
   }
 }

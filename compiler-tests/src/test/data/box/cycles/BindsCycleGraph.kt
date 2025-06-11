@@ -1,5 +1,3 @@
-import kotlin.test.*
-
 interface Foo
 
 @Inject class Bar(val fooProvider: Provider<Foo>) : Foo

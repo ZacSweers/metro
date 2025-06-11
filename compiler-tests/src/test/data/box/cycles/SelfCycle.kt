@@ -1,5 +1,3 @@
-import kotlin.test.*
-
 @Suppress("MEMBERS_INJECT_WARNING")
 @Inject
 class S(val sProvider: Provider<S>) {

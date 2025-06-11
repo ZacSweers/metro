@@ -28,6 +28,7 @@ import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -831,38 +832,6 @@ class DependencyGraphProcessingTest {
   }
 
   @Test
-  fun `multibindings - map with different scoped provider values`() {
-    val graph = createGraph<MultibindingGraphWithWithScopedMapProviderDeps>()
-
-    var unscopedCount = 0
-    fun validate(body: () -> Map<Int, Provider<Int>>) {
-      // Scoped int (key = 1) never increments no matter how many times we call the provider
-      assertEquals(mapOf(1 to 0, 2 to unscopedCount++), body().mapValues { it.value() })
-      assertEquals(mapOf(1 to 0, 2 to unscopedCount++), body().mapValues { it.value() })
-      assertEquals(mapOf(1 to 0, 2 to unscopedCount++), body().mapValues { it.value() })
-    }
-
-    validate(graph::ints)
-    validate { graph.providerInts() }
-    validate { graph.lazyInts.value }
-  }
-
-  @Singleton
-  @DependencyGraph
-  abstract class MultibindingGraphWithWithScopedMapProviderDeps {
-    private var scopedCount = 0
-    private var unscopedCount = 0
-
-    abstract val ints: Map<Int, Provider<Int>>
-    abstract val providerInts: Provider<Map<Int, Provider<Int>>>
-    abstract val lazyInts: Lazy<Map<Int, Provider<Int>>>
-
-    @Provides @Singleton @IntoMap @IntKey(1) private fun provideScopedInt(): Int = scopedCount++
-
-    @Provides @IntoMap @IntKey(2) private fun provideUnscopedInt(): Int = unscopedCount++
-  }
-
-  @Test
   fun `optional dependencies - provider - found dependency uses it`() {
     val graph = createGraph<MessageProviderWithCharSequenceProvider>()
     assertEquals("Found", graph.message)
@@ -1211,6 +1180,38 @@ class DependencyGraphProcessingTest {
         fun create(intValue: Int): ExampleClass
       }
     }
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/312
+  @Test
+  fun `where clauses work`() {
+    val graph = createGraph<WhereClausesGraph>()
+    assertNotNull(graph.manager)
+  }
+
+  @Inject class LocationAvailabilityManager<F> where F : CharSequence
+
+  @DependencyGraph
+  interface WhereClausesGraph {
+    val manager: LocationAvailabilityManager<String>
+
+    @Provides fun provideString(): String = "Hello"
+  }
+
+  // Regression test for https://github.com/ZacSweers/metro/issues/498
+  @Test
+  fun `type parameter with bounds`() {
+    val graph = createGraph<TypeParameterBoundsGraph>()
+    assertNotNull(graph.example)
+  }
+
+  @Inject class ExampleWithBoundTypeParameter<T : Any>
+
+  @DependencyGraph
+  interface TypeParameterBoundsGraph {
+    val example: ExampleWithBoundTypeParameter<String>
+
+    @Provides fun provideString(): String = "Hello"
   }
 
   enum class Seasoning {

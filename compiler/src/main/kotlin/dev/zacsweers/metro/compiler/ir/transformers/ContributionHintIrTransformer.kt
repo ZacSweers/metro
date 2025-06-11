@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFile
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileEntry
@@ -61,7 +62,9 @@ internal class ContributionHintIrTransformer(
     if (!declaration.visibility.isPublicAPI) return
 
     val contributionScopes =
-      declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNull {
+      declaration.annotationsIn(symbols.classIds.allContributesAnnotations).mapNotNullTo(
+        mutableSetOf()
+      ) {
         it.scopeOrNull()
       }
     for (contributionScope in contributionScopes) {
@@ -86,8 +89,9 @@ internal class ContributionHintIrTransformer(
 
       val fileNameWithoutExtension =
         sequence {
-            yieldAll(Symbols.FqNames.metroHintsPackage.pathSegments())
-            yieldAll(declaration.classIdOrFail.relativeClassName.pathSegments())
+            val classId = declaration.classIdOrFail
+            yieldAll(classId.packageFqName.pathSegments())
+            yield(classId.joinSimpleNames(separator = "", camelCase = true).shortClassName)
             yield(callableName)
           }
           .joinToString(separator = "") { it.asString().capitalizeUS() }
@@ -95,6 +99,12 @@ internal class ContributionHintIrTransformer(
 
       val fileName = "${fileNameWithoutExtension}.kt"
       val firFile = buildFile {
+        val metadataSource = declaration.metadata as? FirMetadataSource.Class
+        if (metadataSource == null) {
+          declaration.reportError(
+            "Class ${declaration.classId} does not have a valid metadata source. Found ${declaration.metadata?.javaClass?.canonicalName}."
+          )
+        }
         moduleData = (declaration.metadata as FirMetadataSource.Class).fir.moduleData
         origin = FirDeclarationOrigin.Synthetic.PluginFile
         packageDirective = buildPackageDirective {

@@ -1567,7 +1567,4 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     )
   }
-
-  // TODO
-  //  - multiple scopes to same graph. Need disambiguating names
 }

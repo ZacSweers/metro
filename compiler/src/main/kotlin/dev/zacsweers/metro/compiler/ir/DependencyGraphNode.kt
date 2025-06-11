@@ -34,7 +34,9 @@ internal data class DependencyGraphNode(
   val creator: Creator?,
   val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
   val typeKey: IrTypeKey = IrTypeKey(sourceGraph.typeWith()),
-  val proto: DependencyGraphProto? = null,
+  // TODO not ideal that this is mutable/lateinit but welp
+  //  maybe we track these protos separately somewhere?
+  var proto: DependencyGraphProto? = null,
 ) {
 
   val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
@@ -84,6 +86,12 @@ private fun DependencyGraphNode.recurseIncludedNodes(
     if (key !in builder) {
       builder.put(key, node)
       node.recurseIncludedNodes(builder)
+    }
+  }
+  // Propagate included nodes from parent graphs
+  for (node in extendedGraphNodes.values) {
+    for (includedFromParent in node.allIncludedNodes) {
+      builder[includedFromParent.typeKey] = includedFromParent
     }
   }
 }

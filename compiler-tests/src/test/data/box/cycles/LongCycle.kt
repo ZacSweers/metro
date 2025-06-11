@@ -1,5 +1,3 @@
-import kotlin.test.*
-
 @Inject class Class1(class2: Class2)
 
 @Inject class Class2(class3: Class3)

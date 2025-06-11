@@ -1,5 +1,3 @@
-import kotlin.test.assertEquals
-
 class ExampleClass {
   @Inject lateinit var string: String
   @Inject lateinit var stringProvider: Provider<String>

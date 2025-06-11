@@ -357,9 +357,11 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     val callable =
       originClassSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().firstOrNull {
         val nameMatches =
-          it.name.asString() == callableName ||
+          it.name.asString().equals(callableName, ignoreCase = true) ||
             (it is FirPropertySymbol &&
-              it.name.asString() == callableName.removePrefix("get").decapitalizeUS())
+              it.name
+                .asString()
+                .equals(callableName.removePrefix("get").decapitalizeUS(), ignoreCase = true))
         if (nameMatches) {
           // Secondary check to ensure it's a @Provides-annotated callable. Otherwise we may
           // match against overloaded non-Provides declarations
@@ -418,6 +420,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     return when (this) {
       is FirUserTypeRef ->
         typeResolver.resolveUserType(this).takeUnless { it is FirErrorTypeRef }?.coneType
+      is FirFunctionTypeRef -> createFunctionType(this, typeResolver)
       else -> coneTypeOrNull
     }
   }

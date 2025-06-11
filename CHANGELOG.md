@@ -4,8 +4,76 @@ Changelog
 **Unreleased**
 --------------
 
+0.3.7
+-----
+
+_2025-06-08_
+
+- **Fix:** Record lookups of generated static member inject functions for IC.
+- **Fix:** Dedupe merged overrides of `@Includes` accessors.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar) for contributing to this release!
+
+0.3.6
+-----
+
+_2025-06-06_
+
+- **New:** Add new `Provider.map`, `Provider.flatMap`, `Provider.zip`, and `Provider.memoize` utility APIs.
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts (again).
+- **Enhancement:** Fail eagerly with a clear error message if `languageVersion` is too old.
+- **Enhancement:** Validate improperly depending on assisted-injected classes directly at compile-time.
+- **Fix:** Support constructing nested function return types for provider functions.
+- **Fix:** Propagate `@Include` bindings from parent graphs to extension graphs.
+- **Fix:** Reparent copied lambda default values in IR.
+- [internal] Make internal renderings of `IrType` more deterministic.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar) for contributing to this release!
+
+0.3.5
+-----
+
+_2025-05-31_
+
+- **New:** Implement top-level function injection checkers.
+- **Change:** Disallow top-level function injections to be scoped.
+- **Fix:** Support type parameters with `where` bounds.
+- **Fix:** Support injected class type parameters with any bounds.
+- **Fix:** Support generic graph factory interfaces.
+- **Fix:** In the presence of multiple contributing annotations to the same scope, ensure only hint function/file is generated.
+- **Fix:** Improve shading to avoid packaging in stdlib and other dependency classes.
+- **Fix:** Revert [#483](https://github.com/ZacSweers/metro/pull/483) as it broke some cases we haven't been able to debug yet.
+
+Special thanks to [@gabrielittner](https://github.com/gabrielittner) and [@kevinguitar](https://github.com/kevinguitar) for contributing to this release!
+
+0.3.4
+-----
+
+_2025-05-27_
+
+- **Enhancement:** Use a simple numbered (but deterministic) naming for contributed graph classes to avoid long class names.
+- **Enhancement:** Improve graph validation performance by avoiding unnecessary intermediate sorts.
+- **Enhancement:** Move binding validation into graph validation step.
+- **Enhancement:** Avoid unnecessary BFS graph walk in provider field collection.
+- **Fix:** Fix provider field populating missing types that previously seen types dependent on.
+
+Special thanks to [@ChristianKatzmann](https://github.com/ChristianKatzmann) and [@madisp](https://github.com/madisp) for contributing to this release!
+
+0.3.3
+-----
+
+_2025-05-26_
+
+- **Enhancement:** Don't unnecessarily wrap `Provider` graph accessors.
+- **Enhancement:** Allow multiple contributed graphs to the same parent graph.
 - **Fix:** Don't unnecessarily recompute bindings for roots when populating graphs.
-- Migrate to new IR `parameters`/`arguments`/`typeArguments` APIs.
+- **Fix:** Better handle generic assisted factory interfaces.
+- **Fix:** Use fully qualified names when generating hint files to avoid collisions.
+- **Fix:** Support provides functions with capitalized names.
+- **Fix:** Prohibit consuming `Provider<Lazy<...>>` graph accessors.
+- [internal] Migrate to new IR `parameters`/`arguments`/`typeArguments` compiler APIs.
+
+Special thanks to [@gabrielittner](https://github.com/gabrielittner) for contributing to this release!
 
 0.3.2
 -----

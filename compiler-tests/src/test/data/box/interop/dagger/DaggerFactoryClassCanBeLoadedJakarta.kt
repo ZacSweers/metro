@@ -10,8 +10,6 @@ public class ExampleClass {
 }
 
 // FILE: ExampleGraph.kt
-import kotlin.test.*
-
 @DependencyGraph
 interface ExampleGraph {
   val exampleClass: ExampleClass
