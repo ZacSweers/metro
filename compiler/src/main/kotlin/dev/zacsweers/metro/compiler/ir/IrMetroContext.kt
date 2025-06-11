@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.LookupTracker
+import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -49,6 +50,7 @@ internal interface IrMetroContext {
 
   val pluginContext: IrPluginContext
   val messageCollector: MessageCollector
+  val diagnosticReporter: IrDiagnosticReporter
   val symbols: Symbols
   val options: MetroOptions
   val debug: Boolean
@@ -86,6 +88,10 @@ internal interface IrMetroContext {
 
   fun IrDeclaration.reportError(message: String) {
     messageCollector.report(CompilerMessageSeverity.ERROR, message, locationOrNull())
+  }
+
+  fun IrDeclaration.reportErrorDiagnostic(message: String) {
+    TODO()
   }
 
   fun reportError(message: String, location: CompilerMessageSourceLocation?) {
@@ -186,6 +192,7 @@ internal interface IrMetroContext {
       override val options: MetroOptions,
       override val lookupTracker: LookupTracker?,
     ) : IrMetroContext {
+      override val diagnosticReporter: IrDiagnosticReporter = pluginContext.diagnosticReporter
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
