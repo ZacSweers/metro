@@ -72,7 +72,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
-    KtDiagnosticFactoryToRendererMap("Metro").apply {
+    KtDiagnosticFactoryToRendererMap("FirMetroErrors").apply {
       // Common errors
       put(
         FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
