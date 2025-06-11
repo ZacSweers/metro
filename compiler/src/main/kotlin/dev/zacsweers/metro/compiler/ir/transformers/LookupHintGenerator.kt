@@ -73,7 +73,7 @@ internal class LookupHintGenerator(context: IrMetroContext, val moduleFragment: 
         .apply {
           parameters +=
             buildValueParameter(this) {
-              name = Symbols.Names.instance
+              name = Symbols.Names.contributed
               type = sourceClass.defaultType
               kind = IrParameterKind.Regular
             }
