@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.IrScopedInjectClassData
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail

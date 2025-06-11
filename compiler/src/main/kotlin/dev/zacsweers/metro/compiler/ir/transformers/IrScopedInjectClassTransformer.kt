@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.ir.transformers.IrScopedInjectClassData
 import dev.zacsweers.metro.compiler.ir.transformers.LookupHintGenerator
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrClass
