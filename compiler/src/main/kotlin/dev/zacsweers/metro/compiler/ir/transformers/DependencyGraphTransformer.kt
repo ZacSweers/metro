@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
@@ -866,15 +867,13 @@ internal class DependencyGraphTransformer(
       val message = buildString {
         if (bindingStack.entries.size == 1) {
           // If there's just one entry, specify that it's a self-referencing cycle for clarity
-          appendLine(
-            "[Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself."
-          )
+          appendLine("Graph dependency cycle detected! The below graph depends on itself.")
         } else {
-          appendLine("[Metro/GraphDependencyCycle] Graph dependency cycle detected!")
+          appendLine("Graph dependency cycle detected!")
         }
         appendBindingStack(bindingStack, short = false)
       }
-      graphDeclaration.reportError(message)
+      diagnosticReporter.at(graphDeclaration).report(MetroIrErrors.GRAPH_DEPENDENCY_CYCLE, message)
       exitProcessing()
     }
   }
