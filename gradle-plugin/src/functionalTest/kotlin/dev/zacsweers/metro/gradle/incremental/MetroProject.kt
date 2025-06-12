@@ -23,34 +23,27 @@ abstract class MetroProject(
           withBuildScript {
             plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro)
 
-            val debugSettings =
-              if (debug) {
-                """
-                debug.set(true)
-                reportsDestination.set(layout.buildDirectory.dir("metro"))
-              """
-                  .trimIndent()
-              } else {
-                ""
-              }
-            val overrideInjectClassHints =
-              metroOptions.enableScopedInjectClassHints
-                ?.let { "enableScopedInjectClassHints.set($it)" }
-                .orEmpty()
-
             withKotlin(
               buildString {
                 onBuildScript()
-                // language=kotlin
+
+                // Metro config
+                appendLine("metro {")
                 appendLine(
                   """
-                  metro {
-                    $debugSettings
-                    $overrideInjectClassHints
-                  }
-                  """
+                  debug.set(true)
+                  reportsDestination.set(layout.buildDirectory.dir("metro"))
+                """
                     .trimIndent()
                 )
+                val metroOptions =
+                  metroOptions.enableScopedInjectClassHints
+                    ?.let { "enableScopedInjectClassHints.set($it)" }
+                    .orEmpty()
+                if (metroOptions.isNotBlank()) {
+                  appendLine("  $metroOptions")
+                }
+                appendLine("}")
               }
             )
           }
