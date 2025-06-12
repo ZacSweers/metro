@@ -781,17 +781,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
             e: ExampleGraph.kt:6:1 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
             Cycle:
-                Int --> String --> Double --> Int
+                Double --> Int --> String --> Double
 
             Trace:
+                kotlin.Double is injected at
+                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
                 kotlin.Int is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
                 kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideDouble(…, string)
                 kotlin.Double is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
-                kotlin.Int is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
                 ...
           """
           .trimIndent()

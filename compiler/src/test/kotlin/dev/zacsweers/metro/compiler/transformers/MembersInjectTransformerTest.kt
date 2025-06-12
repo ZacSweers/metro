@@ -948,6 +948,8 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
               kotlin.String is injected at
                   [test.ExampleGraph] test.ExampleGraph#inject()
+              dev.zacsweers.metro.MembersInjector<test.ExampleClass> is requested at
+                  [test.ExampleGraph] test.ExampleGraph#inject()
         """
           .trimIndent()
       )

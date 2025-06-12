@@ -77,17 +77,10 @@ class TaskImpl2 : Task {
 interface ExampleGraph : $$MetroContribution {
   @DependencyGraph(scope = Unit::class, isExtendable = false)
   class $$ContributedLoggedInGraph : LoggedInGraph {
-    private /* final field */ val exampleGraphInstance: ExampleGraph = exampleGraph
-    private /* final field */ val exampleGraphInstanceProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = exampleGraph)
-    private /* final field */ val thisGraphInstance: $$ContributedLoggedInGraph = <this>
-    private /* final field */ val $$ContributedLoggedInGraphProvider: Provider<$$ContributedLoggedInGraph> = Companion.invoke<$$ContributedLoggedInGraph>(value = <this>.#thisGraphInstance)
     constructor(@Extends exampleGraph: ExampleGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      when {
-        exampleGraph !is $$MetroGraph -> throw illegalArgumentException(arg0 = "Constructor parameter exampleGraph _must_ be a Metro-compiler-generated instance of ExampleGraph but was " + exampleGraph.toString())
-      }
     }
 
     override val tasksFromParent: Set<Task>
@@ -117,8 +110,6 @@ interface ExampleGraph : $$MetroContribution {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
-    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
-    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
