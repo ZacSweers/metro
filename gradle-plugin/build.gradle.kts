@@ -32,8 +32,8 @@ tasks.withType<KotlinCompile>().configureEach {
 
     // Lower version for Gradle compat
     progressiveMode.set(false)
-    languageVersion.set(KotlinVersion.KOTLIN_1_9)
-    apiVersion.set(KotlinVersion.KOTLIN_1_9)
+    languageVersion.set(KotlinVersion.KOTLIN_2_0)
+    apiVersion.set(KotlinVersion.KOTLIN_2_0)
   }
 }
 
@@ -64,7 +64,8 @@ dependencies {
 
 tasks.withType<Test>().configureEach {
   jvmArgs(
-    "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}"
+    "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}",
+    "-Ddev.zacsweers.metro.gradle.test.kotlin-version=${libs.versions.kotlin.get()}",
   )
 }
 

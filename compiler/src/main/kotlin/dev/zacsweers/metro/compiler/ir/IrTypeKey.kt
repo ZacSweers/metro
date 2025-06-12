@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 @Poko
@@ -17,6 +18,14 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
   BaseTypeKey<IrType, IrAnnotation, IrTypeKey> {
 
   private val cachedRender by unsafeLazy { render(short = false, includeQualifier = true) }
+
+  val hasTypeArgs: Boolean
+    get() = type is IrSimpleType && type.arguments.isNotEmpty()
+
+  fun remapTypes(typeRemapper: TypeRemapper): IrTypeKey {
+    if (type !is IrSimpleType) return this
+    return IrTypeKey(typeRemapper.remapType(type), qualifier)
+  }
 
   override fun copy(type: IrType, qualifier: IrAnnotation?): IrTypeKey {
     return IrTypeKey(type, qualifier)

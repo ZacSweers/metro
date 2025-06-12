@@ -21,7 +21,6 @@ import dev.zacsweers.metro.compiler.invokeNewInstance
 import dev.zacsweers.metro.provider
 import java.util.concurrent.Callable
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.test.Ignore
 import org.junit.Test
 
 class InjectConstructorTransformerTest : MetroCompilerTest() {
@@ -224,7 +223,6 @@ class InjectConstructorTransformerTest : MetroCompilerTest() {
     }
   }
 
-  @Ignore("Enable once we support private inject constructors")
   @Test
   fun `an injected class with a private constructor is visible from another module`() {
     val otherModuleResult =

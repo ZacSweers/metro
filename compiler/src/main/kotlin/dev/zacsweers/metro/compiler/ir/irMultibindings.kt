@@ -82,7 +82,7 @@ internal fun IrMetroContext.shouldUnwrapMapKeyValues(mapKey: IrAnnotation): Bool
 }
 
 internal fun IrMetroContext.shouldUnwrapMapKeyValues(mapKey: IrConstructorCall): Boolean {
-  val mapKeyMapKeyAnnotation = mapKey.annotationClass.mapKeyAnnotation()!!.ir
+  val mapKeyMapKeyAnnotation = mapKey.annotationClass.explicitMapKeyAnnotation()!!.ir
   // TODO FIR check valid MapKey
   //  - single arg
   //  - no generics

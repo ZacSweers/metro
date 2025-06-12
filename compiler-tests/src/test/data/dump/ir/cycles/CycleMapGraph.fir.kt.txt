@@ -34,6 +34,10 @@ class X {
       return Companion.newInstance(y = <this>.#y.invoke())
     }
 
+    fun mirrorFunction(y: Y): X {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(y: Y) /* primary */ {
@@ -85,6 +89,10 @@ class Y {
       return Companion.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
     }
 
+    fun mirrorFunction(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>): Y {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(mapOfProvidersOfX: Map<String, Provider<X>>, mapOfProvidersOfY: Map<String, Provider<Y>>) /* primary */ {
@@ -113,8 +121,6 @@ interface CycleMapGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : CycleMapGraph {
-    private /* final field */ val thisGraphInstance: CycleMapGraph = <this>
-    private /* final field */ val cycleMapGraphProvider: Provider<CycleMapGraph> = Companion.invoke<CycleMapGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val yProvider: Provider<Y> = DelegateFactory<Y>()
     constructor() /* primary */ {
       super/*Any*/()
@@ -160,3 +166,4 @@ interface CycleMapGraph {
     abstract get
 
 }
+

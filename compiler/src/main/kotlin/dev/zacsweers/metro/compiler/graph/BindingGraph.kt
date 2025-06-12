@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import java.util.SortedMap
 import java.util.SortedSet
+import java.util.TreeSet
 
 internal interface BindingGraph<
   Type : Any,
@@ -50,9 +51,13 @@ internal open class MutableBindingGraph<
    * constructor-injected types). Note one key may incur the creation of multiple bindings, so this
    * returns a set.
    */
-  private val computeBindings: (contextKey: ContextualTypeKey) -> Set<Binding> = { _ ->
-    emptySet()
-  },
+  private val computeBindings:
+    (contextKey: ContextualTypeKey, currentBindings: Set<TypeKey>, stack: BindingStack) -> Set<
+        Binding
+      > =
+    { _, _, _ ->
+      emptySet()
+    },
   private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
@@ -84,9 +89,11 @@ internal open class MutableBindingGraph<
    * @param onPopulated a callback for when the graph is fully populated but not yet validated.
    * @param validateBindings a callback to perform optional extra validation on bindings
    *   post-adjacency build.
+   * @param keep optional set of keys to keep, even if they are unused.
    */
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
+    keep: Set<TypeKey> = emptySet(),
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
     validateBindings:
@@ -142,7 +149,9 @@ internal open class MutableBindingGraph<
     validateBindings(bindings, stack, roots, fullAdjacency)
 
     val topo =
-      tracer.traceNested("Sort and validate") { sortAndValidate(roots, fullAdjacency, stack, it) }
+      tracer.traceNested("Sort and validate") {
+        sortAndValidate(roots, keep, fullAdjacency, stack, it)
+      }
 
     tracer.traceNested("Compute binding indices") {
       // If it depends itself or something that comes later in the topo sort, it
@@ -166,10 +175,10 @@ internal open class MutableBindingGraph<
     val missingBindings = mutableMapOf<TypeKey, BindingStack>()
     for ((contextKey, entry) in roots) {
       if (contextKey.typeKey !in bindings) {
-        val bindings = computeBindings(contextKey)
+        val bindings = computeBindings(contextKey, bindings.keys, stack)
         if (bindings.isNotEmpty()) {
           for (binding in bindings) {
-            tryPut(binding, stack, contextKey.typeKey)
+            tryPut(binding, stack, binding.typeKey)
           }
         } else {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
@@ -195,7 +204,7 @@ internal open class MutableBindingGraph<
             val typeKey = depKey.typeKey
             if (typeKey !in bindings) {
               // If the binding isn't present, we'll report it later
-              val bindings = computeBindings(depKey)
+              val bindings = computeBindings(depKey, bindings.keys, stack)
               if (bindings.isNotEmpty()) {
                 for (binding in bindings) {
                   bindingQueue.addLast(binding)
@@ -214,15 +223,23 @@ internal open class MutableBindingGraph<
 
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
+    keep: Set<TypeKey> = emptySet(),
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {
+    val sortedRootKeys =
+      TreeSet<TypeKey>().apply {
+        roots.keys.forEach { add(it.typeKey) }
+        addAll(keep)
+      }
+
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
       parentTracer.traceNested("Topo sort") { nestedTracer ->
         topologicalSort(
           fullAdjacency = fullAdjacency,
+          roots = sortedRootKeys,
           isDeferrable = { from, to ->
             bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
           },

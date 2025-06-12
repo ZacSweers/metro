@@ -64,6 +64,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testParentIncludesArePropgatedToExtensions() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ParentIncludesArePropgatedToExtensions.kt");
     }
+
+    @Test
+    @TestMetadata("QualifiedMemberInjectionPropagatesAcrossModules.kt")
+    public void testQualifiedMemberInjectionPropagatesAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
+    }
   }
 
   @Nested
@@ -156,6 +162,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InjectedConstructorParametersWithGenericsWork.kt")
+    public void testInjectedConstructorParametersWithGenericsWork() {
+      runTest("compiler-tests/src/test/data/box/inject/InjectedConstructorParametersWithGenericsWork.kt");
+    }
+
+    @Test
     @TestMetadata("InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt")
     public void testInjectedFunInterfaceParametersWithLambdaDefaultsWork() {
       runTest("compiler-tests/src/test/data/box/inject/InjectedFunInterfaceParametersWithLambdaDefaultsWork.kt");
@@ -180,6 +192,40 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/AssistedTypesCanBeExplicitlyProvided.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericAssistedParams.kt")
+      public void testGenericAssistedParams() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/inject/member")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Member {
+      @Test
+      public void testAllFilesPresentInMember() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("GenericMemberInjection.kt")
+      public void testGenericMemberInjection() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericMemberInjectionFromGraph.kt")
+      public void testGenericMemberInjectionFromGraph() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectionFromGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericMemberInjectionWithDeepAncesors.kt")
+      public void testGenericMemberInjectionWithDeepAncesors() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectionWithDeepAncesors.kt");
       }
     }
   }
@@ -212,6 +258,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DaggerFactoryClassCanBeLoadedJakarta.kt")
       public void testDaggerFactoryClassCanBeLoadedJakarta() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoadedJakarta.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
+      public void testGenericDaggerFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
       }
     }
   }
@@ -264,9 +316,21 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
+    public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
+      runTest("compiler-tests/src/test/data/box/provides/ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleFunctionProvider.kt")
     public void testSimpleFunctionProvider() {
       runTest("compiler-tests/src/test/data/box/provides/SimpleFunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("StatusTransformedPrivateProviderAnnotationsArePropagated.kt")
+    public void testStatusTransformedPrivateProviderAnnotationsArePropagated() {
+      runTest("compiler-tests/src/test/data/box/provides/StatusTransformedPrivateProviderAnnotationsArePropagated.kt");
     }
 
     @Test

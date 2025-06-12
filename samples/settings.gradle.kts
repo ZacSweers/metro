@@ -13,6 +13,8 @@ dependencyResolutionManagement {
   repositories {
     mavenCentral()
     google()
+    // For ktfmt
+    maven("https://jitpack.io")
   }
 }
 

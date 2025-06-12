@@ -706,7 +706,6 @@ class ICTests : BaseIncrementalCompilationTest() {
     }
   }
 
-  @Ignore("Not yet working")
   @Test
   fun scopingChangeOnContributedClassIsDetected() {
     val fixture =
@@ -731,6 +730,7 @@ class ICTests : BaseIncrementalCompilationTest() {
               interface Counter {
                 var count: Int
               }
+          @SingleIn(AppScope::class)
           @DependencyGraph(Unit::class)
           interface ExampleGraph {
             val counter: Counter
@@ -764,7 +764,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     project.modify(
       fixture.exampleClass,
       """
-      @SingleIn(Unit::class)
+      @SingleIn(AppScope::class)
       @ContributesBinding(Unit::class)
       @Inject
       class ExampleClass : Counter {

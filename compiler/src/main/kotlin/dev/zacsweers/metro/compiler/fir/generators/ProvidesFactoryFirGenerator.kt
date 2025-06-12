@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.computeTypeAttributes
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
@@ -70,6 +71,7 @@ import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.functionTypeService
 import org.jetbrains.kotlin.fir.types.parametersCount
 import org.jetbrains.kotlin.fir.types.toLookupTag
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -167,6 +169,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
   }
 
   // TODO can we get a finer-grained callback other than just per-class?
+  @OptIn(DirectDeclarationsAccess::class)
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
@@ -293,6 +296,24 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
             setType = true,
             prefix = null,
           )
+        mapping[Name.identifier("startOffset")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Int,
+            value = sourceCallable.symbol.source?.startOffset ?: UNDEFINED_OFFSET,
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
+        mapping[Name.identifier("endOffset")] =
+          buildLiteralExpression(
+            source = null,
+            kind = ConstantValueKind.Int,
+            value = sourceCallable.symbol.source?.endOffset ?: UNDEFINED_OFFSET,
+            annotations = null,
+            setType = true,
+            prefix = null,
+          )
       }
     }
   }
@@ -344,12 +365,12 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> = emptyList()
 
-  @OptIn(SymbolInternals::class)
+  @OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
   @ExperimentalSupertypesGenerationApi
   override fun computeAdditionalSupertypesForGeneratedNestedClass(
     klass: FirRegularClass,
     typeResolver: TypeResolveService,
-  ): List<FirResolvedTypeRef> {
+  ): List<ConeKotlinType> {
     val originClassSymbol =
       klass.getContainingClassSymbol() as? FirClassSymbol<*> ?: return emptyList()
     val callableName =
@@ -413,7 +434,7 @@ internal class ProvidesFactorySupertypeGenerator(session: FirSession) :
       session.symbolProvider
         .getClassLikeSymbolByClassId(Symbols.ClassIds.metroFactory)!!
         .constructType(arrayOf(returnType))
-    return listOf(factoryType.toFirResolvedTypeRef())
+    return listOf(factoryType.toFirResolvedTypeRef().coneType)
   }
 
   private fun FirTypeRef.coneTypeLayered(typeResolver: TypeResolveService): ConeKotlinType? {
