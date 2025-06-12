@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.diagnostics.AbstractSourceElementPositioningStrategy
@@ -7,7 +9,6 @@ import org.jetbrains.kotlin.diagnostics.DiagnosticFactory2DelegateProvider
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies
 
-
 /**
  * The compiler and the IDE use a different version of this class, so use reflection to find the
  * available version.
@@ -16,10 +17,10 @@ import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies
 // https://github.com/TadeasKriz/K2PluginBase/blob/main/kotlin-plugin/src/main/kotlin/com/tadeaskriz/example/ExamplePluginErrors.kt#L8
 internal val psiElementClass by lazy {
   try {
-    Class.forName("org.jetbrains.kotlin.com.intellij.psi.PsiElement")
-  } catch (_: ClassNotFoundException) {
-    Class.forName("com.intellij.psi.PsiElement")
-  }
+      Class.forName("org.jetbrains.kotlin.com.intellij.psi.PsiElement")
+    } catch (_: ClassNotFoundException) {
+      Class.forName("com.intellij.psi.PsiElement")
+    }
     .kotlin
 }
 
