@@ -144,6 +144,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testOverrideCompatibleIncludesBindingAccessors() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleIncludesBindingAccessors.kt");
     }
+
+    @Test
+    @TestMetadata("OverrideCompatibleGraphBindingAccessors.kt.kt")
+    public void testOverrideCompatibleGraphBindingAccessors() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleGraphBindingAccessors.kt");
+    }
   }
 
   @Nested
