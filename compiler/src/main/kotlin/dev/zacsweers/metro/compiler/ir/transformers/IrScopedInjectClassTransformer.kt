@@ -46,8 +46,10 @@ internal class IrScopedInjectClassTransformer(
 
     val classId = declaration.classIdOrFail
     if (classId !in transformedClasses) {
+      // TODO what about generics?
+      val typeKey = IrTypeKey(declaration)
       for (scope in scopes) {
-        data.addContribution(scope, declaration.defaultType)
+        data.addContribution(scope, typeKey)
 
         hintGenerator.generateHint(
           sourceClass = declaration,

@@ -51,6 +51,7 @@ internal class IrBindingGraph(
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
   private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val extraKeeps = mutableSetOf<IrTypeKey>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.bindings
@@ -65,6 +66,10 @@ internal class IrBindingGraph(
 
   fun addBinding(key: IrTypeKey, binding: Binding, bindingStack: IrBindingStack) {
     realGraph.tryPut(binding, bindingStack, key)
+  }
+
+  fun keep(key: IrTypeKey) {
+    extraKeeps += key
   }
 
   fun findBinding(key: IrTypeKey): Binding? = realGraph[key]
@@ -165,7 +170,7 @@ internal class IrBindingGraph(
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
+  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
     val (sortedKeys, deferredTypes, reachableKeys) =
       parentTracer.traceNested("seal graph") { tracer ->
         val roots = buildMap {
@@ -175,20 +180,17 @@ internal class IrBindingGraph(
 
         // If it's extendable, we need to add keeps for providers, including extended graphs'
         // providers
-        val keep =
+        val keep = buildSet {
+          addAll(extraKeeps)
           if (node.isExtendable) {
-            buildSet {
-              for ((key) in node.providerFactories) {
-                add(key)
-              }
-              for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
-                add(key)
-              }
-              // TODO when adding discovered scoped class bindings, it would go here
+            for ((key) in node.providerFactories) {
+              add(key)
             }
-          } else {
-            emptySet()
+            for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
+              add(key)
+            }
           }
+        }
 
         realGraph.seal(
           roots = roots,

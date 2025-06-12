@@ -756,7 +756,7 @@ internal class DependencyGraphTransformer(
           }
 
           tracer.traceNested("Validate graph") {
-            bindingGraph.validate(it) { errors ->
+            bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
                 (declaration ?: dependencyGraphDeclaration).reportError(message)
               }
