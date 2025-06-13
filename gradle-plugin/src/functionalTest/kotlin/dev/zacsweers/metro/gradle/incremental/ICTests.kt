@@ -1146,7 +1146,8 @@ e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${
       }
     val project = fixture.gradleProject
 
-    // First build should fail because [ExampleClass] is not contributed to the scopes of either graph
+    // First build should fail because [ExampleClass] is not contributed to the scopes of either
+    // graph
     val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
 
     assertThat(firstBuildResult.output.cleanOutputLine())
