@@ -55,7 +55,7 @@ import org.jetbrains.kotlin.name.Name
  * File creation is on a little big of shaky ground, but necessary for this to work. More
  * explanation can be found below.
  */
-internal class LookupHintGenerator(context: IrMetroContext, val moduleFragment: IrModuleFragment) :
+internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModuleFragment) :
   IrMetroContext by context {
 
   fun generateHint(

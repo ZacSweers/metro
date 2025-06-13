@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.IrScopedInjectClassData
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -29,7 +28,7 @@ internal class BindingGraphGenerator(
   // TODO preprocess these instead and just lookup via irAttribute
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
-  private val scopedInjectClassData: IrScopedInjectClassData,
+  private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
     val classBindingLookup =
@@ -463,7 +462,7 @@ internal class BindingGraphGenerator(
 
     // Add bindings for scoped @Inject classes which don't have contributions
     if (node.isExtendable) {
-      node.scopes.flatMap(scopedInjectClassData::get).forEach { scopedClassTypeKey ->
+      node.scopes.flatMap(contributionData::getScopedInjectClasses).forEach { scopedClassTypeKey ->
         if (scopedClassTypeKey !in graph) {
           val contextKey = IrContextualTypeKey.create(scopedClassTypeKey)
           val bindings =

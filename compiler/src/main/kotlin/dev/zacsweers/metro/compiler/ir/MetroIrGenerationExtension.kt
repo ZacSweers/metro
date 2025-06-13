@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionBindsFunctionsIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.LookupHintGenerator
+import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.tracing.trace
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -46,22 +46,14 @@ public class MetroIrGenerationExtension(
             moduleFragment.transform(ContributionBindsFunctionsIrTransformer(context), null)
           }
 
-          val hintGenerator = LookupHintGenerator(context, moduleFragment)
-          // First.6 - transform scoped @Inject classes to add their hints
-          val scopedInjectTransformer = IrScopedInjectClassTransformer(context, hintGenerator)
-          tracer.traceNested("Transforming scoped @Inject classes") {
-            moduleFragment.transform(scopedInjectTransformer, null)
-          }
-
           // Second - transform the dependency graphs
           tracer.traceNested("Core transformers") { nestedTracer ->
             val dependencyGraphTransformer =
               DependencyGraphTransformer(
                 context,
                 contributionData,
-                scopedInjectTransformer.data,
                 nestedTracer,
-                hintGenerator,
+                HintGenerator(context, moduleFragment),
               )
             moduleFragment.transform(dependencyGraphTransformer, null)
           }

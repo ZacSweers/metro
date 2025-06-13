@@ -101,9 +101,8 @@ import org.jetbrains.kotlin.platform.konan.isNative
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
   private val contributionData: IrContributionData,
-  private val scopedInjectClassData: IrScopedInjectClassData,
   private val parentTracer: Tracer,
-  private val hintGenerator: LookupHintGenerator,
+  hintGenerator: HintGenerator,
 ) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -740,7 +739,7 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
-            scopedInjectClassData,
+            contributionData,
           )
           .generate()
       }
