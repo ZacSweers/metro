@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.NameAllocator
-import dev.zacsweers.metro.compiler.NameAllocator.Mode
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -15,7 +15,9 @@ import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
+import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
@@ -31,6 +33,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
+import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -55,15 +58,27 @@ internal class ContributionsFirGenerator(session: FirSession) :
 
       if (contributionAnnotations.isNotEmpty()) {
         // We create a contribution class for each scope being contributed to. E.g. if there are
-        // contributions for AppScope and LibScope we'll create $$MetroContribution and
-        // $$MetroContribution2
-        val nameAllocator = NameAllocator(mode = Mode.COUNT)
+        // contributions for AppScope and LibScope we'll create $$MetroContributionToLibScope and
+        // $$MetroContributionToAppScope
+        // It'll try to use the fully name if possible, but because we really just need these to be
+        // disambiguated we can just safely fall back to the short name in the worst case
         contributionAnnotations
           .mapNotNull { it.scopeArgument() }
           .distinctBy { it.scopeName(session) }
           .forEach { scopeArgument ->
+            val suffix =
+              scopeArgument.resolvedClassId()?.let { scopeClass ->
+                scopeClass
+                  .joinSimpleNamesAndTruncate(separator = "", camelCase = true)
+                  .asSingleFqName()
+                  .pathSegments()
+                  .joinToString(separator = "") { it.identifier.decapitalizeUS() }
+              }
+                ?: scopeArgument.scopeName(session)
+                ?: error("Could not get scope name for ${scopeArgument.render()}")
             val nestedContributionName =
-              nameAllocator.newName(Symbols.Names.MetroContribution.identifier).asName()
+              (Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX + "To" + suffix.capitalizeUS())
+                .asName()
 
             contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
           }
@@ -193,7 +208,7 @@ internal class ContributionsFirGenerator(session: FirSession) :
     name: Name,
     context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
-    if (!name.identifier.startsWith(Symbols.Names.MetroContribution.identifier)) return null
+    if (!name.identifier.startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)) return null
     val contributions = findContributions(owner) ?: return null
     return createNestedClass(
         owner,
