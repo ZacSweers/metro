@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
@@ -65,7 +66,6 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -100,9 +100,9 @@ import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
-  moduleFragment: IrModuleFragment,
   private val contributionData: IrContributionData,
   private val parentTracer: Tracer,
+  hintGenerator: HintGenerator,
 ) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -112,7 +112,7 @@ internal class DependencyGraphTransformer(
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
   private val contributionHintIrTransformer by unsafeLazy {
-    ContributionHintIrTransformer(context, moduleFragment)
+    ContributionHintIrTransformer(context, hintGenerator)
   }
 
   // Keyed by the source declaration
@@ -401,7 +401,7 @@ internal class DependencyGraphTransformer(
     val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
     val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
 
-    val injectors = mutableListOf<Pair<MetroSimpleFunction, IrTypeKey>>()
+    val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
       if (!declaration.isFakeOverride) continue
@@ -445,12 +445,11 @@ internal class DependencyGraphTransformer(
             // It's an injector
             val metroFunction = metroFunctionOf(declaration, annotations)
             // key is the injected type wrapped in MembersInjector
-            val typeKey =
-              IrTypeKey(
-                declaration.regularParameters[0].type.wrapInMembersInjector(),
-                annotations.qualifier,
-              )
-            injectors += (metroFunction to typeKey)
+            val contextKey = IrContextualTypeKey.from(this, declaration.regularParameters[0])
+            val memberInjectorTypeKey =
+              contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
+            val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
+            injectors += (metroFunction to finalContextKey)
           } else {
             // Accessor or binds
             val metroFunction = metroFunctionOf(declaration, annotations)
@@ -740,6 +739,7 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
+            contributionData,
           )
           .generate()
       }
@@ -756,7 +756,7 @@ internal class DependencyGraphTransformer(
           }
 
           tracer.traceNested("Validate graph") {
-            bindingGraph.validate(it) { errors ->
+            bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
                 (declaration ?: dependencyGraphDeclaration).reportError(message)
               }
@@ -867,15 +867,13 @@ internal class DependencyGraphTransformer(
       val message = buildString {
         if (bindingStack.entries.size == 1) {
           // If there's just one entry, specify that it's a self-referencing cycle for clarity
-          appendLine(
-            "[Metro/GraphDependencyCycle] Graph dependency cycle detected! The below graph depends on itself."
-          )
+          appendLine("Graph dependency cycle detected! The below graph depends on itself.")
         } else {
-          appendLine("[Metro/GraphDependencyCycle] Graph dependency cycle detected!")
+          appendLine("Graph dependency cycle detected!")
         }
         appendBindingStack(bindingStack, short = false)
       }
-      graphDeclaration.reportError(message)
+      diagnosticReporter.at(graphDeclaration).report(MetroIrErrors.GRAPH_DEPENDENCY_CYCLE, message)
       exitProcessing()
     }
   }

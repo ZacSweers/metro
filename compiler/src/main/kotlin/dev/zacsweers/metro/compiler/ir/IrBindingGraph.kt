@@ -3,19 +3,14 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
-import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
-import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
-import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
-import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -26,9 +21,6 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.getSimpleFunction
-import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
@@ -36,12 +28,8 @@ internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
   private val node: DependencyGraphNode,
   newBindingStack: () -> IrBindingStack,
-  findClassFactory: (IrClass) -> ClassFactory?,
-  findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
+  classBindingLookup: ClassBindingLookup,
 ) {
-
-  private val classBindingLookup =
-    ClassBindingLookup(metroContext, node.sourceGraph, findClassFactory, findMemberInjectors)
   private val realGraph =
     MutableBindingGraph(
       newBindingStack = newBindingStack,
@@ -62,7 +50,8 @@ internal class IrBindingGraph(
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
-  private val injectors = mutableMapOf<IrTypeKey, IrBindingStack.Entry>()
+  private val injectors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
+  private val extraKeeps = mutableSetOf<IrTypeKey>()
 
   // Thin immutable view over the internal bindings
   fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.bindings
@@ -71,12 +60,16 @@ internal class IrBindingGraph(
     accessors[key] = entry
   }
 
-  fun addInjector(key: IrTypeKey, entry: IrBindingStack.Entry) {
+  fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     injectors[key] = entry
   }
 
   fun addBinding(key: IrTypeKey, binding: Binding, bindingStack: IrBindingStack) {
     realGraph.tryPut(binding, bindingStack, key)
+  }
+
+  fun keep(key: IrTypeKey) {
+    extraKeeps += key
   }
 
   fun findBinding(key: IrTypeKey): Binding? = realGraph[key]
@@ -172,15 +165,36 @@ internal class IrBindingGraph(
   data class BindingGraphResult(
     val sortedKeys: List<IrTypeKey>,
     val deferredTypes: List<IrTypeKey>,
+    val reachableKeys: Set<IrTypeKey>,
   )
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun validate(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
-    val (sortedKeys, deferredTypes) =
+  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
+    val (sortedKeys, deferredTypes, reachableKeys) =
       parentTracer.traceNested("seal graph") { tracer ->
+        val roots = buildMap {
+          putAll(accessors)
+          putAll(injectors)
+        }
+
+        // If it's extendable, we need to add keeps for providers, including extended graphs'
+        // providers
+        val keep = buildSet {
+          addAll(extraKeeps)
+          if (node.isExtendable) {
+            for ((key) in node.providerFactories) {
+              add(key)
+            }
+            for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
+              add(key)
+            }
+          }
+        }
+
         realGraph.seal(
-          roots = accessors,
+          roots = roots,
+          keep = keep,
           tracer = tracer,
           onPopulated = {
             metroContext.writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
@@ -194,8 +208,17 @@ internal class IrBindingGraph(
     metroContext.writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
       sortedKeys.joinToString(separator = "\n")
     }
+
     metroContext.writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
       deferredTypes.joinToString(separator = "\n")
+    }
+
+    val unused = bindingsSnapshot().keys - reachableKeys
+    if (unused.isNotEmpty()) {
+      // TODO option to warn or fail? What about extensions that implicitly have many unused
+      metroContext.writeDiagnostic("keys-unused-${parentTracer.tag}.txt") {
+        unused.joinToString(separator = "\n")
+      }
     }
 
     parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
@@ -204,7 +227,7 @@ internal class IrBindingGraph(
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
       }
     }
-    return BindingGraphResult(sortedKeys, deferredTypes)
+    return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys)
   }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
@@ -643,105 +666,4 @@ internal class IrBindingGraph(
       }
     }
   }
-}
-
-internal class ClassBindingLookup(
-  private val metroContext: IrMetroContext,
-  private val sourceGraph: IrClass,
-  private val findClassFactory: (IrClass) -> ClassFactory?,
-  private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
-) {
-
-  /** Creates an expected class binding for the given [contextKey] or returns null. */
-  internal fun lookup(
-    contextKey: IrContextualTypeKey,
-    currentBindings: Set<IrTypeKey>,
-    stack: IrBindingStack,
-  ): Set<Binding> =
-    with(metroContext) {
-      val key = contextKey.typeKey
-      val irClass = key.type.rawType()
-
-      val classAnnotations = irClass.metroAnnotations(symbols.classIds)
-
-      val bindings = mutableSetOf<Binding>()
-      if (irClass.isObject) {
-        irClass.getSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION)?.owner?.let {
-          // We don't actually call this function but it stores information about qualifier/scope
-          // annotations, so reference it here so IC triggers
-          trackFunctionCall(sourceGraph, it)
-        }
-        bindings += Binding.ObjectClass(irClass, classAnnotations, key)
-        return bindings
-      }
-
-      val classFactory = findClassFactory(irClass)
-      if (classFactory != null) {
-        // We don't actually call this function but it stores information about qualifier/scope
-        // annotations, so reference it here so IC triggers
-        trackFunctionCall(sourceGraph, classFactory.function)
-
-        val remapper = irClass.deepRemapperFor(key.type)
-        val mappedFactory = classFactory.remapTypes(remapper)
-
-        // Not sure this can ever happen but report a detailed error in case.
-        if (
-          irClass.typeParameters.isNotEmpty() &&
-            (key.type as? IrSimpleType)?.arguments.isNullOrEmpty()
-        ) {
-          val message = buildString {
-            appendLine(
-              "Class factory for type ${key.type} has type parameters but no type arguments provided at calling site."
-            )
-            appendBindingStack(stack)
-          }
-          irClass.reportError(message)
-          exitProcessing()
-        }
-
-        bindings +=
-          Binding.ConstructorInjected(
-            type = irClass,
-            classFactory = mappedFactory,
-            annotations = classAnnotations,
-            typeKey = key,
-          )
-
-        for (generatedInjector in findMemberInjectors(irClass)) {
-          val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
-          if (mappedTypeKey !in currentBindings) {
-            // Remap type args using the same remapper used for the class
-            val remappedParameters = generatedInjector.mergedParameters(remapper)
-
-            bindings +=
-              Binding.MembersInjected(
-                IrContextualTypeKey(mappedTypeKey),
-                // Need to look up the injector class and gather all params
-                parameters = remappedParameters,
-                reportableLocation = irClass.location(),
-                function = null,
-                isFromInjectorFunction = true,
-                targetClassId = irClass.classIdOrFail,
-              )
-          }
-        }
-      } else if (classAnnotations.isAssistedFactory) {
-        val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)
-        val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
-        bindings +=
-          Binding.Assisted(
-            type = irClass,
-            function = function,
-            annotations = classAnnotations,
-            typeKey = key,
-            parameters = function.parameters(metroContext),
-            target = targetContextualTypeKey,
-          )
-      } else if (contextKey.hasDefault) {
-        bindings += Binding.Absent(key)
-      } else {
-        // Do nothing
-      }
-      return bindings
-    }
 }

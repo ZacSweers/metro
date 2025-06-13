@@ -41,7 +41,7 @@ case "$1" in
 
    "check")
        echo "Running checks..."
-       ./gradlew check
+       ./gradlew check -x dokkaGeneratePublicationHtml
        ./gradlew -p samples check
        ;;
 

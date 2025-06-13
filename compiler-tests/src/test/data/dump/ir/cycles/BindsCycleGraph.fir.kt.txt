@@ -66,8 +66,6 @@ interface BindsCycleGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : BindsCycleGraph {
-    private /* final field */ val thisGraphInstance: BindsCycleGraph = <this>
-    private /* final field */ val bindsCycleGraphProvider: Provider<BindsCycleGraph> = Companion.invoke<BindsCycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val barProvider: Provider<Bar> = DelegateFactory<Bar>()
     constructor() /* primary */ {
       super/*Any*/()

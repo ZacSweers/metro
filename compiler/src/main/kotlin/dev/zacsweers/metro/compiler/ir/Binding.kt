@@ -81,16 +81,19 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     @Poko.Skip val classFactory: ClassFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
+    val injectedMembers: Set<IrContextualTypeKey>,
   ) : Binding, BindingWithAnnotations, InjectedClassBinding<ConstructorInjected> {
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
-    override val parametersByKey: Map<IrTypeKey, Parameter> =
+    override val parametersByKey: Map<IrTypeKey, Parameter> by unsafeLazy {
       parameters.nonDispatchParameters.associateBy { it.typeKey }
+    }
 
     val isAssisted by unsafeLazy { parameters.regularParameters.any { it.isAssisted } }
 
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
-      parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey }
+      parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
+        injectedMembers
     }
 
     override val scope: IrAnnotation?
@@ -103,8 +106,9 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
       get() = type.locationOrNull()
 
     fun parameterFor(typeKey: IrTypeKey) =
-      classFactory.function.regularParameters[
-          parameters.regularParameters.indexOfFirst { it.typeKey == typeKey }]
+      classFactory.function.regularParameters.getOrNull(
+        parameters.regularParameters.indexOfFirst { it.typeKey == typeKey }
+      )
 
     override fun toString() = buildString {
       append("@Inject ")
@@ -118,6 +122,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
         classFactory,
         annotations.copy(mapKeys = annotations.mapKeys + mapKey),
         typeKey,
+        injectedMembers,
       )
     }
   }
@@ -156,8 +161,9 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
   ) : Binding, BindingWithAnnotations {
-    override val dependencies: List<IrContextualTypeKey> =
-      parameters.nonDispatchParameters.map { it.contextualTypeKey }
+    override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
+      parameters.allParameters.map { it.contextualTypeKey }
+    }
 
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonDispatchParameters.associateBy { it.typeKey }
@@ -377,13 +383,14 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
   @Poko
   class GraphDependency(
+    val ownerKey: IrTypeKey,
     @Poko.Skip val graph: IrClass,
     @Poko.Skip val getter: IrSimpleFunction,
     val isProviderFieldAccessor: Boolean,
     override val typeKey: IrTypeKey,
     val callableId: CallableId = getter.callableId,
   ) : Binding {
-    override val dependencies: List<IrContextualTypeKey> = emptyList()
+    override val dependencies: List<IrContextualTypeKey> = listOf(IrContextualTypeKey(ownerKey))
     override val scope: IrAnnotation? = null
     override val nameHint: String = buildString {
       append(graph.name)

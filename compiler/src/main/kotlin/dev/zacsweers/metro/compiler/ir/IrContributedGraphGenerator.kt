@@ -172,7 +172,7 @@ internal class IrContributedGraphGenerator(
       sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first().let {
         it.scopeOrNull() ?: error("No scope found for ${sourceGraph.name}: ${it.dumpKotlinLike()}")
       }
-    contributedGraph.superTypes += contributionData[scope]
+    contributedGraph.superTypes += contributionData.getContributions(scope)
 
     parentGraph.addChild(contributedGraph)
 

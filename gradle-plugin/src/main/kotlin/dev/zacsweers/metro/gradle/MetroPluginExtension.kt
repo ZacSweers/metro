@@ -54,6 +54,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val generateHintProperties: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
+  /** Enable/disable hint property generation for scoped inject classes. Disabled by default. */
+  public val enableScopedInjectClassHints: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)

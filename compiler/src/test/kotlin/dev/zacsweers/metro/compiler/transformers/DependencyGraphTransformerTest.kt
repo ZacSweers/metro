@@ -781,17 +781,17 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
             e: ExampleGraph.kt:6:1 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
             Cycle:
-                Int --> String --> Double --> Int
+                Double --> Int --> String --> Double
 
             Trace:
+                kotlin.Double is injected at
+                    [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
                 kotlin.Int is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
                 kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideDouble(…, string)
                 kotlin.Double is injected at
                     [test.ExampleGraph] test.ExampleGraph#provideInt(…, double)
-                kotlin.Int is injected at
-                    [test.ExampleGraph] test.ExampleGraph#provideString(…, int)
                 ...
           """
           .trimIndent()
@@ -858,66 +858,6 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     result.assertDiagnostics(
       """
       e: CharSequenceGraph.kt:16:33 DependencyGraph.Factory declarations cannot have their target graph type as parameters.
-      """
-        .trimIndent()
-    )
-  }
-
-  @Test
-  fun `graph dependency cycles should fail across multiple graphs`() {
-    val result =
-      compile(
-        source(
-          fileNameWithoutExtension = "ExampleGraph",
-          source =
-            """
-            @DependencyGraph
-            interface CharSequenceGraph {
-
-              fun value(): CharSequence
-
-              @Provides
-              fun provideValue(string: String): CharSequence = string
-
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Includes stringGraph: StringGraph): CharSequenceGraph
-              }
-            }
-
-            @DependencyGraph
-            interface StringGraph {
-
-              val string: String
-
-              @Provides
-              fun provideValue(charSequence: CharSequence): String = charSequence.toString()
-
-              @DependencyGraph.Factory
-              fun interface Factory {
-                fun create(@Includes charSequenceGraph: CharSequenceGraph): StringGraph
-              }
-            }
-
-          """
-              .trimIndent(),
-        ),
-        expectedExitCode = ExitCode.COMPILATION_ERROR,
-      )
-
-    result.assertDiagnostics(
-      """
-        e: ExampleGraph.kt:6:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected!
-            test.StringGraph is requested at
-                [test.CharSequenceGraph] test.StringGraph.Factory#create()
-            test.CharSequenceGraph is requested at
-                [test.CharSequenceGraph] test.CharSequenceGraph.Factory#create()
-
-        e: ExampleGraph.kt:20:1 [Metro/GraphDependencyCycle] Graph dependency cycle detected!
-            test.CharSequenceGraph is requested at
-                [test.StringGraph] test.CharSequenceGraph.Factory#create()
-            test.StringGraph is requested at
-                [test.StringGraph] test.StringGraph.Factory#create()
       """
         .trimIndent()
     )

@@ -28,15 +28,13 @@ internal class BindingGraphGenerator(
   // TODO preprocess these instead and just lookup via irAttribute
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
+  private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
-    val graph =
-      IrBindingGraph(
-        this,
-        node,
-        newBindingStack = {
-          IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
-        },
+    val classBindingLookup =
+      ClassBindingLookup(
+        metroContext,
+        node.sourceGraph,
         findClassFactory = { clazz ->
           injectConstructorTransformer.getOrGenerateFactory(
             clazz,
@@ -45,6 +43,16 @@ internal class BindingGraphGenerator(
           )
         },
         findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
+      )
+
+    val graph =
+      IrBindingGraph(
+        this,
+        node,
+        newBindingStack = {
+          IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
+        },
+        classBindingLookup = classBindingLookup,
       )
 
     // Add explicit bindings from @Provides methods
@@ -291,9 +299,26 @@ internal class BindingGraphGenerator(
           // We'll handle this farther down
           continue
         }
+
+        // Add a ref to the included graph if not already present
+        // Only add it if it's a directly included node. Indirect will be propagated by metro
+        // accessors
+        if (depNode.typeKey !in graph && depNode.typeKey in node.includedGraphNodes) {
+          graph.addBinding(
+            depNode.typeKey,
+            Binding.BoundInstance(
+              depNode.typeKey,
+              "${depNode.sourceGraph.name}Provider",
+              depNode.sourceGraph.locationOrNull(),
+            ),
+            bindingStack,
+          )
+        }
+
         graph.addBinding(
           contextualTypeKey.typeKey,
           Binding.GraphDependency(
+            ownerKey = depNode.typeKey,
             graph = depNode.sourceGraph,
             getter = getter.ir,
             isProviderFieldAccessor = false,
@@ -351,6 +376,7 @@ internal class BindingGraphGenerator(
             graph.addBinding(
               contextualTypeKey.typeKey,
               Binding.GraphDependency(
+                ownerKey = depNode.typeKey,
                 graph = depNode.sourceGraph,
                 getter = accessor.ir,
                 isProviderFieldAccessor = true,
@@ -379,6 +405,7 @@ internal class BindingGraphGenerator(
             graph.addBinding(
               contextualTypeKey.typeKey,
               Binding.GraphDependency(
+                ownerKey = depNode.typeKey,
                 graph = depNode.sourceGraph,
                 getter = accessor.ir,
                 isProviderFieldAccessor = true,
@@ -394,11 +421,10 @@ internal class BindingGraphGenerator(
     }
 
     // Add MembersInjector bindings defined on injector functions
-    node.injectors.forEach { (injector, typeKey) ->
-      val contextKey = IrContextualTypeKey(typeKey)
+    node.injectors.forEach { (injector, contextKey) ->
       val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
 
-      graph.addInjector(typeKey, entry)
+      graph.addInjector(contextKey, entry)
       bindingStack.withEntry(entry) {
         val paramType = injector.ir.regularParameters.single().type
         val targetClass = paramType.rawType()
@@ -430,13 +456,29 @@ internal class BindingGraphGenerator(
             targetClassId = targetClass.classIdOrFail,
           )
 
-        graph.addBinding(typeKey, binding, bindingStack)
+        graph.addBinding(contextKey.typeKey, binding, bindingStack)
       }
     }
 
-    // Don't eagerly create bindings for injectable types, they'll be created on-demand
-    // when dependencies are analyzed
-    // TODO collect unused bindings?
+    // Add bindings for scoped @Inject classes which don't have contributions
+    if (node.isExtendable) {
+      node.scopes.flatMap(contributionData::getScopedInjectClasses).forEach { scopedClassTypeKey ->
+        if (scopedClassTypeKey !in graph) {
+          val contextKey = IrContextualTypeKey.create(scopedClassTypeKey)
+          val bindings =
+            classBindingLookup.lookup(
+              contextKey,
+              graph.bindingsSnapshot().keys,
+              IrBindingStack.empty(),
+            )
+          for (binding in bindings) {
+            graph.addBinding(scopedClassTypeKey, binding, IrBindingStack.empty())
+            // Mark this to be explicitly kept even after pruning unused
+            graph.keep(scopedClassTypeKey)
+          }
+        }
+      }
+    }
 
     return graph
   }

@@ -807,6 +807,144 @@ class ICTests : BaseIncrementalCompilationTest() {
     }
   }
 
+  @Test
+  fun scopingChangeOnNonContributedClassIsDetected() {
+    val options = MetroOptionOverrides(enableScopedInjectClassHints = true)
+    val fixture =
+      object : MetroProject(debug = true, metroOptions = options) {
+        override fun sources() =
+          listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
+
+        val unusedScope =
+          source(
+            """
+              interface UnusedScope
+            """
+              .trimIndent()
+          )
+
+        val exampleClass =
+          source(
+            """
+              @Inject
+              @SingleIn(UnusedScope::class)
+              class ExampleClass
+            """
+              .trimIndent()
+          )
+
+        private val exampleGraph =
+          source(
+            """
+              @DependencyGraph(scope = AppScope::class, isExtendable = true)
+              interface ExampleGraph
+            """
+              .trimIndent()
+          )
+
+        private val loggedInGraph =
+          source(
+            """
+                sealed interface LoggedInScope
+
+                @ContributesGraphExtension(LoggedInScope::class)
+                interface LoggedInGraph {
+                  val childDependency: ExampleClass
+
+                    @ContributesGraphExtension.Factory(AppScope::class)
+                    interface Factory {
+                        fun createLoggedInGraph(): LoggedInGraph
+                    }
+                }
+              """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Any {
+              val graph = createGraph<ExampleGraph>().createLoggedInGraph()
+              return graph.childDependency
+            }
+            """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    // First build should fail because [ExampleClass] is scoped incompatibly with both graph nodes
+    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+
+    assertThat(firstBuildResult.output.cleanOutputLine())
+      .contains(
+        """
+e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+    test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+    test.ExampleClass is requested at
+        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+        """
+          .trimIndent()
+      )
+
+    project.modify(
+      fixture.exampleClass,
+      """
+        @Inject
+        @SingleIn(AppScope::class)
+        class ExampleClass
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val scopedDep = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+      assertThat(scopedDep).isNotNull()
+    }
+
+    // We need to add or remove an annotation at this point to trigger the graph regen, IC doesn't
+    // seem to pick up an annotation argument change when the previous compilation was successful
+    project.modify(
+      fixture.exampleClass,
+      """
+        @Inject
+        class ExampleClass
+      """
+        .trimIndent(),
+    )
+
+    val thirdBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.exampleClass,
+      """
+        @Inject
+        @SingleIn(UnusedScope::class)
+        class ExampleClass
+      """
+        .trimIndent(),
+    )
+
+    // We expect that changing the source back to what we started with should again give us the
+    // original error
+    val fourthBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(fourthBuildResult.output.cleanOutputLine())
+      .contains(
+        """
+e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+    test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+    test.ExampleClass is requested at
+        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+        """
+          .trimIndent()
+      )
+  }
+
   @Ignore("Not working yet, pending https://youtrack.jetbrains.com/issue/KT-77938")
   @Test
   fun classVisibilityChangeDetected() {

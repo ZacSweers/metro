@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.ir.transformers.ContributionBindsFunctionsIrTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.DependencyGraphTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
 import dev.zacsweers.metro.compiler.tracing.trace
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -48,7 +49,12 @@ public class MetroIrGenerationExtension(
           // Second - transform the dependency graphs
           tracer.traceNested("Core transformers") { nestedTracer ->
             val dependencyGraphTransformer =
-              DependencyGraphTransformer(context, moduleFragment, contributionData, nestedTracer)
+              DependencyGraphTransformer(
+                context,
+                contributionData,
+                nestedTracer,
+                HintGenerator(context, moduleFragment),
+              )
             moduleFragment.transform(dependencyGraphTransformer, null)
           }
         }
