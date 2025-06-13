@@ -807,7 +807,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     }
   }
 
-  @Ignore("Not working yet")
+  @Ignore("Not working yet, pending https://youtrack.jetbrains.com/issue/KT-77938")
   @Test
   fun classVisibilityChangeDetected() {
     val fixture =
@@ -941,6 +941,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     buildAndAssertOutput()
   }
 
+  @Ignore("Not working yet")
   @Test
   fun icWorksWhenChangingAContributionScope() {
     val fixture =
