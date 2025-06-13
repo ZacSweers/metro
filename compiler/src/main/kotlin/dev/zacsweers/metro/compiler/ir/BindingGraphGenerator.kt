@@ -28,15 +28,13 @@ internal class BindingGraphGenerator(
   // TODO preprocess these instead and just lookup via irAttribute
   private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
+  private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
-    val graph =
-      IrBindingGraph(
-        this,
-        node,
-        newBindingStack = {
-          IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
-        },
+    val classBindingLookup =
+      ClassBindingLookup(
+        metroContext,
+        node.sourceGraph,
         findClassFactory = { clazz ->
           injectConstructorTransformer.getOrGenerateFactory(
             clazz,
@@ -45,6 +43,16 @@ internal class BindingGraphGenerator(
           )
         },
         findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
+      )
+
+    val graph =
+      IrBindingGraph(
+        this,
+        node,
+        newBindingStack = {
+          IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
+        },
+        classBindingLookup = classBindingLookup,
       )
 
     // Add explicit bindings from @Provides methods
@@ -449,6 +457,26 @@ internal class BindingGraphGenerator(
           )
 
         graph.addBinding(contextKey.typeKey, binding, bindingStack)
+      }
+    }
+
+    // Add bindings for scoped @Inject classes which don't have contributions
+    if (node.isExtendable) {
+      node.scopes.flatMap(contributionData::getScopedInjectClasses).forEach { scopedClassTypeKey ->
+        if (scopedClassTypeKey !in graph) {
+          val contextKey = IrContextualTypeKey.create(scopedClassTypeKey)
+          val bindings =
+            classBindingLookup.lookup(
+              contextKey,
+              graph.bindingsSnapshot().keys,
+              IrBindingStack.empty(),
+            )
+          for (binding in bindings) {
+            graph.addBinding(scopedClassTypeKey, binding, IrBindingStack.empty())
+            // Mark this to be explicitly kept even after pruning unused
+            graph.keep(scopedClassTypeKey)
+          }
+        }
       }
     }
 

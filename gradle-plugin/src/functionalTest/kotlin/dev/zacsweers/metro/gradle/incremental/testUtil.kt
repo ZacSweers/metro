@@ -8,7 +8,6 @@ import com.autonomousapps.kit.Source.Companion.kotlin
 import com.autonomousapps.kit.SourceType
 import java.net.URLClassLoader
 import java.util.Locale
-import kotlin.collections.plus
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import org.intellij.lang.annotations.Language
@@ -22,6 +21,10 @@ private val DEFAULT_IMPORTS =
     // For Callable access
     "java.util.concurrent.*",
   )
+
+private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
+
+fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 
 fun GradleProject.classLoader(): ClassLoader {
   val classesDir = rootDir.toPath().resolve("build/classes/kotlin/main").absolute()

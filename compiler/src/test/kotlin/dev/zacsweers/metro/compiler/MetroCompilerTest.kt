@@ -231,6 +231,9 @@ abstract class MetroCompilerTest {
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
               }
+              MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
+                processor.option(entry.raw.cliOption, enableScopedInjectClassHints)
+              }
             }
           yield(option)
         }

@@ -66,7 +66,6 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -101,9 +100,9 @@ import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
-  moduleFragment: IrModuleFragment,
   private val contributionData: IrContributionData,
   private val parentTracer: Tracer,
+  hintGenerator: HintGenerator,
 ) : IrElementTransformerVoid(), IrMetroContext by context {
 
   private val membersInjectorTransformer = MembersInjectorTransformer(context)
@@ -113,7 +112,7 @@ internal class DependencyGraphTransformer(
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
   private val contributionHintIrTransformer by unsafeLazy {
-    ContributionHintIrTransformer(context, moduleFragment)
+    ContributionHintIrTransformer(context, hintGenerator)
   }
 
   // Keyed by the source declaration
@@ -740,6 +739,7 @@ internal class DependencyGraphTransformer(
             node,
             injectConstructorTransformer,
             membersInjectorTransformer,
+            contributionData,
           )
           .generate()
       }
@@ -756,7 +756,7 @@ internal class DependencyGraphTransformer(
           }
 
           tracer.traceNested("Validate graph") {
-            bindingGraph.validate(it) { errors ->
+            bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
                 (declaration ?: dependencyGraphDeclaration).reportError(message)
               }

@@ -15,11 +15,19 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private val contributions = mutableMapOf<ClassId, MutableSet<IrType>>()
   private val externalContributions = mutableMapOf<ClassId, Set<IrType>>()
 
+  // Scoped inject classes are currently tracked separately from contributions because we need to
+  // maintain the full scope info (e.g. @Singleton, @SingleIn(AppScope)) for accurate comparisons.
+  // Conversely, contributions only ever have a scope arg available (e.g. @ContributesTo(AppScope),
+  // @ContributesTo(Singleton)), so we can't effectively map between and compare the two for the
+  // types of hints that we want to generate.
+  private val scopeToInjectClasses = mutableMapOf<IrAnnotation, MutableSet<IrTypeKey>>()
+  private val externalScopeToInjectClasses = mutableMapOf<IrAnnotation, Set<IrTypeKey>>()
+
   fun addContribution(scope: ClassId, contribution: IrType) {
     contributions.getOrPut(scope) { mutableSetOf() }.add(contribution)
   }
 
-  operator fun get(scope: ClassId): Set<IrType> = buildSet {
+  fun getContributions(scope: ClassId): Set<IrType> = buildSet {
     contributions[scope]?.let(::addAll)
     addAll(findExternalContributions(scope))
   }
@@ -72,5 +80,40 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
           null
         }
       }
+  }
+
+  fun addScopedInject(scope: IrAnnotation, contribution: IrTypeKey) {
+    scopeToInjectClasses.getOrPut(scope, ::mutableSetOf).add(contribution)
+  }
+
+  fun getScopedInjectClasses(scope: IrAnnotation): Set<IrTypeKey> = buildSet {
+    scopeToInjectClasses[scope]?.let(::addAll)
+    addAll(findExternalScopedInjects(scope))
+  }
+
+  private fun findExternalScopedInjects(scope: IrAnnotation): Set<IrTypeKey> {
+    return externalScopeToInjectClasses.getOrPut(scope) {
+      val unfilteredScopedInjectClasses =
+        metroContext.pluginContext
+          .referenceFunctions(Symbols.CallableIds.scopedInjectClassHint(scope))
+          .map { hintFunction ->
+            hintFunction.owner.regularParameters.single().type.classOrFail.owner
+          }
+
+      return unfilteredScopedInjectClasses.mapNotNullToSet { clazz ->
+        // We filter by the source class annotations instead of the hint function because there's
+        // currently an IC issue where old hint functions do not get invalidated, so we can't rely
+        // on them without validating against the source again
+        val classScopes =
+          clazz.annotationsAnnotatedWithAny(metroContext.symbols.classIds.scopeAnnotations).map {
+            IrAnnotation(it)
+          }
+        if (scope in classScopes) {
+          with(metroContext) { IrTypeKey(clazz) }
+        } else {
+          null
+        }
+      }
+    }
   }
 }

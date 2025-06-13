@@ -6,10 +6,12 @@ import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.unsafeLazy
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.defaultType
 
 // TODO cache these in DependencyGraphTransformer or shared transformer data
 @Poko
@@ -49,6 +51,11 @@ private constructor(override val type: IrType, override val qualifier: IrAnnotat
   }
 
   companion object {
+    context(context: IrMetroContext)
+    operator fun invoke(clazz: IrClass): IrTypeKey {
+      return invoke(clazz.defaultType, with(context) { clazz.qualifierAnnotation() })
+    }
+
     operator fun invoke(type: IrType, qualifier: IrAnnotation? = null): IrTypeKey {
       // Canonicalize on the way through
       return IrTypeKey(type.canonicalize(), qualifier)
