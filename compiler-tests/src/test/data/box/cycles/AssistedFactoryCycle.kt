@@ -1,29 +1,33 @@
 @Inject
-class A(
+class Foo(
   @Assisted nested: Boolean,
-  factory: Provider<Factory>
+  factoryProvider: Provider<Factory>,
+  factoryLazy: Lazy<Factory>,
+  factory: Factory,
 ) {
-  val nestedA = if (nested) {
-    factory().create(nested = false)
-  } else {
-    null
-  }
+  val nestedFooViaProvider = if (nested) factoryProvider().create() else null
+  val nestedFooViaLazy = if (nested) factoryLazy.value.create() else null
+  val nestedFoo = if (nested) factory.create() else null
 
   @AssistedFactory
   interface Factory {
-    fun create(nested: Boolean): A
+    fun create(nested: Boolean = false): Foo
   }
 }
 
 @DependencyGraph
 interface CycleGraph {
-  fun aFactory(): A.Factory
+  fun fooFactory(): Foo.Factory
 }
 
 fun box(): String {
   val cycleGraph = createGraph<CycleGraph>()
-  val a = cycleGraph.aFactory().create(nested = true)
-  assertNotNull(a.nestedA)
-  assertNull(a.nestedA?.nestedA)
+  val foo = cycleGraph.fooFactory().create(nested = true)
+  assertNotNull(foo.nestedFooViaProvider)
+  assertNotNull(foo.nestedFooViaLazy)
+  assertNotNull(foo.nestedFoo)
+  assertNull(foo.nestedFooViaProvider?.nestedFooViaProvider)
+  assertNull(foo.nestedFooViaLazy?.nestedFooViaLazy)
+  assertNull(foo.nestedFoo?.nestedFoo)
   return "OK"
 }
