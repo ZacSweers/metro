@@ -60,6 +60,7 @@ internal class ContributionHintIrTransformer(
       hintGenerator.generateHint(
         sourceClass = declaration,
         hintName = Symbols.CallableIds.scopedInjectClassHint(scope).callableName,
+        hintAnnotations = listOf(scope),
       )
     }
   }
