@@ -36,7 +36,7 @@ public class MetroFirExtensionRegistrar(
     +supertypeGenerator(
       "Supertypes - contributed interfaces",
       ::ContributedInterfaceSupertypeGenerator,
-      false,
+      true,
     )
     +supertypeGenerator(
       "Supertypes - provider factories",
