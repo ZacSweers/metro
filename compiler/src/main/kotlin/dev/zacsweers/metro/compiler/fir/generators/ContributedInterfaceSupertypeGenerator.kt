@@ -59,7 +59,6 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 // Toe-hold for contributed types
-@OptIn(SymbolInternals::class, ResolveStateAccess::class)
 internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
 
@@ -128,7 +127,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     return contributingClasses
       .flatMap { originClass ->
         val classDeclarationContainer =
-          originClass.fir.symbol.declaredMemberScope(session, memberRequiredPhase = null)
+          originClass.declaredMemberScope(session, memberRequiredPhase = null)
 
         val contributionNames =
           classDeclarationContainer.getClassifierNames().filter {
@@ -140,7 +139,6 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
 
             nestedClass
-              ?.annotations
               ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
               ?.single()
               ?.resolvedScopeClassId(typeResolver)
@@ -276,7 +274,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .filterIsInstance<ConeClassLikeType>()
       .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
       .flatMap { contributingType ->
-        contributingType.annotations
+        contributingType
           .annotationsIn(session, session.classIds.allContributesAnnotations)
           .flatMap { annotation -> annotation.resolvedReplacedClassIds(typeResolver) }
       }
@@ -334,7 +332,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         .filterIsInstance<ConeClassLikeType>()
         .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
         .flatMap { contributingType ->
-          contributingType.annotations
+          contributingType
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
             // TODO Can enforce non-null boundTypes here once type arguments are saved to metadata
             // https://youtrack.jetbrains.com/issue/KT-76954/Some-type-arguments-are-not-saved-to-metadata-in-FIR
@@ -363,7 +361,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
                   contributingType,
                   FirTypeKey(
                     boundType,
-                    contributingType.annotations.qualifierAnnotation(session, typeResolver),
+                    contributingType.qualifierAnnotation(session, typeResolver),
                   ),
                   annotation.rankValue(),
                 )
@@ -391,6 +389,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     return pendingRankReplacements
   }
 
+  @OptIn(ResolveStateAccess::class, SymbolInternals::class)
   private fun FirClassLikeSymbol<*>.implicitBoundType(
     typeResolver: TypeResolveService
   ): ConeKotlinType {
