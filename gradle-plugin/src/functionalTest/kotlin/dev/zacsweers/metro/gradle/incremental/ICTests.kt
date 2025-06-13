@@ -432,7 +432,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.NewContribution$$\$MetroContribution")
+      .contains("test.NewContribution$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -477,7 +477,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.Impl2$$\$MetroContribution")
+        .contains("test.Impl2$$\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -497,7 +497,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.Impl2$$\$MetroContribution")
+      .doesNotContain("test.Impl2$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -550,7 +550,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.ContributedInterface2$$\$MetroContribution")
+      .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -590,7 +590,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.ContributedInterface2$$\$MetroContribution")
+        .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -609,7 +609,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.ContributedInterface2$$\$MetroContribution")
+      .doesNotContain("test.ContributedInterface2$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -1079,7 +1079,6 @@ e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${
     buildAndAssertOutput()
   }
 
-  @Ignore("Not working yet")
   @Test
   fun icWorksWhenChangingAContributionScope() {
     val fixture =
@@ -1200,7 +1199,7 @@ e: LoggedInScope.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject construct
     assertThat(thirdBuildResult.output.cleanOutputLine())
       .contains(
         """
-e: LoggedInScope.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
     test.Foo is requested at
         [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency

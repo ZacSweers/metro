@@ -6,7 +6,7 @@ package test1
 interface ContributedInterface {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
-  interface $$MetroContribution : ContributedInterface {
+  interface $$MetroContributionToAppScope : ContributedInterface {
   }
 
 }
@@ -18,7 +18,7 @@ package test2
 interface ContributedInterface {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
-  interface $$MetroContribution : ContributedInterface {
+  interface $$MetroContributionToAppScope : ContributedInterface {
   }
 
 }
@@ -41,7 +41,7 @@ fun AppScope(contributed: ContributedInterface) {
 // FILE: module_main_ContributorsWithSameSimpleNames.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : $$MetroContribution, $$MetroContribution {
+interface ExampleGraph : $$MetroContributionToAppScope, $$MetroContributionToAppScope {
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()

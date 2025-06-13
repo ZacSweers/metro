@@ -131,7 +131,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
         val contributionNames =
           classDeclarationContainer.getClassifierNames().filter {
-            it.identifier.startsWith(Symbols.Names.MetroContribution.identifier)
+            it.identifier.startsWith(Symbols.Names.MetroContributionNamePrefix.identifier)
           }
 
         contributionNames
