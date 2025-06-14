@@ -558,8 +558,7 @@ internal inline fun FirConstructorSymbol.validateVisibility(type: String, onErro
 internal fun FirBasedSymbol<*>.qualifierAnnotation(
   session: FirSession,
   typeResolver: TypeResolveService? = null,
-): MetroFirAnnotation? =
-  resolvedCompilerAnnotationsWithClassIds.qualifierAnnotation(session, typeResolver)
+): MetroFirAnnotation? = annotations.qualifierAnnotation(session, typeResolver)
 
 internal fun List<FirAnnotation>.qualifierAnnotation(
   session: FirSession,

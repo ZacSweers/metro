@@ -14,6 +14,7 @@ Changelog
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
 - **Enhancement:** Avoid writing providers fields in graphs for unused bindings.
 - **Enhancement:** Improve missing binding trace originating from root member injectors.
+- **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
 - **Fix:** Fix support for generic injected constructor parameters.
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
