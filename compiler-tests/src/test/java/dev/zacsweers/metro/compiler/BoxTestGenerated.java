@@ -229,6 +229,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericMemberInjectorRequest.kt")
+      public void testGenericMemberInjectorRequest() {
+        runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjectorRequest.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectorRequest.kt")
       public void testMemberInjectorRequest() {
         runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectorRequest.kt");
