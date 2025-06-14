@@ -48,7 +48,7 @@ class Base1Impl : Base1, Base2, Base3 {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
-  interface $$MetroContribution {
+  interface $$MetroContributionToAppScope {
     @Binds
     abstract val Base1Impl.bindAsBase1: Base1
       abstract get
@@ -76,7 +76,7 @@ class Base1Impl : Base1, Base2, Base3 {
 // FILE: file2.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : $$MetroContribution {
+interface ExampleGraph : $$MetroContributionToAppScope {
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -149,3 +149,4 @@ interface ExampleGraph : $$MetroContribution {
     abstract get
 
 }
+
