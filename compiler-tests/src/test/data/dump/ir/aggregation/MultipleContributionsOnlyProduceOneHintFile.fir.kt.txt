@@ -47,10 +47,6 @@ class Base1Impl : Base1, Base2, Base3 {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
   interface $$MetroContributionToAppScope {
-    @Binds
-    abstract val Base1Impl.bindAsBase1: Base1
-      abstract get
-
     @IntoSet
     @Binds
     abstract fun bindIntoSetAsAsBase2(instance: Base1Impl): Base2
