@@ -30,4 +30,5 @@ dependencies {
   implementation(libs.androidx.fragment)
   implementation(libs.androidx.material3)
   implementation(libs.androidx.viewmodel)
+  implementation(libs.androidx.work)
 }
