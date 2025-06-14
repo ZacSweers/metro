@@ -41,7 +41,7 @@ fun AppScope(contributed: ContributedInterface) {
 // FILE: module_main_ContributorsWithSameSimpleNames.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph : $$MetroContributionToAppScope, $$MetroContributionToAppScope {
+interface ExampleGraph {
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()

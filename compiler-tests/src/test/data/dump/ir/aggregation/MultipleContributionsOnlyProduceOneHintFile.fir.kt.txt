@@ -1,3 +1,10 @@
+// FILE: base1ImplAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Base1Impl) {
+  return error(message = "Never called")
+}
+
 // FILE: file0.kt
 
 interface Base1 {
@@ -37,26 +44,24 @@ class Base1Impl : Base1, Base2, Base3 {
       return $$MetroFactory.newInstance()
     }
 
-    @SingleIn(scope = AppScope::class)
-    fun mirrorFunction(): Base1Impl {
-      return error(message = "Never called")
-    }
-
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
   interface $$MetroContributionToAppScope {
-    @IntoSet
     @Binds
-    abstract fun bindIntoSetAsAsBase2(instance: Base1Impl): Base2
+    abstract val Base1Impl.bindAsBase1: Base1
+      abstract get
 
     @IntoSet
     @Binds
-    abstract fun bindIntoSetAsAsBase3(instance: Base1Impl): Base3
+    abstract val Base1Impl.bindIntoSetAsBase2: Base2
+      abstract get
 
+    @IntoSet
     @Binds
-    abstract fun bindsAsAsBase1(instance: Base1Impl): Base1
+    abstract val Base1Impl.bindIntoSetAsBase3: Base3
+      abstract get
 
   }
 
@@ -88,6 +93,8 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
+    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
+    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val base1ImplProvider: Provider<Base1Impl> = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = $$MetroFactory.create())
     constructor() /* primary */ {
       super/*Any*/()
@@ -95,22 +102,25 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     }
 
-    @IntoSet
     @Binds
-    override fun bindIntoSetAsAsBase2(instance: Base1Impl): Base2 {
-      return error(message = "Never called")
-    }
+    override val Base1Impl.bindAsBase1: Base1
+      override get(): Base1 {
+        return error(message = "Never called")
+      }
 
     @IntoSet
     @Binds
-    override fun bindIntoSetAsAsBase3(instance: Base1Impl): Base3 {
-      return error(message = "Never called")
-    }
+    override val Base1Impl.bindIntoSetAsBase2: Base2
+      override get(): Base2 {
+        return error(message = "Never called")
+      }
 
+    @IntoSet
     @Binds
-    override fun bindsAsAsBase1(instance: Base1Impl): Base1 {
-      return error(message = "Never called")
-    }
+    override val Base1Impl.bindIntoSetAsBase3: Base3
+      override get(): Base3 {
+        return error(message = "Never called")
+      }
 
     override val cacheHolders: Set<Base2>
       override get(): Set<Base2> {
@@ -138,12 +148,5 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   abstract val prewarms: Set<Base3>
     abstract get
 
-}
-
-// FILE: base1ImplAppScope.kt
-package metro.hints
-
-fun AppScope(contributed: Base1Impl) {
-  return error(message = "Never called")
 }
 

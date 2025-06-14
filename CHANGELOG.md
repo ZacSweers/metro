@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
+
 0.3.7
 -----
 
