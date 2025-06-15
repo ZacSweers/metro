@@ -1001,9 +1001,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
 
             @DependencyGraph
             interface ExampleGraph {
-              // The omission of ExampleClassFactory from accessors is intentional, prevents
-              // regression of https://github.com/ZacSweers/metro/issues/538 caused by existence
-              // of other dependents short-circuiting the check on roots
+              val exampleClassFactory: ExampleClassFactory
               val exampleClass: ExampleClass
 
               @Provides val string: String get() = "Hello, world!"
@@ -1019,6 +1017,44 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
 
           (Hint)
           It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `assisted types cannot be depended on directly - accessor with no other ref`() {
+    compile(
+      source(
+        """
+            class ExampleClass @Inject constructor(
+              @Assisted val count: Int,
+              val message: String,
+            )
+
+            @AssistedFactory
+            interface ExampleClassFactory {
+              fun create(count: Int): ExampleClass
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              // The omission of ExampleClassFactory from accessors is intentional, prevents
+              // regression of https://github.com/ZacSweers/metro/issues/538 caused by existence
+              // of other dependents short-circuiting the check on roots
+              val exampleClass: ExampleClass
+
+              @Provides val string: String get() = "Hello, world!"
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleClass.kt:21:3 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
         """
           .trimIndent()
       )
