@@ -466,11 +466,16 @@ internal class IrGraphGenerator(
               listOf(
                 irGetField(irGet(thisReceiverParameter), field),
                 pluginContext.createIrBuilder(symbol).run {
-                  generateBindingCode(binding, baseGenerationContext).letIf(binding.scope != null) {
-                    // If it's scoped, wrap it in double-check
-                    // DoubleCheck.provider(<provider>)
-                    it.doubleCheck(this@run, symbols, binding.typeKey)
-                  }
+                  generateBindingCode(
+                      binding,
+                      baseGenerationContext,
+                      fieldInitKey = deferredTypeKey,
+                    )
+                    .letIf(binding.scope != null) {
+                      // If it's scoped, wrap it in double-check
+                      // DoubleCheck.provider(<provider>)
+                      it.doubleCheck(this@run, symbols, binding.typeKey)
+                    }
                 },
               ),
           )
