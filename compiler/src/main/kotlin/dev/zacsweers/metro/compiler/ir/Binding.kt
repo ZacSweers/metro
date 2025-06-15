@@ -568,7 +568,9 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
     return setOf(classBinding)
   } else if (classAnnotations.isAssistedFactory) {
     val function = irClass.singleAbstractFunction(metroContext)
-    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
+    // Mark the target type as wrapped in a provider so it's treated as deferrable
+    val targetContextualTypeKey =
+      IrContextualTypeKey.from(metroContext, function, wrapInProvider = true)
     setOf(
       Assisted(
         type = irClass,
