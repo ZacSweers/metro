@@ -241,6 +241,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MemberInjectorRequestAsConstructorParam.kt")
+      public void testMemberInjectorRequestAsConstructorParam() {
+        runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectorRequestAsConstructorParam.kt");
+      }
+
+      @Test
+      @TestMetadata("MemberInjectorRequestAsProvidesParam.kt")
+      public void testMemberInjectorRequestAsProvidesParam() {
+        runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectorRequestAsProvidesParam.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectorRequestMultipleLocations.kt")
       public void testMemberInjectorRequestMultipleLocations() {
         runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectorRequestMultipleLocations.kt");
