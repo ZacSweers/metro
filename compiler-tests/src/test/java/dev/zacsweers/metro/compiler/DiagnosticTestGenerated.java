@@ -84,6 +84,32 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/inject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Inject {
+    @Test
+    public void testAllFilesPresentInInject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/inject/assisted")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Assisted {
+      @Test
+      public void testAllFilesPresentInAssisted() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("LazyAssistedFactoryInjection.kt")
+      public void testLazyAssistedFactoryInjection() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/provides")
   @TestDataPath("$PROJECT_ROOT")
   public class Provides {
