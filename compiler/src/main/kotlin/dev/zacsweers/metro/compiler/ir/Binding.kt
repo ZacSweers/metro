@@ -517,6 +517,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   }
 
   data class MembersInjected(
+    // Always MembersInjected<TargetClass>
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
     override val reportableLocation: CompilerMessageSourceLocation?,
@@ -527,16 +528,14 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   ) : Binding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
 
-    override val dependencies: List<IrContextualTypeKey>
-      get() {
-        return parameters.nonDispatchParameters
-          // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
-          .filterNot { it.isAssisted }
-          .map { it.contextualTypeKey }
-      }
+    override val dependencies: List<IrContextualTypeKey> = parameters.nonDispatchParameters
+      // Instance parameters are implicitly assisted in this scenario and marked as such in FIR
+      .filterNot { it.isAssisted }
+      .map { it.contextualTypeKey }
 
     override val parametersByKey: Map<IrTypeKey, Parameter> =
       parameters.nonDispatchParameters.associateBy { it.typeKey }
+
     override val scope: IrAnnotation? = null
 
     override val nameHint: String =
