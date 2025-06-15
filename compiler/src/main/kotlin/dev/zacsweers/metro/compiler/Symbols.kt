@@ -7,11 +7,11 @@ import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.PROVIDES_CALLABLE_ID
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -50,6 +50,7 @@ internal class Symbols(
 
   object StringNames {
     const val ADDITIONAL_SCOPES = "additionalScopes"
+    const val ASSISTED = "Assisted"
     const val AS_DAGGER_INTERNAL_PROVIDER = "asDaggerInternalProvider"
     const val AS_DAGGER_MEMBERS_INJECTOR = "asDaggerMembersInjector"
     const val AS_JAKARTA_PROVIDER = "asJakartaProvider"
@@ -89,6 +90,7 @@ internal class Symbols(
     const val METRO_GRAPH = "$\$MetroGraph"
     const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
     const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
+    const val MIRROR_FUNCTION = "mirrorFunction"
     const val NEW_INSTANCE = "newInstance"
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
     const val PROVIDER = "provider"
@@ -120,6 +122,13 @@ internal class Symbols(
     fun scopeHint(scopeClassId: ClassId): CallableId {
       return CallableId(metroHintsPackage, scopeClassId.joinSimpleNames().shortClassName)
     }
+
+    fun scopedInjectClassHint(scopeAnnotation: IrAnnotation): CallableId {
+      return CallableId(
+        metroHintsPackage,
+        ("scopedInjectClassHintFor" + scopeAnnotation.hashCode()).asName(),
+      )
+    }
   }
 
   // TODO replace with StandardClassIds
@@ -134,6 +143,7 @@ internal class Symbols(
     val ProvidesCallableId =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.PROVIDES_CALLABLE_ID.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
+    val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)
     val metroContribution =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
@@ -180,6 +190,7 @@ internal class Symbols(
     val isPropertyAccessor = StringNames.IS_PROPERTY_ACCESSOR.asName()
     val membersInjector = "MembersInjector".asName()
     val metroAccessor = StringNames.METRO_ACCESSOR.asName()
+    val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
     val provider = StringNames.PROVIDER.asName()
     val rank = StringNames.RANK.asName()
@@ -511,6 +522,13 @@ internal class Symbols(
   val elementsIntoSetConstructor by lazy {
     pluginContext
       .referenceClass(ClassId(metroRuntime.packageFqName, StringNames.ELEMENTS_INTO_SET.asName()))!!
+      .constructors
+      .single()
+  }
+
+  val bindsConstructor by lazy {
+    pluginContext
+      .referenceClass(ClassId(metroRuntime.packageFqName, Names.Binds))!!
       .constructors
       .single()
   }

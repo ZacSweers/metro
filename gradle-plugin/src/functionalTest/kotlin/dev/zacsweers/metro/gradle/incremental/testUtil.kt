@@ -8,7 +8,6 @@ import com.autonomousapps.kit.Source.Companion.kotlin
 import com.autonomousapps.kit.SourceType
 import java.net.URLClassLoader
 import java.util.Locale
-import kotlin.collections.plus
 import kotlin.io.path.absolute
 import kotlin.io.path.exists
 import org.intellij.lang.annotations.Language

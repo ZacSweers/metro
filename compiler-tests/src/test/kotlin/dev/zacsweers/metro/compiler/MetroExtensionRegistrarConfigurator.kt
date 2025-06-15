@@ -57,6 +57,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         transformProvidersToPrivate = transformProvidersToPrivate,
         enableTopLevelFunctionInjection =
           MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives,
+        enableScopedInjectClassHints =
+          MetroDirectives.ENABLE_SCOPED_INJECT_CLASS_HINTS in module.directives,
         publicProviderSeverity =
           if (transformProvidersToPrivate) {
             MetroOptions.DiagnosticSeverity.NONE
