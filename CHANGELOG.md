@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
+- **Fix:** Don't short-circuit assisted injection validation if only an accessor exists.
 
 0.3.7
 -----

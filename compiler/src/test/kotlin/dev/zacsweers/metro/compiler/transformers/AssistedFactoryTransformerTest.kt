@@ -1001,7 +1001,9 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
 
             @DependencyGraph
             interface ExampleGraph {
-              val exampleClassFactory: ExampleClassFactory
+              // The omission of ExampleClassFactory from accessors is intentional, prevents
+              // regression of https://github.com/ZacSweers/metro/issues/538 caused by existence
+              // of other dependents short-circuiting the check on roots
               val exampleClass: ExampleClass
 
               @Provides val string: String get() = "Hello, world!"
