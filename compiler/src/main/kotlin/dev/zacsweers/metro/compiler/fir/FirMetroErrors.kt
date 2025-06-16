@@ -176,7 +176,8 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(
         ASSISTED_FACTORIES_CANNOT_BE_LAZY,
         "Metro does not support injecting Lazy<{0}> because {1} is an @AssistedFactory-annotated type.",
-        STRING, STRING
+        STRING,
+        STRING,
       )
       // TODO eventually this will change to allow function injection
       put(
