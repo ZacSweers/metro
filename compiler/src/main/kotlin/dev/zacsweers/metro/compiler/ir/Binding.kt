@@ -340,6 +340,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     override val reportableLocation: CompilerMessageSourceLocation?
       get() = type.locationOrNull()
+    override val isImplicitlyDeferrable: Boolean = true
 
     override fun withMapKey(mapKey: IrAnnotation?): Assisted {
       if (mapKey == null) return this
