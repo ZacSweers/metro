@@ -906,8 +906,9 @@ class ICTests : BaseIncrementalCompilationTest() {
       assertThat(scopedDep).isNotNull()
     }
 
-    // We need to add or remove an annotation at this point to trigger the graph regen, IC doesn't
-    // seem to pick up an annotation argument change when the previous compilation was successful
+    // TODO We need to add or remove an annotation at this point to trigger the graph regen,
+    //  IC doesn't seem to pick up an annotation argument change when the previous compilation
+    //  was successful
     project.modify(
       fixture.exampleClass,
       """
