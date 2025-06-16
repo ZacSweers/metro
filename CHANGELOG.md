@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Disallow injection of `Lazy<T>` where `T` is an `@AssistedFactory`-annotated class.
+
 0.3.7
 -----
 
