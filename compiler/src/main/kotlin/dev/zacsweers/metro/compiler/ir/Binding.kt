@@ -541,7 +541,6 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
     override val scope: IrAnnotation? = null
 
-    override val nameHint: String =
-      "${typeKey.type.rawType().name}MembersInjector"
+    override val nameHint: String = "${typeKey.type.rawType().name}MembersInjector"
   }
 }

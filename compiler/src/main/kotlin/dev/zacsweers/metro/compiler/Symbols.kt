@@ -260,7 +260,6 @@ internal class Symbols(
   }
   val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
   val doubleCheckProvider by lazy { doubleCheckCompanionObject.requireSimpleFunction("provider") }
-  val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
 
   private val providerOfLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(
@@ -603,6 +602,7 @@ internal class Symbols(
         callee = lazySymbol,
         args = listOf(arg),
         typeHint = contextKey.toIrType(metroContext),
+        typeArgs = listOf(arg.type, contextKey.typeKey.type),
       )
     }
 

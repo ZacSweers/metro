@@ -123,7 +123,10 @@ internal class ClassBindingLookup(
           )
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)
-        val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
+        // Mark as wrapped for convenience in graph resolution to note that this whole node is
+        // inherently deferrable
+        val targetContextualTypeKey =
+          IrContextualTypeKey.from(metroContext, function, wrapInProvider = true)
         bindings +=
           Binding.Assisted(
             type = irClass,
