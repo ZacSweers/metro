@@ -257,6 +257,7 @@ internal open class MutableBindingGraph<
             reportCycle(entriesInCycle, stack)
           },
           parentTracer = nestedTracer,
+          isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
         )
       }
 
