@@ -66,6 +66,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ParentIncludesTypesAreSeenByExtensions.kt")
+    public void testParentIncludesTypesAreSeenByExtensions() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ParentIncludesTypesAreSeenByExtensions.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiedMemberInjectionPropagatesAcrossModules.kt")
     public void testQualifiedMemberInjectionPropagatesAcrossModules() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
