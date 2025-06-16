@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.impl.IrFileImpl
 import org.jetbrains.kotlin.ir.util.NaiveSourceBasedFileEntryImpl
 import org.jetbrains.kotlin.ir.util.addChild
@@ -62,7 +63,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     sourceClass: IrClass,
     hintName: Name,
     hintAnnotations: List<IrAnnotation> = emptyList(),
-  ) {
+  ): IrSimpleFunction {
     val function =
       pluginContext.irFactory
         .buildFun {
@@ -131,5 +132,6 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     hintFile.addChild(function)
     pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
     hintFile.dumpToMetroLog(fakeNewPath.name)
+    return function
   }
 }
