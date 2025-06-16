@@ -13,7 +13,6 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.kotlinFqName
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.doNotAnalyze
 
@@ -53,7 +52,7 @@ internal fun IrMetroContext.trackFunctionCall(
     val declaration =
       (calleeFunction as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: calleeFunction
     trackLookup(
-      container = calleeFunction.parentAsClass.kotlinFqName,
+      container = calleeFunction.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
       scopeKind = ScopeKind.CLASSIFIER,
       location =

@@ -25,6 +25,8 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import java.util.Optional
+import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -60,7 +62,7 @@ internal class InjectConstructorTransformer(
   private val membersInjectorTransformer: MembersInjectorTransformer,
 ) : IrMetroContext by context {
 
-  private val generatedFactories = mutableMapOf<ClassId, ClassFactory>()
+  private val generatedFactories = mutableMapOf<ClassId, Optional<ClassFactory>>()
 
   fun visitClass(declaration: IrClass) {
     val injectableConstructor =
@@ -76,7 +78,7 @@ internal class InjectConstructorTransformer(
     doNotErrorOnMissing: Boolean,
   ): ClassFactory? {
     val injectedClassId: ClassId = declaration.classIdOrFail
-    generatedFactories[injectedClassId]?.let {
+    generatedFactories[injectedClassId]?.getOrNull()?.let {
       return it
     }
 
@@ -123,10 +125,12 @@ internal class InjectConstructorTransformer(
                 daggerFactoryClass,
                 targetConstructor.parameters(metroContext),
               )
-            generatedFactories[injectedClassId] = wrapper
+            generatedFactories[injectedClassId] = Optional.of(wrapper)
             return wrapper
           }
         } else if (doNotErrorOnMissing) {
+          // Store a null here because it's absent
+          generatedFactories[injectedClassId] = Optional.empty()
           return null
         }
         declaration.reportError(
@@ -134,6 +138,8 @@ internal class InjectConstructorTransformer(
         )
         return null
       } else if (doNotErrorOnMissing) {
+        // Store a null here because it's absent
+        generatedFactories[injectedClassId] = Optional.empty()
         return null
       } else {
         error(
@@ -149,7 +155,7 @@ internal class InjectConstructorTransformer(
       val parameters =
         factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters(this)
       val wrapper = ClassFactory.MetroFactory(factoryCls, parameters)
-      generatedFactories[injectedClassId] = wrapper
+      generatedFactories[injectedClassId] = Optional.of(wrapper)
       return wrapper
     }
 
@@ -229,7 +235,7 @@ internal class InjectConstructorTransformer(
     factoryCls.dumpToMetroLog()
 
     val wrapper = ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters(metroContext))
-    generatedFactories[injectedClassId] = wrapper
+    generatedFactories[injectedClassId] = Optional.of(wrapper)
     return wrapper
   }
 

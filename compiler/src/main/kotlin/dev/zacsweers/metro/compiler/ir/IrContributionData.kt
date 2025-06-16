@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.mapToSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -96,24 +97,14 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       val unfilteredScopedInjectClasses =
         metroContext.pluginContext
           .referenceFunctions(Symbols.CallableIds.scopedInjectClassHint(scope))
-          .map { hintFunction ->
-            hintFunction.owner.regularParameters.single().type.classOrFail.owner
+          .filter { hintFunction ->
+            hintFunction.owner.annotations.any { IrAnnotation(it) == scope }
+          }
+          .mapToSet { hintFunction ->
+            IrTypeKey(hintFunction.owner.regularParameters.single().type)
           }
 
-      return unfilteredScopedInjectClasses.mapNotNullToSet { clazz ->
-        // We filter by the source class annotations instead of the hint function because there's
-        // currently an IC issue where old hint functions do not get invalidated, so we can't rely
-        // on them without validating against the source again
-        val classScopes =
-          clazz.annotationsAnnotatedWithAny(metroContext.symbols.classIds.scopeAnnotations).map {
-            IrAnnotation(it)
-          }
-        if (scope in classScopes) {
-          with(metroContext) { IrTypeKey(clazz) }
-        } else {
-          null
-        }
-      }
+      return unfilteredScopedInjectClasses
     }
   }
 }
