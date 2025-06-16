@@ -53,7 +53,7 @@ internal fun IrMetroContext.trackFunctionCall(
     val declaration =
       (calleeFunction as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: calleeFunction
     trackLookup(
-      container = calleeFunction.parentAsClass.kotlinFqName,
+      container = calleeFunction.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
       scopeKind = ScopeKind.CLASSIFIER,
       location =
