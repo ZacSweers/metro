@@ -84,8 +84,14 @@ internal class IrContextualTypeKey(
       context: IrMetroContext,
       function: IrSimpleFunction,
       type: IrType = function.returnType,
-    ): IrContextualTypeKey =
-      type.asContextualTypeKey(
+      wrapInProvider: Boolean = false
+    ): IrContextualTypeKey {
+      val typeToConvert = if (wrapInProvider) {
+        type.wrapInProvider(context.symbols.metroProvider)
+      } else {
+        type
+      }
+      return typeToConvert.asContextualTypeKey(
         context,
         with(context) {
           function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
@@ -93,6 +99,7 @@ internal class IrContextualTypeKey(
         },
         false,
       )
+    }
 
     fun from(
       context: IrMetroContext,
