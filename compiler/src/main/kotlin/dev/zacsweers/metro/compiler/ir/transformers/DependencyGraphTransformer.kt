@@ -112,7 +112,7 @@ internal class DependencyGraphTransformer(
     AssistedFactoryTransformer(context, injectConstructorTransformer)
   private val providesTransformer = ProvidesTransformer(context)
   private val contributionHintIrTransformer by unsafeLazy {
-    ContributionHintIrTransformer(context, hintGenerator)
+    ContributionHintIrTransformer(context, hintGenerator, injectConstructorTransformer)
   }
 
   // Keyed by the source declaration
