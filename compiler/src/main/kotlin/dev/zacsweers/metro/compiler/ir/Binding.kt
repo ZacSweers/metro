@@ -23,7 +23,6 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
-import kotlin.collections.firstOrNull
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -568,9 +567,7 @@ internal fun IrMetroContext.injectedClassBindingOrNull(
     return setOf(classBinding)
   } else if (classAnnotations.isAssistedFactory) {
     val function = irClass.singleAbstractFunction(metroContext)
-    // Mark the target type as wrapped in a provider so it's treated as deferrable
-    val targetContextualTypeKey =
-      IrContextualTypeKey.from(metroContext, function, wrapInProvider = true)
+    val targetContextualTypeKey = IrContextualTypeKey.from(metroContext, function)
     setOf(
       Assisted(
         type = irClass,
