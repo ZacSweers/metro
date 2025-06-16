@@ -16,6 +16,11 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
         if (binding is Binding.MembersInjected && !binding.isFromInjectorFunction) return true
         // Multibindings are always created adhoc
         if (binding is Binding.Multibinding) return false
+        // Assisted types always need to be a single field to ensure use of the same provider
+        if (binding is Binding.Assisted) return true
+        // TODO what about assisted but no assisted params? These also don't become providers
+        //  we would need to track a set of assisted targets somewhere
+        if (binding is Binding.ConstructorInjected && binding.isAssisted) return true
 
         // If it's unscoped but used more than once and not into a multibinding,
         // we can generate a reusable field
@@ -25,7 +30,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
         return !isMultibindingProvider
       }
 
-    /** @return true if we’ve referenced this binding before. */
+    /** @return true if we've referenced this binding before. */
     fun mark(): Boolean {
       refCount++
       return refCount > 1
