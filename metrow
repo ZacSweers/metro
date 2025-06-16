@@ -65,7 +65,7 @@ case "$1" in
        ;;
 
    *)
-       echo "Usage: metrow (publish|check|clean|regen)"
+       echo "Usage: metrow (publish|check|clean|format|regen)"
        echo "publish options:"
        echo "  --version <version>  Specify version for publishing"
        echo "  --local              Publish locally"

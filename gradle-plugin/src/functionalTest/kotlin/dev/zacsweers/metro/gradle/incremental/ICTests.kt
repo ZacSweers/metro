@@ -432,7 +432,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.NewContribution$$\$MetroContribution")
+      .contains("test.NewContribution$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -477,7 +477,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.Impl2$$\$MetroContribution")
+        .contains("test.Impl2$$\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -497,7 +497,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.Impl2$$\$MetroContribution")
+      .doesNotContain("test.Impl2$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -550,7 +550,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .contains("test.ContributedInterface2$$\$MetroContribution")
+      .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -590,7 +590,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     with(project.classLoader()) {
       val exampleGraph = loadClass("test.ExampleGraph")
       assertThat(exampleGraph.interfaces.map { it.name })
-        .contains("test.ContributedInterface2$$\$MetroContribution")
+        .contains("test.ContributedInterface2$$\$MetroContributionToUnit")
     }
 
     project.modify(
@@ -609,7 +609,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     val classLoader = project.classLoader()
     val exampleGraph = classLoader.loadClass("test.ExampleGraph")
     assertThat(exampleGraph.interfaces.map { it.name })
-      .doesNotContain("test.ContributedInterface2$$\$MetroContribution")
+      .doesNotContain("test.ContributedInterface2$$\$MetroContributionToUnit")
   }
 
   @Test
@@ -945,7 +945,7 @@ e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${
       )
   }
 
-  @Ignore("Not working yet")
+  @Ignore("Not working yet, pending https://youtrack.jetbrains.com/issue/KT-77938")
   @Test
   fun classVisibilityChangeDetected() {
     val fixture =
@@ -1077,5 +1077,134 @@ e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${
     )
 
     buildAndAssertOutput()
+  }
+
+  @Test
+  fun icWorksWhenChangingAContributionScope() {
+    val fixture =
+      object : MetroProject(debug = true) {
+        override fun sources() =
+          listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
+
+        val unusedScope =
+          source(
+            """
+              interface UnusedScope
+              interface Foo
+            """
+              .trimIndent()
+          )
+
+        val exampleClass =
+          source(
+            """
+              @Inject
+              @ContributesBinding(UnusedScope::class)
+              class ExampleClass : Foo
+            """
+              .trimIndent()
+          )
+
+        private val exampleGraph =
+          source(
+            """
+              @DependencyGraph(scope = AppScope::class, isExtendable = true)
+              interface ExampleGraph
+            """
+              .trimIndent()
+          )
+
+        private val loggedInGraph =
+          source(
+            """
+                sealed interface LoggedInScope
+
+                @ContributesGraphExtension(LoggedInScope::class)
+                interface LoggedInGraph {
+                  val childDependency: Foo
+
+                    @ContributesGraphExtension.Factory(AppScope::class)
+                    interface Factory {
+                        fun createLoggedInGraph(): LoggedInGraph
+                    }
+                }
+              """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Any {
+              val graph = createGraph<ExampleGraph>().createLoggedInGraph()
+              return graph.childDependency
+            }
+            """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+
+    // First build should fail because [ExampleClass] is not contributed to the scopes of either
+    // graph
+    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+
+    assertThat(firstBuildResult.output.cleanOutputLine())
+      .contains(
+        """
+e: LoggedInScope.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+
+    test.Foo is requested at
+        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+        """
+          .trimIndent()
+      )
+
+    // Change to contribute to the scope of the root graph node -- will pass
+    project.modify(
+      fixture.exampleClass,
+      """
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class ExampleClass : Foo
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    with(project.classLoader()) {
+      val mainClass = loadClass("test.MainKt")
+      val scopedDep = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+      assertThat(scopedDep).isNotNull()
+    }
+
+    // Change back to the original state -- should fail again for a missing binding
+    project.modify(
+      fixture.exampleClass,
+      """
+        @Inject
+        @ContributesBinding(UnusedScope::class)
+        class ExampleClass : Foo
+      """
+        .trimIndent(),
+    )
+
+    // this build should fail but currently ends up passing (resulting in the test failing)
+    // What appears to be happening is that once we have a successful build, the following IC builds
+    // do not trigger regenerating the graph if only an annotation argument changes. However,
+    // adding or removing an annotation will trigger the graph getting regenerated.
+    val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(thirdBuildResult.output.cleanOutputLine())
+      .contains(
+        """
+e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+
+    test.Foo is requested at
+        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+        """
+          .trimIndent()
+      )
   }
 }

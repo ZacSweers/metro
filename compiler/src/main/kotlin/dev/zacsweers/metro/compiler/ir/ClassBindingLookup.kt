@@ -4,11 +4,16 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.util.TypeRemapper
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
@@ -20,6 +25,34 @@ internal class ClassBindingLookup(
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
 ) {
 
+  context(context: IrMetroContext)
+  private fun IrClass.computeMembersInjectorBindings(
+    currentBindings: Set<IrTypeKey>,
+    remapper: TypeRemapper,
+  ): Set<Binding> {
+    val bindings = mutableSetOf<Binding>()
+    for (generatedInjector in findMemberInjectors(this)) {
+      val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
+      if (mappedTypeKey !in currentBindings) {
+        // Remap type args using the same remapper used for the class
+        val remappedParameters = generatedInjector.mergedParameters(remapper)
+        val contextKey = IrContextualTypeKey(mappedTypeKey)
+
+        bindings +=
+          Binding.MembersInjected(
+            contextKey,
+            // Need to look up the injector class and gather all params
+            parameters = remappedParameters,
+            reportableLocation = location(),
+            function = null,
+            isFromInjectorFunction = true,
+            targetClassId = classIdOrFail,
+          )
+      }
+    }
+    return bindings
+  }
+
   /** Creates an expected class binding for the given [contextKey] or returns null. */
   internal fun lookup(
     contextKey: IrContextualTypeKey,
@@ -29,6 +62,14 @@ internal class ClassBindingLookup(
     with(metroContext) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
+
+      if (irClass.classId == symbols.metroMembersInjector.owner.classId) {
+        // It's a members injector, just look up its bindings and return them
+        val targetType = key.type.expectAs<IrSimpleType>().arguments.first().typeOrFail
+        val targetClass = targetType.rawType()
+        val remapper = targetClass.deepRemapperFor(targetType)
+        return targetClass.computeMembersInjectorBindings(currentBindings, remapper)
+      }
 
       val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
@@ -67,27 +108,9 @@ internal class ClassBindingLookup(
           exitProcessing()
         }
 
-        val injectedMembers = mutableSetOf<IrContextualTypeKey>()
-        for (generatedInjector in findMemberInjectors(irClass)) {
-          val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
-          if (mappedTypeKey !in currentBindings) {
-            // Remap type args using the same remapper used for the class
-            val remappedParameters = generatedInjector.mergedParameters(remapper)
-            val contextKey = IrContextualTypeKey(mappedTypeKey)
-            injectedMembers += contextKey
-
-            bindings +=
-              Binding.MembersInjected(
-                contextKey,
-                // Need to look up the injector class and gather all params
-                parameters = remappedParameters,
-                reportableLocation = irClass.location(),
-                function = null,
-                isFromInjectorFunction = true,
-                targetClassId = irClass.classIdOrFail,
-              )
-          }
-        }
+        val membersInjectBindings =
+          irClass.computeMembersInjectorBindings(currentBindings, remapper)
+        bindings += membersInjectBindings
 
         bindings +=
           Binding.ConstructorInjected(
@@ -95,7 +118,8 @@ internal class ClassBindingLookup(
             classFactory = mappedFactory,
             annotations = classAnnotations,
             typeKey = key,
-            injectedMembers = injectedMembers,
+            injectedMembers =
+              membersInjectBindings.mapToSet { binding -> binding.contextualTypeKey },
           )
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)

@@ -21,7 +21,6 @@ private val DEFAULT_IMPORTS =
     // For Callable access
     "java.util.concurrent.*",
   )
-
 private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 
 fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")

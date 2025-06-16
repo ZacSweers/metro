@@ -14,6 +14,7 @@ Changelog
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
 - **Enhancement:** Avoid writing providers fields in graphs for unused bindings.
 - **Enhancement:** Improve missing binding trace originating from root member injectors.
+- **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
 - **Fix:** Fix support for generic injected constructor parameters.
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
@@ -23,6 +24,7 @@ Changelog
 - **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
 - **Fix:** Improved support for generic member injection.
 - **Fix:** Propagate qualifiers on graph member injector functions.
+- **Fix:** Fix support for requesting `MembersInjector` types.
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
