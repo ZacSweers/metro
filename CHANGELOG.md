@@ -4,7 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
+- **Enhancement:** Minimize deferred types when breaking cycles.
 - **Fix:** Disallow injection of `Lazy<T>` where `T` is an `@AssistedFactory`-annotated class.
+- **Fix:** Don't short-circuit assisted injection validation if only an accessor exists.
 
 0.3.7
 -----

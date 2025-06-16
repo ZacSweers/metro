@@ -82,12 +82,13 @@ private fun ClassId.checkFileLength(): ClassId = apply {
  * @see ClassId.joinSimpleNames for a version that doesn't truncate the class name.
  */
 public fun ClassId.joinSimpleNamesAndTruncate(
-  hashParams: List<Any>,
+  hashParams: List<Any> = emptyList(),
   separator: String = "_",
   suffix: String = "",
   innerClassLength: Int = 0,
+  camelCase: Boolean = false,
 ): ClassId =
-  joinSimpleNamesPrivate(separator = separator, suffix = suffix)
+  joinSimpleNamesPrivate(separator = separator, suffix = suffix, camelCase = camelCase)
     .truncate(
       hashParams = listOf(this) + hashParams,
       separator = separator,

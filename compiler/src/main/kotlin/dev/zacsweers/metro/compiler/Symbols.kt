@@ -82,6 +82,7 @@ internal class Symbols(
     const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
     const val METRO_ACCESSOR = "_metroAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
+    const val METRO_CONTRIBUTION_NAME_PREFIX = "$\$MetroContribution"
     const val METRO_FACTORY = "$\$MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
     const val METRO_IMPL = "$\$Impl"
@@ -152,7 +153,7 @@ internal class Symbols(
   object Names {
     val Binds = "Binds".asName()
     val FactoryClass = "Factory".asName()
-    val MetroContribution = "$\$MetroContribution".asName()
+    val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
     val MetroGraph = "$\$MetroGraph".asName()
     val MetroImpl = StringNames.METRO_IMPL.asName()

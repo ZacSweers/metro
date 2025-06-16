@@ -150,6 +150,16 @@ internal fun List<FirAnnotation>.annotationsIn(
   return asSequence().filter { it.toAnnotationClassIdSafe(session) in names }
 }
 
+internal fun FirBasedSymbol<*>.annotationsIn(
+  session: FirSession,
+  names: Set<ClassId>,
+): Sequence<FirAnnotation> {
+  return resolvedCompilerAnnotationsWithClassIds
+    .asSequence()
+    .filter { it.isResolved }
+    .filter { it.toAnnotationClassIdSafe(session) in names }
+}
+
 internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
@@ -558,8 +568,10 @@ internal inline fun FirConstructorSymbol.validateVisibility(
   }
 }
 
-internal fun FirBasedSymbol<*>.qualifierAnnotation(session: FirSession): MetroFirAnnotation? =
-  annotations.qualifierAnnotation(session)
+internal fun FirBasedSymbol<*>.qualifierAnnotation(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): MetroFirAnnotation? = annotations.qualifierAnnotation(session, typeResolver)
 
 internal fun List<FirAnnotation>.qualifierAnnotation(
   session: FirSession,

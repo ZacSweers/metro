@@ -1,5 +1,6 @@
 **/build
 **/.idea/*
+!.idea/externalDependencies.xml
 !.idea/kotlinTestDataPluginTestDataPaths.xml
 .gradle
 .kotlin/
@@ -18,3 +19,4 @@ docs/samples.md
 docs/api/
 site/
 temp-clone/
+/benchmark/

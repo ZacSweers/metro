@@ -45,7 +45,12 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
     for (supertype in declaration.superTypeRefs) {
       if (supertype.coneType.classId == StandardClassIds.Any) continue
       val supertypeClass = supertype.firClassLike(context.session) as? FirClass ?: continue
-      if (supertypeClass.symbol.name != Symbols.Names.MetroContribution) continue
+      if (
+        !supertypeClass.symbol.name
+          .asString()
+          .startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)
+      )
+        continue
       val contributedType = supertypeClass.getContainingDeclaration(session) ?: continue
       val effectiveSuperVis = contributedType.effectiveVisibility.toVisibility()
 

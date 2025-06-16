@@ -82,6 +82,7 @@ nav:
       - 'Interop': interop.md
       - 'Generating Custom Metro Code': generating-metro-code.md
       - 'Adoption Strategies': adoption.md
+  - 'Performance': performance.md
   - 'Debugging': debugging.md
   - 'FAQ': faq.md
   - 'Samples': samples.md
