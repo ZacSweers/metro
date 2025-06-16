@@ -39,6 +39,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   // Inject/assisted constructor errors
   val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0(NAME_IDENTIFIER)
   val CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS by error0(NAME_IDENTIFIER)
+  val ASSISTED_FACTORIES_CANNOT_BE_LAZY by error2<String, String>(NAME_IDENTIFIER)
   val ONLY_CLASSES_CAN_BE_INJECTED by error0(NAME_IDENTIFIER)
   val ONLY_FINAL_AND_OPEN_CLASSES_CAN_BE_INJECTED by error0(MODALITY_MODIFIER)
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0(NAME_IDENTIFIER)
@@ -105,6 +106,12 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(
         CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
         "You should annotate either a class XOR constructor with `@Inject` but not both.",
+      )
+      put(
+        ASSISTED_FACTORIES_CANNOT_BE_LAZY,
+        "Metro does not support injecting Lazy<{0}> because {1} is an @AssistedFactory-annotated type.",
+        STRING,
+        STRING,
       )
       // TODO eventually this will change to allow function injection
       put(

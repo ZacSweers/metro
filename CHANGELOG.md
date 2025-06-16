@@ -14,7 +14,6 @@ Changelog
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
 - **Enhancement:** Avoid writing providers fields in graphs for unused bindings.
 - **Enhancement:** Improve missing binding trace originating from root member injectors.
-- **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
 - **Fix:** Fix support for generic injected constructor parameters.
 - **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
 - **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
@@ -28,6 +27,22 @@ Changelog
 - [internal] Significantly refactor + simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
+
+
+0.3.8
+-----
+
+_2025-06-16_
+
+- **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
+- **Enhancement:** Minimize deferred types when breaking cycles.
+- **Fix:** Disallow injection of `Lazy<T>` where `T` is an `@AssistedFactory`-annotated class.
+- **Fix:** Don't short-circuit assisted injection validation if only an accessor exists.
+- **Fix:** Allow cycles of assisted factories to their target classes.
+- Update shaded okio to `3.13.0`.
+- Update atomicfu to `0.28.0`.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar), [@bnorm](https://github.com/bnorm), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
 
 0.3.7
 -----

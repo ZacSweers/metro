@@ -530,15 +530,16 @@ internal class IrBindingGraph(
       with(metroContext) { reportError(message, location) }
     }
 
-    val dependents = reverseAdjacency[binding.typeKey] ?: return
-    for (dependentKey in dependents) {
-      val dependentBinding = bindings[dependentKey] ?: continue
-      if (dependentBinding !is Binding.Assisted) {
-        reportInvalidBinding(
-          dependentBinding.parametersByKey[binding.typeKey]?.ir?.location()?.takeIf {
+    reverseAdjacency[binding.typeKey]?.let { dependents ->
+      for (dependentKey in dependents) {
+        val dependentBinding = bindings[dependentKey] ?: continue
+        if (dependentBinding !is Binding.Assisted) {
+          reportInvalidBinding(
+            dependentBinding.parametersByKey[binding.typeKey]?.ir?.location()?.takeIf {
             it.line != 0 || it.column != 0
           } ?: dependentBinding.reportableLocation
-        )
+          )
+        }
       }
     }
     roots[binding.typeKey]?.let { reportInvalidBinding(it.declaration?.locationOrNull()) }

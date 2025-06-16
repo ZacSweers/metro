@@ -337,6 +337,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val reportableLocation: CompilerMessageSourceLocation?
       get() = type.locationOrNull()
 
+    override val isImplicitlyDeferrable: Boolean = true
+
     override fun withMapKey(mapKey: IrAnnotation?): Assisted {
       if (mapKey == null) return this
       return Assisted(
@@ -540,6 +542,6 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val scope: IrAnnotation? = null
 
     override val nameHint: String =
-      "${typeKey.type.expectAs<IrSimpleType>().rawType().name}MembersInjector"
+      "${typeKey.type.rawType().name}MembersInjector"
   }
 }

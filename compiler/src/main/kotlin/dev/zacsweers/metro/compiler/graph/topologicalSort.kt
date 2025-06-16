@@ -171,6 +171,7 @@ internal fun <V : Comparable<V>> topologicalSort(
   onCycle: (List<V>) -> Nothing,
   roots: SortedSet<V> = sortedSetOf(),
   parentTracer: Tracer = Tracer.NONE,
+  isImplicitlyDeferrable: (V) -> Boolean = { false },
 ): TopoSortResult<V> {
   val deferredTypes = mutableSetOf<V>()
 
@@ -197,22 +198,16 @@ internal fun <V : Comparable<V>> topologicalSort(
         }
       }
 
-      // Look for cycles
-      val contributorsToCycle = buildSet {
-        for (from in vertices) {
-          for (to in reachableKeys[from].orEmpty()) {
-            if (
-              // stays inside SCC
-              componentOf[to] == component.id &&
-                // deferrable edge
-                isDeferrable(from, to)
-            ) {
-              // Only 'from' is deferred
-              add(from)
-            }
-          }
-        }
-      }
+      // Look for cycles - find minimal set of nodes to defer
+      val contributorsToCycle =
+        findMinimalDeferralSet(
+          vertices = vertices,
+          fullAdjacency = reachableKeys,
+          componentOf = componentOf,
+          componentId = component.id,
+          isDeferrable = isDeferrable,
+          isImplicitlyDeferrable = isImplicitlyDeferrable,
+        )
 
       if (contributorsToCycle.isEmpty()) {
         // no deferrable -> hard cycle
@@ -245,6 +240,138 @@ internal fun <V : Comparable<V>> topologicalSort(
     deferredTypes.toList(),
     reachableKeys.keys,
   )
+}
+
+/** Finds the minimal set of nodes that need to be deferred to break all cycles in the SCC. */
+private fun <V : Comparable<V>> findMinimalDeferralSet(
+  vertices: List<V>,
+  fullAdjacency: SortedMap<V, SortedSet<V>>,
+  componentOf: Map<V, Int>,
+  componentId: Int,
+  isDeferrable: (V, V) -> Boolean,
+  isImplicitlyDeferrable: (V) -> Boolean,
+): Set<V> {
+  // Collect all potential candidates for deferral
+  val potentialCandidates = mutableSetOf<V>()
+
+  for (from in vertices) {
+    for (to in fullAdjacency[from].orEmpty()) {
+      if (componentOf[to] == componentId && isDeferrable(from, to)) {
+        // Add the source as a candidate (original behavior)
+        potentialCandidates.add(from)
+      }
+    }
+  }
+
+  if (potentialCandidates.isEmpty()) {
+    return emptySet()
+  }
+
+  // TODO this is... ugly? It's like we want a hierarchy of deferrable types (whole-node or just
+  //  edge)
+  // Prefer implicitly deferrable types (i.e. assisted factories) over regular types
+  val implicitlyDeferrableCandidates = potentialCandidates.filter(isImplicitlyDeferrable)
+
+  // Try implicitly deferrable candidates first
+  for (candidate in implicitlyDeferrableCandidates.sorted()) {
+    if (
+      wouldBreakAllCycles(
+        setOf(candidate),
+        vertices,
+        fullAdjacency,
+        componentOf,
+        componentId,
+        isDeferrable,
+      )
+    ) {
+      return setOf(candidate)
+    }
+  }
+
+  // Then try regular candidates
+  val regularCandidates = potentialCandidates.filterNot(isImplicitlyDeferrable)
+  for (candidate in regularCandidates.sorted()) {
+    if (
+      wouldBreakAllCycles(
+        setOf(candidate),
+        vertices,
+        fullAdjacency,
+        componentOf,
+        componentId,
+        isDeferrable,
+      )
+    ) {
+      return setOf(candidate)
+    }
+  }
+
+  // If no single candidate works, fall back to all candidates
+  return potentialCandidates
+}
+
+/** Checks if deferring the given set of nodes breaks all cycles in the SCC. */
+private fun <V> wouldBreakAllCycles(
+  deferredNodes: Set<V>,
+  vertices: List<V>,
+  fullAdjacency: SortedMap<V, SortedSet<V>>,
+  componentOf: Map<V, Int>,
+  componentId: Int,
+  isDeferrable: (V, V) -> Boolean,
+): Boolean {
+  // Build a reduced adjacency list without deferrable edges involving deferred nodes
+  val reducedAdjacency = mutableMapOf<V, MutableSet<V>>()
+
+  for (from in vertices) {
+    val targets = mutableSetOf<V>()
+    for (to in fullAdjacency[from].orEmpty()) {
+      // stays inside SCC
+      if (componentOf[to] == componentId) {
+        // Skip deferrable edges where either source or target is deferred
+        if (isDeferrable(from, to) && (from in deferredNodes || to in deferredNodes)) continue
+        targets.add(to)
+      }
+    }
+    if (targets.isNotEmpty()) {
+      reducedAdjacency[from] = targets
+    }
+  }
+
+  // Check if the reduced graph is acyclic
+  return isAcyclic(reducedAdjacency)
+}
+
+/** Checks if the given adjacency list represents an acyclic graph using DFS. */
+private fun <V> isAcyclic(adjacency: Map<V, Set<V>>): Boolean {
+  val visited = mutableSetOf<V>()
+  val inStack = mutableSetOf<V>()
+
+  fun dfs(node: V): Boolean {
+    if (node in inStack) {
+      // Cycle found
+      return false
+    }
+    if (node in visited) {
+      return true
+    }
+
+    visited.add(node)
+    inStack.add(node)
+
+    for (neighbor in adjacency[node].orEmpty()) {
+      if (!dfs(neighbor)) return false
+    }
+
+    inStack.remove(node)
+    return true
+  }
+
+  for (node in adjacency.keys) {
+    if (node !in visited && !dfs(node)) {
+      return false
+    }
+  }
+
+  return true
 }
 
 internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
