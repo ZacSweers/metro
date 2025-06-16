@@ -54,7 +54,12 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val generateHintProperties: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
-  /** Enable/disable hint property generation for scoped inject classes. Disabled by default. */
+  /**
+   * Enable/disable hint property generation for scoped inject classes. Disabled by default.
+   *
+   * @see <a href="https://zacsweers.github.io/metro/dependency-graphs/#graph-extensions">Graph
+   *   Extensions docs for more details</a>
+   */
   public val enableScopedInjectClassHints: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
