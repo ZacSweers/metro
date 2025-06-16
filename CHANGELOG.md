@@ -8,6 +8,7 @@ Changelog
 - **Enhancement:** Minimize deferred types when breaking cycles.
 - **Fix:** Disallow injection of `Lazy<T>` where `T` is an `@AssistedFactory`-annotated class.
 - **Fix:** Don't short-circuit assisted injection validation if only an accessor exists.
+- **Fix:** Allow cycles of assisted factories to their target classes.
 
 0.3.7
 -----
