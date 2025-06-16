@@ -849,7 +849,7 @@ class ICTests : BaseIncrementalCompilationTest() {
 
                 @ContributesGraphExtension(LoggedInScope::class)
                 interface LoggedInGraph {
-                  val childDependency: ExampleClass
+                  val exampleClass: ExampleClass
 
                     @ContributesGraphExtension.Factory(AppScope::class)
                     interface Factory {
@@ -865,7 +865,7 @@ class ICTests : BaseIncrementalCompilationTest() {
             """
             fun main(): Any {
               val graph = createGraph<ExampleGraph>().createLoggedInGraph()
-              return graph.childDependency
+              return graph.exampleClass
             }
             """
               .trimIndent()
@@ -879,10 +879,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-    test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
-    test.ExampleClass is requested at
-        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+          e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+              test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+              test.ExampleClass is requested at
+                  [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
         """
           .trimIndent()
       )
@@ -936,10 +936,10 @@ e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
-    test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
-    test.ExampleClass is requested at
-        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+          e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+              test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
+              test.ExampleClass is requested at
+                  [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
         """
           .trimIndent()
       )
