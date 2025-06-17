@@ -74,7 +74,6 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
             FirMetroErrors.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
             canonicalClass.name.asString(),
             canonicalClass.classId.asFqNameString(),
-            context,
           )
           return
         }
