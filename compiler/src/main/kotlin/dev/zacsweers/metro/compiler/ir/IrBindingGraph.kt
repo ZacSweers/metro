@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
@@ -452,7 +454,12 @@ internal class IrBindingGraph(
       if (node.scopes.isEmpty() || bindingScope !in node.scopes) {
         val isUnscoped = node.scopes.isEmpty()
         // Error if there are mismatched scopes
-        val declarationToReport = node.sourceGraph
+        val declarationToReport =
+          if (node.sourceGraph.origin == Origins.ContributedGraph) {
+            node.sourceGraph.parentAsClass
+          } else {
+            node.sourceGraph
+          }
         val backTrace = buildRouteToRoot(binding.typeKey, roots, adjacency)
         for (entry in backTrace) {
           stack.push(entry)
@@ -465,7 +472,7 @@ internal class IrBindingGraph(
         )
         val message = buildString {
           append("[Metro/IncompatiblyScopedBindings] ")
-          append(declarationToReport.kotlinFqName)
+          append(node.sourceGraph.kotlinFqName)
           if (isUnscoped) {
             // Unscoped graph but scoped binding
             append(" (unscoped) may not reference scoped bindings:")
@@ -477,6 +484,16 @@ internal class IrBindingGraph(
           }
           appendLine()
           appendBindingStack(stack, short = false)
+
+          if (node.sourceGraph.origin == Origins.ContributedGraph) {
+            appendLine()
+            appendLine()
+            appendLine("(Hint)")
+            append(
+              "${node.sourceGraph.name} is contributed by '${node.sourceGraph.superTypes.first().rawTypeOrNull()?.kotlinFqName}' to '${declarationToReport.kotlinFqName}'."
+            )
+          }
+
           if (!isUnscoped && binding is Binding.ConstructorInjected) {
             val matchingParent =
               node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
@@ -496,7 +513,9 @@ internal class IrBindingGraph(
             }
           }
         }
-        with(metroContext) { declarationToReport.reportError(message) }
+        metroContext.diagnosticReporter
+          .at(declarationToReport)
+          .report(MetroIrErrors.METRO_ERROR, message)
       }
     }
   }
