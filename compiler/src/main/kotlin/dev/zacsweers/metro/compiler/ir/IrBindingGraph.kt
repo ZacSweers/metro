@@ -488,7 +488,7 @@ internal class IrBindingGraph(
                 """
                   (Hint)
                   It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
-                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`).
+                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`) or enabling the `enableScopedInjectClassHints` option.
                   See https://github.com/ZacSweers/metro/issues/377 for more details.
                 """
                   .trimIndent()

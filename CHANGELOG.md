@@ -9,7 +9,7 @@ Changelog
 - **New:** Support for generic assisted injection.
 - **New:** Support for generic member injection.
 - **New:** Add diagnostic to prohibit type parameters on injected member functions.
-- **Enhancement:** Enable child graphs to depend on parent-scoped dependencies that are unused and not referenced in the parent scope. This involves generating hints for scoped `@Inject` classes and is gated on a new Metro option `enableScopedInjectClassHints`.
+- **Enhancement:** Enable child graphs to depend on parent-scoped dependencies that are unused and not referenced in the parent scope. This involves generating hints for scoped `@Inject` classes and is gated on a new Metro option `enableScopedInjectClassHints`, which is enabled by default.
 - **Enhancement:** Check for context parameters in top-level function injection checker.
 - **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
 - **Enhancement:** Avoid writing providers fields in graphs for unused bindings.
