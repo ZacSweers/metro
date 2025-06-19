@@ -55,13 +55,13 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
-   * Enable/disable hint property generation for scoped inject classes. Disabled by default.
+   * Enable/disable hint property generation for scoped inject classes. Enabled by default.
    *
    * @see <a href="https://zacsweers.github.io/metro/dependency-graphs/#graph-extensions">Graph
    *   Extensions docs for more details</a>
    */
   public val enableScopedInjectClassHints: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
   public val shrinkUnusedBindings: Property<Boolean> =

@@ -809,9 +809,8 @@ class ICTests : BaseIncrementalCompilationTest() {
 
   @Test
   fun scopingChangeOnNonContributedClassIsDetected() {
-    val options = MetroOptionOverrides(enableScopedInjectClassHints = true)
     val fixture =
-      object : MetroProject(debug = true, metroOptions = options) {
+      object : MetroProject(debug = true) {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 

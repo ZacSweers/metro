@@ -1210,8 +1210,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      options = metroOptions.copy(enableScopedInjectClassHints = true),
+      )
     ) {
       val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
@@ -1246,8 +1245,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      options = metroOptions.copy(enableScopedInjectClassHints = true),
+      )
     ) {
       val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
@@ -1282,8 +1280,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      options = metroOptions.copy(enableScopedInjectClassHints = true),
+      )
     ) {
       val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
@@ -1305,8 +1302,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           class Dependency : Bob
         """
             .trimIndent()
-        ),
-        options = metroOptions.copy(enableScopedInjectClassHints = true),
+        )
       )
 
     val graphExtensionCompilation =
@@ -1327,7 +1323,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
             .trimIndent()
         ),
-        options = metroOptions.copy(enableScopedInjectClassHints = true),
         previousCompilationResult = injectDepCompilation,
       )
 
@@ -1339,7 +1334,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.copy(enableScopedInjectClassHints = true),
       compilationBlock = {
         addPreviousResultToClasspath(injectDepCompilation)
         addPreviousResultToClasspath(graphExtensionCompilation)
@@ -1364,8 +1358,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           class Dependency
         """
             .trimIndent()
-        ),
-        options = metroOptions.copy(enableScopedInjectClassHints = true),
+        )
       )
 
     val graphExtensionCompilation =
@@ -1386,7 +1379,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
             .trimIndent()
         ),
-        options = metroOptions.copy(enableScopedInjectClassHints = true),
         previousCompilationResult = injectDepCompilation,
       )
 
@@ -1399,7 +1391,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      options = metroOptions.copy(enableScopedInjectClassHints = true),
       compilationBlock = {
         addPreviousResultToClasspath(injectDepCompilation)
         addPreviousResultToClasspath(graphExtensionCompilation)
@@ -1447,8 +1438,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
           }
         """
           .trimIndent()
-      ),
-      options = metroOptions.copy(enableScopedInjectClassHints = true),
+      )
     ) {
       val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph1 = parentGraph.callFunction<Any>("createLoggedInGraph")

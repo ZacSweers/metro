@@ -128,9 +128,9 @@ import kotlin.reflect.KClass
  *
  * In some cases, there are scoped bindings that are unused in the parent graph but _are_ used in
  * child graphs. Due to the detached nature of graph extensions, these bindings by default end up
- * scoped to the child. If you want to enforce that these bindings are scoped and held by the parent
- * however, you can enable `enableScopedInjectClassHints()` in the Gradle DSL to enable automatic
- * scoped inject class discovery by parent graphs.
+ * scoped to the child. To enforce that these bindings are scoped and held by the parent, Metro
+ * generates hints for these classes and discovers them during graph processing by default. You can
+ * disable this via the `enableScopedInjectClassHints` property in the Gradle DSL.
  *
  * Note that this must be enabled in the compilation of the scoped class itself.
  *
