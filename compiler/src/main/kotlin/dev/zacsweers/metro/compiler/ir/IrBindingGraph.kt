@@ -195,6 +195,7 @@ internal class IrBindingGraph(
         realGraph.seal(
           roots = roots,
           keep = keep,
+          shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings && !node.isExtendable,
           tracer = tracer,
           onPopulated = {
             metroContext.writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {

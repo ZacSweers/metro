@@ -346,8 +346,9 @@ internal class IrGraphGenerator(
 
       val baseGenerationContext = GraphGenerationContext(thisReceiverParameter)
 
+      // TODO can we consolidate this with regular provider field collection?
       for ((key, binding) in bindingGraph.bindingsSnapshot()) {
-        if (binding is Binding.GraphDependency) {
+        if (binding is Binding.GraphDependency && key in sealResult.reachableKeys) {
           val getter = binding.getter
           if (binding.isProviderFieldAccessor) {
             // Init a provider field pointing at this

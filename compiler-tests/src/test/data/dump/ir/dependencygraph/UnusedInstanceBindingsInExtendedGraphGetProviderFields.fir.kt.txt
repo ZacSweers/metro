@@ -17,6 +17,7 @@ interface AppGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : AppGraph {
+    private /* final field */ val stringInstanceProvider: Provider<String> = Companion.invoke<String>(value = string)
     private /* final field */ val thisGraphInstance: AppGraph = <this>
     private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
     constructor(@Provides string: String) /* primary */ {
@@ -28,6 +29,11 @@ interface AppGraph {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     fun appGraphProvider_metroAccessor(): Provider<AppGraph> {
       return <this>.#appGraphProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun stringInstanceProvider_metroAccessor(): Provider<String> {
+      return <this>.#stringInstanceProvider
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)

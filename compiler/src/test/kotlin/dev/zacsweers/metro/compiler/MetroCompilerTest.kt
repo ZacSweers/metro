@@ -105,6 +105,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, generateHintProperties)
               MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
                 processor.option(entry.raw.cliOption, transformProvidersToPrivate)
+              MetroOption.SHRINK_UNUSED_BINDINGS ->
+                processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.LOGGING -> {

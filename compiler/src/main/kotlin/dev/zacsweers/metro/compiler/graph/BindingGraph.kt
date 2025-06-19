@@ -94,6 +94,7 @@ internal open class MutableBindingGraph<
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     keep: Set<TypeKey> = emptySet(),
+    shrinkUnusedBindings: Boolean = true,
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
     validateBindings:
@@ -150,7 +151,13 @@ internal open class MutableBindingGraph<
 
     val topo =
       tracer.traceNested("Sort and validate") {
-        sortAndValidate(roots, keep, fullAdjacency, stack, it)
+        val allKeeps =
+          if (shrinkUnusedBindings) {
+            keep
+          } else {
+            fullAdjacency.keys
+          }
+        sortAndValidate(roots, allKeeps, fullAdjacency, stack, it)
       }
 
     tracer.traceNested("Compute binding indices") {
@@ -223,7 +230,7 @@ internal open class MutableBindingGraph<
 
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
-    keep: Set<TypeKey> = emptySet(),
+    keep: Set<TypeKey>,
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,

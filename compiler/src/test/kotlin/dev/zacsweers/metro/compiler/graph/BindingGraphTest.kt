@@ -81,7 +81,8 @@ class BindingGraphTest {
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
 
-    val exception = assertFailsWith<IllegalStateException> { bindingGraph.seal() }
+    val exception =
+      assertFailsWith<IllegalStateException> { bindingGraph.seal(shrinkUnusedBindings = false) }
     assertThat(exception)
       .hasMessageThat()
       .contains(
@@ -110,7 +111,7 @@ class BindingGraphTest {
 
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
-    bindingGraph.seal()
+    bindingGraph.seal(shrinkUnusedBindings = false)
 
     with(bindingGraph) {
       assertThat(a.dependsOn(b)).isTrue()
@@ -131,7 +132,7 @@ class BindingGraphTest {
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
     bindingGraph.tryPut(bindingC)
-    bindingGraph.seal()
+    bindingGraph.seal(shrinkUnusedBindings = false)
 
     with(bindingGraph) {
       // Direct dependency
@@ -441,6 +442,6 @@ internal class StringGraphBuilder {
   }
 
   fun sealAndReturn(): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
-    return graph to graph.seal()
+    return graph to graph.seal(shrinkUnusedBindings = false)
   }
 }

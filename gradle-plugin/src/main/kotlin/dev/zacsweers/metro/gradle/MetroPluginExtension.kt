@@ -63,6 +63,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val enableScopedInjectClassHints: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
+  /** Enable/disable shrinking of unused bindings. Enabled by default. */
+  public val shrinkUnusedBindings: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(true)
+
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
