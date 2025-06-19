@@ -360,7 +360,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
     result.assertDiagnostics(
       """
-        e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@Singleton') may not reference bindings from different scopes:
+        e: ExampleGraph.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (scopes '@SingleIn(AppScope::class)', '@Singleton') may not reference bindings from different scopes:
             kotlin.Int (scoped to '@SingleIn(UserScope::class)')
             kotlin.Int is requested at
                 [test.ExampleGraph] test.ExampleGraph#intValue
@@ -582,7 +582,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph (unscoped) may not reference scoped bindings:
               kotlin.String (scoped to '@SingleIn(AppScope::class)')
               kotlin.String is requested at
                   [test.ExampleGraph] test.ExampleGraph#value
@@ -1409,7 +1409,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
@@ -1438,7 +1438,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
@@ -1471,7 +1471,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
@@ -2782,15 +2782,15 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
+          e: ExampleGraph.kt:8:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
-          e: ExampleGraph.kt:9:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+          e: ExampleGraph.kt:9:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
-          e: ExampleGraph.kt:10:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.Int>' was unexpectedly empty.
+          e: ExampleGraph.kt:10:19 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<kotlin.String, kotlin.Int>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """
@@ -2879,7 +2879,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: Accessors.kt:7:3 Provider<Lazy<T>> accessors are not supported.
+          e: Accessors.kt:7:7 Provider<Lazy<T>> accessors are not supported.
         """
           .trimIndent()
       )

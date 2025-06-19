@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
@@ -99,7 +100,8 @@ internal class InjectConstructorTransformer(
         // If not external, double check its origin
         if (isMetroFactory && !isExternal) {
           if (it.origin != Origins.InjectConstructorFactoryClassDeclaration) {
-            declaration.reportError(
+            diagnosticReporter.at(declaration).report(
+              MetroIrErrors.METRO_ERROR,
               "Found a Metro factory declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
             )
             return null
@@ -133,7 +135,8 @@ internal class InjectConstructorTransformer(
           generatedFactories[injectedClassId] = Optional.empty()
           return null
         }
-        declaration.reportError(
+        diagnosticReporter.at(declaration).report(
+          MetroIrErrors.METRO_ERROR,
           "Could not find generated factory for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
         )
         return null

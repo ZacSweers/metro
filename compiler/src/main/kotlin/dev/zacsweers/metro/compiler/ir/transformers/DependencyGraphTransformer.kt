@@ -277,10 +277,8 @@ internal class DependencyGraphTransformer(
               PLUGIN_ID,
             )
           if (serialized == null) {
-            reportError(
-              "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-              graphDeclaration.location(),
-            )
+            diagnosticReporter.at(graphDeclaration)
+              .report(MetroIrErrors.METRO_ERROR, "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?")
             exitProcessing()
           }
 
@@ -290,10 +288,8 @@ internal class DependencyGraphTransformer(
               metadata.dependency_graph
             }
           if (graphProto == null) {
-            reportError(
-              "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-              graphDeclaration.location(),
-            )
+            diagnosticReporter.at(graphDeclaration)
+              .report(MetroIrErrors.METRO_ERROR, "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?")
             exitProcessing()
           }
 
@@ -643,33 +639,31 @@ internal class DependencyGraphTransformer(
       }
       for (parentScope in depNode.scopes) {
         seenAncestorScopes.put(parentScope, depNode)?.let { previous ->
-          graphDeclaration.reportError(
-            buildString {
-              appendLine(
-                "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
-              )
-              append("Scope: ")
-              appendLine(parentScope.render(short = false))
-              append("Ancestor 1: ")
-              appendLine(previous.sourceGraph.kotlinFqName)
-              append("Ancestor 2: ")
-              appendLine(depNode.sourceGraph.kotlinFqName)
-            }
+          diagnosticReporter.at(graphDeclaration).report(MetroIrErrors.METRO_ERROR, buildString {
+            appendLine(
+              "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
+            )
+            append("Scope: ")
+            appendLine(parentScope.render(short = false))
+            append("Ancestor 1: ")
+            appendLine(previous.sourceGraph.kotlinFqName)
+            append("Ancestor 2: ")
+            appendLine(depNode.sourceGraph.kotlinFqName)
+          }
           )
           exitProcessing()
         }
       }
     }
     if (overlapErrors.isNotEmpty()) {
-      graphDeclaration.reportError(
-        buildString {
-          appendLine(
-            "Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:"
-          )
-          for (overlap in overlapErrors) {
-            appendLine(overlap)
-          }
+      diagnosticReporter.at(graphDeclaration).report(MetroIrErrors.METRO_ERROR, buildString {
+        appendLine(
+          "Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:"
+        )
+        for (overlap in overlapErrors) {
+          appendLine(overlap)
         }
+      }
       )
       exitProcessing()
     }
@@ -758,7 +752,8 @@ internal class DependencyGraphTransformer(
           tracer.traceNested("Validate graph") {
             bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
-                (declaration ?: dependencyGraphDeclaration).reportError(message)
+                diagnosticReporter.at(declaration ?: dependencyGraphDeclaration)
+                  .report(MetroIrErrors.METRO_ERROR, message)
               }
               exitProcessing()
             }
@@ -784,7 +779,8 @@ internal class DependencyGraphTransformer(
           proto = dependencyGraphNodesByClass.getValue(parent.sourceGraph.classIdOrFail).proto
         }
         if (proto == null) {
-          parent.sourceGraph.reportError(
+          diagnosticReporter.at(parent.sourceGraph).report(
+            MetroIrErrors.METRO_ERROR,
             "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?"
           )
           exitProcessing()

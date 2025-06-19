@@ -804,7 +804,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: GrandParentGraph.kt:25:11 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
+          e: GrandParentGraph.kt:27:21 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
           - @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class) (from ancestor 'test.GrandParentGraph')
         """
           .trimIndent()
@@ -857,7 +857,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: GrandParentGraph.kt:30:11 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
+          e: GrandParentGraph.kt:33:21 Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:
           - @dev.zacsweers.metro.SingleIn(test.Scope1::class) (from ancestor 'test.GrandParentGraph')
           - @dev.zacsweers.metro.SingleIn(test.Scope2::class) (from ancestor 'test.OtherGrandParentGraph')
         """
@@ -918,7 +918,7 @@ class GraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: GrandParentGraph.kt:39:11 Graph extensions (@Extends) may not have multiple ancestors with the same scopes:
+          e: GrandParentGraph.kt:40:21 Graph extensions (@Extends) may not have multiple ancestors with the same scopes:
           Scope: @dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)
           Ancestor 1: test.GrandParentGraph
           Ancestor 2: test.OtherGrandParentGraph

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
 import dev.zacsweers.metro.compiler.mapToSet
@@ -104,7 +105,7 @@ internal class ClassBindingLookup(
             )
             appendBindingStack(stack)
           }
-          irClass.reportError(message)
+          diagnosticReporter.at(irClass).report(MetroIrErrors.METRO_ERROR, message)
           exitProcessing()
         }
 

@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -92,7 +93,7 @@ internal class IrContributedGraphGenerator(
             append("::class])`).")
           }
         }
-        sourceGraph.reportError(message)
+        diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
         exitProcessing()
       }
     }
@@ -109,7 +110,7 @@ internal class IrContributedGraphGenerator(
           // Ensure a unique name
           name =
             nameAllocator
-              .newName("$\$Contributed${sourceGraph.name.asString().capitalizeUS()}")
+              .newName($$$"$$Contributed$$${sourceGraph.name.asString().capitalizeUS()}")
               .asName()
           origin = Origins.ContributedGraph
           kind = ClassKind.CLASS

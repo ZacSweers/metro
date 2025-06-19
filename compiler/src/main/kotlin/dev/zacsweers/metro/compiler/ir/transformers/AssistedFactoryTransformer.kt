@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -73,7 +74,8 @@ internal class AssistedFactoryTransformer(
         // If not external, double check its origin
         if (isMetroImpl && !isExternal) {
           if (it.origin != Origins.AssistedFactoryImplClassDeclaration) {
-            declaration.reportError(
+            diagnosticReporter.at(declaration).report(
+              MetroIrErrors.METRO_ERROR,
               "Found a Metro assisted factory impl declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
             )
             return null
@@ -93,7 +95,8 @@ internal class AssistedFactoryTransformer(
             return daggerImplClass
           }
         }
-        declaration.reportError(
+        diagnosticReporter.at(declaration).report(
+          MetroIrErrors.METRO_ERROR,
           "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
         )
         return null
