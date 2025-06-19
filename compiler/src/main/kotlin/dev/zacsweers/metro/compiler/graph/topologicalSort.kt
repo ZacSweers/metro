@@ -162,13 +162,14 @@ internal data class TopoSortResult<T>(
  * @param fullAdjacency outgoing‑edge map (every vertex key must be present)
  * @param isDeferrable predicate for "edge may break a cycle"
  * @param onCycle called with the offending cycle if no deferrable edge
- * @param roots optional set of source roots for computing reachability
+ * @param roots optional set of source roots for computing reachability. If null, all keys will be
+ *   kept.
  */
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Nothing,
-  roots: SortedSet<V> = sortedSetOf(),
+  roots: SortedSet<V>? = null,
   parentTracer: Tracer = Tracer.NONE,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
 ): TopoSortResult<V> {
@@ -398,7 +399,7 @@ internal data class TarjanResult<V : Comparable<V>>(
  *   algorithm</a>
  */
 internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
-  roots: SortedSet<V> = sortedSetOf()
+  roots: SortedSet<V>? = null
 ): TarjanResult<V> {
   var nextIndex = 0
   var nextComponentId = 0
@@ -457,7 +458,7 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
     }
   }
 
-  val startVertices = roots.ifEmpty { keys }
+  val startVertices = roots ?: keys
 
   for (v in startVertices) {
     if (v !in indexMap) {

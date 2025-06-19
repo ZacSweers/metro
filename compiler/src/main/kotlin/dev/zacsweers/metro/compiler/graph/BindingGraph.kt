@@ -231,12 +231,12 @@ internal open class MutableBindingGraph<
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {
     val sortedRootKeys =
-      TreeSet<TypeKey>().apply {
-        if (shrinkUnusedBindings) {
+      if (shrinkUnusedBindings) {
+        null
+      } else {
+        TreeSet<TypeKey>().apply {
           roots.keys.forEach { add(it.typeKey) }
           addAll(keep)
-        } else {
-          // Empty will keep all
         }
       }
 
