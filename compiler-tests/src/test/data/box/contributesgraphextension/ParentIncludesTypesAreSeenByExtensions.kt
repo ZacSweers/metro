@@ -1,48 +1,34 @@
-interface FeatureScope
-
-interface IntProvider {
-  val int: Int
-}
-
-@DependencyGraph(scope = FeatureScope::class, isExtendable = true)
-interface FeatureGraph {
-
+@DependencyGraph(scope = AppScope::class, isExtendable = true)
+interface AppGraph {
   @DependencyGraph.Factory
   interface Factory {
-    fun create(
-      @Includes serviceProvider: FeatureServiceProvider,
-    ): FeatureGraph
+    fun create(@Includes serviceProvider: IntProvider): AppGraph
   }
 }
 
 @ContributesGraphExtension(scope = Unit::class)
-interface FeatureSubGraph {
-
-  @ContributesGraphExtension.Factory(scope = FeatureScope::class)
+interface ChildGraph {
+  @ContributesGraphExtension.Factory(scope = AppScope::class)
   interface Factory {
-    fun create(): FeatureSubGraph
+    fun create(): ChildGraph
   }
 }
 
-@ContributesTo(AppScope::class)
-interface FeatureServiceProvider {
-  fun intProvider(): IntProvider
-}
-
-@DependencyGraph(AppScope::class)
-interface AppGraph
-
-@Inject
-@ContributesBinding(AppScope::class)
-class IntProviderImpl : IntProvider {
-  override val int: Int get() = 3
+interface IntProvider {
+  fun int(): Int
 }
 
 fun box(): String {
-  val parent = createGraph<AppGraph>()
-  val feature = createGraphFactory<FeatureGraph.Factory>()
-    .create(parent.asContribution<FeatureServiceProvider>())
-  val child = feature.create()
+  val graph =
+    createGraphFactory<AppGraph.Factory>()
+      .create(
+        object : IntProvider {
+          override fun int(): Int {
+            return 3
+          }
+        }
+      )
+  val child = graph.create()
   assertNotNull(child)
   return "OK"
 }
