@@ -255,6 +255,7 @@ internal class BindingGraphGenerator(
       val isMultibindingDeclaration = multibinds != null
 
       if (isMultibindingDeclaration) {
+        graph.addAccessor(contextualTypeKey, IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir))
         if (contextualTypeKey.typeKey !in graph) {
           val multibinding =
             Binding.Multibinding.fromMultibindsDeclaration(

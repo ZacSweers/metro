@@ -346,42 +346,6 @@ internal class IrGraphGenerator(
 
       val baseGenerationContext = GraphGenerationContext(thisReceiverParameter)
 
-      for ((key, binding) in bindingGraph.bindingsSnapshot()) {
-        if (binding is Binding.GraphDependency) {
-          val getter = binding.getter
-          if (binding.isProviderFieldAccessor) {
-            // Init a provider field pointing at this
-            providerFields[key] =
-              addField(
-                  fieldName =
-                    fieldNameAllocator.newName(
-                      "${getter.name.asString().decapitalizeUS().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)}Provider"
-                    ),
-                  fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
-                  fieldVisibility = DescriptorVisibilities.PRIVATE,
-                )
-                .apply {
-                  isFinal = true
-                  initializer =
-                    pluginContext.createIrBuilder(symbol).run {
-                      // If this is in instance fields, just do a quick assignment
-                      val bindingExpression =
-                        if (binding.typeKey in instanceFields) {
-                          val field = instanceFields.getValue(binding.typeKey)
-                          instanceFactory(
-                            binding.typeKey.type,
-                            irGetField(irGet(thisReceiverParameter), field),
-                          )
-                        } else {
-                          generateBindingCode(binding, generationContext = baseGenerationContext)
-                        }
-                      irExprBody(bindingExpression)
-                    }
-                }
-          }
-        }
-      }
-
       // For all deferred types, assign them first as factories
       // TODO For any types that depend on deferred types, they need providers too?
       @Suppress("UNCHECKED_CAST")

@@ -110,10 +110,22 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
+    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
+    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun exampleGraphProvider_metroAccessor(): Provider<ExampleGraph> {
+      return <this>.#exampleGraphProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun thisGraphInstance_metroAccessor(): ExampleGraph {
+      return <this>.#thisGraphInstance
     }
 
     override fun createLoggedInGraph(): LoggedInGraph {

@@ -151,7 +151,12 @@ internal open class MutableBindingGraph<
 
     val topo =
       tracer.traceNested("Sort and validate") {
-        sortAndValidate(roots, keep, shrinkUnusedBindings, fullAdjacency, stack, it)
+        val allKeeps = if (shrinkUnusedBindings) {
+          keep
+        } else {
+          fullAdjacency.keys
+        }
+        sortAndValidate(roots, allKeeps, fullAdjacency, stack, it)
       }
 
     tracer.traceNested("Compute binding indices") {
@@ -225,19 +230,14 @@ internal open class MutableBindingGraph<
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
     keep: Set<TypeKey>,
-    shrinkUnusedBindings: Boolean,
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {
     val sortedRootKeys =
-      if (shrinkUnusedBindings) {
-        null
-      } else {
-        TreeSet<TypeKey>().apply {
-          roots.keys.forEach { add(it.typeKey) }
-          addAll(keep)
-        }
+      TreeSet<TypeKey>().apply {
+        roots.keys.forEach { add(it.typeKey) }
+        addAll(keep)
       }
 
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
