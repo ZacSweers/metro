@@ -24,4 +24,6 @@ internal interface BaseBinding<
     get() = contextualTypeKey.isDeferrable
 
   fun renderLocationDiagnostic(): String
+
+  fun replaces(other: BaseBinding<*, *, *>): Boolean = false
 }
