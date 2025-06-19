@@ -1139,6 +1139,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
+      options = metroOptions.copy(enableScopedInjectClassHints = false),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertDiagnostics(
@@ -1153,7 +1154,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
           (Hint)
           It appears that extended parent graph 'test.ExampleGraph' does declare the '@SingleIn(AppScope::class)' scope but doesn't use 'Dependency' directly.
-          To work around this, consider declaring an accessor for 'Dependency' in that graph (i.e. `val dependency: Dependency`).
+          To work around this, consider declaring an accessor for 'Dependency' in that graph (i.e. `val dependency: Dependency`) or enabling the `enableScopedInjectClassHints` option.
           See https://github.com/ZacSweers/metro/issues/377 for more details.
         """
           .trimIndent()
