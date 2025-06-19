@@ -151,11 +151,12 @@ internal open class MutableBindingGraph<
 
     val topo =
       tracer.traceNested("Sort and validate") {
-        val allKeeps = if (shrinkUnusedBindings) {
-          keep
-        } else {
-          fullAdjacency.keys
-        }
+        val allKeeps =
+          if (shrinkUnusedBindings) {
+            keep
+          } else {
+            fullAdjacency.keys
+          }
         sortAndValidate(roots, allKeeps, fullAdjacency, stack, it)
       }
 

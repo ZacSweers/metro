@@ -81,7 +81,8 @@ class BindingGraphTest {
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
 
-    val exception = assertFailsWith<IllegalStateException> { bindingGraph.seal(shrinkUnusedBindings = false) }
+    val exception =
+      assertFailsWith<IllegalStateException> { bindingGraph.seal(shrinkUnusedBindings = false) }
     assertThat(exception)
       .hasMessageThat()
       .contains(
