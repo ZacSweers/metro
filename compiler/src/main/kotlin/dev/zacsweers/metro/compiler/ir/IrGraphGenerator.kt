@@ -1194,7 +1194,7 @@ internal class IrGraphGenerator(
           instanceFields[ownerKey]
             ?: run {
               error(
-                "No matching included type instance found for type ${ownerKey}. Available instance fields ${instanceFields.keys}"
+                "No matching included type instance found for type $ownerKey while processing ${node.typeKey}. Available instance fields ${instanceFields.keys}"
               )
             }
 
