@@ -163,7 +163,6 @@ internal data class TopoSortResult<T>(
  * @param isDeferrable predicate for "edge may break a cycle"
  * @param onCycle called with the offending cycle if no deferrable edge
  * @param roots optional set of source roots for computing reachability
- * @param keep optional set of keys to always keep, even if unused
  */
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,

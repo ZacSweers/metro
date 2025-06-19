@@ -94,6 +94,7 @@ internal open class MutableBindingGraph<
   fun seal(
     roots: Map<ContextualTypeKey, BindingStackEntry> = emptyMap(),
     keep: Set<TypeKey> = emptySet(),
+    shrinkUnusedBindings: Boolean = true,
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
     validateBindings:
@@ -150,7 +151,7 @@ internal open class MutableBindingGraph<
 
     val topo =
       tracer.traceNested("Sort and validate") {
-        sortAndValidate(roots, keep, fullAdjacency, stack, it)
+        sortAndValidate(roots, keep, shrinkUnusedBindings, fullAdjacency, stack, it)
       }
 
     tracer.traceNested("Compute binding indices") {
@@ -223,15 +224,20 @@ internal open class MutableBindingGraph<
 
   private fun sortAndValidate(
     roots: Map<ContextualTypeKey, BindingStackEntry>,
-    keep: Set<TypeKey> = emptySet(),
+    keep: Set<TypeKey>,
+    shrinkUnusedBindings: Boolean,
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
   ): TopoSortResult<TypeKey> {
     val sortedRootKeys =
       TreeSet<TypeKey>().apply {
-        roots.keys.forEach { add(it.typeKey) }
-        addAll(keep)
+        if (shrinkUnusedBindings) {
+          roots.keys.forEach { add(it.typeKey) }
+          addAll(keep)
+        } else {
+          // Empty will keep all
+        }
       }
 
     // Run topo sort. It gives back either a valid order or calls onCycle for errors

@@ -138,6 +138,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  SHRINK_UNUSED_BINDINGS(
+    RawMetroOption.boolean(
+      name = "shrink-unused-bindings",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description = "Enable/disable shrinking of unused bindings from binding graphs.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -447,6 +457,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_HINT_PROPERTIES.raw.defaultValue.expectAs(),
   val transformProvidersToPrivate: Boolean =
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
+  val shrinkUnusedBindings: Boolean =
+    MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -564,6 +576,9 @@ public data class MetroOptions(
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))
+
+          MetroOption.SHRINK_UNUSED_BINDINGS ->
+            options = options.copy(shrinkUnusedBindings = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =

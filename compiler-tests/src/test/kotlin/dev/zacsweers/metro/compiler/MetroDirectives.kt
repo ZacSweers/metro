@@ -14,6 +14,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
       "Control diagnostic severity reporting of public providers."
     )
   val ENABLE_SCOPED_INJECT_CLASS_HINTS by directive("Enable scoped inject class hints.")
+  val SHRINK_UNUSED_BINDINGS by
+    valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
