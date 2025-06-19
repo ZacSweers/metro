@@ -277,8 +277,13 @@ internal class IrGraphGenerator(
               val contextKey = IrContextualTypeKey.from(metroContext, it)
               metroFunction to contextKey
             }
+
         for ((accessor, contextualTypeKey) in instanceAccessors) {
-          if (node.typeKey in sealResult.reachableKeys) continue
+          // If this isn't extendable and this type key isn't used, ignore it
+          // TODO when we have weak reachability revisit this
+          if (!node.isExtendable && contextualTypeKey.typeKey !in sealResult.reachableKeys) {
+            continue
+          }
 
           instanceFields.getOrPut(contextualTypeKey.typeKey) {
             addField(
@@ -343,7 +348,6 @@ internal class IrGraphGenerator(
 
       for ((key, binding) in bindingGraph.bindingsSnapshot()) {
         if (binding is Binding.GraphDependency) {
-
           val getter = binding.getter
           if (binding.isProviderFieldAccessor) {
             // Init a provider field pointing at this
