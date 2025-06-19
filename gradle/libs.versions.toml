@@ -20,7 +20,7 @@ atomicfu = "0.28.0"
 autoService = "1.1.1"
 circuit = "0.28.1"
 classgraph = "4.8.179"
-compose-jb = "1.8.1"
+compose-jb = "1.8.2"
 dagger = "2.56.2"
 gjf = "1.27.0"
 jdk = "23"
@@ -59,7 +59,7 @@ dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.32.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.18.7" }
-shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta16" }
+shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta17" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.4" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.13" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
@@ -68,7 +68,7 @@ wire = { id = "com.squareup.wire", version.ref = "wire" }
 androidx-activity = "androidx.activity:activity-compose:1.10.1"
 androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
 androidx-compose-material3 = "androidx.compose.material3:material3:1.3.2"
-androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.8.2"
+androidx-compose-materialNavigation = "androidx.compose.material:material-navigation:1.8.3"
 androidx-core = "androidx.core:core-ktx:1.16.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.8"
 androidx-lifecycle-runtime-compose = "androidx.lifecycle:lifecycle-runtime-compose:2.9.1"
