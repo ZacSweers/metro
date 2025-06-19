@@ -89,10 +89,6 @@ internal interface IrMetroContext {
     timingsFile?.appendText("\n$tag,$description,${durationMs}")
   }
 
-  fun reportError(message: String, location: CompilerMessageSourceLocation?) {
-    messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
-  }
-
   fun IrClass.dumpToMetroLog() {
     val name =
       parentDeclarationsWithSelf.filterIsInstance<IrClass>().toList().asReversed().joinToString(

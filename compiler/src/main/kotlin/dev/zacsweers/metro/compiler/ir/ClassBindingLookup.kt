@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
 import dev.zacsweers.metro.compiler.mapToSet
@@ -44,7 +43,7 @@ internal class ClassBindingLookup(
             contextKey,
             // Need to look up the injector class and gather all params
             parameters = remappedParameters,
-            reportableLocation = location(),
+            reportableDeclaration = this,
             function = null,
             isFromInjectorFunction = true,
             targetClassId = classIdOrFail,

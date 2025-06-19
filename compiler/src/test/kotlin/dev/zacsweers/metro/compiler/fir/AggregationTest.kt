@@ -1840,7 +1840,7 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
+          e: AltScope.kt:24:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
 
               test.ContributedInterface is requested at
                   [test.AltGraph] test.AltGraph#contributedInterface

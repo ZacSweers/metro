@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -410,8 +409,8 @@ internal class IrBindingGraph(
   }
 
   private fun onError(message: String, stack: IrBindingStack): Nothing {
-    val location = stack.lastEntryOrGraph.locationOrNull()
-    metroContext.reportError(message, location)
+    val declaration = stack.lastEntryOrGraph
+    metroContext.diagnosticReporter.at(declaration).report(MetroIrErrors.METRO_ERROR, message)
     exitProcessing()
   }
 
@@ -528,7 +527,7 @@ internal class IrBindingGraph(
   ) {
     if (binding !is Binding.ConstructorInjected || !binding.isAssisted) return
 
-    fun reportInvalidBinding(location: CompilerMessageSourceLocation?) {
+    fun reportInvalidBinding(declaration: IrDeclaration?) {
       // Look up the assisted factory as a hint
       val assistedFactory =
         bindings.values.find { it is Binding.Assisted && it.target.typeKey == binding.typeKey }
@@ -547,7 +546,7 @@ internal class IrBindingGraph(
           )
         }
       }
-      with(metroContext) { reportError(message, location) }
+      metroContext.diagnosticReporter.at(declaration ?: node.sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->
@@ -555,14 +554,15 @@ internal class IrBindingGraph(
         val dependentBinding = bindings[dependentKey] ?: continue
         if (dependentBinding !is Binding.Assisted) {
           reportInvalidBinding(
-            dependentBinding.parametersByKey[binding.typeKey]?.ir?.location()?.takeIf {
-              it.line != 0 || it.column != 0
-            } ?: dependentBinding.reportableLocation
+            dependentBinding.parametersByKey[binding.typeKey]?.ir?.takeIf {
+              val location = it.location()
+              location.line != 0 || location.column != 0
+            } ?: dependentBinding.reportableDeclaration
           )
         }
       }
     }
-    roots[binding.typeKey]?.let { reportInvalidBinding(it.declaration?.locationOrNull()) }
+    roots[binding.typeKey]?.let { reportInvalidBinding(it.declaration) }
   }
 
   /**
@@ -668,7 +668,7 @@ internal class IrBindingGraph(
       }
     }
 
-    binding.reportableLocation?.let { location -> appendLine("└─ Location: ${location.render()}") }
+    binding.reportableDeclaration?.locationOrNull()?.let { location -> appendLine("└─ Location: ${location.render()}") }
   }
 
   data class SimilarBinding(val binding: Binding, val description: String) {
@@ -680,7 +680,7 @@ internal class IrBindingGraph(
         append("). Type: ")
         append(binding.javaClass.simpleName)
         append('.')
-        binding.reportableLocation?.render()?.let {
+        binding.reportableDeclaration?.locationOrNull()?.render()?.let {
           append(" Source: ")
           append(it)
         }

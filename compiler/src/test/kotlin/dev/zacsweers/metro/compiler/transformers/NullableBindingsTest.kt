@@ -61,11 +61,11 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
+          e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
 
               kotlin.Int? is requested at
                   [test.ExampleGraph] test.ExampleGraph#nullable
-
+          
           Similar bindings:
             - Int (Non-nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
         """
@@ -94,11 +94,11 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+          e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-
+          
           Similar bindings:
             - Int? (Nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
         """
