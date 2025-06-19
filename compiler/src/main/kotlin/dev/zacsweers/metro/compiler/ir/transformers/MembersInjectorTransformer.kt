@@ -149,10 +149,12 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         // If not external, double check its origin
         if (isMetroImpl && !isExternal) {
           if (it.origin != Origins.MembersInjectorClassDeclaration) {
-            diagnosticReporter.at(declaration).report(
-              MetroIrErrors.METRO_ERROR,
-              "Found a Metro members injector declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
-            )
+            diagnosticReporter
+              .at(declaration)
+              .report(
+                MetroIrErrors.METRO_ERROR,
+                "Found a Metro members injector declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
+              )
             exitProcessing()
           }
         }

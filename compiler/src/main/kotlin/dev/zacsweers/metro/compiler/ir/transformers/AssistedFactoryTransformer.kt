@@ -74,10 +74,12 @@ internal class AssistedFactoryTransformer(
         // If not external, double check its origin
         if (isMetroImpl && !isExternal) {
           if (it.origin != Origins.AssistedFactoryImplClassDeclaration) {
-            diagnosticReporter.at(declaration).report(
-              MetroIrErrors.METRO_ERROR,
-              "Found a Metro assisted factory impl declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}"
-            )
+            diagnosticReporter
+              .at(declaration)
+              .report(
+                MetroIrErrors.METRO_ERROR,
+                "Found a Metro assisted factory impl declaration in ${declaration.kotlinFqName} but with an unexpected origin ${it.origin}",
+              )
             return null
           }
         }
@@ -95,10 +97,12 @@ internal class AssistedFactoryTransformer(
             return daggerImplClass
           }
         }
-        diagnosticReporter.at(declaration).report(
-          MetroIrErrors.METRO_ERROR,
-          "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too."
-        )
+        diagnosticReporter
+          .at(declaration)
+          .report(
+            MetroIrErrors.METRO_ERROR,
+            "Could not find generated assisted factory impl for '${declaration.kotlinFqName}' in upstream module where it's defined. Run the Metro compiler over that module too.",
+          )
         return null
       } else {
         error(

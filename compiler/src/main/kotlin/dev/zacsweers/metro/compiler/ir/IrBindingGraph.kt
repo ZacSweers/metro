@@ -546,7 +546,9 @@ internal class IrBindingGraph(
           )
         }
       }
-      metroContext.diagnosticReporter.at(declaration ?: node.sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
+      metroContext.diagnosticReporter
+        .at(declaration ?: node.sourceGraph)
+        .report(MetroIrErrors.METRO_ERROR, message)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->
@@ -668,7 +670,9 @@ internal class IrBindingGraph(
       }
     }
 
-    binding.reportableDeclaration?.locationOrNull()?.let { location -> appendLine("└─ Location: ${location.render()}") }
+    binding.reportableDeclaration?.locationOrNull()?.let { location ->
+      appendLine("└─ Location: ${location.render()}")
+    }
   }
 
   data class SimilarBinding(val binding: Binding, val description: String) {

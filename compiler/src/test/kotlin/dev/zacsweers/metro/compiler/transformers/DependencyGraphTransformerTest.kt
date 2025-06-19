@@ -620,7 +620,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
                 kotlin.CharSequence is requested at
                     [test.ExampleGraph] test.ExampleGraph#value2
-            
+
             Similar bindings:
               - String (Subtype). Type: Provided. Source: ExampleGraph.kt:12:3
           """
@@ -736,7 +736,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
           e: ExampleGraph.kt:7:11 [Metro/DependencyCycle] Found a dependency cycle while processing 'test.ExampleGraph'.
           Cycle:
               Int <--> Int (depends on itself)
-          
+
           Trace:
               kotlin.Int is injected at
                   [test.ExampleGraph] test.ExampleGraph#provideInt(…, value)
@@ -2179,7 +2179,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
         """
@@ -2210,7 +2210,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               @dev.zacsweers.metro.Named("qualified") kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:10:3
         """
@@ -2241,7 +2241,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - Set<Int> (Multibinding). Type: Multibinding.
         """
@@ -2272,7 +2272,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - Map<String, Int> (Multibinding). Type: Multibinding.
         """
@@ -2334,7 +2334,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3
         """
@@ -2367,7 +2367,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-  
+
           Similar bindings:
             - @Named("qualified") Int (Different qualifier). Type: Provided. Source: ExampleGraph.kt:11:3
             - Number (Supertype). Type: Provided. Source: ExampleGraph.kt:10:3

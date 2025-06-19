@@ -64,11 +64,7 @@ internal class BindingGraphGenerator(
 
     // Add instance parameters
     val graphInstanceBinding =
-      Binding.BoundInstance(
-        node.typeKey,
-        "${node.sourceGraph.name}Provider",
-        node.sourceGraph,
-      )
+      Binding.BoundInstance(node.typeKey, "${node.sourceGraph.name}Provider", node.sourceGraph)
     graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
 
     // Mapping of supertypes to aliased bindings

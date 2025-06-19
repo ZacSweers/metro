@@ -65,7 +65,7 @@ class NullableBindingsTest : MetroCompilerTest() {
 
               kotlin.Int? is requested at
                   [test.ExampleGraph] test.ExampleGraph#nullable
-          
+
           Similar bindings:
             - Int (Non-nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
         """
@@ -98,7 +98,7 @@ class NullableBindingsTest : MetroCompilerTest() {
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
-          
+
           Similar bindings:
             - Int? (Nullable equivalent). Type: Provided. Source: ExampleGraph.kt:11:3
         """
