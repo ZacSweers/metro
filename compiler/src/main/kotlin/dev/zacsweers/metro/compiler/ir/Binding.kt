@@ -14,8 +14,8 @@ import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -45,11 +45,11 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   val parameters: Parameters
   val nameHint: String
   override val contextualTypeKey: IrContextualTypeKey
-  val reportableLocation: CompilerMessageSourceLocation?
+  val reportableDeclaration: IrDeclaration?
 
   override fun renderLocationDiagnostic(): String {
     // First check if we have the contributing file and line number
-    return reportableLocation?.render()
+    return reportableDeclaration?.locationOrNull()?.render()
       // Or the fully-qualified contributing class name
       ?: parametersByKey.entries.firstOrNull()?.key?.toString()
       // Or print the full set of info we know about the binding
@@ -102,8 +102,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation?
-      get() = type.locationOrNull()
+    override val reportableDeclaration: IrDeclaration
+      get() = type
 
     fun parameterFor(typeKey: IrTypeKey) =
       classFactory.function.regularParameters.getOrNull(
@@ -140,8 +140,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation?
-      get() = type.locationOrNull()
+    override val reportableDeclaration: IrDeclaration
+      get() = type
 
     override fun toString() = buildString {
       append("@Inject ")
@@ -189,8 +189,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
     override val nameHint: String = providerFactory.callableId.callableName.asString()
 
-    override val reportableLocation: CompilerMessageSourceLocation?
-      get() = providerFactory.function.locationOrNull()
+    override val reportableDeclaration: IrDeclaration
+      get() = providerFactory.function
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
       return parameters.allParameters.find { it.typeKey == typeKey }?.ir
@@ -252,7 +252,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     // TODO dedupe with the below render()
-    override val reportableLocation: CompilerMessageSourceLocation?
+    override val reportableDeclaration: IrDeclaration?
       get() {
         if (ir == null) return null
         return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
@@ -262,9 +262,9 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
             // If it's a contribution, the source is
             // SourceClass.$$MetroContributionScopeName.bindingFunction
             //                                          ^^^
-            it.parentAsClass.parentAsClass.locationOrNull()
+            it.parentAsClass.parentAsClass
           } else {
-            it.locationOrNull()
+            it
           }
         }
       }
@@ -334,8 +334,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
-    override val reportableLocation: CompilerMessageSourceLocation?
-      get() = type.locationOrNull()
+    override val reportableDeclaration: IrDeclaration
+      get() = type
 
     override val isImplicitlyDeferrable: Boolean = true
 
@@ -355,11 +355,11 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
   data class BoundInstance(
     override val typeKey: IrTypeKey,
     override val nameHint: String,
-    override val reportableLocation: CompilerMessageSourceLocation?,
+    override val reportableDeclaration: IrDeclaration,
   ) : Binding {
     constructor(
       parameter: Parameter,
-      reportableLocation: CompilerMessageSourceLocation?,
+      reportableLocation: IrDeclaration,
     ) : this(parameter.typeKey, "${parameter.name.asString()}Instance", reportableLocation)
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
@@ -379,7 +379,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation? = null
+    override val reportableDeclaration: IrDeclaration? = null
     override val isTransient: Boolean = true
   }
 
@@ -411,8 +411,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation?
-      get() = getter.propertyIfAccessor.locationOrNull()
+    override val reportableDeclaration: IrDeclaration
+      get() = getter.propertyIfAccessor
 
     override fun toString(): String {
       return "${graph.kotlinFqName}#${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
@@ -446,7 +446,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
 
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableLocation: CompilerMessageSourceLocation? = null
+    override val reportableDeclaration: IrDeclaration? = declaration
 
     companion object {
       /**
@@ -522,7 +522,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
     // Always MembersInjected<TargetClass>
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
-    override val reportableLocation: CompilerMessageSourceLocation?,
+    override val reportableDeclaration: IrDeclaration?,
     // Only present for inject() functions
     val function: IrFunction?,
     val isFromInjectorFunction: Boolean,

@@ -64,11 +64,7 @@ internal class BindingGraphGenerator(
 
     // Add instance parameters
     val graphInstanceBinding =
-      Binding.BoundInstance(
-        node.typeKey,
-        "${node.sourceGraph.name}Provider",
-        node.sourceGraph.location(),
-      )
+      Binding.BoundInstance(node.typeKey, "${node.sourceGraph.name}Provider", node.sourceGraph)
     graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
 
     // Mapping of supertypes to aliased bindings
@@ -201,7 +197,7 @@ internal class BindingGraphGenerator(
         val paramTypeKey = creatorParam.typeKey
         graph.addBinding(
           paramTypeKey,
-          Binding.BoundInstance(creatorParam, creatorParam.ir.location()),
+          Binding.BoundInstance(creatorParam, creatorParam.ir),
           bindingStack,
         )
       }
@@ -313,7 +309,7 @@ internal class BindingGraphGenerator(
             Binding.BoundInstance(
               depNode.typeKey,
               "${depNode.sourceGraph.name}Provider",
-              depNode.sourceGraph.locationOrNull(),
+              depNode.sourceGraph,
             ),
             bindingStack,
           )
@@ -454,7 +450,7 @@ internal class BindingGraphGenerator(
             contextKey,
             // Need to look up the injector class and gather all params
             parameters = remappedParams,
-            reportableLocation = injector.ir.location(),
+            reportableDeclaration = injector.ir,
             function = injector.ir,
             isFromInjectorFunction = true,
             targetClassId = targetClass.classIdOrFail,

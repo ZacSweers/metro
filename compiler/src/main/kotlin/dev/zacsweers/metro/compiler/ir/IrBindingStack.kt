@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -259,7 +260,7 @@ internal inline fun <
 }
 
 internal val IrBindingStack.lastEntryOrGraph
-  get() = entries.firstOrNull()?.declaration ?: graph
+  get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
 
 internal fun Appendable.appendBindingStack(
   stack: BaseBindingStack<*, *, *, *, *>,

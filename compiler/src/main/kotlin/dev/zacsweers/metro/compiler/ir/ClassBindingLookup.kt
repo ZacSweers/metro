@@ -43,7 +43,7 @@ internal class ClassBindingLookup(
             contextKey,
             // Need to look up the injector class and gather all params
             parameters = remappedParameters,
-            reportableLocation = location(),
+            reportableDeclaration = this,
             function = null,
             isFromInjectorFunction = true,
             targetClassId = classIdOrFail,
@@ -104,7 +104,7 @@ internal class ClassBindingLookup(
             )
             appendBindingStack(stack)
           }
-          irClass.reportError(message)
+          diagnosticReporter.at(irClass).report(MetroIrErrors.METRO_ERROR, message)
           exitProcessing()
         }
 

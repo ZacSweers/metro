@@ -944,7 +944,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:6:1 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
                   [test.ExampleGraph] test.ExampleGraph#inject()

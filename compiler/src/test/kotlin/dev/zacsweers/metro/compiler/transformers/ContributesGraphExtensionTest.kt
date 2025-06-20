@@ -856,7 +856,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:9:1 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope'), but LoggedInGraph is not extendable.
+          e: LoggedInScope.kt:10:11 Contributed graph extension 'test.ProfileGraph' contributes to parent graph 'test.LoggedInGraph' (scope 'test.LoggedInScope'), but LoggedInGraph is not extendable.
         """
           .trimIndent()
       )
@@ -891,7 +891,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: LoggedInScope.kt:8:1 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope'), but ExampleGraph is not extendable.
+          e: LoggedInScope.kt:9:11 Contributed graph extension 'test.LoggedInGraph' contributes to parent graph 'test.ExampleGraph' (scope 'dev.zacsweers.metro.AppScope'), but ExampleGraph is not extendable.
 
           Either mark ExampleGraph as extendable (`@DependencyGraph(isExtendable = true)`), or exclude it from ExampleGraph (`@DependencyGraph(excludes = [LoggedInGraph::class])`).
         """
@@ -1144,13 +1144,16 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         $$$"""
-          e: LoggedInScope.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: LoggedInScope.kt:12:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.Dependency (scoped to '@SingleIn(AppScope::class)')
               test.Dependency is injected at
                   [test.ExampleGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
               test.ChildDependency is requested at
                   [test.ExampleGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
 
+
+          (Hint)
+          $$ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
 
           (Hint)
           It appears that extended parent graph 'test.ExampleGraph' does declare the '@SingleIn(AppScope::class)' scope but doesn't use 'Dependency' directly.

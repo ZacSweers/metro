@@ -17,7 +17,6 @@ import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.IrDiagnosticReporter
@@ -27,7 +26,6 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -87,14 +85,6 @@ internal interface IrMetroContext {
 
   fun logTiming(tag: String, description: String, durationMs: Long) {
     timingsFile?.appendText("\n$tag,$description,${durationMs}")
-  }
-
-  fun IrDeclaration.reportError(message: String) {
-    messageCollector.report(CompilerMessageSeverity.ERROR, message, locationOrNull())
-  }
-
-  fun reportError(message: String, location: CompilerMessageSourceLocation?) {
-    messageCollector.report(CompilerMessageSeverity.ERROR, message, location)
   }
 
   fun IrClass.dumpToMetroLog() {

@@ -92,7 +92,7 @@ internal class IrContributedGraphGenerator(
             append("::class])`).")
           }
         }
-        sourceGraph.reportError(message)
+        diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
         exitProcessing()
       }
     }
@@ -109,7 +109,7 @@ internal class IrContributedGraphGenerator(
           // Ensure a unique name
           name =
             nameAllocator
-              .newName("$\$Contributed${sourceGraph.name.asString().capitalizeUS()}")
+              .newName($$$"$$Contributed$$${sourceGraph.name.asString().capitalizeUS()}")
               .asName()
           origin = Origins.ContributedGraph
           kind = ClassKind.CLASS
