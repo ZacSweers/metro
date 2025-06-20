@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
@@ -12,6 +13,9 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
@@ -38,6 +42,14 @@ internal data class DependencyGraphNode(
 ) {
 
   val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
+
+  val reportableSourceGraphDeclaration by unsafeLazy {
+    generateSequence(sourceGraph) { it.parentAsClass }
+      .firstOrNull { it.origin != Origins.ContributedGraph && it.fileOrNull != null }
+      ?: error(
+        "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}"
+      )
+  }
 
   val multibindingAccessors by unsafeLazy {
     proto

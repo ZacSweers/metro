@@ -58,7 +58,7 @@ internal open class MutableBindingGraph<
     { _, _, _ ->
       emptySet()
     },
-  private val onError: (String, BindingStack) -> Nothing = { message, stack -> error(message) },
+  private val onError: (String, BindingStack) -> Nothing = { message, _ -> error(message) },
   private val findSimilarBindings: (key: TypeKey) -> Map<TypeKey, String> = { emptyMap() },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()

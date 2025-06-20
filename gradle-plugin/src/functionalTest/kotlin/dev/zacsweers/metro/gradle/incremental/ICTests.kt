@@ -103,9 +103,11 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          FeatureGraph.kt:6:1 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
+          FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Dependency
 
               test.Dependency is injected at
+                  [test.FeatureGraph] test.FeatureGraph#inject()
+              dev.zacsweers.metro.MembersInjector<test.FeatureScreen> is requested at
                   [test.FeatureGraph] test.FeatureGraph#inject()
         """
           .trimIndent()
@@ -166,7 +168,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+        BaseGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
             kotlin.String is injected at
                 [test.BaseGraph] test.Target(…, string)
@@ -236,7 +238,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          ChildGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
                   [test.ChildGraph] test.Target(…, string)
@@ -299,7 +301,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
                   [test.AppGraph] test.Target(…, string)
@@ -366,7 +368,7 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-          e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+          AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
               kotlin.String is injected at
                   [test.AppGraph] test.Target(…, string)
@@ -878,10 +880,10 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
         """
           .trimIndent()
       )
@@ -936,10 +938,14 @@ class ICTests : BaseIncrementalCompilationTest() {
     assertThat(fourthBuildResult.output.cleanOutputLine())
       .contains(
         """
-          e: ExampleGraph.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+          e: ExampleGraph.kt:7:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$${'$'}ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
               test.ExampleClass (scoped to '@SingleIn(UnusedScope::class)')
               test.ExampleClass is requested at
-                  [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#exampleClass
+
+
+          (Hint)
+          $${'$'}ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph'.
         """
           .trimIndent()
       )
@@ -1145,17 +1151,17 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
     val project = fixture.gradleProject
 
-    // First build should fail because [ExampleClass] is not contributed to the scopes of either
+    // First build should fail because `ExampleClass` is not contributed to the scopes of either
     // graph
     val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
 
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-e: LoggedInScope.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+          e: LoggedInScope.kt:10:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
-    test.Foo is requested at
-        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+              test.Foo is requested at
+                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
         """
           .trimIndent()
       )
@@ -1191,18 +1197,14 @@ e: LoggedInScope.kt:10:3 [Metro/MissingBinding] Cannot find an @Inject construct
         .trimIndent(),
     )
 
-    // this build should fail but currently ends up passing (resulting in the test failing)
-    // What appears to be happening is that once we have a successful build, the following IC builds
-    // do not trigger regenerating the graph if only an annotation argument changes. However,
-    // adding or removing an annotation will trigger the graph getting regenerated.
     val thirdBuildResult = buildAndFail(project.rootDir, "compileKotlin")
     assertThat(thirdBuildResult.output.cleanOutputLine())
       .contains(
         """
-e: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
+          e: ExampleGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.Foo
 
-    test.Foo is requested at
-        [test.ExampleGraph.${'$'}${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+              test.Foo is requested at
+                  [test.ExampleGraph.$${'$'}ContributedLoggedInGraph] test.LoggedInGraph#childDependency
         """
           .trimIndent()
       )
