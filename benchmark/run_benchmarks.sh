@@ -97,6 +97,7 @@ generate_projects() {
 run_scenarios() {
     local mode=$1
     local processor=${2:-""}
+    local include_clean_builds=${3:-false}
     
     local scenario_prefix
     local mode_name
@@ -122,6 +123,11 @@ run_scenarios() {
         "${scenario_prefix}_non_abi_change" 
         "${scenario_prefix}_raw_compilation"
     )
+    
+    # Add clean build scenario if requested
+    if [ "$include_clean_builds" = true ]; then
+        scenarios+=("${scenario_prefix}_clean_build")
+    fi
     
     # Create mode-specific results directory to avoid overwrites
     local mode_results_dir="$RESULTS_DIR/${mode_name}_${TIMESTAMP}"
@@ -157,11 +163,17 @@ run_scenarios() {
 # Function to merge benchmark results
 merge_benchmark_results() {
     local timestamp=$1
+    local include_clean_builds=${2:-false}
     
     print_header "Merging Benchmark Results"
     
     # Define test types
     local test_types=("abi_change" "non_abi_change" "raw_compilation")
+    
+    # Add clean build test type if requested
+    if [ "$include_clean_builds" = true ]; then
+        test_types+=("clean_build")
+    fi
     
     for test_type in "${test_types[@]}"; do
         print_status "Checking for $test_type results to merge"
@@ -198,9 +210,13 @@ merge_benchmark_results() {
 run_all_benchmarks() {
     local count=${1:-$DEFAULT_MODULE_COUNT}
     local build_only=${2:-false}
+    local include_clean_builds=${3:-false}
     
     print_header "Metro vs Anvil Benchmark Suite"
     print_status "Module count: $count"
+    if [ "$include_clean_builds" = true ]; then
+        print_status "Including clean build scenarios"
+    fi
     if [ "$build_only" = true ]; then
         print_status "Build-only mode: will run ./gradlew :app:component:run --quiet for each mode"
     else
@@ -229,7 +245,7 @@ run_all_benchmarks() {
         ./gradlew :app:component:run --quiet
         print_success "Metro build completed!"
     else
-        run_scenarios "metro"
+        run_scenarios "metro" "" "$include_clean_builds"
     fi
     
     # 2. Anvil + KSP Mode  
@@ -244,7 +260,7 @@ run_all_benchmarks() {
         ./gradlew :app:component:run --quiet
         print_success "Anvil + KSP build completed!"
     else
-        run_scenarios "anvil" "ksp"
+        run_scenarios "anvil" "ksp" "$include_clean_builds"
     fi
     
     # 3. Anvil + KAPT Mode
@@ -259,7 +275,7 @@ run_all_benchmarks() {
         ./gradlew :app:component:run --quiet
         print_success "Anvil + KAPT build completed!"
     else
-        run_scenarios "anvil" "kapt"
+        run_scenarios "anvil" "kapt" "$include_clean_builds"
     fi
     
     # 4. Kotlin-inject + Anvil Mode
@@ -274,7 +290,7 @@ run_all_benchmarks() {
         ./gradlew :app:component:run --quiet
         print_success "Kotlin-inject + Anvil build completed!"
     else
-        run_scenarios "kotlin-inject-anvil"
+        run_scenarios "kotlin-inject-anvil" "" "$include_clean_builds"
     fi
     
     if [ "$build_only" = true ]; then
@@ -292,7 +308,7 @@ run_all_benchmarks() {
         fi
         
         # Merge results across modes
-        merge_benchmark_results "$TIMESTAMP"
+        merge_benchmark_results "$TIMESTAMP" "$include_clean_builds"
     fi
 }
 
@@ -302,6 +318,7 @@ run_mode_benchmark() {
     local processor=${2:-""}
     local count=${3:-$DEFAULT_MODULE_COUNT}
     local build_only=${4:-false}
+    local include_clean_builds=${5:-false}
     
     print_header "Running $mode${processor:+ + $processor} Mode Benchmark"
     
@@ -315,7 +332,7 @@ run_mode_benchmark() {
         ./gradlew :app:component:run --quiet
         print_success "$mode${processor:+ + $processor} build completed!"
     else
-        run_scenarios "$mode" "$processor"
+        run_scenarios "$mode" "$processor" "$include_clean_builds"
         print_success "$mode${processor:+ + $processor} benchmark completed!"
         ./generate_performance_summary.sh "${TIMESTAMP}" "$RESULTS_DIR"
     fi
@@ -338,6 +355,7 @@ show_usage() {
     echo "Options:"
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
     echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
+    echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
     echo ""
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
@@ -347,6 +365,8 @@ show_usage() {
     echo "  $0 metro --build-only        # Generate Metro project and run build only"
     echo "  $0 anvil-ksp 100 --build-only # Generate Anvil KSP project with 100 modules and run build only"
     echo "  $0 all --build-only          # Generate and build all projects, skip benchmarks"
+    echo "  $0 all --include-clean-builds # Run all benchmarks including clean build scenarios"
+    echo "  $0 metro 250 --include-clean-builds # Run Metro benchmarks with 250 modules including clean builds"
     echo ""
     echo "Results will be saved to the '$RESULTS_DIR' directory with timestamps."
 }
@@ -361,21 +381,25 @@ validate_count() {
     fi
 }
 
-# Function to parse arguments and handle --build-only flag
+# Function to parse arguments and handle --build-only and --include-clean-builds flags
 parse_args() {
     local args=("$@")
     local parsed_args=()
     local build_only=false
+    local include_clean_builds=false
     
     for arg in "${args[@]}"; do
         if [ "$arg" = "--build-only" ]; then
             build_only=true
+        elif [ "$arg" = "--include-clean-builds" ]; then
+            include_clean_builds=true
         else
             parsed_args+=("$arg")
         fi
     done
     
     echo "$build_only"
+    echo "$include_clean_builds"
     printf '%s\n' "${parsed_args[@]}"
 }
 
@@ -384,13 +408,15 @@ main() {
     # Change to script directory
     cd "$(dirname "$0")"
     
-    # Parse arguments to extract --build-only flag
+    # Parse arguments to extract flags
     local parsed_output
     parsed_output=$(parse_args "$@")
     local build_only
     build_only=$(echo "$parsed_output" | head -n1)
+    local include_clean_builds
+    include_clean_builds=$(echo "$parsed_output" | head -n2 | tail -n1)
     local args
-    readarray -t args < <(echo "$parsed_output" | tail -n+2)
+    readarray -t args < <(echo "$parsed_output" | tail -n+3)
     
     # Check prerequisites (skip gradle-profiler check if build-only mode)
     if [ "$build_only" = true ]; then
@@ -421,27 +447,27 @@ main() {
         "all")
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
-            run_all_benchmarks "$count" "$build_only"
+            run_all_benchmarks "$count" "$build_only" "$include_clean_builds"
             ;;
         "metro")
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
-            run_mode_benchmark "metro" "" "$count" "$build_only"
+            run_mode_benchmark "metro" "" "$count" "$build_only" "$include_clean_builds"
             ;;
         "anvil-ksp")
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
-            run_mode_benchmark "anvil" "ksp" "$count" "$build_only"
+            run_mode_benchmark "anvil" "ksp" "$count" "$build_only" "$include_clean_builds"
             ;;
         "anvil-kapt")
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
-            run_mode_benchmark "anvil" "kapt" "$count" "$build_only"
+            run_mode_benchmark "anvil" "kapt" "$count" "$build_only" "$include_clean_builds"
             ;;
         "kotlin-inject-anvil")
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
-            run_mode_benchmark "kotlin-inject-anvil" "" "$count" "$build_only"
+            run_mode_benchmark "kotlin-inject-anvil" "" "$count" "$build_only" "$include_clean_builds"
             ;;
         "help"|"-h"|"--help")
             show_usage

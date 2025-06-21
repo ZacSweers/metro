@@ -75,10 +75,37 @@ Use the `run_benchmarks.sh` script for comprehensive performance testing:
 ./run_benchmarks.sh anvil-kapt 750
 ./run_benchmarks.sh kotlin-inject-anvil 500
 
+# Include clean build scenarios (opt-in)
+./run_benchmarks.sh all --include-clean-builds
+./run_benchmarks.sh metro 250 --include-clean-builds
+
+# Build-only mode (skip gradle-profiler benchmarks)
+./run_benchmarks.sh all --build-only
+
 # Results are saved to timestamped directories in benchmark-results/
-# Merged comparison HTMLs are generated for each test type (ABI, non-ABI, raw compilation)
+# Merged comparison HTMLs are generated for each test type (ABI, non-ABI, raw compilation, clean build)
 # Uses bash + jq for fast HTML result merging
 ```
+
+### Benchmark Scenarios
+
+The benchmark suite includes several types of performance tests for each mode:
+
+**Standard Scenarios (always included):**
+- **ABI Change**: Measures incremental compilation when public API changes
+- **Non-ABI Change**: Measures incremental compilation when implementation changes  
+- **Raw Compilation**: Measures compilation performance of the (`:app:component`) module specifically with `--rerun-tasks`. This benchmarks raw contribution merging + graph/component generation + validation.
+
+**Clean Build Scenarios (opt-in with `--include-clean-builds`):**
+- **Clean Build**: Measures full compilation from scratch with no caches
+  - Uses `cleanup-tasks = ["clean"]` to run clean before each iteration
+  - Uses `clear-build-cache-before = BUILD` to clear Gradle build cache
+  - Lower iteration count (3) and warm-ups (2) due to longer execution time
+
+Clean build scenarios are useful for:
+- Measuring cold build performance 
+- Testing CI/ephemeral build scenarios
+- Comparing full compilation times across different DI frameworks
 
 ## Modes
 
