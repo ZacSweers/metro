@@ -197,53 +197,87 @@ merge_benchmark_results() {
 # Function to run all benchmarks
 run_all_benchmarks() {
     local count=${1:-$DEFAULT_MODULE_COUNT}
+    local build_only=${2:-false}
     
     print_header "Metro vs Anvil Benchmark Suite"
     print_status "Module count: $count"
-    print_status "Results directory: $RESULTS_DIR"
-    print_status "Timestamp: $TIMESTAMP"
-    
-    # Wipe existing results directory if present
-    if [ -d "$RESULTS_DIR" ]; then
-        print_status "Wiping existing results directory"
-        rm -rf "$RESULTS_DIR"
+    if [ "$build_only" = true ]; then
+        print_status "Build-only mode: will run ./gradlew :app:component:run for each mode"
+    else
+        print_status "Results directory: $RESULTS_DIR"
+        print_status "Timestamp: $TIMESTAMP"
+        
+        # Wipe existing results directory if present
+        if [ -d "$RESULTS_DIR" ]; then
+            print_status "Wiping existing results directory"
+            rm -rf "$RESULTS_DIR"
+        fi
+        
+        # Create results directory
+        mkdir -p "$RESULTS_DIR"
     fi
-    
-    # Create results directory
-    mkdir -p "$RESULTS_DIR"
     
     # 1. Metro Mode
-    print_header "Running Metro Mode Benchmarks"
+    print_header "Running Metro Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
     generate_projects "metro" "" "$count"
-    run_scenarios "metro"
-    
-    # 2. Anvil + KSP Mode  
-    print_header "Running Anvil + KSP Mode Benchmarks"
-    generate_projects "anvil" "ksp" "$count"
-    run_scenarios "anvil" "ksp"
-    
-    # 3. Anvil + KAPT Mode
-    print_header "Running Anvil + KAPT Mode Benchmarks"
-    generate_projects "anvil" "kapt" "$count"
-    run_scenarios "anvil" "kapt"
-    
-    # 4. Kotlin-inject + Anvil Mode
-    print_header "Running Kotlin-inject + Anvil Mode Benchmarks"
-    generate_projects "kotlin-inject-anvil" "" "$count"
-    run_scenarios "kotlin-inject-anvil"
-    
-    print_header "Benchmark Suite Complete"
-    print_success "All benchmarks completed successfully!"
-    print_status "Results are available in: $RESULTS_DIR"
-    
-    # List generated result files
-    if ls "$RESULTS_DIR"/*"$TIMESTAMP"* 1> /dev/null 2>&1; then
-        print_status "Generated result files:"
-        ls -la "$RESULTS_DIR"/*"$TIMESTAMP"* | sed 's/^/  /'
+    if [ "$build_only" = true ]; then
+        print_status "Build-only mode: running ./gradlew :app:component:run"
+        ./gradlew :app:component:run
+        print_success "Metro build completed!"
+    else
+        run_scenarios "metro"
     fi
     
-    # Merge results across modes
-    merge_benchmark_results "$TIMESTAMP"
+    # 2. Anvil + KSP Mode  
+    print_header "Running Anvil + KSP Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
+    generate_projects "anvil" "ksp" "$count"
+    if [ "$build_only" = true ]; then
+        print_status "Build-only mode: running ./gradlew :app:component:run"
+        ./gradlew :app:component:run
+        print_success "Anvil + KSP build completed!"
+    else
+        run_scenarios "anvil" "ksp"
+    fi
+    
+    # 3. Anvil + KAPT Mode
+    print_header "Running Anvil + KAPT Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
+    generate_projects "anvil" "kapt" "$count"
+    if [ "$build_only" = true ]; then
+        print_status "Build-only mode: running ./gradlew :app:component:run"
+        ./gradlew :app:component:run
+        print_success "Anvil + KAPT build completed!"
+    else
+        run_scenarios "anvil" "kapt"
+    fi
+    
+    # 4. Kotlin-inject + Anvil Mode
+    print_header "Running Kotlin-inject + Anvil Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
+    generate_projects "kotlin-inject-anvil" "" "$count"
+    if [ "$build_only" = true ]; then
+        print_status "Build-only mode: running ./gradlew :app:component:run"
+        ./gradlew :app:component:run
+        print_success "Kotlin-inject + Anvil build completed!"
+    else
+        run_scenarios "kotlin-inject-anvil"
+    fi
+    
+    if [ "$build_only" = true ]; then
+        print_header "All Builds Complete"
+        print_success "All builds completed successfully!"
+    else
+        print_header "Benchmark Suite Complete"
+        print_success "All benchmarks completed successfully!"
+        print_status "Results are available in: $RESULTS_DIR"
+        
+        # List generated result files
+        if ls "$RESULTS_DIR"/*"$TIMESTAMP"* 1> /dev/null 2>&1; then
+            print_status "Generated result files:"
+            ls -la "$RESULTS_DIR"/*"$TIMESTAMP"* | sed 's/^/  /'
+        fi
+        
+        # Merge results across modes
+        merge_benchmark_results "$TIMESTAMP"
+    fi
 }
 
 # Function to run specific mode benchmarks
@@ -288,7 +322,6 @@ show_usage() {
     echo "Options:"
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
     echo "  --build-only                 Only run ./gradlew :app:component:run, skip gradle-profiler"
-    echo "                               (cannot be used with 'all' command)"
     echo ""
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
@@ -297,6 +330,7 @@ show_usage() {
     echo "  $0 anvil-ksp                 # Run only Anvil KSP benchmarks with default count"
     echo "  $0 metro --build-only        # Generate Metro project and run build only"
     echo "  $0 anvil-ksp 100 --build-only # Generate Anvil KSP project with 100 modules and run build only"
+    echo "  $0 all --build-only          # Generate and build all projects, skip benchmarks"
     echo ""
     echo "Results will be saved to the '$RESULTS_DIR' directory with timestamps."
 }
@@ -369,13 +403,9 @@ main() {
     
     case "${args[0]:-all}" in
         "all")
-            if [ "$build_only" = true ]; then
-                print_error "Build-only mode is not supported with 'all' command"
-                exit 1
-            fi
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
             validate_count "$count"
-            run_all_benchmarks "$count"
+            run_all_benchmarks "$count" "$build_only"
             ;;
         "metro")
             local count=${args[1]:-$DEFAULT_MODULE_COUNT}
