@@ -218,7 +218,11 @@ run_all_benchmarks() {
     fi
     
     # 1. Metro Mode
-    print_header "Running Metro Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
+    if [ "$build_only" = true ]; then
+        print_header "Running Metro Mode Build"
+    else
+        print_header "Running Metro Mode Benchmarks"
+    fi
     generate_projects "metro" "" "$count"
     if [ "$build_only" = true ]; then
         print_status "Build-only mode: running ./gradlew :app:component:run"
@@ -229,7 +233,11 @@ run_all_benchmarks() {
     fi
     
     # 2. Anvil + KSP Mode  
-    print_header "Running Anvil + KSP Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
+    if [ "$build_only" = true ]; then
+        print_header "Running Anvil + KSP Mode Build"
+    else
+        print_header "Running Anvil + KSP Mode Benchmarks"
+    fi
     generate_projects "anvil" "ksp" "$count"
     if [ "$build_only" = true ]; then
         print_status "Build-only mode: running ./gradlew :app:component:run"
@@ -240,7 +248,11 @@ run_all_benchmarks() {
     fi
     
     # 3. Anvil + KAPT Mode
-    print_header "Running Anvil + KAPT Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
+    if [ "$build_only" = true ]; then
+        print_header "Running Anvil + KAPT Mode Build"
+    else
+        print_header "Running Anvil + KAPT Mode Benchmarks"
+    fi
     generate_projects "anvil" "kapt" "$count"
     if [ "$build_only" = true ]; then
         print_status "Build-only mode: running ./gradlew :app:component:run"
@@ -251,7 +263,11 @@ run_all_benchmarks() {
     fi
     
     # 4. Kotlin-inject + Anvil Mode
-    print_header "Running Kotlin-inject + Anvil Mode ${build_only:+Build}${build_only:false:+Benchmarks}"
+    if [ "$build_only" = true ]; then
+        print_header "Running Kotlin-inject + Anvil Mode Build"
+    else
+        print_header "Running Kotlin-inject + Anvil Mode Benchmarks"
+    fi
     generate_projects "kotlin-inject-anvil" "" "$count"
     if [ "$build_only" = true ]; then
         print_status "Build-only mode: running ./gradlew :app:component:run"
