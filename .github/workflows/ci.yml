@@ -81,7 +81,6 @@ jobs:
 
   benchmarks:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'run-benchmarks')
 
     steps:
       - name: Checkout
