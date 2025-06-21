@@ -134,6 +134,23 @@ jobs:
           cd benchmark
           ./run_benchmarks.sh all
 
+      - name: Generate and publish performance summary
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.repository == 'zacsweers/metro'
+        run: |
+          cd benchmark
+          # Find the most recent timestamp directory
+          TIMESTAMP=$(ls -1 benchmark-results/ | grep -E '^[a-z_]+_[0-9]{8}_[0-9]{6}$' | head -1 | sed 's/.*_\([0-9]\{8\}_[0-9]\{6\}\)$/\1/')
+          if [ -n "$TIMESTAMP" ]; then
+            echo "Found benchmark results with timestamp: $TIMESTAMP"
+            # Generate performance summary with clean output and capture
+            ./generate_performance_summary.sh "$TIMESTAMP" benchmark-results true > performance_summary.md
+            # Append to GitHub Actions summary
+            cat performance_summary.md >> $GITHUB_STEP_SUMMARY
+            echo "Performance summary published to GitHub Actions summary"
+          else
+            echo "No benchmark results found to summarize"
+          fi
+
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v4
