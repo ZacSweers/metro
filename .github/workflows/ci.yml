@@ -15,8 +15,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build:
-    name: "Check compiler and Gradle plugin"
+  compiler:
     runs-on: ubuntu-latest
 
     steps:
@@ -216,7 +215,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     needs:
-      - build
+      - compiler
       - benchmarks
       - samples
     steps:
