@@ -280,7 +280,6 @@ internal class IrGraphGenerator(
 
         for ((accessor, contextualTypeKey) in instanceAccessors) {
           // If this isn't extendable and this type key isn't used, ignore it
-          // TODO when we have weak reachability revisit this
           if (!node.isExtendable && contextualTypeKey.typeKey !in sealResult.reachableKeys) {
             continue
           }
@@ -319,7 +318,10 @@ internal class IrGraphGenerator(
                         dispatchReceiver =
                           irGetField(
                             irGet(thisReceiverParameter),
-                            instanceFields.getValue(receiverTypeKey),
+                            instanceFields[receiverTypeKey]
+                              ?: error(
+                                "Receiver type key $receiverTypeKey not found for binding $accessor"
+                              ),
                           ),
                         callee = accessor.ir.symbol,
                         typeHint = accessor.ir.returnType,
