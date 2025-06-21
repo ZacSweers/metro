@@ -122,11 +122,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-konan-
 
-#      - name: Build benchmarks
-#        if: github.event_name == 'pull_request'
-#        run: |
-#          cd benchmark
-#          ./run_benchmarks.sh all --build-only
+      - name: Build benchmarks
+        if: github.event_name == 'pull_request'
+        run: |
+          cd benchmark
+          ./run_benchmarks.sh all --build-only
 
       - name: Run benchmarks
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.repository == 'zacsweers/metro'
