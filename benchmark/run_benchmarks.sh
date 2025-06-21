@@ -202,7 +202,7 @@ run_all_benchmarks() {
     print_header "Metro vs Anvil Benchmark Suite"
     print_status "Module count: $count"
     if [ "$build_only" = true ]; then
-        print_status "Build-only mode: will run ./gradlew :app:component:run for each mode"
+        print_status "Build-only mode: will run ./gradlew :app:component:run --quiet for each mode"
     else
         print_status "Results directory: $RESULTS_DIR"
         print_status "Timestamp: $TIMESTAMP"
@@ -225,8 +225,8 @@ run_all_benchmarks() {
     fi
     generate_projects "metro" "" "$count"
     if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run"
-        ./gradlew :app:component:run
+        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
+        ./gradlew :app:component:run --quiet
         print_success "Metro build completed!"
     else
         run_scenarios "metro"
@@ -240,8 +240,8 @@ run_all_benchmarks() {
     fi
     generate_projects "anvil" "ksp" "$count"
     if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run"
-        ./gradlew :app:component:run
+        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
+        ./gradlew :app:component:run --quiet
         print_success "Anvil + KSP build completed!"
     else
         run_scenarios "anvil" "ksp"
@@ -255,8 +255,8 @@ run_all_benchmarks() {
     fi
     generate_projects "anvil" "kapt" "$count"
     if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run"
-        ./gradlew :app:component:run
+        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
+        ./gradlew :app:component:run --quiet
         print_success "Anvil + KAPT build completed!"
     else
         run_scenarios "anvil" "kapt"
@@ -270,8 +270,8 @@ run_all_benchmarks() {
     fi
     generate_projects "kotlin-inject-anvil" "" "$count"
     if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run"
-        ./gradlew :app:component:run
+        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
+        ./gradlew :app:component:run --quiet
         print_success "Kotlin-inject + Anvil build completed!"
     else
         run_scenarios "kotlin-inject-anvil"
@@ -311,8 +311,8 @@ run_mode_benchmark() {
     generate_projects "$mode" "$processor" "$count"
     
     if [ "$build_only" = true ]; then
-        print_status "Build-only mode: running ./gradlew :app:component:run"
-        ./gradlew :app:component:run
+        print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
+        ./gradlew :app:component:run --quiet
         print_success "$mode${processor:+ + $processor} build completed!"
     else
         run_scenarios "$mode" "$processor"
@@ -337,7 +337,7 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
-    echo "  --build-only                 Only run ./gradlew :app:component:run, skip gradle-profiler"
+    echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
     echo ""
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
