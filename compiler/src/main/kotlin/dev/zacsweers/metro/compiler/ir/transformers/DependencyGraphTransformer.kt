@@ -239,7 +239,7 @@ internal class DependencyGraphTransformer(
         } else {
           // Track overridden symbols so that we dedupe merged overrides in the final class
           val seenSymbols = mutableSetOf<IrSymbol>()
-          supertypes.asSequence().flatMap { type ->
+          supertypes.flatMap { type ->
             type
               .rawType()
               .allCallableMembers(
