@@ -24,8 +24,9 @@ Changelog
 - **Fix:** Improved support for generic member injection.
 - **Fix:** Propagate qualifiers on graph member injector functions.
 - **Fix:** Fix support for requesting `MembersInjector` types.
+- **Fix:** Don't try to read private accessors of `@Includes` parameters.
 - [internal] Report IR errors through `IrDiagnosticReporter`.
-- [internal] Significantly refactor + simplify IR parameter handling.
+- [internal] Significantly refactor plus simplify IR parameter handling.
 - Update to Kotlin `2.2.0`.
 - Update Gradle plugin to target Kotlin language version to `2.0`.
 

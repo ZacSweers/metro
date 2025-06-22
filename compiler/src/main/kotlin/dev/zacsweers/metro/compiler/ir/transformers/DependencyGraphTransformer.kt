@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isInheritedFromAny
@@ -258,13 +259,8 @@ internal class DependencyGraphTransformer(
 
       accessors +=
         accessorsToCheck
-          .filterNot {
-            it.ir.regularParameters.isNotEmpty() ||
-              it.annotations.isBinds ||
-              it.annotations.isProvides ||
-              it.annotations.isMultibinds
-          }
-          .map { it to IrContextualTypeKey.from(metroContext, it.ir) }
+          .filterNot { it.isAccessorCandidate }
+          .map { it to IrContextualTypeKey.from(it.ir) }
 
       // Read metadata if this is an extendable graph
       val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
