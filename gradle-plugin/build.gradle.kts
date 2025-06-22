@@ -1,8 +1,8 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.buildtools.api.ExperimentalBuildToolsApi
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -23,17 +23,24 @@ buildConfig {
   }
   buildConfigField("String", "VERSION", providers.gradleProperty("VERSION_NAME").map { "\"$it\"" })
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
-  buildConfigField("String", "BASE_KOTLIN_VERSION", libs.versions.kotlin.map { "\"$it\"" })
+  buildConfigField(
+    "String",
+    "BASE_KOTLIN_VERSION",
+    libs.versions.kotlin.asProvider().map { "\"$it\"" },
+  )
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-  compilerOptions {
-    jvmTarget.set(libs.versions.jvmTarget.map(JvmTarget::fromTarget))
+// Use a fixed compiler for compiling the Gradle plugin and compiler
+project.extra["kotlin.compiler.runViaBuildToolsApi"] = "true"
 
+kotlin {
+  @OptIn(ExperimentalBuildToolsApi::class, ExperimentalKotlinGradlePluginApi::class)
+  compilerVersion.set(libs.versions.kotlin.forGradlePlugin)
+  compilerOptions {
     // Lower version for Gradle compat
     progressiveMode.set(false)
-    languageVersion.set(KotlinVersion.KOTLIN_2_0)
-    apiVersion.set(KotlinVersion.KOTLIN_2_0)
+    languageVersion.set(libs.versions.kotlin.forGradlePlugin.map { it.substringBeforeLast('.') }.map(KotlinVersion::fromVersion))
+    apiVersion.set(libs.versions.kotlin.forGradlePlugin.map { it.substringBeforeLast('.') }.map(KotlinVersion::fromVersion))
   }
 }
 
@@ -50,6 +57,7 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
+  compileOnly(libs.kotlin.buildToolsApi)
 
   lintChecks(libs.androidx.lint.gradle)
 
@@ -65,7 +73,7 @@ dependencies {
 tasks.withType<Test>().configureEach {
   jvmArgs(
     "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}",
-    "-Ddev.zacsweers.metro.gradle.test.kotlin-version=${libs.versions.kotlin.get()}",
+    "-Ddev.zacsweers.metro.gradle.test.kotlin-version=${libs.versions.kotlin.asProvider().get()}",
   )
 }
 

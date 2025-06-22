@@ -28,6 +28,8 @@ junit5 = "5.13.1"
 jvmTarget = "11"
 kct = "0.7.1"
 kotlin = "2.2.0-RC3"
+kotlin-forCompiler = "2.1.20"
+kotlin-forGradlePlugin = "2.0.0"
 kotlinInject = "0.8.0"
 kotlinInject-anvil = "0.1.6"
 kotlinx-coroutines = "1.10.2"
@@ -113,6 +115,7 @@ kotlinInject-anvil-runtime-optional = { module = "software.amazon.lastmile.kotli
 
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
 kotlin-annotationsJvm = { module = "org.jetbrains.kotlin:kotlin-annotations-jvm", version.ref = "kotlin" }
+kotlin-buildToolsApi = { group = "org.jetbrains.kotlin", name = "kotlin-build-tools-api", version.ref = "kotlin" }
 kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler", version.ref = "kotlin" }
 kotlin-compilerEmbeddable = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin" }
 kotlin-compilerTestFramework = { module = "org.jetbrains.kotlin:kotlin-compiler-internal-test-framework", version.ref = "kotlin" }

@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.buildtools.api.ExperimentalBuildToolsApi
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins {
@@ -11,7 +14,13 @@ plugins {
   alias(libs.plugins.testkit)
 }
 
+// Use a fixed compiler for compiling the Gradle plugin and compiler
+project.extra["kotlin.compiler.runViaBuildToolsApi"] = "true"
+
 kotlin {
+  @OptIn(ExperimentalBuildToolsApi::class, ExperimentalKotlinGradlePluginApi::class)
+  compilerVersion.set(libs.versions.kotlin.forCompiler)
+
   compilerOptions {
     freeCompilerArgs.add("-Xcontext-parameters")
     optIn.addAll(
