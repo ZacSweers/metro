@@ -222,6 +222,7 @@ internal class DependencyGraphTransformer(
     val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     val contributedGraphs = mutableMapOf<IrTypeKey, MetroSimpleFunction>()
+    val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
 
     val isExtendable =
       dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
@@ -391,7 +392,7 @@ internal class DependencyGraphTransformer(
           extendedGraphNodes = extendedGraphNodes,
           // Following aren't necessary to see in external graphs
           contributedGraphs = contributedGraphs,
-          injectors = emptyList(),
+          injectors = injectors,
           creator = null,
         )
 
@@ -403,8 +404,6 @@ internal class DependencyGraphTransformer(
     val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraphOrFail
     val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
     val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
-
-    val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
       // Functions and properties only
