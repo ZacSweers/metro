@@ -407,6 +407,8 @@ internal class DependencyGraphTransformer(
     val injectors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
 
     for (declaration in nonNullMetroGraph.declarations) {
+      // Functions and properties only
+      if (declaration !is IrOverridableDeclaration<*>) continue
       if (!declaration.isFakeOverride) continue
       if (declaration is IrFunction && declaration.isInheritedFromAny(pluginContext.irBuiltIns)) {
         continue
