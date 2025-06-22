@@ -15,7 +15,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  compiler:
+  core:
+    name: "core artifacts (compiler, runtime, gradle plugin)"
     runs-on: ubuntu-latest
 
     steps:
@@ -191,7 +192,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     needs:
-      - compiler
+      - core
       - benchmarks
       - samples
     steps:
