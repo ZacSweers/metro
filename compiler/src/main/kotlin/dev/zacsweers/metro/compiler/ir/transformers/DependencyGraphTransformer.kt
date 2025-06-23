@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
-import dev.zacsweers.metro.compiler.ir.DependencyGraphNodes
+import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
 import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
@@ -80,7 +80,7 @@ internal class DependencyGraphTransformer(
   // Keyed by the source declaration
   private val processedMetroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
-  private val dependencyGraphNodes = DependencyGraphNodes(this, providesTransformer)
+  private val dependencyGraphNodeCache = DependencyGraphNodeCache(this, providesTransformer)
 
   override fun visitCall(expression: IrCall): IrExpression {
     return CreateGraphTransformer.visitCall(expression, metroContext)
@@ -171,7 +171,7 @@ internal class DependencyGraphTransformer(
     parentTracer: Tracer,
   ) {
     val node =
-      dependencyGraphNodes.getOrComputeDependencyGraphNode(
+      dependencyGraphNodeCache.getOrComputeDependencyGraphNode(
         dependencyGraphDeclaration,
         IrBindingStack(
           dependencyGraphDeclaration,
@@ -239,8 +239,8 @@ internal class DependencyGraphTransformer(
         if (needsToGenerateParent) {
           visitClass(parent.sourceGraph)
           proto =
-            dependencyGraphNodes.dependencyGraphNodesByClass
-              .getValue(parent.sourceGraph.classIdOrFail)
+            dependencyGraphNodeCache
+              .requirePreviouslyComputed(parent.sourceGraph.classIdOrFail)
               .proto
         }
         if (proto == null) {
@@ -258,7 +258,7 @@ internal class DependencyGraphTransformer(
         IrGraphGenerator(
             metroContext,
             contributionData,
-            dependencyGraphNodes.dependencyGraphNodesByClass,
+            dependencyGraphNodeCache::get,
             node,
             metroGraph,
             bindingGraph,

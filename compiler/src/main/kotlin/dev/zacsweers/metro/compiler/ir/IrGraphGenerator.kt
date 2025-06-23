@@ -90,7 +90,7 @@ import org.jetbrains.kotlin.name.ClassId
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   contributionData: IrContributionData,
-  private val dependencyGraphNodesByClass: MutableMap<ClassId, DependencyGraphNode>,
+  private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
   private val node: DependencyGraphNode,
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
@@ -563,7 +563,7 @@ internal class IrGraphGenerator(
               serialized,
             )
           }
-          dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail]?.let { it.proto = graphProto }
+          dependencyGraphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
         }
 
         // Expose getters for provider and instance fields and expose them to metadata

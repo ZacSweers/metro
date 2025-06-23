@@ -47,8 +47,11 @@ internal class DependencyGraphNodeCache(
 ) : IrMetroContext by metroContext {
 
   // Keyed by the source declaration
-  // TODO make private
-  val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
+  private val dependencyGraphNodesByClass = mutableMapOf<ClassId, DependencyGraphNode>()
+
+  operator fun get(classId: ClassId) = dependencyGraphNodesByClass[classId]
+
+  fun requirePreviouslyComputed(classId: ClassId) = dependencyGraphNodesByClass.getValue(classId)
 
   fun getOrComputeDependencyGraphNode(
     graphDeclaration: IrClass,
