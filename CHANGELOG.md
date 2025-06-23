@@ -26,8 +26,9 @@ Changelog
 - **Fix:** Fix support for requesting `MembersInjector` types.
 - [internal] Report IR errors through `IrDiagnosticReporter`.
 - [internal] Significantly refactor + simplify IR parameter handling.
+- Fix publishing Apple native targets in snapshots.
 - Update to Kotlin `2.2.0`.
-- Update Gradle plugin to target Kotlin language version to `2.0`.
+- Update Gradle plugin to target Kotlin language version to `1.9` (requires Gradle 8.3+).
 
 
 0.3.8
