@@ -32,7 +32,9 @@ tasks.withType<KotlinCompile>().configureEach {
 
     // Lower version for Gradle compat
     progressiveMode.set(false)
+    @Suppress("DEPRECATION")
     languageVersion.set(KotlinVersion.KOTLIN_1_9)
+    @Suppress("DEPRECATION")
     apiVersion.set(KotlinVersion.KOTLIN_1_9)
   }
 }
