@@ -41,7 +41,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
-internal class DependencyGraphNodes(
+internal class DependencyGraphNodeCache(
   metroContext: IrMetroContext,
   private val providesTransformer: ProvidesTransformer,
 ) : IrMetroContext by metroContext {
@@ -62,8 +62,7 @@ internal class DependencyGraphNodes(
     return dependencyGraphNodesByClass.getOrPut(graphClassId) {
       parentTracer.traceNested("Build DependencyGraphNode") { tracer ->
         DependencyGraphNodeBuilder(
-            metroContext,
-            graphClassId,
+            this,
             graphDeclaration,
             bindingStack,
             tracer,
@@ -75,16 +74,15 @@ internal class DependencyGraphNodes(
     }
   }
 
-  // TODO avoid inner
-  inner class DependencyGraphNodeBuilder(
-    metroContext: IrMetroContext,
-    private val graphClassId: ClassId,
+  private class DependencyGraphNodeBuilder(
+    private val nodeCache: DependencyGraphNodeCache,
     private val graphDeclaration: IrClass,
     private val bindingStack: IrBindingStack,
     private val parentTracer: Tracer,
     private val metroGraph: IrClass? = null,
     dependencyGraphAnno: IrConstructorCall? = null,
-  ) : IrMetroContext by metroContext {
+  ) : IrMetroContext by nodeCache {
+    private val providesTransformer: ProvidesTransformer = nodeCache.providesTransformer
     private val accessors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val scopes = mutableSetOf<IrAnnotation>()
@@ -201,7 +199,7 @@ internal class DependencyGraphNodes(
             bindingStack.withEntry(
               IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
             ) {
-              getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
+              nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
             }
           if (it.isExtends) {
             extendedGraphNodes[it.typeKey] = node
@@ -526,7 +524,7 @@ internal class DependencyGraphNodes(
                 pluginContext.referenceClass(ClassId.fromString(graphClassId))
                   ?: error("Could not find graph class $graphClassId.")
               val typeKey = IrTypeKey(clazz.defaultType)
-              val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              val node = nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
               typeKey to node
             }
           )
@@ -537,7 +535,7 @@ internal class DependencyGraphNodes(
                 pluginContext.referenceClass(ClassId.fromString(graphClassId))
                   ?: error("Could not find graph class $graphClassId.")
               val typeKey = IrTypeKey(clazz.defaultType)
-              val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              val node = nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
               typeKey to node
             }
           )
@@ -563,8 +561,6 @@ internal class DependencyGraphNodes(
           injectors = injectors,
           creator = null,
         )
-
-      dependencyGraphNodesByClass[graphClassId] = dependentNode
 
       return dependentNode
     }
