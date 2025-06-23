@@ -216,172 +216,7 @@ internal class DependencyGraphNodes(
 
     fun build(): DependencyGraphNode {
       if (graphDeclaration.isExternalParent || !isGraph) {
-        val accessorsToCheck =
-          if (isGraph) {
-            // It's just an external graph, just read the declared types from it
-            graphDeclaration
-              .metroGraphOrFail // Doesn't cover contributed graphs but they're not visible anyway
-              .allCallableMembers(
-                excludeInheritedMembers = false,
-                excludeCompanionObjectMembers = true,
-              )
-          } else {
-            // Track overridden symbols so that we dedupe merged overrides in the final class
-            val seenSymbols = mutableSetOf<IrSymbol>()
-            supertypes.flatMap { type ->
-              type
-                .rawType()
-                .allCallableMembers(
-                  excludeInheritedMembers = false,
-                  excludeCompanionObjectMembers = true,
-                  functionFilter = { it.symbol !in seenSymbols },
-                  propertyFilter = {
-                    val getterSymbol = it.getter?.symbol
-                    getterSymbol != null && getterSymbol !in seenSymbols
-                  },
-                )
-                .onEach { seenSymbols += it.ir.overriddenSymbolsSequence() }
-            }
-          }
-
-        accessors +=
-          accessorsToCheck
-            .filterNot { it.isAccessorCandidate }
-            .map { it to IrContextualTypeKey.from(it.ir) }
-
-        // Read metadata if this is an extendable graph
-        val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
-        var graphProto: DependencyGraphProto? = null
-        if (isExtendable) {
-          parentTracer.traceNested("Populate inherited graph metadata") { tracer ->
-            val serialized =
-              pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
-                graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph),
-                PLUGIN_ID,
-              )
-            if (serialized == null) {
-              diagnosticReporter
-                .at(graphDeclaration)
-                .report(
-                  MetroIrErrors.METRO_ERROR,
-                  "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-                )
-              exitProcessing()
-            }
-
-            graphProto =
-              tracer.traceNested("Deserialize DependencyGraphProto") {
-                val metadata = MetroMetadata.ADAPTER.decode(serialized)
-                metadata.dependency_graph
-              }
-            if (graphProto == null) {
-              diagnosticReporter
-                .at(graphDeclaration)
-                .report(
-                  MetroIrErrors.METRO_ERROR,
-                  "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
-                )
-              exitProcessing()
-            }
-
-            // Add any provider factories
-            providerFactories +=
-              graphProto.provider_factory_classes
-                .map { classId ->
-                  val clazz = pluginContext.referenceClass(ClassId.fromString(classId))!!.owner
-                  providesTransformer.externalProviderFactoryFor(clazz)
-                }
-                .map { it.typeKey to it }
-
-            // Add any binds functions
-            bindsFunctions.addAll(
-              graphProto.binds_callable_ids.map { bindsCallableId ->
-                val classId = ClassId.fromString(bindsCallableId.class_id)
-                val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
-
-                val function =
-                  if (bindsCallableId.is_property) {
-                    pluginContext.referenceProperties(callableId).singleOrNull()?.owner?.getter
-                  } else {
-                    pluginContext.referenceFunctions(callableId).singleOrNull()?.owner
-                  }
-
-                if (function == null) {
-                  val message = buildString {
-                    append("No function found for ")
-                    appendLine(callableId)
-                    callableId.classId?.let {
-                      pluginContext.referenceClass(it)?.let {
-                        appendLine("Class dump")
-                        appendLine(it.owner.dumpKotlinLike())
-                      }
-                    }
-                      ?: run {
-                        append("No class found for ")
-                        appendLine(callableId)
-                      }
-                  }
-                  error(message)
-                }
-
-                val metroFunction = metroFunctionOf(function)
-                metroFunction to IrContextualTypeKey.from(this, function)
-              }
-            )
-
-            // Read scopes from annotations
-            // We copy scope annotations from parents onto this graph if it's extendable so we only
-            // need to copy once
-            scopes.addAll(graphDeclaration.scopeAnnotations())
-
-            includedGraphNodes.putAll(
-              // TODO dedupe logic with below
-              graphProto.included_classes.associate { graphClassId ->
-                val clazz =
-                  pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                    ?: error("Could not find graph class $graphClassId.")
-                val typeKey = IrTypeKey(clazz.defaultType)
-                val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
-                typeKey to node
-              }
-            )
-
-            extendedGraphNodes.putAll(
-              graphProto.parent_graph_classes.associate { graphClassId ->
-                val clazz =
-                  pluginContext.referenceClass(ClassId.fromString(graphClassId))
-                    ?: error("Could not find graph class $graphClassId.")
-                val typeKey = IrTypeKey(clazz.defaultType)
-                val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
-                typeKey to node
-              }
-            )
-          }
-        }
-
-        // TODO split DependencyGraphNode into sealed interface with external/internal variants?
-        val dependentNode =
-          DependencyGraphNode(
-            sourceGraph = graphDeclaration,
-            supertypes = supertypes.toList(),
-            isExtendable = isExtendable,
-            includedGraphNodes = includedGraphNodes,
-            scopes = scopes,
-            providerFactories = providerFactories,
-            accessors = accessors,
-            bindsFunctions = bindsFunctions,
-            isExternal = true,
-            proto = graphProto,
-            extendedGraphNodes = extendedGraphNodes,
-            // Following aren't necessary to see in external graphs
-            contributedGraphs = contributedGraphs,
-            injectors = injectors,
-            creator = null,
-          )
-
-        dependencyGraphNodesByClass[graphClassId] = dependentNode
-
-        return dependentNode
+        return buildExternalGraphOrBindingContainer()
       }
 
       val nonNullMetroGraph = metroGraph ?: graphDeclaration.metroGraphOrFail
@@ -563,6 +398,175 @@ internal class DependencyGraphNodes(
       }
 
       return dependencyGraphNode
+    }
+
+    private fun buildExternalGraphOrBindingContainer(): DependencyGraphNode {
+      val accessorsToCheck =
+        if (isGraph) {
+          // It's just an external graph, just read the declared types from it
+          graphDeclaration
+            .metroGraphOrFail // Doesn't cover contributed graphs but they're not visible anyway
+            .allCallableMembers(
+              excludeInheritedMembers = false,
+              excludeCompanionObjectMembers = true,
+            )
+        } else {
+          // Track overridden symbols so that we dedupe merged overrides in the final class
+          val seenSymbols = mutableSetOf<IrSymbol>()
+          supertypes.flatMap { type ->
+            type
+              .rawType()
+              .allCallableMembers(
+                excludeInheritedMembers = false,
+                excludeCompanionObjectMembers = true,
+                functionFilter = { it.symbol !in seenSymbols },
+                propertyFilter = {
+                  val getterSymbol = it.getter?.symbol
+                  getterSymbol != null && getterSymbol !in seenSymbols
+                },
+              )
+              .onEach { seenSymbols += it.ir.overriddenSymbolsSequence() }
+          }
+        }
+
+      accessors +=
+        accessorsToCheck
+          .filterNot { it.isAccessorCandidate }
+          .map { it to IrContextualTypeKey.from(it.ir) }
+
+      // Read metadata if this is an extendable graph
+      val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
+      var graphProto: DependencyGraphProto? = null
+      if (isExtendable) {
+        parentTracer.traceNested("Populate inherited graph metadata") { tracer ->
+          val serialized =
+            pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(
+              graphDeclaration.requireNestedClass(Symbols.Names.MetroGraph),
+              PLUGIN_ID,
+            )
+          if (serialized == null) {
+            diagnosticReporter
+              .at(graphDeclaration)
+              .report(
+                MetroIrErrors.METRO_ERROR,
+                "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
+              )
+            exitProcessing()
+          }
+
+          graphProto =
+            tracer.traceNested("Deserialize DependencyGraphProto") {
+              val metadata = MetroMetadata.ADAPTER.decode(serialized)
+              metadata.dependency_graph
+            }
+          if (graphProto == null) {
+            diagnosticReporter
+              .at(graphDeclaration)
+              .report(
+                MetroIrErrors.METRO_ERROR,
+                "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
+              )
+            exitProcessing()
+          }
+
+          // Add any provider factories
+          providerFactories +=
+            graphProto.provider_factory_classes
+              .map { classId ->
+                val clazz = pluginContext.referenceClass(ClassId.fromString(classId))!!.owner
+                providesTransformer.externalProviderFactoryFor(clazz)
+              }
+              .map { it.typeKey to it }
+
+          // Add any binds functions
+          bindsFunctions.addAll(
+            graphProto.binds_callable_ids.map { bindsCallableId ->
+              val classId = ClassId.fromString(bindsCallableId.class_id)
+              val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
+
+              val function =
+                if (bindsCallableId.is_property) {
+                  pluginContext.referenceProperties(callableId).singleOrNull()?.owner?.getter
+                } else {
+                  pluginContext.referenceFunctions(callableId).singleOrNull()?.owner
+                }
+
+              if (function == null) {
+                val message = buildString {
+                  append("No function found for ")
+                  appendLine(callableId)
+                  callableId.classId?.let {
+                    pluginContext.referenceClass(it)?.let {
+                      appendLine("Class dump")
+                      appendLine(it.owner.dumpKotlinLike())
+                    }
+                  }
+                    ?: run {
+                      append("No class found for ")
+                      appendLine(callableId)
+                    }
+                }
+                error(message)
+              }
+
+              val metroFunction = metroFunctionOf(function)
+              metroFunction to IrContextualTypeKey.from(this, function)
+            }
+          )
+
+          // Read scopes from annotations
+          // We copy scope annotations from parents onto this graph if it's extendable so we only
+          // need to copy once
+          scopes.addAll(graphDeclaration.scopeAnnotations())
+
+          includedGraphNodes.putAll(
+            // TODO dedupe logic with below
+            graphProto.included_classes.associate { graphClassId ->
+              val clazz =
+                pluginContext.referenceClass(ClassId.fromString(graphClassId))
+                  ?: error("Could not find graph class $graphClassId.")
+              val typeKey = IrTypeKey(clazz.defaultType)
+              val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              typeKey to node
+            }
+          )
+
+          extendedGraphNodes.putAll(
+            graphProto.parent_graph_classes.associate { graphClassId ->
+              val clazz =
+                pluginContext.referenceClass(ClassId.fromString(graphClassId))
+                  ?: error("Could not find graph class $graphClassId.")
+              val typeKey = IrTypeKey(clazz.defaultType)
+              val node = getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              typeKey to node
+            }
+          )
+        }
+      }
+
+      // TODO split DependencyGraphNode into sealed interface with external/internal variants?
+      val dependentNode =
+        DependencyGraphNode(
+          sourceGraph = graphDeclaration,
+          supertypes = supertypes.toList(),
+          isExtendable = isExtendable,
+          includedGraphNodes = includedGraphNodes,
+          scopes = scopes,
+          providerFactories = providerFactories,
+          accessors = accessors,
+          bindsFunctions = bindsFunctions,
+          isExternal = true,
+          proto = graphProto,
+          extendedGraphNodes = extendedGraphNodes,
+          // Following aren't necessary to see in external graphs
+          contributedGraphs = contributedGraphs,
+          injectors = injectors,
+          creator = null,
+        )
+
+      dependencyGraphNodesByClass[graphClassId] = dependentNode
+
+      return dependentNode
     }
   }
 }
