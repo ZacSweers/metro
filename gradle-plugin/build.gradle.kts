@@ -32,8 +32,8 @@ tasks.withType<KotlinCompile>().configureEach {
 
     // Lower version for Gradle compat
     progressiveMode.set(false)
-    languageVersion.set(KotlinVersion.KOTLIN_2_0)
-    apiVersion.set(KotlinVersion.KOTLIN_2_0)
+    languageVersion.set(KotlinVersion.KOTLIN_1_9)
+    apiVersion.set(KotlinVersion.KOTLIN_1_9)
   }
 }
 
