@@ -108,8 +108,8 @@ internal class DependencyGraphNodes(
     private val isExtendable =
       dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
 
-    private fun computeScopes() {
-      scopes += buildSet {
+    private fun computeScopes(): Set<IrAnnotation> {
+      return buildSet {
         val scope =
           dependencyGraphAnno?.getValueArgument(Symbols.Names.scope)?.let { scopeArg ->
             pluginContext.createIrBuilder(graphDeclaration.symbol).run {
@@ -488,7 +488,7 @@ internal class DependencyGraphNodes(
         }
       }
 
-      computeScopes()
+      scopes += computeScopes()
 
       val creator = buildCreator()
 
