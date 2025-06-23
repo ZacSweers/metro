@@ -92,7 +92,7 @@ Metro is a compile-time dependency injection framework implemented as a Kotlin c
 
 1. Add compiler tests in `compiler-tests/src/test/data/` using the appropriate test type
 2. Test existing tests with `./gradlew :compiler:test`.
-3. Test integration with samples in `samples/` directory  
+3. Test integration with samples in `samples/` directory
 4. Run `./metrow check` to validate all tests and API compatibility
 
 ### Important Notes
