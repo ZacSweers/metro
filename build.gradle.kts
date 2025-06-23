@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
+import org.jetbrains.kotlin.gradle.targets.js.npm.tasks.KotlinNpmInstallTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -187,6 +188,11 @@ subprojects {
       }
     }
   }
+}
+
+// https://youtrack.jetbrains.com/issue/KT-78504
+tasks.withType<KotlinNpmInstallTask>().configureEach {
+  args.addAll(listOf("--network-concurrency", "1", "--mutex", "network"))
 }
 
 dependencies {
