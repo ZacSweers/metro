@@ -58,11 +58,8 @@ internal class DependencyGraphNodes(
     dependencyGraphAnno: IrConstructorCall? = null,
   ): DependencyGraphNode {
     val graphClassId = graphDeclaration.classIdOrFail
-    dependencyGraphNodesByClass[graphClassId]?.let {
-      return it
-    }
 
-    val node =
+    return dependencyGraphNodesByClass.getOrPut(graphClassId) {
       parentTracer.traceNested("Build DependencyGraphNode") { tracer ->
         DependencyGraphNodeBuilder(
             metroContext,
@@ -75,10 +72,7 @@ internal class DependencyGraphNodes(
           )
           .build()
       }
-
-    dependencyGraphNodesByClass[graphClassId] = node
-
-    return node
+    }
   }
 
   // TODO avoid inner
