@@ -260,13 +260,13 @@ internal class DependencyGraphNodeCache(
                 declaration.returnType.isUnit()
             if (isContributedGraph) {
               val metroFunction = metroFunctionOf(declaration, annotations)
-              val contextKey = IrContextualTypeKey.from(this, declaration)
+              val contextKey = IrContextualTypeKey.from(declaration)
               contributedGraphs[contextKey.typeKey] = metroFunction
             } else if (isInjector) {
               // It's an injector
               val metroFunction = metroFunctionOf(declaration, annotations)
               // key is the injected type wrapped in MembersInjector
-              val contextKey = IrContextualTypeKey.from(this, declaration.regularParameters[0])
+              val contextKey = IrContextualTypeKey.from(declaration.regularParameters[0])
               val memberInjectorTypeKey =
                 contextKey.typeKey.copy(contextKey.typeKey.type.wrapInMembersInjector())
               val finalContextKey = contextKey.withTypeKey(memberInjectorTypeKey)
@@ -274,7 +274,7 @@ internal class DependencyGraphNodeCache(
             } else {
               // Accessor or binds
               val metroFunction = metroFunctionOf(declaration, annotations)
-              val contextKey = IrContextualTypeKey.from(this, declaration)
+              val contextKey = IrContextualTypeKey.from(declaration)
               val collection =
                 if (metroFunction.annotations.isBinds) {
                   bindsFunctions
@@ -308,7 +308,7 @@ internal class DependencyGraphNodeCache(
 
             val getter = declaration.getter!!
             val metroFunction = metroFunctionOf(getter, annotations)
-            val contextKey = IrContextualTypeKey.from(this, getter)
+            val contextKey = IrContextualTypeKey.from(getter)
             if (isContributedGraph) {
               contributedGraphs[contextKey.typeKey] = metroFunction
             } else {
@@ -511,7 +511,7 @@ internal class DependencyGraphNodeCache(
               }
 
               val metroFunction = metroFunctionOf(function)
-              metroFunction to IrContextualTypeKey.from(this, function)
+              metroFunction to IrContextualTypeKey.from(function)
             }
           )
 
