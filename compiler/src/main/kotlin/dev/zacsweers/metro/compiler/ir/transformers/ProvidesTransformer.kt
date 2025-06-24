@@ -327,7 +327,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
     return references.getOrPut(function.kotlinFqName) {
-      val typeKey = IrContextualTypeKey.from(this, function).typeKey
+      val typeKey = IrContextualTypeKey.from(function).typeKey
       val isPropertyAccessor = function.isPropertyAccessor
       val fqName =
         if (isPropertyAccessor) {
@@ -361,7 +361,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
             "No getter found for property $fqName. Note that field properties are not supported"
           )
 
-      val typeKey = IrContextualTypeKey.from(this, getter).typeKey
+      val typeKey = IrContextualTypeKey.from(getter).typeKey
 
       val parent = property.parentAsClass
       return CallableReference(

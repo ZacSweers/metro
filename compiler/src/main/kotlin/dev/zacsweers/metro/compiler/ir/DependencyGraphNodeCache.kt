@@ -209,6 +209,11 @@ internal class DependencyGraphNodeCache(
           } else {
             // it.isIncludes
             includedGraphNodes[it.typeKey] = node
+
+            // Add any included graph provider factories
+            providerFactories += node.providerFactories
+            // Add any binds
+            bindsFunctions += node.bindsFunctions
           }
         }
 
@@ -430,9 +435,13 @@ internal class DependencyGraphNodeCache(
           }
         }
 
+      // TODO only if annotated @BindingContainer?
+      // TODO need to look up accessors and binds functions
+      providerFactories += providesTransformer.factoryClassesFor(graphDeclaration)
+
       accessors +=
         accessorsToCheck
-          .filterNot { it.isAccessorCandidate }
+          .filter { it.isAccessorCandidate }
           .map { it to IrContextualTypeKey.from(it.ir) }
 
       // Read metadata if this is an extendable graph

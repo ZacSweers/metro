@@ -110,7 +110,7 @@ private fun DependencyGraphNode.recurseParents(
   builder: MutableMap<IrTypeKey, DependencyGraphNode>
 ) {
   for ((key, value) in extendedGraphNodes) {
-    builder.put(key, value)
+    builder[key] = value
     value.recurseParents(builder)
   }
 }

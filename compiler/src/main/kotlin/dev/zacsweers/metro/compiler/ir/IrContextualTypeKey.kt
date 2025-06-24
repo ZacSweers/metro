@@ -86,15 +86,6 @@ internal class IrContextualTypeKey(
       type: IrType = function.returnType,
       wrapInProvider: Boolean = false,
     ): IrContextualTypeKey {
-      return from(context, function, type, wrapInProvider)
-    }
-
-    fun from(
-      context: IrMetroContext,
-      function: IrSimpleFunction,
-      type: IrType = function.returnType,
-      wrapInProvider: Boolean = false,
-    ): IrContextualTypeKey {
       val typeToConvert =
         if (wrapInProvider) {
           type.wrapInProvider(context.symbols.metroProvider)
@@ -111,8 +102,8 @@ internal class IrContextualTypeKey(
       )
     }
 
+    context(context: IrMetroContext)
     fun from(
-      context: IrMetroContext,
       parameter: IrValueParameter,
       type: IrType = parameter.type,
     ): IrContextualTypeKey =
