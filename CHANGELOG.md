@@ -4,6 +4,13 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Don't try to read private accessors of `@Includes` parameters.
+
+0.4.0
+-----
+
+_2025-06-23_
+
 - **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
 - **New:** If reporting is enabled, write unused bindings diagnostics to `keys-unused-*.txt`.
 - **New:** Support for generic assisted injection.
@@ -24,12 +31,13 @@ Changelog
 - **Fix:** Improved support for generic member injection.
 - **Fix:** Propagate qualifiers on graph member injector functions.
 - **Fix:** Fix support for requesting `MembersInjector` types.
-- **Fix:** Don't try to read private accessors of `@Includes` parameters.
 - [internal] Report IR errors through `IrDiagnosticReporter`.
-- [internal] Significantly refactor plus simplify IR parameter handling.
+- [internal] Significantly refactor + simplify IR parameter handling.
+- Fix publishing Apple native targets in snapshots.
 - Update to Kotlin `2.2.0`.
-- Update Gradle plugin to target Kotlin language version to `2.0`.
+- Update Gradle plugin to target Kotlin language version to `1.9` (requires Gradle 8.3+).
 
+Special thanks to [@kevinguitar](https://github.com/kevinguitar), [@gabrielittner](https://github.com/gabrielittner), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
 
 0.3.8
 -----

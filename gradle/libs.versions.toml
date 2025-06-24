@@ -27,7 +27,7 @@ jdk = "23"
 junit5 = "5.13.1"
 jvmTarget = "11"
 kct = "0.7.1"
-kotlin = "2.2.0-RC3"
+kotlin = "2.2.0"
 kotlinInject = "0.8.0"
 kotlinInject-anvil = "0.1.6"
 kotlinx-coroutines = "1.10.2"
@@ -54,10 +54,10 @@ kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.17.0" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.6" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.7" }
 dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.32.0" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.33.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.18.7" }
 shadow = { id = "com.gradleup.shadow", version = "9.0.0-beta17" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.4" }

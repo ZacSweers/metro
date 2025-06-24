@@ -205,7 +205,7 @@ jobs:
           fi
 
   publish:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     if: github.ref == 'refs/heads/main' && github.repository == 'zacsweers/metro'
     needs:
       - final-status
