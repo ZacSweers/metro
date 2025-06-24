@@ -8,7 +8,7 @@ interface AppGraph {
   }
 }
 
-class StringBindings(val value: String) {
+class StringBindings(private val value: String) {
   @Provides
   fun provideString(): String {
     return "string value: $value"
@@ -16,7 +16,7 @@ class StringBindings(val value: String) {
 }
 
 fun box(): String {
-  val graph = createGraphFactory<AppGraph.Factory>(StringBindings("hello"))
+  val graph = createGraphFactory<AppGraph.Factory>().create(StringBindings("hello"))
   assertEquals("string value: hello", graph.string)
   return "OK"
 }
