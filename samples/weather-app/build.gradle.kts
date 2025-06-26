@@ -35,6 +35,7 @@ kotlin {
       }
     }
   }
+  compilerOptions { optIn.add("kotlin.time.ExperimentalTime") }
 }
 
 metro { debug.set(false) }

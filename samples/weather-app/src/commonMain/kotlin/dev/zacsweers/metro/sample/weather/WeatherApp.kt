@@ -5,8 +5,8 @@ package dev.zacsweers.metro.sample.weather
 import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.Inject
+import kotlin.time.Instant
 import kotlinx.coroutines.coroutineScope
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
