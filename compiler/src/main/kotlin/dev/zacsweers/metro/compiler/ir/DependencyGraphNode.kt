@@ -2,9 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.ir.parameters.ConstructorParameter
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
-import dev.zacsweers.metro.compiler.ir.transformers.ProviderFactory
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -14,6 +13,9 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 // Represents an object graph's structure and relationships
 internal data class DependencyGraphNode(
@@ -29,7 +31,7 @@ internal data class DependencyGraphNode(
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val bindsFunctions: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   // TypeKey key is the injected type wrapped in MembersInjector
-  val injectors: List<Pair<MetroSimpleFunction, IrTypeKey>>,
+  val injectors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val isExternal: Boolean,
   val creator: Creator?,
   val extendedGraphNodes: Map<IrTypeKey, DependencyGraphNode>,
@@ -40,6 +42,14 @@ internal data class DependencyGraphNode(
 ) {
 
   val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
+
+  val reportableSourceGraphDeclaration by unsafeLazy {
+    generateSequence(sourceGraph) { it.parentAsClass }
+      .firstOrNull { it.origin != Origins.ContributedGraph && it.fileOrNull != null }
+      ?: error(
+        "Could not find a reportable source graph declaration for ${sourceGraph.kotlinFqName}"
+      )
+  }
 
   val multibindingAccessors by unsafeLazy {
     proto
@@ -64,17 +74,17 @@ internal data class DependencyGraphNode(
 
   sealed interface Creator {
     val function: IrFunction
-    val parameters: Parameters<ConstructorParameter>
+    val parameters: Parameters
 
     data class Constructor(
       override val function: IrConstructor,
-      override val parameters: Parameters<ConstructorParameter>,
+      override val parameters: Parameters,
     ) : Creator
 
     data class Factory(
       val type: IrClass,
       override val function: IrSimpleFunction,
-      override val parameters: Parameters<ConstructorParameter>,
+      override val parameters: Parameters,
     ) : Creator
   }
 }

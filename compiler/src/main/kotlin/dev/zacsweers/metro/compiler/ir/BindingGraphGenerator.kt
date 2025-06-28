@@ -9,10 +9,8 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
-import kotlin.collections.first
-import kotlin.collections.orEmpty
-import kotlin.collections.reduce
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -28,9 +26,25 @@ internal class BindingGraphGenerator(
   metroContext: IrMetroContext,
   private val node: DependencyGraphNode,
   // TODO preprocess these instead and just lookup via irAttribute
+  private val injectConstructorTransformer: InjectConstructorTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
+  private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
+    val classBindingLookup =
+      ClassBindingLookup(
+        metroContext,
+        node.sourceGraph,
+        findClassFactory = { clazz ->
+          injectConstructorTransformer.getOrGenerateFactory(
+            clazz,
+            previouslyFoundConstructor = null,
+            doNotErrorOnMissing = true,
+          )
+        },
+        findMemberInjectors = membersInjectorTransformer::getOrGenerateAllInjectorsFor,
+      )
+
     val graph =
       IrBindingGraph(
         this,
@@ -38,6 +52,7 @@ internal class BindingGraphGenerator(
         newBindingStack = {
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
         },
+        classBindingLookup = classBindingLookup,
       )
 
     // Add explicit bindings from @Provides methods
@@ -49,11 +64,7 @@ internal class BindingGraphGenerator(
 
     // Add instance parameters
     val graphInstanceBinding =
-      Binding.BoundInstance(
-        node.typeKey,
-        "${node.sourceGraph.name}Provider",
-        node.sourceGraph.location(),
-      )
+      Binding.BoundInstance(node.typeKey, "${node.sourceGraph.name}Provider", node.sourceGraph)
     graph.addBinding(node.typeKey, graphInstanceBinding, bindingStack)
 
     // Mapping of supertypes to aliased bindings
@@ -88,6 +99,7 @@ internal class BindingGraphGenerator(
     providerFactoriesToAdd.forEach { (typeKey, providerFactory) ->
       // Track a lookup of the provider class for IC
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
+      trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
 
       val contextKey =
         if (providerFactory.annotations.isIntoMultibinding) {
@@ -106,13 +118,13 @@ internal class BindingGraphGenerator(
         )
 
       if (provider.isIntoMultibinding) {
-        val originalQualifier = providerFactory.providesFunction.qualifierAnnotation()
+        val originalQualifier = providerFactory.function.qualifierAnnotation()
         graph
           .getOrCreateMultibinding(
             pluginContext = pluginContext,
             annotations = providerFactory.annotations,
             contextKey = contextKey,
-            declaration = providerFactory.providesFunction,
+            declaration = providerFactory.function,
             originalQualifier = originalQualifier,
             bindingStack = bindingStack,
           )
@@ -183,7 +195,11 @@ internal class BindingGraphGenerator(
       // not directly available
       if (creatorParam.isBindsInstance || creatorParam.isExtends) {
         val paramTypeKey = creatorParam.typeKey
-        graph.addBinding(paramTypeKey, Binding.BoundInstance(creatorParam), bindingStack)
+        graph.addBinding(
+          paramTypeKey,
+          Binding.BoundInstance(creatorParam, creatorParam.ir),
+          bindingStack,
+        )
       }
     }
 
@@ -235,6 +251,10 @@ internal class BindingGraphGenerator(
       val isMultibindingDeclaration = multibinds != null
 
       if (isMultibindingDeclaration) {
+        graph.addAccessor(
+          contextualTypeKey,
+          IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
+        )
         if (contextualTypeKey.typeKey !in graph) {
           val multibinding =
             Binding.Multibinding.fromMultibindsDeclaration(
@@ -279,9 +299,26 @@ internal class BindingGraphGenerator(
           // We'll handle this farther down
           continue
         }
+
+        // Add a ref to the included graph if not already present
+        // Only add it if it's a directly included node. Indirect will be propagated by metro
+        // accessors
+        if (depNode.typeKey !in graph && depNode.typeKey in node.includedGraphNodes) {
+          graph.addBinding(
+            depNode.typeKey,
+            Binding.BoundInstance(
+              depNode.typeKey,
+              "${depNode.sourceGraph.name}Provider",
+              depNode.sourceGraph,
+            ),
+            bindingStack,
+          )
+        }
+
         graph.addBinding(
           contextualTypeKey.typeKey,
           Binding.GraphDependency(
+            ownerKey = depNode.typeKey,
             graph = depNode.sourceGraph,
             getter = getter.ir,
             isProviderFieldAccessor = false,
@@ -305,12 +342,16 @@ internal class BindingGraphGenerator(
 
           val graphImpl = depNode.sourceGraph.metroGraphOrFail
           for (accessor in graphImpl.functions) {
-            // TODO exclude toString/equals/hashCode or use marker annotation?
+            // Exclude toString/equals/hashCode or use marker annotation?
+            if (accessor.isInheritedFromAny(pluginContext.irBuiltIns)) {
+              continue
+            }
             when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
               in providerFieldsSet -> {
                 val metroFunction = metroFunctionOf(accessor)
                 providerFieldAccessorsByName[metroFunction.ir.name] = metroFunction
               }
+
               in instanceFieldsSet -> {
                 val metroFunction = metroFunctionOf(accessor)
                 instanceFieldAccessorsByName[metroFunction.ir.name] = metroFunction
@@ -335,6 +376,7 @@ internal class BindingGraphGenerator(
             graph.addBinding(
               contextualTypeKey.typeKey,
               Binding.GraphDependency(
+                ownerKey = depNode.typeKey,
                 graph = depNode.sourceGraph,
                 getter = accessor.ir,
                 isProviderFieldAccessor = true,
@@ -363,6 +405,7 @@ internal class BindingGraphGenerator(
             graph.addBinding(
               contextualTypeKey.typeKey,
               Binding.GraphDependency(
+                ownerKey = depNode.typeKey,
                 graph = depNode.sourceGraph,
                 getter = accessor.ir,
                 isProviderFieldAccessor = true,
@@ -378,48 +421,64 @@ internal class BindingGraphGenerator(
     }
 
     // Add MembersInjector bindings defined on injector functions
-    node.injectors.forEach { (injector, typeKey) ->
-      val contextKey = IrContextualTypeKey(typeKey)
+    node.injectors.forEach { (injector, contextKey) ->
       val entry = IrBindingStack.Entry.requestedAt(contextKey, injector.ir)
 
-      graph.addInjector(typeKey, entry)
+      graph.addInjector(contextKey, entry)
       bindingStack.withEntry(entry) {
-        val targetClass = injector.ir.regularParameters.single().type.rawType()
+        val paramType = injector.ir.regularParameters.single().type
+        val targetClass = paramType.rawType()
+        // Don't return null on missing because it's legal to inject a class with no member
+        // injections
+        // TODO warn on this?
         val generatedInjector = membersInjectorTransformer.getOrGenerateInjector(targetClass)
-        val allParams = generatedInjector?.injectFunctions?.values?.toList().orEmpty()
-        val parameters =
-          when (allParams.size) {
-            0 -> Parameters.empty()
-            1 -> allParams.first()
-            else -> allParams.reduce { current, next -> current.mergeValueParametersWith(next) }
-          }
+
+        val remappedParams =
+          if (targetClass.typeParameters.isEmpty()) {
+              generatedInjector?.mergedParameters(NOOP_TYPE_REMAPPER)
+            } else {
+              // Create a remapper for the target class type parameters
+              val remapper = targetClass.deepRemapperFor(paramType)
+              val params = generatedInjector?.mergedParameters(remapper)
+              params?.ir?.parameters(this, remapper) ?: params
+            }
+            .let { it ?: Parameters.empty() }
+            .withCallableId(injector.callableId)
 
         val binding =
           Binding.MembersInjected(
             contextKey,
             // Need to look up the injector class and gather all params
-            parameters =
-              Parameters(
-                injector.callableId,
-                null,
-                null,
-                parameters.regularParameters,
-                parameters.contextParameters,
-                null,
-              ),
-            reportableLocation = injector.ir.location(),
+            parameters = remappedParams,
+            reportableDeclaration = injector.ir,
             function = injector.ir,
             isFromInjectorFunction = true,
             targetClassId = targetClass.classIdOrFail,
           )
 
-        graph.addBinding(typeKey, binding, bindingStack)
+        graph.addBinding(contextKey.typeKey, binding, bindingStack)
       }
     }
 
-    // Don't eagerly create bindings for injectable types, they'll be created on-demand
-    // when dependencies are analyzed
-    // TODO collect unused bindings?
+    // Add bindings for scoped @Inject classes which don't have contributions
+    if (node.isExtendable) {
+      node.scopes.flatMap(contributionData::getScopedInjectClasses).forEach { scopedClassTypeKey ->
+        if (scopedClassTypeKey !in graph) {
+          val contextKey = IrContextualTypeKey.create(scopedClassTypeKey)
+          val bindings =
+            classBindingLookup.lookup(
+              contextKey,
+              graph.bindingsSnapshot().keys,
+              IrBindingStack.empty(),
+            )
+          for (binding in bindings) {
+            graph.addBinding(scopedClassTypeKey, binding, IrBindingStack.empty())
+            // Mark this to be explicitly kept even after pruning unused
+            graph.keep(scopedClassTypeKey)
+          }
+        }
+      }
+    }
 
     return graph
   }

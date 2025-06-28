@@ -666,10 +666,10 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
-              Missing from factory: kotlin.Int
-              Missing from factory: kotlin.String
-          """
+          e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
+            Missing from factory: kotlin.Int
+            Missing from constructor: kotlin.String
+        """
           .trimIndent()
       )
     }
@@ -697,7 +697,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
             e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
               Missing from factory: kotlin.Int (notcount)
-              Missing from factory: kotlin.String (count)
+              Missing from constructor: kotlin.String (count)
           """
           .trimIndent()
       )
@@ -726,7 +726,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
         """
             e: ExampleClass.kt:6:7 Parameter mismatch. Assisted factory and assisted inject constructor parameters must match but found differences:
               Missing from factory: kotlin.Int (count)
-              Missing from factory: kotlin.String (count)
+              Missing from constructor: kotlin.String (count)
           """
           .trimIndent()
       )
@@ -974,7 +974,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:25:3 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:16:1 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
 
           (Hint)
           It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
@@ -1013,10 +1013,48 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:19:3 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:19:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
 
           (Hint)
           It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `assisted types cannot be depended on directly - accessor with no other ref`() {
+    compile(
+      source(
+        """
+            class ExampleClass @Inject constructor(
+              @Assisted val count: Int,
+              val message: String,
+            )
+
+            @AssistedFactory
+            interface ExampleClassFactory {
+              fun create(count: Int): ExampleClass
+            }
+
+            @DependencyGraph
+            interface ExampleGraph {
+              // The omission of ExampleClassFactory from accessors is intentional, prevents
+              // regression of https://github.com/ZacSweers/metro/issues/538 caused by existence
+              // of other dependents short-circuiting the check on roots
+              val exampleClass: ExampleClass
+
+              @Provides val string: String get() = "Hello, world!"
+            }
+          """
+          .trimIndent()
+      ),
+      expectedExitCode = COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+          e: ExampleClass.kt:21:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
         """
           .trimIndent()
       )

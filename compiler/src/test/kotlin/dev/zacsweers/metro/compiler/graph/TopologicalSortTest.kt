@@ -202,8 +202,8 @@ class TopologicalSortTest {
   fun verticesInsideComponentComeOutInNaturalOrder() {
     val full =
       sortedMapOf(
-        "a" to sortedSetOf("b") as SortedSet<String>, // deferrable
-        "b" to sortedSetOf("a") as SortedSet<String>, // strict
+        "a" to typedSortedSetOf("b"), // deferrable
+        "b" to typedSortedSetOf("a"), // strict
       )
     val isDeferrable = { f: String, t: String -> f == "a" && t == "b" }
 
@@ -216,6 +216,173 @@ class TopologicalSortTest {
         .sortedKeys
 
     assertEquals(listOf("a", "b"), result)
+  }
+
+  @Test
+  fun reachabilityWithRoots() {
+    // Graph structure:
+    // a -> b -> c
+    // d -> e
+    // f (isolated)
+    val fullAdjacency =
+      sortedMapOf(
+        "a" to typedSortedSetOf("b"),
+        "b" to typedSortedSetOf("c"),
+        "c" to typedSortedSetOf(),
+        "d" to typedSortedSetOf("e"),
+        "e" to typedSortedSetOf(),
+        "f" to typedSortedSetOf(),
+      )
+
+    // Test 1: Start from "a" - should only reach a, b, c
+    val resultFromA =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { fail("No cycles expected") },
+        roots = typedSortedSetOf("a"),
+      )
+
+    assertEquals(setOf("c", "b", "a"), resultFromA.reachableKeys)
+    assertEquals(listOf("c", "b", "a"), resultFromA.sortedKeys)
+
+    // Test 2: Start from "d" - should only reach d, e
+    val resultFromD =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { fail("No cycles expected") },
+        roots = typedSortedSetOf("d"),
+      )
+
+    assertEquals(setOf("d", "e"), resultFromD.reachableKeys)
+    assertEquals(listOf("e", "d"), resultFromD.sortedKeys)
+
+    // Test 3: Start from "f" - should only reach f
+    val resultFromF =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { fail("No cycles expected") },
+        roots = typedSortedSetOf("f"),
+      )
+
+    assertEquals(setOf("f"), resultFromF.reachableKeys)
+    assertEquals(listOf("f"), resultFromF.sortedKeys)
+
+    // Test 4: Multiple roots - should reach union of reachable sets
+    val resultFromMultiple =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { fail("No cycles expected") },
+        roots = typedSortedSetOf("a", "d"),
+      )
+
+    assertEquals(setOf("a", "b", "c", "d", "e"), resultFromMultiple.reachableKeys)
+    assertEquals(listOf("c", "b", "a", "e", "d"), resultFromMultiple.sortedKeys)
+
+    // Test 5: Empty roots - should process entire graph
+    val resultNoRoots =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { fail("No cycles expected") },
+      )
+
+    assertEquals(fullAdjacency.keys, resultNoRoots.reachableKeys)
+    assertEquals(listOf("c", "b", "a", "e", "d", "f"), resultNoRoots.sortedKeys)
+  }
+
+  @Test
+  fun reachabilityWithCycles() {
+    // Graph with a cycle reachable from one root but not another
+    // a -> b -> c -> b (cycle)
+    // d -> e
+    val fullAdjacency =
+      sortedMapOf(
+        "a" to typedSortedSetOf("b"),
+        "b" to typedSortedSetOf("c"),
+        "c" to typedSortedSetOf("b"), // cycle back to b
+        "d" to typedSortedSetOf("e"),
+        "e" to typedSortedSetOf(),
+      )
+
+    // Test 1: Starting from "a" should detect the cycle
+    assertFailsWith<IllegalArgumentException> {
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { cycle -> throw IllegalArgumentException("Cycle detected: $cycle") },
+        roots = typedSortedSetOf("a"),
+      )
+    }
+
+    // Test 2: Starting from "d" should NOT detect the cycle (it's unreachable)
+    val resultFromD =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { fail("Should not detect cycle from d") },
+        roots = typedSortedSetOf("d"),
+      )
+
+    assertEquals(setOf("e", "d"), resultFromD.reachableKeys)
+    assertEquals(listOf("e", "d"), resultFromD.sortedKeys)
+  }
+
+  @Test
+  fun reachabilityWithDeferrableCycles() {
+    // Graph with a deferrable cycle
+    // a -> b --(deferrable)--> c -> b
+    val fullAdjacency =
+      sortedMapOf(
+        "a" to typedSortedSetOf("b"),
+        "b" to typedSortedSetOf("c"),
+        "c" to typedSortedSetOf("b"),
+      )
+
+    val isDeferrable = { from: String, to: String -> from == "b" && to == "c" }
+
+    val result =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = isDeferrable,
+        onCycle = { fail("Should handle deferrable cycle") },
+        roots = typedSortedSetOf("a"),
+      )
+
+    assertEquals(setOf("a", "b", "c"), result.reachableKeys)
+    // b is deferred due to the cycle
+    assertEquals(listOf("b"), result.deferredTypes)
+    assertTrue(result.sortedKeys.containsAll(listOf("a", "b", "c")))
+  }
+
+  @Test
+  fun reachabilityPreservesNaturalOrderWithinComponents() {
+    // Similar to verticesInsideComponentComeOutInNaturalOrder but with roots
+    val full =
+      sortedMapOf(
+        "a" to typedSortedSetOf("b"), // deferrable
+        "b" to typedSortedSetOf("a"), // strict
+        "c" to typedSortedSetOf("a"), // c is a root that points to the cycle
+      )
+
+    val isDeferrable = { f: String, t: String -> f == "a" && t == "b" }
+
+    val result =
+      topologicalSort(
+        fullAdjacency = full,
+        isDeferrable = isDeferrable,
+        onCycle = { fail("cycle") },
+        roots = typedSortedSetOf("c"),
+      )
+
+    assertEquals(setOf("a", "b", "c"), result.reachableKeys)
+    // Should maintain natural order within the component
+    val aIndex = result.sortedKeys.indexOf("a")
+    val bIndex = result.sortedKeys.indexOf("b")
+    assertTrue(aIndex < bIndex, "Expected a before b in sorted order")
   }
 
   private fun assertTopologicalSort(
@@ -231,6 +398,11 @@ class TopologicalSortTest {
 
     assertTrue(actual.isTopologicallySorted(sourceToTarget))
     assertEquals(sorted, actual)
+  }
+
+  // stdlib exposes the impl type https://youtrack.jetbrains.com/issue/KT-20972/
+  private fun <T : Comparable<T>> typedSortedSetOf(vararg elements: T): SortedSet<T> {
+    return sortedSetOf(*elements)
   }
 
   /** Each string is two characters, source and destination of an edge. */

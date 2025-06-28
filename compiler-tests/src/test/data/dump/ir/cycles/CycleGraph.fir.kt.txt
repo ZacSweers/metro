@@ -39,6 +39,10 @@ class A {
       return Companion.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
     }
 
+    fun mirrorFunction(b: B, e: E): A {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(b: B, e: E) /* primary */ {
@@ -83,6 +87,10 @@ class B {
 
     override operator fun invoke(): B {
       return Companion.newInstance(c = <this>.#c.invoke())
+    }
+
+    fun mirrorFunction(c: C): B {
+      return error(message = "Never called")
     }
 
   }
@@ -140,9 +148,13 @@ class C {
 
     override operator fun invoke(): C {
       val tmp_0: C = Companion.newInstance(aProvider = <this>.#aProvider)
-      Companion.injectALazy(instance = tmp_0, aLazy = Companion.lazy</* null */, /* null */>(provider = <this>.#aLazy))
+      Companion.injectALazy(instance = tmp_0, aLazy = Companion.lazy<Provider<A>, A>(provider = <this>.#aLazy))
       Companion.injectALazyProvider(instance = tmp_0, aLazyProvider = Companion.create<A>(provider = <this>.#aLazyProvider))
       return tmp_0
+    }
+
+    fun mirrorFunction(aProvider: Provider<A>): C {
+      return error(message = "Never called")
     }
 
   }
@@ -162,11 +174,11 @@ class C {
         return $$MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
-      fun injectALazy(instance: C, aLazy: Lazy<A>) {
+      fun injectALazy(@Assisted instance: C, aLazy: Lazy<A>) {
         return instance.#aLazy = aLazy
       }
 
-      fun injectALazyProvider(instance: C, aLazyProvider: Provider<Lazy<A>>) {
+      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Provider<Lazy<A>>) {
         return instance.#aLazyProvider = aLazyProvider
       }
 
@@ -179,7 +191,7 @@ class C {
     }
 
     override fun injectMembers(instance: C) {
-      Companion.injectALazy(instance = instance, aLazy = Companion.lazy</* null */, /* null */>(provider = <this>.#aLazy))
+      Companion.injectALazy(instance = instance, aLazy = Companion.lazy<Provider<A>, A>(provider = <this>.#aLazy))
       Companion.injectALazyProvider(instance = instance, aLazyProvider = Companion.create<A>(provider = <this>.#aLazyProvider))
     }
 
@@ -229,6 +241,10 @@ class D {
       return Companion.newInstance(b = <this>.#b.invoke())
     }
 
+    fun mirrorFunction(b: B): D {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(b: B) /* primary */ {
@@ -275,6 +291,10 @@ class E {
       return Companion.newInstance(d = <this>.#d.invoke())
     }
 
+    fun mirrorFunction(d: D): E {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor(d: D) /* primary */ {
@@ -305,10 +325,10 @@ interface ChildCycleGraph {
   class $$MetroGraph : ChildCycleGraph {
     private /* final field */ val cycleGraphInstance: CycleGraph = cycleGraph
     private /* final field */ val cycleGraphInstanceProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = cycleGraph)
-    private /* final field */ val thisGraphInstance: ChildCycleGraph = <this>
-    private /* final field */ val childCycleGraphProvider: Provider<ChildCycleGraph> = Companion.invoke<ChildCycleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     constructor(@Extends cycleGraph: CycleGraph) /* primary */ {
       super/*Any*/()
@@ -317,13 +337,14 @@ interface ChildCycleGraph {
       when {
         cycleGraph !is $$MetroGraph -> throw illegalArgumentException(arg0 = "Constructor parameter cycleGraph _must_ be a Metro-compiler-generated instance of CycleGraph but was " + cycleGraph.toString())
       }
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazy = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazyProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))))
+      Companion.setDelegate<MembersInjector<C>>(delegateFactory = <this>.#membersInjectorMembersInjectorProvider, delegate = Companion.invoke<C>(value = Companion.create(aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider)))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#cycleGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
     override val a: A
       override get(): A {
-        return Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))).invoke()
+        return <this>.#aProvider.invoke()
       }
 
     override val obj: Any
@@ -347,7 +368,7 @@ interface ChildCycleGraph {
 
 }
 
-@DependencyGraph(, isExtendable = true)
+@DependencyGraph(isExtendable = true)
 interface CycleGraph {
   companion object Companion {
     private constructor() /* primary */ {
@@ -367,29 +388,47 @@ interface CycleGraph {
   class $$MetroGraph : CycleGraph {
     private /* final field */ val thisGraphInstance: CycleGraph = <this>
     private /* final field */ val cycleGraphProvider: Provider<CycleGraph> = Companion.invoke<CycleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazy = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))), aLazyProvider = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))))
+      Companion.setDelegate<MembersInjector<C>>(delegateFactory = <this>.#membersInjectorMembersInjectorProvider, delegate = Companion.invoke<C>(value = Companion.create(aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider)))
+      Companion.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = Companion.create(aProvider = <this>.#aProvider, aLazy = <this>.#aProvider, aLazyProvider = <this>.#aProvider))
       Companion.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = Companion.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
     }
 
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun cycleGraphProvider_metroAccessor(): Provider<CycleGraph> {
+      return <this>.#cycleGraphProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun thisGraphInstance_metroAccessor(): CycleGraph {
+      return <this>.#thisGraphInstance
+    }
+
     override fun a(): A {
-      return Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider))).invoke()
+      return <this>.#aProvider.invoke()
     }
 
     override fun c(): C {
       return <this>.#cProvider.invoke()
     }
 
+    override val objWithCycle: Any
+      override get(): Any {
+        return <this>.#provideObjectWithCycleProvider.invoke()
+      }
+
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideObjectWithCycle", isPropertyAccessor = false)
+  @ProvidesCallableId(callableName = "provideObjectWithCycle", isPropertyAccessor = false, startOffset = 468, endOffset = 565)
   class ProvideObjectWithCycle$$MetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj
@@ -420,6 +459,10 @@ interface CycleGraph {
       return Companion.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
     }
 
+    fun mirrorFunction(obj: Provider<Any>): Any {
+      return error(message = "Never called")
+    }
+
   }
 
   abstract fun a(): A
@@ -431,4 +474,8 @@ interface CycleGraph {
     return "object"
   }
 
+  abstract val objWithCycle: Any
+    abstract get
+
 }
+

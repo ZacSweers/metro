@@ -14,12 +14,14 @@ import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.fir.joinToRender
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
@@ -189,8 +191,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       val classId = classSymbol.classId.createNestedClassId(Symbols.Names.MetroGraph)
       names += classId.shortClassName
 
-      val hasCompanion =
-        classSymbol.declarationSymbols.any { it is FirClassSymbol<*> && it.isCompanion }
+      val hasCompanion = context.nestedClasses().any { it.isCompanion }
       if (!hasCompanion) {
         // Generate a companion for us to generate these functions on to
         names += SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
@@ -344,7 +345,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             // Copy annotations over. Workaround for https://youtrack.jetbrains.com/issue/KT-74361/
             for ((i, parameter) in samFunction?.valueParameterSymbols.orEmpty().withIndex()) {
               val parameterToUpdate = valueParameters[i]
-              parameterToUpdate.replaceAnnotationsSafe(parameter.annotations)
+              parameterToUpdate.replaceAnnotationsSafe(
+                parameter.resolvedCompilerAnnotationsWithClassIds
+              )
             }
           }
       } else if (context.owner.hasOrigin(Keys.MetroGraphFactoryImplDeclaration)) {
@@ -394,7 +397,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             // Copy annotations over. Workaround for https://youtrack.jetbrains.com/issue/KT-74361/
             for ((i, parameter) in function.valueParameterSymbols.withIndex()) {
               val parameterToUpdate = valueParameters[i]
-              parameterToUpdate.replaceAnnotationsSafe(parameter.annotations)
+              parameterToUpdate.replaceAnnotationsSafe(
+                parameter.resolvedCompilerAnnotationsWithClassIds
+              )
             }
             // Add our marker annotation
             replaceAnnotationsSafe(
@@ -495,13 +500,14 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
 
   @JvmInline
   value class GraphObject(val classSymbol: FirClassSymbol<*>) {
+    @OptIn(DirectDeclarationsAccess::class)
     fun findCreator(session: FirSession, context: String, log: (String) -> Unit): Creator? {
       val creator =
         classSymbol.declarationSymbols
           .filterIsInstance<FirClassSymbol<*>>()
           .onEach {
             log(
-              "Declaration factory candidate ${it.name}. Annotations are ${it.annotations.joinToRender()}"
+              "Declaration factory candidate ${it.name}. Annotations are ${it.resolvedCompilerAnnotationsWithClassIds.joinToRender()}"
             )
           }
           .find { it.isGraphFactory(session) }

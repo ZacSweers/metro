@@ -7,8 +7,10 @@ import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.directCallableSymbols
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
@@ -18,15 +20,14 @@ import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
-import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirFunction
-import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.resolve.firClassLike
-import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -35,7 +36,9 @@ import org.jetbrains.kotlin.name.StandardClassIds
 //  - if there's a factory(): Graph in the companion object, error because we'll generate it
 //  - if graph is scoped, check that accessors have matching scopes
 internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) {
-  override fun check(declaration: FirClass, context: CheckerContext, reporter: DiagnosticReporter) {
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -51,19 +54,17 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     if (isContributed) {
       // Must have a nested class annotated with `@ContributesGraphExtension.Factory`
       val hasNestedFactory =
-        declaration.declarations.any { nestedClass ->
-          nestedClass is FirClass &&
-            nestedClass.isAnnotatedWithAny(
-              session,
-              classIds.contributesGraphExtensionFactoryAnnotations,
-            )
+        declaration.symbol.nestedClasses().any { nestedClass ->
+          nestedClass.isAnnotatedWithAny(
+            session,
+            classIds.contributesGraphExtensionFactoryAnnotations,
+          )
         }
       if (!hasNestedFactory) {
         reporter.reportOn(
           declaration.source,
           FirMetroErrors.GRAPH_CREATORS_ERROR,
           "@${graphAnnotationClassId.relativeClassName.asString()} declarations must have a nested class annotated with @ContributesGraphExtension.Factory.",
-          context,
         )
         return
       }
@@ -78,14 +79,12 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         dependencyGraphAnno.additionalScopesArgument()?.source ?: dependencyGraphAnno.source,
         FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
         "@${graphAnnotationClassId.shortClassName.asString()} should have a primary `scope` defined if `additionalScopes` are defined.",
-        context,
       )
     }
 
     declaration.validateApiDeclaration(
-      context,
-      reporter,
       "${graphAnnotationClassId.shortClassName.asString()} declarations",
+      checkConstructor = true,
     ) {
       return
     }
@@ -97,16 +96,13 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           constructor.source,
           FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
           "Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.",
-          context,
         )
         return
       }
     }
 
     // Note this doesn't check inherited supertypes. Maybe we should, but where do we report errors?
-    val callables = declaration.declarations.asSequence().filterIsInstance<FirCallableDeclaration>()
-
-    for (callable in callables) {
+    for (callable in declaration.symbol.directCallableSymbols()) {
       if (!callable.isAbstract) continue
 
       val isBindsOrProvides =
@@ -118,23 +114,22 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
 
       // Functions with no params are accessors
       if (
-        callable is FirProperty || (callable is FirFunction && callable.valueParameters.isEmpty())
+        callable is FirPropertySymbol ||
+          (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isEmpty())
       ) {
-        val returnType = callable.returnTypeRef.coneTypeOrNull
-        if (returnType?.isUnit == true) {
+        val returnType = callable.resolvedReturnTypeRef.coneType
+        if (returnType.isUnit) {
           reporter.reportOn(
-            callable.returnTypeRef.source ?: callable.source,
+            callable.resolvedReturnTypeRef.source ?: callable.source,
             FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members must have a return type and cannot be Unit.",
-            context,
           )
           continue
-        } else if (returnType?.isNothing == true) {
+        } else if (returnType.isNothing) {
           reporter.reportOn(
             callable.source,
             FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members cannot return Nothing.",
-            context,
           )
           continue
         }
@@ -145,36 +140,34 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             scopeAnnotation.fir.source,
             FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members cannot be scoped.",
-            context,
           )
         }
         continue
       }
 
-      if (callable is FirFunction && callable.valueParameters.isNotEmpty()) {
-        if (callable.returnTypeRef.coneTypeOrNull?.isUnit != true) {
+      if (callable is FirNamedFunctionSymbol && callable.valueParameterSymbols.isNotEmpty()) {
+        if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
           reporter.reportOn(
-            callable.returnTypeRef.source,
+            callable.resolvedReturnTypeRef.source,
             FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
             "Inject functions must not return anything other than Unit.",
-            context,
           )
           continue
         }
 
         // If it has one param, it's an injector
-        when (callable.valueParameters.size) {
+        when (callable.valueParameterSymbols.size) {
           1 -> {
-            val parameter = callable.valueParameters[0]
-            val clazz = parameter.returnTypeRef.firClassLike(session) ?: continue
-            val isInjected = clazz.symbol.findInjectConstructors(session).isNotEmpty()
+            val parameter = callable.valueParameterSymbols[0]
+            val clazz = parameter.resolvedReturnTypeRef.firClassLike(session) ?: continue
+            val classSymbol = clazz.symbol as? FirClassSymbol<*> ?: continue
+            val isInjected = classSymbol.findInjectConstructors(session).isNotEmpty()
 
             if (isInjected) {
               reporter.reportOn(
                 parameter.source,
                 FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
                 "Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
-                context,
               )
             }
           }
@@ -185,7 +178,6 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
               callable.source,
               FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
               "Inject functions must have exactly one parameter.",
-              context,
             )
           }
         }

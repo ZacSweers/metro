@@ -7,11 +7,11 @@ import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.PROVIDES_CALLABLE_ID
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
-import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
@@ -50,6 +50,7 @@ internal class Symbols(
 
   object StringNames {
     const val ADDITIONAL_SCOPES = "additionalScopes"
+    const val ASSISTED = "Assisted"
     const val AS_DAGGER_INTERNAL_PROVIDER = "asDaggerInternalProvider"
     const val AS_DAGGER_MEMBERS_INJECTOR = "asDaggerMembersInjector"
     const val AS_JAKARTA_PROVIDER = "asJakartaProvider"
@@ -82,12 +83,14 @@ internal class Symbols(
     const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
     const val METRO_ACCESSOR = "_metroAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
+    const val METRO_CONTRIBUTION_NAME_PREFIX = "$\$MetroContribution"
     const val METRO_FACTORY = "$\$MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
     const val METRO_IMPL = "$\$Impl"
     const val METRO_GRAPH = "$\$MetroGraph"
     const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
     const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
+    const val MIRROR_FUNCTION = "mirrorFunction"
     const val NEW_INSTANCE = "newInstance"
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
     const val PROVIDER = "provider"
@@ -119,6 +122,13 @@ internal class Symbols(
     fun scopeHint(scopeClassId: ClassId): CallableId {
       return CallableId(metroHintsPackage, scopeClassId.joinSimpleNames().shortClassName)
     }
+
+    fun scopedInjectClassHint(scopeAnnotation: IrAnnotation): CallableId {
+      return CallableId(
+        metroHintsPackage,
+        ("scopedInjectClassHintFor" + scopeAnnotation.hashCode()).asName(),
+      )
+    }
   }
 
   // TODO replace with StandardClassIds
@@ -133,6 +143,7 @@ internal class Symbols(
     val ProvidesCallableId =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.PROVIDES_CALLABLE_ID.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
+    val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)
     val metroContribution =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
@@ -152,7 +163,7 @@ internal class Symbols(
   object Names {
     val Binds = "Binds".asName()
     val FactoryClass = "Factory".asName()
-    val MetroContribution = "$\$MetroContribution".asName()
+    val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
     val MetroGraph = "$\$MetroGraph".asName()
     val MetroImpl = StringNames.METRO_IMPL.asName()
@@ -179,6 +190,7 @@ internal class Symbols(
     val isPropertyAccessor = StringNames.IS_PROPERTY_ACCESSOR.asName()
     val membersInjector = "MembersInjector".asName()
     val metroAccessor = StringNames.METRO_ACCESSOR.asName()
+    val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
     val provider = StringNames.PROVIDER.asName()
     val rank = StringNames.RANK.asName()
@@ -248,7 +260,6 @@ internal class Symbols(
   }
   val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
   val doubleCheckProvider by lazy { doubleCheckCompanionObject.requireSimpleFunction("provider") }
-  val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
 
   private val providerOfLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(
@@ -514,6 +525,13 @@ internal class Symbols(
       .single()
   }
 
+  val bindsConstructor by lazy {
+    pluginContext
+      .referenceClass(ClassId(metroRuntime.packageFqName, Names.Binds))!!
+      .constructors
+      .single()
+  }
+
   val deprecatedAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first {
       it.owner.isPrimary
@@ -584,6 +602,7 @@ internal class Symbols(
         callee = lazySymbol,
         args = listOf(arg),
         typeHint = contextKey.toIrType(metroContext),
+        typeArgs = listOf(arg.type, contextKey.typeKey.type),
       )
     }
 

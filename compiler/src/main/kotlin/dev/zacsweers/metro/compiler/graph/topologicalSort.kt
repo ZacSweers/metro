@@ -118,8 +118,13 @@ internal fun <TypeKey : Comparable<TypeKey>, Binding> buildFullAdjacency(
 /**
  * @param sortedKeys Topologically sorted list of keys.
  * @param deferredTypes Vertices that sit inside breakable cycles.
+ * @param reachableKeys Vertices that were deemed reachable by any input roots.
  */
-internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes: List<T>)
+internal data class TopoSortResult<T>(
+  val sortedKeys: List<T>,
+  val deferredTypes: List<T>,
+  val reachableKeys: Set<T>,
+)
 
 /**
  * Returns the vertices in a valid topological order. Every edge in [fullAdjacency] is respected;
@@ -157,18 +162,28 @@ internal data class TopoSortResult<T>(val sortedKeys: List<T>, val deferredTypes
  * @param fullAdjacency outgoing‑edge map (every vertex key must be present)
  * @param isDeferrable predicate for "edge may break a cycle"
  * @param onCycle called with the offending cycle if no deferrable edge
+ * @param roots optional set of source roots for computing reachability. If null, all keys will be
+ *   kept.
  */
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
   isDeferrable: (from: V, to: V) -> Boolean,
   onCycle: (List<V>) -> Nothing,
+  roots: SortedSet<V>? = null,
   parentTracer: Tracer = Tracer.NONE,
+  isImplicitlyDeferrable: (V) -> Boolean = { false },
 ): TopoSortResult<V> {
   val deferredTypes = mutableSetOf<V>()
 
   // Collapse the graph into strongly‑connected components
   val (components, componentOf) =
-    parentTracer.traceNested("Compute SCCs") { fullAdjacency.computeStronglyConnectedComponents() }
+    parentTracer.traceNested("Compute SCCs") {
+      fullAdjacency.computeStronglyConnectedComponents(roots)
+    }
+
+  // Only vertices visited by SCC will be in componentOf
+  // TODO single pass this
+  val reachableKeys = fullAdjacency.filterKeys { it in componentOf }.toSortedMap()
 
   // Check for cycles
   parentTracer.traceNested("Check for cycles") {
@@ -183,22 +198,16 @@ internal fun <V : Comparable<V>> topologicalSort(
         }
       }
 
-      // Look for cycles
-      val contributorsToCycle = buildSet {
-        for (from in vertices) {
-          for (to in fullAdjacency[from].orEmpty()) {
-            if (
-              // stays inside SCC
-              componentOf[to] == component.id &&
-                // deferrable edge
-                isDeferrable(from, to)
-            ) {
-              // Only 'from' is deferred
-              add(from)
-            }
-          }
-        }
-      }
+      // Look for cycles - find minimal set of nodes to defer
+      val contributorsToCycle =
+        findMinimalDeferralSet(
+          vertices = vertices,
+          fullAdjacency = reachableKeys,
+          componentOf = componentOf,
+          componentId = component.id,
+          isDeferrable = isDeferrable,
+          isImplicitlyDeferrable = isImplicitlyDeferrable,
+        )
 
       if (contributorsToCycle.isEmpty()) {
         // no deferrable -> hard cycle
@@ -211,7 +220,7 @@ internal fun <V : Comparable<V>> topologicalSort(
 
   val componentDag =
     parentTracer.traceNested("Build component DAG") {
-      buildComponentDag(fullAdjacency, componentOf)
+      buildComponentDag(reachableKeys, componentOf)
     }
   val componentOrder =
     parentTracer.traceNested("Topo sort component DAG") {
@@ -229,10 +238,148 @@ internal fun <V : Comparable<V>> topologicalSort(
     // Expand each component back into its original vertices
     sortedKeys,
     deferredTypes.toList(),
+    reachableKeys.keys,
   )
 }
 
+/** Finds the minimal set of nodes that need to be deferred to break all cycles in the SCC. */
+private fun <V : Comparable<V>> findMinimalDeferralSet(
+  vertices: List<V>,
+  fullAdjacency: SortedMap<V, SortedSet<V>>,
+  componentOf: Map<V, Int>,
+  componentId: Int,
+  isDeferrable: (V, V) -> Boolean,
+  isImplicitlyDeferrable: (V) -> Boolean,
+): Set<V> {
+  // Collect all potential candidates for deferral
+  val potentialCandidates = mutableSetOf<V>()
+
+  for (from in vertices) {
+    for (to in fullAdjacency[from].orEmpty()) {
+      if (componentOf[to] == componentId && isDeferrable(from, to)) {
+        // Add the source as a candidate (original behavior)
+        potentialCandidates.add(from)
+      }
+    }
+  }
+
+  if (potentialCandidates.isEmpty()) {
+    return emptySet()
+  }
+
+  // TODO this is... ugly? It's like we want a hierarchy of deferrable types (whole-node or just
+  //  edge)
+  // Prefer implicitly deferrable types (i.e. assisted factories) over regular types
+  val implicitlyDeferrableCandidates = potentialCandidates.filter(isImplicitlyDeferrable)
+
+  // Try implicitly deferrable candidates first
+  for (candidate in implicitlyDeferrableCandidates.sorted()) {
+    if (
+      wouldBreakAllCycles(
+        setOf(candidate),
+        vertices,
+        fullAdjacency,
+        componentOf,
+        componentId,
+        isDeferrable,
+      )
+    ) {
+      return setOf(candidate)
+    }
+  }
+
+  // Then try regular candidates
+  val regularCandidates = potentialCandidates.filterNot(isImplicitlyDeferrable)
+  for (candidate in regularCandidates.sorted()) {
+    if (
+      wouldBreakAllCycles(
+        setOf(candidate),
+        vertices,
+        fullAdjacency,
+        componentOf,
+        componentId,
+        isDeferrable,
+      )
+    ) {
+      return setOf(candidate)
+    }
+  }
+
+  // If no single candidate works, fall back to all candidates
+  return potentialCandidates
+}
+
+/** Checks if deferring the given set of nodes breaks all cycles in the SCC. */
+private fun <V> wouldBreakAllCycles(
+  deferredNodes: Set<V>,
+  vertices: List<V>,
+  fullAdjacency: SortedMap<V, SortedSet<V>>,
+  componentOf: Map<V, Int>,
+  componentId: Int,
+  isDeferrable: (V, V) -> Boolean,
+): Boolean {
+  // Build a reduced adjacency list without deferrable edges involving deferred nodes
+  val reducedAdjacency = mutableMapOf<V, MutableSet<V>>()
+
+  for (from in vertices) {
+    val targets = mutableSetOf<V>()
+    for (to in fullAdjacency[from].orEmpty()) {
+      // stays inside SCC
+      if (componentOf[to] == componentId) {
+        // Skip deferrable edges where either source or target is deferred
+        if (isDeferrable(from, to) && (from in deferredNodes || to in deferredNodes)) continue
+        targets.add(to)
+      }
+    }
+    if (targets.isNotEmpty()) {
+      reducedAdjacency[from] = targets
+    }
+  }
+
+  // Check if the reduced graph is acyclic
+  return isAcyclic(reducedAdjacency)
+}
+
+/** Checks if the given adjacency list represents an acyclic graph using DFS. */
+private fun <V> isAcyclic(adjacency: Map<V, Set<V>>): Boolean {
+  val visited = mutableSetOf<V>()
+  val inStack = mutableSetOf<V>()
+
+  fun dfs(node: V): Boolean {
+    if (node in inStack) {
+      // Cycle found
+      return false
+    }
+    if (node in visited) {
+      return true
+    }
+
+    visited.add(node)
+    inStack.add(node)
+
+    for (neighbor in adjacency[node].orEmpty()) {
+      if (!dfs(neighbor)) return false
+    }
+
+    inStack.remove(node)
+    return true
+  }
+
+  for (node in adjacency.keys) {
+    if (node !in visited && !dfs(node)) {
+      return false
+    }
+  }
+
+  return true
+}
+
 internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
+
+internal data class TarjanResult<V : Comparable<V>>(
+  val components: List<Component<V>>,
+  val componentOf: Map<V, Int>,
+)
 
 /**
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
@@ -242,6 +389,8 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
  *
  * @param this A map representing the directed graph where the keys are vertices of type [V] and the
  *   values are sets of vertices to which each key vertex has outgoing edges.
+ * @param roots An optional input of source roots to walk from. Defaults to this map's keys. This
+ *   can be useful to only return accessible nodes.
  * @return A pair where the first element is a list of components (each containing an ID and its
  *   associated vertices) and the second element is a map that associates each vertex with the ID of
  *   its component.
@@ -249,8 +398,9 @@ internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mut
  *   href="https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm">Tarjan's
  *   algorithm</a>
  */
-internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents():
-  Pair<List<Component<V>>, Map<V, Int>> {
+internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnectedComponents(
+  roots: SortedSet<V>? = null
+): TarjanResult<V> {
   var nextIndex = 0
   var nextComponentId = 0
 
@@ -308,14 +458,15 @@ internal fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConne
     }
   }
 
-  // Sorted for determinism
-  for (v in keys) {
+  val startVertices = roots ?: keys
+
+  for (v in startVertices) {
     if (v !in indexMap) {
       strongConnect(v)
     }
   }
 
-  return components to componentOf
+  return TarjanResult(components, componentOf)
 }
 
 /**

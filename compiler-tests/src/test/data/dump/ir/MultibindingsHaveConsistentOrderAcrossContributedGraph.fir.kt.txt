@@ -22,6 +22,10 @@ class TaskImpl1 : Task {
       return $$MetroFactory.newInstance()
     }
 
+    fun mirrorFunction(): TaskImpl1 {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor() /* primary */ {
@@ -54,6 +58,10 @@ class TaskImpl2 : Task {
       return $$MetroFactory.newInstance()
     }
 
+    fun mirrorFunction(): TaskImpl2 {
+      return error(message = "Never called")
+    }
+
   }
 
   constructor() /* primary */ {
@@ -66,20 +74,13 @@ class TaskImpl2 : Task {
 
 @DependencyGraph(scope = AppScope::class, isExtendable = true)
 @SingleIn(scope = AppScope::class)
-interface ExampleGraph : $$MetroContribution {
+interface ExampleGraph : $$MetroContributionToAppScope {
   @DependencyGraph(scope = Unit::class, isExtendable = false)
   class $$ContributedLoggedInGraph : LoggedInGraph {
-    private /* final field */ val exampleGraphInstance: ExampleGraph = exampleGraph
-    private /* final field */ val exampleGraphInstanceProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = exampleGraph)
-    private /* final field */ val thisGraphInstance: $$ContributedLoggedInGraph = <this>
-    private /* final field */ val $$ContributedLoggedInGraphProvider: Provider<$$ContributedLoggedInGraph> = Companion.invoke<$$ContributedLoggedInGraph>(value = <this>.#thisGraphInstance)
     constructor(@Extends exampleGraph: ExampleGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
-      when {
-        exampleGraph !is $$MetroGraph -> throw illegalArgumentException(arg0 = "Constructor parameter exampleGraph _must_ be a Metro-compiler-generated instance of ExampleGraph but was " + exampleGraph.toString())
-      }
     }
 
     override val tasksFromParent: Set<Task>
@@ -115,6 +116,16 @@ interface ExampleGraph : $$MetroContribution {
       super/*Any*/()
       /* <init>() */
 
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun exampleGraphProvider_metroAccessor(): Provider<ExampleGraph> {
+      return <this>.#exampleGraphProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun thisGraphInstance_metroAccessor(): ExampleGraph {
+      return <this>.#thisGraphInstance
     }
 
     override fun createLoggedInGraph(): LoggedInGraph {
@@ -167,7 +178,7 @@ interface LoggedInGraph {
   interface Factory1 {
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
     @MetroContribution(scope = AppScope::class)
-    interface $$MetroContribution : Factory1 {
+    interface $$MetroContributionToAppScope : Factory1 {
     }
 
     abstract fun createLoggedInGraph(): LoggedInGraph

@@ -20,15 +20,14 @@ import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
+import org.jetbrains.kotlin.fir.analysis.checkers.declaredMemberScope
 import org.jetbrains.kotlin.fir.analysis.checkers.getAllowedAnnotationTargets
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
-import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
@@ -49,7 +48,6 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirArrayLiteral
 import org.jetbrains.kotlin.fir.expressions.FirClassReferenceExpression
-import org.jetbrains.kotlin.fir.expressions.FirEmptyArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -59,14 +57,13 @@ import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
-import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
-import org.jetbrains.kotlin.fir.extensions.buildUserTypeFromQualifierParts
-import org.jetbrains.kotlin.fir.moduleData
-import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
+import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
+import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
+import org.jetbrains.kotlin.fir.extensions.typeFromQualifierParts
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
@@ -77,8 +74,12 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
+import org.jetbrains.kotlin.fir.scopes.processAllCallables
+import org.jetbrains.kotlin.fir.scopes.processAllClassifiers
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirBackingFieldSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -90,14 +91,15 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
-import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -106,12 +108,9 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.JsStandardClassIds
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
-import org.jetbrains.kotlin.platform.isJs
 import org.jetbrains.kotlin.types.ConstantValueKind
-import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
 internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.classIds.injectAnnotations)
@@ -150,18 +149,32 @@ internal fun List<FirAnnotation>.annotationsIn(
   return asSequence().filter { it.toAnnotationClassIdSafe(session) in names }
 }
 
+internal fun FirBasedSymbol<*>.annotationsIn(
+  session: FirSession,
+  names: Set<ClassId>,
+): Sequence<FirAnnotation> {
+  return resolvedCompilerAnnotationsWithClassIds
+    .asSequence()
+    .filter { it.isResolved }
+    .filter { it.toAnnotationClassIdSafe(session) in names }
+}
+
 internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): Boolean {
-  return annotations.filter { it.isResolved }.any { it.toAnnotationClassIdSafe(session) in names }
+  return resolvedCompilerAnnotationsWithClassIds
+    .filter { it.isResolved }
+    .any { it.toAnnotationClassIdSafe(session) in names }
 }
 
 internal fun FirBasedSymbol<*>.findAnnotation(
   session: FirSession,
   names: Set<ClassId>,
 ): FirAnnotation? {
-  return annotations.filter { it.isResolved }.find { it.toAnnotationClassIdSafe(session) in names }
+  return resolvedCompilerAnnotationsWithClassIds
+    .filter { it.isResolved }
+    .find { it.toAnnotationClassIdSafe(session) in names }
 }
 
 internal fun List<FirAnnotation>.isAnnotatedWithAny(
@@ -208,6 +221,7 @@ internal inline fun Visibility.checkVisibility(
   }
 }
 
+@OptIn(DirectDeclarationsAccess::class)
 internal fun FirClassSymbol<*>.callableDeclarations(
   session: FirSession,
   includeSelf: Boolean,
@@ -228,21 +242,20 @@ internal fun FirClassSymbol<*>.callableDeclarations(
       yieldAll(declaredMembers)
     }
     if (includeAncestors) {
-      yieldAll(
-        getSuperTypes(session)
-          .asSequence()
-          .mapNotNull { it.toClassSymbol(session) }
-          .flatMap {
-            // If we're recursing up, we no longer want to include ancestors because we're handling
-            // that here
-            it.callableDeclarations(
-              session = session,
-              includeSelf = true,
-              includeAncestors = false,
-              yieldAncestorsFirst = yieldAncestorsFirst,
-            )
-          }
-      )
+      val superTypes = getSuperTypes(session)
+      val superTypesToCheck = if (yieldAncestorsFirst) superTypes.asReversed() else superTypes
+      for (superType in superTypesToCheck.mapNotNull { it.toClassSymbol(session) }) {
+        yieldAll(
+          // If we're recursing up, we no longer want to include ancestors because we're handling
+          // that here
+          superType.callableDeclarations(
+            session = session,
+            includeSelf = true,
+            includeAncestors = false,
+            yieldAncestorsFirst = yieldAncestorsFirst,
+          )
+        )
+      }
     }
     if (includeSelf && yieldAncestorsFirst) {
       yieldAll(declaredMembers)
@@ -250,9 +263,9 @@ internal fun FirClassSymbol<*>.callableDeclarations(
   }
 }
 
+context(context: CheckerContext, diagnosticReporter: DiagnosticReporter)
 internal inline fun FirClass.singleAbstractFunction(
   session: FirSession,
-  context: CheckerContext,
   reporter: DiagnosticReporter,
   type: String,
   allowProtected: Boolean = false,
@@ -266,7 +279,6 @@ internal inline fun FirClass.singleAbstractFunction(
         FirMetroErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
         type,
         "none",
-        context,
       )
     } else {
       // Report each function
@@ -276,7 +288,6 @@ internal inline fun FirClass.singleAbstractFunction(
           FirMetroErrors.FACTORY_MUST_HAVE_ONE_ABSTRACT_FUNCTION,
           type,
           abstractFunctions.size.toString(),
-          context,
         )
       }
     }
@@ -290,7 +301,6 @@ internal inline fun FirClass.singleAbstractFunction(
       FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
       "$type classes' single abstract functions",
       allowedVisibilities,
-      context,
     )
     onError()
   }
@@ -326,9 +336,8 @@ internal fun FirAnnotationCall.computeAnnotationHash(
           is FirPropertyAccessExpression -> {
             arg.calleeReference
               .toResolvedPropertySymbol()
-              ?.receiverParameter
-              ?.typeRef
-              ?.coneTypeOrNull
+              ?.resolvedReceiverTypeRef
+              ?.coneType
               ?.classId
           }
           else -> {
@@ -341,10 +350,9 @@ internal fun FirAnnotationCall.computeAnnotationHash(
   )
 }
 
+context(context: CheckerContext, reporter: DiagnosticReporter)
 internal inline fun FirClassSymbol<*>.findInjectConstructor(
   session: FirSession,
-  context: CheckerContext,
-  reporter: DiagnosticReporter,
   checkClass: Boolean,
   onError: () -> Nothing,
 ): FirConstructorSymbol? {
@@ -355,16 +363,17 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
       constructorInjections[0].also {
         if (it.isPrimary) {
           val isAssisted =
-            it.annotations.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
+            it.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(
+              session,
+              session.classIds.assistedAnnotations,
+            )
           if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
             val inject =
-              it.annotations.annotationsIn(session, session.classIds.injectAnnotations).single()
+              it.resolvedCompilerAnnotationsWithClassIds
+                .annotationsIn(session, session.classIds.injectAnnotations)
+                .single()
             if (KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)) {
-              reporter.reportOn(
-                inject.source,
-                FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
-                context,
-              )
+              reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS)
             }
           }
         }
@@ -373,30 +382,32 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
     else -> {
       reporter.reportOn(
         constructorInjections[0]
-          .annotations
+          .resolvedCompilerAnnotationsWithClassIds
           .annotationsIn(session, session.classIds.injectAnnotations)
           .single()
           .source,
         FirMetroErrors.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS,
-        context,
       )
       onError()
     }
   }
 }
 
-internal fun FirClassLikeSymbol<*>.findInjectConstructors(
+@OptIn(DirectDeclarationsAccess::class)
+internal fun FirClassSymbol<*>.findInjectConstructors(
   session: FirSession,
   checkClass: Boolean = true,
 ): List<FirConstructorSymbol> {
-  if (this !is FirClassSymbol<*>) return emptyList()
   if (classKind != ClassKind.CLASS) return emptyList()
   rawStatus.modality?.let { if (it != Modality.FINAL && it != Modality.OPEN) return emptyList() }
   return if (checkClass && isAnnotatedInject(session)) {
     declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter { it.isPrimary }
   } else {
     declarationSymbols.filterIsInstance<FirConstructorSymbol>().filter {
-      it.annotations.isAnnotatedWithAny(session, session.classIds.injectAnnotations)
+      it.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(
+        session,
+        session.classIds.injectAnnotations,
+      )
     }
   }
 }
@@ -446,21 +457,21 @@ internal inline fun FirClass.validateInjectedClass(
   }
 }
 
-internal fun FirCallableDeclaration.allAnnotations(): Sequence<FirAnnotation> {
+internal fun FirCallableSymbol<*>.allAnnotations(): Sequence<FirAnnotation> {
   return sequence {
-    yieldAll(annotations)
-    if (this@allAnnotations is FirProperty) {
-      yieldAll(backingField?.annotations.orEmpty())
-      getter?.annotations?.let { yieldAll(it) }
-      setter?.annotations?.let { yieldAll(it) }
+    yieldAll(resolvedCompilerAnnotationsWithClassIds)
+    if (this@allAnnotations is FirPropertySymbol) {
+      yieldAll(backingFieldSymbol?.resolvedCompilerAnnotationsWithClassIds.orEmpty())
+      getterSymbol?.resolvedCompilerAnnotationsWithClassIds?.let { yieldAll(it) }
+      setterSymbol?.resolvedCompilerAnnotationsWithClassIds?.let { yieldAll(it) }
     }
   }
 }
 
+context(context: CheckerContext, reporter: DiagnosticReporter)
 internal inline fun FirClass.validateApiDeclaration(
-  context: CheckerContext,
-  reporter: DiagnosticReporter,
   type: String,
+  checkConstructor: Boolean,
   onError: () -> Nothing,
 ) {
   if (isLocal) {
@@ -468,7 +479,6 @@ internal inline fun FirClass.validateApiDeclaration(
       source,
       FirMetroErrors.METRO_DECLARATION_ERROR,
       "$type cannot be local classes.",
-      context,
     )
     onError()
   }
@@ -482,7 +492,6 @@ internal inline fun FirClass.validateApiDeclaration(
             source,
             FirMetroErrors.METRO_DECLARATION_ERROR,
             "$type should be non-sealed abstract classes or interfaces.",
-            context,
           )
           onError()
         }
@@ -502,7 +511,6 @@ internal inline fun FirClass.validateApiDeclaration(
             source,
             FirMetroErrors.METRO_DECLARATION_ERROR,
             "$type should be non-sealed abstract classes or interfaces.",
-            context,
           )
           onError()
         }
@@ -513,7 +521,6 @@ internal inline fun FirClass.validateApiDeclaration(
         source,
         FirMetroErrors.METRO_DECLARATION_ERROR,
         "$type should be non-sealed abstract classes or interfaces.",
-        context,
       )
       onError()
     }
@@ -525,41 +532,34 @@ internal inline fun FirClass.validateApiDeclaration(
       FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
       type,
       allowedVisibilities,
-      context,
     )
     onError()
   }
-  if (isAbstract && classKind == ClassKind.CLASS) {
-    primaryConstructorIfAny(context.session)?.validateVisibility(
-      context,
-      reporter,
-      "$type' primary constructor",
-    ) {
+  if (checkConstructor && isAbstract && classKind == ClassKind.CLASS) {
+    primaryConstructorIfAny(context.session)?.validateVisibility("$type' primary constructor") {
       onError()
     }
   }
 }
 
-internal inline fun FirConstructorSymbol.validateVisibility(
-  context: CheckerContext,
-  reporter: DiagnosticReporter,
-  type: String,
-  onError: () -> Nothing,
-) {
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal inline fun FirConstructorSymbol.validateVisibility(type: String, onError: () -> Nothing) {
   checkVisibility { source, allowedVisibilities ->
     reporter.reportOn(
       source,
       FirMetroErrors.METRO_DECLARATION_VISIBILITY_ERROR,
       type,
       allowedVisibilities,
-      context,
     )
     onError()
   }
 }
 
-internal fun FirBasedSymbol<*>.qualifierAnnotation(session: FirSession): MetroFirAnnotation? =
-  annotations.qualifierAnnotation(session)
+internal fun FirBasedSymbol<*>.qualifierAnnotation(
+  session: FirSession,
+  typeResolver: TypeResolveService? = null,
+): MetroFirAnnotation? =
+  resolvedCompilerAnnotationsWithClassIds.qualifierAnnotation(session, typeResolver)
 
 internal fun List<FirAnnotation>.qualifierAnnotation(
   session: FirSession,
@@ -569,7 +569,7 @@ internal fun List<FirAnnotation>.qualifierAnnotation(
     .annotationAnnotatedWithAny(session, session.classIds.qualifierAnnotations, typeResolver)
 
 internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
-  annotations.mapKeyAnnotation(session)
+  resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotation(session)
 
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
@@ -603,48 +603,13 @@ internal fun Sequence<FirAnnotation>.annotationsAnnotatedWithAny(
     .map { MetroFirAnnotation(it, session, typeResolver) }
 }
 
-internal fun FirAnnotationCall.isQualifier(session: FirSession): Boolean {
-  return isAnnotatedWithAny(session, session.classIds.qualifierAnnotations)
-}
-
-internal fun FirAnnotationCall.isMapKey(session: FirSession): Boolean {
-  return isAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
-}
-
 internal fun FirAnnotationCall.isAnnotatedWithAny(
   session: FirSession,
   names: Set<ClassId>,
 ): Boolean {
   val annotationType = resolvedType as? ConeClassLikeType ?: return false
   val annotationClass = annotationType.toClassSymbol(session) ?: return false
-  return annotationClass.annotations.isAnnotatedWithAny(session, names)
-}
-
-internal fun FirDeclaration.excludeFromJsExport(session: FirSession) {
-  if (!session.moduleData.platform.isJs()) {
-    return
-  }
-  val jsExportIgnore =
-    session.symbolProvider.getClassLikeSymbolByClassId(
-      JsStandardClassIds.Annotations.JsExportIgnore
-    )
-  val jsExportIgnoreAnnotation = jsExportIgnore as? FirRegularClassSymbol ?: return
-  val jsExportIgnoreConstructor =
-    jsExportIgnoreAnnotation.declarationSymbols.firstIsInstanceOrNull<FirConstructorSymbol>()
-      ?: return
-
-  val jsExportIgnoreAnnotationCall = buildAnnotationCall {
-    argumentList = FirEmptyArgumentList
-    annotationTypeRef = buildResolvedTypeRef { coneType = jsExportIgnoreAnnotation.defaultType() }
-    calleeReference = buildResolvedNamedReference {
-      name = jsExportIgnoreAnnotation.name
-      resolvedSymbol = jsExportIgnoreConstructor
-    }
-
-    containingDeclarationSymbol = this@excludeFromJsExport.symbol
-  }
-
-  replaceAnnotations(annotations + jsExportIgnoreAnnotationCall)
+  return annotationClass.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(session, names)
 }
 
 internal fun createDeprecatedHiddenAnnotation(session: FirSession): FirAnnotation =
@@ -717,6 +682,7 @@ internal fun FirClassSymbol<*>.constructType(
 }
 
 // Annoyingly, FirDeclarationOrigin.Plugin does not implement equals()
+// TODO this still doesn't seem to work in 2.2
 internal fun FirBasedSymbol<*>.hasOrigin(vararg keys: GeneratedDeclarationKey): Boolean {
   for (key in keys) {
     if (hasOrigin(key.origin)) return true
@@ -918,19 +884,16 @@ internal fun FirGetClassCall.resolvedClassArgumentTarget(
   if (isResolved) {
     return (argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
   }
+  val source = source ?: return null
 
-  val typeToResolve =
-    buildUserTypeFromQualifierParts(isMarkedNullable = false) {
-      fun visitQualifiers(expression: FirExpression) {
-        if (expression !is FirPropertyAccessExpression) return
-        expression.explicitReceiver?.let { visitQualifiers(it) }
-        expression.qualifierName?.let { part(it) }
-      }
-      visitQualifiers(argument)
+  return typeFromQualifierParts(isMarkedNullable = false, typeResolver, source) {
+    fun visitQualifiers(expression: FirExpression) {
+      if (expression !is FirPropertyAccessExpression) return
+      expression.explicitReceiver?.let { visitQualifiers(it) }
+      expression.qualifierName?.let { part(it) }
     }
-
-  val resolvedArgument = typeResolver.resolveUserType(typeToResolve).coneType
-  return resolvedArgument
+    visitQualifiers(argument)
+  }
 }
 
 internal fun FirAnnotation.classArgument(name: Name, index: Int) =
@@ -1038,4 +1001,100 @@ internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
       }
     }
   renderer.render(type)
+}
+
+context(context: CheckerContext)
+internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> {
+  val collected = mutableListOf<FirRegularClassSymbol>()
+  declaredMemberScope(context).processAllClassifiers { symbol ->
+    if (symbol is FirRegularClassSymbol) {
+      collected += symbol
+    }
+  }
+  return collected
+}
+
+internal fun NestedClassGenerationContext.nestedClasses(): List<FirRegularClassSymbol> {
+  val collected = mutableListOf<FirRegularClassSymbol>()
+  declaredScope?.processAllClassifiers { symbol ->
+    if (symbol is FirRegularClassSymbol) {
+      collected += symbol
+    }
+  }
+  return collected
+}
+
+context(context: CheckerContext)
+internal fun FirClassSymbol<*>.directCallableSymbols(): List<FirCallableSymbol<*>> {
+  val collected = mutableListOf<FirCallableSymbol<*>>()
+  declaredMemberScope(context).processAllCallables { collected += it }
+  return collected
+}
+
+internal fun MemberGenerationContext.directCallableSymbols(): List<FirCallableSymbol<*>> {
+  val collected = mutableListOf<FirCallableSymbol<*>>()
+  this.declaredScope?.processAllCallables { collected += it }
+  return collected
+}
+
+// Build a complete substitution map that includes mappings for ancestor type parameters
+internal fun buildShallowSubstitutionMap(
+  targetClass: FirClassSymbol<*>,
+  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
+  session: FirSession,
+): Map<FirTypeParameterSymbol, ConeKotlinType> {
+  return buildSubstitutionMapInner(targetClass, directMappings, session, full = false)
+}
+
+// Build a complete substitution map that includes mappings for ancestor type parameters
+internal fun buildFullSubstitutionMap(
+  targetClass: FirClassSymbol<*>,
+  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
+  session: FirSession,
+): Map<FirTypeParameterSymbol, ConeKotlinType> {
+  return buildSubstitutionMapInner(targetClass, directMappings, session, full = true)
+}
+
+private fun buildSubstitutionMapInner(
+  targetClass: FirClassSymbol<*>,
+  directMappings: Map<FirTypeParameterSymbol, ConeKotlinType>,
+  session: FirSession,
+  full: Boolean,
+): Map<FirTypeParameterSymbol, ConeKotlinType> {
+  val result = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
+
+  // Start with the direct mappings for the target class
+  result.putAll(directMappings)
+
+  // Walk up the inheritance chain and collect substitutions
+  var currentClass: FirClassSymbol<*>? = targetClass
+  while (currentClass != null) {
+    val superType =
+      currentClass.resolvedSuperTypes.firstOrNull {
+        it.classId != session.builtinTypes.anyType.coneType.classId
+      }
+
+    if (superType is ConeClassLikeType && superType.typeArguments.isNotEmpty()) {
+      val superClass = superType.toRegularClassSymbol(session)
+      if (superClass != null) {
+        // Map ancestor type parameters to their concrete types in the inheritance chain
+        superClass.typeParameterSymbols.zip(superType.typeArguments).forEach { (param, arg) ->
+          if (arg is ConeKotlinTypeProjection) {
+            // Apply existing substitutions to the argument type
+            val substitutor = substitutorByMap(result, session)
+            val substitutedType = substitutor.substituteOrNull(arg.type) ?: arg.type
+            result[param] = substitutedType
+          }
+        }
+      }
+      currentClass = superClass
+    } else if (!full) {
+      // Shallow one-layer
+      break
+    } else {
+      break
+    }
+  }
+
+  return result
 }

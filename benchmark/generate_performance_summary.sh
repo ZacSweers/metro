@@ -72,13 +72,11 @@ calculate_percentage() {
     echo "scale=0; (($value - $baseline) * 100) / $baseline" | bc
 }
 
-# Function to generate performance table for a test type
-generate_performance_table() {
+# Function to collect performance data for a test type
+collect_performance_data() {
     local test_type="$1"
     local timestamp="$2"
     local results_dir="$3"
-    
-    print_status "Generating performance table for $test_type"
     
     local metro_csv="$results_dir/metro_${timestamp}/metro_${test_type}/benchmark.csv"
     local anvil_ksp_csv="$results_dir/anvil_ksp_${timestamp}/anvil_ksp_${test_type}/benchmark.csv"
@@ -148,56 +146,82 @@ generate_performance_table() {
         fi
     fi
     
-    # Format the table
-    echo ""
-    echo "#### $(echo $test_type | sed 's/_/ /g' | sed 's/\b\w/\U&/g')"
-    echo ""
-    echo "(Median times)"
-    echo ""
-    echo "| Metro | Anvil KSP | Anvil Kapt | Kotlin-Inject |"
-    echo "|-------|-----------|------------|---------------|"
+    # Return the data in a structured format
+    echo "${metro_seconds}|${anvil_ksp_seconds}|${anvil_ksp_pct}|${anvil_kapt_seconds}|${anvil_kapt_pct}|${kotlin_inject_seconds}|${kotlin_inject_pct}"
+}
+
+# Function to format a table cell with percentage
+format_cell() {
+    local time="$1"
+    local pct="$2"
     
-    # Build the data row
-    local row="| "
-    
-    if [ -n "$metro_seconds" ]; then
-        row="${row}${metro_seconds}s"
-    else
-        row="${row}N/A"
-    fi
-    row="${row} | "
-    
-    if [ -n "$anvil_ksp_seconds" ]; then
-        row="${row}${anvil_ksp_seconds}s"
-        if [ -n "$anvil_ksp_pct" ] && [ "$anvil_ksp_pct" != "0" ]; then
-            row="${row} (+${anvil_ksp_pct}%)"
+    if [ -n "$time" ]; then
+        local result="${time}s"
+        if [ -n "$pct" ] && [ "$pct" != "0" ]; then
+            result="${result} (+${pct}%)"
         fi
+        echo "$result"
     else
-        row="${row}N/A"
+        echo "N/A"
     fi
-    row="${row} | "
+}
+
+# Function to generate the unified performance table
+generate_performance_table() {
+    local timestamp="$1"
+    local results_dir="$2"
+    local clean_output="${3:-false}"
     
-    if [ -n "$anvil_kapt_seconds" ]; then
-        row="${row}${anvil_kapt_seconds}s"
-        if [ -n "$anvil_kapt_pct" ] && [ "$anvil_kapt_pct" != "0" ]; then
-            row="${row} (+${anvil_kapt_pct}%)"
-        fi
+    if [ "$clean_output" != "true" ]; then
+        print_status "Collecting performance data for all test types"
+    fi
+    
+    # Collect data for all test types
+    local abi_data=$(collect_performance_data "abi_change" "$timestamp" "$results_dir")
+    local non_abi_data=$(collect_performance_data "non_abi_change" "$timestamp" "$results_dir")
+    local raw_data=$(collect_performance_data "raw_compilation" "$timestamp" "$results_dir")
+    
+    # Parse the data
+    IFS='|' read -r abi_metro abi_anvil_ksp abi_anvil_ksp_pct abi_anvil_kapt abi_anvil_kapt_pct abi_kotlin_inject abi_kotlin_inject_pct <<< "$abi_data"
+    IFS='|' read -r non_abi_metro non_abi_anvil_ksp non_abi_anvil_ksp_pct non_abi_anvil_kapt non_abi_anvil_kapt_pct non_abi_kotlin_inject non_abi_kotlin_inject_pct <<< "$non_abi_data"
+    IFS='|' read -r raw_metro raw_anvil_ksp raw_anvil_ksp_pct raw_anvil_kapt raw_anvil_kapt_pct raw_kotlin_inject raw_kotlin_inject_pct <<< "$raw_data"
+    
+    # Generate the table in docs format
+    echo ""
+    echo "_(Median times in seconds)_"
+    echo ""
+    echo "|                      | Metro | Anvil KSP     | Anvil Kapt    | Kotlin-Inject |"
+    echo "|----------------------|-------|---------------|---------------|---------------|"
+    
+    # ABI row
+    echo -n "| **ABI**              | "
+    if [ -n "$abi_metro" ]; then
+        echo -n "${abi_metro}s"
     else
-        row="${row}N/A"
+        echo -n "N/A"
     fi
-    row="${row} | "
+    echo -n "  | $(format_cell "$abi_anvil_ksp" "$abi_anvil_ksp_pct") | $(format_cell "$abi_anvil_kapt" "$abi_anvil_kapt_pct") | $(format_cell "$abi_kotlin_inject" "$abi_kotlin_inject_pct") |"
+    echo ""
     
-    if [ -n "$kotlin_inject_seconds" ]; then
-        row="${row}${kotlin_inject_seconds}s"
-        if [ -n "$kotlin_inject_pct" ] && [ "$kotlin_inject_pct" != "0" ]; then
-            row="${row} (+${kotlin_inject_pct}%)"
-        fi
+    # Non-ABI row
+    echo -n "| **Non-ABI**          | "
+    if [ -n "$non_abi_metro" ]; then
+        echo -n "${non_abi_metro}s"
     else
-        row="${row}N/A"
+        echo -n "N/A"
     fi
-    row="${row} |"
+    echo -n "  | $(format_cell "$non_abi_anvil_ksp" "$non_abi_anvil_ksp_pct") | $(format_cell "$non_abi_anvil_kapt" "$non_abi_anvil_kapt_pct") | $(format_cell "$non_abi_kotlin_inject" "$non_abi_kotlin_inject_pct") |"
+    echo ""
     
-    echo "$row"
+    # Graph processing row
+    echo -n "| **Graph processing** | "
+    if [ -n "$raw_metro" ]; then
+        echo -n "${raw_metro}s"
+    else
+        echo -n "N/A"
+    fi
+    echo -n " | $(format_cell "$raw_anvil_ksp" "$raw_anvil_ksp_pct") | $(format_cell "$raw_anvil_kapt" "$raw_anvil_kapt_pct") | $(format_cell "$raw_kotlin_inject" "$raw_kotlin_inject_pct") |"
+    echo ""
     echo ""
 }
 
@@ -205,19 +229,22 @@ generate_performance_table() {
 main() {
     local timestamp="$1"
     local results_dir="$2"
+    local clean_output="${3:-false}"
     
-    print_status "Generating performance summary for benchmark results from $timestamp"
+    if [ "$clean_output" != "true" ]; then
+        print_status "Generating performance summary for benchmark results from $timestamp"
+    fi
     
     echo "# Benchmark Results Summary"
     echo ""
     echo "Generated from benchmark results: $timestamp"
     
-    # Generate tables for each test type
-    generate_performance_table "abi_change" "$timestamp" "$results_dir"
-    generate_performance_table "non_abi_change" "$timestamp" "$results_dir" 
-    generate_performance_table "raw_compilation" "$timestamp" "$results_dir"
+    # Generate unified table in docs format
+    generate_performance_table "$timestamp" "$results_dir" "$clean_output"
     
-    print_success "Performance summary generated successfully"
+    if [ "$clean_output" != "true" ]; then
+        print_success "Performance summary generated successfully"
+    fi
 }
 
 # Usage check

@@ -43,6 +43,8 @@ dokka {
   }
 }
 
+val ktfmtVersion = libs.versions.ktfmt.get()
+
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
@@ -63,7 +65,7 @@ allprojects {
     }
     kotlin {
       target("src/**/*.kt")
-      ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
@@ -71,7 +73,7 @@ allprojects {
     }
     kotlinGradle {
       target("*.kts")
-      ktfmt(libs.versions.ktfmt.get()).googleStyle().configure { it.setRemoveUnusedImports(true) }
+      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       licenseHeaderFile(

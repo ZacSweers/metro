@@ -20,5 +20,8 @@ internal interface BaseBinding<
   val isTransient: Boolean
     get() = false
 
+  val isImplicitlyDeferrable: Boolean
+    get() = contextualTypeKey.isDeferrable
+
   fun renderLocationDiagnostic(): String
 }

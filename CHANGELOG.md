@@ -4,6 +4,54 @@ Changelog
 **Unreleased**
 --------------
 
+0.4.0
+-----
+
+_2025-06-23_
+
+- **New:** Injected constructors may now be private. This can be useful for scenarios where you want `@Inject`-annotated constructors to only be invokable by Metro's generated code.
+- **New:** If reporting is enabled, write unused bindings diagnostics to `keys-unused-*.txt`.
+- **New:** Support for generic assisted injection.
+- **New:** Support for generic member injection.
+- **New:** Add diagnostic to prohibit type parameters on injected member functions.
+- **Enhancement:** Enable child graphs to depend on parent-scoped dependencies that are unused and not referenced in the parent scope. This involves generating hints for scoped `@Inject` classes and is gated on a new Metro option `enableScopedInjectClassHints`, which is enabled by default.
+- **Enhancement:** Check for context parameters in top-level function injection checker.
+- **Enhancement:** Store member injection info in metro metadata to slightly optimize member injection code gen.
+- **Enhancement:** Avoid writing providers fields in graphs for unused bindings.
+- **Enhancement:** Improve missing binding trace originating from root member injectors.
+- **Fix:** Fix support for generic injected constructor parameters.
+- **Fix:** Fix support for repeated contributes annotations by moving contribution binding function generation to IR.
+- **Fix:** Ensure scope/qualifier annotation changes on constructor-injected classes dirty consuming graphs in incremental compilation.
+- **Fix:** Report member injection dependencies when looking up constructor-injected classes during graph population.
+- **Fix:** Disable IR hint generation on JS targets too, as these now have the same limitation as native/WASM targets in Kotlin 2.2. Pending upstream support for generating top-level FIR declarations in [KT-75865](https://youtrack.jetbrains.com/issue/KT-75865).
+- **Fix:** Ensure private provider function annotations are propagated across compilation boundaries.
+- **Fix:** Substitute copied FIR type parameter symbols with symbols from their target functions.
+- **Fix:** Improved support for generic member injection.
+- **Fix:** Propagate qualifiers on graph member injector functions.
+- **Fix:** Fix support for requesting `MembersInjector` types.
+- [internal] Report IR errors through `IrDiagnosticReporter`.
+- [internal] Significantly refactor + simplify IR parameter handling.
+- Fix publishing Apple native targets in snapshots.
+- Update to Kotlin `2.2.0`.
+- Update Gradle plugin to target Kotlin language version to `1.9` (requires Gradle 8.3+).
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar), [@gabrielittner](https://github.com/gabrielittner), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
+0.3.8
+-----
+
+_2025-06-16_
+
+- **Enhancement:** Disambiguate `MetroContribution` class names based on scope to better support IC when changing scopes.
+- **Enhancement:** Minimize deferred types when breaking cycles.
+- **Fix:** Disallow injection of `Lazy<T>` where `T` is an `@AssistedFactory`-annotated class.
+- **Fix:** Don't short-circuit assisted injection validation if only an accessor exists.
+- **Fix:** Allow cycles of assisted factories to their target classes.
+- Update shaded okio to `3.13.0`.
+- Update atomicfu to `0.28.0`.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar), [@bnorm](https://github.com/bnorm), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+
 0.3.7
 -----
 

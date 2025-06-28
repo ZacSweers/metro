@@ -941,41 +941,36 @@ class AggregationTest : MetroCompilerTest() {
 
       val altGraphClass = classLoader.loadClass("test.AltGraph")
       val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
-      altGraphClass.assertHasContributedSupertype(
-        "test.ContributedInterface",
-        contributionNumber = 2,
-      )
+      altGraphClass.assertHasContributedSupertype("test.ContributedInterface", scope = "AltScope")
       assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
 
       val thirdGraphClass = classLoader.loadClass("test.ThirdGraph")
       val thirdGraph = thirdGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
       thirdGraphClass.assertHasContributedSupertype(
         "test.ContributedInterface",
-        contributionNumber = 3,
+        scope = "ThirdScope",
       )
       assertThat(thirdGraph.callProperty<String>("thirdVal")).isEqualTo("Hello, world!")
     }
   }
 
   /**
-   * @param contributionNumber Represents which nested class is expected. Each nested contribution
-   *   class is suffixed with a number when it's created depending on how many scopes are
-   *   contributed to. E.g.
+   * @param scope Represents which scope name class is expected. Each nested contribution class is
+   *   suffixed with the scope it's contributing to
    *
    * ```
-   * @ContributesBinding(AppScope::class) // This maps to $$MetroContribution (technically number 1)
-   * @ContributesBinding(AltScope::class) // This maps to $$MetroContribution2
+   * @ContributesBinding(AppScope::class) // This maps to $$MetroContributionToAppScope
+   * @ContributesBinding(AltScope::class) // This maps to $$MetroContribution2ToAltScope
    * @Inject
    * class ContributingClass : SomeInterface
    * ```
    */
   private fun Class<*>.assertHasContributedSupertype(
     superTypeFqName: String,
-    contributionNumber: Int = 1,
+    scope: String = "AppScope",
   ) {
-    val contributionSuffix = if (contributionNumber == 1) "" else contributionNumber.toString()
     assertThat(allSupertypes().map { it.name })
-      .containsExactly("$superTypeFqName$$\$MetroContribution$contributionSuffix", superTypeFqName)
+      .containsExactly("$superTypeFqName$$\$MetroContributionTo${scope}", superTypeFqName)
   }
 
   @Test
@@ -1012,10 +1007,7 @@ class AggregationTest : MetroCompilerTest() {
 
       val altGraphClass = classLoader.loadClass("test.AltGraph")
       val altGraph = altGraphClass.generatedMetroGraphClass().createGraphWithNoArgs()
-      altGraphClass.assertHasContributedSupertype(
-        "test.ContributedInterface",
-        contributionNumber = 2,
-      )
+      altGraphClass.assertHasContributedSupertype("test.ContributedInterface", scope = "AltScope")
       assertThat(altGraph.callProperty<String>("altVal")).isEqualTo("Hello, world!")
     }
   }
@@ -1848,7 +1840,7 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: AltScope.kt:24:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
+          e: AltScope.kt:24:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
 
               test.ContributedInterface is requested at
                   [test.AltGraph] test.AltGraph#contributedInterface
@@ -2898,7 +2890,7 @@ class AggregationTest : MetroCompilerTest() {
       ),
     ) {
       val graph = ExampleGraph
-      graph.assertHasContributedSupertype("test.ContributedInterface")
+      graph.assertHasContributedSupertype("test.ContributedInterface", scope = "UserScope")
     }
   }
 
@@ -3043,7 +3035,7 @@ class AggregationTest : MetroCompilerTest() {
       )
     ) {
       val graph = ExampleGraph
-      assertThat(graph.assertHasContributedSupertype("test.ContributedInterface2"))
+      graph.assertHasContributedSupertype("test.ContributedInterface2")
     }
   }
 

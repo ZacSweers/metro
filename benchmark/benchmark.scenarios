@@ -144,6 +144,50 @@ kotlin_inject_anvil_raw_compilation {
 }
 
 # ====================================
+# CLEAN BUILD SCENARIOS
+# ====================================
+
+metro_clean_build {
+    title = "Metro - Clean Build"
+    warm-ups = 2
+    iterations = 3
+    
+    tasks = ["assemble"]
+    cleanup-tasks = ["clean"]
+    clear-build-cache-before = BUILD
+}
+
+anvil_ksp_clean_build {
+    title = "Anvil KSP - Clean Build"
+    warm-ups = 2
+    iterations = 3
+    
+    tasks = ["assemble"]
+    cleanup-tasks = ["clean"]
+    clear-build-cache-before = BUILD
+}
+
+anvil_kapt_clean_build {
+    title = "Anvil KAPT - Clean Build"
+    warm-ups = 2
+    iterations = 3
+    
+    tasks = ["assemble"]
+    cleanup-tasks = ["clean"]
+    clear-build-cache-before = BUILD
+}
+
+kotlin_inject_anvil_clean_build {
+    title = "Kotlin-inject + Anvil - Clean Build"
+    warm-ups = 2
+    iterations = 3
+    
+    tasks = ["assemble"]
+    cleanup-tasks = ["clean"]
+    clear-build-cache-before = BUILD
+}
+
+# ====================================
 # USAGE INSTRUCTIONS
 # ====================================
 

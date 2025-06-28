@@ -81,7 +81,8 @@ class BindingGraphTest {
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
 
-    val exception = assertFailsWith<IllegalStateException> { bindingGraph.seal() }
+    val exception =
+      assertFailsWith<IllegalStateException> { bindingGraph.seal(shrinkUnusedBindings = false) }
     assertThat(exception)
       .hasMessageThat()
       .contains(
@@ -110,7 +111,7 @@ class BindingGraphTest {
 
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
-    bindingGraph.seal()
+    bindingGraph.seal(shrinkUnusedBindings = false)
 
     with(bindingGraph) {
       assertThat(a.dependsOn(b)).isTrue()
@@ -131,7 +132,7 @@ class BindingGraphTest {
     bindingGraph.tryPut(aBinding)
     bindingGraph.tryPut(bBinding)
     bindingGraph.tryPut(bindingC)
-    bindingGraph.seal()
+    bindingGraph.seal(shrinkUnusedBindings = false)
 
     with(bindingGraph) {
       // Direct dependency
@@ -348,7 +349,11 @@ private fun StringTypeKey.toBinding(vararg dependencies: StringTypeKey): StringB
 
 private fun newStringBindingGraph(
   graph: String = "AppGraph",
-  computeBinding: (StringContextualTypeKey) -> Set<StringBinding> = { _ -> emptySet() },
+  computeBinding:
+    (StringContextualTypeKey, Set<StringTypeKey>, StringBindingStack) -> Set<StringBinding> =
+    { _, _, _ ->
+      emptySet()
+    },
 ): StringGraph {
   return StringGraph(
     newBindingStack = { StringBindingStack(graph) },
@@ -376,7 +381,7 @@ private fun buildChainedGraph(
 
 internal class StringGraphBuilder {
   private val constructorInjectedTypes = mutableMapOf<StringTypeKey, StringBinding>()
-  private val graph = newStringBindingGraph { contextKey ->
+  private val graph = newStringBindingGraph { contextKey, _, _ ->
     setOfNotNull(constructorInjectedTypes[contextKey.typeKey])
   }
 
@@ -437,6 +442,6 @@ internal class StringGraphBuilder {
   }
 
   fun sealAndReturn(): Pair<StringGraph, TopoSortResult<StringTypeKey>> {
-    return graph to graph.seal()
+    return graph to graph.seal(shrinkUnusedBindings = false)
   }
 }

@@ -1,0 +1,41 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+  ],
+  ignorePresets: [
+    // Ensure we get the latest version and are not pinned to old versions.
+    'workarounds:javaLTSVersions',
+  ],
+  customManagers: [
+    // Update .java-version file and libs.versions.jdk with the latest JDK version.
+    {
+      customType: 'regex',
+      fileMatch: [
+        '\\.java-version$',
+      ],
+      matchStrings: [
+        '(?<currentValue>.*)\\n',
+      ],
+      datasourceTemplate: 'java-version',
+      depNameTemplate: 'java',
+      // Only write the major version.
+      extractVersionTemplate: '^(?<version>\\d+)',
+    },
+    {
+      customType: 'regex',
+      fileMatch: ['gradle/libs\\.versions\\.toml'],
+      matchStrings: ['^jdk\\s*=\\s*"(?<currentValue>\\d+)"'],
+      datasourceTemplate: 'java-version',
+      depNameTemplate: 'java',
+      extractVersionTemplate: '^(?<version>\\d+)',
+    }
+  ],
+  packageRules: [
+    {
+      groupName: 'JDK version',
+      matchDepNames: ['java'],
+      matchDatasources: ['java-version'],
+    }
+  ]
+}

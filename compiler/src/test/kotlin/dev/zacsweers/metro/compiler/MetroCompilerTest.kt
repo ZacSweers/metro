@@ -105,6 +105,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, generateHintProperties)
               MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
                 processor.option(entry.raw.cliOption, transformProvidersToPrivate)
+              MetroOption.SHRINK_UNUSED_BINDINGS ->
+                processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.LOGGING -> {
@@ -230,6 +232,9 @@ abstract class MetroCompilerTest {
               }
               MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
                 processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
+              }
+              MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
+                processor.option(entry.raw.cliOption, enableScopedInjectClassHints)
               }
             }
           yield(option)

@@ -161,6 +161,11 @@ Child graphs then contain a _superset_ of bindings they can inject, including bo
 
 Child graphs also implicitly inherit their parents' _scopes_.
 
+!!! tip "Hoisting unused scoped class injections in parent graphs"
+    In some cases, there are scoped bindings that are unused in the parent graph but _are_ used in child graphs. Due to the detached nature of graph extensions, these bindings by default end up scoped to the child. To enforce that these bindings are scoped and held by the parent, Metro generates hints for these classes and discovers them during graph processing by default. You can disable this via the `enableScopedInjectClassHints` property in the Gradle DSL.
+    
+    See https://github.com/ZacSweers/metro/issues/377 for more details.
+
 ### Contributed Graph Extensions
 
 `@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
