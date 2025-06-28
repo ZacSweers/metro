@@ -76,7 +76,7 @@ androidx-lint-gradle = {  module = "androidx.lint:lint-gradle", version.ref = "a
 androidx-material3 = "com.google.android.material:material:1.12.0"
 androidx-navigationCompose = "androidx.navigation:navigation-compose:2.9.0"
 androidx-viewmodel = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.1"
-androidx-work = "androidx.work:work-runtime:2.10.1"
+androidx-work = "androidx.work:work-runtime:2.10.2"
 
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
