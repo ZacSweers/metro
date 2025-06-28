@@ -11,8 +11,8 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
-import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
 
 @Inject
 class SampleWorker(context: Context, @Assisted params: WorkerParameters) :
@@ -24,6 +24,10 @@ class SampleWorker(context: Context, @Assisted params: WorkerParameters) :
   }
 
   @WorkerKey(SampleWorker::class)
-  @ContributesIntoMap(AppScope::class, binding = binding<MetroWorkerFactory.WorkerInstanceFactory<*>>())
-  @AssistedFactory abstract class Factory : MetroWorkerFactory.WorkerInstanceFactory<SampleWorker>
+  @ContributesIntoMap(
+    AppScope::class,
+    binding = binding<MetroWorkerFactory.WorkerInstanceFactory<*>>(),
+  )
+  @AssistedFactory
+  abstract class Factory : MetroWorkerFactory.WorkerInstanceFactory<SampleWorker>
 }
