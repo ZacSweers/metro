@@ -15,15 +15,15 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
 @Inject
-class SampleWorker(context: Context, @Assisted params: WorkerParameters) :
+class SecondWorker(context: Context, @Assisted params: WorkerParameters) :
   CoroutineWorker(context, params) {
   override suspend fun doWork(): Result {
-    println("sample doWork running " + this.inputData.getString("workName"))
+    println("second doWork running " + this.inputData.getString("workName"))
     delay(1.seconds)
     return Result.success()
   }
 
-  @WorkerKey(SampleWorker::class)
+  @WorkerKey(SecondWorker::class)
   @ContributesIntoMap(AppScope::class, binding = binding<MetroWorkerFactory.WorkerInstanceFactory<*>>())
-  @AssistedFactory abstract class Factory : MetroWorkerFactory.WorkerInstanceFactory<SampleWorker>
+  @AssistedFactory abstract class Factory : MetroWorkerFactory.WorkerInstanceFactory<SecondWorker>
 }

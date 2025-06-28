@@ -30,5 +30,13 @@ class MetroApp : Application(), Configuration.Provider {
         .build()
 
     appGraph.workManager.enqueue(workRequest)
+
+    val secondWorkRequest =
+      OneTimeWorkRequestBuilder<SecondWorker>()
+        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        .setInputData(Data.Builder().putString("workName", "onCreate").build())
+        .build()
+
+    appGraph.workManager.enqueue(secondWorkRequest)
   }
 }

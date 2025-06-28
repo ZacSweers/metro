@@ -40,11 +40,6 @@ interface AppGraph {
 
   val workerFactory: MetroWorkerFactory
 
-  @WorkerKey(SampleWorker::class)
-  @IntoMap
-  @Binds
-  val SampleWorker.Factory.bind: MetroWorkerFactory.WorkerInstanceFactory<*>
-
   @DependencyGraph.Factory
   fun interface Factory {
     fun create(@Provides application: Application): AppGraph
