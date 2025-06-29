@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.synthetic.isVisibleOutside
 
 /** Simple holder with resolved annotations to save us lookups. */
 // TODO cache these in a transformer context?
@@ -22,6 +23,15 @@ internal class MetroSimpleFunction(
     return callableId.toString().compareTo(other.callableId.toString())
   }
 }
+
+internal val MetroSimpleFunction.isAccessorCandidate: Boolean
+  get() {
+    return ir.visibility.isVisibleOutside() &&
+      ir.regularParameters.isEmpty() &&
+      !annotations.isBinds &&
+      !annotations.isProvides &&
+      !annotations.isMultibinds
+  }
 
 internal fun IrMetroContext.metroFunctionOf(
   ir: IrSimpleFunction,

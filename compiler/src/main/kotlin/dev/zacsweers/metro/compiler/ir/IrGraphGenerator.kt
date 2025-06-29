@@ -90,7 +90,7 @@ import org.jetbrains.kotlin.name.ClassId
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   contributionData: IrContributionData,
-  private val dependencyGraphNodesByClass: MutableMap<ClassId, DependencyGraphNode>,
+  private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
   private val node: DependencyGraphNode,
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
@@ -274,7 +274,7 @@ internal class IrGraphGenerator(
             }
             .map {
               val metroFunction = metroFunctionOf(it)
-              val contextKey = IrContextualTypeKey.from(metroContext, it)
+              val contextKey = IrContextualTypeKey.from(it)
               metroFunction to contextKey
             }
 
@@ -563,7 +563,7 @@ internal class IrGraphGenerator(
               serialized,
             )
           }
-          dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail]?.let { it.proto = graphProto }
+          dependencyGraphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
         }
 
         // Expose getters for provider and instance fields and expose them to metadata
@@ -930,7 +930,7 @@ internal class IrGraphGenerator(
         Input type keys:
           - ${paramsToMap.map { it.typeKey }.joinToString()}
         Binding parameters (${function.kotlinFqName}):
-          - ${function.regularParameters.map { IrContextualTypeKey.from(metroContext,it).typeKey }.joinToString()}
+          - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
@@ -1205,7 +1205,7 @@ internal class IrGraphGenerator(
               )
             }
 
-        val getterContextKey = IrContextualTypeKey.from(metroContext, binding.getter)
+        val getterContextKey = IrContextualTypeKey.from(binding.getter)
 
         val invokeGetter =
           irInvoke(

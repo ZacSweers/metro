@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Don't try to read private accessors of `@Includes` parameters.
+
 0.4.0
 -----
 

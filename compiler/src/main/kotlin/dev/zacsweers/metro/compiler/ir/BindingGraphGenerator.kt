@@ -193,14 +193,13 @@ internal class BindingGraphGenerator(
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
       // Only expose the binding if it's a bound instance or extended graph. Included containers are
       // not directly available
-      if (creatorParam.isBindsInstance || creatorParam.isExtends) {
-        val paramTypeKey = creatorParam.typeKey
-        graph.addBinding(
-          paramTypeKey,
-          Binding.BoundInstance(creatorParam, creatorParam.ir),
-          bindingStack,
-        )
-      }
+      // TODO hide includes dependencies? Or only include includes if annotated @BindingContainer?
+      val paramTypeKey = creatorParam.typeKey
+      graph.addBinding(
+        paramTypeKey,
+        Binding.BoundInstance(creatorParam, creatorParam.ir),
+        bindingStack,
+      )
     }
 
     // Traverse all parent graph supertypes to create binding aliases as needed
@@ -364,7 +363,7 @@ internal class BindingGraphGenerator(
               providerFieldAccessorsByName.getValue(
                 "${providerField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
               )
-            val contextualTypeKey = IrContextualTypeKey.from(this, accessor.ir)
+            val contextualTypeKey = IrContextualTypeKey.from(accessor.ir)
             val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
             if (existingBinding != null) {
               // If it's a graph type we can just proceed, can happen with common ancestors
@@ -393,7 +392,7 @@ internal class BindingGraphGenerator(
               instanceFieldAccessorsByName.getValue(
                 "${instanceField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
               )
-            val contextualTypeKey = IrContextualTypeKey.from(this, accessor.ir)
+            val contextualTypeKey = IrContextualTypeKey.from(accessor.ir)
             val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
             if (existingBinding != null) {
               // If it's a graph type we can just proceed, can happen with common ancestors

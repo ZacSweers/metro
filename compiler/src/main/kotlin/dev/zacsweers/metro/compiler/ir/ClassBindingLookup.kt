@@ -126,7 +126,7 @@ internal class ClassBindingLookup(
         // Mark as wrapped for convenience in graph resolution to note that this whole node is
         // inherently deferrable
         val targetContextualTypeKey =
-          IrContextualTypeKey.from(metroContext, function, wrapInProvider = true)
+          IrContextualTypeKey.from(function, wrapInProvider = true)
         bindings +=
           Binding.Assisted(
             type = irClass,

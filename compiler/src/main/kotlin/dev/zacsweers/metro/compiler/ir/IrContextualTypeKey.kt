@@ -80,8 +80,8 @@ internal class IrContextualTypeKey(
 
   // TODO cache these in DependencyGraphTransformer or shared transformer data
   companion object {
+    context(context: IrMetroContext)
     fun from(
-      context: IrMetroContext,
       function: IrSimpleFunction,
       type: IrType = function.returnType,
       wrapInProvider: Boolean = false,
@@ -102,8 +102,8 @@ internal class IrContextualTypeKey(
       )
     }
 
+    context(context: IrMetroContext)
     fun from(
-      context: IrMetroContext,
       parameter: IrValueParameter,
       type: IrType = parameter.type,
     ): IrContextualTypeKey =
