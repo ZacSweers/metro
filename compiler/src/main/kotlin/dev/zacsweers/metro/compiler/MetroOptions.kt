@@ -413,6 +413,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
+  CUSTOM_BINDING_CONTAINER(
+    RawMetroOption(
+      name = "custom-binding-container",
+      defaultValue = emptySet(),
+      valueDescription = "BindingContainer annotations",
+      description = "BindingContainer annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
   ENABLE_DAGGER_ANVIL_INTEROP(
     RawMetroOption.boolean(
       name = "enable-dagger-anvil-interop",
@@ -516,6 +527,7 @@ public data class MetroOptions(
   val customQualifierAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_QUALIFIER.raw.defaultValue.expectAs(),
   val customScopeAnnotations: Set<ClassId> = MetroOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
+  val customBindingContainerAnnotations: Set<ClassId> = MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   val enableDaggerAnvilInterop: Boolean =
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
   val enableScopedInjectClassHints: Boolean =
@@ -548,6 +560,7 @@ public data class MetroOptions(
       val customProvidesAnnotations = mutableSetOf<ClassId>()
       val customQualifierAnnotations = mutableSetOf<ClassId>()
       val customScopeAnnotations = mutableSetOf<ClassId>()
+      val customBindingContainerAnnotations = mutableSetOf<ClassId>()
       val customContributesIntoSetAnnotations = mutableSetOf<ClassId>()
 
       for (entry in MetroOption.entries) {
@@ -637,6 +650,7 @@ public data class MetroOptions(
           MetroOption.CUSTOM_QUALIFIER ->
             customQualifierAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_BINDING_CONTAINER -> customBindingContainerAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
             customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
 
@@ -676,6 +690,7 @@ public data class MetroOptions(
           customProvidesAnnotations = customProvidesAnnotations,
           customQualifierAnnotations = customQualifierAnnotations,
           customScopeAnnotations = customScopeAnnotations,
+          customBindingContainerAnnotations = customScopeAnnotations,
           customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
         )
 

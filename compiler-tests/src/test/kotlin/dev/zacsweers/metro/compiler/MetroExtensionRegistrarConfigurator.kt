@@ -137,6 +137,11 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("dagger/Lazy"))
             }
           },
+        customBindingContainerAnnotations = buildSet {
+          if (addDaggerAnnotations) {
+            add(ClassId.fromString("dagger/Module"))
+          }
+        }
         // TODO other dagger annotations/types not yet implemented
       )
     val classIds = ClassIds.fromOptions(options)

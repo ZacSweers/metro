@@ -21,6 +21,13 @@ open annotation class dev.zacsweers.metro/AssistedFactory : kotlin/Annotation { 
     constructor <init>() // dev.zacsweers.metro/AssistedFactory.<init>|<init>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/BindingContainer : kotlin/Annotation { // dev.zacsweers.metro/BindingContainer|null[0]
+    constructor <init>(kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/BindingContainer.<init>|<init>(kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
+
+    final val includes // dev.zacsweers.metro/BindingContainer.includes|{}includes[0]
+        final fun <get-includes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/BindingContainer.includes.<get-includes>|<get-includes>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/Binds : kotlin/Annotation { // dev.zacsweers.metro/Binds|null[0]
     constructor <init>() // dev.zacsweers.metro/Binds.<init>|<init>(){}[0]
 }
@@ -91,12 +98,14 @@ open annotation class dev.zacsweers.metro/ContributesTo : kotlin/Annotation { //
 }
 
 open annotation class dev.zacsweers.metro/DependencyGraph : kotlin/Annotation { // dev.zacsweers.metro/DependencyGraph|null[0]
-    constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Boolean = ...) // dev.zacsweers.metro/DependencyGraph.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Boolean){}[0]
+    constructor <init>(kotlin.reflect/KClass<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Boolean = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/DependencyGraph.<init>|<init>(kotlin.reflect.KClass<*>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Boolean;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
     final val additionalScopes // dev.zacsweers.metro/DependencyGraph.additionalScopes|{}additionalScopes[0]
         final fun <get-additionalScopes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.additionalScopes.<get-additionalScopes>|<get-additionalScopes>(){}[0]
     final val excludes // dev.zacsweers.metro/DependencyGraph.excludes|{}excludes[0]
         final fun <get-excludes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.excludes.<get-excludes>|<get-excludes>(){}[0]
+    final val includes // dev.zacsweers.metro/DependencyGraph.includes|{}includes[0]
+        final fun <get-includes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.includes.<get-includes>|<get-includes>(){}[0]
     final val isExtendable // dev.zacsweers.metro/DependencyGraph.isExtendable|{}isExtendable[0]
         final fun <get-isExtendable>(): kotlin/Boolean // dev.zacsweers.metro/DependencyGraph.isExtendable.<get-isExtendable>|<get-isExtendable>(){}[0]
     final val scope // dev.zacsweers.metro/DependencyGraph.scope|{}scope[0]
