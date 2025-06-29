@@ -8,6 +8,7 @@ interface AppGraph {
   }
 }
 
+@BindingContainer
 class StringBindings(private val value: String) {
   @Provides
   fun provideString(): String {
