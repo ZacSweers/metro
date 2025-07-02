@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
+
 0.4.0
 -----
 
