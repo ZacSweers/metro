@@ -1,0 +1,7 @@
+/MissingMemberInjectionShouldFailBinding1.kt:(638,662): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: Implementation
+
+    Implementation is injected at
+        [TestGraph.$$ContributedSubscopeGraph] SubscopeGraph#bindImplementation(…, instance)
+
+Similar bindings:
+  - Base (Supertype). Type: Alias. Source: file:///private/var/folders/bz/s5xhyqyx239gh1f18dc2l3d80000gn/T/dev.zacsweers.metro.compiler.IrDiagnosticTestGeneratedtestMissingMemberInjectionShouldFailBinding1/kotlin-sources/main/MissingMemberInjectionShouldFailBinding1.kt:26:3

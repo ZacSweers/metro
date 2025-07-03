@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
+- Report the original location of declarations in fake overrides in error reporting.
 
 0.4.0
 -----

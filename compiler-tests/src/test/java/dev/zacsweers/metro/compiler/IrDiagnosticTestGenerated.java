@@ -22,6 +22,18 @@ public class IrDiagnosticTestGenerated extends AbstractIrDiagnosticTest {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/ir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
   }
 
+  @Test
+  @TestMetadata("MissingMemberInjectionShouldFailBinding1.kt")
+  public void testMissingMemberInjectionShouldFailBinding1() {
+    runTest("compiler-tests/src/test/data/diagnostic/ir/MissingMemberInjectionShouldFailBinding1.kt");
+  }
+
+  @Test
+  @TestMetadata("MissingMemberInjectionShouldFailBinding2.kt")
+  public void testMissingMemberInjectionShouldFailBinding2() {
+    runTest("compiler-tests/src/test/data/diagnostic/ir/MissingMemberInjectionShouldFailBinding2.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/ir/cycles")
   @TestDataPath("$PROJECT_ROOT")

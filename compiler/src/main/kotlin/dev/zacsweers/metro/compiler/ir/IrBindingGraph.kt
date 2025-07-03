@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -13,7 +14,10 @@ import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
@@ -24,6 +28,7 @@ import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -412,8 +417,34 @@ internal class IrBindingGraph(
     }
   }
 
+  /**
+   * We always want to report the original declaration for overridable nodes, as fake overrides
+   * won't necessarily have source that is reportable.
+   */
+  @Suppress("UNCHECKED_CAST")
+  private fun <T : IrDeclaration> T.originalDeclarationIfOverride(): T {
+    return when (this) {
+      is IrValueParameter -> {
+        val index = indexInParameters
+        // Need to check if the parent is a fakeOverride function or property setter
+        val parent = parent.expectAs<IrFunction>()
+        val originalParent = parent.originalDeclarationIfOverride()
+        return originalParent.parameters[index] as T
+      }
+      is IrSimpleFunction if isFakeOverride -> {
+        overriddenSymbolsSequence().last().owner as T
+      }
+      is IrProperty if isFakeOverride -> {
+        overriddenSymbolsSequence().last().owner as T
+      }
+      else -> this
+    }
+  }
+
   private fun onError(message: String, stack: IrBindingStack): Nothing {
-    val declaration = stack.lastEntryOrGraph ?: node.reportableSourceGraphDeclaration
+    val declaration =
+      stack.lastEntryOrGraph?.originalDeclarationIfOverride()
+        ?: node.reportableSourceGraphDeclaration
     if (declaration.fileOrNull == null) {
       // TODO move to diagnostic reporter in 2.2.20 https://youtrack.jetbrains.com/issue/KT-78280
       metroContext.logVerbose(
