@@ -4,8 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
-- Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
-- Report the original location of declarations in fake overrides in error reporting.
+- **Enhancement:** Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
+- **Fix:** Report the original location of declarations in fake overrides in error reporting.
+- **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 
 0.4.0
 -----
