@@ -4,4 +4,5 @@
         [TestGraph.$$ContributedSubscopeGraph] SubscopeGraph#bindImplementation(…, instance)
 
 Similar bindings:
-  - Base (Supertype). Type: Alias. Source: file:///private/var/folders/bz/s5xhyqyx239gh1f18dc2l3d80000gn/T/dev.zacsweers.metro.compiler.IrDiagnosticTestGeneratedtestMissingMemberInjectionShouldFailBinding1/kotlin-sources/main/MissingMemberInjectionShouldFailBinding1.kt:26:3
+  - Base (Supertype). Type: Alias. Source: MissingMemberInjectionShouldFailBinding1.kt:26:3 
+
