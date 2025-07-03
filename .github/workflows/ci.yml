@@ -60,7 +60,7 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Check root project
-        run: ./gradlew check --continue --quiet
+        run: ./gradlew check
 
       - name: (Fail-only) Upload reports
         if: failure()
