@@ -23,6 +23,12 @@ public class IrDiagnosticTestGenerated extends AbstractIrDiagnosticTest {
   }
 
   @Test
+  @TestMetadata("MembersInjectorParameterWithNoDefaultShouldError.kt")
+  public void testMembersInjectorParameterWithNoDefaultShouldError() {
+    runTest("compiler-tests/src/test/data/diagnostic/ir/MembersInjectorParameterWithNoDefaultShouldError.kt");
+  }
+
+  @Test
   @TestMetadata("MissingMemberInjectionShouldFailBinding1.kt")
   public void testMissingMemberInjectionShouldFailBinding1() {
     runTest("compiler-tests/src/test/data/diagnostic/ir/MissingMemberInjectionShouldFailBinding1.kt");
