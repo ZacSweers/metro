@@ -77,6 +77,8 @@ tasks.withType<Test> {
 
   useJUnitPlatform()
 
+  testLogging { showStandardStreams = true }
+
   setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib")
   setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8")
   setLibraryProperty("kotlin.reflect.jar.path", "kotlin-reflect")
