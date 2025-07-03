@@ -22,6 +22,12 @@ public class IrDiagnosticTestGenerated extends AbstractIrDiagnosticTest {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/ir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
   }
 
+  @Test
+  @TestMetadata("KClassAndClassAreNotInterchangeable.kt")
+  public void testKClassAndClassAreNotInterchangeable() {
+    runTest("compiler-tests/src/test/data/diagnostic/ir/KClassAndClassAreNotInterchangeable.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/ir/cycles")
   @TestDataPath("$PROJECT_ROOT")
