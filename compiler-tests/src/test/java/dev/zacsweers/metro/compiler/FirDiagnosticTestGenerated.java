@@ -65,6 +65,12 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("BindsMayNotHaveScopes.kt")
+    public void testBindsMayNotHaveScopes() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsMayNotHaveScopes.kt");
+    }
+
+    @Test
     @TestMetadata("BindsNonThisReturningBodiesShouldError_AbstractClass.kt")
     public void testBindsNonThisReturningBodiesShouldError_AbstractClass() {
       runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsNonThisReturningBodiesShouldError_AbstractClass.kt");

@@ -72,6 +72,15 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
+    if (annotations.isBinds && annotations.scope != null) {
+      reporter.reportOn(
+        annotations.scope.fir.source ?: source,
+        FirMetroErrors.BINDS_ERROR,
+        "@Binds declarations may not have scopes.",
+      )
+      return
+    }
+
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
       ?.let {
