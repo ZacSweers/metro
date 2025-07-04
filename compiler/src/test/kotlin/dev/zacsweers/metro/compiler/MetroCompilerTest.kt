@@ -209,6 +209,10 @@ abstract class MetroCompilerTest {
                 if (customScopeAnnotations.isEmpty()) continue
                 processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
               }
+              MetroOption.CUSTOM_BINDING_CONTAINER -> {
+                if (customBindsAnnotations.isEmpty()) continue
+                processor.option(entry.raw.cliOption, customBindsAnnotations.joinToString(":"))
+              }
               MetroOption.CUSTOM_CONTRIBUTES_INTO_SET -> {
                 if (customContributesIntoSetAnnotations.isEmpty()) continue
                 processor.option(

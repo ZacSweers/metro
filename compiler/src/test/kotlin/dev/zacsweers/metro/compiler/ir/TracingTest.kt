@@ -46,7 +46,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
-          ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
           ExampleGraph,Compute SCCs
@@ -91,8 +90,6 @@ class TracingTest : MetroCompilerTest() {
                   ▶ Build binding graph
                   ◀ Build binding graph (xx ms)
                   ▶ Validate binding graph
-                    ▶ Check self-cycles
-                    ◀ Check self-cycles (xx ms)
                     ▶ Validate graph
                       ▶ seal graph
                         ▶ Populate bindings
@@ -181,7 +178,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
-          ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
           ExampleGraph,Compute SCCs
@@ -205,7 +201,6 @@ class TracingTest : MetroCompilerTest() {
           ChildGraph,Build DependencyGraphNode
           ChildGraph,Implement creator functions
           ChildGraph,Build binding graph
-          ChildGraph,Check self-cycles
           ChildGraph,Populate bindings
           ChildGraph,Build adjacency list
           ChildGraph,Compute SCCs
@@ -250,8 +245,6 @@ class TracingTest : MetroCompilerTest() {
                   ▶ Build binding graph
                   ◀ Build binding graph (xx ms)
                   ▶ Validate binding graph
-                    ▶ Check self-cycles
-                    ◀ Check self-cycles (xx ms)
                     ▶ Validate graph
                       ▶ seal graph
                         ▶ Populate bindings
@@ -298,8 +291,6 @@ class TracingTest : MetroCompilerTest() {
                   ▶ Build binding graph
                   ◀ Build binding graph (xx ms)
                   ▶ Validate binding graph
-                    ▶ Check self-cycles
-                    ◀ Check self-cycles (xx ms)
                     ▶ Validate graph
                       ▶ seal graph
                         ▶ Populate bindings
@@ -388,7 +379,6 @@ class TracingTest : MetroCompilerTest() {
           ExampleGraph,Build DependencyGraphNode
           ExampleGraph,Implement creator functions
           ExampleGraph,Build binding graph
-          ExampleGraph,Check self-cycles
           ExampleGraph,Populate bindings
           ExampleGraph,Build adjacency list
           ExampleGraph,Compute SCCs
@@ -413,7 +403,6 @@ class TracingTest : MetroCompilerTest() {
           $$ContributedChildGraph,Build DependencyGraphNode
           $$ContributedChildGraph,Implement creator functions
           $$ContributedChildGraph,Build binding graph
-          $$ContributedChildGraph,Check self-cycles
           $$ContributedChildGraph,Populate bindings
           $$ContributedChildGraph,Build adjacency list
           $$ContributedChildGraph,Compute SCCs
@@ -458,8 +447,6 @@ class TracingTest : MetroCompilerTest() {
                   ▶ Build binding graph
                   ◀ Build binding graph (xx ms)
                   ▶ Validate binding graph
-                    ▶ Check self-cycles
-                    ◀ Check self-cycles (xx ms)
                     ▶ Validate graph
                       ▶ seal graph
                         ▶ Populate bindings
@@ -508,8 +495,6 @@ class TracingTest : MetroCompilerTest() {
                   ▶ Build binding graph
                   ◀ Build binding graph (xx ms)
                   ▶ Validate binding graph
-                    ▶ Check self-cycles
-                    ◀ Check self-cycles (xx ms)
                     ▶ Validate graph
                       ▶ seal graph
                         ▶ Populate bindings

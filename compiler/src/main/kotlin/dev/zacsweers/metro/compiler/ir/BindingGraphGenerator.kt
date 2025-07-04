@@ -191,9 +191,15 @@ internal class BindingGraphGenerator(
     }
 
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
-      // Only expose the binding if it's a bound instance or extended graph. Included containers are
-      // not directly available
-      if (creatorParam.isBindsInstance || creatorParam.isExtends) {
+      // Only expose the binding if it's a bound instance, extended graph, or target is annotated
+      // @BindingContainer
+      val shouldExposeBinding =
+        creatorParam.isBindsInstance ||
+          creatorParam.isExtends ||
+          creatorParam.typeKey.type
+            .rawTypeOrNull()
+            ?.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations) == true
+      if (shouldExposeBinding) {
         val paramTypeKey = creatorParam.typeKey
         graph.addBinding(
           paramTypeKey,
@@ -364,7 +370,7 @@ internal class BindingGraphGenerator(
               providerFieldAccessorsByName.getValue(
                 "${providerField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
               )
-            val contextualTypeKey = IrContextualTypeKey.from(this, accessor.ir)
+            val contextualTypeKey = IrContextualTypeKey.from(accessor.ir)
             val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
             if (existingBinding != null) {
               // If it's a graph type we can just proceed, can happen with common ancestors
@@ -393,7 +399,7 @@ internal class BindingGraphGenerator(
               instanceFieldAccessorsByName.getValue(
                 "${instanceField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
               )
-            val contextualTypeKey = IrContextualTypeKey.from(this, accessor.ir)
+            val contextualTypeKey = IrContextualTypeKey.from(accessor.ir)
             val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
             if (existingBinding != null) {
               // If it's a graph type we can just proceed, can happen with common ancestors

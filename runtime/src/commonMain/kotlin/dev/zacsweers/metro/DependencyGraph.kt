@@ -138,6 +138,8 @@ import kotlin.reflect.KClass
  *   defined).
  * @property isExtendable If enabled, marks this graph as available for extension and generates
  *   extra metadata about this graph's available bindings for child graphs to read.
+ * @property bindingContainers Optional list of included binding containers. See the doc on
+ *   [BindingContainer] for more details.
  */
 @Target(AnnotationTarget.CLASS)
 public annotation class DependencyGraph(
@@ -145,6 +147,7 @@ public annotation class DependencyGraph(
   val additionalScopes: Array<KClass<*>> = [],
   val excludes: Array<KClass<*>> = [],
   val isExtendable: Boolean = false,
+  val bindingContainers: Array<KClass<*>> = [],
 ) {
   /**
    * Graph factories can be declared as a single nested declaration within the target graph to

@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.anno
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrVisitor
 
 // Scan IR symbols in this compilation
@@ -50,6 +51,14 @@ internal class IrContributionVisitor(context: IrMetroContext) :
           }
       data.addContribution(scope, declaration.defaultType)
       return
+    }
+
+    if (options.enableScopedInjectClassHints) {
+      val isConstructorInjected =
+        declaration.isAnnotatedWithAny(symbols.classIds.injectAnnotations) ||
+          declaration.primaryConstructor?.isAnnotatedWithAny(symbols.classIds.injectAnnotations) ==
+            true
+      if (isConstructorInjected) data.addScopedInject(declaration)
     }
 
     if (

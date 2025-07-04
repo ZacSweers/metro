@@ -29,6 +29,7 @@ public class ClassIds(
   customProvidesAnnotations: Set<ClassId> = emptySet(),
   customQualifierAnnotations: Set<ClassId> = emptySet(),
   customScopeAnnotations: Set<ClassId> = emptySet(),
+  customBindingContainerAnnotations: Set<ClassId> = emptySet(),
 ) {
   public companion object {
     public fun fromOptions(options: MetroOptions): ClassIds =
@@ -57,6 +58,7 @@ public class ClassIds(
         customProvidesAnnotations = options.customProvidesAnnotations,
         customQualifierAnnotations = options.customQualifierAnnotations,
         customScopeAnnotations = options.customScopeAnnotations,
+        customBindingContainerAnnotations = options.customBindingContainerAnnotations,
       )
   }
 
@@ -94,6 +96,9 @@ public class ClassIds(
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Qualifier")) + customQualifierAnnotations
   internal val scopeAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Scope")) + customScopeAnnotations
+  internal val bindingContainerAnnotations =
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindingContainer")) +
+      customBindingContainerAnnotations
 
   internal val bindsAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Binds")) + customBindsAnnotations

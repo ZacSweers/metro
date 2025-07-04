@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
@@ -15,29 +14,37 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.includedClasses
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
+import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
+import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
+import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
+import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
-import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
+import java.util.Optional
+import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -58,7 +65,6 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
@@ -67,47 +73,117 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by context {
+internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroContext by context {
 
-  private val references = mutableMapOf<FqName, CallableReference>()
-  private val generatedFactories = mutableMapOf<FqName, ProviderFactory>()
-  private val generatedFactoriesByClass = mutableMapOf<FqName, MutableList<ProviderFactory>>()
+  private val references = mutableMapOf<CallableId, CallableReference>()
+  private val generatedFactories = mutableMapOf<CallableId, ProviderFactory>()
 
-  fun visitClass(declaration: IrClass): List<ProviderFactory> {
+  /**
+   * A cache of binding container fqnames to a [BindingContainer] representation of them. If the key
+   * is present but the value is an empty optional, it means this is just not a binding container.
+   */
+  private val cache = mutableMapOf<FqName, Optional<BindingContainer>>()
+
+  fun visitClass(declaration: IrClass): BindingContainer? {
     val declarationFqName = declaration.kotlinFqName
 
-    generatedFactoriesByClass[declarationFqName]?.let {
-      return it
+    cache[declarationFqName]?.let {
+      return it.getOrNull()
+    }
+
+    if (declaration.isExternalParent) {
+      // Look up the external class metadata
+      val metadataDeclaration = declaration.metroGraphOrNull ?: declaration
+      val metroMetadata = metadataDeclaration.metroMetadata
+
+      if (metroMetadata == null) {
+        val requireMetadata =
+          declaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations) ||
+            declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
+        if (requireMetadata) {
+          val message =
+            "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
+              "another module. Did you run the Metro compiler plugin on this module?"
+          error(message)
+          // TODO kotlin 2.2.20
+          //  diagnosticReporter
+          //    .at(declaration)
+          //    .report(
+          //      MetroIrErrors.METRO_ERROR,
+          //      message,
+          //    )
+        }
+        cache[declarationFqName] = Optional.empty()
+        return null
+      }
+
+      metroMetadata.dependency_graph?.let { containerMetadata ->
+        val providerFactories =
+          containerMetadata.provider_factory_classes
+            .map { ClassId.fromString(it) }
+            .associate { classId ->
+              val factoryClass = pluginContext.referenceClass(classId)!!.owner
+              val providerFactory = externalProviderFactoryFor(factoryClass)
+              providerFactory.callableId to providerFactory
+            }
+
+        val includedBindingContainers =
+          containerMetadata.included_binding_containers.mapToSet { ClassId.fromString(it) }
+        val container = BindingContainer(declaration, includedBindingContainers, providerFactories)
+        // Cache the results
+        cache[declarationFqName] = Optional.of(container)
+        generatedFactories.putAll(providerFactories)
+        return container
+      }
     }
 
     // Skip fake overrides, we care only about the original declaration because those have
     // default values
-    declaration.declarations
-      .filterNot { it.isFakeOverride }
-      .forEach { nestedDeclaration ->
-        when (nestedDeclaration) {
-          is IrProperty -> visitProperty(nestedDeclaration)
-          is IrSimpleFunction -> visitFunction(nestedDeclaration)
-          is IrClass -> {
-            if (nestedDeclaration.isCompanionObject) {
+    val providerFactories =
+      declaration.declarations
+        .asSequence()
+        .filterNot { it.isFakeOverride }
+        .flatMap { nestedDeclaration ->
+          when (nestedDeclaration) {
+            is IrProperty -> sequenceOf(visitProperty(nestedDeclaration))
+            is IrSimpleFunction -> sequenceOf(visitFunction(nestedDeclaration))
+            is IrClass if (nestedDeclaration.isCompanionObject) -> {
               // Include companion object refs
-              visitClass(nestedDeclaration)
+              visitClass(nestedDeclaration)?.providerFactories?.values?.asSequence()
+                ?: emptySequence()
             }
+            else -> emptySequence()
           }
         }
-      }
+        .filterNotNull()
+        .associateBy { it.callableId }
+
+    val includes =
+      declaration
+        .annotationsIn(symbols.classIds.bindingContainerAnnotations)
+        .singleOrNull()
+        ?.includedClasses()
+        ?.mapNotNullToSet { it.classType.rawTypeOrNull()?.classIdOrFail }
+
+    if (includes.isNullOrEmpty() && providerFactories.isEmpty()) {
+      cache[declarationFqName] = Optional.empty()
+      return null
+    }
+
+    val container = BindingContainer(declaration, includes.orEmpty(), providerFactories)
 
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
     // providers to consume here even if they are private.
-    val generatedFactories = generatedFactoriesByClass[declarationFqName].orEmpty()
     val shouldGenerateMetadata =
-      generatedFactories.isNotEmpty() &&
+      (providerFactories.isNotEmpty() || !includes.isNullOrEmpty()) &&
         !declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations)
+
     if (shouldGenerateMetadata) {
       val metroMetadata =
         MetroMetadata(
@@ -116,85 +192,52 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
             DependencyGraphProto(
               is_graph = false,
               provider_factory_classes =
-                generatedFactories.map { it.clazz.classIdOrFail.asString() }.sorted(),
+                providerFactories.values.map { it.clazz.classIdOrFail.asString() }.sorted(),
+              included_binding_containers = includes.orEmpty().map { it.asString() },
             ),
         )
-      val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
-      pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-        declaration,
-        PLUGIN_ID,
-        serialized,
-      )
+      declaration.metroMetadata = metroMetadata
     }
-    return generatedFactories
+
+    cache[declarationFqName] = Optional.of(container)
+    generatedFactories.putAll(providerFactories)
+    return container
   }
 
-  private fun visitProperty(declaration: IrProperty) {
+  private fun visitProperty(declaration: IrProperty): ProviderFactory? {
     val annotations = metroAnnotationsOf(declaration)
     if (!annotations.isProvides) {
-      return
+      return null
     }
 
-    getOrLookupFactoryClass(getOrPutCallableReference(declaration, annotations))
+    return getOrLookupProviderFactory(getOrPutCallableReference(declaration, annotations))
   }
 
-  private fun visitFunction(declaration: IrSimpleFunction) {
+  private fun visitFunction(declaration: IrSimpleFunction): ProviderFactory? {
     val annotations = metroAnnotationsOf(declaration)
     if (!annotations.isProvides) {
-      return
+      return null
     }
-    getOrLookupFactoryClass(
+    return getOrLookupProviderFactory(
       getOrPutCallableReference(declaration, declaration.parentAsClass, annotations)
     )
   }
 
-  fun getOrLookupFactoryClass(binding: Binding.Provided): ProviderFactory? {
+  fun getOrLookupProviderFactory(binding: Binding.Provided): ProviderFactory? {
     // Eager cache check using the factory's callable ID
-    val fqName = binding.providerFactory.callableId.asSingleFqName()
-    generatedFactories[fqName]?.let {
+    generatedFactories[binding.providerFactory.callableId]?.let {
       return it
     }
 
-    // If it's from another module, look up its already-generated factory
-    if (binding.providerFactory.clazz.isExternalParent) {
-      val providerFactory = externalProviderFactoryFor(binding.providerFactory.clazz)
-      generatedFactories[fqName] = providerFactory
-      generatedFactoriesByClass.getOrPut(fqName, ::mutableListOf).add(providerFactory)
-      return providerFactory
-    }
+    // If the parent hasn't been checked before, visit it and look again
+    visitClass(binding.providerFactory.clazz.parentAsClass)
 
-    // For factories in the current module, we need to get or create the factory
-    val function =
-      if (binding.providerFactory.isPropertyAccessor) {
-        metroContext.pluginContext
-          .referenceProperties(binding.providerFactory.callableId)
-          .firstOrNull()
-          ?.owner
-          ?.getter
-      } else {
-        metroContext.pluginContext
-          .referenceFunctions(binding.providerFactory.callableId)
-          .firstOrNull()
-          ?.owner
-      }
-
-    checkNotNull(function) {
-      "Could not find (getter) function for ${binding.providerFactory.callableId}"
-    }
-
-    val reference =
-      getOrPutCallableReference(
-        function,
-        binding.providerFactory.clazz.parentAsClass,
-        binding.providerFactory.clazz.metroAnnotations(symbols.classIds),
-      )
-
-    return getOrLookupFactoryClass(reference)
+    // If it's still not present after, there's nothing here
+    return generatedFactories[binding.providerFactory.callableId]
   }
 
-  @OptIn(DeprecatedForRemovalCompilerApi::class)
-  fun getOrLookupFactoryClass(reference: CallableReference): ProviderFactory {
-    generatedFactories[reference.fqName]?.let {
+  fun getOrLookupProviderFactory(reference: CallableReference): ProviderFactory {
+    generatedFactories[reference.callableId]?.let {
       return it
     }
 
@@ -207,7 +250,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
         it.origin == Origins.ProviderFactoryClassDeclaration && it.classIdOrFail == generatedClassId
       }
         ?: error(
-          "No expected factory class generated for ${reference.fqName}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
+          "No expected factory class generated for ${reference.callableId}. Report this bug with a repro case at https://github.com/zacsweers/metro/issues/new"
         )
 
     val ctor = factoryCls.primaryConstructor!!
@@ -313,11 +356,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
     factoryCls.dumpToMetroLog()
 
-    generatedFactories[reference.fqName] = providerFactory
-    generatedFactoriesByClass
-      .getOrPut(reference.graphParent.kotlinFqName, ::mutableListOf)
-      .add(providerFactory)
-
+    generatedFactories[reference.callableId] = providerFactory
     return providerFactory
   }
 
@@ -326,17 +365,17 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     parent: IrClass,
     annotations: MetroAnnotations<IrAnnotation>,
   ): CallableReference {
-    return references.getOrPut(function.kotlinFqName) {
-      val typeKey = IrContextualTypeKey.from(this, function).typeKey
+    return references.getOrPut(function.callableId) {
+      val typeKey = IrContextualTypeKey.from(function).typeKey
       val isPropertyAccessor = function.isPropertyAccessor
-      val fqName =
+      val callableId =
         if (isPropertyAccessor) {
-          function.propertyIfAccessor.expectAs<IrProperty>().fqNameWhenAvailable!!
+          function.propertyIfAccessor.expectAs<IrProperty>().callableId
         } else {
-          function.kotlinFqName
+          function.callableId
         }
       CallableReference(
-        fqName = fqName,
+        callableId = callableId,
         name = function.name,
         isPropertyAccessor = isPropertyAccessor,
         parameters = function.parameters(this),
@@ -353,19 +392,19 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     property: IrProperty,
     annotations: MetroAnnotations<IrAnnotation> = metroAnnotationsOf(property),
   ): CallableReference {
-    val fqName = property.fqNameWhenAvailable ?: error("No FqName for property ${property.name}")
-    return references.getOrPut(fqName) {
+    val callableId = property.callableId
+    return references.getOrPut(callableId) {
       val getter =
         property.getter
           ?: error(
-            "No getter found for property $fqName. Note that field properties are not supported"
+            "No getter found for property $callableId. Note that field properties are not supported"
           )
 
-      val typeKey = IrContextualTypeKey.from(this, getter).typeKey
+      val typeKey = IrContextualTypeKey.from(getter).typeKey
 
       val parent = property.parentAsClass
       return CallableReference(
-        fqName = fqName,
+        callableId = callableId,
         name = property.name,
         isPropertyAccessor = true,
         parameters = property.getter?.parameters(this) ?: Parameters.empty(),
@@ -438,7 +477,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
   }
 
   internal class CallableReference(
-    val fqName: FqName,
+    val callableId: CallableId,
     val name: Name,
     val isPropertyAccessor: Boolean,
     val parameters: Parameters,
@@ -481,7 +520,7 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
 
     private val cachedToString by lazy {
       buildString {
-        append(fqName.asString())
+        append(callableId.asSingleFqName().asString())
         if (!isPropertyAccessor) {
           append('(')
           for (parameter in parameters.allParameters) {
@@ -505,58 +544,10 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
   }
 
   fun factoryClassesFor(parent: IrClass): List<Pair<IrTypeKey, ProviderFactory>> {
-    // Eager cache check
-    val parentFqName = parent.kotlinFqName
-    generatedFactoriesByClass[parentFqName]?.let { cachedFactories ->
-      return cachedFactories.map { it.typeKey to it }
+    val container = visitClass(parent)
+    return container?.providerFactories.orEmpty().values.map { providerFactory ->
+      providerFactory.typeKey to providerFactory
     }
-
-    val metadataBytes =
-      if (parent.isExternalParent) {
-        // Look up the external class metadata
-        pluginContext.metadataDeclarationRegistrar.getCustomMetadataExtension(parent, PLUGIN_ID)
-      } else {
-        null
-      }
-
-    val providerFactories: List<ProviderFactory> =
-      if (metadataBytes == null) {
-        if (parent.isAnnotatedWithAny(symbols.dependencyGraphAnnotations)) {
-          if (parent.isExternalParent) {
-            error(
-              "No metadata found for ${parent.kotlinFqName} from " +
-                "another module. This is likely a bug in the Metro compiler."
-            )
-          } else {
-            // Current module, not a dependency graph, unvisited
-            visitClass(parent)
-          }
-        } else {
-          if (parent.isExternalParent) {
-            // Just no data in this
-            return emptyList()
-          } else {
-            // Current module, a dependency graph, unvisited
-            visitClass(parent)
-          }
-        }
-      } else {
-        val metadata = MetroMetadata.ADAPTER.decode(metadataBytes)
-        metadata.dependency_graph
-          ?.provider_factory_classes
-          .orEmpty()
-          .map { ClassId.fromString(it) }
-          .map { classId ->
-            val factoryClass = pluginContext.referenceClass(classId)!!.owner
-            externalProviderFactoryFor(factoryClass)
-          }
-          .also { providerFactories ->
-            // Cache the results
-            generatedFactoriesByClass[parent.kotlinFqName] = providerFactories.toMutableList()
-          }
-      }
-
-    return providerFactories.map { providerFactory -> providerFactory.typeKey to providerFactory }
   }
 
   fun externalProviderFactoryFor(factoryCls: IrClass): ProviderFactory {
@@ -574,3 +565,10 @@ internal class ProvidesTransformer(context: IrMetroContext) : IrMetroContext by 
     )
   }
 }
+
+internal class BindingContainer(
+  val ir: IrClass,
+  val includes: Set<ClassId>,
+  /** Mapping of provider factories by their callable id fq name */
+  val providerFactories: Map<CallableId, ProviderFactory>,
+)

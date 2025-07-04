@@ -63,6 +63,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParametersContainer
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -715,6 +716,22 @@ internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
     ?: return emptySet()
 }
 
+internal fun IrConstructorCall.includesArgument() =
+  getValueArgument(Symbols.Names.includes)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.includedClasses(): Set<IrClassReference> {
+  return includesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
+    ?: return emptySet()
+}
+
+internal fun IrConstructorCall.bindingContainersArgument() =
+  getValueArgument(Symbols.Names.bindingContainers)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.bindingContainerClasses(): Set<IrClassReference> {
+  return bindingContainersArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
+    ?: return emptySet()
+}
+
 internal fun IrConstructorCall.requireScope(): ClassId {
   return scopeOrNull() ?: error("No scope found for ${dumpKotlinLike()}")
 }
@@ -937,12 +954,19 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 }
 
 context(context: IrMetroContext)
-internal fun IrFunction.stubExpressionBody() =
-  context.pluginContext.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
+internal fun IrFunction.stubExpressionBody(): IrBlockBody {
+  return context.pluginContext.createIrBuilder(symbol).run {
+    irExprBodySafe(symbol, stubExpression())
+  }
+}
 
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.stubExpression() =
-  irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString("Never called")))
+internal fun IrBuilderWithScope.stubExpression(): IrMemberAccessExpression<*> {
+  return irInvoke(
+    callee = context.symbols.stdlibErrorFunction,
+    args = listOf(irString("Never called")),
+  )
+}
 
 internal fun IrPluginContext.buildAnnotation(
   symbol: IrSymbol,

@@ -20,7 +20,7 @@ import dev.zacsweers.metro.provider
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-class ProvidesTransformerTest : MetroCompilerTest() {
+class BindingContainerTransformerTest : MetroCompilerTest() {
 
   @Test
   fun `simple function provider`() {

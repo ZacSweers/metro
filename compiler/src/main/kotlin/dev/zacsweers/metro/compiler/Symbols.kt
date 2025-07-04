@@ -131,7 +131,6 @@ internal class Symbols(
     }
   }
 
-  // TODO replace with StandardClassIds
   object ClassIds {
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
     val GraphFactoryInvokeFunctionMarkerClass =
@@ -172,6 +171,7 @@ internal class Symbols(
     val additionalScopes = StringNames.ADDITIONAL_SCOPES.asName()
     val asContribution = "asContribution".asName()
     val binding = StringNames.BINDING.asName()
+    val bindingContainers = "bindingContainers".asName()
     val boundType = StringNames.BOUND_TYPE.asName()
     val contributed = StringNames.CONTRIBUTED.asName()
     val create = StringNames.CREATE.asName()
@@ -183,6 +183,7 @@ internal class Symbols(
     val excludes = StringNames.EXCLUDES.asName()
     val factory = StringNames.FACTORY.asName()
     val ignoreQualifier = StringNames.IGNORE_QUALIFIER.asName()
+    val includes = "includes".asName()
     val injectMembers = StringNames.INJECT_MEMBERS.asName()
     val instance = "instance".asName()
     val invoke = StringNames.INVOKE.asName()
