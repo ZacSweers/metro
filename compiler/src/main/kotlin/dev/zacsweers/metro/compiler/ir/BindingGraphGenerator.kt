@@ -191,15 +191,22 @@ internal class BindingGraphGenerator(
     }
 
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
-      // Only expose the binding if it's a bound instance or extended graph. Included containers are
-      // not directly available
-      // TODO hide includes dependencies? Or only include includes if annotated @BindingContainer?
-      val paramTypeKey = creatorParam.typeKey
-      graph.addBinding(
-        paramTypeKey,
-        Binding.BoundInstance(creatorParam, creatorParam.ir),
-        bindingStack,
-      )
+      // Only expose the binding if it's a bound instance, extended graph, or target is annotated
+      // @BindingContainer
+      val shouldExposeBinding =
+        creatorParam.isBindsInstance ||
+          creatorParam.isExtends ||
+          creatorParam.typeKey.type
+            .rawTypeOrNull()
+            ?.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations) == true
+      if (shouldExposeBinding) {
+        val paramTypeKey = creatorParam.typeKey
+        graph.addBinding(
+          paramTypeKey,
+          Binding.BoundInstance(creatorParam, creatorParam.ir),
+          bindingStack,
+        )
+      }
     }
 
     // Traverse all parent graph supertypes to create binding aliases as needed

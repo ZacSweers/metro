@@ -103,10 +103,7 @@ internal class IrContextualTypeKey(
     }
 
     context(context: IrMetroContext)
-    fun from(
-      parameter: IrValueParameter,
-      type: IrType = parameter.type,
-    ): IrContextualTypeKey =
+    fun from(parameter: IrValueParameter, type: IrType = parameter.type): IrContextualTypeKey =
       type.asContextualTypeKey(
         context = context,
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },

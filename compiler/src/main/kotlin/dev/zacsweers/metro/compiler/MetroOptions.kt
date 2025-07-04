@@ -527,7 +527,8 @@ public data class MetroOptions(
   val customQualifierAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_QUALIFIER.raw.defaultValue.expectAs(),
   val customScopeAnnotations: Set<ClassId> = MetroOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
-  val customBindingContainerAnnotations: Set<ClassId> = MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
+  val customBindingContainerAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   val enableDaggerAnvilInterop: Boolean =
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
   val enableScopedInjectClassHints: Boolean =
@@ -650,7 +651,8 @@ public data class MetroOptions(
           MetroOption.CUSTOM_QUALIFIER ->
             customQualifierAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
-          MetroOption.CUSTOM_BINDING_CONTAINER -> customBindingContainerAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_BINDING_CONTAINER ->
+            customBindingContainerAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
             customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
 

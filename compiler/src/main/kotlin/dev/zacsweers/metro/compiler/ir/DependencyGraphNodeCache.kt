@@ -1,3 +1,5 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Origins
@@ -8,7 +10,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
-import dev.zacsweers.metro.compiler.ir.transformers.ProvidesTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
@@ -43,7 +45,7 @@ import org.jetbrains.kotlin.name.ClassId
 
 internal class DependencyGraphNodeCache(
   metroContext: IrMetroContext,
-  private val providesTransformer: ProvidesTransformer,
+  private val bindingContainerTransformer: BindingContainerTransformer,
 ) : IrMetroContext by metroContext {
 
   // Keyed by the source declaration
@@ -83,9 +85,10 @@ internal class DependencyGraphNodeCache(
     private val bindingStack: IrBindingStack,
     private val parentTracer: Tracer,
     private val metroGraph: IrClass? = null,
-    dependencyGraphAnno: IrConstructorCall? = null,
+    cachedDependencyGraphAnno: IrConstructorCall? = null,
   ) : IrMetroContext by nodeCache {
-    private val providesTransformer: ProvidesTransformer = nodeCache.providesTransformer
+    private val bindingContainerTransformer: BindingContainerTransformer =
+      nodeCache.bindingContainerTransformer
     private val accessors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val scopes = mutableSetOf<IrAnnotation>()
@@ -98,7 +101,7 @@ internal class DependencyGraphNodeCache(
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
 
     private val dependencyGraphAnno =
-      dependencyGraphAnno
+      cachedDependencyGraphAnno
         ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
@@ -109,17 +112,18 @@ internal class DependencyGraphNodeCache(
     private val isExtendable =
       dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
 
-    private fun computeScopes() {
-      scopes += buildSet {
-        val scope =
+    private fun computeDeclaredScopes(): Set<IrAnnotation> {
+      return buildSet {
+        val implicitScope =
           dependencyGraphAnno?.getValueArgument(Symbols.Names.scope)?.let { scopeArg ->
+            // Create a synthetic SingleIn(scope)
             pluginContext.createIrBuilder(graphDeclaration.symbol).run {
               irCall(symbols.metroSingleInConstructor).apply { arguments[0] = scopeArg }
             }
           }
 
-        if (scope != null) {
-          add(IrAnnotation(scope))
+        if (implicitScope != null) {
+          add(IrAnnotation(implicitScope))
           dependencyGraphAnno
             .getValueArgument(Symbols.Names.additionalScopes)
             ?.expectAs<IrVararg>()
@@ -135,35 +139,7 @@ internal class DependencyGraphNodeCache(
               add(IrAnnotation(newAnno))
             }
         }
-      }
-
-      val scopesOnType = graphDeclaration.scopeAnnotations()
-      scopes += scopesOnType
-      for ((i, type) in supertypes.withIndex()) {
-        val clazz = type.classOrFail.owner
-
-        if (i != 0) {
-          // We don't need to do a double lookup
-          scopes += clazz.scopeAnnotations()
-        }
-
-        providerFactories += providesTransformer.factoryClassesFor(clazz)
-      }
-
-      if (isExtendable) {
-        // Copy inherited scopes onto this graph for faster lookups downstream
-        // Note this is only for scopes inherited from supertypes, not from extended parent graphs
-        val inheritedScopes = (scopes - scopesOnType).map { it.ir }
-        if (graphDeclaration.origin === Origins.ContributedGraph) {
-          // If it's a contributed graph, just add it directly as these are not visible to metadata
-          // anyway
-          graphDeclaration.annotations += inheritedScopes
-        } else {
-          pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
-            graphDeclaration,
-            inheritedScopes,
-          )
-        }
+        addAll(graphDeclaration.scopeAnnotations())
       }
     }
 
@@ -191,33 +167,60 @@ internal class DependencyGraphNodeCache(
             }
         }
 
-      creator
-        ?.parameters
-        ?.regularParameters
-        .orEmpty()
-        .filter { it.isIncludes || it.isExtends }
-        .forEach {
-          val type = it.typeKey.type.rawType()
-          val node =
-            bindingStack.withEntry(
-              IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
-            ) {
-              nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
-            }
-          if (it.isExtends) {
-            extendedGraphNodes[it.typeKey] = node
-          } else {
-            // it.isIncludes
-            includedGraphNodes[it.typeKey] = node
+      creator?.parameters?.regularParameters.orEmpty().forEach {
+        if (it.isBindsInstance) return@forEach
 
-            // Add any included graph provider factories
+        val type = it.typeKey.type.rawType()
+
+        checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
+        val node =
+          bindingStack.withEntry(
+            IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
+          ) {
+            nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
+          }
+
+        if (it.isExtends) {
+          extendedGraphNodes[it.typeKey] = node
+        } else {
+          // it.isIncludes
+          includedGraphNodes[it.typeKey] = node
+
+          // Add any included graph provider factories IFF it's a binding container
+          val isBindingContainer =
+            type.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
+          if (isBindingContainer) {
             providerFactories += node.providerFactories
             // Add any binds
             bindsFunctions += node.bindsFunctions
           }
         }
+      }
 
       return creator
+    }
+
+    private fun checkGraphSelfCycle(
+      graphDeclaration: IrClass,
+      graphTypeKey: IrTypeKey,
+      bindingStack: IrBindingStack,
+    ) {
+      if (bindingStack.entryFor(graphTypeKey) != null) {
+        // TODO dagger doesn't appear to error for this case to model off of
+        val message = buildString {
+          if (bindingStack.entries.size == 1) {
+            // If there's just one entry, specify that it's a self-referencing cycle for clarity
+            appendLine("Graph dependency cycle detected! The below graph depends on itself.")
+          } else {
+            appendLine("Graph dependency cycle detected!")
+          }
+          appendBindingStack(bindingStack, short = false)
+        }
+        diagnosticReporter
+          .at(graphDeclaration)
+          .report(MetroIrErrors.GRAPH_DEPENDENCY_CYCLE, message)
+        exitProcessing()
+      }
     }
 
     fun build(): DependencyGraphNode {
@@ -329,7 +332,35 @@ internal class DependencyGraphNodeCache(
         }
       }
 
-      computeScopes()
+      val declaredScopes = computeDeclaredScopes()
+      scopes += declaredScopes
+
+      for ((i, type) in supertypes.withIndex()) {
+        val clazz = type.classOrFail.owner
+
+        // Index 0 is this class, which we've already computed above
+        if (i != 0) {
+          scopes += clazz.scopeAnnotations()
+        }
+
+        providerFactories += bindingContainerTransformer.factoryClassesFor(clazz)
+      }
+
+      if (isExtendable) {
+        // Copy inherited scopes onto this graph for faster lookups downstream
+        // Note this is only for scopes inherited from supertypes, not from extended parent graphs
+        val inheritedScopes = (scopes - declaredScopes).map { it.ir }
+        if (graphDeclaration.origin === Origins.ContributedGraph) {
+          // If it's a contributed graph, just add it directly as these are not visible to metadata
+          // anyway
+          graphDeclaration.annotations += inheritedScopes
+        } else {
+          pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(
+            graphDeclaration,
+            inheritedScopes,
+          )
+        }
+      }
 
       val creator = buildCreator()
 
@@ -437,7 +468,12 @@ internal class DependencyGraphNodeCache(
 
       // TODO only if annotated @BindingContainer?
       // TODO need to look up accessors and binds functions
-      providerFactories += providesTransformer.factoryClassesFor(graphDeclaration)
+      if (!isGraph) {
+        providerFactories +=
+          bindingContainerTransformer.factoryClassesFor(
+            graphDeclaration.metroGraphOrNull ?: graphDeclaration
+          )
+      }
 
       accessors +=
         accessorsToCheck
@@ -484,7 +520,7 @@ internal class DependencyGraphNodeCache(
             graphProto.provider_factory_classes
               .map { classId ->
                 val clazz = pluginContext.referenceClass(ClassId.fromString(classId))!!.owner
-                providesTransformer.externalProviderFactoryFor(clazz)
+                bindingContainerTransformer.externalProviderFactoryFor(clazz)
               }
               .map { it.typeKey to it }
 
@@ -536,7 +572,8 @@ internal class DependencyGraphNodeCache(
                 pluginContext.referenceClass(ClassId.fromString(graphClassId))
                   ?: error("Could not find graph class $graphClassId.")
               val typeKey = IrTypeKey(clazz.defaultType)
-              val node = nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              val node =
+                nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
               typeKey to node
             }
           )
@@ -547,7 +584,8 @@ internal class DependencyGraphNodeCache(
                 pluginContext.referenceClass(ClassId.fromString(graphClassId))
                   ?: error("Could not find graph class $graphClassId.")
               val typeKey = IrTypeKey(clazz.defaultType)
-              val node = nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
+              val node =
+                nodeCache.getOrComputeDependencyGraphNode(clazz.owner, bindingStack, parentTracer)
               typeKey to node
             }
           )

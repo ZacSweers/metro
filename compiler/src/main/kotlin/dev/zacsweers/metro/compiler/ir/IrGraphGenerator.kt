@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -16,8 +15,8 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.ProvidesTransformer
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.BindsCallableId
@@ -97,7 +96,7 @@ internal class IrGraphGenerator(
   private val sealResult: IrBindingGraph.BindingGraphResult,
   private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
-  private val providesTransformer: ProvidesTransformer,
+  private val bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
@@ -556,12 +555,9 @@ internal class IrGraphGenerator(
 
           // IR-generated types do not have metadata
           if (graphClass.origin !== Origins.ContributedGraph) {
-            val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
-            pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-              graphClass,
-              PLUGIN_ID,
-              serialized,
-            )
+            // Write the metadata to the metroGraph class, as that's what downstream readers are
+            // looking at and is the most complete view
+            graphClass.metroMetadata = metroMetadata
           }
           dependencyGraphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
         }
@@ -1062,7 +1058,11 @@ internal class IrGraphGenerator(
 
       is Binding.Provided -> {
         val factoryClass =
-          providesTransformer.getOrLookupFactoryClass(binding)?.clazz ?: return stubExpression()
+          bindingContainerTransformer.getOrLookupProviderFactory(binding)?.clazz
+            ?: error(
+              "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
+            )
+
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {

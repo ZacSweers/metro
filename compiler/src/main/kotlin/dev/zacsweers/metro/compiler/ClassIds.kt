@@ -97,7 +97,8 @@ public class ClassIds(
   internal val scopeAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Scope")) + customScopeAnnotations
   internal val bindingContainerAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindingContainer")) + customBindingContainerAnnotations
+    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindingContainer")) +
+      customBindingContainerAnnotations
 
   internal val bindsAnnotations =
     setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Binds")) + customBindsAnnotations

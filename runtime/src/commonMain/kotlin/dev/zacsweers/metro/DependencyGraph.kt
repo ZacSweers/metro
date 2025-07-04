@@ -138,8 +138,8 @@ import kotlin.reflect.KClass
  *   defined).
  * @property isExtendable If enabled, marks this graph as available for extension and generates
  *   extra metadata about this graph's available bindings for child graphs to read.
- * @property bindingContainers Optional list of included binding containers. See the doc
- *   on [BindingContainer] for more details.
+ * @property bindingContainers Optional list of included binding containers. See the doc on
+ *   [BindingContainer] for more details.
  */
 @Target(AnnotationTarget.CLASS)
 public annotation class DependencyGraph(

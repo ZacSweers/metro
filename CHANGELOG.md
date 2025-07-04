@@ -4,7 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Move graph dependency cycle checks to earlier in validation.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
+- **Fix:** Don't quietly stub accessors for missing `Binding.Provided` bindings.
 
 0.4.0
 -----

@@ -16,10 +16,8 @@ import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.annotationsIn
-import dev.zacsweers.metro.compiler.ir.appendBindingStack
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
@@ -72,7 +70,7 @@ internal class DependencyGraphTransformer(
     InjectConstructorTransformer(context, membersInjectorTransformer)
   private val assistedFactoryTransformer =
     AssistedFactoryTransformer(context, injectConstructorTransformer)
-  private val providesTransformer = ProvidesTransformer(context)
+  private val bindingContainerTransformer = BindingContainerTransformer(context)
   private val contributionHintIrTransformer by unsafeLazy {
     ContributionHintIrTransformer(context, hintGenerator, injectConstructorTransformer)
   }
@@ -80,7 +78,7 @@ internal class DependencyGraphTransformer(
   // Keyed by the source declaration
   private val processedMetroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
-  private val dependencyGraphNodeCache = DependencyGraphNodeCache(this, providesTransformer)
+  private val dependencyGraphNodeCache = DependencyGraphNodeCache(this, bindingContainerTransformer)
 
   override fun visitCall(expression: IrCall): IrExpression {
     return CreateGraphTransformer.visitCall(expression, metroContext)
@@ -106,7 +104,7 @@ internal class DependencyGraphTransformer(
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
-    providesTransformer.visitClass(declaration)
+    bindingContainerTransformer.visitClass(declaration)
 
     val dependencyGraphAnno =
       declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
@@ -202,14 +200,6 @@ internal class DependencyGraphTransformer(
     try {
       val result =
         parentTracer.traceNested("Validate binding graph") { tracer ->
-          tracer.traceNested("Check self-cycles") {
-            checkGraphSelfCycle(
-              dependencyGraphDeclaration,
-              node.typeKey,
-              IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.CycleDetection)),
-            )
-          }
-
           tracer.traceNested("Validate graph") {
             bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
@@ -264,7 +254,7 @@ internal class DependencyGraphTransformer(
             bindingGraph,
             result,
             tracer,
-            providesTransformer,
+            bindingContainerTransformer,
             membersInjectorTransformer,
             assistedFactoryTransformer,
           )
@@ -319,27 +309,6 @@ internal class DependencyGraphTransformer(
       "graph-dumpKotlin-${node.sourceGraph.kotlinFqName.asString().replace(".", "-")}.kt"
     }) {
       metroGraph.dumpKotlinLike()
-    }
-  }
-
-  private fun checkGraphSelfCycle(
-    graphDeclaration: IrClass,
-    graphTypeKey: IrTypeKey,
-    bindingStack: IrBindingStack,
-  ) {
-    if (bindingStack.entryFor(graphTypeKey) != null) {
-      // TODO dagger doesn't appear to error for this case to model off of
-      val message = buildString {
-        if (bindingStack.entries.size == 1) {
-          // If there's just one entry, specify that it's a self-referencing cycle for clarity
-          appendLine("Graph dependency cycle detected! The below graph depends on itself.")
-        } else {
-          appendLine("Graph dependency cycle detected!")
-        }
-        appendBindingStack(bindingStack, short = false)
-      }
-      diagnosticReporter.at(graphDeclaration).report(MetroIrErrors.GRAPH_DEPENDENCY_CYCLE, message)
-      exitProcessing()
     }
   }
 

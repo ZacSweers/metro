@@ -152,6 +152,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludesGraphOnlyIncludesAccessors.kt")
+    public void testIncludesGraphOnlyIncludesAccessors() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesGraphOnlyIncludesAccessors.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedSetDeps.kt")
     public void testMultibindingGraphWithWithScopedSetDeps() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultibindingGraphWithWithScopedSetDeps.kt");
