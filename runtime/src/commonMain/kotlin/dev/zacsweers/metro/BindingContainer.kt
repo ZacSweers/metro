@@ -28,9 +28,9 @@ import kotlin.reflect.KClass
  * }
  * ```
  *
- * ## Usage with [DependencyGraph.includes]
+ * ## Usage with [DependencyGraph.bindingContainers]
  *
- * In certain cases, you can declare the class in [DependencyGraph.includes]:
+ * In certain cases, you can declare the class in [DependencyGraph.bindingContainers]:
  * - interfaces or abstract classes with _only_ [Binds] providers or companion object [Provides]
  *   providers.
  * - simple, non-generic classes with a public, no-arg constructor
@@ -47,7 +47,7 @@ import kotlin.reflect.KClass
  * ```
  *
  * Binding containers added via [DependencyGraph.Factory] parameters do _not_ need to be declared in
- * [DependencyGraph.includes].
+ * [DependencyGraph.bindingContainers].
  *
  * ## Notes
  * - It is an error to annotate companion objects, annotation classes, or enum classes/entries.
@@ -60,7 +60,7 @@ import kotlin.reflect.KClass
  *
  * @property includes An optional array of more binding containers that this one may transitively
  *   include. Note that these must abide by the same requirements as arguments to
- *   [DependencyGraph.includes].
+ *   [DependencyGraph.bindingContainers].
  */
 @Target(AnnotationTarget.CLASS)
 public annotation class BindingContainer(val includes: Array<KClass<*>> = [])
