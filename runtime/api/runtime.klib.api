@@ -102,10 +102,10 @@ open annotation class dev.zacsweers.metro/DependencyGraph : kotlin/Annotation { 
 
     final val additionalScopes // dev.zacsweers.metro/DependencyGraph.additionalScopes|{}additionalScopes[0]
         final fun <get-additionalScopes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.additionalScopes.<get-additionalScopes>|<get-additionalScopes>(){}[0]
+    final val bindingContainers // dev.zacsweers.metro/DependencyGraph.bindingContainers|{}bindingContainers[0]
+        final fun <get-bindingContainers>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.bindingContainers.<get-bindingContainers>|<get-bindingContainers>(){}[0]
     final val excludes // dev.zacsweers.metro/DependencyGraph.excludes|{}excludes[0]
         final fun <get-excludes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.excludes.<get-excludes>|<get-excludes>(){}[0]
-    final val includes // dev.zacsweers.metro/DependencyGraph.includes|{}includes[0]
-        final fun <get-includes>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/DependencyGraph.includes.<get-includes>|<get-includes>(){}[0]
     final val isExtendable // dev.zacsweers.metro/DependencyGraph.isExtendable|{}isExtendable[0]
         final fun <get-isExtendable>(): kotlin/Boolean // dev.zacsweers.metro/DependencyGraph.isExtendable.<get-isExtendable>|<get-isExtendable>(){}[0]
     final val scope // dev.zacsweers.metro/DependencyGraph.scope|{}scope[0]

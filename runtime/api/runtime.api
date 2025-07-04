@@ -69,8 +69,8 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesTo$Con
 
 public abstract interface annotation class dev/zacsweers/metro/DependencyGraph : java/lang/annotation/Annotation {
 	public abstract fun additionalScopes ()[Ljava/lang/Class;
+	public abstract fun bindingContainers ()[Ljava/lang/Class;
 	public abstract fun excludes ()[Ljava/lang/Class;
-	public abstract fun includes ()[Ljava/lang/Class;
 	public abstract fun isExtendable ()Z
 	public abstract fun scope ()Ljava/lang/Class;
 }
