@@ -1,0 +1,180 @@
+// FILE: UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt
+
+@Inject
+@SingleIn(scope = LoggedInScope::class)
+class ChildDependency {
+  val dep: Dependency
+    field = dep
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroFactory : Factory<ChildDependency> {
+    private /* final field */ val dep: Provider<Dependency> = dep
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      fun create(dep: Provider<Dependency>): Factory<ChildDependency> {
+        return $$MetroFactory(dep = dep)
+      }
+
+      fun newInstance(dep: Dependency): ChildDependency {
+        return ChildDependency(dep = dep)
+      }
+
+    }
+
+    constructor(dep: Provider<Dependency>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override operator fun invoke(): ChildDependency {
+      return Companion.newInstance(dep = <this>.#dep.invoke())
+    }
+
+    @SingleIn(scope = LoggedInScope::class)
+    fun mirrorFunction(dep: Dependency): ChildDependency {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(dep: Dependency) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+class Dependency {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object $$MetroFactory : Factory<Dependency> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun create(): Factory<Dependency> {
+      return $$MetroFactory
+    }
+
+    fun newInstance(): Dependency {
+      return Dependency()
+    }
+
+    override operator fun invoke(): Dependency {
+      return $$MetroFactory.newInstance()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    fun mirrorFunction(): Dependency {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Inject
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class, isExtendable = true)
+interface ExampleGraph : $$MetroContributionToAppScope {
+  @DependencyGraph(scope = LoggedInScope::class, isExtendable = false)
+  class $$ContributedLoggedInGraph : LoggedInGraph {
+    private /* final field */ val dependencyProvider: Provider<Dependency> = Companion.provider<Provider<Dependency>, Dependency>(delegate = $$MetroFactory.create())
+    private /* final field */ val childDependencyProvider: Provider<ChildDependency> = Companion.provider<Provider<ChildDependency>, ChildDependency>(delegate = Companion.create(dep = <this>.#dependencyProvider))
+    constructor(@Extends exampleGraph: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val childDependency: ChildDependency
+      override get(): ChildDependency {
+        return <this>.#childDependencyProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    operator fun invoke(): ExampleGraph {
+      return $$MetroGraph()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class $$MetroGraph : ExampleGraph {
+    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
+    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+    constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun exampleGraphProvider_metroAccessor(): Provider<ExampleGraph> {
+      return <this>.#exampleGraphProvider
+    }
+
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    fun thisGraphInstance_metroAccessor(): ExampleGraph {
+      return <this>.#thisGraphInstance
+    }
+
+    override fun createLoggedInGraph(): LoggedInGraph {
+      return $$ContributedLoggedInGraph(exampleGraph = <this>)
+    }
+
+  }
+
+}
+
+@ContributesGraphExtension(scope = LoggedInScope::class)
+interface LoggedInGraph {
+  @Factory(scope = AppScope::class)
+  interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroContribution(scope = AppScope::class)
+    interface $$MetroContributionToAppScope : Factory {
+    }
+
+    abstract fun createLoggedInGraph(): LoggedInGraph
+
+  }
+
+  abstract val childDependency: ChildDependency
+    abstract get
+
+}
+
+sealed interface LoggedInScope {
+}
+
+// FILE: loggedInGraphFactoryAppScope.kt
+package metro.hints
+
+fun AppScope(contributed: Factory) {
+  return error(message = "Never called")
+}

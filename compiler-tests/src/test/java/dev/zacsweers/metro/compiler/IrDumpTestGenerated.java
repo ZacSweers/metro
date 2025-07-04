@@ -128,6 +128,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testUnusedScopedBindingsInUnextendedGraphGetNoProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedBindingsInUnextendedGraphGetNoProviderFields.kt");
     }
+
+    @Test
+    @TestMetadata("UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt")
+    public void testUnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt");
+    }
   }
 
   @Nested
