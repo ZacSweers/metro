@@ -319,6 +319,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
       }
+
+      @Test
+      @TestMetadata("JavaxProviderShouldWorkInMap.kt")
+      public void testJavaxProviderShouldWorkInMap() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInMap.kt");
+      }
     }
   }
 
