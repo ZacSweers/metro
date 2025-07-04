@@ -4,7 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
 - **Enhancement:** Move graph dependency cycle checks to earlier in validation.
+- **Fix:** Report the original location of declarations in fake overrides in error reporting.
+- **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
 - **Fix:** Don't quietly stub accessors for missing `Binding.Provided` bindings.
 

@@ -720,4 +720,13 @@ public data class MetroOptions(
     WARN,
     ERROR,
   }
+
+  public object Properties {
+    /**
+     * Boolean flag to indicate that declaration source locations in diagnostics should use the
+     * short file name. Just for tests.
+     */
+    public const val USE_SHORT_COMPILER_SOURCE_LOCATIONS: String =
+      "metro.messaging.useShortCompilerSourceLocations"
+  }
 }

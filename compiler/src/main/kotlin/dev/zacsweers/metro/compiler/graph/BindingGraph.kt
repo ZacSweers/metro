@@ -216,6 +216,8 @@ internal open class MutableBindingGraph<
                 for (binding in bindings) {
                   bindingQueue.addLast(binding)
                 }
+              } else if (depKey.hasDefault) {
+                // Do nothing here, it has a default value and missing is ok
               } else {
                 missingBindings[typeKey] = stack.copy()
               }

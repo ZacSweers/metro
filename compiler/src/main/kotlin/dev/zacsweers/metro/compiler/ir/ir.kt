@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -14,6 +15,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.singleOrError
 import java.io.File
 import java.util.Objects
+import kotlin.io.path.name
 import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
@@ -156,8 +158,17 @@ internal fun IrElement?.locationIn(file: IrFile): CompilerMessageSourceLocation 
 
 internal fun CompilerMessageSourceLocation.render(): String? {
   return buildString {
-    val fileUri = File(path).toPath().toUri()
-    append(fileUri)
+    // Just for use in testing
+    val useShortName =
+      System.getProperty(MetroOptions.Properties.USE_SHORT_COMPILER_SOURCE_LOCATIONS, "false")
+        .toBoolean()
+    val path = File(path).toPath()
+    if (useShortName) {
+      append(path.name)
+    } else {
+      val fileUri = path.toUri()
+      append(fileUri)
+    }
     if (line > 0 && column > 0) {
       append(':')
       append(line)

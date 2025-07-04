@@ -245,6 +245,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("CustomMembersInjectorInstancesCanSatisfyBindings.kt")
+      public void testCustomMembersInjectorInstancesCanSatisfyBindings() {
+        runTest("compiler-tests/src/test/data/box/inject/member/CustomMembersInjectorInstancesCanSatisfyBindings.kt");
+      }
+
+      @Test
+      @TestMetadata("CustomMembersInjectorInstancesIntoMap.kt")
+      public void testCustomMembersInjectorInstancesIntoMap() {
+        runTest("compiler-tests/src/test/data/box/inject/member/CustomMembersInjectorInstancesIntoMap.kt");
+      }
+
+      @Test
       @TestMetadata("GenericMemberInjection.kt")
       public void testGenericMemberInjection() {
         runTest("compiler-tests/src/test/data/box/inject/member/GenericMemberInjection.kt");
@@ -383,6 +395,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ExplicitlyPrivateProviderAnnotationsArePropagated.kt")
     public void testExplicitlyPrivateProviderAnnotationsArePropagated() {
       runTest("compiler-tests/src/test/data/box/provides/ExplicitlyPrivateProviderAnnotationsArePropagated.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesParametersCanHaveDefaults.kt")
+    public void testProvidesParametersCanHaveDefaults() {
+      runTest("compiler-tests/src/test/data/box/provides/ProvidesParametersCanHaveDefaults.kt");
     }
 
     @Test
