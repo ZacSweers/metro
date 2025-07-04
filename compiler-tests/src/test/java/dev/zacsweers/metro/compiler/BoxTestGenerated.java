@@ -152,6 +152,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludesGraphOnlyIncludesAccessors.kt")
+    public void testIncludesGraphOnlyIncludesAccessors() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesGraphOnlyIncludesAccessors.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedSetDeps.kt")
     public void testMultibindingGraphWithWithScopedSetDeps() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultibindingGraphWithWithScopedSetDeps.kt");
@@ -161,6 +167,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("OverrideCompatibleBindingAccessors.kt")
     public void testOverrideCompatibleBindingAccessors() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Bindingcontainers {
+      @Test
+      public void testAllFilesPresentInBindingcontainers() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("SimpleBindingContainer.kt")
+      public void testSimpleBindingContainer() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/SimpleBindingContainer.kt");
+      }
     }
   }
 

@@ -242,6 +242,11 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
             ?.let(::add)
+          bindingContainer
+            .getOrElse(emptySet())
+            .takeUnless { it.isEmpty() }
+            ?.let { SubpluginOption("custom-binding-container", value = it.joinToString(":")) }
+            ?.let(::add)
           add(
             SubpluginOption(
               "enable-dagger-anvil-interop",

@@ -151,6 +151,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val provides: SetProperty<String> = objects.setProperty(String::class.java)
     public val qualifier: SetProperty<String> = objects.setProperty(String::class.java)
     public val scope: SetProperty<String> = objects.setProperty(String::class.java)
+    public val bindingContainer: SetProperty<String> = objects.setProperty(String::class.java)
 
     // Interop markers
     public val enableDaggerAnvilInterop: Property<Boolean> = objects.property(Boolean::class.java)
@@ -190,6 +191,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       multibinds.add("dagger/multibindings/Multibinds")
       provides.addAll("dagger/Provides", "dagger/BindsInstance")
       provider.add("dagger/internal/Provider")
+      bindingContainer.add("dagger/Module")
 
       if (!includeJavax && !includeJakarta) {
         System.err.println(

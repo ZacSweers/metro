@@ -487,40 +487,6 @@ class DependencyGraphProcessingTest {
   }
 
   @Test
-  fun `assisted injection - factories can be accessed via graph dependencies`() {
-    val dependentGraph = createGraph<GraphUsingDepFromDependentGraph.DependentGraph>()
-    val graph = createGraphFactory<GraphUsingDepFromDependentGraph.Factory>().create(dependentGraph)
-    val factory = graph.factory
-    val exampleClass = factory.create(2)
-    assertEquals(2, exampleClass.intValue)
-    assertEquals("Hello, world!", exampleClass.message)
-  }
-
-  @DependencyGraph
-  interface GraphUsingDepFromDependentGraph {
-    val factory: ExampleClass.Factory
-
-    @DependencyGraph.Factory
-    interface Factory {
-      fun create(@Includes dependentGraph: DependentGraph): GraphUsingDepFromDependentGraph
-    }
-
-    class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {
-      @AssistedFactory
-      fun interface Factory {
-        fun create(intValue: Int): ExampleClass
-      }
-    }
-
-    @DependencyGraph
-    interface DependentGraph {
-      val message: String
-
-      @Provides private fun provideMessage(): String = "Hello, world!"
-    }
-  }
-
-  @Test
   fun `multibindings - simple int set with one value`() {
     val graph = createGraph<MultibindingGraphWithSingleIntSet>()
     assertEquals(setOf(1), graph.ints)

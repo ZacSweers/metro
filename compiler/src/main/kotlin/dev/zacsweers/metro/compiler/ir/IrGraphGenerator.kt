@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -16,8 +15,8 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.transformers.AssistedFactoryTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.ProvidesTransformer
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.BindsCallableId
@@ -90,14 +89,14 @@ import org.jetbrains.kotlin.name.ClassId
 internal class IrGraphGenerator(
   metroContext: IrMetroContext,
   contributionData: IrContributionData,
-  private val dependencyGraphNodesByClass: MutableMap<ClassId, DependencyGraphNode>,
+  private val dependencyGraphNodesByClass: (ClassId) -> DependencyGraphNode?,
   private val node: DependencyGraphNode,
   private val graphClass: IrClass,
   private val bindingGraph: IrBindingGraph,
   private val sealResult: IrBindingGraph.BindingGraphResult,
   private val parentTracer: Tracer,
   // TODO move these accesses to irAttributes
-  private val providesTransformer: ProvidesTransformer,
+  private val bindingContainerTransformer: BindingContainerTransformer,
   private val membersInjectorTransformer: MembersInjectorTransformer,
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
@@ -274,7 +273,7 @@ internal class IrGraphGenerator(
             }
             .map {
               val metroFunction = metroFunctionOf(it)
-              val contextKey = IrContextualTypeKey.from(metroContext, it)
+              val contextKey = IrContextualTypeKey.from(it)
               metroFunction to contextKey
             }
 
@@ -556,14 +555,11 @@ internal class IrGraphGenerator(
 
           // IR-generated types do not have metadata
           if (graphClass.origin !== Origins.ContributedGraph) {
-            val serialized = MetroMetadata.ADAPTER.encode(metroMetadata)
-            pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-              graphClass,
-              PLUGIN_ID,
-              serialized,
-            )
+            // Write the metadata to the metroGraph class, as that's what downstream readers are
+            // looking at and is the most complete view
+            graphClass.metroMetadata = metroMetadata
           }
-          dependencyGraphNodesByClass[node.sourceGraph.classIdOrFail]?.let { it.proto = graphProto }
+          dependencyGraphNodesByClass(node.sourceGraph.classIdOrFail)?.let { it.proto = graphProto }
         }
 
         // Expose getters for provider and instance fields and expose them to metadata
@@ -930,7 +926,7 @@ internal class IrGraphGenerator(
         Input type keys:
           - ${paramsToMap.map { it.typeKey }.joinToString()}
         Binding parameters (${function.kotlinFqName}):
-          - ${function.regularParameters.map { IrContextualTypeKey.from(metroContext,it).typeKey }.joinToString()}
+          - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
         """
           .trimIndent()
       }
@@ -1062,7 +1058,11 @@ internal class IrGraphGenerator(
 
       is Binding.Provided -> {
         val factoryClass =
-          providesTransformer.getOrLookupFactoryClass(binding)?.clazz ?: return stubExpression()
+          bindingContainerTransformer.getOrLookupProviderFactory(binding)?.clazz
+            ?: error(
+              "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
+            )
+
         // Invoke its factory's create() function
         val creatorClass =
           if (factoryClass.isObject) {
@@ -1205,7 +1205,7 @@ internal class IrGraphGenerator(
               )
             }
 
-        val getterContextKey = IrContextualTypeKey.from(metroContext, binding.getter)
+        val getterContextKey = IrContextualTypeKey.from(binding.getter)
 
         val invokeGetter =
           irInvoke(

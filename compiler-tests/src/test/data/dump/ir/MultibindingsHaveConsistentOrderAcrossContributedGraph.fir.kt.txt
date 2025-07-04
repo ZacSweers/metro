@@ -73,7 +73,6 @@ class TaskImpl2 : Task {
 }
 
 @DependencyGraph(scope = AppScope::class, isExtendable = true)
-@SingleIn(scope = AppScope::class)
 interface ExampleGraph : $$MetroContributionToAppScope {
   @DependencyGraph(scope = Unit::class, isExtendable = false)
   class $$ContributedLoggedInGraph : LoggedInGraph {
