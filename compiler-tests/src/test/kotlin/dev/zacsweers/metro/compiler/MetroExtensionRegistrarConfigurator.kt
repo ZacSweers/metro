@@ -148,7 +148,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             if (addDaggerAnnotations) {
               add(ClassId.fromString("dagger/multibindings/Multibinds"))
             }
-          }
+          },
         // TODO other dagger annotations/types not yet implemented
       )
     val classIds = ClassIds.fromOptions(options)

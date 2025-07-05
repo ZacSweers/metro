@@ -11,7 +11,6 @@ import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.assertNoWarningsOrErrors
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
