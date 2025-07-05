@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
+import org.jetbrains.kotlin.backend.jvm.ir.parentClassId
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -33,6 +34,7 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualTypeKey> {
   override val typeKey: IrTypeKey
@@ -463,11 +465,18 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
         multibinds: IrAnnotation,
         contextualTypeKey: IrContextualTypeKey,
       ): Multibinding {
+        val isDaggerMultibinds = multibinds.ir.symbol.owner.parentClassId?.asSingleFqName() ==
+          FqName("dagger.multibindings.Multibinds")
         return create(
           metroContext = metroContext,
           typeKey = contextualTypeKey.typeKey,
           declaration = getter.ir,
-          allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false,
+          allowEmpty = if (isDaggerMultibinds) {
+            // Retain Dagger's behavior for interop
+            true
+          } else {
+            multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
+          },
         )
       }
 
