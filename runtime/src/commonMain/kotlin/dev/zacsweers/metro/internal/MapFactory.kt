@@ -31,7 +31,7 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
   override fun invoke(): Map<K, V> {
     val result = newLinkedHashMapWithExpectedSize<K, V>(contributingMap().size)
     for (entry in contributingMap().entries) {
-      result.put(entry.key, entry.value())
+      result[entry.key] = entry.value()
     }
     return result.toUnmodifiableMap()
   }
