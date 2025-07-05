@@ -347,6 +347,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testJavaxProviderShouldWorkInMap() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInMap.kt");
       }
+
+      @Test
+      @TestMetadata("JavaxProviderShouldWorkInSet.kt")
+      public void testJavaxProviderShouldWorkInSet() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInSet.kt");
+      }
     }
   }
 

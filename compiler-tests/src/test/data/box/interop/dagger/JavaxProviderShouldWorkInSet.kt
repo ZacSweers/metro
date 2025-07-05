@@ -4,14 +4,13 @@ import javax.inject.Provider
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val urlHandlers: Map<String, Provider<UrlHandler>>
+  val urlHandlers: Set<UrlHandler>
 }
 
 interface UrlHandler
 
 @Inject
-@ContributesIntoMap(AppScope::class)
-@StringKey("post")
+@ContributesIntoSet(AppScope::class)
 class PostUrlHandler : UrlHandler {
   fun handle(url: String) {
     url.toString()
@@ -20,6 +19,6 @@ class PostUrlHandler : UrlHandler {
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  assertNotNull(graph.urlHandlers["post"]?.get())
+  assertNotNull(graph.urlHandlers.single())
   return "OK"
 }
