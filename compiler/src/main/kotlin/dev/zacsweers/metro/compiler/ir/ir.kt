@@ -119,6 +119,7 @@ import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
@@ -252,6 +253,9 @@ internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIr
 }
 
 internal fun IrBuilderWithScope.irInvoke(
+  /**
+   * If null, this will be secondarily analyzed to see if [callee] is static or a companion object
+   */
   dispatchReceiver: IrExpression? = null,
   extensionReceiver: IrExpression? = null,
   callee: IrFunctionSymbol,
@@ -260,23 +264,41 @@ internal fun IrBuilderWithScope.irInvoke(
   args: List<IrExpression?> = emptyList(),
 ): IrMemberAccessExpression<*> {
   assert(callee.isBound) { "Symbol $callee expected to be bound" }
+  val finalReceiverExpression =
+    when {
+      dispatchReceiver != null -> dispatchReceiver
+      callee.owner.isStatic -> null
+      else -> {
+        callee.owner.dispatchReceiverParameter?.type?.rawTypeOrNull()?.let {
+          if (it.isObject) {
+            irGetObject(it.symbol)
+          } else {
+            null
+          }
+        }
+      }
+    }
+
   val returnType = typeHint ?: callee.owner.returnType
   val call = irCall(callee, type = returnType)
   typeArgs?.let {
     for ((i, typeArg) in typeArgs.withIndex()) {
+      if (i >= call.typeArguments.size) {
+        error("Invalid type arg $typeArg at index $i for callee ${callee.owner.dumpKotlinLike()}")
+      }
       call.typeArguments[i] = typeArg
     }
   }
 
   var argSize = args.size
-  if (dispatchReceiver != null) argSize++
+  if (finalReceiverExpression != null) argSize++
   if (extensionReceiver != null) argSize++
   check(callee.owner.parameters.size == argSize) {
     "Expected ${callee.owner.parameters.size} arguments but got ${args.size}"
   }
 
   var index = 0
-  dispatchReceiver?.let { call.arguments[index++] = it }
+  finalReceiverExpression?.let { call.arguments[index++] = it }
   extensionReceiver?.let { call.arguments[index++] = it }
   args.forEach { call.arguments[index++] = it }
   return call

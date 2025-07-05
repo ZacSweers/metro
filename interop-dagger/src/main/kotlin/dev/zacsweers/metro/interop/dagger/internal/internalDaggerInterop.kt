@@ -7,12 +7,7 @@ import dagger.internal.Provider as DaggerProvider
 import dev.zacsweers.metro.Provider as MetroProvider
 import dev.zacsweers.metro.internal.Factory as MetroFactory
 
-public fun <T : Any> DaggerFactory<T>.asMetroFactory(): MetroFactory<T> =
-  object : MetroFactory<T> {
-    override fun invoke(): T {
-      return this@asMetroFactory.get()
-    }
-  }
+public fun <T : Any> DaggerFactory<T>.asMetroFactory(): MetroFactory<T> = MetroFactory(::get)
 
 /**
  * Converts a Metro [MetroProvider] into a [DaggerProvider].
@@ -20,4 +15,4 @@ public fun <T : Any> DaggerFactory<T>.asMetroFactory(): MetroFactory<T> =
  * @return A [DaggerProvider] that delegates its invocation to the source [MetroProvider].
  */
 public fun <T : Any> MetroProvider<T>.asDaggerInternalProvider(): DaggerProvider<T> =
-  DaggerProvider<T> { this@asDaggerInternalProvider() }
+  DaggerProvider(::invoke)

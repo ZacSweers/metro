@@ -30,7 +30,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
     testModuleStructure: TestModuleStructure,
   ): List<TestFile> {
     val providers = buildList {
-      if (MetroDirectives.ENABLE_DAGGER_KSP in module.directives) {
+      if (MetroDirectives.enableDaggerKsp(module.directives)) {
         add(KspComponentProcessor.Provider())
       }
     }

@@ -244,3 +244,27 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
   // If it's not a special type, it's a canonical type
   return WrappedType.Canonical(canonicalize())
 }
+
+context(context: IrMetroContext)
+internal fun WrappedType<IrType>.toIrType(): IrType {
+  return when (this) {
+    is WrappedType.Canonical -> type
+    is WrappedType.Provider -> {
+      val innerIrType = innerType.toIrType()
+      val providerType = context.pluginContext.referenceClass(providerType)!!
+      providerType.typeWith(innerIrType)
+    }
+
+    is WrappedType.Lazy -> {
+      val innerIrType = innerType.toIrType()
+      val lazyType = context.pluginContext.referenceClass(lazyType)!!
+      lazyType.typeWith(innerIrType)
+    }
+
+    is WrappedType.Map -> {
+      val keyIrType = keyType
+      val valueIrType = valueType.toIrType()
+      context.pluginContext.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType)
+    }
+  }
+}

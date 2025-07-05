@@ -32,10 +32,12 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPropertyGetter
 import org.jetbrains.kotlin.ir.util.hasShape
 import org.jetbrains.kotlin.ir.util.kotlinPackageFqn
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -172,6 +174,7 @@ internal class Symbols(
     val asContribution = "asContribution".asName()
     val binding = StringNames.BINDING.asName()
     val bindingContainers = "bindingContainers".asName()
+    val builder = "builder".asName()
     val boundType = StringNames.BOUND_TYPE.asName()
     val contributed = StringNames.CONTRIBUTED.asName()
     val create = StringNames.CREATE.asName()
@@ -365,104 +368,6 @@ internal class Symbols(
     graphFactoryInvokeFunctionMarkerClass.constructors.first()
   }
 
-  private val setFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "SetFactory".asName())
-    )!!
-  }
-
-  val setFactoryBuilder: IrClassSymbol by lazy {
-    setFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
-  }
-
-  val setFactoryCompanionObject: IrClassSymbol by lazy {
-    setFactory.owner.companionObject()!!.symbol
-  }
-
-  val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
-    setFactoryCompanionObject.requireSimpleFunction("builder")
-  }
-
-  val setFactoryBuilderAddProviderFunction: IrSimpleFunctionSymbol by lazy {
-    setFactoryBuilder.requireSimpleFunction("addProvider")
-  }
-
-  val setFactoryBuilderAddCollectionProviderFunction: IrSimpleFunctionSymbol by lazy {
-    setFactoryBuilder.requireSimpleFunction("addCollectionProvider")
-  }
-
-  val setFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
-    setFactoryBuilder.requireSimpleFunction("build")
-  }
-
-  private val mapFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapFactory".asName())
-    )!!
-  }
-
-  val mapFactoryBuilder: IrClassSymbol by lazy {
-    mapFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
-  }
-
-  val mapFactoryCompanionObject: IrClassSymbol by lazy {
-    mapFactory.owner.companionObject()!!.symbol
-  }
-
-  val mapFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
-    mapFactoryCompanionObject.requireSimpleFunction("builder")
-  }
-
-  val mapFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
-    mapFactoryCompanionObject.requireSimpleFunction("empty")
-  }
-
-  val mapFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
-    mapFactoryBuilder.requireSimpleFunction("put")
-  }
-
-  val mapFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
-    mapFactoryBuilder.requireSimpleFunction("putAll")
-  }
-
-  val mapFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
-    mapFactoryBuilder.requireSimpleFunction("build")
-  }
-
-  private val mapProviderFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
-      ClassId(metroRuntimeInternal.packageFqName, "MapProviderFactory".asName())
-    )!!
-  }
-
-  val mapProviderFactoryBuilder: IrClassSymbol by lazy {
-    mapProviderFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
-  }
-
-  val mapProviderFactoryCompanionObject: IrClassSymbol by lazy {
-    mapProviderFactory.owner.companionObject()!!.symbol
-  }
-
-  val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
-    mapProviderFactoryCompanionObject.requireSimpleFunction("builder")
-  }
-
-  val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
-    mapProviderFactoryCompanionObject.requireSimpleFunction("empty")
-  }
-
-  val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
-    mapProviderFactoryBuilder.requireSimpleFunction("put")
-  }
-
-  val mapProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
-    mapProviderFactoryBuilder.requireSimpleFunction("putAll")
-  }
-
-  val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
-    mapProviderFactoryBuilder.requireSimpleFunction("build")
-  }
-
   val stdlibLazy: IrClassSymbol by lazy {
     pluginContext.referenceClass(ClassId(stdlib.packageFqName, "Lazy".asName()))!!
   }
@@ -618,6 +523,67 @@ internal class Symbols(
       provider: IrExpression,
       type: IrType,
     ): IrExpression
+
+    protected abstract val setFactory: IrClassSymbol
+
+    val setFactoryBuilder: IrClassSymbol by lazy {
+      setFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+    }
+
+    abstract val setFactoryBuilderFunction: IrSimpleFunctionSymbol
+
+    val setFactoryBuilderAddProviderFunction: IrSimpleFunctionSymbol by lazy {
+      setFactoryBuilder.requireSimpleFunction("addProvider")
+    }
+
+    val setFactoryBuilderAddCollectionProviderFunction: IrSimpleFunctionSymbol by lazy {
+      setFactoryBuilder.requireSimpleFunction("addCollectionProvider")
+    }
+
+    val setFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+      setFactoryBuilder.requireSimpleFunction("build")
+    }
+    protected abstract val mapFactory: IrClassSymbol
+
+    val mapFactoryBuilder: IrClassSymbol by lazy {
+      mapFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+    }
+
+    abstract val mapFactoryBuilderFunction: IrSimpleFunctionSymbol
+    abstract val mapFactoryEmptyFunction: IrSimpleFunctionSymbol
+
+    val mapFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+      mapFactoryBuilder.requireSimpleFunction("put")
+    }
+
+    val mapFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+      mapFactoryBuilder.requireSimpleFunction("putAll")
+    }
+
+    val mapFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+      mapFactoryBuilder.requireSimpleFunction("build")
+    }
+
+    protected abstract val mapProviderFactory: IrClassSymbol
+
+    val mapProviderFactoryBuilder: IrClassSymbol by lazy {
+      mapProviderFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+    }
+
+    abstract val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
+    abstract val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol
+
+    val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+      mapProviderFactoryBuilder.requireSimpleFunction("put")
+    }
+
+    val mapProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+      mapProviderFactoryBuilder.requireSimpleFunction("putAll")
+    }
+
+    val mapProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+      mapProviderFactoryBuilder.requireSimpleFunction("build")
+    }
   }
 
   class MetroProviderSymbols(
@@ -631,6 +597,56 @@ internal class Symbols(
     }
 
     private val doubleCheckLazy by lazy { doubleCheckCompanionObject.requireSimpleFunction("lazy") }
+
+    override val setFactory: IrClassSymbol by lazy {
+      pluginContext.referenceClass(
+        ClassId(metroRuntimeInternal.packageFqName, "SetFactory".asName())
+      )!!
+    }
+
+    val setFactoryCompanionObject: IrClassSymbol by lazy {
+      setFactory.owner.companionObject()!!.symbol
+    }
+
+    override val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+      setFactoryCompanionObject.requireSimpleFunction("builder")
+    }
+
+    override val mapFactory: IrClassSymbol by lazy {
+      pluginContext.referenceClass(
+        ClassId(metroRuntimeInternal.packageFqName, "MapFactory".asName())
+      )!!
+    }
+
+    private val mapFactoryCompanionObject: IrClassSymbol by lazy {
+      mapFactory.owner.companionObject()!!.symbol
+    }
+
+    override val mapFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+      mapFactoryCompanionObject.requireSimpleFunction("builder")
+    }
+
+    override val mapFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+      mapFactoryCompanionObject.requireSimpleFunction("empty")
+    }
+
+    override val mapProviderFactory: IrClassSymbol by lazy {
+      pluginContext.referenceClass(
+        ClassId(metroRuntimeInternal.packageFqName, "MapProviderFactory".asName())
+      )!!
+    }
+
+    private val mapProviderFactoryCompanionObject: IrClassSymbol by lazy {
+      mapProviderFactory.owner.companionObject()!!.symbol
+    }
+
+    override val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+      mapProviderFactoryCompanionObject.requireSimpleFunction("builder")
+    }
+
+    override val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+      mapProviderFactoryCompanionObject.requireSimpleFunction("empty")
+    }
 
     override fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
@@ -705,6 +721,55 @@ internal class Symbols(
     }
     private val lazyFromMetroProvider by lazy {
       doubleCheckCompanionObject.requireSimpleFunction("lazyFromMetroProvider")
+    }
+
+    override val setFactory: IrClassSymbol by lazy {
+      pluginContext.referenceClass(
+        ClassId(daggerRuntimeInternal.packageFqName, "SetFactory".asName())
+      )!!
+    }
+
+    override val setFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+      // Static function in this case
+      setFactory.functions.first {
+        it.owner.nonDispatchParameters.size == 1 && it.owner.name == Names.builder
+      }
+    }
+
+    override val mapFactory: IrClassSymbol by lazy {
+      pluginContext.referenceClass(
+        ClassId(daggerRuntimeInternal.packageFqName, "MapFactory".asName())
+      )!!
+    }
+
+    override val mapFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+      // Static function in this case
+      mapFactory.functions.first {
+        it.owner.nonDispatchParameters.size == 1 && it.owner.name == Names.builder
+      }
+    }
+
+    override val mapFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+      // Static function in this case
+      mapFactory.requireSimpleFunction("empty")
+    }
+
+    override val mapProviderFactory: IrClassSymbol by lazy {
+      pluginContext.referenceClass(
+        ClassId(daggerRuntimeInternal.packageFqName, "MapProviderFactory".asName())
+      )!!
+    }
+
+    override val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+      // Static function in this case
+      mapProviderFactory.functions.first {
+        it.owner.nonDispatchParameters.size == 1 && it.owner.name == Names.builder
+      }
+    }
+
+    override val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+      // Static function in this case
+      mapProviderFactory.requireSimpleFunction("empty")
     }
 
     override fun IrBuilderWithScope.transformMetroProvider(
