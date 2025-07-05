@@ -467,7 +467,7 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
       ): Multibinding {
         val isDaggerMultibinds =
           multibinds.ir.symbol.owner.parentClassId ==
-            DaggerSymbols.ClassIds.DAGGER_MULTIBINDS_CLASS_ID
+            DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
         return create(
           metroContext = metroContext,
           typeKey = contextualTypeKey.typeKey,
