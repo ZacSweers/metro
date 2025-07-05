@@ -7,6 +7,7 @@ Changelog
 - **Enhancement:** Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
 - **Enhancement:** Add diagnostic to check for scoped `@Binds` declarations. These are simple pipes and should not have scope annotations.
 - **Enhancement:** Move graph dependency cycle checks to earlier in validation.
+- **Enhancement:** Allow empty multibinding for Dagger's `@Multibinds` interop.
 - **Fix:** Report the original location of declarations in fake overrides in error reporting.
 - **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
