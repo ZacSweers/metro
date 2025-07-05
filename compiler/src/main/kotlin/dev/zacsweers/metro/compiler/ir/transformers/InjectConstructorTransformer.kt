@@ -114,6 +114,7 @@ internal class InjectConstructorTransformer(
 
     if (factoryCls == null) {
       if (isExternal) {
+        // TODO maybe emit a warning if we do see one even if it's disabled?
         if (options.enableDaggerRuntimeInterop) {
           val targetConstructor =
             previouslyFoundConstructor
