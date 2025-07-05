@@ -384,16 +384,9 @@ class DaggerInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      expectedExitCode = KotlinCompilation.ExitCode.OK,
     ) {
-      assertDiagnostics(
-        """
-          e: ExampleGraph.kt:8:41 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
-
-          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-        """
-          .trimIndent()
-      )
+      assertNoWarningsOrErrors()
     }
   }
 
