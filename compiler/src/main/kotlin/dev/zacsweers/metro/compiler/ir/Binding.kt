@@ -15,7 +15,7 @@ import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
-import org.jetbrains.kotlin.backend.jvm.ir.parentClassId
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -465,20 +465,15 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
         multibinds: IrAnnotation,
         contextualTypeKey: IrContextualTypeKey,
       ): Multibinding {
-        val isDaggerMultibinds =
-          multibinds.ir.symbol.owner.parentClassId ==
-            DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
+        // Retain Dagger's behavior in interop if using their annotation
+        val assumeAllowEmpty =
+          metroContext.options.enableDaggerRuntimeInterop &&
+            multibinds.ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
         return create(
           metroContext = metroContext,
           typeKey = contextualTypeKey.typeKey,
           declaration = getter.ir,
-          allowEmpty =
-            if (isDaggerMultibinds) {
-              // Retain Dagger's behavior for interop
-              true
-            } else {
-              multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
-            },
+          allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: assumeAllowEmpty,
         )
       }
 
