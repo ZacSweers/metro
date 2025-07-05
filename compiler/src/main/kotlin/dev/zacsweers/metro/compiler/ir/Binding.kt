@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
@@ -34,7 +35,6 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 
 internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualTypeKey> {
   override val typeKey: IrTypeKey
@@ -466,8 +466,8 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
         contextualTypeKey: IrContextualTypeKey,
       ): Multibinding {
         val isDaggerMultibinds =
-          multibinds.ir.symbol.owner.parentClassId?.asSingleFqName() ==
-            FqName("dagger.multibindings.Multibinds")
+          multibinds.ir.symbol.owner.parentClassId ==
+            DaggerSymbols.ClassIds.DAGGER_MULTIBINDS_CLASS_ID
         return create(
           metroContext = metroContext,
           typeKey = contextualTypeKey.typeKey,

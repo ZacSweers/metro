@@ -824,6 +824,8 @@ internal class Symbols(
       val DAGGER_REUSABLE_CLASS_ID = ClassId(daggerRuntimePackageFqName, "Reusable".asName())
       val DAGGER_INTERNAL_PROVIDER_CLASS_ID =
         ClassId(FqName("dagger.internal"), "Provider".asName())
+      val DAGGER_MULTIBINDS_CLASS_ID =
+        ClassId(FqName("dagger.multibindings"), "Multibinds".asName())
       val JAVAX_PROVIDER_CLASS_ID = ClassId(FqName("javax.inject"), "Provider".asName())
       val JAKARTA_PROVIDER_CLASS_ID = ClassId(FqName("jakarta.inject"), "Provider".asName())
     }
