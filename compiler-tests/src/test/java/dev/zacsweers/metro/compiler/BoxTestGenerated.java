@@ -337,6 +337,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerMultibindsAllowEmptyByDefault.kt")
+      public void testDaggerMultibindsAllowEmptyByDefault() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerMultibindsAllowEmptyByDefault.kt");
+      }
+
+      @Test
       @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
       public void testGenericDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/GenericDaggerFactoryClassCanBeLoaded.kt");
