@@ -1,4 +1,4 @@
-// WITH_DAGGER
+// ENABLE_DAGGER_INTEROP
 import dagger.multibindings.Multibinds
 
 @DependencyGraph
