@@ -1376,12 +1376,14 @@ internal class IrGraphGenerator(
     //   .addCollectionProvider(provideString2Provider)
     //   .build()
 
+    // Used to unpack the right provider type
+    val valueProviderSymbols = symbols.providerSymbolsFor(elementType)
+
     // SetFactory.<String>builder(1, 1)
     val builder: IrExpression =
       irInvoke(
-        dispatchReceiver = irGetObject(symbols.setFactoryCompanionObject),
-        callee = symbols.setFactoryBuilderFunction,
-        typeHint = symbols.setFactoryBuilder.typeWith(elementType),
+        callee = valueProviderSymbols.setFactoryBuilderFunction,
+        typeHint = valueProviderSymbols.setFactoryBuilder.typeWith(elementType),
         typeArgs = listOf(elementType),
         args = listOf(irInt(individualProviders.size), irInt(collectionProviders.size)),
       )
@@ -1390,7 +1392,7 @@ internal class IrGraphGenerator(
       individualProviders.fold(builder) { receiver, provider ->
         irInvoke(
           dispatchReceiver = receiver,
-          callee = symbols.setFactoryBuilderAddProviderFunction,
+          callee = valueProviderSymbols.setFactoryBuilderAddProviderFunction,
           typeHint = builder.type,
           args =
             listOf(generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)),
@@ -1402,7 +1404,7 @@ internal class IrGraphGenerator(
       collectionProviders.fold(withProviders) { receiver, provider ->
         irInvoke(
           dispatchReceiver = receiver,
-          callee = symbols.setFactoryBuilderAddCollectionProviderFunction,
+          callee = valueProviderSymbols.setFactoryBuilderAddCollectionProviderFunction,
           typeHint = builder.type,
           args =
             listOf(generateBindingCode(provider, generationContext, fieldInitKey = fieldInitKey)),
@@ -1410,14 +1412,18 @@ internal class IrGraphGenerator(
       }
 
     // .build()
-    return irInvoke(
-      dispatchReceiver = withCollectionProviders,
-      callee = symbols.setFactoryBuilderBuildFunction,
-      typeHint =
-        pluginContext.irBuiltIns.setClass
-          .typeWith(elementType)
-          .wrapInProvider(symbols.metroProvider),
-    )
+    val instance =
+      irInvoke(
+        dispatchReceiver = withCollectionProviders,
+        callee = valueProviderSymbols.setFactoryBuilderBuildFunction,
+        typeHint =
+          pluginContext.irBuiltIns.setClass
+            .typeWith(elementType)
+            .wrapInProvider(symbols.metroProvider),
+      )
+    return with(valueProviderSymbols) {
+      transformToMetroProvider(instance, pluginContext.irBuiltIns.setClass.typeWith(elementType))
+    }
   }
 
   private fun IrBuilderWithScope.generateMapMultibindingExpression(
@@ -1446,14 +1452,15 @@ internal class IrGraphGenerator(
     // TODO what about Map<String, Provider<Lazy<String>>>?
     //  isDeferrable() but we need to be able to convert back to the middle type
     val useProviderFactory: Boolean = valueWrappedType is WrappedType.Provider
-    val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
-    val targetCompanionObject =
-      if (useProviderFactory) {
-        symbols.mapProviderFactoryCompanionObject
-      } else {
-        symbols.mapFactoryCompanionObject
-      }
+    // Used to unpack the right provider type
+    val originalType = contextualTypeKey.toIrType(metroContext)
+    val originalValueType = valueWrappedType.toIrType()
+    val originalValueContextKey =
+      originalValueType.asContextualTypeKey(metroContext, null, hasDefault = false)
+    val valueProviderSymbols = symbols.providerSymbolsFor(originalValueType)
+
+    val valueType: IrType = rawValueTypeMetadata.typeKey.type
 
     val size = binding.sourceBindings.size
     val mapProviderType =
@@ -1474,37 +1481,32 @@ internal class IrGraphGenerator(
       val emptyCallee =
         if (useProviderFactory) {
           // MapProviderFactory.empty()
-          symbols.mapProviderFactoryEmptyFunction
+          valueProviderSymbols.mapProviderFactoryEmptyFunction
         } else {
           // MapFactory.empty()
-          symbols.mapFactoryEmptyFunction
+          valueProviderSymbols.mapFactoryEmptyFunction
         }
 
-      return irInvoke(
-        dispatchReceiver = irGetObject(targetCompanionObject),
-        callee = emptyCallee,
-        typeHint = mapProviderType,
-      )
+      return irInvoke(callee = emptyCallee, typeHint = mapProviderType)
     }
 
     val builderFunction =
       if (useProviderFactory) {
-        symbols.mapProviderFactoryBuilderFunction
+        valueProviderSymbols.mapProviderFactoryBuilderFunction
       } else {
-        symbols.mapFactoryBuilderFunction
+        valueProviderSymbols.mapFactoryBuilderFunction
       }
     val builderType =
       if (useProviderFactory) {
-        symbols.mapProviderFactoryBuilder
+        valueProviderSymbols.mapProviderFactoryBuilder
       } else {
-        symbols.mapFactoryBuilder
+        valueProviderSymbols.mapFactoryBuilder
       }
 
     // MapFactory.<Integer, Integer>builder(2)
     // MapProviderFactory.<Integer, Integer>builder(2)
     val builder: IrExpression =
       irInvoke(
-        dispatchReceiver = irGetObject(targetCompanionObject),
         callee = builderFunction,
         typeArgs = listOf(keyType, valueType),
         typeHint = builderType.typeWith(keyType, valueType),
@@ -1513,15 +1515,15 @@ internal class IrGraphGenerator(
 
     val putFunction =
       if (useProviderFactory) {
-        symbols.mapProviderFactoryBuilderPutFunction
+        valueProviderSymbols.mapProviderFactoryBuilderPutFunction
       } else {
-        symbols.mapFactoryBuilderPutFunction
+        valueProviderSymbols.mapFactoryBuilderPutFunction
       }
     val putAllFunction =
       if (useProviderFactory) {
-        symbols.mapProviderFactoryBuilderPutAllFunction
+        valueProviderSymbols.mapProviderFactoryBuilderPutAllFunction
       } else {
-        symbols.mapFactoryBuilderPutAllFunction
+        valueProviderSymbols.mapFactoryBuilderPutAllFunction
       }
 
     val withProviders =
@@ -1551,7 +1553,12 @@ internal class IrGraphGenerator(
             args =
               listOf(
                 generateMapKeyLiteral(sourceBinding),
-                generateBindingCode(sourceBinding, generationContext, fieldInitKey = fieldInitKey),
+                generateBindingCode(sourceBinding, generationContext, fieldInitKey = fieldInitKey)
+                  .let {
+                    with(valueProviderSymbols) {
+                      transformMetroProvider(it, originalValueContextKey)
+                    }
+                  },
               ),
           )
         }
@@ -1559,16 +1566,14 @@ internal class IrGraphGenerator(
     // .build()
     val buildFunction =
       if (useProviderFactory) {
-        symbols.mapProviderFactoryBuilderBuildFunction
+        valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
       } else {
-        symbols.mapFactoryBuilderBuildFunction
+        valueProviderSymbols.mapFactoryBuilderBuildFunction
       }
 
-    return irInvoke(
-      dispatchReceiver = withProviders,
-      callee = buildFunction,
-      typeHint = mapProviderType,
-    )
+    val instance =
+      irInvoke(dispatchReceiver = withProviders, callee = buildFunction, typeHint = mapProviderType)
+    return with(valueProviderSymbols) { transformToMetroProvider(instance, originalType) }
   }
 
   private fun IrBuilderWithScope.generateMultibindingArgument(
