@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
@@ -14,6 +15,7 @@ import dev.zacsweers.metro.compiler.isWordPrefixRegex
 import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
@@ -463,11 +465,15 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
         multibinds: IrAnnotation,
         contextualTypeKey: IrContextualTypeKey,
       ): Multibinding {
+        // Retain Dagger's behavior in interop if using their annotation
+        val assumeAllowEmpty =
+          metroContext.options.enableDaggerRuntimeInterop &&
+            multibinds.ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
         return create(
           metroContext = metroContext,
           typeKey = contextualTypeKey.typeKey,
           declaration = getter.ir,
-          allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false,
+          allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: assumeAllowEmpty,
         )
       }
 
