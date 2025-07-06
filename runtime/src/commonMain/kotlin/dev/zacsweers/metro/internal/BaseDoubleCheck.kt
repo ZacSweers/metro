@@ -60,7 +60,7 @@ public abstract class BaseDoubleCheck<T>(provider: Provider<T>) :
       }
     }
 
-  override fun isInitialized(): Boolean = _value === UNINITIALIZED
+  override fun isInitialized(): Boolean = _value !== UNINITIALIZED
 
   override fun invoke(): T = value
 
