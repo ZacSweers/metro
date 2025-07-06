@@ -21,6 +21,12 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/fir"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
+  @Test
+  @TestMetadata("scratch.kt")
+  public void testScratch() {
+    runTest("compiler-tests/src/test/data/dump/fir/scratch.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/fir/aggregation")
   @TestDataPath("$PROJECT_ROOT")
