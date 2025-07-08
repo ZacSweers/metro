@@ -146,6 +146,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("GraphInheritanceFromDifferentModule.kt")
+    public void testGraphInheritanceFromDifferentModule() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/GraphInheritanceFromDifferentModule.kt");
+    }
+
+    @Test
     @TestMetadata("IncludesDeepInheritedInterfacesWork.kt")
     public void testIncludesDeepInheritedInterfacesWork() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDeepInheritedInterfacesWork.kt");
