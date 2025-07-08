@@ -60,7 +60,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.33.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.19.0" }
 shadow = { id = "com.gradleup.shadow", version = "9.0.0-rc1" }
-spotless = { id = "com.diffplug.spotless", version = "7.0.4" }
+spotless = { id = "com.diffplug.spotless", version = "7.1.0" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.13" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
