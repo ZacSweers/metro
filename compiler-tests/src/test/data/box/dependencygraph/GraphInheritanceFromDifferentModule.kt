@@ -1,5 +1,5 @@
 // MODULE: lib
-@DependencyGraph(AppScope::class)
+@DependencyGraph
 interface ChildGraph {
   val value: Int
 
@@ -8,7 +8,7 @@ interface ChildGraph {
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class)
+@DependencyGraph
 interface ParentGraph : ChildGraph
 
 fun box(): String {
