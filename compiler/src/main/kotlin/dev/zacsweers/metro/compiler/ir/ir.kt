@@ -294,7 +294,7 @@ internal fun IrBuilderWithScope.irInvoke(
   if (finalReceiverExpression != null) argSize++
   if (extensionReceiver != null) argSize++
   check(callee.owner.parameters.size == argSize) {
-    "Expected ${callee.owner.parameters.size} arguments but got ${args.size}"
+    "Expected ${callee.owner.parameters.size} arguments but got ${args.size} for function: ${callee.owner.kotlinFqName}"
   }
 
   var index = 0
