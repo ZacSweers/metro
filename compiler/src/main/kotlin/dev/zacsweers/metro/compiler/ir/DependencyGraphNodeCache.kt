@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import java.util.Objects
 import kotlin.collections.plus
 import kotlin.collections.plusAssign
 import kotlin.collections.set
@@ -42,6 +43,7 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.CallableId
@@ -572,40 +574,46 @@ internal class DependencyGraphNodeCache(
 
           // Add any binds functions
           bindsFunctions.addAll(
-            graphProto.binds_callable_ids.toSet().flatMap { bindsCallableId ->
-              val classId = ClassId.fromString(bindsCallableId.class_id)
-              val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
+            graphProto.binds_callable_ids
+              .flatMap { bindsCallableId ->
+                val classId = ClassId.fromString(bindsCallableId.class_id)
+                val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
 
-              val functions =
-                if (bindsCallableId.is_property) {
-                  pluginContext.referenceProperties(callableId).mapNotNull { it.owner.getter }
-                } else {
-                  pluginContext.referenceFunctions(callableId).map { it.owner }
-                }
-
-              if (functions.isEmpty()) {
-                val message = buildString {
-                  append("No function found for ")
-                  appendLine(callableId)
-                  callableId.classId?.let {
-                    pluginContext.referenceClass(it)?.let {
-                      appendLine("Class dump")
-                      appendLine(it.owner.dumpKotlinLike())
-                    }
+                val functions =
+                  if (bindsCallableId.is_property) {
+                    pluginContext.referenceProperties(callableId).mapNotNull { it.owner.getter }
+                  } else {
+                    pluginContext.referenceFunctions(callableId).map { it.owner }
                   }
-                    ?: run {
-                      append("No class found for ")
-                      appendLine(callableId)
-                    }
-                }
-                error(message)
-              }
 
-              functions.map { function ->
-                val metroFunction = metroFunctionOf(function)
-                metroFunction to IrContextualTypeKey.from(function)
+                if (functions.isEmpty()) {
+                  val message = buildString {
+                    append("No function found for ")
+                    appendLine(callableId)
+                    callableId.classId?.let {
+                      pluginContext.referenceClass(it)?.let {
+                        appendLine("Class dump")
+                        appendLine(it.owner.dumpKotlinLike())
+                      }
+                    }
+                      ?: run {
+                        append("No class found for ")
+                        appendLine(callableId)
+                      }
+                  }
+                  error(message)
+                }
+
+                functions.map { function ->
+                  val metroFunction = metroFunctionOf(function)
+                  metroFunction to IrContextualTypeKey.from(function)
+                }
               }
-            }
+              .distinctBy {
+                // dedupe by the aliased + bound type
+                // TODO is this necessary
+                Objects.hash(it.first.ir.nonDispatchParameters.single(), it.second.typeKey)
+              }
           )
 
           // Read scopes from annotations
