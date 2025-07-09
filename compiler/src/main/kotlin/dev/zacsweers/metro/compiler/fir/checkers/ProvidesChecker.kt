@@ -108,22 +108,26 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           "top-level method which isn't supported.",
       )
       return
-    } else if (
-      annotations.isProvides &&
-        declaration.symbol.getContainingClassSymbol()?.classKind?.isObject == true &&
-        declaration.symbol.getContainingClassSymbol()?.isCompanion != true
-    ) {
-      // @Provides declarations can't live in objects currently, this is a common case hit when
-      // migrating from Dagger/Anvil and you have a non-contributed @Module,
-      // e.g. `@Module object MyModule { /* provides */ }`
-      reporter.reportOn(
-        source,
-        FirMetroErrors.PROVIDES_ERROR,
-        "@Provides declarations must be within an interface, class, or companion object. " +
-          "`${declaration.nameOrSpecialName}` appears to be defined directly within a " +
-          "(non-companion) object.",
-      )
-      return
+    }
+
+    if (annotations.isProvides) {
+      declaration.symbol.getContainingClassSymbol()?.let { containingClass ->
+        if (!containingClass.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations)) {
+          if (containingClass.classKind?.isObject == true && !containingClass.isCompanion) {
+            // @Provides declarations can't live in non-@BindingContainer objects, this is a common
+            // case hit when migrating from Dagger/Anvil and you have a non-contributed @Module,
+            // e.g. `@Module object MyModule { /* provides */ }`
+            reporter.reportOn(
+              source,
+              FirMetroErrors.PROVIDES_ERROR,
+              "@Provides declarations must be within an either a @BindingContainer-annotated class XOR interface, class, or companion object. " +
+                "`${declaration.nameOrSpecialName}` appears to be defined directly within a " +
+                "(non-companion) object that is not annotated @BindingContainer.",
+            )
+            return
+          }
+        }
+      }
     }
 
     // Check property is not var
