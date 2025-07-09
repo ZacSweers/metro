@@ -209,6 +209,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     /** Includes kotlin-inject annotations support. */
     public fun includeKotlinInject() {
       inject.add("me/tatarka/inject/annotations/Inject")
+      assistedFactory.add("me/tatarka/inject/annotations/AssistedFactory")
       qualifier.add("me/tatarka/inject/annotations/Qualifier")
       scope.add("me/tatarka/inject/annotations/Scope")
       assisted.add("me/tatarka/inject/annotations/Assisted")

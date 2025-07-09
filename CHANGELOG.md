@@ -10,6 +10,7 @@ Changelog
 - **Enhancement:** When using Dagger interop, default `allowEmpty` to true when using Dagger's `@Multibinds` annotation.
 - **Enhancement:** Make Dagger interop providers/lazy instances a `dagger.internal.Provider` internally for better compatibility with Dagger internals. Some dagger-generated code assumes this type at runtime.
 - **Enhancement:** Support javax/jakarta `Provider` types as multibinding Map value types when Dagger interop is enabled.
+- **Enhancement:** Add interop support for kotlin-inject's `@AssistedFactory` annotations.
 - **Fix:** Report the original location of declarations in fake overrides in error reporting.
 - **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
