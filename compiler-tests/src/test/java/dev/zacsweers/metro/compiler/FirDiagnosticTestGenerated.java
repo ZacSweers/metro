@@ -56,6 +56,98 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/dependencygraph")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Dependencygraph {
+    @Test
+    public void testAllFilesPresentInDependencygraph() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
+    public void testGraphsCannotDirectlyExtendOtherGraphs() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/functioninject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Functioninject {
+    @Test
+    public void testAllFilesPresentInFunctioninject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/functioninject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CannotBeScoped.kt")
+    public void testCannotBeScoped() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotBeScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveContextParams.kt")
+    public void testCannotHaveContextParams() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotHaveContextParams.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveExtensionReceivers.kt")
+    public void testCannotHaveExtensionReceivers() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotHaveExtensionReceivers.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveTypeArgs.kt")
+    public void testCannotHaveTypeArgs() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotHaveTypeArgs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/inject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Inject {
+    @Test
+    public void testAllFilesPresentInInject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/inject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/inject/assisted")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Assisted {
+      @Test
+      public void testAllFilesPresentInAssisted() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("LazyAssistedFactoryInjection.kt")
+      public void testLazyAssistedFactoryInjection() {
+        runTest("compiler-tests/src/test/data/diagnostic/fir/inject/assisted/LazyAssistedFactoryInjection.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/inject/member")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Member {
+      @Test
+      public void testAllFilesPresentInMember() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("FunctionMemberInjectsCannotHaveTypeParams.kt")
+      public void testFunctionMemberInjectsCannotHaveTypeParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/fir/inject/member/FunctionMemberInjectsCannotHaveTypeParams.kt");
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/provides")
   @TestDataPath("$PROJECT_ROOT")
   public class Provides {

@@ -23,11 +23,15 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.resolve.firClassLike
+import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -44,9 +48,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     val classIds = session.classIds
 
     val dependencyGraphAnno =
-      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull()
-
-    if (dependencyGraphAnno == null) return
+      declaration.annotationsIn(session, classIds.graphLikeAnnotations).firstOrNull() ?: return
 
     val graphAnnotationClassId = dependencyGraphAnno.toAnnotationClassIdSafe(session) ?: return
     val isContributed = graphAnnotationClassId in classIds.contributesGraphExtensionAnnotations
@@ -96,6 +98,19 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           constructor.source,
           FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
           "Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.",
+        )
+        return
+      }
+    }
+
+    for (supertypeRef in declaration.superTypeRefs) {
+      val supertype = supertypeRef.coneType as? ConeClassLikeType ?: continue
+      val supertypeClass = supertype.lookupTag.toSymbol(session) ?: continue
+      if (supertypeClass.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)) {
+        reporter.reportOn(
+          supertypeRef.source ?: declaration.source,
+          FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+          "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @Extends instead.",
         )
         return
       }
