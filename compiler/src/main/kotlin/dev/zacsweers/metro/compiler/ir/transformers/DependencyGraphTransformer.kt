@@ -108,7 +108,7 @@ internal class DependencyGraphTransformer(
 
     val dependencyGraphAnno =
       declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
-    if (dependencyGraphAnno == null) return super.visitClass(declaration)
+        ?: return super.visitClass(declaration)
 
     val metroGraph =
       if (declaration.origin === Origins.ContributedGraph) {
@@ -280,7 +280,7 @@ internal class DependencyGraphTransformer(
                 )
                 body =
                   if (returnType != pluginContext.irBuiltIns.unitType) {
-                    stubExpressionBody()
+                    stubExpressionBody("Graph transform failed")
                   } else {
                     pluginContext.createIrBuilder(symbol).run {
                       irBlockBody { +irReturn(irGetObject(pluginContext.irBuiltIns.unitClass)) }
