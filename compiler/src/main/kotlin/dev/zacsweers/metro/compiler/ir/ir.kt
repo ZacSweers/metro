@@ -976,17 +976,17 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 }
 
 context(context: IrMetroContext)
-internal fun IrFunction.stubExpressionBody(): IrBlockBody {
+internal fun IrFunction.stubExpressionBody(message: String = "Never called"): IrBlockBody {
   return context.pluginContext.createIrBuilder(symbol).run {
-    irExprBodySafe(symbol, stubExpression())
+    irExprBodySafe(symbol, stubExpression(message))
   }
 }
 
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.stubExpression(): IrMemberAccessExpression<*> {
+internal fun IrBuilderWithScope.stubExpression(message: String = "Never called"): IrMemberAccessExpression<*> {
   return irInvoke(
     callee = context.symbols.stdlibErrorFunction,
-    args = listOf(irString("Never called")),
+    args = listOf(irString(message)),
   )
 }
 
