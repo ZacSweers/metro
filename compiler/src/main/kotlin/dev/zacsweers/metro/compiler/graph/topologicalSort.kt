@@ -381,8 +381,8 @@ private fun <V> isAcyclic(adjacency: Map<V, Set<V>>): Boolean {
 }
 
 /**
- * Sorts vertices within an SCC by respecting non-deferrable dependencies.
- * For cycles broken by deferrable edges, we can still maintain a meaningful order.
+ * Sorts vertices within an SCC by respecting non-deferrable dependencies. For cycles broken by
+ * deferrable edges, we can still maintain a meaningful order.
  */
 private fun <V : Comparable<V>> sortVerticesInSCC(
   vertices: List<V>,
@@ -397,15 +397,13 @@ private fun <V : Comparable<V>> sortVerticesInSCC(
   return try {
     vertices.topologicalSort(
       sourceToTarget = { v ->
-        fullAdjacency[v].orEmpty().filter { dep ->
-          dep in vertexSet && !isDeferrable(v, dep)
-        }
+        fullAdjacency[v].orEmpty().filter { dep -> dep in vertexSet && !isDeferrable(v, dep) }
       },
       onCycle = {
         // If there's still a cycle with non-deferrable edges,
         // fall back to natural sorting for determinism
         throw IllegalStateException("Hard cycle")
-      }
+      },
     )
   } catch (_: IllegalStateException) {
     // Hard cycle - sort naturally for determinism
