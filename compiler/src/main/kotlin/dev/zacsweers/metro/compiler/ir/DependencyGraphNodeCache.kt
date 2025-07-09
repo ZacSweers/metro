@@ -10,7 +10,10 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
+import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
+import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
@@ -33,6 +36,7 @@ import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getValueArgument
@@ -173,6 +177,7 @@ internal class DependencyGraphNodeCache(
         val type = it.typeKey.type.rawType()
 
         checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
+
         val node =
           bindingStack.withEntry(
             IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
@@ -364,6 +369,25 @@ internal class DependencyGraphNodeCache(
 
       val creator = buildCreator()
 
+      val bindingContainers =
+        dependencyGraphAnno
+          ?.bindingContainerClasses()
+          .orEmpty()
+          .mapNotNullToSet { it.classType.rawTypeOrNull() }
+          .let(::resolveAllBindingContainers)
+
+      for (container in bindingContainers) {
+        val node =
+          nodeCache.getOrComputeDependencyGraphNode(container.ir, bindingStack, parentTracer)
+        // TODO do we need to dedupe? This logic feels messy
+        providerFactories += node.providerFactories
+        bindsFunctions += node.bindsFunctions
+      }
+
+      check(providerFactories.mapToSet { it.first }.size == providerFactories.size) {
+        "Duplicate provider factories detected! This is likely a bug in the compiler."
+      }
+
       val dependencyGraphNode =
         DependencyGraphNode(
           sourceGraph = graphDeclaration,
@@ -437,6 +461,26 @@ internal class DependencyGraphNodeCache(
       return dependencyGraphNode
     }
 
+    // TODO cache these somewhere?
+    private fun resolveAllBindingContainers(roots: Set<IrClass>): Set<BindingContainer> {
+      val resolved = mutableMapOf<ClassId, BindingContainer?>()
+      val queue = ArrayDeque(roots)
+      while (queue.isNotEmpty()) {
+        val bindingContainerClass = queue.removeFirst()
+        val classId = bindingContainerClass.classId ?: continue
+
+        if (classId in resolved) continue
+
+        val bindingContainer = bindingContainerTransformer.visitClass(bindingContainerClass)
+        resolved[classId] = bindingContainer
+
+        bindingContainer?.let {
+          queue.addAll(it.includes.mapNotNullToSet { pluginContext.referenceClass(it)?.owner })
+        }
+      }
+      return resolved.values.filterNotNullTo(mutableSetOf())
+    }
+
     private fun buildExternalGraphOrBindingContainer(): DependencyGraphNode {
       val accessorsToCheck =
         if (isGraph) {
@@ -481,6 +525,7 @@ internal class DependencyGraphNodeCache(
           .map { it to IrContextualTypeKey.from(it.ir) }
 
       // Read metadata if this is an extendable graph
+      // TODO also to get binding containers
       val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
       var graphProto: DependencyGraphProto? = null
       if (isExtendable) {
@@ -515,6 +560,7 @@ internal class DependencyGraphNodeCache(
             exitProcessing()
           }
 
+          // TODO load this from bindingContainerTransformer?
           // Add any provider factories
           providerFactories +=
             graphProto.provider_factory_classes
@@ -526,18 +572,18 @@ internal class DependencyGraphNodeCache(
 
           // Add any binds functions
           bindsFunctions.addAll(
-            graphProto.binds_callable_ids.map { bindsCallableId ->
+            graphProto.binds_callable_ids.toSet().flatMap { bindsCallableId ->
               val classId = ClassId.fromString(bindsCallableId.class_id)
               val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
 
-              val function =
+              val functions =
                 if (bindsCallableId.is_property) {
-                  pluginContext.referenceProperties(callableId).singleOrNull()?.owner?.getter
+                  pluginContext.referenceProperties(callableId).mapNotNull { it.owner.getter }
                 } else {
-                  pluginContext.referenceFunctions(callableId).singleOrNull()?.owner
+                  pluginContext.referenceFunctions(callableId).map { it.owner }
                 }
 
-              if (function == null) {
+              if (functions.isEmpty()) {
                 val message = buildString {
                   append("No function found for ")
                   appendLine(callableId)
@@ -555,8 +601,10 @@ internal class DependencyGraphNodeCache(
                 error(message)
               }
 
-              val metroFunction = metroFunctionOf(function)
-              metroFunction to IrContextualTypeKey.from(function)
+              functions.map { function ->
+                val metroFunction = metroFunctionOf(function)
+                metroFunction to IrContextualTypeKey.from(function)
+              }
             }
           )
 
