@@ -382,7 +382,7 @@ class TopologicalSortTest {
     // Should maintain natural order within the component
     val aIndex = result.sortedKeys.indexOf("a")
     val bIndex = result.sortedKeys.indexOf("b")
-    assertTrue(aIndex < bIndex, "Expected a before b in sorted order")
+    assertTrue(aIndex < bIndex, "Expected a before b in sorted order. Was ${result.sortedKeys}")
   }
 
   private fun assertTopologicalSort(
