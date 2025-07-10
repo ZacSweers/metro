@@ -11,6 +11,7 @@ Changelog
 - **Enhancement:** Make Dagger interop providers/lazy instances a `dagger.internal.Provider` internally for better compatibility with Dagger internals. Some dagger-generated code assumes this type at runtime.
 - **Enhancement:** Support javax/jakarta `Provider` types as multibinding Map value types when Dagger interop is enabled.
 - **Enhancement:** Add diagnostic to check for graph classes directly extending other graph classes. You should use `@Extends`.
+- **Fix:** Within (valid) cycles, topographically sort bindings within the cycle. Previously these would fall back to a deterministic-but-wrong alphabetical sort.
 - **Fix:** Report the original location of declarations in fake overrides in error reporting.
 - **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
