@@ -14,6 +14,7 @@ Changelog
 - **Enhancement:** Add diagnostic to check for graph classes directly extending other graph classes. You should use `@Extends`.
 - **Enhancement:** Add diagnostic to check for `@Assisted` parameters in provides functions.
 - **Fix:** Within (valid) cycles, topographically sort bindings within the cycle. Previously these would fall back to a deterministic-but-wrong alphabetical sort.
+- **Fix:** Handle enum entry arguments to qualifier, scope, and map key annotations.
 - **Fix:** Report the original location of declarations in fake overrides in error reporting.
 - **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
