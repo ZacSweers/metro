@@ -20,6 +20,7 @@ Changelog
 - **Fix:** Don't quietly stub accessors for missing `Binding.Provided` bindings.
 - **Fix:** Check constructor-annotated injections when discovering scoped classes in parent graphs.
 - **Fix:** Fix `BaseDoubleCheck.isInitialized()`.
+- **Fix:** Gracefully fall back to `MessageCollector` for graph seal errors on sourceless declarations.
 
 0.4.0
 -----
