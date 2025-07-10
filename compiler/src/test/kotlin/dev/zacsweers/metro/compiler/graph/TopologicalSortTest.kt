@@ -382,7 +382,207 @@ class TopologicalSortTest {
     // Should maintain natural order within the component
     val aIndex = result.sortedKeys.indexOf("a")
     val bIndex = result.sortedKeys.indexOf("b")
-    assertTrue(aIndex < bIndex, "Expected a before b in sorted order")
+    assertTrue(aIndex < bIndex, "Expected a before b in sorted order. Was ${result.sortedKeys}")
+  }
+
+  /**
+   * Tests that reproduce the issue from https://github.com/ZacSweers/metro/issues/651 where
+   * vertices within an SCC weren't being ordered correctly
+   */
+  @Test
+  fun verticesWithinSCCAreOrderedCorrectlyInLargerGraph() {
+    // We have a larger graph where _some_ vertices form an SCC due to a deferrable cycle.
+    // The SCC as a whole is positioned correctly in the graph, but the vertices
+    // within the SCC need to be ordered by their dependencies, not alphabetically
+
+    // Graph structure:
+    // External dependencies:
+    //   CommonUtil (no deps)
+    //   SharedService (no deps)
+    //
+    // SCC with deferrable cycle:
+    //   Service1 → Service2
+    //   Service2 → Service3 (deferrable edge via Provider)
+    //   Service3 → Service1
+    //
+    // External dependents:
+    //   Client → Service1
+    //   Client → SharedService
+
+    val fullAdjacency =
+      sortedMapOf(
+        "CommonUtil" to typedSortedSetOf(),
+        "SharedService" to typedSortedSetOf(),
+        "Service1" to typedSortedSetOf("Service2", "CommonUtil"),
+        "Service2" to typedSortedSetOf("Service3"), // deferrable - Provider<Service3>
+        "Service3" to typedSortedSetOf("Service1", "SharedService"),
+        "Client" to typedSortedSetOf("Service1", "SharedService"),
+      )
+
+    val isDeferrable = { from: String, to: String -> from == "Service2" && to == "Service3" }
+
+    val result =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = isDeferrable,
+        onCycle = { fail("Should handle deferrable cycle") },
+      )
+
+    // Service2 should be deferred
+    assertEquals(listOf("Service2"), result.deferredTypes)
+
+    assertEquals(
+      listOf("CommonUtil", "SharedService", "Service2", "Service1", "Service3", "Client"),
+      result.sortedKeys,
+    )
+  }
+
+  @Test
+  fun `vertices in SCC with only deferrable edges are ordered correctly`() {
+    // A → B (deferrable)
+    // B → C (deferrable)
+    // C → A (deferrable)
+
+    val fullAdjacency =
+      sortedMapOf(
+        "A" to typedSortedSetOf("B"),
+        "B" to typedSortedSetOf("C"),
+        "C" to typedSortedSetOf("A"),
+      )
+
+    val result =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        // All edges are deferrable
+        isDeferrable = { _, _ -> true },
+        onCycle = { fail("Should handle all-deferrable cycle") },
+      )
+
+    // All vertices should be present
+    // When all edges are deferrable, removing them leaves no edges
+    // So we expect natural (alphabetical) order
+    assertEquals(listOf("A", "B", "C"), result.sortedKeys)
+  }
+
+  @Test
+  fun `deferrable edge breaks cycle correctly`() {
+    // Simple test:
+    // A depends on B via Provider (deferrable)
+    // B depends on A directly (non-deferrable)
+
+    val fullAdjacency = sortedMapOf("A" to typedSortedSetOf("B"), "B" to typedSortedSetOf("A"))
+
+    val isDeferrable = { from: String, to: String -> from == "A" && to == "B" }
+
+    val result =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = isDeferrable,
+        onCycle = { fail("Should handle deferrable cycle") },
+      )
+
+    // Both should be present
+    assertEquals(listOf("A", "B"), result.sortedKeys)
+
+    // A should be deferred since it has the deferrable edge
+    assertEquals(listOf("A"), result.deferredTypes)
+  }
+
+  @Test
+  fun `hard cycle still reports correctly`() {
+    val fullAdjacency =
+      sortedMapOf(
+        "String" to typedSortedSetOf("Int"),
+        "Int" to typedSortedSetOf("Double"),
+        "Double" to typedSortedSetOf("String"),
+      )
+
+    val isDeferrable = { _: String, _: String -> false } // No deferrable edges
+
+    val exception =
+      assertFailsWith<IllegalArgumentException> {
+        topologicalSort(
+          fullAdjacency = fullAdjacency,
+          isDeferrable = isDeferrable,
+          onCycle = { cycle ->
+            throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
+          },
+        )
+      }
+
+    // The cycle should be detected and reported with all three vertices
+    assertThat(exception).hasMessageThat().contains("Hard cycle detected: [Double, Int, String]")
+  }
+
+  @Test
+  fun `complex SCC with partial deferrable edges`() {
+    // Complex case: some edges in the SCC are deferrable, some aren't
+    // This tests that we handle partial deferrability correctly
+
+    // W → X (non-deferrable)
+    // X → Y (deferrable)
+    // Y → Z (non-deferrable)
+    // Z → W (non-deferrable)
+
+    val fullAdjacency =
+      sortedMapOf(
+        "W" to typedSortedSetOf("X"),
+        "X" to typedSortedSetOf("Y"),
+        "Y" to typedSortedSetOf("Z"),
+        "Z" to typedSortedSetOf("W"),
+      )
+
+    val isDeferrable = { from: String, to: String -> from == "X" && to == "Y" }
+
+    val result =
+      topologicalSort(
+        fullAdjacency = fullAdjacency,
+        isDeferrable = isDeferrable,
+        onCycle = { fail("Should handle deferrable cycle") },
+      )
+
+    // When we ignore X→Y, we have: W→X, Y→Z→W
+    // This creates a topological order: X (no deps), then W, Z, Y (in cycle Y→Z→W)
+    // The actual result [X, W, Z, Y] makes sense:
+    // - X has no dependencies when we ignore X→Y
+    // - Then comes the cycle Y→Z→W, which when topologically sorted gives W, Z, Y
+    assertEquals(listOf("X", "W", "Z", "Y"), result.sortedKeys)
+
+    // X should be deferred
+    assertEquals(listOf("X"), result.deferredTypes)
+  }
+
+  @Test
+  fun `multiple SCCs with different characteristics`() {
+    // Test multiple SCCs in the same graph
+    // SCC1: A ↔ B (with deferrable edge)
+    // SCC2: C → D → E → C (no deferrable edges)
+    // Connection: B → C
+
+    val fullAdjacency =
+      sortedMapOf(
+        "A" to typedSortedSetOf("B"), // deferrable
+        "B" to typedSortedSetOf("A", "C"), // B→A is non-deferrable
+        "C" to typedSortedSetOf("D"),
+        "D" to typedSortedSetOf("E"),
+        "E" to typedSortedSetOf("C"),
+      )
+
+    val isDeferrable = { from: String, to: String -> from == "A" && to == "B" }
+
+    val exception =
+      assertFailsWith<IllegalArgumentException> {
+        topologicalSort(
+          fullAdjacency = fullAdjacency,
+          isDeferrable = isDeferrable,
+          onCycle = { cycle ->
+            throw IllegalArgumentException("Hard cycle detected: ${cycle.sorted()}")
+          },
+        )
+      }
+
+    // SCC2 (C,D,E) has no deferrable edges, so it should cause a hard cycle error
+    assertThat(exception).hasMessageThat().contains("Hard cycle detected: [C, D, E]")
   }
 
   private fun assertTopologicalSort(

@@ -230,12 +230,18 @@ internal fun <V : Comparable<V>> topologicalSort(
   val sortedKeys =
     parentTracer.traceNested("Expand components") {
       componentOrder.flatMap { id ->
-        // All these components' vertices are equal, so fallback to their natural sorting order
-        components[id].vertices.sorted()
+        val component = components[id]
+        if (component.vertices.size == 1) {
+          // Single vertex - no cycle
+          component.vertices
+        } else {
+          // Multiple vertices in a cycle - sort them respecting non-deferrable dependencies
+          sortVerticesInSCC(component.vertices, reachableKeys, isDeferrable)
+        }
       }
     }
   return TopoSortResult(
-    // Expand each component back into its original vertices
+    // Expand each component back to its original vertices
     sortedKeys,
     deferredTypes.toList(),
     reachableKeys.keys,
@@ -372,6 +378,37 @@ private fun <V> isAcyclic(adjacency: Map<V, Set<V>>): Boolean {
   }
 
   return true
+}
+
+/**
+ * Sorts vertices within an SCC by respecting non-deferrable dependencies. For cycles broken by
+ * deferrable edges, we can still maintain a meaningful order.
+ */
+private fun <V : Comparable<V>> sortVerticesInSCC(
+  vertices: List<V>,
+  fullAdjacency: SortedMap<V, SortedSet<V>>,
+  isDeferrable: (V, V) -> Boolean,
+): List<V> {
+  if (vertices.size == 1) return vertices
+
+  val vertexSet = vertices.toSet()
+
+  // Try to topologically sort using only non-deferrable edges
+  return try {
+    vertices.topologicalSort(
+      sourceToTarget = { v ->
+        fullAdjacency[v].orEmpty().filter { dep -> dep in vertexSet && !isDeferrable(v, dep) }
+      },
+      onCycle = {
+        // If there's still a cycle with non-deferrable edges,
+        // fall back to natural sorting for determinism
+        throw IllegalStateException("Hard cycle")
+      },
+    )
+  } catch (_: IllegalStateException) {
+    // Hard cycle - sort naturally for determinism
+    vertices.sorted()
+  }
 }
 
 internal data class Component<V>(val id: Int, val vertices: MutableList<V> = mutableListOf())
