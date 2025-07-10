@@ -157,6 +157,12 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedParametersAreNotSupportedOnProvides.kt")
+    public void testAssistedParametersAreNotSupportedOnProvides() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/provides/AssistedParametersAreNotSupportedOnProvides.kt");
+    }
+
+    @Test
     @TestMetadata("BindsMayNotHaveScopes.kt")
     public void testBindsMayNotHaveScopes() {
       runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsMayNotHaveScopes.kt");

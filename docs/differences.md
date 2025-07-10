@@ -27,6 +27,7 @@
 * Metro can inject private properties and functions.
 * When extending parent graphs, they must be annotated with `@Extends` in the child graph's creator.
 * Metro does not process Java code.
+* Metro does not support assisted parameters in `@Provides` functions.
 
 #### …from Anvil
 
