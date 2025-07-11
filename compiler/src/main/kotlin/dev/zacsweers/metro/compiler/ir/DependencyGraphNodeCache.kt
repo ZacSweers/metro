@@ -523,7 +523,6 @@ internal class DependencyGraphNodeCache(
           .map { it to IrContextualTypeKey.from(it.ir) }
 
       // Read metadata if this is an extendable graph
-      // TODO also to get binding containers
       val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
       var graphProto: DependencyGraphProto? = null
       if (isExtendable) {
