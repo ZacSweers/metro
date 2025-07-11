@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.transformers.BindsCallable
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -29,7 +30,11 @@ internal data class DependencyGraphNode(
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
-  val bindsFunctions: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
+  val bindsCallables: Set<BindsCallable>,
+  /** Binding containers that need a managed instance. */
+  val bindingContainers: Set<IrClass>,
+  /** Fake overrides of binds functions that need stubbing. */
+  val bindsFunctions: List<MetroSimpleFunction>,
   // TypeKey key is the injected type wrapped in MembersInjector
   val injectors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val isExternal: Boolean,
