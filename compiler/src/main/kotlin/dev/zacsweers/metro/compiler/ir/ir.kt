@@ -983,11 +983,10 @@ internal fun IrFunction.stubExpressionBody(message: String = "Never called"): Ir
 }
 
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.stubExpression(message: String = "Never called"): IrMemberAccessExpression<*> {
-  return irInvoke(
-    callee = context.symbols.stdlibErrorFunction,
-    args = listOf(irString(message)),
-  )
+internal fun IrBuilderWithScope.stubExpression(
+  message: String = "Never called"
+): IrMemberAccessExpression<*> {
+  return irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString(message)))
 }
 
 internal fun IrPluginContext.buildAnnotation(
