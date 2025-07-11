@@ -160,8 +160,8 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
               .joinSimpleNames(separator = "", camelCase = true)
               .shortClassName
               .let(::append)
-            qualifier?.hashCode()?.let(::append)
-            mapKey?.hashCode()?.let(::append)
+            qualifier?.hashCode()?.toUInt()?.let(::append)
+            mapKey?.hashCode()?.toUInt()?.let(::append)
           }
 
           // We need a unique name because addFakeOverrides() doesn't handle overloads with
