@@ -44,6 +44,6 @@ fun box(): String {
   assertEquals("string value", graph.string)
   assertEquals("string value", graph.charSequence)
   assertEquals(3, graph.int)
-  assertEquals(10, graph.long)
+  assertEquals(15, graph.long)
   return "OK"
 }
