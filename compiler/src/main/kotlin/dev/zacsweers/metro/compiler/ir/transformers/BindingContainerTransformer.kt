@@ -676,8 +676,15 @@ internal class BindsCallable(
 
 context(context: IrMetroContext)
 internal fun MetroSimpleFunction.toBindsCallable(): BindsCallable {
+  val declarationToStore = ir.propertyIfAccessor
+  val callableId =
+    if (declarationToStore is IrProperty) {
+      declarationToStore.callableId
+    } else {
+      callableId
+    }
   return BindsCallable(
-    ir.callableId,
+    callableId,
     this,
     IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
     IrContextualTypeKey.from(ir).typeKey,
