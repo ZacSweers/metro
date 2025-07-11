@@ -22,7 +22,7 @@ circuit = "0.29.1"
 classgraph = "4.8.180"
 compose-jb = "1.8.2"
 dagger = "2.56.2"
-gjf = "1.27.0"
+gjf = "1.28.0"
 jdk = "23"
 junit5 = "5.13.3"
 jvmTarget = "11"
@@ -35,10 +35,10 @@ kotlinx-serialization = "1.9.0"
 ksp = "2.2.0-2.0.2"
 ktfmt = "0.56"
 ktor = "3.2.1"
-okhttp = "5.0.0"
+okhttp = "5.1.0"
 okio = "3.15.0"
 pluginId = "dev.zacsweers.metro.compiler"
-wire = "5.3.3"
+wire = "5.3.5"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -53,14 +53,14 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.0" }
+binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
 buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.7" }
 dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.33.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.19.0" }
 shadow = { id = "com.gradleup.shadow", version = "9.0.0-rc1" }
-spotless = { id = "com.diffplug.spotless", version = "7.0.4" }
+spotless = { id = "com.diffplug.spotless", version = "7.1.0" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.13" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
@@ -128,7 +128,7 @@ kotlin-testJunit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", versio
 
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-json-okio = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-okio", version.ref = "kotlinx-serialization" }
-kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.0"
+kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1-0.6.x-compat"
 
 # Only present to trigger automatic renovate updates
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }

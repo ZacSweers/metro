@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.location
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -32,7 +33,7 @@ import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
-import kotlin.collections.set
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
@@ -49,6 +50,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isInterface
 import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -214,9 +216,20 @@ internal class DependencyGraphTransformer(
           tracer.traceNested("Validate graph") {
             bindingGraph.seal(it) { errors ->
               for ((declaration, message) in errors) {
-                diagnosticReporter
-                  .at(declaration ?: dependencyGraphDeclaration)
-                  .report(MetroIrErrors.METRO_ERROR, message)
+                // TODO in kotlin 2.2.20 we can just use the reporter
+                val toReport =
+                  declaration?.takeIf { it.fileOrNull != null } ?: dependencyGraphDeclaration
+                if (toReport.fileOrNull != null) {
+                  diagnosticReporter
+                    .at(declaration ?: dependencyGraphDeclaration)
+                    .report(MetroIrErrors.METRO_ERROR, message)
+                } else {
+                  messageCollector.report(
+                    CompilerMessageSeverity.ERROR,
+                    message,
+                    toReport.location(),
+                  )
+                }
               }
               exitProcessing()
             }

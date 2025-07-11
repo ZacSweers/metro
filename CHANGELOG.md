@@ -12,11 +12,18 @@ Changelog
 - **Enhancement:** Support javax/jakarta `Provider` types as multibinding Map value types when Dagger interop is enabled.
 - **Enhancement:** Completely skip processing local and enum classes as they're irrelevant to Metro's compiler.
 - **Enhancement:** When reporting `@Binds` declarations in binding stacks, report the original declaration rather than inherited fake overrides.
+- **Enhancement:** Add interop support for kotlin-inject's `@AssistedFactory` annotations.
+- **Enhancement:** Add diagnostic to check for graph classes directly extending other graph classes. You should use `@Extends`.
+- **Enhancement:** Add diagnostic to check for `@Assisted` parameters in provides functions.
+- **Fix:** Within (valid) cycles, topographically sort bindings within the cycle. Previously these would fall back to a deterministic-but-wrong alphabetical sort.
+- **Fix:** Handle enum entry arguments to qualifier, scope, and map key annotations.
 - **Fix:** Report the original location of declarations in fake overrides in error reporting.
 - **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
 - **Fix:** Don't quietly stub accessors for missing `Binding.Provided` bindings.
 - **Fix:** Check constructor-annotated injections when discovering scoped classes in parent graphs.
+- **Fix:** Fix `BaseDoubleCheck.isInitialized()`.
+- **Fix:** Gracefully fall back to `MessageCollector` for graph seal and contributed graph errors on sourceless declarations.
 - **Fix:** Fix supporting overloads of binds functions from parent graphs or external supertypes.
 
 0.4.0

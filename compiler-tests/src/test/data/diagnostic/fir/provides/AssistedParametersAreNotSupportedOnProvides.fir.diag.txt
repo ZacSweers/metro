@@ -1,0 +1,1 @@
+/AssistedParametersAreNotSupportedOnProvides.kt:(114,123): error: Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.

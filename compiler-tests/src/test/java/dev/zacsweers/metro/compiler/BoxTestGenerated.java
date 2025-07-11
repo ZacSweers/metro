@@ -169,6 +169,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
     }
 
+    @Test
+    @TestMetadata("QualifiersWithEnumsWork.kt")
+    public void testQualifiersWithEnumsWork() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/QualifiersWithEnumsWork.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers")
     @TestDataPath("$PROJECT_ROOT")

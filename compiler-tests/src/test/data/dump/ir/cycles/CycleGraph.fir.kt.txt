@@ -328,8 +328,8 @@ interface ChildCycleGraph {
     private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
-    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
     constructor(@Extends cycleGraph: CycleGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -391,8 +391,8 @@ interface CycleGraph {
     private /* final field */ val membersInjectorMembersInjectorProvider: Provider<MembersInjector<C>> = DelegateFactory<MembersInjector<C>>()
     private /* final field */ val cProvider: Provider<C> = DelegateFactory<C>()
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
-    private /* final field */ val aProvider: Provider<A> = Companion.create(b = Companion.create(c = <this>.#cProvider), e = Companion.create(d = Companion.create(b = Companion.create(c = <this>.#cProvider))))
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
+    private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

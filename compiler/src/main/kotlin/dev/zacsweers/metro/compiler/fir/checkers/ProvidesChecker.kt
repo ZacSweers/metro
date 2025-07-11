@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -302,6 +303,19 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
               return
             }
           }
+        }
+      }
+
+      if (declaration is FirSimpleFunction) {
+        for (parameter in declaration.valueParameters) {
+          val assistedAnnotation =
+            parameter.annotationsIn(session, classIds.assistedAnnotations).firstOrNull() ?: continue
+          reporter.reportOn(
+            assistedAnnotation.source ?: parameter.source ?: source,
+            FirMetroErrors.PROVIDES_ERROR,
+            "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
+          )
+          return
         }
       }
     }

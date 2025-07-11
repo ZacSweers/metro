@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
@@ -31,6 +32,7 @@ import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
@@ -92,7 +94,12 @@ internal class IrContributedGraphGenerator(
             append("::class])`).")
           }
         }
-        diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
+        // TODO in kotlin 2.2.20 remove message collector
+        if (sourceGraph.fileOrNull == null) {
+          messageCollector.report(CompilerMessageSeverity.ERROR, message, sourceGraph.location())
+        } else {
+          diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
+        }
         exitProcessing()
       }
     }
