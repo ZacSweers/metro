@@ -197,6 +197,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("BindingContainerViaAnnotationTransitive.kt")
+      public void testBindingContainerViaAnnotationTransitive() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/BindingContainerViaAnnotationTransitive.kt");
+      }
+
+      @Test
       @TestMetadata("BindingContainerViaCreator.kt")
       public void testBindingContainerViaCreator() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/BindingContainerViaCreator.kt");
