@@ -164,6 +164,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MultipleBindsInSeparateGraphsAreValid.kt")
+    public void testMultipleBindsInSeparateGraphsAreValid() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/MultipleBindsInSeparateGraphsAreValid.kt");
+    }
+
+    @Test
     @TestMetadata("OverrideCompatibleBindingAccessors.kt")
     public void testOverrideCompatibleBindingAccessors() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
