@@ -5,6 +5,8 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
+import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.BindsCallableId
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
@@ -44,7 +46,8 @@ internal fun DependencyGraphNode.toProto(
   instanceFields: List<String>,
 ): DependencyGraphProto {
   val bindsCallableIds =
-    bindingGraph.bindingsSnapshot().values.filterIsInstance<Binding.Alias>().mapNotNull { binding ->
+    bindingGraph.bindingsSnapshot().values.filterIsInstance<Binding.Alias>().mapNotNullToSet {
+      binding ->
       binding.ir
         ?.overriddenSymbolsSequence()
         ?.lastOrNull()
@@ -105,7 +108,7 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
     isGraph = false,
     providerFactories = providerFactories.values.map { it.typeKey to it },
     bindsCallableIds =
-      bindsCallables.map {
+      bindsCallables.mapToSet {
         BindsCallableId(
           it.callableId.classId!!.protoString,
           it.callableId.callableName.asString(),
@@ -125,7 +128,7 @@ private fun createGraphProto(
   providerFactories: Collection<Pair<IrTypeKey, ProviderFactory>> = emptyList(),
   accessorNames: Collection<String> = emptyList(),
   // TODO would be nice if we could store this info entirely in metadata but requires types
-  bindsCallableIds: Collection<BindsCallableId> = emptyList(),
+  bindsCallableIds: Set<BindsCallableId> = emptySet(),
   includedGraphClasses: Collection<String> = emptyList(),
   parentGraphClasses: Collection<String> = emptyList(),
   multibindingAccessorIndices: Int = 0,
