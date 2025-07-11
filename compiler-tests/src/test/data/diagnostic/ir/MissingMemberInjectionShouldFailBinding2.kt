@@ -12,7 +12,6 @@ abstract class AppSubscope
 @ContributesTo(AppSubscope::class)
 interface SubscopeMultibindingModule {
 
-  // This should fail because ClassWithoutMembersInjector has no generated MembersInjector, but it doesn't
   @Binds
   @IntoMap
   @ClassKey(ClassWithoutMembersInjector::class)
