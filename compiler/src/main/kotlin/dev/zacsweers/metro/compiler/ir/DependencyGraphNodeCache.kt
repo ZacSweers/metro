@@ -5,24 +5,19 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
+import dev.zacsweers.metro.compiler.ir.transformers.BindsCallable
 import dev.zacsweers.metro.compiler.mapNotNullToSet
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import java.util.Objects
-import kotlin.collections.plus
-import kotlin.collections.plusAssign
-import kotlin.collections.set
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -39,14 +34,11 @@ import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
 internal class DependencyGraphNodeCache(
@@ -97,6 +89,7 @@ internal class DependencyGraphNodeCache(
       nodeCache.bindingContainerTransformer
     private val accessors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
+    private val bindsCallables = mutableSetOf<BindsCallable>()
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
@@ -199,7 +192,7 @@ internal class DependencyGraphNodeCache(
           if (isBindingContainer) {
             providerFactories += node.providerFactories
             // Add any binds
-            bindsFunctions += node.bindsFunctions
+            bindsCallables += node.bindsCallables
           }
         }
       }
@@ -342,6 +335,7 @@ internal class DependencyGraphNodeCache(
       val declaredScopes = computeDeclaredScopes()
       scopes += declaredScopes
 
+      val bindingContainers = mutableSetOf<BindingContainer>()
       for ((i, type) in supertypes.withIndex()) {
         val clazz = type.classOrFail.owner
 
@@ -350,7 +344,7 @@ internal class DependencyGraphNodeCache(
           scopes += clazz.scopeAnnotations()
         }
 
-        providerFactories += bindingContainerTransformer.factoryClassesFor(clazz)
+        bindingContainerTransformer.visitClass(clazz)?.let(bindingContainers::add)
       }
 
       if (isExtendable) {
@@ -371,23 +365,23 @@ internal class DependencyGraphNodeCache(
 
       val creator = buildCreator()
 
-      val bindingContainers =
+      val managedBindingContainers = mutableSetOf<IrClass>()
+      bindingContainers +=
         dependencyGraphAnno
           ?.bindingContainerClasses()
           .orEmpty()
           .mapNotNullToSet { it.classType.rawTypeOrNull() }
           .let(::resolveAllBindingContainers)
+          .onEach { container ->
+            // Annotation-included containers may need to be managed directly
+            if (container.canBeManaged) {
+              managedBindingContainers += container.ir
+            }
+          }
 
       for (container in bindingContainers) {
-        val node =
-          nodeCache.getOrComputeDependencyGraphNode(container.ir, bindingStack, parentTracer)
-        // TODO do we need to dedupe? This logic feels messy
-        providerFactories += node.providerFactories
-        bindsFunctions += node.bindsFunctions
-      }
-
-      check(providerFactories.mapToSet { it.first }.size == providerFactories.size) {
-        "Duplicate provider factories detected! This is likely a bug in the compiler."
+        providerFactories += container.providerFactories.values.map { it.typeKey to it }
+        bindsCallables += container.bindsCallables
       }
 
       val dependencyGraphNode =
@@ -398,13 +392,15 @@ internal class DependencyGraphNodeCache(
           includedGraphNodes = includedGraphNodes,
           contributedGraphs = contributedGraphs,
           scopes = scopes,
-          bindsFunctions = bindsFunctions,
+          bindsCallables = bindsCallables,
+          bindsFunctions = bindsFunctions.map { it.first },
           providerFactories = providerFactories,
           accessors = accessors,
           injectors = injectors,
           isExternal = false,
           creator = creator,
           extendedGraphNodes = extendedGraphNodes,
+          bindingContainers = managedBindingContainers,
           typeKey = graphTypeKey,
         )
 
@@ -562,59 +558,18 @@ internal class DependencyGraphNodeCache(
             exitProcessing()
           }
 
-          // TODO load this from bindingContainerTransformer?
-          // Add any provider factories
-          providerFactories +=
-            graphProto.provider_factory_classes
-              .map { classId ->
-                val clazz = pluginContext.referenceClass(ClassId.fromString(classId))!!.owner
-                bindingContainerTransformer.externalProviderFactoryFor(clazz)
-              }
-              .map { it.typeKey to it }
+          bindingContainerTransformer
+            .loadExternalBindingContainer(
+              graphDeclaration,
+              graphDeclaration.kotlinFqName,
+              graphProto,
+            )
+            ?.let { bindingContainer ->
+              providerFactories +=
+                bindingContainer.providerFactories.values.map { it.typeKey to it }
 
-          // Add any binds functions
-          bindsFunctions.addAll(
-            graphProto.binds_callable_ids
-              .flatMap { bindsCallableId ->
-                val classId = ClassId.fromString(bindsCallableId.class_id)
-                val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
-
-                val functions =
-                  if (bindsCallableId.is_property) {
-                    pluginContext.referenceProperties(callableId).mapNotNull { it.owner.getter }
-                  } else {
-                    pluginContext.referenceFunctions(callableId).map { it.owner }
-                  }
-
-                if (functions.isEmpty()) {
-                  val message = buildString {
-                    append("No function found for ")
-                    appendLine(callableId)
-                    callableId.classId?.let {
-                      pluginContext.referenceClass(it)?.let {
-                        appendLine("Class dump")
-                        appendLine(it.owner.dumpKotlinLike())
-                      }
-                    }
-                      ?: run {
-                        append("No class found for ")
-                        appendLine(callableId)
-                      }
-                  }
-                  error(message)
-                }
-
-                functions.map { function ->
-                  val metroFunction = metroFunctionOf(function)
-                  metroFunction to IrContextualTypeKey.from(function)
-                }
-              }
-              .distinctBy {
-                // dedupe by the aliased + bound type
-                // TODO is this necessary
-                Objects.hash(it.first.ir.nonDispatchParameters.single(), it.second.typeKey)
-              }
-          )
+              bindsCallables += bindingContainer.bindsCallables
+            }
 
           // Read scopes from annotations
           // We copy scope annotations from parents onto this graph if it's extendable so we only
@@ -658,7 +613,7 @@ internal class DependencyGraphNodeCache(
           scopes = scopes,
           providerFactories = providerFactories,
           accessors = accessors,
-          bindsFunctions = bindsFunctions,
+          bindsCallables = bindsCallables,
           isExternal = true,
           proto = graphProto,
           extendedGraphNodes = extendedGraphNodes,
@@ -666,6 +621,9 @@ internal class DependencyGraphNodeCache(
           contributedGraphs = contributedGraphs,
           injectors = injectors,
           creator = null,
+          // External viewers don't look at this
+          bindingContainers = emptySet(),
+          bindsFunctions = emptyList(),
         )
 
       return dependentNode

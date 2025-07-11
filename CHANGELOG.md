@@ -10,11 +10,14 @@ Changelog
 - **Enhancement:** When using Dagger interop, default `allowEmpty` to true when using Dagger's `@Multibinds` annotation.
 - **Enhancement:** Make Dagger interop providers/lazy instances a `dagger.internal.Provider` internally for better compatibility with Dagger internals. Some dagger-generated code assumes this type at runtime.
 - **Enhancement:** Support javax/jakarta `Provider` types as multibinding Map value types when Dagger interop is enabled.
+- **Enhancement:** Completely skip processing local and enum classes as they're irrelevant to Metro's compiler.
+- **Enhancement:** When reporting `@Binds` declarations in binding stacks, report the original declaration rather than inherited fake overrides.
 - **Fix:** Report the original location of declarations in fake overrides in error reporting.
 - **Fix:** Handle default values on provides parameters with absent bindings during graph population.
 - **Fix:** Don't try to read private accessors of `@Includes` parameters.
 - **Fix:** Don't quietly stub accessors for missing `Binding.Provided` bindings.
 - **Fix:** Check constructor-annotated injections when discovering scoped classes in parent graphs.
+- **Fix:** Fix supporting overloads of binds functions from parent graphs or external supertypes.
 
 0.4.0
 -----

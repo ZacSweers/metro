@@ -32,6 +32,8 @@ import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
+import kotlin.collections.set
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -48,6 +50,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -254,17 +257,17 @@ internal class DependencyGraphTransformer(
 
       parentTracer.traceNested("Transform metro graph") { tracer ->
         IrGraphGenerator(
-            metroContext,
-            contributionData,
-            dependencyGraphNodeCache::get,
-            node,
-            metroGraph,
-            bindingGraph,
-            result,
-            tracer,
-            bindingContainerTransformer,
-            membersInjectorTransformer,
-            assistedFactoryTransformer,
+            metroContext = metroContext,
+            contributionData = contributionData,
+            dependencyGraphNodesByClass = dependencyGraphNodeCache::get,
+            node = node,
+            graphClass = metroGraph,
+            bindingGraph = bindingGraph,
+            sealResult = result,
+            parentTracer = tracer,
+            bindingContainerTransformer = bindingContainerTransformer,
+            membersInjectorTransformer = membersInjectorTransformer,
+            assistedFactoryTransformer = assistedFactoryTransformer,
           )
           .generate()
       }
@@ -277,7 +280,7 @@ internal class DependencyGraphTransformer(
         node.accessors
           .map { it.first }
           .plus(node.injectors.map { it.first })
-          .plus(node.bindsFunctions.map { it.first })
+          .plus(node.bindsCallables.map { it.function })
           .plus(node.contributedGraphs.map { it.value })
           .forEach { function ->
             with(function.ir) {
