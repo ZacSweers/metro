@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -19,8 +18,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.proto.BindsCallableId
-import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.suffixIfNot
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -46,12 +43,9 @@ import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
-import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -63,7 +57,6 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.DeepCopyIrTreeWithSymbols
 import org.jetbrains.kotlin.ir.util.SymbolRemapper
-import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -83,6 +76,7 @@ import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 
 // TODO further refactor
 //  move IR code gen out to IrGraphExpression?Generator
@@ -123,6 +117,32 @@ internal class IrGraphGenerator(
 
       val extraConstructorStatements = mutableListOf<IrBuilderWithScope.() -> IrStatement>()
 
+      fun addBoundInstanceField(
+        typeKey: IrTypeKey,
+        name: Name,
+        initializer: IrBuilderWithScope.() -> IrExpression,
+      ) {
+        // Don't add it if it's not used
+        if (typeKey !in sealResult.reachableKeys) return
+
+        providerFields[typeKey] =
+          addField(
+              fieldName =
+                fieldNameAllocator.newName(
+                  name.asString().suffixIfNot("Instance").suffixIfNot("Provider")
+                ),
+              fieldType = symbols.metroProvider.typeWith(typeKey.type),
+              fieldVisibility = DescriptorVisibilities.PRIVATE,
+            )
+            .apply {
+              isFinal = true
+              this.initializer =
+                pluginContext.createIrBuilder(symbol).run {
+                  irExprBody(instanceFactory(typeKey.type, initializer()))
+                }
+            }
+      }
+
       node.creator?.let { creator ->
         for ((i, param) in creator.parameters.regularParameters.withIndex()) {
           val isBindsInstance = param.isBindsInstance
@@ -131,30 +151,8 @@ internal class IrGraphGenerator(
           //  together
           val irParam = ctor.regularParameters[i]
 
-          fun addBoundInstanceField(initializer: IrBuilderWithScope.() -> IrExpression) {
-            // Don't add it if it's not used
-            if (param.typeKey !in sealResult.reachableKeys) return
-
-            providerFields[param.typeKey] =
-              addField(
-                  fieldName =
-                    fieldNameAllocator.newName(
-                      "${param.name}".suffixIfNot("Instance").suffixIfNot("Provider")
-                    ),
-                  fieldType = symbols.metroProvider.typeWith(param.type),
-                  fieldVisibility = DescriptorVisibilities.PRIVATE,
-                )
-                .apply {
-                  isFinal = true
-                  this.initializer =
-                    pluginContext.createIrBuilder(symbol).run {
-                      irExprBody(instanceFactory(param.type, initializer()))
-                    }
-                }
-          }
-
           if (isBindsInstance) {
-            addBoundInstanceField { irGet(irParam) }
+            addBoundInstanceField(param.typeKey, param.name) { irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
             // this constructor parameter for provider field initialization
@@ -178,7 +176,7 @@ internal class IrGraphGenerator(
 
             if (graphDep.isExtendable) {
               // Extended graphs
-              addBoundInstanceField { irGet(irParam) }
+              addBoundInstanceField(param.typeKey, param.name) { irGet(irParam) }
 
               // Check that the input parameter is an instance of the metrograph class
               // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
@@ -217,6 +215,15 @@ internal class IrGraphGenerator(
           }
         }
       }
+
+      // Create binding containers instance fields if used
+      node.bindingContainers
+        .sortedBy { it.kotlinFqName.asString() }
+        .forEach {
+          addBoundInstanceField(IrTypeKey(it), it.name) {
+            irCallConstructor(it.primaryConstructor!!.symbol, emptyList())
+          }
+        }
 
       val thisReceiverParameter = thisReceiverOrFail
 
@@ -619,77 +626,6 @@ internal class IrGraphGenerator(
       }
     }
 
-  private fun DependencyGraphNode.toProto(
-    bindingGraph: IrBindingGraph,
-    includedGraphClasses: Set<String>,
-    parentGraphClasses: Set<String>,
-    providerFields: List<String>,
-    instanceFields: List<String>,
-  ): DependencyGraphProto {
-    val bindsCallableIds =
-      bindingGraph.bindingsSnapshot().values.filterIsInstance<Binding.Alias>().mapNotNull { binding
-        ->
-        binding.ir
-          ?.overriddenSymbolsSequence()
-          ?.lastOrNull()
-          ?.owner
-          ?.propertyIfAccessor
-          ?.expectAsOrNull<IrDeclarationWithName>()
-          ?.let {
-            when (it) {
-              is IrSimpleFunction -> {
-                val callableId = it.callableId
-                return@let BindsCallableId(
-                  callableId.classId!!.asString(),
-                  callableId.callableName.asString(),
-                  is_property = false,
-                )
-              }
-              is IrProperty -> {
-                val callableId = it.callableId
-                return@let BindsCallableId(
-                  callableId.classId!!.asString(),
-                  callableId.callableName.asString(),
-                  is_property = true,
-                )
-              }
-              else -> null
-            }
-          }
-      }
-
-    var multibindingAccessors = 0
-    val accessorNames =
-      accessors
-        .sortedBy { it.first.ir.name.asString() }
-        .onEachIndexed { index, (_, contextKey) ->
-          val isMultibindingAccessor =
-            bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) is Binding.Multibinding
-          if (isMultibindingAccessor) {
-            multibindingAccessors = multibindingAccessors or (1 shl index)
-          }
-        }
-        .map { it.first.ir.name.asString() }
-
-    return DependencyGraphProto(
-      is_graph = true,
-      provider_field_names = providerFields,
-      instance_field_names = instanceFields,
-      provider_factory_classes =
-        providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.asString() }.sorted(),
-      binds_callable_ids =
-        bindsCallableIds.sortedWith(
-          compareBy<BindsCallableId> { it.class_id }
-            .thenBy { it.callable_name }
-            .thenBy { it.is_property }
-        ),
-      accessor_callable_names = accessorNames,
-      included_classes = includedGraphClasses.sorted(),
-      parent_graph_classes = parentGraphClasses.sorted(),
-      multibinding_accessor_indices = multibindingAccessors,
-    )
-  }
-
   // TODO add asProvider support?
   private fun IrClass.addSimpleInstanceField(
     name: String,
@@ -823,10 +759,11 @@ internal class IrGraphGenerator(
     }
 
     // Implement no-op bodies for Binds providers
-    bindsFunctions.forEach { (function, _) ->
+    // Note we can't source this from the node.bindsCallables as those are pointed at their original
+    // declarations and we need to implement their fake overrides here
+    bindsFunctions.forEach { function ->
       function.ir.apply {
-        val declarationToFinalize =
-          function.ir.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+        val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(context.thisReceiver)
         }
