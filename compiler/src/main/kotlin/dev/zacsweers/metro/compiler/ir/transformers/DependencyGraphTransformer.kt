@@ -87,6 +87,14 @@ internal class DependencyGraphTransformer(
   }
 
   override fun visitClass(declaration: IrClass): IrStatement {
+    val shouldNotProcess =
+      declaration.isLocal ||
+        declaration.kind == ClassKind.ENUM_CLASS ||
+        declaration.kind == ClassKind.ENUM_ENTRY
+    if (shouldNotProcess) {
+      return super.visitClass(declaration)
+    }
+
     log("Reading ${declaration.kotlinFqName}")
 
     // TODO need to better divvy these
