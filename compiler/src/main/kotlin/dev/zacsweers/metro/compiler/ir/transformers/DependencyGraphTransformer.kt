@@ -117,7 +117,7 @@ internal class DependencyGraphTransformer(
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
-    bindingContainerTransformer.visitClass(declaration)
+    bindingContainerTransformer.findContainer(declaration)
 
     val dependencyGraphAnno =
       declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()

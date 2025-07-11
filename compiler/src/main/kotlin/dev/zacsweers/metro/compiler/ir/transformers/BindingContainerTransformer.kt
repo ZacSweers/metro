@@ -92,7 +92,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
   private val references = mutableMapOf<CallableId, CallableReference>()
   private val generatedFactories = mutableMapOf<CallableId, ProviderFactory>()
-  private val bindsCallables = mutableMapOf<FqName, Set<BindsCallable>>()
 
   /**
    * A cache of binding container fqnames to a [BindingContainer] representation of them. If the key
@@ -100,15 +99,17 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
    */
   private val cache = mutableMapOf<FqName, Optional<BindingContainer>>()
 
-  fun visitClass(declaration: IrClass): BindingContainer? {
-    val declarationFqName = declaration.kotlinFqName
-
+  fun findContainer(
+    declaration: IrClass,
+    declarationFqName: FqName = declaration.kotlinFqName,
+    graphProto: DependencyGraphProto? = null,
+  ): BindingContainer? {
     cache[declarationFqName]?.let {
       return it.getOrNull()
     }
 
     if (declaration.isExternalParent) {
-      return loadExternalBindingContainer(declaration, declarationFqName, null)
+      return loadExternalBindingContainer(declaration, declarationFqName, graphProto)
     }
 
     val providerFactories = mutableMapOf<CallableId, ProviderFactory>()
@@ -149,7 +150,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
           }
           is IrClass if (nestedDeclaration.isCompanionObject) -> {
             // Include companion object refs
-            visitClass(nestedDeclaration)?.providerFactories?.let {
+            findContainer(nestedDeclaration)?.providerFactories?.let {
               providerFactories.putAll(it.values.associateBy { it.callableId })
             }
           }
@@ -213,7 +214,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     }
 
     // If the parent hasn't been checked before, visit it and look again
-    visitClass(binding.providerFactory.clazz.parentAsClass)
+    findContainer(binding.providerFactory.clazz.parentAsClass)
 
     // If it's still not present after, there's nothing here
     return generatedFactories[binding.providerFactory.callableId]
@@ -527,7 +528,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
   }
 
   fun factoryClassesFor(parent: IrClass): List<Pair<IrTypeKey, ProviderFactory>> {
-    val container = visitClass(parent)
+    val container = findContainer(parent)
     return container?.providerFactories.orEmpty().values.map { providerFactory ->
       providerFactory.typeKey to providerFactory
     }
@@ -548,7 +549,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     )
   }
 
-  fun loadExternalBindingContainer(
+  private fun loadExternalBindingContainer(
     declaration: IrClass,
     declarationFqName: FqName,
     graphProto: DependencyGraphProto?,

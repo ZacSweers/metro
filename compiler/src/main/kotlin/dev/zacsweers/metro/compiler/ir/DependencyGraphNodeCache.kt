@@ -344,7 +344,7 @@ internal class DependencyGraphNodeCache(
           scopes += clazz.scopeAnnotations()
         }
 
-        bindingContainerTransformer.visitClass(clazz)?.let(bindingContainers::add)
+        bindingContainerTransformer.findContainer(clazz)?.let(bindingContainers::add)
       }
 
       if (isExtendable) {
@@ -469,7 +469,7 @@ internal class DependencyGraphNodeCache(
 
         if (classId in resolved) continue
 
-        val bindingContainer = bindingContainerTransformer.visitClass(bindingContainerClass)
+        val bindingContainer = bindingContainerTransformer.findContainer(bindingContainerClass)
         resolved[classId] = bindingContainer
 
         bindingContainer?.let {
@@ -558,10 +558,9 @@ internal class DependencyGraphNodeCache(
           }
 
           bindingContainerTransformer
-            .loadExternalBindingContainer(
+            .findContainer(
               graphDeclaration,
-              graphDeclaration.kotlinFqName,
-              graphProto,
+              graphProto = graphProto,
             )
             ?.let { bindingContainer ->
               providerFactories +=
