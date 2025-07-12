@@ -47,7 +47,6 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
     val session = context.session
     val classIds = session.classIds
 
-    // Check if this is an assisted factory
     val bindingContainerAnno =
       declaration.annotationsIn(session, classIds.bindingContainerAnnotations).firstOrNull()
 
