@@ -5,6 +5,8 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.fir.checkers.AggregationChecker
 import dev.zacsweers.metro.compiler.fir.checkers.AsContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker
+import dev.zacsweers.metro.compiler.fir.checkers.BindingContainerCallableChecker
+import dev.zacsweers.metro.compiler.fir.checkers.BindingContainerClassChecker
 import dev.zacsweers.metro.compiler.fir.checkers.CreateGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphCreatorChecker
@@ -13,7 +15,6 @@ import dev.zacsweers.metro.compiler.fir.checkers.InjectConstructorChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MembersInjectChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MergedContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.MultibindsChecker
-import dev.zacsweers.metro.compiler.fir.checkers.ProvidesChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
@@ -35,11 +36,12 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
             AggregationChecker,
             DependencyGraphCreatorChecker,
             DependencyGraphChecker,
+            BindingContainerClassChecker,
             MergedContributionChecker,
           )
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
-        get() = setOf(ProvidesChecker, MultibindsChecker)
+        get() = setOf(BindingContainerCallableChecker, MultibindsChecker)
 
       override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker>
         get() = setOf(FunctionInjectionChecker)

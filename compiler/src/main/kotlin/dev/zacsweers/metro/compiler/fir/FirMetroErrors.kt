@@ -71,6 +71,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val DAGGER_REUSABLE_ERROR by error0(NAME_IDENTIFIER)
   val FUNCTION_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
+  val BINDING_CONTAINER_ERROR by error1<String>(NAME_IDENTIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("FirMetroErrors").apply {
@@ -143,6 +144,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE, "{0}", STRING)
       put(FUNCTION_INJECT_ERROR, "{0}", STRING)
       put(FUNCTION_INJECT_TYPE_PARAMETERS_ERROR, "{0}", STRING)
+      put(BINDING_CONTAINER_ERROR, "{0}", STRING)
       put(
         PROVIDER_OVERRIDES,
         "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",

@@ -1,0 +1,1 @@
+/AbstractContainersCannotHaveProvides.kt:(149,159): error: Abstract binding containers cannot contain @Provides callables ('ConfusedContainer' is an interface). Either convert it to an object class or move these declarations to its companion object.
