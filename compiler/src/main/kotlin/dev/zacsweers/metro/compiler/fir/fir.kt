@@ -752,6 +752,12 @@ internal fun FirAnnotation.scopeArgument() = classArgument(Symbols.Names.scope, 
 internal fun FirAnnotation.additionalScopesArgument() =
   argumentAsOrNull<FirArrayLiteral>(Symbols.Names.additionalScopes, index = 1)
 
+internal fun FirAnnotation.bindingContainersArgument() =
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.bindingContainers, index = 1)
+
+internal fun FirAnnotation.includesArgument() =
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.includes, index = 1)
+
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
   buildSet {
       resolvedScopeClassId()?.let(::add)
@@ -824,6 +830,14 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =
   additionalScopesArgument()?.argumentList?.arguments?.mapNotNull {
     it.expectAsOrNull<FirGetClassCall>()?.resolvedClassId()
   }
+
+internal fun FirAnnotation.resolvedBindingContainersClassIds() =
+  bindingContainersArgument()?.argumentList?.arguments?.mapNotNull {
+    it.expectAsOrNull<FirGetClassCall>()
+  }
+
+internal fun FirAnnotation.resolvedIncludesClassIds() =
+  includesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
 
 internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
   typeResolver: TypeResolveService

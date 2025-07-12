@@ -46,9 +46,8 @@ import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 
 // TODO
 //  What about future Kotlin versions where you can have different get signatures
-//  Check for no conflicting names, requires class-level
-internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
-
+internal object BindingContainerCallableChecker :
+  FirCallableDeclarationChecker(MppCheckerKind.Common) {
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
     val source = declaration.source ?: return

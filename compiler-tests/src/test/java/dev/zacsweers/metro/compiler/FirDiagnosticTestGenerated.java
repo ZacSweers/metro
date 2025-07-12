@@ -22,6 +22,52 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Bindingcontainer {
+    @Test
+    @TestMetadata("AbstractContainersCannotHaveProvides.kt")
+    public void testAbstractContainersCannotHaveProvides() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/AbstractContainersCannotHaveProvides.kt");
+    }
+
+    @Test
+    public void testAllFilesPresentInBindingcontainer() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CannotAnnotateBothGraphAndContainer.kt")
+    public void testCannotAnnotateBothGraphAndContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/CannotAnnotateBothGraphAndContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotIncludeGenericContainer.kt")
+    public void testCannotIncludeGenericContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/CannotIncludeGenericContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("IllegalTypes.kt")
+    public void testIllegalTypes() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/IllegalTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedMustBeAContainer.kt")
+    public void testIncludedMustBeAContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/IncludedMustBeAContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingNoArgConstructor.kt")
+    public void testMissingNoArgConstructor() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/MissingNoArgConstructor.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/createGraph")
   @TestDataPath("$PROJECT_ROOT")
   public class CreateGraph {
