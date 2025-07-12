@@ -1,0 +1,1 @@
+/CannotAnnotateBothGraphAndContainer.kt:(62,78): error: Classes cannot be annotated with both '@BindingContainer' and '@DependencyGraph'.
