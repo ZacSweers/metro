@@ -295,6 +295,18 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ProvidesNamesMustBeUniqueInContainer.kt")
+    public void testProvidesNamesMustBeUniqueInContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesNamesMustBeUniqueInContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesNamesMustBeUniqueInGraph.kt")
+    public void testProvidesNamesMustBeUniqueInGraph() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesNamesMustBeUniqueInGraph.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesPropertiesCannotBeMutable.kt")
     public void testProvidesPropertiesCannotBeMutable() {
       runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesPropertiesCannotBeMutable.kt");

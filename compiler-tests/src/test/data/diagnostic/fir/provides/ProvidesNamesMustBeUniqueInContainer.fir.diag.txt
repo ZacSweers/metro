@@ -1,0 +1,3 @@
+/ProvidesNamesMustBeUniqueInContainer.kt:(120,133): error: Class ExampleBindings cannot contain multiple @Provides callables with the same name 'provideNumber'.
+
+/ProvidesNamesMustBeUniqueInContainer.kt:(164,177): error: Class ExampleBindings cannot contain multiple @Provides callables with the same name 'provideNumber'.

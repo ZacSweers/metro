@@ -15,6 +15,7 @@ Changelog
 - **Enhancement:** Add interop support for kotlin-inject's `@AssistedFactory` annotations.
 - **Enhancement:** Add diagnostic to check for graph classes directly extending other graph classes. You should use `@Extends`.
 - **Enhancement:** Add diagnostic to check for `@Assisted` parameters in provides functions.
+- **Enhancement:** Add diagnostic to check duplicate `@Provides` declaration names in the same class.
 - **Fix:** Within (valid) cycles, topographically sort bindings within the cycle. Previously these would fall back to a deterministic-but-wrong alphabetical sort.
 - **Fix:** Handle enum entry arguments to qualifier, scope, and map key annotations.
 - **Fix:** Report the original location of declarations in fake overrides in error reporting.
