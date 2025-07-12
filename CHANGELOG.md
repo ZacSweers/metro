@@ -25,6 +25,7 @@ Changelog
 - **Fix:** Fix `BaseDoubleCheck.isInitialized()`.
 - **Fix:** Gracefully fall back to `MessageCollector` for graph seal and contributed graph errors on sourceless declarations.
 - **Fix:** Fix supporting overloads of binds functions from parent graphs or external supertypes.
+- **Fix:** Fix generating binding functions with names that contain dashes.
 
 0.4.0
 -----
