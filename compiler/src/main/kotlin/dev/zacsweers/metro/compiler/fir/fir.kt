@@ -753,10 +753,10 @@ internal fun FirAnnotation.additionalScopesArgument() =
   argumentAsOrNull<FirArrayLiteral>(Symbols.Names.additionalScopes, index = 1)
 
 internal fun FirAnnotation.bindingContainersArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.bindingContainers, index = 1)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.bindingContainers, index = 4)
 
 internal fun FirAnnotation.includesArgument() =
-  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.includes, index = 1)
+  argumentAsOrNull<FirArrayLiteral>(Symbols.Names.includes, index = 0)
 
 internal fun FirAnnotation.allScopeClassIds(): Set<ClassId> =
   buildSet {
