@@ -28,13 +28,19 @@ class SomeBindings4(int: Int) {
   @Provides fun provideBoolean(): Boolean = false
 }
 
+// This is is not
+@BindingContainer
+class SomeBindings5 private constructor() {
+  @Provides fun provideFloat(): Float = 0F
+}
+
 @BindingContainer(
-  includes = [SomeBindings::class, SomeBindings2::class, SomeBindings3::class, <!BINDING_CONTAINER_ERROR!>SomeBindings4::class<!>]
+  includes = [SomeBindings::class, SomeBindings2::class, SomeBindings3::class, <!BINDING_CONTAINER_ERROR!>SomeBindings4::class<!>, <!BINDING_CONTAINER_ERROR!>SomeBindings5::class<!>]
 )
 interface IncludingContainer
 
 @DependencyGraph(
   bindingContainers =
-    [SomeBindings::class, SomeBindings2::class, SomeBindings3::class, <!BINDING_CONTAINER_ERROR!>SomeBindings4::class<!>]
+    [SomeBindings::class, SomeBindings2::class, SomeBindings3::class, <!BINDING_CONTAINER_ERROR!>SomeBindings4::class<!>, <!BINDING_CONTAINER_ERROR!>SomeBindings5::class<!>]
 )
 interface AppGraph

@@ -1,3 +1,7 @@
-/MissingNoArgConstructor.kt:(636,656): error: Included binding container 'SomeBindings4's does not have a no-arg constructor and thus cannot be included via annotation. Add a no-arg constructor or declare it as a graph factory parameter instead.
+/MissingNoArgConstructor.kt:(762,782): error: Included binding container 'SomeBindings4's does not have a no-arg constructor and thus cannot be included via annotation. Add a no-arg constructor or declare it as a graph factory parameter instead.
 
-/MissingNoArgConstructor.kt:(800,820): error: Included binding container 'SomeBindings4's does not have a no-arg constructor and thus cannot be included via annotation. Add a no-arg constructor or declare it as a graph factory parameter instead.
+/MissingNoArgConstructor.kt:(784,804): error: Included binding container 'SomeBindings5' does not have a public constructor.
+
+/MissingNoArgConstructor.kt:(948,968): error: Included binding container 'SomeBindings4's does not have a no-arg constructor and thus cannot be included via annotation. Add a no-arg constructor or declare it as a graph factory parameter instead.
+
+/MissingNoArgConstructor.kt:(970,990): error: Included binding container 'SomeBindings5' does not have a public constructor.
