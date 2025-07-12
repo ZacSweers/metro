@@ -1,0 +1,3 @@
+/MissingNoArgConstructor.kt:(636,656): error: Included binding container 'SomeBindings4's does not have a no-arg constructor and thus cannot be included via annotation. Add a no-arg constructor or declare it as a graph factory parameter instead.
+
+/MissingNoArgConstructor.kt:(800,820): error: Included binding container 'SomeBindings4's does not have a no-arg constructor and thus cannot be included via annotation. Add a no-arg constructor or declare it as a graph factory parameter instead.
