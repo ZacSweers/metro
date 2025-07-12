@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
@@ -139,7 +140,9 @@ internal class BindingGraphGenerator(
     val bindsFunctionsToAdd = buildList {
       addAll(node.bindsCallables)
       // Exclude scoped Binds, those will be exposed via provider field accessor
-      addAll(node.allExtendedNodes.values.filter { it.isExtendable }.flatMap { it.bindsCallables })
+      addAll(
+        node.allExtendedNodes.values.filter { it.isExtendable }.flatMapToSet { it.bindsCallables }
+      )
     }
     bindsFunctionsToAdd.forEach { bindingCallable ->
       val annotations = bindingCallable.function.annotations
