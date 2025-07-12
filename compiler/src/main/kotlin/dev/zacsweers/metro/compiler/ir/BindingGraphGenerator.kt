@@ -144,7 +144,6 @@ internal class BindingGraphGenerator(
     bindsFunctionsToAdd.forEach { bindingCallable ->
       val annotations = bindingCallable.function.annotations
       val parameters = bindingCallable.function.ir.parameters(metroContext)
-      // TODO what about T -> T but into multibinding
       val bindsImplType =
         if (annotations.isBinds) {
           parameters.extensionOrFirstParameter?.contextualTypeKey
@@ -344,7 +343,7 @@ internal class BindingGraphGenerator(
       }
     }
 
-    node.allExtendedNodes.forEach { (_, depNode) ->
+    node.allExtendedNodes.values.forEach { depNode ->
       if (depNode.isExtendable) {
         depNode.proto?.let { proto ->
           val providerFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()

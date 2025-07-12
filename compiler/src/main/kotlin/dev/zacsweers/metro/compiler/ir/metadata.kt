@@ -38,6 +38,7 @@ internal var IrClass.metroMetadata: MetroMetadata?
     )
   }
 
+context(context: IrMetroContext)
 internal fun DependencyGraphNode.toProto(
   bindingGraph: IrBindingGraph,
   includedGraphClasses: Set<String>,
@@ -48,33 +49,37 @@ internal fun DependencyGraphNode.toProto(
   val bindsCallableIds =
     bindingGraph.bindingsSnapshot().values.filterIsInstance<Binding.Alias>().mapNotNullToSet {
       binding ->
-      binding.ir
-        ?.overriddenSymbolsSequence()
-        ?.lastOrNull()
-        ?.owner
-        ?.propertyIfAccessor
-        ?.expectAsOrNull<IrDeclarationWithName>()
-        ?.let {
-          when (it) {
-            is IrSimpleFunction -> {
-              val callableId = it.callableId
-              return@let BindsCallableId(
-                callableId.classId!!.asString(),
-                callableId.callableName.asString(),
-                is_property = false,
-              )
-            }
-            is IrProperty -> {
-              val callableId = it.callableId
-              return@let BindsCallableId(
-                callableId.classId!!.asString(),
-                callableId.callableName.asString(),
-                is_property = true,
-              )
-            }
-            else -> null
+
+      // Grab the right declaration. If this is an override, look up the original
+      val declarationToCheck =
+        binding.ir
+          ?.overriddenSymbolsSequence()
+          ?.map { it.owner }
+          ?.lastOrNull {
+            it.isAnnotatedWithAny(context.symbols.classIds.bindingContainerAnnotations)
+          } ?: binding.ir
+
+      declarationToCheck?.propertyIfAccessor?.expectAsOrNull<IrDeclarationWithName>()?.let {
+        when (it) {
+          is IrSimpleFunction -> {
+            val callableId = it.callableId
+            return@let BindsCallableId(
+              callableId.classId!!.asString(),
+              callableId.callableName.asString(),
+              is_property = false,
+            )
           }
+          is IrProperty -> {
+            val callableId = it.callableId
+            return@let BindsCallableId(
+              callableId.classId!!.asString(),
+              callableId.callableName.asString(),
+              is_property = true,
+            )
+          }
+          else -> null
         }
+      }
     }
 
   var multibindingAccessors = 0
