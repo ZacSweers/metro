@@ -32,7 +32,6 @@ import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -371,7 +370,7 @@ internal class DependencyGraphNodeCache(
           ?.bindingContainerClasses()
           .orEmpty()
           .mapNotNullToSet { it.classType.rawTypeOrNull() }
-          .let(::resolveAllBindingContainers)
+          .let(bindingContainerTransformer::resolveAllBindingContainersCached)
           .onEach { container ->
             // Annotation-included containers may need to be managed directly
             if (container.canBeManaged) {
@@ -459,26 +458,6 @@ internal class DependencyGraphNodeCache(
       return dependencyGraphNode
     }
 
-    // TODO cache these somewhere?
-    private fun resolveAllBindingContainers(roots: Set<IrClass>): Set<BindingContainer> {
-      val resolved = mutableMapOf<ClassId, BindingContainer?>()
-      val queue = ArrayDeque(roots)
-      while (queue.isNotEmpty()) {
-        val bindingContainerClass = queue.removeFirst()
-        val classId = bindingContainerClass.classId ?: continue
-
-        if (classId in resolved) continue
-
-        val bindingContainer = bindingContainerTransformer.findContainer(bindingContainerClass)
-        resolved[classId] = bindingContainer
-
-        bindingContainer?.let {
-          queue.addAll(it.includes.mapNotNullToSet { pluginContext.referenceClass(it)?.owner })
-        }
-      }
-      return resolved.values.filterNotNullTo(mutableSetOf())
-    }
-
     private fun buildExternalGraphOrBindingContainer(): DependencyGraphNode {
       val accessorsToCheck =
         if (isGraph) {
@@ -558,10 +537,7 @@ internal class DependencyGraphNodeCache(
           }
 
           bindingContainerTransformer
-            .findContainer(
-              graphDeclaration,
-              graphProto = graphProto,
-            )
+            .findContainer(graphDeclaration, graphProto = graphProto)
             ?.let { bindingContainer ->
               providerFactories +=
                 bindingContainer.providerFactories.values.map { it.typeKey to it }
