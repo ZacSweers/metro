@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors.BINDING_CONTAINER_ERROR
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors.BINDING_CONTAINER_TYPE_PARAMS_ERROR
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -26,7 +25,6 @@ import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
-import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
@@ -99,7 +97,6 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
     }
 
     val isBindingContainer = bindingContainerAnno != null
-    val isGraph = graphLikeAnno != null
 
     val includesToCheck =
       bindingContainerAnno?.resolvedIncludesClassIds()
@@ -139,7 +136,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         if (target.typeParameterSymbols.isNotEmpty()) {
           reporter.reportOn(
             includedClassCall.source ?: source,
-            BINDING_CONTAINER_TYPE_PARAMS_ERROR,
+            BINDING_CONTAINER_ERROR,
             "Included binding container '${target.classId.asSingleFqName()}' is generic and thus cannot be included via annotation. Remove its generics or declare it as a graph factory parameter instead.",
           )
           continue
