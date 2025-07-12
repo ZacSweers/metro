@@ -95,7 +95,7 @@ internal class IrBindingGraph(
         if (contextKey.hasDefault) return Binding.Absent(contextKey.typeKey)
         realGraph.reportMissingBinding(contextKey.typeKey, stack) {
           if (metroContext.debug) {
-            appendLine(dumpGraph(stack.graph.kotlinFqName.asString(), short = false))
+            appendLine(dumpGraph(stack.graphFqName.asString(), short = false))
           }
         }
       }

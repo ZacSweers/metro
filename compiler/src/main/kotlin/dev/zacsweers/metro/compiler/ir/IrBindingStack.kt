@@ -216,7 +216,7 @@ internal interface IrBindingStack :
           get() = throw UnsupportedOperationException()
 
         override val graphFqName: FqName
-          get() = throw UnsupportedOperationException()
+          get() = FqName.ROOT
 
         override val entries: List<Entry>
           get() = emptyList()
@@ -276,6 +276,7 @@ internal fun Appendable.appendBindingStackEntries(
   ellipse: Boolean = false,
   short: Boolean = true,
 ) {
+  if (graphName == FqName.ROOT || entries.isEmpty()) return
   for (entry in entries) {
     entry.render(graphName, short).prependIndent(indent).lineSequence().forEach { appendLine(it) }
   }
@@ -395,7 +396,7 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
             paddingBottom = 1
             alignment = TextAlignment.MiddleCenter
           }
-          row { cell("[${graph.kotlinFqName.pathSegments().last()}]") { columnSpan = 6 } }
+          row { cell("[${graphFqName.pathSegments().last()}]") { columnSpan = 6 } }
         }
       }
       .renderText()
