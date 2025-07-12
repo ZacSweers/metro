@@ -124,6 +124,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("SimpleBindingIntoMulti.kt")
+    public void testSimpleBindingIntoMulti() {
+      runTest("compiler-tests/src/test/data/box/cycles/SimpleBindingIntoMulti.kt");
+    }
+
+    @Test
     @TestMetadata("SmokeTest.kt")
     public void testSmokeTest() {
       runTest("compiler-tests/src/test/data/box/cycles/SmokeTest.kt");
