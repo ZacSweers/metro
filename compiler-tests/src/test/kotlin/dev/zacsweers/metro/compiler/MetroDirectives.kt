@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
 object MetroDirectives : SimpleDirectivesContainer() {
@@ -13,12 +14,31 @@ object MetroDirectives : SimpleDirectivesContainer() {
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public providers."
     )
+  val ENABLE_SCOPED_INJECT_CLASS_HINTS by directive("Enable scoped inject class hints.")
+  val SHRINK_UNUSED_BINDINGS by
+    valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
   val WITH_DAGGER by directive("Add Dagger as dependency and configure custom annotations.")
+  val ENABLE_DAGGER_INTEROP by
+    directive("Enable Dagger interop. This implicitly applies WITH_DAGGER directive as well.")
   val ENABLE_DAGGER_KSP by
     directive(
-      "Enable Dagger KSP processing and interop. This implicitly applies WITH_DAGGER directive as well."
+      "Enable Dagger KSP processing. This implicitly applies WITH_DAGGER and ENABLE_DAGGER_INTEROP directives as well."
     )
+
+  fun enableDaggerRuntime(directives: RegisteredDirectives): Boolean {
+    return WITH_DAGGER in directives ||
+      ENABLE_DAGGER_INTEROP in directives ||
+      ENABLE_DAGGER_KSP in directives
+  }
+
+  fun enableDaggerRuntimeInterop(directives: RegisteredDirectives): Boolean {
+    return ENABLE_DAGGER_INTEROP in directives || ENABLE_DAGGER_KSP in directives
+  }
+
+  fun enableDaggerKsp(directives: RegisteredDirectives): Boolean {
+    return ENABLE_DAGGER_KSP in directives
+  }
 }

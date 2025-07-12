@@ -20,7 +20,7 @@ import dev.zacsweers.metro.provider
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-class ProvidesTransformerTest : MetroCompilerTest() {
+class BindingContainerTransformerTest : MetroCompilerTest() {
 
   @Test
   fun `simple function provider`() {
@@ -143,14 +143,14 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     val result =
       compile(
         source(
-          """
+          $$"""
             @DependencyGraph
             interface ExampleGraph {
               @Provides
               fun provideIntValue(): Int = 1
 
               @Provides
-              fun provideStringValue(intValue: Int): String = "Hello, ${'$'}intValue!"
+              fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
             }
           """
             .trimIndent()
@@ -175,11 +175,11 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     val result =
       compile(
         source(
-          """
+          $$"""
             interface ExampleGraph {
               companion object {
                 @Provides
-                fun provideStringValue(intValue: Int): String = "Hello, ${'$'}intValue!"
+                fun provideStringValue(intValue: Int): String = "Hello, $intValue!"
               }
             }
           """
@@ -204,7 +204,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     val result =
       compile(
         source(
-          """
+          $$"""
             @DependencyGraph
             interface ExampleGraph {
               @Provides
@@ -214,7 +214,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
               fun provideIntValue(): Int = 1
 
               @Provides
-              fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, ${'$'}intValue! ${'$'}booleanValue"
+              fun provideStringValue(intValue: Int, booleanValue: Boolean): String = "Hello, $intValue! $booleanValue"
             }
           """
             .trimIndent()
@@ -240,7 +240,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     val result =
       compile(
         source(
-          """
+          $$"""
             @DependencyGraph
             interface ExampleGraph {
               @Provides
@@ -250,7 +250,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
               fun provideStringValue(
                 intValue: Int,
                 intValue2: Int
-              ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
+              ): String = "Hello, $intValue - $intValue2!"
             }
           """
             .trimIndent()
@@ -276,7 +276,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
     val result =
       compile(
         source(
-          """
+          $$"""
             @DependencyGraph
             interface ExampleGraph {
               @Provides
@@ -290,7 +290,7 @@ class ProvidesTransformerTest : MetroCompilerTest() {
               fun provideStringValue(
                 intValue: Int,
                 @Named("int2") intValue2: Int
-              ): String = "Hello, ${'$'}intValue - ${'$'}intValue2!"
+              ): String = "Hello, $intValue - $intValue2!"
             }
           """
             .trimIndent()
@@ -503,9 +503,6 @@ class ProvidesTransformerTest : MetroCompilerTest() {
       compile(
         source(
           """
-            import kotlin.annotation.AnnotationRetention.BINARY
-            import javax.inject.Qualifier
-
             interface EnabledProvider {
               @Qualifier @Retention(BINARY) private annotation class FlipperEnabled
 
@@ -517,7 +514,9 @@ class ProvidesTransformerTest : MetroCompilerTest() {
               private fun provideEnabledValue(@FlipperEnabled enabled: Boolean): String = enabled.toString()
             }
           """
-            .trimIndent()
+            .trimIndent(),
+          extraImports =
+            arrayOf("kotlin.annotation.AnnotationRetention.BINARY", "javax.inject.Qualifier"),
         )
       )
 

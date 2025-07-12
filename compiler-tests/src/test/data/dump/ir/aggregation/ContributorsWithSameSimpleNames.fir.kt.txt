@@ -41,7 +41,7 @@ fun AppScope(contributed: ContributedInterface) {
 // FILE: module_main_ContributorsWithSameSimpleNames.kt
 
 @DependencyGraph(scope = AppScope::class)
-interface ExampleGraph {
+interface ExampleGraph : $$MetroContributionToAppScope, $$MetroContributionToAppScope {
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -58,8 +58,6 @@ interface ExampleGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
-    private /* final field */ val thisGraphInstance: ExampleGraph = <this>
-    private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
     constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */

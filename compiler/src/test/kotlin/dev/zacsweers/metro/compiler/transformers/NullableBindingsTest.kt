@@ -61,7 +61,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:9:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
+          e: ExampleGraph.kt:9:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int?
 
               kotlin.Int? is requested at
                   [test.ExampleGraph] test.ExampleGraph#nullable
@@ -94,7 +94,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
+          e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.Int
 
               kotlin.Int is requested at
                   [test.ExampleGraph] test.ExampleGraph#int
@@ -253,7 +253,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
+          e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 
@@ -371,7 +371,7 @@ class NullableBindingsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleGraph.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
+          e: ExampleGraph.kt:9:7 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int?>' was unexpectedly empty.
 
           If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
 

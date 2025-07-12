@@ -8,11 +8,13 @@ import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.anno
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.visitors.IrVisitor
 
 // Scan IR symbols in this compilation
-internal class IrContributionVisitor(private val metroContext: IrMetroContext) :
-  IrVisitor<Unit, IrContributionData>() {
+internal class IrContributionVisitor(context: IrMetroContext) :
+  IrVisitor<Unit, IrContributionData>(), IrMetroContext by context {
+
   override fun visitElement(element: IrElement, data: IrContributionData) {
     element.acceptChildren(this, data)
   }
@@ -24,7 +26,9 @@ internal class IrContributionVisitor(private val metroContext: IrMetroContext) :
       val scope =
         metroContribution.scopeOrNull()
           ?: with(metroContext) {
-            declaration.reportError("No scope found for @MetroContribution annotation")
+            diagnosticReporter
+              .at(declaration)
+              .report(MetroIrErrors.METRO_ERROR, "No scope found for @MetroContribution annotation")
             exitProcessing()
           }
       data.addContribution(scope, declaration.defaultType)
@@ -33,17 +37,49 @@ internal class IrContributionVisitor(private val metroContext: IrMetroContext) :
 
     // Check if it's a plain old ContributesTo
     for (contributesToAnno in
-      declaration.annotationsIn(metroContext.symbols.classIds.contributesToLikeAnnotations)) {
+      declaration.annotationsIn(symbols.classIds.contributesToLikeAnnotations)) {
       val scope =
         contributesToAnno.scopeOrNull()
           ?: with(metroContext) {
-            declaration.reportError(
-              "No scope found for @${contributesToAnno.annotationClass.name} annotation"
-            )
+            diagnosticReporter
+              .at(declaration)
+              .report(
+                MetroIrErrors.METRO_ERROR,
+                "No scope found for @${contributesToAnno.annotationClass.name} annotation",
+              )
             exitProcessing()
           }
       data.addContribution(scope, declaration.defaultType)
       return
+    }
+
+    if (options.enableScopedInjectClassHints) {
+      val isConstructorInjected =
+        declaration.isAnnotatedWithAny(symbols.classIds.injectAnnotations) ||
+          declaration.primaryConstructor?.isAnnotatedWithAny(symbols.classIds.injectAnnotations) ==
+            true
+      if (isConstructorInjected) data.addScopedInject(declaration)
+    }
+
+    if (
+      options.enableScopedInjectClassHints &&
+        declaration.isAnnotatedWithAny(symbols.classIds.injectAnnotations) &&
+        !declaration.isAnnotatedWithAny(symbols.classIds.allContributesAnnotations)
+    ) {
+      data.addScopedInject(declaration)
+    }
+  }
+
+  private fun IrContributionData.addScopedInject(declaration: IrClass) {
+    val scopes =
+      declaration.annotationsAnnotatedWithAny(symbols.classIds.scopeAnnotations).map {
+        IrAnnotation(it)
+      }
+
+    // TODO what about generics?
+    val typeKey = IrTypeKey(declaration)
+    for (scope in scopes) {
+      addScopedInject(scope, typeKey)
     }
   }
 }

@@ -13,11 +13,13 @@ plugins {
 
 kotlin {
   compilerOptions {
+    freeCompilerArgs.add("-Xcontext-parameters")
     optIn.addAll(
       "dev.drewhamilton.poko.SkipSupport",
       "kotlin.contracts.ExperimentalContracts",
       "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
       "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
+      "org.jetbrains.kotlin.backend.common.extensions.ExperimentalAPIForScriptingPlugin",
     )
   }
 }
@@ -92,7 +94,7 @@ artifacts {
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
-  implementation(libs.picnic)
+  shadow(libs.picnic)
   shadow(libs.wire.runtime)
 
   testImplementation(project(":runtime"))

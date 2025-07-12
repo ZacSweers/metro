@@ -15,7 +15,15 @@ internal class StringGraph(
    * Creates a binding for keys not necessarily manually added to the graph (e.g.,
    * constructor-injected types).
    */
-  computeBinding: (contextKey: StringContextualTypeKey) -> Set<StringBinding> = { _ -> emptySet() },
+  computeBinding:
+    (
+      contextKey: StringContextualTypeKey,
+      currentBindings: Set<StringTypeKey>,
+      stack: StringBindingStack,
+    ) -> Set<StringBinding> =
+    { _, _, _ ->
+      emptySet()
+    },
 ) :
   MutableBindingGraph<
     String,

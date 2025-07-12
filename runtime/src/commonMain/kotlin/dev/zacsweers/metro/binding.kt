@@ -41,4 +41,4 @@ package dev.zacsweers.metro
  * class Impl : Base, AnotherBase
  * ```
  */
-@Suppress("ClassName") public annotation class binding<@Suppress("unused") T : Any>
+@Suppress("ClassName") public annotation class binding<@Suppress("unused") T>

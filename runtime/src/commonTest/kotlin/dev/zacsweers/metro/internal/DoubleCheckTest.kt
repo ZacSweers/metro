@@ -19,7 +19,9 @@ import dev.zacsweers.metro.Provider
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 import kotlinx.atomicfu.atomic
 
 class DoubleCheckTest {
@@ -72,6 +74,15 @@ class DoubleCheckTest {
     val factory = InstanceFactory(Any())
     // We use toString() here because on JVM the boxed type is used
     assertEquals(factory.toString(), DoubleCheck.lazy(factory).toString())
+  }
+
+  @Test
+  fun `isInitialized check for lazy works`() {
+    val doubleCheck = DoubleCheck.lazy(Provider { Any() })
+    assertFalse(doubleCheck.isInitialized())
+
+    doubleCheck.value
+    assertTrue(doubleCheck.isInitialized())
   }
 
   companion object {

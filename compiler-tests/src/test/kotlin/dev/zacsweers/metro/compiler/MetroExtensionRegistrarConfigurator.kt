@@ -47,16 +47,21 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
       MetroDirectives.DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE !in module.directives
     val addDaggerAnnotations =
       MetroDirectives.WITH_DAGGER in module.directives ||
+        MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
         MetroDirectives.ENABLE_DAGGER_KSP in module.directives
 
     val options =
       MetroOptions(
-        enableDaggerRuntimeInterop = MetroDirectives.ENABLE_DAGGER_KSP in module.directives,
+        enableDaggerRuntimeInterop = MetroDirectives.enableDaggerRuntimeInterop(module.directives),
         generateAssistedFactories =
           MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives,
         transformProvidersToPrivate = transformProvidersToPrivate,
         enableTopLevelFunctionInjection =
           MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives,
+        enableScopedInjectClassHints =
+          MetroDirectives.ENABLE_SCOPED_INJECT_CLASS_HINTS in module.directives,
+        shrinkUnusedBindings =
+          module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS) ?: true,
         publicProviderSeverity =
           if (transformProvidersToPrivate) {
             MetroOptions.DiagnosticSeverity.NONE
@@ -131,6 +136,18 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           buildSet {
             if (addDaggerAnnotations) {
               add(ClassId.fromString("dagger/Lazy"))
+            }
+          },
+        customBindingContainerAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/Module"))
+            }
+          },
+        customMultibindsAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/multibindings/Multibinds"))
             }
           },
         // TODO other dagger annotations/types not yet implemented

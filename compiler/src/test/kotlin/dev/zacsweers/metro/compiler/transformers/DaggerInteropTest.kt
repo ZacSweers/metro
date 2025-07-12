@@ -11,7 +11,6 @@ import dagger.internal.codegen.KspComponentProcessor
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.assertNoWarningsOrErrors
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
@@ -384,16 +383,9 @@ class DaggerInteropTest : MetroCompilerTest() {
         """
           .trimIndent()
       ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      expectedExitCode = KotlinCompilation.ExitCode.OK,
     ) {
-      assertDiagnostics(
-        """
-          e: ExampleGraph.kt:8:4 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.Int>' was unexpectedly empty.
-
-          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
-        """
-          .trimIndent()
-      )
+      assertNoWarningsOrErrors()
     }
   }
 

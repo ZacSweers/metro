@@ -6,6 +6,7 @@ import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrBindingStack.Entry
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.declarations.isPropertyAccessor
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -117,6 +119,7 @@ internal interface IrBindingStack :
         declaration: IrDeclaration? = param,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
+        isMirrorFunction: Boolean = false,
       ): Entry {
         // TODO make some of this lazily evaluated
         val functionToUse =
@@ -129,10 +132,20 @@ internal interface IrBindingStack :
           if (functionToUse == null) {
             "<intrinsic>"
           } else {
-            val targetFqName = functionToUse.parent.kotlinFqName
+            // If it's a synthetic signature holder in a ClassFactory, use the parent class
+            var treatAsConstructor = functionToUse is IrConstructor
+            val parentClassToReport =
+              if (functionToUse is IrSimpleFunction && isMirrorFunction) {
+                treatAsConstructor = functionToUse.name == Symbols.Names.mirrorFunction
+                functionToUse.parentAsClass.parent
+              } else {
+                functionToUse.parent
+              }
+            val targetFqName = parentClassToReport.kotlinFqName
             val middle =
               when {
                 functionToUse is IrConstructor -> ""
+                treatAsConstructor -> ""
                 functionToUse.isPropertyAccessor ->
                   "#${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
                 else -> "#${functionToUse.name.asString()}"
@@ -247,7 +260,7 @@ internal inline fun <
 }
 
 internal val IrBindingStack.lastEntryOrGraph
-  get() = entries.firstOrNull()?.declaration ?: graph
+  get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
 
 internal fun Appendable.appendBindingStack(
   stack: BaseBindingStack<*, *, *, *, *>,
@@ -399,9 +412,10 @@ internal fun bindingStackEntryForDependency(
     is Binding.ConstructorInjected -> {
       Entry.injectedAt(
         contextKey,
-        callingBinding.injectedConstructor,
+        callingBinding.classFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
+        isMirrorFunction = true,
       )
     }
     is Binding.Alias -> {
@@ -415,9 +429,10 @@ internal fun bindingStackEntryForDependency(
     is Binding.Provided -> {
       Entry.injectedAt(
         contextKey,
-        callingBinding.providerFactory.providesFunction,
+        callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
+        isMirrorFunction = true,
       )
     }
     is Binding.Assisted -> {
@@ -431,7 +446,9 @@ internal fun bindingStackEntryForDependency(
     }
     is Binding.ObjectClass -> TODO()
     is Binding.BoundInstance -> TODO()
-    is Binding.GraphDependency -> TODO()
+    is Binding.GraphDependency -> {
+      Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
+    }
     is Binding.Absent -> error("Should never happen")
   }
 }

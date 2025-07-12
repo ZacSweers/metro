@@ -22,6 +22,8 @@ plugins {
   alias(libs.plugins.kotlin.plugin.serialization) apply false
 }
 
+val ktfmtVersion = libs.versions.ktfmt.get()
+
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {

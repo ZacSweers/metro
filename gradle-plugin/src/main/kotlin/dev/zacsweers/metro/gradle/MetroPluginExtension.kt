@@ -54,6 +54,19 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val generateHintProperties: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
+  /**
+   * Enable/disable hint property generation for scoped inject classes. Enabled by default.
+   *
+   * @see <a href="https://zacsweers.github.io/metro/dependency-graphs/#graph-extensions">Graph
+   *   Extensions docs for more details</a>
+   */
+  public val enableScopedInjectClassHints: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(true)
+
+  /** Enable/disable shrinking of unused bindings. Enabled by default. */
+  public val shrinkUnusedBindings: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(true)
+
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
@@ -138,6 +151,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     public val provides: SetProperty<String> = objects.setProperty(String::class.java)
     public val qualifier: SetProperty<String> = objects.setProperty(String::class.java)
     public val scope: SetProperty<String> = objects.setProperty(String::class.java)
+    public val bindingContainer: SetProperty<String> = objects.setProperty(String::class.java)
 
     // Interop markers
     public val enableDaggerAnvilInterop: Property<Boolean> = objects.property(Boolean::class.java)
@@ -177,6 +191,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       multibinds.add("dagger/multibindings/Multibinds")
       provides.addAll("dagger/Provides", "dagger/BindsInstance")
       provider.add("dagger/internal/Provider")
+      bindingContainer.add("dagger/Module")
 
       if (!includeJavax && !includeJakarta) {
         System.err.println(
@@ -194,6 +209,7 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     /** Includes kotlin-inject annotations support. */
     public fun includeKotlinInject() {
       inject.add("me/tatarka/inject/annotations/Inject")
+      assistedFactory.add("me/tatarka/inject/annotations/AssistedFactory")
       qualifier.add("me/tatarka/inject/annotations/Qualifier")
       scope.add("me/tatarka/inject/annotations/Scope")
       assisted.add("me/tatarka/inject/annotations/Assisted")

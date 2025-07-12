@@ -9,8 +9,9 @@ import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrVararg
-import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 
@@ -84,23 +85,28 @@ private fun StringBuilder.renderAsAnnotationArgument(irElement: IrElement?, shor
   when (irElement) {
     null -> append("<null>")
     is IrConstructorCall -> renderAsAnnotation(irElement, short)
-    is IrConst -> {
-      renderIrConstAsAnnotationArgument(irElement)
-    }
+    is IrConst -> renderIrConstAsAnnotationArgument(irElement)
     is IrVararg -> {
       appendIterableWith(irElement.elements, prefix = "[", postfix = "]", separator = ", ") {
         renderAsAnnotationArgument(it, short)
       }
     }
     is IrClassReference -> {
-      append(
-        irElement.classType.rawType().classId?.let {
-          if (short) it.shortClassName.asString() else it.asSingleFqName().asString()
-        } ?: "<error>"
-      )
+      irElement.classType.renderTo(this, short = short)
       append("::class")
     }
-    else -> append("...")
+    is IrGetEnumValue -> {
+      val parent = irElement.symbol.owner.parentAsClass.classIdOrFail
+      if (short) {
+        append(parent.shortClassName)
+      } else {
+        append(parent.asSingleFqName())
+      }
+      append('.')
+      append(irElement.symbol.owner.name.asString())
+    }
+    else ->
+      error("Unrecognized annotation argument type: $irElement (type ${irElement::class.java})")
   }
 }
 

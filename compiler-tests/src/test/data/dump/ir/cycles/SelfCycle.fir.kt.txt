@@ -38,8 +38,12 @@ class S {
 
     override operator fun invoke(): S {
       val tmp_0: S = Companion.newInstance(sProvider = <this>.#sProvider)
-      Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy</* null */, /* null */>(provider = <this>.#sLazy))
+      Companion.injectSLazy(instance = tmp_0, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sLazy))
       return tmp_0
+    }
+
+    fun mirrorFunction(sProvider: Provider<S>): S {
+      return error(message = "Never called")
     }
 
   }
@@ -58,7 +62,7 @@ class S {
         return $$MetroMembersInjector(sLazy = sLazy)
       }
 
-      fun injectSLazy(instance: S, sLazy: Lazy<S>) {
+      fun injectSLazy(@Assisted instance: S, sLazy: Lazy<S>) {
         return instance.#sLazy = sLazy
       }
 
@@ -71,7 +75,7 @@ class S {
     }
 
     override fun injectMembers(instance: S) {
-      Companion.injectSLazy(instance = instance, sLazy = Companion.lazy</* null */, /* null */>(provider = <this>.#sLazy))
+      Companion.injectSLazy(instance = instance, sLazy = Companion.lazy<Provider<S>, S>(provider = <this>.#sLazy))
     }
 
   }
@@ -102,8 +106,6 @@ interface SelfCycleGraph {
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : SelfCycleGraph {
-    private /* final field */ val thisGraphInstance: SelfCycleGraph = <this>
-    private /* final field */ val selfCycleGraphProvider: Provider<SelfCycleGraph> = Companion.invoke<SelfCycleGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val sProvider: Provider<S> = DelegateFactory<S>()
     constructor() /* primary */ {
       super/*Any*/()
@@ -121,3 +123,4 @@ interface SelfCycleGraph {
   abstract fun s(): S
 
 }
+

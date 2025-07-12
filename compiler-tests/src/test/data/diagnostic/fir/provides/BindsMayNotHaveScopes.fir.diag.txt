@@ -1,0 +1,7 @@
+/BindsMayNotHaveScopes.kt:(98,124): error: @Binds declarations may not have scopes.
+
+/BindsMayNotHaveScopes.kt:(164,190): error: @Binds declarations may not have scopes.
+
+/BindsMayNotHaveScopes.kt:(271,297): error: @Binds declarations may not have scopes.
+
+/BindsMayNotHaveScopes.kt:(346,372): error: @Binds declarations may not have scopes.

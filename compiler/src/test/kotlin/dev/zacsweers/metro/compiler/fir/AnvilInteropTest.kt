@@ -425,7 +425,7 @@ class AnvilInteropTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ContributedInterface.kt:17:1 [Metro/DuplicateBinding] Duplicate binding for test.ContributedInterface
+          e: ContributedInterface.kt:18:11 [Metro/DuplicateBinding] Duplicate binding for test.ContributedInterface
           ├─ Binding 1: Contributed by 'test.Impl1' at ContributedInterface.kt:8:1
           ├─ Binding 2: Contributed by 'test.Impl3' at ContributedInterface.kt:14:1
         """
@@ -464,7 +464,7 @@ class AnvilInteropTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ContributedInterface.kt:14:1 [Metro/DuplicateBinding] Duplicate binding for test.ContributedInterface
+          e: ContributedInterface.kt:15:11 [Metro/DuplicateBinding] Duplicate binding for test.ContributedInterface
           ├─ Binding 1: Contributed by 'test.Impl1' at ContributedInterface.kt:8:1
           ├─ Binding 2: Contributed by 'test.Impl2' at ContributedInterface.kt:11:1
         """

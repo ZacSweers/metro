@@ -138,6 +138,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  SHRINK_UNUSED_BINDINGS(
+    RawMetroOption.boolean(
+      name = "shrink-unused-bindings",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description = "Enable/disable shrinking of unused bindings from binding graphs.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -403,6 +413,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
     )
   ),
+  CUSTOM_BINDING_CONTAINER(
+    RawMetroOption(
+      name = "custom-binding-container",
+      defaultValue = emptySet(),
+      valueDescription = "BindingContainer annotations",
+      description = "BindingContainer annotations",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = { it.splitToSequence(':').mapToSet { ClassId.fromString(it, false) } },
+    )
+  ),
   ENABLE_DAGGER_ANVIL_INTEROP(
     RawMetroOption.boolean(
       name = "enable-dagger-anvil-interop",
@@ -410,6 +431,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueDescription = "<true | false>",
       description =
         "Enable/disable interop with Dagger Anvil's additional functionality (currently for 'rank' support).",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  ENABLE_SCOPED_INJECT_CLASS_HINTS(
+    RawMetroOption.boolean(
+      name = "enable-scoped-inject-class-hints",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable generating hints for scoped @Inject classes. By default, a scoped injectable class that isn't used in its associated graph node will result in an error if a graph extension later tries to inject it. Enabling this setting prevents such errors by generating a binding for all scoped types within the graph node. See https://github.com/ZacSweers/metro/issues/377 for more context.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -436,6 +468,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_HINT_PROPERTIES.raw.defaultValue.expectAs(),
   val transformProvidersToPrivate: Boolean =
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
+  val shrinkUnusedBindings: Boolean =
+    MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -493,8 +527,12 @@ public data class MetroOptions(
   val customQualifierAnnotations: Set<ClassId> =
     MetroOption.CUSTOM_QUALIFIER.raw.defaultValue.expectAs(),
   val customScopeAnnotations: Set<ClassId> = MetroOption.CUSTOM_SCOPE.raw.defaultValue.expectAs(),
+  val customBindingContainerAnnotations: Set<ClassId> =
+    MetroOption.CUSTOM_BINDING_CONTAINER.raw.defaultValue.expectAs(),
   val enableDaggerAnvilInterop: Boolean =
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
+  val enableScopedInjectClassHints: Boolean =
+    MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -523,6 +561,7 @@ public data class MetroOptions(
       val customProvidesAnnotations = mutableSetOf<ClassId>()
       val customQualifierAnnotations = mutableSetOf<ClassId>()
       val customScopeAnnotations = mutableSetOf<ClassId>()
+      val customBindingContainerAnnotations = mutableSetOf<ClassId>()
       val customContributesIntoSetAnnotations = mutableSetOf<ClassId>()
 
       for (entry in MetroOption.entries) {
@@ -551,6 +590,9 @@ public data class MetroOptions(
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))
+
+          MetroOption.SHRINK_UNUSED_BINDINGS ->
+            options = options.copy(shrinkUnusedBindings = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =
@@ -609,11 +651,16 @@ public data class MetroOptions(
           MetroOption.CUSTOM_QUALIFIER ->
             customQualifierAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_SCOPE -> customScopeAnnotations.addAll(configuration.getAsSet(entry))
+          MetroOption.CUSTOM_BINDING_CONTAINER ->
+            customBindingContainerAnnotations.addAll(configuration.getAsSet(entry))
           MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
             customContributesIntoSetAnnotations.addAll(configuration.getAsSet(entry))
 
           MetroOption.ENABLE_DAGGER_ANVIL_INTEROP -> {
             options = options.copy(enableDaggerAnvilInterop = configuration.getAsBoolean(entry))
+          }
+          MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
+            options = options.copy(enableScopedInjectClassHints = configuration.getAsBoolean(entry))
           }
         }
       }
@@ -645,6 +692,7 @@ public data class MetroOptions(
           customProvidesAnnotations = customProvidesAnnotations,
           customQualifierAnnotations = customQualifierAnnotations,
           customScopeAnnotations = customScopeAnnotations,
+          customBindingContainerAnnotations = customScopeAnnotations,
           customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
         )
 
@@ -671,5 +719,14 @@ public data class MetroOptions(
     NONE,
     WARN,
     ERROR,
+  }
+
+  public object Properties {
+    /**
+     * Boolean flag to indicate that declaration source locations in diagnostics should use the
+     * short file name. Just for tests.
+     */
+    public const val USE_SHORT_COMPILER_SOURCE_LOCATIONS: String =
+      "metro.messaging.useShortCompilerSourceLocations"
   }
 }

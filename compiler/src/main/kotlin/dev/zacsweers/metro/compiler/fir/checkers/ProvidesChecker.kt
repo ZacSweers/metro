@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.findInjectConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -21,8 +22,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
-import org.jetbrains.kotlin.fir.analysis.checkers.getDirectOverriddenSymbols
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
@@ -48,11 +49,8 @@ import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 //  Check for no conflicting names, requires class-level
 internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.Common) {
 
-  override fun check(
-    declaration: FirCallableDeclaration,
-    context: CheckerContext,
-    reporter: DiagnosticReporter,
-  ) {
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  override fun check(declaration: FirCallableDeclaration) {
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
@@ -62,11 +60,11 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
     // If we ever wanted to allow providers in the future, this is the check to remove
     if (declaration.isOverride) {
       val overridesAProvider =
-        declaration.getDirectOverriddenSymbols(context).any {
+        declaration.symbol.directOverriddenSymbolsSafe(context).any {
           it.isAnnotatedWithAny(session, classIds.providesAnnotations)
         }
       if (overridesAProvider) {
-        reporter.reportOn(source, FirMetroErrors.PROVIDER_OVERRIDES, context)
+        reporter.reportOn(source, FirMetroErrors.PROVIDER_OVERRIDES)
       }
     }
 
@@ -75,10 +73,19 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
       return
     }
 
+    if (annotations.isBinds && annotations.scope != null) {
+      reporter.reportOn(
+        annotations.scope.fir.source ?: source,
+        FirMetroErrors.BINDS_ERROR,
+        "@Binds declarations may not have scopes.",
+      )
+      return
+    }
+
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
       ?.let {
-        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR, context)
+        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR)
         return
       }
 
@@ -88,7 +95,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         source,
         FirMetroErrors.METRO_TYPE_PARAMETERS_ERROR,
         "`@$type` declarations may not have type parameters.",
-        context,
       )
       return
     }
@@ -101,7 +107,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         "@Provides/@Binds declarations must be within an interface, class, or companion object. " +
           "If you're seeing this, `${declaration.nameOrSpecialName}` is likely defined as a " +
           "top-level method which isn't supported.",
-        context,
       )
       return
     } else if (
@@ -118,19 +123,13 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         "@Provides declarations must be within an interface, class, or companion object. " +
           "`${declaration.nameOrSpecialName}` appears to be defined directly within a " +
           "(non-companion) object.",
-        context,
       )
       return
     }
 
     // Check property is not var
     if (declaration is FirProperty && declaration.isVar) {
-      reporter.reportOn(
-        source,
-        FirMetroErrors.PROVIDES_ERROR,
-        "@Provides properties cannot be var",
-        context,
-      )
+      reporter.reportOn(source, FirMetroErrors.PROVIDES_ERROR, "@Provides properties cannot be var")
       return
     }
 
@@ -140,7 +139,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         source,
         FirMetroErrors.PROVIDES_ERROR,
         "Implicit return types are not allowed for `@Provides` declarations. Specify the return type explicitly.",
-        context,
       )
       return
     }
@@ -177,7 +175,7 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
               MetroOptions.DiagnosticSeverity.ERROR ->
                 FirMetroErrors.PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_ERROR
             }
-          reporter.reportOn(source, diagnosticFactory, message, context)
+          reporter.reportOn(source, diagnosticFactory, message)
         }
       }
     } else if (isPrivate /* && is FirProperty */) {
@@ -185,7 +183,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
         source,
         FirMetroErrors.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE,
         "`@Provides` properties cannot be private yet.",
-        context,
       )
       return
     }
@@ -216,7 +213,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
                 source,
                 FirMetroErrors.PROVIDES_ERROR,
                 "Binds receiver type `${receiverTypeKey.render(short = false)}` is the same type and qualifier as the bound type `${returnTypeKey.render(short = false)}`.",
-                context,
               )
             }
           } else if (!implType.isSubtypeOf(boundType, session)) {
@@ -224,7 +220,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
               source,
               FirMetroErrors.PROVIDES_ERROR,
               "Binds receiver type `${implType.renderReadableWithFqNames()}` is not a subtype of bound type `${boundType.renderReadableWithFqNames()}`.",
-              context,
             )
           }
           return
@@ -242,7 +237,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
             source,
             FirMetroErrors.PROVIDES_COULD_BE_BINDS,
             "`@Provides` extension $name just returning `this` should be annotated with `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
-            context,
           )
           return
         } else if (!returnsThis && annotations.isBinds) {
@@ -250,7 +244,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
             source,
             FirMetroErrors.BINDS_ERROR,
             "`@Binds` declarations with bodies should just return `this`. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
-            context,
           )
           return
         }
@@ -260,7 +253,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
             source,
             FirMetroErrors.PROVIDES_ERROR,
             "`@Provides` $name may not be extension $name. Use `@Binds` instead for these. See https://zacsweers.github.io/metro/bindings/#binds for more information.",
-            context,
           )
           return
         }
@@ -273,7 +265,6 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
           source,
           FirMetroErrors.PROVIDES_ERROR,
           "`@Provides` declarations must have bodies.",
-          context,
         )
         return
       }
@@ -284,11 +275,19 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
 
         if (injectConstructor != null) {
           // If the type keys and scope are the same, this is redundant
-          val classTypeKey = FirTypeKey.from(session, returnType, returnClass.annotations)
+          val classTypeKey =
+            FirTypeKey.from(
+              session,
+              returnType,
+              returnClass.resolvedCompilerAnnotationsWithClassIds,
+            )
           val providerTypeKey = FirTypeKey.from(session, returnType, declaration.annotations)
           if (classTypeKey == providerTypeKey) {
             val providerScope = annotations.scope
-            val classScope = returnClass.annotations.scopeAnnotations(session).singleOrNull()
+            val classScope =
+              returnClass.resolvedCompilerAnnotationsWithClassIds
+                .scopeAnnotations(session)
+                .singleOrNull()
             // TODO maybe we should report matching keys but different scopes? Feels like it could
             //  be confusing at best
             if (providerScope == classScope) {
@@ -296,11 +295,23 @@ internal object ProvidesChecker : FirCallableDeclarationChecker(MppCheckerKind.C
                 source,
                 FirMetroErrors.PROVIDES_WARNING,
                 "Provided type '${classTypeKey.render(short = false, includeQualifier = true)}' is already constructor-injected and does not need to be provided explicitly. Consider removing this `@Provides` declaration.",
-                context,
               )
               return
             }
           }
+        }
+      }
+
+      if (declaration is FirSimpleFunction) {
+        for (parameter in declaration.valueParameters) {
+          val assistedAnnotation =
+            parameter.annotationsIn(session, classIds.assistedAnnotations).firstOrNull() ?: continue
+          reporter.reportOn(
+            assistedAnnotation.source ?: parameter.source ?: source,
+            FirMetroErrors.PROVIDES_ERROR,
+            "Assisted parameters are not supported for `@Provides` methods. Create a concrete assisted-injected factory class instead.",
+          )
+          return
         }
       }
     }

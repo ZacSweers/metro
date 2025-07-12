@@ -170,8 +170,11 @@ format_cell() {
 generate_performance_table() {
     local timestamp="$1"
     local results_dir="$2"
+    local clean_output="${3:-false}"
     
-    print_status "Collecting performance data for all test types"
+    if [ "$clean_output" != "true" ]; then
+        print_status "Collecting performance data for all test types"
+    fi
     
     # Collect data for all test types
     local abi_data=$(collect_performance_data "abi_change" "$timestamp" "$results_dir")
@@ -226,17 +229,22 @@ generate_performance_table() {
 main() {
     local timestamp="$1"
     local results_dir="$2"
+    local clean_output="${3:-false}"
     
-    print_status "Generating performance summary for benchmark results from $timestamp"
+    if [ "$clean_output" != "true" ]; then
+        print_status "Generating performance summary for benchmark results from $timestamp"
+    fi
     
     echo "# Benchmark Results Summary"
     echo ""
     echo "Generated from benchmark results: $timestamp"
     
     # Generate unified table in docs format
-    generate_performance_table "$timestamp" "$results_dir"
+    generate_performance_table "$timestamp" "$results_dir" "$clean_output"
     
-    print_success "Performance summary generated successfully"
+    if [ "$clean_output" != "true" ]; then
+        print_success "Performance summary generated successfully"
+    fi
 }
 
 # Usage check

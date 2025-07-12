@@ -33,6 +33,9 @@ message DependencyGraphProto {
 
   // Set of extended parent class IDs (strings). Only present if is_graph is true
   repeated string parent_graph_classes = 9;
+
+  // Set of all transitively included binding container class IDs (strings)
+  repeated string included_binding_containers = 10;
 }
 
 message BindsCallableId {
@@ -41,9 +44,14 @@ message BindsCallableId {
   bool is_property = 3;
 }
 
+message InjectedClassProto {
+  repeated string member_inject_functions = 1;
+}
+
 message MetroMetadata {
   string version = 1;
 
-  // Optional DependencyGraphProto field
-  optional DependencyGraphProto dependency_graph = 2;
+  DependencyGraphProto dependency_graph = 2;
+
+  InjectedClassProto injected_class = 3;
 }

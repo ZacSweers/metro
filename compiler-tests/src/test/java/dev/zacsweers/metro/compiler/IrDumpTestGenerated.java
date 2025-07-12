@@ -104,5 +104,51 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testGraphAccessors() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphAccessors.kt");
     }
+
+    @Test
+    @TestMetadata("UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt")
+    public void testUnusedInstanceBindingsInExtendedGraphGetProviderFields() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt")
+    public void testUnusedInstanceBindingsInUnextendedGraphGetNoProviderFields() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInUnextendedGraphGetNoProviderFields.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedScopedBindingsInExtendedGraphGetProviderFields.kt")
+    public void testUnusedScopedBindingsInExtendedGraphGetProviderFields() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedBindingsInExtendedGraphGetProviderFields.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedScopedBindingsInUnextendedGraphGetNoProviderFields.kt")
+    public void testUnusedScopedBindingsInUnextendedGraphGetNoProviderFields() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedBindingsInUnextendedGraphGetNoProviderFields.kt");
+    }
+
+    @Test
+    @TestMetadata("UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt")
+    public void testUnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedScopedConstructorInjectedClassWithConstructorAnnotatedIsDiscovered.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/injectconstructor")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Injectconstructor {
+    @Test
+    public void testAllFilesPresentInInjectconstructor() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/injectconstructor"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ConstructorFunctionSignatures.kt")
+    public void testConstructorFunctionSignatures() {
+      runTest("compiler-tests/src/test/data/dump/ir/injectconstructor/ConstructorFunctionSignatures.kt");
+    }
   }
 }

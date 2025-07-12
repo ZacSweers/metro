@@ -101,7 +101,9 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(lazyOption("generate-hint-properties", extension.generateHintProperties))
+        add(lazyOption("enable-scoped-inject-class-hints", extension.enableScopedInjectClassHints))
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
+        add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
@@ -239,6 +241,11 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
             .getOrElse(emptySet())
             .takeUnless { it.isEmpty() }
             ?.let { SubpluginOption("custom-scope", value = it.joinToString(":")) }
+            ?.let(::add)
+          bindingContainer
+            .getOrElse(emptySet())
+            .takeUnless { it.isEmpty() }
+            ?.let { SubpluginOption("custom-binding-container", value = it.joinToString(":")) }
             ?.let(::add)
           add(
             SubpluginOption(

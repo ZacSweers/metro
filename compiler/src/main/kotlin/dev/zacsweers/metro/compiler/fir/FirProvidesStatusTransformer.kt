@@ -12,8 +12,6 @@ import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
-import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
@@ -40,14 +38,7 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
 
         // A later FIR checker will check this case
         if (!declaration.hasBody) return false
-
-        // Can't be applied to annotations with KClass args at the moment
-        // https://youtrack.jetbrains.com/issue/KT-76257/
-        val hasKClassArg =
-          declaration.annotations.filterIsInstance<FirAnnotationCall>().any { annotation ->
-            annotation.argumentList.arguments.any { it is FirGetClassCall }
-          }
-        !hasKClassArg
+        true
       }
       else -> false
     }
