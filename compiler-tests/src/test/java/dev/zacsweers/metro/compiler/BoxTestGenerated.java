@@ -208,6 +208,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/BindingContainerViaCreator.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/extensions")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Extensions {
+      @Test
+      public void testAllFilesPresentInExtensions() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("ParentBindingsAreAlsoIncluded.kt")
+      public void testParentBindingsAreAlsoIncluded() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentBindingsAreAlsoIncluded.kt");
+      }
+    }
   }
 
   @Nested
