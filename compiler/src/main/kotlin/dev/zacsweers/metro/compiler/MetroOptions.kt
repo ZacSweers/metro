@@ -692,7 +692,7 @@ public data class MetroOptions(
           customProvidesAnnotations = customProvidesAnnotations,
           customQualifierAnnotations = customQualifierAnnotations,
           customScopeAnnotations = customScopeAnnotations,
-          customBindingContainerAnnotations = customScopeAnnotations,
+          customBindingContainerAnnotations = customBindingContainerAnnotations,
           customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
         )
 
