@@ -31,7 +31,7 @@ abstract class MetroProject(
                 appendLine("metro {")
                 appendLine(
                   """
-                  debug.set(true)
+                  debug.set($debug)
                   reportsDestination.set(layout.buildDirectory.dir("metro"))
                 """
                     .trimIndent()
