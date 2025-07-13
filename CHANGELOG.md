@@ -27,6 +27,7 @@ Changelog
 - **Fix:** Gracefully fall back to `MessageCollector` for graph seal and contributed graph errors on sourceless declarations.
 - **Fix:** Fix supporting overloads of binds functions from parent graphs or external supertypes.
 - **Fix:** Fix generating binding functions with names that contain dashes.
+- **Fix:** Treat interop'd Dagger/Anvil/KI components as implicitly extendable.
 
 0.4.0
 -----

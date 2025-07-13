@@ -63,8 +63,7 @@ internal class IrContributedGraphGenerator(
         parentGraph
       }
     val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations).single()
-    val parentIsExtendable =
-      parentGraphAnno.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) ?: false
+    val parentIsExtendable = parentGraphAnno.isExtendable()
     if (!parentIsExtendable) {
       with(metroContext) {
         val message = buildString {

@@ -107,8 +107,7 @@ internal class DependencyGraphNodeCache(
         .getAllSuperTypes(pluginContext, excludeSelf = false)
         .memoized()
 
-    private val isExtendable =
-      dependencyGraphAnno?.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) == true
+    private val isExtendable = dependencyGraphAnno?.isExtendable() ?: false
 
     private fun computeDeclaredScopes(): Set<IrAnnotation> {
       return buildSet {

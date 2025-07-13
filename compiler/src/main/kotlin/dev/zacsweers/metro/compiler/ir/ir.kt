@@ -742,16 +742,26 @@ internal fun IrConstructorCall.includesArgument() =
   getValueArgument(Symbols.Names.includes)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.includedClasses(): Set<IrClassReference> {
-  return includesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
-    ?: return emptySet()
+  return includesArgument().toClassReferences()
 }
 
 internal fun IrConstructorCall.bindingContainersArgument() =
   getValueArgument(Symbols.Names.bindingContainers)?.expectAsOrNull<IrVararg>()
 
-internal fun IrConstructorCall.bindingContainerClasses(): Set<IrClassReference> {
-  return bindingContainersArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
-    ?: return emptySet()
+internal fun IrConstructorCall.modulesArgument() =
+  getValueArgument(Symbols.Names.modules)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.bindingContainerClasses(
+  includeModulesArg: Boolean
+): Set<IrClassReference> {
+  // Check both
+  val argument =
+    bindingContainersArgument() ?: if (includeModulesArg) modulesArgument() else return emptySet()
+  return argument.toClassReferences()
+}
+
+internal fun IrVararg?.toClassReferences(): Set<IrClassReference> {
+  return this?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet() ?: return emptySet()
 }
 
 internal fun IrConstructorCall.requireScope(): ClassId {
@@ -1313,4 +1323,18 @@ private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>)
   if (substitutions.isEmpty()) return this
   val remapper = DeepTypeSubstitutor(substitutions)
   return remapper.remapType(this)
+}
+
+internal fun IrConstructorCall.isExtendable(): Boolean {
+  val isExplicitlyExtendable = getConstBooleanArgumentOrNull(Symbols.Names.isExtendable)
+  return if (isExplicitlyExtendable == null) {
+    // Not present, interop. Implicitly true
+    true
+  } else if (isExplicitlyExtendable) {
+    // Explicitly true
+    true
+  } else {
+    // Non-interop and not set or false
+    false
+  }
 }
