@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -1326,15 +1327,12 @@ private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>)
 }
 
 internal fun IrConstructorCall.isExtendable(): Boolean {
-  val isExplicitlyExtendable = getConstBooleanArgumentOrNull(Symbols.Names.isExtendable)
-  return if (isExplicitlyExtendable == null) {
-    // Not present, interop. Implicitly true
-    true
-  } else if (isExplicitlyExtendable) {
-    // Explicitly true
-    true
+  val isExtendable = getConstBooleanArgumentOrNull(Symbols.Names.isExtendable)
+  return if (isExtendable == null) {
+    // Not present. Default false in metro annotations, true everywhere else
+    val isMetroGraph = annotationClass.classId?.packageFqName == Symbols.FqNames.metroRuntimePackage
+    !isMetroGraph
   } else {
-    // Non-interop and not set or false
-    false
+    isExtendable
   }
 }
