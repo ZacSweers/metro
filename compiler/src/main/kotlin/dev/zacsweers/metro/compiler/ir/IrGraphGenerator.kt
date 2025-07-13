@@ -151,7 +151,7 @@ internal class IrGraphGenerator(
           //  together
           val irParam = ctor.regularParameters[i]
 
-          if (isBindsInstance) {
+          if (isBindsInstance || creator.bindingContainersParameterIndices.isSet(i)) {
             addBoundInstanceField(param.typeKey, param.name) { irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at

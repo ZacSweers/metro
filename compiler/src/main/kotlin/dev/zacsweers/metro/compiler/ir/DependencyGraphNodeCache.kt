@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
@@ -18,6 +20,7 @@ import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
+import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -29,9 +32,11 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -63,20 +68,13 @@ internal class DependencyGraphNodeCache(
 
     return dependencyGraphNodesByClass.getOrPut(graphClassId) {
       parentTracer.traceNested("Build DependencyGraphNode") { tracer ->
-        DependencyGraphNodeBuilder(
-            this,
-            graphDeclaration,
-            bindingStack,
-            tracer,
-            metroGraph,
-            dependencyGraphAnno,
-          )
+        Builder(this, graphDeclaration, bindingStack, tracer, metroGraph, dependencyGraphAnno)
           .build()
       }
     }
   }
 
-  private class DependencyGraphNodeBuilder(
+  private class Builder(
     private val nodeCache: DependencyGraphNodeCache,
     private val graphDeclaration: IrClass,
     private val bindingStack: IrBindingStack,
@@ -97,6 +95,7 @@ internal class DependencyGraphNodeCache(
     private val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
     private val graphTypeKey = IrTypeKey(graphDeclaration.typeWith())
     private val graphContextKey = IrContextualTypeKey.create(graphTypeKey)
+    private val bindingContainers = mutableSetOf<BindingContainer>()
 
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
@@ -141,11 +140,29 @@ internal class DependencyGraphNodeCache(
     }
 
     private fun buildCreator(): DependencyGraphNode.Creator? {
+      var bindingContainerFields = BitField()
+      fun populateBindingContainerFields(parameters: Parameters) {
+        for ((i, parameter) in parameters.regularParameters.withIndex()) {
+          if (parameter.isIncludes) {
+            val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
+            val container = bindingContainerTransformer.findContainer(parameterClass) ?: continue
+            if (!container.isGraph) {
+              bindingContainerFields = bindingContainerFields.withSet(i)
+            }
+          }
+        }
+      }
+
       val creator =
         if (graphDeclaration.origin === Origins.ContributedGraph) {
           val ctor = graphDeclaration.primaryConstructor!!
           val ctorParams = ctor.parameters(metroContext)
-          DependencyGraphNode.Creator.Constructor(graphDeclaration.primaryConstructor!!, ctorParams)
+          populateBindingContainerFields(ctorParams)
+          DependencyGraphNode.Creator.Constructor(
+            graphDeclaration.primaryConstructor!!,
+            ctorParams,
+            bindingContainerFields,
+          )
         } else {
           // TODO since we already check this in FIR can we leave a more specific breadcrumb
           //  somewhere
@@ -156,41 +173,48 @@ internal class DependencyGraphNodeCache(
             ?.let { factory ->
               // Validated in FIR so we can assume we'll find just one here
               val createFunction = factory.singleAbstractFunction(this)
+              val parameters = createFunction.parameters(this)
+              populateBindingContainerFields(parameters)
               DependencyGraphNode.Creator.Factory(
                 factory,
                 createFunction,
-                createFunction.parameters(this),
+                parameters,
+                bindingContainerFields,
               )
             }
         }
 
-      creator?.parameters?.regularParameters.orEmpty().forEach {
-        if (it.isBindsInstance) return@forEach
+      creator?.let { nonNullCreator ->
+        nonNullCreator.parameters.regularParameters.forEachIndexed { i, parameter ->
+          if (parameter.isBindsInstance) return@forEachIndexed
 
-        val type = it.typeKey.type.rawType()
+          val type = parameter.typeKey.type.rawType()
 
-        checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
-
-        val node =
-          bindingStack.withEntry(
-            IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
-          ) {
-            nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
-          }
-
-        if (it.isExtends) {
-          extendedGraphNodes[it.typeKey] = node
-        } else {
-          // it.isIncludes
-          includedGraphNodes[it.typeKey] = node
+          checkGraphSelfCycle(graphDeclaration, graphTypeKey, bindingStack)
 
           // Add any included graph provider factories IFF it's a binding container
-          val isBindingContainer =
-            type.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
-          if (isBindingContainer) {
-            providerFactories += node.providerFactories
-            // Add any binds
-            bindsCallables += node.bindsCallables
+          if (nonNullCreator.bindingContainersParameterIndices.isSet(i)) {
+            val bindingContainer =
+              bindingContainerTransformer.findContainer(type)
+                ?: error("Binding container not found for type ${type.classId}")
+
+            bindingContainers += bindingContainer
+            return@forEachIndexed
+          }
+
+          // It's a graph-like
+          val node =
+            bindingStack.withEntry(
+              IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
+            ) {
+              nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
+            }
+
+          if (parameter.isExtends) {
+            extendedGraphNodes[parameter.typeKey] = node
+          } else {
+            // parameter.isIncludes
+            includedGraphNodes[parameter.typeKey] = node
           }
         }
       }
@@ -333,7 +357,6 @@ internal class DependencyGraphNodeCache(
       val declaredScopes = computeDeclaredScopes()
       scopes += declaredScopes
 
-      val bindingContainers = mutableSetOf<BindingContainer>()
       for ((i, type) in supertypes.withIndex()) {
         val clazz = type.classOrFail.owner
 
@@ -366,7 +389,7 @@ internal class DependencyGraphNodeCache(
       val managedBindingContainers = mutableSetOf<IrClass>()
       bindingContainers +=
         dependencyGraphAnno
-          ?.bindingContainerClasses()
+          ?.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
           .orEmpty()
           .mapNotNullToSet { it.classType.rawTypeOrNull() }
           .let(bindingContainerTransformer::resolveAllBindingContainersCached)

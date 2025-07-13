@@ -195,6 +195,7 @@ internal class Symbols(
     val membersInjector = "MembersInjector".asName()
     val metroAccessor = StringNames.METRO_ACCESSOR.asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
+    val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
     val provider = StringNames.PROVIDER.asName()
     val rank = StringNames.RANK.asName()
