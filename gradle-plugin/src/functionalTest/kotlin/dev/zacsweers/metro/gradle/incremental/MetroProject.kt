@@ -6,6 +6,7 @@ import com.autonomousapps.kit.AbstractGradleProject
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.Source
+import com.autonomousapps.kit.gradle.BuildScript
 
 abstract class MetroProject(
   private val debug: Boolean = false,
@@ -15,38 +16,40 @@ abstract class MetroProject(
 
   open fun StringBuilder.onBuildScript() {}
 
-  val gradleProject: GradleProject
+  open val gradleProject: GradleProject
     get() =
       newGradleProjectBuilder(DslKind.KOTLIN)
         .withRootProject {
           sources = this@MetroProject.sources()
-          withBuildScript {
-            plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro)
-
-            withKotlin(
-              buildString {
-                onBuildScript()
-
-                // Metro config
-                appendLine("metro {")
-                appendLine(
-                  """
-                  debug.set(true)
-                  reportsDestination.set(layout.buildDirectory.dir("metro"))
-                """
-                    .trimIndent()
-                )
-                val metroOptions =
-                  metroOptions.enableScopedInjectClassHints
-                    ?.let { "enableScopedInjectClassHints.set($it)" }
-                    .orEmpty()
-                if (metroOptions.isNotBlank()) {
-                  appendLine("  $metroOptions")
-                }
-                appendLine("}")
-              }
-            )
-          }
+          withBuildScript { applyMetroDefault() }
         }
         .write()
+
+  fun BuildScript.Builder.applyMetroDefault() = apply {
+    plugins(GradlePlugins.Kotlin.jvm, GradlePlugins.metro)
+
+    withKotlin(
+      buildString {
+        onBuildScript()
+
+        // Metro config
+        appendLine("metro {")
+        appendLine(
+          """
+            debug.set($debug)
+            reportsDestination.set(layout.buildDirectory.dir("metro"))
+          """
+            .trimIndent()
+        )
+        val metroOptions =
+          metroOptions.enableScopedInjectClassHints
+            ?.let { "enableScopedInjectClassHints.set($it)" }
+            .orEmpty()
+        if (metroOptions.isNotBlank()) {
+          appendLine("  $metroOptions")
+        }
+        appendLine("}")
+      }
+    )
+  }
 }

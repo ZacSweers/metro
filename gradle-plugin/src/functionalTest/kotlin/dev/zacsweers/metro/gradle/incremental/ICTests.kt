@@ -4,6 +4,9 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
+import com.autonomousapps.kit.GradleProject
+import com.autonomousapps.kit.GradleProject.DslKind
+import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Ignore
@@ -1208,5 +1211,102 @@ class ICTests : BaseIncrementalCompilationTest() {
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun icWorksWhenAddingAParamToExistingInjectedTypeWithScope() {
+    val fixture =
+      object : MetroProject(debug = true) {
+        override fun sources() = listOf(appGraph, main)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":lib"))
+                }
+              }
+              .withSubproject("lib") {
+                sources.addAll(listOf(foo, bar))
+                withBuildScript { applyMetroDefault() }
+              }
+              .write()
+
+        private val bar =
+          source(
+            """
+              interface Bar
+
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class BarImpl : Bar
+            """
+              .trimIndent()
+          )
+
+        val foo =
+          source(
+            """
+              interface Foo
+
+              @SingleIn(AppScope::class)
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class FooImpl : Foo
+            """
+              .trimIndent()
+          )
+
+        private val appGraph =
+          source(
+            """
+              @DependencyGraph(AppScope::class, isExtendable = true)
+              interface AppGraph
+            """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Any {
+              return createGraph<AppGraph>()
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    fun buildAndAssertOutput() {
+      val buildResult = build(project.rootDir, "compileKotlin")
+      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+      val mainClass = project.classLoader().loadClass("test.MainKt")
+      val graph = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+      assertThat(graph).isNotNull()
+    }
+
+    buildAndAssertOutput()
+
+    // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
+    project.modify(
+      fixture.foo,
+      """
+      interface Foo
+
+      @SingleIn(AppScope::class)
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class FooImpl(bar: Bar) : Foo
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertOutput()
   }
 }
