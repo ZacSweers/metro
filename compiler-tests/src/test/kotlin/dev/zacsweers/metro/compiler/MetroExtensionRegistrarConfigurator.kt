@@ -114,7 +114,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         customContributesGraphExtensionFactoryAnnotations =
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {
-              add(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent.Factory"))
+              add(
+                ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent.Factory")
+              )
             }
           },
         customInjectAnnotations =

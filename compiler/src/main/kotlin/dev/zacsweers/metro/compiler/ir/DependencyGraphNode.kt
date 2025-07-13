@@ -93,7 +93,7 @@ internal data class DependencyGraphNode(
       val type: IrClass,
       override val function: IrSimpleFunction,
       override val parameters: Parameters,
-      override val bindingContainersParameterIndices: BitField
+      override val bindingContainersParameterIndices: BitField,
     ) : Creator
   }
 }

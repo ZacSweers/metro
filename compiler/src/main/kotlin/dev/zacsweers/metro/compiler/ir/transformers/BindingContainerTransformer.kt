@@ -714,7 +714,13 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       graphProto.included_binding_containers.mapToSet { ClassId.fromString(it) }
 
     val container =
-      BindingContainer(graphProto.is_graph, declaration, includedBindingContainers, providerFactories, bindsCallables)
+      BindingContainer(
+        graphProto.is_graph,
+        declaration,
+        includedBindingContainers,
+        providerFactories,
+        bindsCallables,
+      )
 
     // Cache the results
     cache[declarationFqName] = Optional.of(container)

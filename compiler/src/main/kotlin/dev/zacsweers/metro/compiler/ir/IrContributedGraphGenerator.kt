@@ -140,9 +140,13 @@ internal class IrContributedGraphGenerator(
                   ) ?: false
                 )
               // Pass on containers if any
-              val containers = contributesGraphExtensionAnno.bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
+              val containers =
+                contributesGraphExtensionAnno.bindingContainerClasses(
+                  includeModulesArg = options.enableDaggerRuntimeInterop
+                )
               if (containers.isNotEmpty()) {
-                it.arguments[4] = irVararg(containers.first().type, containers.map { it.deepCopyWithSymbols() })
+                it.arguments[4] =
+                  irVararg(containers.first().type, containers.map { it.deepCopyWithSymbols() })
               }
             }
           superTypes += sourceGraph.defaultType
