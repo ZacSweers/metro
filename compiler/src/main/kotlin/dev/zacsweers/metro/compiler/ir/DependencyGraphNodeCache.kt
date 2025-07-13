@@ -144,8 +144,7 @@ internal class DependencyGraphNodeCache(
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
           if (parameter.isIncludes) {
             val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
-            val container = bindingContainerTransformer.findContainer(parameterClass) ?: continue
-            if (!container.isGraph) {
+            if (parameterClass.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
               bindingContainerFields = bindingContainerFields.withSet(i)
             }
           }
