@@ -85,11 +85,11 @@ internal class Symbols(
     const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
     const val METRO_ACCESSOR = "_metroAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
-    const val METRO_CONTRIBUTION_NAME_PREFIX = "$\$MetroContribution"
-    const val METRO_FACTORY = "$\$MetroFactory"
+    const val METRO_CONTRIBUTION_NAME_PREFIX = $$$"$$MetroContribution"
+    const val METRO_FACTORY = $$$"$$MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
-    const val METRO_IMPL = "$\$Impl"
-    const val METRO_GRAPH = "$\$MetroGraph"
+    const val METRO_IMPL = $$$"$$Impl"
+    const val METRO_GRAPH = $$$"$$MetroGraph"
     const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
     const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
     const val MIRROR_FUNCTION = "mirrorFunction"
@@ -166,9 +166,9 @@ internal class Symbols(
     val FactoryClass = "Factory".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
-    val MetroGraph = "$\$MetroGraph".asName()
+    val MetroGraph = $$$"$$MetroGraph".asName()
     val MetroImpl = StringNames.METRO_IMPL.asName()
-    val MetroMembersInjector = "$\$MetroMembersInjector".asName()
+    val MetroMembersInjector = $$$"$$MetroMembersInjector".asName()
     val ProviderClass = "Provider".asName()
     val additionalScopes = StringNames.ADDITIONAL_SCOPES.asName()
     val asContribution = "asContribution".asName()
