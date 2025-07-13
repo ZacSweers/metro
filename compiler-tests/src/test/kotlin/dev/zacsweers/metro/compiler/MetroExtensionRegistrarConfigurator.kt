@@ -105,6 +105,18 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
             }
           },
+        customContributesGraphExtensionAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent"))
+            }
+          },
+        customContributesGraphExtensionFactoryAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent.Factory"))
+            }
+          },
         customInjectAnnotations =
           buildSet {
             if (addDaggerAnnotations) {
