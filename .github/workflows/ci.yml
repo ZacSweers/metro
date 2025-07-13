@@ -71,14 +71,8 @@ jobs:
             **/build/reports/**
 
   samples:
-    name: "samples / ${{ matrix.os }}"
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      # macos-latest is excluded from these tests because frankly they are expensive $$ to run on CI
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
+    name: "samples"
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -127,7 +121,72 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: reports-samples-${{ matrix.os }}
+          name: reports-samples-${{ runner.os }}
+          path: |
+            **/build/reports/**
+
+  # Runt multiplatform tests on main only to reduce PR time
+  multiplatform-tests:
+    name: "multiplatform / ${{ matrix.os }}"
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Configure JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version-file: .github/workflows/.java-version
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # Only save Gradle User Home state for builds on the 'main' branch.
+          # Builds on other branches will only read existing entries from the cache.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+          # Don't reuse cache entries from any other Job.
+          gradle-home-cache-strict-match: true
+
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Cache konan
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan/cache
+            ~/.konan/dependencies
+            ~/.konan/kotlin-native-macos*
+            ~/.konan/kotlin-native-mingw*
+            ~/.konan/kotlin-native-windows*
+            ~/.konan/kotlin-native-linux*
+            ~/.konan/kotlin-native-prebuilt-macos*
+            ~/.konan/kotlin-native-prebuilt-mingw*
+            ~/.konan/kotlin-native-prebuilt-windows*
+            ~/.konan/kotlin-native-prebuilt-linux*
+          key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-
+
+      - name: Check runtime and IC tests
+        run: ./gradlew :runtime:test :gradle-plugin:test --continue --quiet
+
+      - name: Check samples
+        run: ./gradlew -p samples test --continue --quiet
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-multiplatform-${{ matrix.os }}
           path: |
             **/build/reports/**
 
