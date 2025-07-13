@@ -4,6 +4,7 @@ package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.Source
+import com.autonomousapps.kit.Subproject
 import java.io.File
 import org.intellij.lang.annotations.Language
 
@@ -13,6 +14,17 @@ abstract class BaseIncrementalCompilationTest {
     val newSource = source.copy(content)
     val filePath = "src/main/kotlin/${newSource.path}/${newSource.name}.kt"
     rootDir.resolve(filePath).writeText(newSource.source)
+  }
+
+  protected fun Subproject.modify(
+    rootDir: File,
+    source: Source,
+    @Language("kotlin") content: String,
+  ) {
+    val newSource = source.copy(content)
+    val filePath = "src/main/kotlin/${newSource.path}/${newSource.name}.kt"
+    val projectPath = rootDir.resolve(this.name.removePrefix(":").replace(":", "/"))
+    projectPath.resolve(filePath).writeText(newSource.source)
   }
 
   protected fun modifyKotlinFile(

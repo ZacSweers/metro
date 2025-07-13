@@ -1,5 +1,7 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:Suppress("UPPER_BOUND_VIOLATED_BASED_ON_JAVA_ANNOTATIONS")
+
 package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.GradleBuilder.build
@@ -1281,6 +1283,7 @@ class ICTests : BaseIncrementalCompilationTest() {
       }
 
     val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
 
     fun buildAndAssertOutput() {
       val buildResult = build(project.rootDir, "compileKotlin")
@@ -1294,7 +1297,8 @@ class ICTests : BaseIncrementalCompilationTest() {
     buildAndAssertOutput()
 
     // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
-    project.modify(
+    libProject.modify(
+      project.rootDir,
       fixture.foo,
       """
       interface Foo
