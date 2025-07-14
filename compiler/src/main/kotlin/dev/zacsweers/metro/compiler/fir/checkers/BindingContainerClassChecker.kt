@@ -51,6 +51,15 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
       declaration.annotationsIn(session, classIds.bindingContainerAnnotations).firstOrNull()
 
     if (bindingContainerAnno != null) {
+      // TODO remove once supported
+      declaration.annotationsIn(session, classIds.allContributesAnnotations).forEach {
+        reporter.reportOn(
+          it.source ?: source,
+          BINDING_CONTAINER_ERROR,
+          "@BindingContainer cannot be annotated with ${it.toAnnotationClass(session)?.name} yet.",
+        )
+      }
+
       // Not valid on enums, enum entries, sealed classes, or companion objects
       fun report(type: String) {
         reporter.reportOn(
