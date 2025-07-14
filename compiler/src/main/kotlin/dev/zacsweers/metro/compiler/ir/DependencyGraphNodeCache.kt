@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
@@ -26,6 +28,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
@@ -100,6 +103,7 @@ internal class DependencyGraphNodeCache(
     private val dependencyGraphAnno =
       cachedDependencyGraphAnno
         ?: graphDeclaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
+    private val aggregationScopes = mutableSetOf<ClassId>()
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
       (graphDeclaration.metroGraphOrNull ?: graphDeclaration)
@@ -113,6 +117,9 @@ internal class DependencyGraphNodeCache(
       return buildSet {
         val implicitScope =
           dependencyGraphAnno?.getValueArgument(Symbols.Names.scope)?.let { scopeArg ->
+            scopeArg.expectAsOrNull<IrClassReference>()?.classType?.rawTypeOrNull()?.let {
+              aggregationScopes += it.classIdOrFail
+            }
             // Create a synthetic SingleIn(scope)
             pluginContext.createIrBuilder(graphDeclaration.symbol).run {
               irCall(symbols.metroSingleInConstructor).apply { arguments[0] = scopeArg }
@@ -126,6 +133,9 @@ internal class DependencyGraphNodeCache(
             ?.expectAs<IrVararg>()
             ?.elements
             ?.forEach { scopeArg ->
+              scopeArg.expectAsOrNull<IrClassReference>()?.classType?.rawTypeOrNull()?.let {
+                aggregationScopes += it.classIdOrFail
+              }
               val scopeClassExpression = scopeArg.expectAs<IrExpression>()
               val newAnno =
                 pluginContext.createIrBuilder(graphDeclaration.symbol).run {
@@ -419,7 +429,19 @@ internal class DependencyGraphNodeCache(
             }
       }
 
-      for (container in bindingContainers) {
+      // TODO this doesn't cover replaced class bindings/other types
+      val replaced =
+        bindingContainers.flatMapToSet { container ->
+          container.ir
+            .annotationsIn(symbols.classIds.contributesToAnnotations)
+            .firstOrNull { it.scopeOrNull() in aggregationScopes }
+            ?.replacedClasses()
+            ?.mapNotNullToSet { replacedClass -> replacedClass.classType.rawTypeOrNull()?.classId }
+            .orEmpty()
+        }
+      val mergedContainers = bindingContainers.filterNot { it.ir.classId in replaced }
+
+      for (container in mergedContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }
         bindsCallables += container.bindsCallables
 
@@ -428,7 +450,7 @@ internal class DependencyGraphNodeCache(
       }
 
       metroContext.writeDiagnostic("bindingContainers-${parentTracer.tag}.txt") {
-        bindingContainers.joinToString("\n") { it.ir.classId.toString() }
+        mergedContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 
       val dependencyGraphNode =
