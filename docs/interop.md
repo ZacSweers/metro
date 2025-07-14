@@ -6,20 +6,21 @@ Metro supports user-defined annotations for common annotations. This means that 
 
 Compile-only annotations are mostly supported. This includes the following:
 
-* `@Assisted`
 * `@AssistedFactory`
 * `@AssistedInject`
-* `@Binds`
+* `@Assisted`
 * `@BindsInstance`
-* `@ContributesTo`
+* `@Binds`
 * `@ContributesBinding`
-* `@ElementsIntoSet`
-* `@DependencyGraph`
+* `@ContributesTo`
 * `@DependencyGraph.Factory`
+* `@DependencyGraph`
+* `@ElementsIntoSet`
 * `@Inject`
 * `@IntoMap`
 * `@IntoSet`
 * `@MapKey`
+* `@Module`
 * `@Multibinds`
 * `@Provides`
 * `@Qualifier`
