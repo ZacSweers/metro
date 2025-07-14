@@ -1,4 +1,5 @@
 // https://github.com/ZacSweers/metro/issues/712
+// MODULE: lib
 abstract class ViewScope
 
 @ContributesGraphExtension(ViewScope::class, isExtendable = true)
@@ -16,6 +17,7 @@ interface ViewObjectGraphSubgraph {
   val viewObjectGraphFactory: ViewObjectGraph.Factory
 }
 
+// MODULE: main(lib)
 @DependencyGraph(AppScope::class, isExtendable = true)
 interface AppGraph
 
