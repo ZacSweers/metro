@@ -31,7 +31,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
               .report(MetroIrErrors.METRO_ERROR, "No scope found for @MetroContribution annotation")
             exitProcessing()
           }
-      data.addContribution(scope, declaration.defaultType)
+      if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
+        data.addBindingContainerContribution(scope, declaration)
+      } else {
+        data.addContribution(scope, declaration.defaultType)
+      }
       return
     }
 
@@ -49,7 +53,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
               )
             exitProcessing()
           }
-      data.addContribution(scope, declaration.defaultType)
+      if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
+        data.addBindingContainerContribution(scope, declaration)
+      } else {
+        data.addContribution(scope, declaration.defaultType)
+      }
       return
     }
 

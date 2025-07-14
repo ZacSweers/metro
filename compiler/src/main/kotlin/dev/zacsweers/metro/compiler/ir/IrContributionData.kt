@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.ClassId
@@ -15,6 +16,9 @@ import org.jetbrains.kotlin.name.ClassId
 internal class IrContributionData(private val metroContext: IrMetroContext) {
   private val contributions = mutableMapOf<ClassId, MutableSet<IrType>>()
   private val externalContributions = mutableMapOf<ClassId, Set<IrType>>()
+
+  private val bindingContainerContributions = mutableMapOf<ClassId, MutableSet<IrClass>>()
+  private val externalBindingContainerContributions = mutableMapOf<ClassId, Set<IrClass>>()
 
   // Scoped inject classes are currently tracked separately from contributions because we need to
   // maintain the full scope info (e.g. @Singleton, @SingleIn(AppScope)) for accurate comparisons.
@@ -33,6 +37,15 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     addAll(findExternalContributions(scope))
   }
 
+  fun addBindingContainerContribution(scope: ClassId, contribution: IrClass) {
+    bindingContainerContributions.getOrPut(scope) { mutableSetOf() }.add(contribution)
+  }
+
+  fun getBindingContainerContributions(scope: ClassId): Set<IrClass> = buildSet {
+    bindingContainerContributions[scope]?.let(::addAll)
+    addAll(findExternalBindingContainerContributions(scope))
+  }
+
   // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
   //  something we could possibly optimize in the future.
   private fun findExternalContributions(scopeClassId: ClassId): Set<IrType> {
@@ -45,6 +58,22 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
           contribution.owner.regularParameters.single().type.classOrFail.owner
         }
       getScopedContributions(contributingClasses, scopeClassId)
+    }
+  }
+
+  // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
+  //  something we could possibly optimize in the future.
+  private fun findExternalBindingContainerContributions(scopeClassId: ClassId): Set<IrClass> {
+    return externalBindingContainerContributions.getOrPut(scopeClassId) {
+      val functionsInPackage =
+        metroContext.pluginContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
+      val contributingClasses =
+        functionsInPackage.map { contribution ->
+          // This is the single value param
+          contribution.owner.regularParameters.single().type.classOrFail.owner
+        }
+      getScopedContributions(contributingClasses, scopeClassId)
+        .mapNotNullToSet { it.classOrNull?.owner?.takeIf { it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations) } }
     }
   }
 
