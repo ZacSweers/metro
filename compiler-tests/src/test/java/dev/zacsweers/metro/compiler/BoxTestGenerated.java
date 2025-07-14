@@ -66,6 +66,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedFactoryIsAvailableAsBinding.kt")
+    public void testContributedFactoryIsAvailableAsBinding() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributedFactoryIsAvailableAsBinding.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultipleGraphsToSameParent.kt")
     public void testContributingMultipleGraphsToSameParent() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributingMultipleGraphsToSameParent.kt");
