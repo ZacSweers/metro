@@ -16,7 +16,8 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
       metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
     }
 
-  internal val bindingContainerPredicate = annotated(classIds.bindingContainerAnnotations.asFqNames())
+  internal val bindingContainerPredicate =
+    annotated(classIds.bindingContainerAnnotations.asFqNames())
   internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
   internal val contributesGraphExtensionPredicate =
     annotated(classIds.contributesGraphExtensionAnnotations.asFqNames())

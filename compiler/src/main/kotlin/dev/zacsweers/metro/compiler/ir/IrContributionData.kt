@@ -72,8 +72,11 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
           // This is the single value param
           contribution.owner.regularParameters.single().type.classOrFail.owner
         }
-      getScopedContributions(contributingClasses, scopeClassId)
-        .mapNotNullToSet { it.classOrNull?.owner?.takeIf { it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations) } }
+      getScopedContributions(contributingClasses, scopeClassId).mapNotNullToSet {
+        it.classOrNull?.owner?.takeIf {
+          it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+        }
+      }
     }
   }
 
