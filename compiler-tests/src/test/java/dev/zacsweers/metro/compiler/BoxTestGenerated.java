@@ -182,6 +182,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InitsAreChunkedBox.kt")
+    public void testInitsAreChunkedBox() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/InitsAreChunkedBox.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedSetDeps.kt")
     public void testMultibindingGraphWithWithScopedSetDeps() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultibindingGraphWithWithScopedSetDeps.kt");

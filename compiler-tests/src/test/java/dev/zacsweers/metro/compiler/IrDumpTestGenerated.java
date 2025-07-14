@@ -106,6 +106,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("InitsAreChunked.kt")
+    public void testInitsAreChunked() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/InitsAreChunked.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt")
     public void testUnusedInstanceBindingsInExtendedGraphGetProviderFields() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/UnusedInstanceBindingsInExtendedGraphGetProviderFields.kt");
