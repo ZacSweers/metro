@@ -112,7 +112,7 @@ internal class ClassBindingLookup(
           irClass.computeMembersInjectorBindings(currentBindings, remapper)
         bindings += membersInjectBindings
 
-        bindings +=
+        val binding =
           Binding.ConstructorInjected(
             type = irClass,
             classFactory = mappedFactory,
@@ -121,6 +121,13 @@ internal class ClassBindingLookup(
             injectedMembers =
               membersInjectBindings.mapToSet { binding -> binding.contextualTypeKey },
           )
+        bindings += binding
+
+        // Record a lookup of the class in case its kind changes
+        trackClassLookup(sourceGraph, classFactory.factoryClass)
+        // Record a lookup of the signature in case its signature changes
+        // Doesn't appear to be necessary but juuuuust in case
+        trackFunctionCall(sourceGraph, classFactory.function)
       } else if (classAnnotations.isAssistedFactory) {
         val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)
         // Mark as wrapped for convenience in graph resolution to note that this whole node is

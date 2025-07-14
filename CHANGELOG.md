@@ -30,6 +30,7 @@ Changelog
 - **Fix:** Fix generating binding functions with names that contain dashes.
 - **Fix:** Treat interop'd Dagger/Anvil/KI components as implicitly extendable.
 - **Fix:** Record lookups of `@Binds` declarations for IC.
+- **Fix:** Record lookups of generated class factories and their constructor signatures for IC.
 
 0.4.0
 -----
