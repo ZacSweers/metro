@@ -34,6 +34,12 @@ abstract class BaseIncrementalCompilationTest {
     val keysPopulated: Set<String> by lazy {
       reportsDir.resolve("keys-populated-$name.txt").readLines().toSet()
     }
+    val providerFieldKeys: Set<String> by lazy {
+      reportsDir.resolve("keys-providerFields-$name.txt").readLines().toSet()
+    }
+    val scopedProviderFieldKeys: Set<String> by lazy {
+      reportsDir.resolve("keys-scopedProviderFields-$name.txt").readLines().toSet()
+    }
   }
 
   protected fun GradleProject.modify(source: Source, @Language("kotlin") content: String) {

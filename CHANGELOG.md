@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **New:** Add `keys-scopedProviderFields-*.txt` and `keys-providerFields-*.txt` reports to see generated field reports for graphs.
 - **Enhancement:** Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
 - **Enhancement:** Add diagnostic to check for scoped `@Binds` declarations. These are simple pipes and should not have scope annotations.
 - **Enhancement:** Move graph dependency cycle checks to earlier in validation.
