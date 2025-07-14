@@ -1228,12 +1228,22 @@ class ICTests : BaseIncrementalCompilationTest() {
                 withBuildScript {
                   sources = sources()
                   applyMetroDefault()
-                  dependencies(Dependency.implementation(":lib"))
+                  dependencies(
+                    Dependency.implementation(":common"),
+                    Dependency.implementation(":lib"),
+                  )
                 }
               }
-              .withSubproject("lib") {
-                sources.addAll(listOf(foo, bar))
+              .withSubproject("common") {
+                sources.add(bar)
                 withBuildScript { applyMetroDefault() }
+              }
+              .withSubproject("lib") {
+                sources.add(foo)
+                withBuildScript {
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":common"))
+                }
               }
               .write()
 
