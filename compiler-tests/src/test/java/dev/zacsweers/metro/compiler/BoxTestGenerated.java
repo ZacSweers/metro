@@ -32,6 +32,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedBindingContainerExclusions.kt")
+    public void testContributedBindingContainerExclusions() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerExclusions.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedBindingContainerReplacements.kt")
+    public void testContributedBindingContainerReplacements() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerReplacements.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
     public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
