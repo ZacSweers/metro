@@ -22,6 +22,7 @@ import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
+import kotlin.sequences.filterNot
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -89,6 +90,9 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             )
           }
           .filterIsInstance<FirRegularClassSymbol>()
+          .filterNot {
+            it.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)
+          }
           .toList()
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)
@@ -104,13 +108,17 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         )
 
       val contributingClasses =
-        functionsInPackage.mapNotNull { contribution ->
-          // This is the single value param
-          contribution.valueParameterSymbols
-            .single()
-            .resolvedReturnType
-            .toRegularClassSymbol(session)
-        }
+        functionsInPackage
+          .mapNotNull { contribution ->
+            // This is the single value param
+            contribution.valueParameterSymbols
+              .single()
+              .resolvedReturnType
+              .toRegularClassSymbol(session)
+          }
+          .filterNot {
+            it.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)
+          }
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
@@ -173,6 +181,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         contributesAnnotationPredicate,
         contributesGraphExtensionPredicate,
         qualifiersPredicate,
+        bindingContainerPredicate,
       )
     }
   }
