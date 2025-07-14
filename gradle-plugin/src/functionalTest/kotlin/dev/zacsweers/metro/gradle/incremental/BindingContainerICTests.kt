@@ -25,7 +25,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             @DependencyGraph
             interface AppGraph {
               val target: Target
-              
+
               @DependencyGraph.Factory
               interface Factory {
                 fun create(@Includes bindings: MyBindingContainer): AppGraph
@@ -52,10 +52,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             """
             interface InterfaceA
             interface InterfaceB
-            
+
             @Inject
             class ImplA : InterfaceA
-            
+
             @Inject
             class ImplB : InterfaceB
             """
@@ -86,7 +86,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       interface MyBindingContainer {
         @Binds
         fun ImplA.bindA(): InterfaceA
-        
+
         @Binds
         fun ImplB.bindB(): InterfaceB
       }
@@ -114,7 +114,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             @DependencyGraph
             interface AppGraph {
               val target: Target
-              
+
               @DependencyGraph.Factory
               interface Factory {
                 fun create(@Includes bindings: MyBindingContainer): AppGraph
@@ -131,7 +131,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             interface MyBindingContainer {
               @Binds
               fun ImplA.bindA(): InterfaceA
-              
+
               @Binds
               fun ImplB.bindB(): InterfaceB
             }
@@ -144,10 +144,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             """
             interface InterfaceA
             interface InterfaceB
-            
+
             @Inject
             class ImplA : InterfaceA
-            
+
             @Inject
             class ImplB : InterfaceB
             """
@@ -178,7 +178,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       interface MyBindingContainer {
         @Binds
         fun ImplA.bindA(): InterfaceA
-        
+
         // Removed @Binds for InterfaceB
       }
       """
@@ -191,7 +191,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
-        
+
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
             test.Target is requested at
@@ -213,7 +213,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             @DependencyGraph
             interface AppGraph {
               val target: Target
-              
+
               @DependencyGraph.Factory
               interface Factory {
                 fun create(@Includes bindings: MyBindingContainer): AppGraph
@@ -240,7 +240,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             """
             interface InterfaceA
             interface InterfaceB
-            
+
             @Inject
             class ImplA : InterfaceA, InterfaceB
             """
@@ -283,7 +283,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
-        
+
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
@@ -318,9 +318,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
               @Binds
               fun ImplA.bindA(): InterfaceA
             }
-            
+
             interface InterfaceA
-            
+
             @Inject
             class ImplA : InterfaceA
             """
@@ -394,9 +394,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
               @Binds
               fun ImplA.bindA(): InterfaceA
             }
-            
+
             interface InterfaceA
-            
+
             @Inject
             class ImplA : InterfaceA
             """
@@ -437,7 +437,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
-        
+
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
@@ -459,7 +459,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             @DependencyGraph(AppScope::class)
             interface AppGraph {
               val target: Target
-              
+
               @DependencyGraph.Factory
               interface Factory {
                 fun create(@Includes bindings: MyBindingContainer): AppGraph
@@ -546,9 +546,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
               @Binds
               fun ImplA.bindA(): InterfaceA
             }
-            
+
             interface InterfaceA
-            
+
             @Inject
             class ImplA : InterfaceA
             """
@@ -580,9 +580,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       interface MyBindingContainer {
         // Removed binding
       }
-      
+
       interface InterfaceA
-      
+
       @Inject
       class ImplA : InterfaceA
       """
@@ -617,7 +617,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             @DependencyGraph
             interface FeatureGraph {
               val target: Target
-              
+
               @DependencyGraph.Factory
               interface Factory {
                 fun create(
@@ -638,9 +638,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
               @Binds
               fun ImplA.bindA(): InterfaceA
             }
-            
+
             interface InterfaceA
-            
+
             @Inject
             @ContributesBinding(Unit::class)
             class ImplA : InterfaceA
@@ -674,9 +674,9 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
         @Binds
         fun ImplA.bindA(): ImplA
       }
-      
+
       interface InterfaceA
-      
+
       @Inject
       @ContributesBinding(Unit::class)
       class ImplA : InterfaceA
@@ -690,7 +690,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         FeatureGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
-        
+
             test.InterfaceA is injected at
                 [test.FeatureGraph] test.Target(…, a)
             test.Target is requested at
@@ -746,10 +746,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             """
             interface InterfaceA
             interface InterfaceB
-            
+
             @Inject
             class ImplA : InterfaceA
-            
+
             @Inject
             class ImplB : InterfaceB
             """
@@ -790,7 +790,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
-        
+
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
@@ -812,7 +812,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             @DependencyGraph
             interface AppGraph {
               val target: Target
-              
+
               @DependencyGraph.Factory
               interface Factory {
                 fun create(@Includes container: MixedContainer): AppGraph
@@ -829,15 +829,15 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             interface MixedContainer {
               @Binds
               fun ImplA.bindA(): InterfaceA
-              
+
               companion object {
                 @Provides
                 fun provideString(): String = "hello"
               }
             }
-            
+
             interface InterfaceA
-            
+
             @Inject
             class ImplA : InterfaceA
             """
@@ -868,15 +868,15 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       interface MixedContainer {
         @Binds
         fun ImplA.bindA(): InterfaceA
-        
+
         companion object {
           @Provides
           fun provideInt(): Int = 42 // Changed from String to Int
         }
       }
-      
+
       interface InterfaceA
-      
+
       @Inject
       class ImplA : InterfaceA
       """
@@ -889,7 +889,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
-    
+
             kotlin.String is injected at
                 [test.AppGraph] test.Target(…, string)
             test.Target is requested at
@@ -945,10 +945,10 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             """
             interface InterfaceA
             interface InterfaceB
-            
+
             @Inject
             class ImplA : InterfaceA
-            
+
             @Inject
             class ImplB : InterfaceB
             """
@@ -1005,7 +1005,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
-        
+
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
@@ -1075,13 +1075,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             interface InterfaceA
             interface InterfaceB
             interface InterfaceC
-            
+
             @Inject
             class ImplA : InterfaceA
-            
+
             @Inject
             class ImplB : InterfaceB
-            
+
             @Inject
             class ImplC : InterfaceC
             """
@@ -1140,7 +1140,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceA
-    
+
             test.InterfaceA is injected at
                 [test.AppGraph] test.Target(…, a)
             test.Target is requested at
@@ -1207,15 +1207,15 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
           source(
             """
             interface InterfaceA
-            interface InterfaceB  
+            interface InterfaceB
             interface InterfaceC
-            
+
             @Inject
             class ImplA : InterfaceA
-            
+
             @Inject
             class ImplB : InterfaceB
-            
+
             @Inject
             class ImplC : InterfaceC
             """
@@ -1272,7 +1272,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceB
-        
+
             test.InterfaceB is injected at
                 [test.AppGraph] test.Target(…, b)
             test.Target is requested at
@@ -1341,13 +1341,13 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
             interface InterfaceA
             interface InterfaceB
             interface InterfaceC
-            
+
             @Inject
             class ImplA : InterfaceA
-            
+
             @Inject
             class ImplB : InterfaceB
-            
+
             @Inject
             class ImplC : InterfaceC
             """
@@ -1389,7 +1389,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.InterfaceC
-    
+
             test.InterfaceC is injected at
                 [test.AppGraph] test.Target(…, c)
             test.Target is requested at

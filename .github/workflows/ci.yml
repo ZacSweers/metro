@@ -177,10 +177,10 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Check runtime and IC tests
-        run: ./gradlew :runtime:test :gradle-plugin:test --continue --quiet
+        run: ./gradlew :runtime:allTests :gradle-plugin:functionalTest --continue --quiet
 
       - name: Check samples
-        run: ./gradlew -p samples test --continue --quiet
+        run: ./gradlew -p samples test allTests --continue --quiet
 
       - name: (Fail-only) Upload reports
         if: failure()
