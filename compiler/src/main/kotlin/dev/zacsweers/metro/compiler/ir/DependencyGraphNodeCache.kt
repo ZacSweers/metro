@@ -401,6 +401,13 @@ internal class DependencyGraphNodeCache(
       for (container in bindingContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }
         bindsCallables += container.bindsCallables
+
+        // Record an IC lookup of the container class
+        trackClassLookup(graphDeclaration, container.ir)
+      }
+
+      metroContext.writeDiagnostic("bindingContainers-${parentTracer.tag}.txt") {
+        bindingContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 
       val dependencyGraphNode =
