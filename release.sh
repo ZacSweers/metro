@@ -73,16 +73,7 @@ update_gradle_properties "$NEW_VERSION"
 
 # Regenerate package jsons
 ./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
-# TODO not working?
-#  A problem was found with the configuration of task ':kotlinWasmUpgradePackageLock' (type 'LockStoreTask').
-#  - In plugin 'org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin_Decorated' type 'org.jetbrains.kotlin.gradle.targets.js.npm.LockStoreTask' property 'inputFile' specifies file '/Users/zacsweers/dev/kotlin/personal/metro/samples/build/wasm/package-lock.json' which doesn't exist.
-#
-#    Reason: An input file was expected to be present but it doesn't exist.
-#
-#    Possible solutions:
-#      1. Make sure the file exists before the task is called.
-#      2. Make sure that the task which produces the file is declared as an input.
-#./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
+./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
 
 git commit -am "Prepare for release $NEW_VERSION."
 git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
@@ -96,6 +87,7 @@ update_gradle_properties "$NEXT_SNAPSHOT_VERSION"
 
 # Regenerate package jsons
 ./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
+./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
 
 git commit -am "Prepare next development version."
 
