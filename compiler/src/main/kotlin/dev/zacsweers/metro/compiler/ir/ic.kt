@@ -64,6 +64,25 @@ internal fun IrMetroContext.trackFunctionCall(
   }
 }
 
+internal fun IrMetroContext.trackMemberDeclarationCall(
+  callingDeclaration: IrDeclaration,
+  containerFqName: FqName,
+  declarationName: String,
+) {
+  callingDeclaration.withAnalyzableKtFile { filePath ->
+    trackLookup(
+      container = containerFqName,
+      declarationName = declarationName,
+      scopeKind = ScopeKind.CLASSIFIER,
+      location =
+        object : LocationInfo {
+          override val filePath = filePath
+          override val position: Position = Position.NO_POSITION
+        },
+    )
+  }
+}
+
 internal fun IrMetroContext.trackLookup(
   container: FqName,
   declarationName: String,
