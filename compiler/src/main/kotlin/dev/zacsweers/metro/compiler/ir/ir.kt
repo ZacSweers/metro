@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -742,16 +743,26 @@ internal fun IrConstructorCall.includesArgument() =
   getValueArgument(Symbols.Names.includes)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.includedClasses(): Set<IrClassReference> {
-  return includesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
-    ?: return emptySet()
+  return includesArgument().toClassReferences()
 }
 
 internal fun IrConstructorCall.bindingContainersArgument() =
   getValueArgument(Symbols.Names.bindingContainers)?.expectAsOrNull<IrVararg>()
 
-internal fun IrConstructorCall.bindingContainerClasses(): Set<IrClassReference> {
-  return bindingContainersArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
-    ?: return emptySet()
+internal fun IrConstructorCall.modulesArgument() =
+  getValueArgument(Symbols.Names.modules)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.bindingContainerClasses(
+  includeModulesArg: Boolean
+): Set<IrClassReference> {
+  // Check both
+  val argument =
+    bindingContainersArgument() ?: if (includeModulesArg) modulesArgument() else return emptySet()
+  return argument.toClassReferences()
+}
+
+internal fun IrVararg?.toClassReferences(): Set<IrClassReference> {
+  return this?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet() ?: return emptySet()
 }
 
 internal fun IrConstructorCall.requireScope(): ClassId {
@@ -1313,4 +1324,15 @@ private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>)
   if (substitutions.isEmpty()) return this
   val remapper = DeepTypeSubstitutor(substitutions)
   return remapper.remapType(this)
+}
+
+internal fun IrConstructorCall.isExtendable(): Boolean {
+  val isExtendable = getConstBooleanArgumentOrNull(Symbols.Names.isExtendable)
+  return if (isExtendable == null) {
+    // Not present. Default false in metro annotations, true everywhere else
+    val isMetroGraph = annotationClass.classId?.packageFqName == Symbols.FqNames.metroRuntimePackage
+    !isMetroGraph
+  } else {
+    isExtendable
+  }
 }

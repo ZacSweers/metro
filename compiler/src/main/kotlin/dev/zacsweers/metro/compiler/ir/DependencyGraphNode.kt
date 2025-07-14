@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.transformers.BindsCallable
@@ -80,16 +81,19 @@ internal data class DependencyGraphNode(
   sealed interface Creator {
     val function: IrFunction
     val parameters: Parameters
+    val bindingContainersParameterIndices: BitField
 
     data class Constructor(
       override val function: IrConstructor,
       override val parameters: Parameters,
+      override val bindingContainersParameterIndices: BitField,
     ) : Creator
 
     data class Factory(
       val type: IrClass,
       override val function: IrSimpleFunction,
       override val parameters: Parameters,
+      override val bindingContainersParameterIndices: BitField,
     ) : Creator
   }
 }
@@ -99,7 +103,7 @@ private fun DependencyGraphNode.recurseIncludedNodes(
 ) {
   for ((key, node) in includedGraphNodes) {
     if (key !in builder) {
-      builder.put(key, node)
+      builder[key] = node
       node.recurseIncludedNodes(builder)
     }
   }

@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **New:** Add `keys-scopedProviderFields-*.txt` and `keys-providerFields-*.txt` reports to see generated field reports for graphs.
 - **Enhancement:** Remove `Any` constraint from `binding<T>()`, allowing bindings to satisfy nullable variants.
 - **Enhancement:** Add diagnostic to check for scoped `@Binds` declarations. These are simple pipes and should not have scope annotations.
 - **Enhancement:** Move graph dependency cycle checks to earlier in validation.
@@ -27,6 +28,8 @@ Changelog
 - **Fix:** Gracefully fall back to `MessageCollector` for graph seal and contributed graph errors on sourceless declarations.
 - **Fix:** Fix supporting overloads of binds functions from parent graphs or external supertypes.
 - **Fix:** Fix generating binding functions with names that contain dashes.
+- **Fix:** Treat interop'd Dagger/Anvil/KI components as implicitly extendable.
+- **Fix:** Record lookups of `@Binds` declarations for IC.
 
 0.4.0
 -----

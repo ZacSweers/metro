@@ -176,8 +176,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       return null
     }
 
+    val isGraph = declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations)
     val container =
-      BindingContainer(declaration, includes.orEmpty(), providerFactories, bindsCallables)
+      BindingContainer(isGraph, declaration, includes.orEmpty(), providerFactories, bindsCallables)
 
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
@@ -713,7 +714,13 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
       graphProto.included_binding_containers.mapToSet { ClassId.fromString(it) }
 
     val container =
-      BindingContainer(declaration, includedBindingContainers, providerFactories, bindsCallables)
+      BindingContainer(
+        graphProto.is_graph,
+        declaration,
+        includedBindingContainers,
+        providerFactories,
+        bindsCallables,
+      )
 
     // Cache the results
     cache[declarationFqName] = Optional.of(container)
@@ -724,6 +731,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 }
 
 internal class BindingContainer(
+  val isGraph: Boolean,
   val ir: IrClass,
   val includes: Set<ClassId>,
   /** Mapping of provider factories by their [CallableId]. */

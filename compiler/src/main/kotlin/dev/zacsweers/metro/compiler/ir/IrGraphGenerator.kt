@@ -151,7 +151,7 @@ internal class IrGraphGenerator(
           //  together
           val irParam = ctor.regularParameters[i]
 
-          if (isBindsInstance) {
+          if (isBindsInstance || creator.bindingContainersParameterIndices.isSet(i)) {
             addBoundInstanceField(param.typeKey, param.name) { irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
@@ -341,7 +341,7 @@ internal class IrGraphGenerator(
 
       // Collect bindings and their dependencies for provider field ordering
       val initOrder =
-        parentTracer.traceNested("Collect bindings") {
+        parentTracer.traceNested("Collect bindings") { tracer ->
           val providerFieldBindings = ProviderFieldCollector(bindingGraph).collect()
           buildList(providerFieldBindings.size) {
             for (key in sealResult.sortedKeys) {
@@ -432,6 +432,15 @@ internal class IrGraphGenerator(
             // We don't generate fields for these even though we do track them in dependencies
             // above, it's just for propagating their aliased type in sorting
             it is Binding.Alias
+        }
+        .toList()
+        .also { fieldBindings ->
+          metroContext.writeDiagnostic("keys-providerFields-${parentTracer.tag}.txt") {
+            fieldBindings.joinToString("\n") { it.typeKey.toString() }
+          }
+          metroContext.writeDiagnostic("keys-scopedProviderFields-${parentTracer.tag}.txt") {
+            fieldBindings.filter { it.scope != null }.joinToString("\n") { it.typeKey.toString() }
+          }
         }
         .forEach { binding ->
           val key = binding.typeKey

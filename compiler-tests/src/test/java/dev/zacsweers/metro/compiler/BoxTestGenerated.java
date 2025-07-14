@@ -203,6 +203,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("BindingContainerViaAnnotationCycleIsOk.kt")
+      public void testBindingContainerViaAnnotationCycleIsOk() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/BindingContainerViaAnnotationCycleIsOk.kt");
+      }
+
+      @Test
       @TestMetadata("BindingContainerViaAnnotationTransitive.kt")
       public void testBindingContainerViaAnnotationTransitive() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers/BindingContainerViaAnnotationTransitive.kt");
@@ -371,6 +377,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerComponentModulesAnnotationInterop.kt")
+      public void testDaggerComponentModulesAnnotationInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerComponentModulesAnnotationInterop.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerFactoryClassCanBeLoaded.kt")
       public void testDaggerFactoryClassCanBeLoaded() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoaded.kt");
@@ -380,6 +392,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DaggerFactoryClassCanBeLoadedJakarta.kt")
       public void testDaggerFactoryClassCanBeLoadedJakarta() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoadedJakarta.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerModulesAnnotationInterop.kt")
+      public void testDaggerModulesAnnotationInterop() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerModulesAnnotationInterop.kt");
       }
 
       @Test
@@ -404,6 +422,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("JavaxProviderShouldWorkInSet.kt")
       public void testJavaxProviderShouldWorkInSet() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInSet.kt");
+      }
+
+      @Nested
+      @TestMetadata("compiler-tests/src/test/data/box/interop/dagger/anvil")
+      @TestDataPath("$PROJECT_ROOT")
+      public class Anvil {
+        @Test
+        public void testAllFilesPresentInAnvil() {
+          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger/anvil"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+        }
+
+        @Test
+        @TestMetadata("DaggerMergeComponentModulesAnnotationInterop.kt")
+        public void testDaggerMergeComponentModulesAnnotationInterop() {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/DaggerMergeComponentModulesAnnotationInterop.kt");
+        }
       }
     }
   }

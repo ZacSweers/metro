@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
+import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
@@ -63,8 +65,7 @@ internal class IrContributedGraphGenerator(
         parentGraph
       }
     val parentGraphAnno = realParent.annotationsIn(symbols.classIds.graphLikeAnnotations).single()
-    val parentIsExtendable =
-      parentGraphAnno.getConstBooleanArgumentOrNull(Symbols.Names.isExtendable) ?: false
+    val parentIsExtendable = parentGraphAnno.isExtendable()
     if (!parentIsExtendable) {
       with(metroContext) {
         val message = buildString {
@@ -138,6 +139,15 @@ internal class IrContributedGraphGenerator(
                     Symbols.Names.isExtendable
                   ) ?: false
                 )
+              // Pass on containers if any
+              val containers =
+                contributesGraphExtensionAnno.bindingContainerClasses(
+                  includeModulesArg = options.enableDaggerRuntimeInterop
+                )
+              if (containers.isNotEmpty()) {
+                it.arguments[4] =
+                  irVararg(containers.first().type, containers.map { it.deepCopyWithSymbols() })
+              }
             }
           superTypes += sourceGraph.defaultType
         }
