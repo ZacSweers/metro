@@ -83,7 +83,7 @@ internal class DependencyGraphTransformer(
   // Keyed by the source declaration
   private val processedMetroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
-  private val dependencyGraphNodeCache = DependencyGraphNodeCache(this, bindingContainerTransformer)
+  private val dependencyGraphNodeCache = DependencyGraphNodeCache(this, contributionData, bindingContainerTransformer)
 
   override fun visitCall(expression: IrCall): IrExpression {
     return CreateGraphTransformer.visitCall(expression, metroContext)

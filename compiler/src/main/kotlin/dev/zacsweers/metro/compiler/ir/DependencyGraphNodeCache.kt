@@ -46,6 +46,7 @@ import org.jetbrains.kotlin.name.ClassId
 
 internal class DependencyGraphNodeCache(
   metroContext: IrMetroContext,
+  private val contributionData: IrContributionData,
   private val bindingContainerTransformer: BindingContainerTransformer,
 ) : IrMetroContext by metroContext {
 
@@ -104,6 +105,7 @@ internal class DependencyGraphNodeCache(
       (graphDeclaration.metroGraphOrNull ?: graphDeclaration)
         .getAllSuperTypes(pluginContext, excludeSelf = false)
         .memoized()
+    private val contributionData = nodeCache.contributionData
 
     private val isExtendable = dependencyGraphAnno?.isExtendable() ?: false
 
@@ -397,6 +399,19 @@ internal class DependencyGraphNodeCache(
               managedBindingContainers += container.ir
             }
           }
+
+      dependencyGraphAnno?.scopeClassOrNull()?.let { scope ->
+        bindingContainers +=
+          contributionData
+            .getBindingContainerContributions(scope.classIdOrFail)
+            .mapNotNull { bindingContainerTransformer.findContainer(it) }
+            .onEach { container ->
+              // Annotation-included containers may need to be managed directly
+              if (container.canBeManaged) {
+                managedBindingContainers += container.ir
+              }
+            }
+      }
 
       for (container in bindingContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }
