@@ -739,6 +739,13 @@ internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
     ?: return emptySet()
 }
 
+internal fun IrConstructorCall.excludesArgument() =
+  getValueArgument(Symbols.Names.excludes)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.excludedClasses(): Set<IrClassReference> {
+  return excludesArgument().toClassReferences()
+}
+
 internal fun IrConstructorCall.includesArgument() =
   getValueArgument(Symbols.Names.includes)?.expectAsOrNull<IrVararg>()
 

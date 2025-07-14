@@ -400,11 +400,17 @@ internal class DependencyGraphNodeCache(
             }
           }
 
+      val excludes =
+        dependencyGraphAnno?.excludedClasses().orEmpty().mapNotNullToSet {
+          it.classType.rawTypeOrNull()?.classId
+        }
+
       dependencyGraphAnno?.scopeClassOrNull()?.let { scope ->
         bindingContainers +=
           contributionData
             .getBindingContainerContributions(scope.classIdOrFail)
             .mapNotNull { bindingContainerTransformer.findContainer(it) }
+            .filterNot { it.ir.classId in excludes }
             .onEach { container ->
               // Annotation-included containers may need to be managed directly
               if (container.canBeManaged) {
