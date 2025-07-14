@@ -173,6 +173,9 @@ internal class BindingGraphGenerator(
           annotations,
         )
 
+      // Track a lookup of the target for IC
+      trackFunctionCall(node.sourceGraph, bindingCallable.function.ir)
+
       if (annotations.isIntoMultibinding) {
         graph
           .getOrCreateMultibinding(
