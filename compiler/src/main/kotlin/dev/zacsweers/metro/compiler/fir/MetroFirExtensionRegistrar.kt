@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryImplFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
+import dev.zacsweers.metro.compiler.fir.generators.ContributionHintFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributionsFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.DependencyGraphFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
@@ -53,6 +54,9 @@ public class MetroFirExtensionRegistrar(
     +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, true)
     +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, true)
     +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
+    if (options.generateHintProperties) {
+      +declarationGenerator("FirGen - ContributionHints", ::ContributionHintFirGenerator, true)
+    }
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
   }
 
