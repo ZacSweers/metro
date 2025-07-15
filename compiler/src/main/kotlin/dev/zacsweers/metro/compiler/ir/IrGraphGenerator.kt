@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.ir.builders.irIfThen
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irNotIs
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -60,6 +61,7 @@ import org.jetbrains.kotlin.ir.util.SymbolRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.functions
@@ -77,6 +79,13 @@ import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+
+internal typealias FieldInitializer =
+  IrBuilderWithScope.(thisReceiver: IrValueParameter, key: IrTypeKey) -> IrExpression
+
+// Borrowed from Dagger
+// https://github.com/google/dagger/blob/b39cf2d0640e4b24338dd290cb1cb2e923d38cb3/dagger-compiler/main/java/dagger/internal/codegen/writing/ComponentImplementation.java#L263
+private const val STATEMENTS_PER_METHOD = 25
 
 // TODO further refactor
 //  move IR code gen out to IrGraphExpression?Generator
@@ -96,6 +105,8 @@ internal class IrGraphGenerator(
 ) : IrMetroContext by metroContext {
 
   private val fieldNameAllocator = NameAllocator()
+  private val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+
   // TODO we can end up in awkward situations where we
   //  have the same type keys in both instance and provider fields
   //  this is tricky because depending on the context, it's not valid
@@ -106,21 +117,37 @@ internal class IrGraphGenerator(
 
   // Fields for providers. May include both scoped and unscoped providers as well as bound
   // instances
-  private val providerFields = mutableMapOf<IrTypeKey, IrField>()
+  private val providerFields = LinkedHashMap<IrTypeKey, IrField>()
 
   private val contributedGraphGenerator =
     IrContributedGraphGenerator(metroContext, contributionData, node.sourceGraph)
+
+  /**
+   * To avoid `MethodTooLargeException`, we split field initializations up over multiple constructor
+   * inits.
+   *
+   * @see <a href="https://github.com/ZacSweers/metro/issues/645">#645</a>
+   */
+  private val fieldInitializers = mutableListOf<Pair<IrField, FieldInitializer>>()
+  private val fieldsToTypeKeys = mutableMapOf<IrField, IrTypeKey>()
+
+  fun IrField.withInit(typeKey: IrTypeKey, init: FieldInitializer): IrField = apply {
+    fieldsToTypeKeys[this] = typeKey
+    fieldInitializers += (this to init)
+  }
 
   fun generate() =
     with(graphClass) {
       val ctor = primaryConstructor!!
 
-      val extraConstructorStatements = mutableListOf<IrBuilderWithScope.() -> IrStatement>()
+      val extraConstructorStatements =
+        mutableListOf<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>()
 
       fun addBoundInstanceField(
         typeKey: IrTypeKey,
         name: Name,
-        initializer: IrBuilderWithScope.() -> IrExpression,
+        initializer:
+          IrBuilderWithScope.(thisReceiver: IrValueParameter, typeKey: IrTypeKey) -> IrExpression,
       ) {
         // Don't add it if it's not used
         if (typeKey !in sealResult.reachableKeys) return
@@ -134,12 +161,8 @@ internal class IrGraphGenerator(
               fieldType = symbols.metroProvider.typeWith(typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
-            .apply {
-              isFinal = true
-              this.initializer =
-                pluginContext.createIrBuilder(symbol).run {
-                  irExprBody(instanceFactory(typeKey.type, initializer()))
-                }
+            .withInit(typeKey) { thisReceiver, typeKey ->
+              instanceFactory(typeKey.type, initializer(thisReceiver, typeKey))
             }
       }
 
@@ -152,7 +175,7 @@ internal class IrGraphGenerator(
           val irParam = ctor.regularParameters[i]
 
           if (isBindsInstance || creator.bindingContainersParameterIndices.isSet(i)) {
-            addBoundInstanceField(param.typeKey, param.name) { irGet(irParam) }
+            addBoundInstanceField(param.typeKey, param.name) { _, _ -> irGet(irParam) }
           } else {
             // It's a graph dep. Add all its accessors as available keys and point them at
             // this constructor parameter for provider field initialization
@@ -169,14 +192,15 @@ internal class IrGraphGenerator(
                 fieldNameAllocator.newName(
                   graphDep.sourceGraph.name.asString().decapitalizeUS() + "Instance"
                 ),
-                graphDep.typeKey.type,
-                { irGet(irParam) },
-              )
+                graphDep.typeKey,
+              ) {
+                irGet(irParam)
+              }
             instanceFields[graphDep.typeKey] = graphDepField
 
             if (graphDep.isExtendable) {
               // Extended graphs
-              addBoundInstanceField(param.typeKey, param.name) { irGet(irParam) }
+              addBoundInstanceField(param.typeKey, param.name) { _, _ -> irGet(irParam) }
 
               // Check that the input parameter is an instance of the metrograph class
               // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
@@ -219,9 +243,9 @@ internal class IrGraphGenerator(
       // Create binding containers instance fields if used
       node.bindingContainers
         .sortedBy { it.kotlinFqName.asString() }
-        .forEach {
-          addBoundInstanceField(IrTypeKey(it), it.name) {
-            irCallConstructor(it.primaryConstructor!!.symbol, emptyList())
+        .forEach { clazz ->
+          addBoundInstanceField(IrTypeKey(clazz), clazz.name) { _, _ ->
+            irCallConstructor(clazz.primaryConstructor!!.symbol, emptyList())
           }
         }
 
@@ -230,11 +254,10 @@ internal class IrGraphGenerator(
       // Don't add it if it's not used
       if (node.typeKey in sealResult.reachableKeys) {
         val thisGraphField =
-          addSimpleInstanceField(
-            fieldNameAllocator.newName("thisGraphInstance"),
-            node.typeKey.type,
-            { irGet(thisReceiverParameter) },
-          )
+          addSimpleInstanceField(fieldNameAllocator.newName("thisGraphInstance"), node.typeKey) {
+            thisReceiver ->
+            irGet(thisReceiver)
+          }
 
         instanceFields[node.typeKey] = thisGraphField
 
@@ -250,17 +273,8 @@ internal class IrGraphGenerator(
               fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
-            .apply {
-              isFinal = true
-              initializer =
-                pluginContext.createIrBuilder(symbol).run {
-                  irExprBody(
-                    instanceFactory(
-                      node.typeKey.type,
-                      irGetField(irGet(thisReceiverParameter), thisGraphField),
-                    )
-                  )
-                }
+            .withInit(node.typeKey) { thisReceiver, _ ->
+              instanceFactory(node.typeKey.type, irGetField(irGet(thisReceiver), thisGraphField))
             }
       }
 
@@ -290,50 +304,44 @@ internal class IrGraphGenerator(
             continue
           }
 
-          instanceFields.getOrPut(contextualTypeKey.typeKey) {
+          val typeKey = contextualTypeKey.typeKey
+          instanceFields.getOrPut(typeKey) {
             addField(
                 fieldName =
                   fieldNameAllocator.newName(
-                    contextualTypeKey.typeKey.type.rawType().name.asString().decapitalizeUS() +
-                      "Instance"
+                    typeKey.type.rawType().name.asString().decapitalizeUS() + "Instance"
                   ),
-                fieldType = contextualTypeKey.typeKey.type,
+                fieldType = typeKey.type,
                 fieldVisibility = DescriptorVisibilities.PRIVATE,
               )
-              .apply {
-                isFinal = true
-                initializer =
-                  pluginContext.createIrBuilder(symbol).run {
-                    val receiverTypeKey =
-                      accessor.ir.dispatchReceiverParameter!!
-                        .type
-                        .let {
-                          val rawType = it.rawTypeOrNull()
-                          // This stringy check is unfortunate but origins are not visible
-                          // across compilation boundaries
-                          if (rawType?.name == Symbols.Names.MetroGraph) {
-                            // if it's a $$MetroGraph, we actually want the parent type
-                            rawType.parentAsClass.defaultType
-                          } else {
-                            it
-                          }
-                        }
-                        .let(IrTypeKey.Companion::invoke)
-                    irExprBody(
-                      irInvoke(
-                        dispatchReceiver =
-                          irGetField(
-                            irGet(thisReceiverParameter),
-                            instanceFields[receiverTypeKey]
-                              ?: error(
-                                "Receiver type key $receiverTypeKey not found for binding $accessor"
-                              ),
-                          ),
-                        callee = accessor.ir.symbol,
-                        typeHint = accessor.ir.returnType,
-                      )
-                    )
-                  }
+              .withInit(typeKey) { thisReceiver, _ ->
+                val receiverTypeKey =
+                  accessor.ir.dispatchReceiverParameter!!
+                    .type
+                    .let {
+                      val rawType = it.rawTypeOrNull()
+                      // This stringy check is unfortunate but origins are not visible
+                      // across compilation boundaries
+                      if (rawType?.name == Symbols.Names.MetroGraph) {
+                        // if it's a $$MetroGraph, we actually want the parent type
+                        rawType.parentAsClass.defaultType
+                      } else {
+                        it
+                      }
+                    }
+                    .let(IrTypeKey.Companion::invoke)
+                irInvoke(
+                  dispatchReceiver =
+                    irGetField(
+                      irGet(thisReceiver),
+                      instanceFields[receiverTypeKey]
+                        ?: error(
+                          "Receiver type key $receiverTypeKey not found for binding $accessor"
+                        ),
+                    ),
+                  callee = accessor.ir.symbol,
+                  typeHint = accessor.ir.returnType,
+                )
               }
           }
         }
@@ -369,23 +377,18 @@ internal class IrGraphGenerator(
                   fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
                   fieldVisibility = DescriptorVisibilities.PRIVATE,
                 )
-                .apply {
-                  isFinal = true
-                  initializer =
-                    pluginContext.createIrBuilder(symbol).run {
-                      // If this is in instance fields, just do a quick assignment
-                      val bindingExpression =
-                        if (binding.typeKey in instanceFields) {
-                          val field = instanceFields.getValue(binding.typeKey)
-                          instanceFactory(
-                            binding.typeKey.type,
-                            irGetField(irGet(thisReceiverParameter), field),
-                          )
-                        } else {
-                          generateBindingCode(binding, generationContext = baseGenerationContext)
-                        }
-                      irExprBody(bindingExpression)
-                    }
+                .withInit(key) { thisReceiver, fieldIndex ->
+                  // If this is in instance fields, just do a quick assignment
+                  if (binding.typeKey in instanceFields) {
+                    val field = instanceFields.getValue(binding.typeKey)
+                    instanceFactory(binding.typeKey.type, irGetField(irGet(thisReceiver), field))
+                  } else {
+                    generateBindingCode(
+                      binding = binding,
+                      generationContext = baseGenerationContext,
+                      fieldInitKey = key,
+                    )
+                  }
                 }
           }
         }
@@ -402,17 +405,11 @@ internal class IrGraphGenerator(
                 fieldNameAllocator.newName(binding.nameHint.decapitalizeUS() + "Provider"),
                 deferredTypeKey.type.wrapInProvider(symbols.metroProvider),
               )
-              .apply {
-                isFinal = true
-                initializer =
-                  pluginContext.createIrBuilder(symbol).run {
-                    irExprBody(
-                      irInvoke(
-                        callee = symbols.metroDelegateFactoryConstructor,
-                        typeArgs = listOf(deferredTypeKey.type),
-                      )
-                    )
-                  }
+              .withInit(binding.typeKey) { _, _ ->
+                irInvoke(
+                  callee = symbols.metroDelegateFactoryConstructor,
+                  typeArgs = listOf(deferredTypeKey.type),
+                )
               }
 
           providerFields[deferredTypeKey] = field
@@ -462,19 +459,16 @@ internal class IrGraphGenerator(
                 fieldType = fieldType,
                 fieldVisibility = DescriptorVisibilities.PRIVATE,
               )
-              .apply {
-                isFinal = true
-                initializer =
-                  pluginContext.createIrBuilder(symbol).run {
-                    val provider =
-                      generateBindingCode(binding, baseGenerationContext, fieldInitKey = key).letIf(
-                        binding.scope != null
-                      ) {
-                        // If it's scoped, wrap it in double-check
-                        // DoubleCheck.provider(<provider>)
-                        it.doubleCheck(this@run, symbols, binding.typeKey)
-                      }
-                    irExprBody(provider)
+              .withInit(key) { thisReceiver, typeKey ->
+                generateBindingCode(
+                    binding,
+                    baseGenerationContext.withReceiver(thisReceiver),
+                    fieldInitKey = typeKey,
+                  )
+                  .letIf(binding.scope != null) {
+                    // If it's scoped, wrap it in double-check
+                    // DoubleCheck.provider(<provider>)
+                    it.doubleCheck(this@withInit, symbols, binding.typeKey)
                   }
               }
           providerFields[key] = field
@@ -484,7 +478,7 @@ internal class IrGraphGenerator(
       // fields for everything else. This is important in case they reference each other
       for ((deferredTypeKey, field) in deferredFields) {
         val binding = bindingGraph.requireBinding(deferredTypeKey, IrBindingStack.empty())
-        extraConstructorStatements.add {
+        extraConstructorStatements.add { thisReceiver ->
           irInvoke(
             dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
             callee = symbols.metroDelegateFactorySetDelegate,
@@ -496,7 +490,7 @@ internal class IrGraphGenerator(
                 pluginContext.createIrBuilder(symbol).run {
                   generateBindingCode(
                       binding,
-                      baseGenerationContext,
+                      baseGenerationContext.withReceiver(thisReceiver),
                       fieldInitKey = deferredTypeKey,
                     )
                     .letIf(binding.scope != null) {
@@ -510,13 +504,75 @@ internal class IrGraphGenerator(
         }
       }
 
+      val finalConstructorStatements:
+        List<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>
+      if (fieldInitializers.size + extraConstructorStatements.size > STATEMENTS_PER_METHOD) {
+        // Larger graph, split statements
+        // Chunk our constructor statements and split across multiple init functions
+        val chunks =
+          buildList<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement> {
+              // Add field initializers first
+              for ((field, init) in fieldInitializers) {
+                add { thisReceiver ->
+                  irSetField(
+                    irGet(thisReceiver),
+                    field,
+                    init(thisReceiver, fieldsToTypeKeys.getValue(field)),
+                  )
+                }
+              }
+              for (statement in extraConstructorStatements) {
+                add { thisReceiver -> statement(thisReceiver) }
+              }
+            }
+            .chunked(STATEMENTS_PER_METHOD)
+
+        val initFunctionsToCall =
+          chunks.map { statementsChunk ->
+            val initName = functionNameAllocator.newName("init")
+            addFunction(
+                initName,
+                pluginContext.irBuiltIns.unitType,
+                visibility = DescriptorVisibilities.PRIVATE,
+              )
+              .apply {
+                val localReceiver = thisReceiverParameter.copyTo(this)
+                setDispatchReceiver(localReceiver)
+                buildBlockBody(pluginContext) {
+                  for (statement in statementsChunk) {
+                    +statement(localReceiver)
+                  }
+                }
+              }
+          }
+        finalConstructorStatements = buildList {
+          for (initFunction in initFunctionsToCall) {
+            add { dispatchReceiver ->
+              irInvoke(dispatchReceiver = irGet(dispatchReceiver), callee = initFunction.symbol)
+            }
+          }
+        }
+      } else {
+        // Small graph, just do it in the constructor
+        // Assign those initializers directly to their fields and mark them as final
+        for ((field, init) in fieldInitializers) {
+          field.isFinal = true
+          field.initializer =
+            pluginContext.createIrBuilder(field.symbol).run {
+              val typeKey = fieldsToTypeKeys.getValue(field)
+              irExprBody(init(thisReceiverParameter, typeKey))
+            }
+        }
+        finalConstructorStatements = extraConstructorStatements
+      }
+
       // Add extra constructor statements
       with(ctor) {
         val originalBody = checkNotNull(body)
         buildBlockBody(pluginContext) {
           +originalBody.statements
-          for (extra in extraConstructorStatements) {
-            +extra()
+          for (statement in finalConstructorStatements) {
+            +statement(thisReceiverParameter)
           }
         }
       }
@@ -638,15 +694,15 @@ internal class IrGraphGenerator(
   // TODO add asProvider support?
   private fun IrClass.addSimpleInstanceField(
     name: String,
-    type: IrType,
-    initializerExpression: IrBuilderWithScope.() -> IrExpression,
+    typeKey: IrTypeKey,
+    initializerExpression: IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrExpression,
   ): IrField =
-    addField(fieldName = name, fieldType = type, fieldVisibility = DescriptorVisibilities.PRIVATE)
-      .apply {
-        isFinal = true
-        initializer =
-          pluginContext.createIrBuilder(symbol).run { irExprBody(initializerExpression()) }
-      }
+    addField(
+        fieldName = name,
+        fieldType = typeKey.type,
+        fieldVisibility = DescriptorVisibilities.PRIVATE,
+      )
+      .withInit(typeKey) { thisReceiver, _ -> initializerExpression(thisReceiver) }
 
   private fun DependencyGraphNode.implementOverrides(
     context: GraphGenerationContext,
