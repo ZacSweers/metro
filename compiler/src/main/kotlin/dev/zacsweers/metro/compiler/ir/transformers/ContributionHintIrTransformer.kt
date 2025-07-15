@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.ir.declarations.IrClass
 
 /**
@@ -37,7 +38,7 @@ internal class ContributionHintIrTransformer(
     for (contributionScope in contributionScopes) {
       hintGenerator.generateHint(
         sourceClass = declaration,
-        hintName = contributionScope.joinSimpleNames().shortClassName,
+        hintName = contributionScope.scopeHintFunctionName(),
       )
     }
 

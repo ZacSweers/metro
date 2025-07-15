@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
@@ -106,7 +107,7 @@ internal class ContributionHintFirGenerator(session: FirSession) :
             }
           }
         for (contributionScope in contributionScopes) {
-          val hintName = contributionScope.joinSimpleNames().shortClassName
+          val hintName = contributionScope.scopeHintFunctionName()
           callableIds
             .getOrPut(CallableId(Symbols.FqNames.metroHintsPackage, hintName), ::mutableSetOf)
             .add(contributingClass)
