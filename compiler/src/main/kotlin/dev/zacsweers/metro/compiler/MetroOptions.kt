@@ -133,7 +133,8 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       name = "generate-jvm-contribution-hints-in-fir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable/disable generation of contribution hint generation in FIR for JVM compilations types.",
+      description =
+        "Enable/disable generation of contribution hint generation in FIR for JVM compilations types.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -601,7 +602,8 @@ public data class MetroOptions(
             options = options.copy(generateContributionHints = configuration.getAsBoolean(entry))
 
           MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
-            options = options.copy(generateJvmContributionHintsInFir = configuration.getAsBoolean(entry))
+            options =
+              options.copy(generateJvmContributionHintsInFir = configuration.getAsBoolean(entry))
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))

@@ -10,7 +10,6 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.ir.declarations.IrClass

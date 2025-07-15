@@ -59,7 +59,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
-import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -1133,4 +1132,3 @@ internal fun typeRefFromQualifierParts(
   }
   return userTypeRef
 }
-
