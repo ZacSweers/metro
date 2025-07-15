@@ -141,7 +141,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
       fun IrClass.generateBindingFunction(metroContext: IrMetroContext): IrSimpleFunction =
         with(metroContext) {
-          val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull(pluginContext)
+          val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull()
           val bindingType =
             explicitBindingType ?: annotatedType.superTypes.single() // Checked in FIR
 
@@ -302,14 +302,14 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
 // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
 // checks for non-interop
+context(context: IrPluginContext)
 private fun IrConstructorCall.bindingTypeOrNull(
-  pluginContext: IrPluginContext
 ): Pair<IrType?, Boolean> {
   // Return a binding defined using Metro's API
   getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
     // bindingType is actually an annotation
     return bindingType.typeArguments.getOrNull(0)?.takeUnless {
-      it == pluginContext.irBuiltIns.nothingType
+      it == context.irBuiltIns.nothingType
     } to false
   }
   // Return a boundType defined using anvil KClass

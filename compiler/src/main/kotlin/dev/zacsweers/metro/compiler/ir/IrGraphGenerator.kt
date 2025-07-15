@@ -534,7 +534,7 @@ internal class IrGraphGenerator(
               .apply {
                 val localReceiver = thisReceiverParameter.copyTo(this)
                 setDispatchReceiver(localReceiver)
-                buildBlockBody(pluginContext) {
+                buildBlockBody() {
                   for (statement in statementsChunk) {
                     +statement(localReceiver)
                   }
@@ -565,7 +565,7 @@ internal class IrGraphGenerator(
       // Add extra constructor statements
       with(ctor) {
         val originalBody = checkNotNull(body)
-        buildBlockBody(pluginContext) {
+        buildBlockBody() {
           +originalBody.statements
           for (statement in finalConstructorStatements) {
             +statement(thisReceiverParameter)

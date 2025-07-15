@@ -246,11 +246,12 @@ internal fun <T> IrConst.valueAs(): T {
   return value as T
 }
 
-internal fun IrPluginContext.irType(
+context(context: IrPluginContext)
+internal fun irType(
   classId: ClassId,
   nullable: Boolean = false,
   arguments: List<IrTypeArgument> = emptyList(),
-): IrType = referenceClass(classId)!!.createType(hasQuestionMark = nullable, arguments = arguments)
+): IrType = context.referenceClass(classId)!!.createType(hasQuestionMark = nullable, arguments = arguments)
 
 internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBuilder {
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
@@ -816,8 +817,8 @@ internal val IrDeclarationParent.isExternalParent: Boolean
 internal fun IrBuilderWithScope.irExprBodySafe(symbol: IrSymbol, expression: IrExpression) =
   context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
 
+context(context: IrPluginContext)
 internal fun IrFunction.buildBlockBody(
-  context: IrPluginContext,
   blockBody: IrBlockBodyBuilder.() -> Unit,
 ) {
   body = context.createIrBuilder(symbol).irBlockBody(body = blockBody)
