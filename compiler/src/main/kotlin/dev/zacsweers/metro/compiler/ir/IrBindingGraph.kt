@@ -142,7 +142,8 @@ internal class IrBindingGraph(
     var binding = realGraph[multibindingTypeKey]
 
     if (binding == null) {
-      binding = context(metroContext) { IrBinding.Multibinding.fromContributor(multibindingTypeKey) }
+      binding =
+        context(metroContext) { IrBinding.Multibinding.fromContributor(multibindingTypeKey) }
       realGraph.tryPut(binding, bindingStack)
       // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
       if (binding.isMap) {
@@ -393,7 +394,8 @@ internal class IrBindingGraph(
     }
 
     return similarBindings.filterNot {
-      (it.value.binding as? IrBinding.BindingWithAnnotations)?.annotations?.isIntoMultibinding == true
+      (it.value.binding as? IrBinding.BindingWithAnnotations)?.annotations?.isIntoMultibinding ==
+        true
     }
   }
 

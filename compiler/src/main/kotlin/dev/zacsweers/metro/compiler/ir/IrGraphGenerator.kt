@@ -596,7 +596,8 @@ internal class IrGraphGenerator(
                     val binding = bindingGraph.requireBinding(typeKey, IrBindingStack.empty())
                     when {
                       // Don't re-expose existing accessors
-                      binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor -> false
+                      binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor ->
+                        false
                       // Only expose scoped bindings. Some provider fields may be for non-scoped
                       // bindings just for reuse. BoundInstance bindings still need to be passed on
                       binding.scope == null && binding !is IrBinding.BoundInstance -> false
@@ -745,7 +746,8 @@ internal class IrGraphGenerator(
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = regularParameters[0]
         val binding =
-          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) as IrBinding.MembersInjected
+          bindingGraph.requireBinding(contextKey, IrBindingStack.empty())
+            as IrBinding.MembersInjected
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly

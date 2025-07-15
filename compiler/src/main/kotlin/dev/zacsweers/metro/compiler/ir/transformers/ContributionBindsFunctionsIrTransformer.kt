@@ -303,8 +303,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
 // checks for non-interop
 context(context: IrPluginContext)
-private fun IrConstructorCall.bindingTypeOrNull(
-): Pair<IrType?, Boolean> {
+private fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
   // Return a binding defined using Metro's API
   getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
     // bindingType is actually an annotation
