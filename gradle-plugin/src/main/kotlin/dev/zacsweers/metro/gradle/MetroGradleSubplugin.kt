@@ -64,6 +64,15 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
+    val platformCanGnerateContributionHints =
+      when (kotlinCompilation.platformType) {
+        KotlinPlatformType.common,
+        KotlinPlatformType.jvm,
+        KotlinPlatformType.androidJvm -> true
+        KotlinPlatformType.js,
+        KotlinPlatformType.native,
+        KotlinPlatformType.wasm -> false
+      }
 
     // Ensure that the languageVersion is 2.x
     kotlinCompilation.compileTaskProvider.configure { task ->
@@ -100,7 +109,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("enabled", extension.enabled))
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
-        add(lazyOption("generate-contribution-hints", extension.generateContributionHints))
+        add(
+          lazyOption(
+            "generate-contribution-hints",
+            extension.generateContributionHints.orElse(platformCanGnerateContributionHints),
+          )
+        )
         add(
           lazyOption(
             "generate-jvm-contribution-hints-in-fir",

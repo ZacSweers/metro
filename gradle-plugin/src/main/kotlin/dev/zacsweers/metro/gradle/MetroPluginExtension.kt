@@ -52,9 +52,13 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
 
   /**
    * Enable/disable contribution hint generation in IR for contributed types. Enabled by default.
+   *
+   * This does not have a convention default set here as it actually depends on the platform. You
+   * can set a value to force it to one or the other, otherwise if unset it will default to the
+   * default for each compilation's platform type.
    */
   public val generateContributionHints: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType)
 
   /**
    * Enable/disable contribution hint generation in FIR for JVM compilations types. Disabled by

@@ -4,7 +4,6 @@ Changelog
 **Unreleased**
 --------------
 
-- **New:** Contributions now work in non-JVM/android compilations too.
 - **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
 - **Breaking change:** Rename the `generateHintProperties` Gradle DSL property to `generateContributionHints`.
 
