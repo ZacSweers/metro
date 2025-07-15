@@ -11,8 +11,8 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.flatMapToSet
-import dev.zacsweers.metro.compiler.ir.Binding
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -215,7 +215,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     )
   }
 
-  fun getOrLookupProviderFactory(binding: Binding.Provided): ProviderFactory? {
+  fun getOrLookupProviderFactory(binding: IrBinding.Provided): ProviderFactory? {
     // Eager cache check using the factory's callable ID
     generatedFactories[binding.providerFactory.callableId]?.let {
       return it
@@ -321,7 +321,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             callee = bytecodeFunction.symbol,
             args =
               parametersAsProviderArguments(
-                metroContext,
                 parameters = sourceParameters,
                 receiver = invokeFunction.owner.dispatchReceiverParameter!!,
                 parametersToFields = sourceParametersToFields,
@@ -339,7 +338,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val providerFactory =
       ProviderFactory(
-        context = metroContext,
         sourceTypeKey = reference.typeKey,
         clazz = factoryCls,
         mirrorFunction = mirrorFunction,
@@ -370,7 +368,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         callableId = callableId,
         name = function.name,
         isPropertyAccessor = isPropertyAccessor,
-        parameters = function.parameters(this),
+        parameters = function.parameters(),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         parent = parent.symbol,
@@ -399,7 +397,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         callableId = callableId,
         name = property.name,
         isPropertyAccessor = true,
-        parameters = property.getter?.parameters(this) ?: Parameters.empty(),
+        parameters = property.getter?.parameters() ?: Parameters.empty(),
         typeKey = typeKey,
         isNullable = typeKey.type.isMarkedNullable(),
         parent = parent.symbol,
@@ -426,7 +424,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     // Generate create()
     generateStaticCreateFunction(
-      context = metroContext,
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
       targetConstructor = factoryConstructor,
@@ -437,7 +434,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // Generate the named newInstance function
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
-        context = metroContext,
         parentClass = classToGenerateCreatorsIn,
         targetFunction = reference.callee.owner,
         sourceParameters = reference.parameters.regularParameters.map { it.ir },
@@ -618,7 +614,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     val typeKey = IrTypeKey(factoryType.expectAs<IrSimpleType>().arguments.first().typeOrFail)
     val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
     return ProviderFactory(
-      metroContext,
       typeKey,
       factoryCls,
       mirrorFunction,

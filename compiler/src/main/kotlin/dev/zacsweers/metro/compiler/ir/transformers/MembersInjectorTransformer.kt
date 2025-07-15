@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.toMemberInjectParameter
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
+import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -100,7 +101,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
                 return remapper.remapType(typeParamRemapper.remapType(type))
               }
             }
-          function.parameters(context, compositeRemapper)
+          function.parameters(compositeRemapper)
         }
       return when (allParams.size) {
         0 -> Parameters.empty()
@@ -124,7 +125,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
   fun getOrGenerateAllInjectorsFor(declaration: IrClass): List<MemberInjectClass> {
     return declaration
-      .getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)
+      .getAllSuperTypes(excludeSelf = false, excludeAny = true)
       .mapNotNull { it.classOrNull?.owner }
       .filterNot { it.isInterface }
       .mapNotNull { getOrGenerateInjector(it) }
@@ -216,7 +217,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
 
     // Static create()
     generateStaticCreateFunction(
-      context = metroContext,
       parentClass = companionObject,
       targetClass = injectorClass,
       targetConstructor = ctor.symbol,
@@ -303,7 +303,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
       body =
         pluginContext.createIrBuilder(symbol).irBlockBody {
           addMemberInjection(
-            context = metroContext,
             typeArgs = typeArgs,
             callingFunction = this@apply,
             instanceReceiver = regularParameters[0],
@@ -328,7 +327,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   private fun IrClass.getOrComputeMemberInjectParameters(): Map<ClassId, List<Parameters>> {
     // Compute supertypes once - we'll need them for either cached lookup or fresh computation
     val allTypes =
-      getAllSuperTypes(pluginContext, excludeSelf = false, excludeAny = true)
+      getAllSuperTypes(excludeSelf = false, excludeAny = true)
         .mapNotNull { it.rawTypeOrNull() }
         .filterNot { it.isInterface }
         .memoized()
@@ -426,10 +425,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
         val regularParams =
           dependencyParams.map { param ->
             // Convert IrValueParameter to Parameter - derive from inject function param
-            param.toMemberInjectParameter(
-              metroContext,
-              uniqueName = nameAllocator.newName(param.name),
-            )
+            param.toMemberInjectParameter(uniqueName = nameAllocator.newName(param.name))
           }
 
         Parameters(
@@ -473,8 +469,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext) : IrMetroCont
   }
 }
 
+context(context: IrMetroContext)
 internal fun IrBlockBodyBuilder.addMemberInjection(
-  context: IrMetroContext,
   typeArgs: List<IrType>?,
   callingFunction: IrSimpleFunction,
   injectFunctions: Map<IrSimpleFunction, Parameters>,
@@ -483,7 +479,7 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
   injectorReceiver: IrValueParameter,
 ) {
   for ((function, parameters) in injectFunctions) {
-    context.trackFunctionCall(callingFunction, function)
+    trackFunctionCall(callingFunction, function)
     +irInvoke(
       dispatchReceiver = irGetObject(function.parentAsClass.symbol),
       callee = function.symbol,
@@ -491,9 +487,7 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
       args =
         buildList {
           add(irGet(instanceReceiver))
-          addAll(
-            parametersAsProviderArguments(context, parameters, injectorReceiver, parametersToFields)
-          )
+          addAll(parametersAsProviderArguments(parameters, injectorReceiver, parametersToFields))
         },
     )
   }

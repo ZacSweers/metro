@@ -66,6 +66,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedFactoryIsAvailableAsBinding.kt")
+    public void testContributedFactoryIsAvailableAsBinding() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributedFactoryIsAvailableAsBinding.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultipleGraphsToSameParent.kt")
     public void testContributingMultipleGraphsToSameParent() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributingMultipleGraphsToSameParent.kt");
@@ -173,6 +179,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("IncludesGraphOnlyIncludesAccessors.kt")
     public void testIncludesGraphOnlyIncludesAccessors() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesGraphOnlyIncludesAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("InitsAreChunkedBox.kt")
+    public void testInitsAreChunkedBox() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/InitsAreChunkedBox.kt");
     }
 
     @Test

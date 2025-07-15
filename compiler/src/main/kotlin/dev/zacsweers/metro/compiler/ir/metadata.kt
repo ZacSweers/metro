@@ -25,17 +25,13 @@ private val BINDS_CALLABLE_ID_COMPARATOR: Comparator<BindsCallableId> =
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
   get() {
-    return context.pluginContext.metadataDeclarationRegistrar
-      .getCustomMetadataExtension(this, PLUGIN_ID)
-      ?.let { MetroMetadata.ADAPTER.decode(it) }
+    return context.metadataDeclarationRegistrar.getCustomMetadataExtension(this, PLUGIN_ID)?.let {
+      MetroMetadata.ADAPTER.decode(it)
+    }
   }
   set(value) {
     if (value == null) return
-    context.pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-      this,
-      PLUGIN_ID,
-      value.encode(),
-    )
+    context.metadataDeclarationRegistrar.addCustomMetadataExtension(this, PLUGIN_ID, value.encode())
   }
 
 context(context: IrMetroContext)
@@ -47,7 +43,7 @@ internal fun DependencyGraphNode.toProto(
   instanceFields: List<String>,
 ): DependencyGraphProto {
   val bindsCallableIds =
-    bindingGraph.bindingsSnapshot().values.filterIsInstance<Binding.Alias>().mapNotNullToSet {
+    bindingGraph.bindingsSnapshot().values.filterIsInstance<IrBinding.Alias>().mapNotNullToSet {
       binding ->
 
       // Grab the right declaration. If this is an override, look up the original
@@ -88,7 +84,7 @@ internal fun DependencyGraphNode.toProto(
       .sortedBy { it.first.ir.name.asString() }
       .onEachIndexed { index, (_, contextKey) ->
         val isMultibindingAccessor =
-          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) is Binding.Multibinding
+          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) is IrBinding.Multibinding
         if (isMultibindingAccessor) {
           multibindingAccessors = multibindingAccessors or (1 shl index)
         }

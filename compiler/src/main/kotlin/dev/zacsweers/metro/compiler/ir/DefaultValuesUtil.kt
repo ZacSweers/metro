@@ -28,7 +28,8 @@ import org.jetbrains.kotlin.ir.visitors.IrTransformer
  * back-references to other parameters. Part of supporting that is a local
  * [IrElementTransformerVoid] that remaps those references to the new parameters.
  */
-internal fun IrMetroContext.copyParameterDefaultValues(
+context(context: IrMetroContext)
+internal fun copyParameterDefaultValues(
   providerFunction: IrFunction?,
   sourceParameters: List<IrValueParameter>,
   targetParameters: List<IrValueParameter>,
@@ -63,7 +64,7 @@ internal fun IrMetroContext.copyParameterDefaultValues(
                 SYNTHETIC_OFFSET,
                 SYNTHETIC_OFFSET,
                 newGet.type,
-                symbols.providerInvoke,
+                context.symbols.providerInvoke,
               )
               .apply { this.dispatchReceiver = newGet }
           } else {
@@ -96,14 +97,13 @@ internal fun IrMetroContext.copyParameterDefaultValues(
         IrCallImpl.fromSymbolOwner(
             SYNTHETIC_OFFSET,
             SYNTHETIC_OFFSET,
-            parameter.type.wrapInProvider(symbols.metroProvider),
-            symbols.metroProviderFunction,
+            parameter.type.wrapInProvider(context.symbols.metroProvider),
+            context.symbols.metroProviderFunction,
           )
           .apply {
             typeArguments[0] = parameter.type
             arguments[0] =
               irLambda(
-                context = pluginContext,
                 parent = targetParam.parent,
                 valueParameters = emptyList(),
                 returnType = parameter.type,

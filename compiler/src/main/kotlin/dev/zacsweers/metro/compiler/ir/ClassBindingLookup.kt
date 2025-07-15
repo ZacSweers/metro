@@ -29,8 +29,8 @@ internal class ClassBindingLookup(
   private fun IrClass.computeMembersInjectorBindings(
     currentBindings: Set<IrTypeKey>,
     remapper: TypeRemapper,
-  ): Set<Binding> {
-    val bindings = mutableSetOf<Binding>()
+  ): Set<IrBinding> {
+    val bindings = mutableSetOf<IrBinding>()
     for (generatedInjector in findMemberInjectors(this)) {
       val mappedTypeKey = generatedInjector.typeKey.remapTypes(remapper)
       if (mappedTypeKey !in currentBindings) {
@@ -39,7 +39,7 @@ internal class ClassBindingLookup(
         val contextKey = IrContextualTypeKey(mappedTypeKey)
 
         bindings +=
-          Binding.MembersInjected(
+          IrBinding.MembersInjected(
             contextKey,
             // Need to look up the injector class and gather all params
             parameters = remappedParameters,
@@ -58,7 +58,7 @@ internal class ClassBindingLookup(
     contextKey: IrContextualTypeKey,
     currentBindings: Set<IrTypeKey>,
     stack: IrBindingStack,
-  ): Set<Binding> =
+  ): Set<IrBinding> =
     with(metroContext) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
@@ -73,14 +73,14 @@ internal class ClassBindingLookup(
 
       val classAnnotations = irClass.metroAnnotations(symbols.classIds)
 
-      val bindings = mutableSetOf<Binding>()
+      val bindings = mutableSetOf<IrBinding>()
       if (irClass.isObject) {
         irClass.getSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION)?.owner?.let {
           // We don't actually call this function but it stores information about qualifier/scope
           // annotations, so reference it here so IC triggers
           trackFunctionCall(sourceGraph, it)
         }
-        bindings += Binding.ObjectClass(irClass, classAnnotations, key)
+        bindings += IrBinding.ObjectClass(irClass, classAnnotations, key)
         return bindings
       }
 
@@ -113,7 +113,7 @@ internal class ClassBindingLookup(
         bindings += membersInjectBindings
 
         val binding =
-          Binding.ConstructorInjected(
+          IrBinding.ConstructorInjected(
             type = irClass,
             classFactory = mappedFactory,
             annotations = classAnnotations,
@@ -129,21 +129,21 @@ internal class ClassBindingLookup(
         // Doesn't appear to be necessary but juuuuust in case
         trackFunctionCall(sourceGraph, classFactory.function)
       } else if (classAnnotations.isAssistedFactory) {
-        val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)
+        val function = irClass.singleAbstractFunction().asMemberOf(key.type)
         // Mark as wrapped for convenience in graph resolution to note that this whole node is
         // inherently deferrable
         val targetContextualTypeKey = IrContextualTypeKey.from(function, wrapInProvider = true)
         bindings +=
-          Binding.Assisted(
+          IrBinding.Assisted(
             type = irClass,
             function = function,
             annotations = classAnnotations,
             typeKey = key,
-            parameters = function.parameters(metroContext),
+            parameters = function.parameters(),
             target = targetContextualTypeKey,
           )
       } else if (contextKey.hasDefault) {
-        bindings += Binding.Absent(key)
+        bindings += IrBinding.Absent(key)
       } else {
         // Do nothing
       }

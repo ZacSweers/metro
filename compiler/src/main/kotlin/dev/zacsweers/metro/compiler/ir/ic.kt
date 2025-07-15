@@ -19,10 +19,8 @@ import org.jetbrains.kotlin.psi.doNotAnalyze
 /**
  * Tracks a call from one [callingDeclaration] to a [calleeClass] to inform incremental compilation.
  */
-internal fun IrMetroContext.trackClassLookup(
-  callingDeclaration: IrDeclaration,
-  calleeClass: IrClass,
-) {
+context(context: IrMetroContext)
+internal fun trackClassLookup(callingDeclaration: IrDeclaration, calleeClass: IrClass) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
     trackLookup(
       container = calleeClass.parent.kotlinFqName,
@@ -44,10 +42,8 @@ internal fun IrMetroContext.trackClassLookup(
  * If the [calleeFunction] is a property getter, the corresponding property will be recorded
  * instead.
  */
-internal fun IrMetroContext.trackFunctionCall(
-  callingDeclaration: IrDeclaration,
-  calleeFunction: IrFunction,
-) {
+context(context: IrMetroContext)
+internal fun trackFunctionCall(callingDeclaration: IrDeclaration, calleeFunction: IrFunction) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
     val declaration =
       (calleeFunction as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: calleeFunction
@@ -64,7 +60,8 @@ internal fun IrMetroContext.trackFunctionCall(
   }
 }
 
-internal fun IrMetroContext.trackMemberDeclarationCall(
+context(context: IrMetroContext)
+internal fun trackMemberDeclarationCall(
   callingDeclaration: IrDeclaration,
   containerFqName: FqName,
   declarationName: String,
@@ -83,7 +80,8 @@ internal fun IrMetroContext.trackMemberDeclarationCall(
   }
 }
 
-internal fun IrMetroContext.trackLookup(
+context(context: IrMetroContext)
+internal fun trackLookup(
   container: FqName,
   declarationName: String,
   scopeKind: ScopeKind,
@@ -100,8 +98,9 @@ internal fun IrMetroContext.trackLookup(
   }
 }
 
-internal inline fun IrMetroContext.withLookupTracker(body: LookupTracker.() -> Unit) {
-  lookupTracker?.let { tracker -> synchronized(tracker) { tracker.body() } }
+context(context: IrMetroContext)
+internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
+  context.lookupTracker?.let { tracker -> synchronized(tracker) { tracker.body() } }
 }
 
 private fun IrDeclaration.withAnalyzableKtFile(body: (filePath: String) -> Unit) {

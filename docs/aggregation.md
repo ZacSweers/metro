@@ -34,6 +34,9 @@ interface TestNetworkProviders {
 }
 ```
 
+!!! warning
+    Multi-module aggregation only works in JVM and Android compilations at the moment. Follow [#460](https://github.com/ZacSweers/metro/issues/460) for future support on other targets.
+
 ## @ContributesTo
 
 This annotation is used to contribute graph interfaces to the target scope to be merged in at graph-processing time to the final merged graph class as another supertype.

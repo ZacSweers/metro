@@ -107,7 +107,7 @@ internal class DependencyGraphNodeCache(
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
       (graphDeclaration.metroGraphOrNull ?: graphDeclaration)
-        .getAllSuperTypes(pluginContext, excludeSelf = false)
+        .getAllSuperTypes(excludeSelf = false)
         .memoized()
     private val contributionData = nodeCache.contributionData
 
@@ -166,7 +166,7 @@ internal class DependencyGraphNodeCache(
       val creator =
         if (graphDeclaration.origin === Origins.ContributedGraph) {
           val ctor = graphDeclaration.primaryConstructor!!
-          val ctorParams = ctor.parameters(metroContext)
+          val ctorParams = ctor.parameters()
           populateBindingContainerFields(ctorParams)
           DependencyGraphNode.Creator.Constructor(
             graphDeclaration.primaryConstructor!!,
@@ -182,8 +182,8 @@ internal class DependencyGraphNodeCache(
             }
             ?.let { factory ->
               // Validated in FIR so we can assume we'll find just one here
-              val createFunction = factory.singleAbstractFunction(this)
-              val parameters = createFunction.parameters(this)
+              val createFunction = factory.singleAbstractFunction()
+              val parameters = createFunction.parameters()
               populateBindingContainerFields(parameters)
               DependencyGraphNode.Creator.Factory(
                 factory,
@@ -449,7 +449,7 @@ internal class DependencyGraphNodeCache(
         trackClassLookup(graphDeclaration, container.ir)
       }
 
-      metroContext.writeDiagnostic("bindingContainers-${parentTracer.tag}.txt") {
+      writeDiagnostic("bindingContainers-${parentTracer.tag}.txt") {
         mergedContainers.joinToString("\n") { it.ir.classId.toString() }
       }
 

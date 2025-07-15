@@ -281,7 +281,7 @@ Contributed graphs may also be chained, but note that `@ContributesGraphExtensio
 
 ## Binding Containers
 
-Binding containers are classes or interfaces annotated with `@BindingContainer` that contain binding declarations (`@Provides` or `@Binds`) but are not themselves complete dependency graphs. They're analogous to Dagger's `@Module` annotation and can be used in cases where defining bindings in an (extended) interface is unwieldy or not helpful.
+Binding containers are classes, objects, or interfaces annotated with `@BindingContainer` that contain binding declarations (`@Provides` or `@Binds`) but are not themselves complete dependency graphs. They're analogous to Dagger's `@Module` annotation and can be used in cases where defining bindings in an (extended) interface is unwieldy or not helpful.
 
 Unlike graphs and other `@Includes` types, their public accessors are _not_ read. Only `@Binds` and `@Provides` declarations are read.
 
@@ -328,6 +328,7 @@ interface AppGraph {
 ```
 
 This method works for:
+
 - `object` classes
 - `interface` or `abstract class` types with only `@Binds` providers or companion object `@Provides` providers
 - Simple classes with a public, no-arg constructor
@@ -394,9 +395,9 @@ interface AppGraph {
 
 ### Notes
 
-- Companion objects, annotation classes, and enum classes/entries cannot be annotated with `@BindingContainer`
-- Companion object providers within a binding container are automatically included
-- Enclosing classes of `@Binds` or `@Provides` providers don't need to be annotated with `@BindingContainer` for Metro to process them - the annotation is primarily for reference to `@DependencyGraph.Factory` and the ability to use `includes`
+- Companion objects, annotation classes, and enum classes/entries cannot be annotated with `@BindingContainer`.
+- Provides within a binding container's companion object are automatically included.
+- Enclosing classes of `@Binds` or `@Provides` providers don't need to be annotated with `@BindingContainer` for Metro to process them - the annotation is primarily for reference to `@DependencyGraph.Factory` and the ability to use `includes`.
 - Binding containers may also be [contributed](aggregation.md#contributing-binding-containers).
 - See [#172](https://github.com/ZacSweers/metro/issues/172) for more details.
 

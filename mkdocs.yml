@@ -84,6 +84,7 @@ nav:
       - 'Adoption Strategies': adoption.md
   - 'Performance': performance.md
   - 'Debugging': debugging.md
+  - 'Compatibility': compatibility.md
   - 'FAQ': faq.md
   - 'Samples': samples.md
   - 'API': api/0.x/index.html

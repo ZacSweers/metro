@@ -51,7 +51,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private fun findExternalContributions(scopeClassId: ClassId): Set<IrType> {
     return externalContributions.getOrPut(scopeClassId) {
       val functionsInPackage =
-        metroContext.pluginContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
+        metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
       val contributingClasses =
         functionsInPackage.map { contribution ->
           // This is the single value param
@@ -66,7 +66,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private fun findExternalBindingContainerContributions(scopeClassId: ClassId): Set<IrClass> {
     return externalBindingContainerContributions.getOrPut(scopeClassId) {
       val functionsInPackage =
-        metroContext.pluginContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
+        metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
       val contributingClasses =
         functionsInPackage.map { contribution ->
           // This is the single value param
@@ -127,7 +127,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private fun findExternalScopedInjects(scope: IrAnnotation): Set<IrTypeKey> {
     return externalScopeToInjectClasses.getOrPut(scope) {
       val unfilteredScopedInjectClasses =
-        metroContext.pluginContext
+        metroContext
           .referenceFunctions(Symbols.CallableIds.scopedInjectClassHint(scope))
           .filter { hintFunction ->
             hintFunction.owner.annotations.any { IrAnnotation(it) == scope }

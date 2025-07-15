@@ -16,9 +16,9 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.render
 
+context(context: IrMetroContext)
 internal fun IrTypeKey.transformMultiboundQualifier(
-  metroContext: IrMetroContext,
-  annotations: MetroAnnotations<IrAnnotation>,
+  annotations: MetroAnnotations<IrAnnotation>
 ): IrTypeKey {
   if (!annotations.isIntoMultibinding) {
     return this
@@ -33,7 +33,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
   val bindingId =
     if (annotations.isIntoMap) {
       val mapKey = annotations.mapKeys.first()
-      val mapKeyType = metroContext.mapKeyType(mapKey)
+      val mapKeyType = mapKeyType(mapKey)
       createMapBindingId(mapKeyType, this)
     } else if (annotations.isElementsIntoSet) {
       val elementType = type.expectAs<IrSimpleType>().arguments.first().typeOrFail
@@ -44,7 +44,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
     }
 
   val newQualifier =
-    metroContext.pluginContext.buildAnnotation(symbol, metroContext.symbols.multibindingElement) {
+    buildAnnotation(symbol, context.symbols.multibindingElement) {
       it.arguments[0] = irString(bindingId)
       it.arguments[1] = irString(elementId)
     }
@@ -77,11 +77,13 @@ internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): Stri
   return "${mapKey.render()}_${elementTypeKey.multibindingId}"
 }
 
-internal fun IrMetroContext.shouldUnwrapMapKeyValues(mapKey: IrAnnotation): Boolean {
+context(context: IrMetroContext)
+internal fun shouldUnwrapMapKeyValues(mapKey: IrAnnotation): Boolean {
   return shouldUnwrapMapKeyValues(mapKey.ir)
 }
 
-internal fun IrMetroContext.shouldUnwrapMapKeyValues(mapKey: IrConstructorCall): Boolean {
+context(context: IrMetroContext)
+internal fun shouldUnwrapMapKeyValues(mapKey: IrConstructorCall): Boolean {
   val mapKeyMapKeyAnnotation = mapKey.annotationClass.explicitMapKeyAnnotation()!!.ir
   // TODO FIR check valid MapKey
   //  - single arg
@@ -91,8 +93,9 @@ internal fun IrMetroContext.shouldUnwrapMapKeyValues(mapKey: IrConstructorCall):
 }
 
 // TODO this is probably not robust enough
-internal fun IrMetroContext.mapKeyType(mapKey: IrAnnotation): IrType {
-  val unwrapValues = metroContext.shouldUnwrapMapKeyValues(mapKey)
+context(context: IrMetroContext)
+internal fun mapKeyType(mapKey: IrAnnotation): IrType {
+  val unwrapValues = shouldUnwrapMapKeyValues(mapKey)
   return if (unwrapValues) {
       mapKey.ir.annotationClass.primaryConstructor!!.regularParameters[0].type
     } else {
