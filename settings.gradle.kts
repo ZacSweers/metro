@@ -6,7 +6,7 @@ pluginManagement {
     google()
     gradlePluginPortal()
   }
-  plugins { id("com.gradle.develocity") version "4.0.2" }
+  plugins { id("com.gradle.develocity") version "4.1" }
 }
 
 dependencyResolutionManagement {
