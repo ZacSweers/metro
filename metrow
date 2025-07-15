@@ -60,8 +60,14 @@ case "$1" in
    "regen")
        echo "Applying formatting and API gen..."
        # Annoyingly, the apiDump task has some caching issues
-       ./gradlew spotlessApply apiDump kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache
-       ./gradlew -p samples spotlessApply kotlinUpgradePackageLock --no-configuration-cache
+       ./gradlew spotlessApply apiDump --rerun-tasks --no-build-cache --no-configuration-cache
+       ./gradlew -p samples spotlessApply --no-configuration-cache
+       # https://youtrack.jetbrains.com/issue/KT-69684
+       ./gradlew clean
+       rm -rf kotlin-js-store
+       rm -rf samples/kotlin-js-store
+       ./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache
+       ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache
        ;;
 
    *)

@@ -71,9 +71,7 @@ echo "Publishing $NEW_VERSION"
 # Prepare release
 update_gradle_properties "$NEW_VERSION"
 
-# Regenerate package jsons
-./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
-./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
+./metrow regen
 
 git commit -am "Prepare for release $NEW_VERSION."
 git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
@@ -85,9 +83,7 @@ git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
 echo "Setting next snapshot version $NEXT_SNAPSHOT_VERSION"
 update_gradle_properties "$NEXT_SNAPSHOT_VERSION"
 
-# Regenerate package jsons
-./gradlew kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
-./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks
+./metrow regen
 
 git commit -am "Prepare next development version."
 
