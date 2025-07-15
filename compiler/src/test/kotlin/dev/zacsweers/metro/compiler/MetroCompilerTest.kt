@@ -103,6 +103,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
               MetroOption.GENERATE_CONTRIBUTION_HINTS ->
                 processor.option(entry.raw.cliOption, generateContributionHints)
+              MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
+                processor.option(entry.raw.cliOption, generateJvmContributionHintsInFir)
               MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
                 processor.option(entry.raw.cliOption, transformProvidersToPrivate)
               MetroOption.SHRINK_UNUSED_BINDINGS ->

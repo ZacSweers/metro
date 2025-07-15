@@ -128,6 +128,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR(
+    RawMetroOption.boolean(
+      name = "generate-jvm-contribution-hints-in-fir",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable generation of contribution hint generation in FIR for JVM compilations types.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   TRANSFORM_PROVIDERS_TO_PRIVATE(
     RawMetroOption.boolean(
       name = "transform-providers-to-private",
@@ -466,6 +476,8 @@ public data class MetroOptions(
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
   val generateContributionHints: Boolean =
     MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
+  val generateJvmContributionHintsInFir: Boolean =
+    MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
   val transformProvidersToPrivate: Boolean =
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val shrinkUnusedBindings: Boolean =
@@ -587,6 +599,9 @@ public data class MetroOptions(
 
           MetroOption.GENERATE_CONTRIBUTION_HINTS ->
             options = options.copy(generateContributionHints = configuration.getAsBoolean(entry))
+
+          MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
+            options = options.copy(generateJvmContributionHintsInFir = configuration.getAsBoolean(entry))
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))

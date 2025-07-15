@@ -101,6 +101,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
         add(lazyOption("generate-contribution-hints", extension.generateContributionHints))
+        add(lazyOption("generate-jvm-contribution-hints-in-fir", extension.generateJvmContributionHintsInFir))
         add(lazyOption("enable-scoped-inject-class-hints", extension.enableScopedInjectClassHints))
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))

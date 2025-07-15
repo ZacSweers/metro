@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -11,7 +12,6 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
 import dev.zacsweers.metro.compiler.fir.scopeArgument
-import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.fir.FirSession
@@ -45,15 +45,26 @@ import org.jetbrains.kotlin.platform.jvm.isJvm
  * For JVM/Android platforms, hints are generated in IR to avoid breaking incremental compilation.
  * For other platforms (Native, JS, WASM) where there is no incremental compilation, we generate
  * hints in FIR to ensure they are available for metadata.
+ *
+ * Note this approach is not compatible with IC for now, but that's ok as there is no IC for non-jvm
+ * platforms anyway.
+ *
+ * https://youtrack.jetbrains.com/issue/KT-75865
  */
-internal class ContributionHintFirGenerator(session: FirSession) :
+internal class ContributionHintFirGenerator(session: FirSession, options: MetroOptions) :
   FirDeclarationGenerationExtension(session) {
 
-  private val platform = session.moduleData.platform
+  class Factory(private val options: MetroOptions) : FirDeclarationGenerationExtension.Factory {
+    override fun create(session: FirSession): FirDeclarationGenerationExtension {
+      return ContributionHintFirGenerator(session, options)
+    }
+  }
 
-  // Only generate hints for non-JVM/Android platforms
-  // TODO make this configurable
-  private val shouldGenerateHints = !platform.isJvm()
+  private val platform = session.moduleData.platform
+  private val jvmHintsEnabled = options.generateJvmContributionHintsInFir
+
+  // Only generate hints for non-JVM/Android platforms by default
+  private val shouldGenerateHints = jvmHintsEnabled || !platform.isJvm()
 
   private fun contributedClassSymbols(): List<FirClassSymbol<*>> {
     val injectedClasses =

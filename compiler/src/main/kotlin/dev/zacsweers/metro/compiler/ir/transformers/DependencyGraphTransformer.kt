@@ -105,10 +105,11 @@ internal class DependencyGraphTransformer(
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM/JS compilation hint gen can't be done until
+    // Native/WASM/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints =
       options.generateContributionHints &&
+        !options.generateJvmContributionHintsInFir &&
         !pluginContext.platform.isNative() &&
         !pluginContext.platform.isJs() &&
         !pluginContext.platform.isWasm()
