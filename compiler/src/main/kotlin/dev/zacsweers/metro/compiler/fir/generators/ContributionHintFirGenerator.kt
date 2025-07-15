@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -165,5 +166,13 @@ internal class ContributionHintFirGenerator(session: FirSession, options: MetroO
           }
           .symbol
       }
+  }
+
+  override fun hasPackage(packageFqName: FqName): Boolean {
+    return if (packageFqName == Symbols.FqNames.metroHintsPackage) {
+      true
+    } else {
+      super.hasPackage(packageFqName)
+    }
   }
 }
