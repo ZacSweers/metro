@@ -405,12 +405,12 @@ internal class IrBindingStackImpl(override val graph: IrClass, private val logge
 }
 
 internal fun bindingStackEntryForDependency(
-  callingBinding: Binding,
+  callingBinding: IrBinding,
   contextKey: IrContextualTypeKey,
   targetKey: IrTypeKey,
 ): Entry {
   return when (callingBinding) {
-    is Binding.ConstructorInjected -> {
+    is IrBinding.ConstructorInjected -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.classFactory.function,
@@ -419,7 +419,7 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = true,
       )
     }
-    is Binding.Alias -> {
+    is IrBinding.Alias -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.ir,
@@ -427,7 +427,7 @@ internal fun bindingStackEntryForDependency(
         displayTypeKey = targetKey,
       )
     }
-    is Binding.Provided -> {
+    is IrBinding.Provided -> {
       Entry.injectedAt(
         contextKey,
         callingBinding.providerFactory.function,
@@ -436,20 +436,20 @@ internal fun bindingStackEntryForDependency(
         isMirrorFunction = true,
       )
     }
-    is Binding.Assisted -> {
+    is IrBinding.Assisted -> {
       Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
-    is Binding.MembersInjected -> {
+    is IrBinding.MembersInjected -> {
       Entry.injectedAt(contextKey, callingBinding.function, displayTypeKey = targetKey)
     }
-    is Binding.Multibinding -> {
+    is IrBinding.Multibinding -> {
       Entry.contributedToMultibinding(callingBinding.contextualTypeKey, callingBinding.declaration)
     }
-    is Binding.ObjectClass -> TODO()
-    is Binding.BoundInstance -> TODO()
-    is Binding.GraphDependency -> {
+    is IrBinding.ObjectClass -> TODO()
+    is IrBinding.BoundInstance -> TODO()
+    is IrBinding.GraphDependency -> {
       Entry.injectedAt(contextKey, callingBinding.getter, displayTypeKey = targetKey)
     }
-    is Binding.Absent -> error("Should never happen")
+    is IrBinding.Absent -> error("Should never happen")
   }
 }

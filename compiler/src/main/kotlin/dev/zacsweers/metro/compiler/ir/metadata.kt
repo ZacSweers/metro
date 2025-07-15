@@ -43,7 +43,7 @@ internal fun DependencyGraphNode.toProto(
   instanceFields: List<String>,
 ): DependencyGraphProto {
   val bindsCallableIds =
-    bindingGraph.bindingsSnapshot().values.filterIsInstance<Binding.Alias>().mapNotNullToSet {
+    bindingGraph.bindingsSnapshot().values.filterIsInstance<IrBinding.Alias>().mapNotNullToSet {
       binding ->
 
       // Grab the right declaration. If this is an override, look up the original
@@ -84,7 +84,7 @@ internal fun DependencyGraphNode.toProto(
       .sortedBy { it.first.ir.name.asString() }
       .onEachIndexed { index, (_, contextKey) ->
         val isMultibindingAccessor =
-          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) is Binding.Multibinding
+          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) is IrBinding.Multibinding
         if (isMultibindingAccessor) {
           multibindingAccessors = multibindingAccessors or (1 shl index)
         }

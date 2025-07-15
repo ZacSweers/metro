@@ -11,7 +11,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.flatMapToSet
-import dev.zacsweers.metro.compiler.ir.Binding
+import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -215,7 +215,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     )
   }
 
-  fun getOrLookupProviderFactory(binding: Binding.Provided): ProviderFactory? {
+  fun getOrLookupProviderFactory(binding: IrBinding.Provided): ProviderFactory? {
     // Eager cache check using the factory's callable ID
     generatedFactories[binding.providerFactory.callableId]?.let {
       return it

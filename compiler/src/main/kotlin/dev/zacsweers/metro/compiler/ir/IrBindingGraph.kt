@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
-import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -49,7 +48,7 @@ internal class IrBindingGraph(
           bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
         }
       },
-      absentBinding = { key -> Binding.Absent(key) },
+      absentBinding = { key -> IrBinding.Absent(key) },
       computeBindings = { contextKey, currentBindings, stack ->
         classBindingLookup.lookup(contextKey, currentBindings, stack)
       },
@@ -63,7 +62,7 @@ internal class IrBindingGraph(
   private val extraKeeps = mutableSetOf<IrTypeKey>()
 
   // Thin immutable view over the internal bindings
-  fun bindingsSnapshot(): Map<IrTypeKey, Binding> = realGraph.bindings
+  fun bindingsSnapshot(): Map<IrTypeKey, IrBinding> = realGraph.bindings
 
   fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     accessors[key] = entry
@@ -73,7 +72,7 @@ internal class IrBindingGraph(
     injectors[key] = entry
   }
 
-  fun addBinding(key: IrTypeKey, binding: Binding, bindingStack: IrBindingStack) {
+  fun addBinding(key: IrTypeKey, binding: IrBinding, bindingStack: IrBindingStack) {
     realGraph.tryPut(binding, bindingStack, key)
   }
 
@@ -81,17 +80,17 @@ internal class IrBindingGraph(
     extraKeeps += key
   }
 
-  fun findBinding(key: IrTypeKey): Binding? = realGraph[key]
+  fun findBinding(key: IrTypeKey): IrBinding? = realGraph[key]
 
   // For bindings we expect to already be cached
-  fun requireBinding(key: IrTypeKey, stack: IrBindingStack): Binding {
+  fun requireBinding(key: IrTypeKey, stack: IrBindingStack): IrBinding {
     return requireBinding(IrContextualTypeKey.create(key), stack)
   }
 
-  fun requireBinding(contextKey: IrContextualTypeKey, stack: IrBindingStack): Binding {
+  fun requireBinding(contextKey: IrContextualTypeKey, stack: IrBindingStack): IrBinding {
     return realGraph[contextKey.typeKey]
       ?: run {
-        if (contextKey.hasDefault) return Binding.Absent(contextKey.typeKey)
+        if (contextKey.hasDefault) return IrBinding.Absent(contextKey.typeKey)
         realGraph.reportMissingBinding(contextKey.typeKey, stack) {
           if (metroContext.debug) {
             appendLine(dumpGraph(stack.graphFqName.asString(), short = false))
@@ -107,7 +106,7 @@ internal class IrBindingGraph(
     declaration: IrSimpleFunction,
     originalQualifier: IrAnnotation?,
     bindingStack: IrBindingStack,
-  ): Binding.Multibinding {
+  ): IrBinding.Multibinding {
     val multibindingType =
       when {
         annotations.isIntoSet -> {
@@ -143,7 +142,7 @@ internal class IrBindingGraph(
     var binding = realGraph[multibindingTypeKey]
 
     if (binding == null) {
-      binding = context(metroContext) { Binding.Multibinding.fromContributor(multibindingTypeKey) }
+      binding = context(metroContext) { IrBinding.Multibinding.fromContributor(multibindingTypeKey) }
       realGraph.tryPut(binding, bindingStack)
       // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
       if (binding.isMap) {
@@ -158,7 +157,7 @@ internal class IrBindingGraph(
       }
     }
 
-    return binding as? Binding.Multibinding
+    return binding as? IrBinding.Multibinding
       ?: error(
         """
         Expected a multibinding but got $binding.
@@ -232,7 +231,7 @@ internal class IrBindingGraph(
 
       parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
       parentTracer.traceNested("check for absent bindings") {
-        check(realGraph.bindings.values.none { it is Binding.Absent }) {
+        check(realGraph.bindings.values.none { it is IrBinding.Absent }) {
           "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
         }
       }
@@ -240,7 +239,7 @@ internal class IrBindingGraph(
     }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
-    val multibindings = realGraph.bindings.values.filterIsInstance<Binding.Multibinding>()
+    val multibindings = realGraph.bindings.values.filterIsInstance<IrBinding.Multibinding>()
     val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
@@ -284,8 +283,8 @@ internal class IrBindingGraph(
   }
 
   private fun findSimilarMultibindings(
-    multibinding: Binding.Multibinding,
-    multibindings: List<Binding.Multibinding>,
+    multibinding: IrBinding.Multibinding,
+    multibindings: List<IrBinding.Multibinding>,
   ): Sequence<IrTypeKey> = sequence {
     if (multibinding.isMap) {
       val keyType = multibinding.typeKey.requireMapKeyType()
@@ -368,7 +367,7 @@ internal class IrBindingGraph(
         key.qualifier == null && bindingKey.type == key.type -> {
           similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Different qualifier"))
         }
-        binding is Binding.Multibinding -> {
+        binding is IrBinding.Multibinding -> {
           val valueType =
             if (binding.isSet) {
               (bindingKey.type.type as IrSimpleType).arguments[0].typeOrFail
@@ -394,7 +393,7 @@ internal class IrBindingGraph(
     }
 
     return similarBindings.filterNot {
-      (it.value.binding as? Binding.BindingWithAnnotations)?.annotations?.isIntoMultibinding == true
+      (it.value.binding as? IrBinding.BindingWithAnnotations)?.annotations?.isIntoMultibinding == true
     }
   }
 
@@ -460,7 +459,7 @@ internal class IrBindingGraph(
   }
 
   private fun validateBindings(
-    bindings: Map<IrTypeKey, Binding>,
+    bindings: Map<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
     adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
@@ -488,7 +487,7 @@ internal class IrBindingGraph(
   // Check scoping compatibility
   // TODO FIR error?
   private fun checkScope(
-    binding: Binding,
+    binding: IrBinding,
     stack: IrBindingStack,
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
     adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
@@ -538,7 +537,7 @@ internal class IrBindingGraph(
             )
           }
 
-          if (!isUnscoped && binding is Binding.ConstructorInjected) {
+          if (!isUnscoped && binding is IrBinding.ConstructorInjected) {
             val matchingParent =
               node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
             if (matchingParent != null) {
@@ -565,17 +564,17 @@ internal class IrBindingGraph(
   }
 
   private fun validateAssistedInjection(
-    binding: Binding,
-    bindings: Map<IrTypeKey, Binding>,
+    binding: IrBinding,
+    bindings: Map<IrTypeKey, IrBinding>,
     roots: Map<IrTypeKey, IrBindingStack.Entry>,
     reverseAdjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ) {
-    if (binding !is Binding.ConstructorInjected || !binding.isAssisted) return
+    if (binding !is IrBinding.ConstructorInjected || !binding.isAssisted) return
 
     fun reportInvalidBinding(declaration: IrDeclaration?) {
       // Look up the assisted factory as a hint
       val assistedFactory =
-        bindings.values.find { it is Binding.Assisted && it.target.typeKey == binding.typeKey }
+        bindings.values.find { it is IrBinding.Assisted && it.target.typeKey == binding.typeKey }
       // Report an error for anything that isn't an assisted binding depending on this
       val message = buildString {
         append("[Metro/InvalidBinding] ")
@@ -599,7 +598,7 @@ internal class IrBindingGraph(
     reverseAdjacency[binding.typeKey]?.let { dependents ->
       for (dependentKey in dependents) {
         val dependentBinding = bindings[dependentKey] ?: continue
-        if (dependentBinding !is Binding.Assisted) {
+        if (dependentBinding !is IrBinding.Assisted) {
           reportInvalidBinding(
             dependentBinding.parametersByKey[binding.typeKey]?.ir?.takeIf {
               val location = it.location()
@@ -678,14 +677,14 @@ internal class IrBindingGraph(
     return result.asReversed()
   }
 
-  private fun Appendable.appendBinding(binding: Binding, short: Boolean, isNested: Boolean) {
+  private fun Appendable.appendBinding(binding: IrBinding, short: Boolean, isNested: Boolean) {
     appendLine("Type: ${binding.typeKey.render(short)}")
     appendLine("├─ Binding: ${binding::class.simpleName}")
     appendLine("├─ Contextual Type: ${binding.contextualTypeKey.render(short)}")
 
     binding.scope?.let { scope -> appendLine("├─ Scope: $scope") }
 
-    if (binding is Binding.Alias) {
+    if (binding is IrBinding.Alias) {
       appendLine("├─ Aliased type: ${binding.aliasedType.render(short)}")
     }
 
@@ -704,7 +703,7 @@ internal class IrBindingGraph(
       }
     }
 
-    if (!isNested && binding is Binding.Multibinding && binding.sourceBindings.isNotEmpty()) {
+    if (!isNested && binding is IrBinding.Multibinding && binding.sourceBindings.isNotEmpty()) {
       appendLine("├─ Source bindings:")
       binding.sourceBindings.forEach { sourceBindingKey ->
         val sourceBinding = requireBinding(sourceBindingKey, IrBindingStack.empty())
@@ -720,7 +719,7 @@ internal class IrBindingGraph(
     }
   }
 
-  data class SimilarBinding(val binding: Binding, val description: String) {
+  data class SimilarBinding(val binding: IrBinding, val description: String) {
     override fun toString(): String {
       return buildString {
         append(binding.typeKey.render(short = true))

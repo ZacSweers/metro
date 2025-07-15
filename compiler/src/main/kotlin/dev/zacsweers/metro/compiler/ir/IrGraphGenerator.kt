@@ -364,7 +364,7 @@ internal class IrGraphGenerator(
 
       // TODO can we consolidate this with regular provider field collection?
       for ((key, binding) in bindingGraph.bindingsSnapshot()) {
-        if (binding is Binding.GraphDependency && key in sealResult.reachableKeys) {
+        if (binding is IrBinding.GraphDependency && key in sealResult.reachableKeys) {
           val getter = binding.getter
           if (binding.isProviderFieldAccessor) {
             // Init a provider field pointing at this
@@ -428,7 +428,7 @@ internal class IrGraphGenerator(
             it.typeKey in providerFields ||
             // We don't generate fields for these even though we do track them in dependencies
             // above, it's just for propagating their aliased type in sorting
-            it is Binding.Alias
+            it is IrBinding.Alias
         }
         .toList()
         .also { fieldBindings ->
@@ -444,7 +444,7 @@ internal class IrGraphGenerator(
           // Since assisted injections don't implement Factory, we can't just type these as
           // Provider<*> fields
           val fieldType =
-            if (binding is Binding.ConstructorInjected && binding.isAssisted) {
+            if (binding is IrBinding.ConstructorInjected && binding.isAssisted) {
               binding.classFactory.factoryClass.typeWith() // TODO generic factories?
             } else {
               symbols.metroProvider.typeWith(key.type)
@@ -596,10 +596,10 @@ internal class IrGraphGenerator(
                     val binding = bindingGraph.requireBinding(typeKey, IrBindingStack.empty())
                     when {
                       // Don't re-expose existing accessors
-                      binding is Binding.GraphDependency && binding.isProviderFieldAccessor -> false
+                      binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor -> false
                       // Only expose scoped bindings. Some provider fields may be for non-scoped
                       // bindings just for reuse. BoundInstance bindings still need to be passed on
-                      binding.scope == null && binding !is Binding.BoundInstance -> false
+                      binding.scope == null && binding !is IrBinding.BoundInstance -> false
                       else -> true
                     }
                   }
@@ -634,10 +634,10 @@ internal class IrGraphGenerator(
         sequence {
             for (entry in providerFields) {
               val binding = bindingGraph.requireBinding(entry.key, IrBindingStack.empty())
-              if (binding is Binding.GraphDependency && binding.isProviderFieldAccessor) {
+              if (binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor) {
                 // This'll get looked up directly by child graphs
                 continue
-              } else if (binding.scope == null && binding !is Binding.BoundInstance) {
+              } else if (binding.scope == null && binding !is IrBinding.BoundInstance) {
                 // Don't expose redundant accessors for unscoped bindings. BoundInstance bindings
                 // still get passed on
                 continue
@@ -716,7 +716,7 @@ internal class IrGraphGenerator(
         val binding = bindingGraph.requireBinding(contextualTypeKey, IrBindingStack.empty())
         body =
           createIrBuilder(symbol).run {
-            if (binding is Binding.Multibinding) {
+            if (binding is IrBinding.Multibinding) {
               // TODO if we have multiple accessors pointing at the same type, implement
               //  one and make the rest call that one. Not multibinding specific. Maybe
               //  groupBy { typekey }?
@@ -745,7 +745,7 @@ internal class IrGraphGenerator(
         finalizeFakeOverride(context.thisReceiver)
         val targetParam = regularParameters[0]
         val binding =
-          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) as Binding.MembersInjected
+          bindingGraph.requireBinding(contextKey, IrBindingStack.empty()) as IrBinding.MembersInjected
 
         // We don't get a MembersInjector instance/provider from the graph. Instead, we call
         // all the target inject functions directly
@@ -898,14 +898,14 @@ internal class IrGraphGenerator(
   private fun IrBuilderWithScope.generateBindingArguments(
     targetParams: Parameters,
     function: IrFunction,
-    binding: Binding,
+    binding: IrBinding,
     generationContext: GraphGenerationContext,
   ): List<IrExpression?> {
     val params = function.parameters()
     // TODO only value args are supported atm
     val paramsToMap = buildList {
       if (
-        binding is Binding.Provided &&
+        binding is IrBinding.Provided &&
           targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
       ) {
         targetParams.dispatchReceiverParameter?.let(::add)
@@ -913,7 +913,7 @@ internal class IrGraphGenerator(
       addAll(targetParams.regularParameters.filterNot { it.isAssisted })
     }
     if (
-      binding is Binding.Provided &&
+      binding is IrBinding.Provided &&
         binding.providerFactory.function.correspondingPropertySymbol == null
     ) {
       check(params.regularParameters.size == paramsToMap.size) {
@@ -952,7 +952,7 @@ internal class IrGraphGenerator(
           // Generate binding code for each param
           val paramBinding = bindingGraph.requireBinding(contextualTypeKey, IrBindingStack.empty())
 
-          if (paramBinding is Binding.Absent) {
+          if (paramBinding is IrBinding.Absent) {
             // Null argument expressions get treated as absent in the final call
             return@mapIndexed null
           }
@@ -973,12 +973,12 @@ internal class IrGraphGenerator(
     }
   }
 
-  private fun generateMapKeyLiteral(binding: Binding): IrExpression {
+  private fun generateMapKeyLiteral(binding: IrBinding): IrExpression {
     val mapKey =
       when (binding) {
-        is Binding.Alias -> binding.annotations.mapKeys.first().ir
-        is Binding.Provided -> binding.annotations.mapKeys.first().ir
-        is Binding.ConstructorInjected -> binding.annotations.mapKeys.first().ir
+        is IrBinding.Alias -> binding.annotations.mapKeys.first().ir
+        is IrBinding.Provided -> binding.annotations.mapKeys.first().ir
+        is IrBinding.ConstructorInjected -> binding.annotations.mapKeys.first().ir
         else -> error("Unsupported multibinding source: $binding")
       }
 
@@ -995,12 +995,12 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateBindingCode(
-    binding: Binding,
+    binding: IrBinding,
     generationContext: GraphGenerationContext,
     contextualTypeKey: IrContextualTypeKey = binding.contextualTypeKey,
     fieldInitKey: IrTypeKey? = null,
   ): IrExpression {
-    if (binding is Binding.Absent) {
+    if (binding is IrBinding.Absent) {
       error(
         "Absent bindings need to be checked prior to generateBindingCode(). ${binding.typeKey} missing."
       )
@@ -1020,7 +1020,7 @@ internal class IrGraphGenerator(
     }
 
     return when (binding) {
-      is Binding.ConstructorInjected -> {
+      is IrBinding.ConstructorInjected -> {
         // Example_Factory.create(...)
         val factory = binding.classFactory
 
@@ -1040,18 +1040,18 @@ internal class IrGraphGenerator(
         }
       }
 
-      is Binding.ObjectClass -> {
+      is IrBinding.ObjectClass -> {
         instanceFactory(binding.typeKey.type, irGetObject(binding.type.symbol))
       }
 
-      is Binding.Alias -> {
+      is IrBinding.Alias -> {
         // For binds functions, just use the backing type
         val aliasedBinding = binding.aliasedBinding(bindingGraph, IrBindingStack.empty())
         check(aliasedBinding != binding) { "Aliased binding aliases itself" }
         return generateBindingCode(aliasedBinding, generationContext)
       }
 
-      is Binding.Provided -> {
+      is IrBinding.Provided -> {
         val factoryClass =
           bindingContainerTransformer.getOrLookupProviderFactory(binding)?.clazz
             ?: error(
@@ -1082,7 +1082,7 @@ internal class IrGraphGenerator(
         )
       }
 
-      is Binding.Assisted -> {
+      is IrBinding.Assisted -> {
         // Example9_Factory_Impl.create(example9Provider);
         val implClass =
           assistedFactoryTransformer.getOrGenerateImplClass(binding.type) ?: return stubExpression()
@@ -1130,11 +1130,11 @@ internal class IrGraphGenerator(
         }
       }
 
-      is Binding.Multibinding -> {
+      is IrBinding.Multibinding -> {
         generateMultibindingExpression(binding, contextualTypeKey, generationContext, fieldInitKey)
       }
 
-      is Binding.MembersInjected -> {
+      is IrBinding.MembersInjected -> {
         val injectedClass = referenceClass(binding.targetClassId)!!.owner
         val injectedType = injectedClass.defaultType
         val injectorClass = membersInjectorTransformer.getOrGenerateInjector(injectedClass)?.ir
@@ -1180,17 +1180,17 @@ internal class IrGraphGenerator(
         }
       }
 
-      is Binding.Absent -> {
+      is IrBinding.Absent -> {
         // Should never happen, this should be checked before function/constructor injections.
         error("Unable to generate code for unexpected Absent binding: $binding")
       }
 
-      is Binding.BoundInstance -> {
+      is IrBinding.BoundInstance -> {
         // Should never happen, this should get handled in the provider/instance fields logic above.
         error("Unable to generate code for unexpected BoundInstance binding: $binding")
       }
 
-      is Binding.GraphDependency -> {
+      is IrBinding.GraphDependency -> {
         val ownerKey = binding.ownerKey
         val graphInstanceField =
           instanceFields[ownerKey]
@@ -1249,7 +1249,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateMultibindingExpression(
-    binding: Binding.Multibinding,
+    binding: IrBinding.Multibinding,
     contextualTypeKey: IrContextualTypeKey,
     generationContext: GraphGenerationContext,
     fieldInitKey: IrTypeKey?,
@@ -1263,7 +1263,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateSetMultibindingExpression(
-    binding: Binding.Multibinding,
+    binding: IrBinding.Multibinding,
     contextualTypeKey: IrContextualTypeKey,
     generationContext: GraphGenerationContext,
     fieldInitKey: IrTypeKey?,
@@ -1274,7 +1274,7 @@ internal class IrGraphGenerator(
         .map {
           bindingGraph
             .requireBinding(it, IrBindingStack.empty())
-            .expectAs<Binding.BindingWithAnnotations>()
+            .expectAs<IrBinding.BindingWithAnnotations>()
         }
         .partition { it.annotations.isElementsIntoSet }
     // If we have any @ElementsIntoSet, we need to use SetFactory
@@ -1292,7 +1292,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateSetBuilderExpression(
-    binding: Binding.Multibinding,
+    binding: IrBinding.Multibinding,
     elementType: IrType,
     generationContext: GraphGenerationContext,
     fieldInitKey: IrTypeKey?,
@@ -1359,8 +1359,8 @@ internal class IrGraphGenerator(
 
   private fun IrBuilderWithScope.generateSetFactoryExpression(
     elementType: IrType,
-    collectionProviders: List<Binding>,
-    individualProviders: List<Binding>,
+    collectionProviders: List<IrBinding>,
+    individualProviders: List<IrBinding>,
     generationContext: GraphGenerationContext,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
@@ -1417,7 +1417,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateMapMultibindingExpression(
-    binding: Binding.Multibinding,
+    binding: IrBinding.Multibinding,
     contextualTypeKey: IrContextualTypeKey,
     generationContext: GraphGenerationContext,
     fieldInitKey: IrTypeKey?,
@@ -1564,7 +1564,7 @@ internal class IrGraphGenerator(
   }
 
   private fun IrBuilderWithScope.generateMultibindingArgument(
-    provider: Binding,
+    provider: IrBinding,
     generationContext: GraphGenerationContext,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
