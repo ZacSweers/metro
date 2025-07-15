@@ -18,7 +18,7 @@ internal object AsContributionTransformer {
     val callee = expression.symbol.owner
     when (callee.symbol) {
       metroContext.symbols.asContribution -> {
-        return metroContext.pluginContext.createIrBuilder(expression.symbol).run {
+        return metroContext.createIrBuilder(expression.symbol).run {
           // The ugly Kotlin 2.1.20+ way of getting the receiver
           expression.arguments[
               expression.symbol.owner.parameters.indexOfFirst {

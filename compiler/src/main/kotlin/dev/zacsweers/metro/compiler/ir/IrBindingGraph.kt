@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
@@ -101,8 +100,8 @@ internal class IrBindingGraph(
       }
   }
 
+  context(context: IrMetroContext)
   fun getOrCreateMultibinding(
-    pluginContext: IrPluginContext,
     annotations: MetroAnnotations<IrAnnotation>,
     contextKey: IrContextualTypeKey,
     declaration: IrSimpleFunction,
@@ -112,7 +111,7 @@ internal class IrBindingGraph(
     val multibindingType =
       when {
         annotations.isIntoSet -> {
-          metroContext.pluginContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
+          metroContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
         }
 
         annotations.isElementsIntoSet -> contextKey.typeKey.type
@@ -124,8 +123,8 @@ internal class IrBindingGraph(
                 // FIR code gen
                 error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
               }
-          val keyType = metroContext.mapKeyType(mapKey)
-          metroContext.pluginContext.irBuiltIns.mapClass.typeWith(
+          val keyType = mapKeyType(mapKey)
+          metroContext.irBuiltIns.mapClass.typeWith(
             // MapKey is the key type
             keyType,
             // Return type is the value type
@@ -144,7 +143,7 @@ internal class IrBindingGraph(
     var binding = realGraph[multibindingTypeKey]
 
     if (binding == null) {
-      binding = Binding.Multibinding.fromContributor(metroContext, multibindingTypeKey)
+      binding = context(metroContext) { Binding.Multibinding.fromContributor(multibindingTypeKey) }
       realGraph.tryPut(binding, bindingStack)
       // If it's a map, expose a binding for Map<KeyType, Provider<ValueType>>
       if (binding.isMap) {
@@ -154,9 +153,7 @@ internal class IrBindingGraph(
             .typeOrNull!!
             .wrapInProvider(this@IrBindingGraph.metroContext.symbols.metroProvider)
         val providerTypeKey =
-          binding.typeKey.copy(
-            type = pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueType)
-          )
+          binding.typeKey.copy(type = context.irBuiltIns.mapClass.typeWith(keyType, valueType))
         realGraph.tryPut(binding, bindingStack, providerTypeKey)
       }
     }
@@ -180,66 +177,67 @@ internal class IrBindingGraph(
 
   data class GraphError(val declaration: IrDeclaration?, val message: String)
 
-  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult {
-    val (sortedKeys, deferredTypes, reachableKeys) =
-      parentTracer.traceNested("seal graph") { tracer ->
-        val roots = buildMap {
-          putAll(accessors)
-          putAll(injectors)
-        }
+  fun seal(parentTracer: Tracer, onError: (List<GraphError>) -> Nothing): BindingGraphResult =
+    context(metroContext) {
+      val (sortedKeys, deferredTypes, reachableKeys) =
+        parentTracer.traceNested("seal graph") { tracer ->
+          val roots = buildMap {
+            putAll(accessors)
+            putAll(injectors)
+          }
 
-        // If it's extendable, we need to add keeps for providers, including extended graphs'
-        // providers
-        val keep = buildSet {
-          addAll(extraKeeps)
-          if (node.isExtendable) {
-            for ((key) in node.providerFactories) {
-              add(key)
-            }
-            for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
-              add(key)
+          // If it's extendable, we need to add keeps for providers, including extended graphs'
+          // providers
+          val keep = buildSet {
+            addAll(extraKeeps)
+            if (node.isExtendable) {
+              for ((key) in node.providerFactories) {
+                add(key)
+              }
+              for ((key) in node.allExtendedNodes.flatMap { it.value.providerFactories }) {
+                add(key)
+              }
             }
           }
+
+          realGraph.seal(
+            roots = roots,
+            keep = keep,
+            shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings && !node.isExtendable,
+            tracer = tracer,
+            onPopulated = {
+              writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
+                realGraph.bindings.keys.sorted().joinToString("\n")
+              }
+            },
+            validateBindings = ::validateBindings,
+          )
         }
 
-        realGraph.seal(
-          roots = roots,
-          keep = keep,
-          shrinkUnusedBindings = metroContext.options.shrinkUnusedBindings && !node.isExtendable,
-          tracer = tracer,
-          onPopulated = {
-            metroContext.writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
-              realGraph.bindings.keys.sorted().joinToString("\n")
-            }
-          },
-          validateBindings = ::validateBindings,
-        )
+      writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
+        sortedKeys.joinToString(separator = "\n")
       }
 
-    metroContext.writeDiagnostic("keys-validated-${parentTracer.tag}.txt") {
-      sortedKeys.joinToString(separator = "\n")
-    }
-
-    metroContext.writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
-      deferredTypes.joinToString(separator = "\n")
-    }
-
-    val unused = bindingsSnapshot().keys - reachableKeys
-    if (unused.isNotEmpty()) {
-      // TODO option to warn or fail? What about extensions that implicitly have many unused
-      metroContext.writeDiagnostic("keys-unused-${parentTracer.tag}.txt") {
-        unused.joinToString(separator = "\n")
+      writeDiagnostic("keys-deferred-${parentTracer.tag}.txt") {
+        deferredTypes.joinToString(separator = "\n")
       }
-    }
 
-    parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
-    parentTracer.traceNested("check for absent bindings") {
-      check(realGraph.bindings.values.none { it is Binding.Absent }) {
-        "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
+      val unused = bindingsSnapshot().keys - reachableKeys
+      if (unused.isNotEmpty()) {
+        // TODO option to warn or fail? What about extensions that implicitly have many unused
+        writeDiagnostic("keys-unused-${parentTracer.tag}.txt") {
+          unused.joinToString(separator = "\n")
+        }
       }
+
+      parentTracer.traceNested("check empty multibindings") { checkEmptyMultibindings(onError) }
+      parentTracer.traceNested("check for absent bindings") {
+        check(realGraph.bindings.values.none { it is Binding.Absent }) {
+          "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
+        }
+      }
+      return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys)
     }
-    return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys)
-  }
 
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
     val multibindings = realGraph.bindings.values.filterIsInstance<Binding.Multibinding>()

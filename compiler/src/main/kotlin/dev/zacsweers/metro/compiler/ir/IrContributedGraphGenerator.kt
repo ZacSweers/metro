@@ -126,10 +126,7 @@ internal class IrContributedGraphGenerator(
           createThisReceiverParameter()
           // Add a @DependencyGraph(...) annotation
           annotations +=
-            pluginContext.buildAnnotation(
-              symbol,
-              symbols.metroDependencyGraphAnnotationConstructor,
-            ) {
+            buildAnnotation(symbol, symbols.metroDependencyGraphAnnotationConstructor) {
               // Copy over the scope annotation
               it.arguments[0] = kClassReference(sourceScope.symbol)
               // Pass on if it's extendable
@@ -173,8 +170,7 @@ internal class IrContributedGraphGenerator(
           )
           .apply {
             // Add `@Extends` annotation
-            this.annotations +=
-              pluginContext.buildAnnotation(symbol, symbols.metroExtendsAnnotationConstructor)
+            this.annotations += buildAnnotation(symbol, symbols.metroExtendsAnnotationConstructor)
           }
         // Copy over any creator params
         factoryFunction.regularParameters.forEach { param ->
@@ -203,10 +199,10 @@ internal class IrContributedGraphGenerator(
     val parentClass = declaration.parent as? IrClass ?: return null
     val superClassConstructor =
       parentClass.superClass?.primaryConstructor
-        ?: metroContext.pluginContext.irBuiltIns.anyClass.owner.primaryConstructor
+        ?: metroContext.irBuiltIns.anyClass.owner.primaryConstructor
         ?: return null
 
-    return metroContext.pluginContext.createIrBuilder(declaration.symbol).irBlockBody {
+    return metroContext.createIrBuilder(declaration.symbol).irBlockBody {
       // Call the super constructor
       +irDelegatingConstructorCall(superClassConstructor)
       // Initialize the instance

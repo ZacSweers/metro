@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporary
@@ -128,7 +129,7 @@ internal class InjectConstructorTransformer(
               ClassFactory.DaggerFactory(
                 metroContext,
                 daggerFactoryClass,
-                targetConstructor.parameters(metroContext),
+                targetConstructor.parameters(),
               )
             generatedFactories[injectedClassId] = Optional.of(wrapper)
             return wrapper
@@ -161,7 +162,7 @@ internal class InjectConstructorTransformer(
     //  external but no factory is found?
     if (isExternal) {
       val parameters =
-        factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters(this)
+        factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner.parameters()
       val wrapper = ClassFactory.MetroFactory(factoryCls, parameters)
       generatedFactories[injectedClassId] = Optional.of(wrapper)
       return wrapper
@@ -173,7 +174,7 @@ internal class InjectConstructorTransformer(
     val targetConstructor =
       previouslyFoundConstructor
         ?: declaration.findInjectableConstructor(onlyUsePrimaryConstructor = false)!!
-    val constructorParameters = targetConstructor.parameters(metroContext)
+    val constructorParameters = targetConstructor.parameters()
     val allParameters =
       buildList {
           add(constructorParameters)
@@ -242,7 +243,7 @@ internal class InjectConstructorTransformer(
 
     factoryCls.dumpToMetroLog()
 
-    val wrapper = ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters(metroContext))
+    val wrapper = ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters())
     generatedFactories[injectedClassId] = Optional.of(wrapper)
     return wrapper
   }
@@ -280,7 +281,6 @@ internal class InjectConstructorTransformer(
                   )
                 val contextKey = targetParam.contextualTypeKey
                 typeAsProviderArgument(
-                  context = metroContext,
                   contextKey = contextKey,
                   bindingCode = providerInstance,
                   isAssisted = false,
@@ -326,7 +326,6 @@ internal class InjectConstructorTransformer(
                     add(irGet(instance))
                     addAll(
                       parametersAsProviderArguments(
-                        metroContext,
                         parameters,
                         invokeFunction.dispatchReceiverParameter!!,
                         parametersToFields,
@@ -385,7 +384,7 @@ internal class InjectConstructorTransformer(
               invokeFunction.regularParameters.associate { it.name to irGet(it) }
 
             val args =
-              targetCallable.owner.parameters(metroContext).regularParameters.map { targetParam ->
+              targetCallable.owner.parameters().regularParameters.map { targetParam ->
                 when (val parameterName = targetParam.originalName) {
                   in constructorParameterNames -> {
                     val constructorParam = constructorParameterNames.getValue(parameterName)
@@ -396,7 +395,6 @@ internal class InjectConstructorTransformer(
                       )
                     val contextKey = targetParam.contextualTypeKey
                     typeAsProviderArgument(
-                      context = metroContext,
                       contextKey = contextKey,
                       bindingCode = providerInstance,
                       isAssisted = false,
@@ -455,7 +453,6 @@ internal class InjectConstructorTransformer(
 
     // Generate create()
     generateStaticCreateFunction(
-      context = metroContext,
       parentClass = classToGenerateCreatorsIn,
       targetClass = factoryCls,
       targetConstructor = factoryConstructor,
@@ -465,7 +462,6 @@ internal class InjectConstructorTransformer(
 
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
-        context = metroContext,
         parentClass = classToGenerateCreatorsIn,
         sourceParameters = constructorParameters.regularParameters.map { it.ir },
       ) { function ->

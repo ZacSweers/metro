@@ -11,8 +11,8 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
  * Returns a string that's sort of like a JVM descriptor but not actually a valid one. This is just
  * used for identifying distinct functions.
  */
+context(context: IrMetroContext)
 internal fun IrFunction.computeJvmDescriptorIsh(
-  context: IrMetroContext,
   customName: String? = null,
   includeReturnType: Boolean = true,
   includeInstanceReceiver: Boolean = false,
@@ -29,7 +29,7 @@ internal fun IrFunction.computeJvmDescriptorIsh(
 
   append("(")
   val paramsToInclude =
-    with(parameters(context)) {
+    with(parameters()) {
       if (includeInstanceReceiver) {
         allParameters
       } else {
@@ -43,8 +43,7 @@ internal fun IrFunction.computeJvmDescriptorIsh(
 
   if (includeReturnType) {
     if (
-      this@computeJvmDescriptorIsh !is IrSimpleFunction ||
-        returnType == context.pluginContext.irBuiltIns.unitType
+      this@computeJvmDescriptorIsh !is IrSimpleFunction || returnType == context.irBuiltIns.unitType
     ) {
       append("V")
     } else {

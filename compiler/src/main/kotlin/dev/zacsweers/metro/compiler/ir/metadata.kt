@@ -25,17 +25,13 @@ private val BINDS_CALLABLE_ID_COMPARATOR: Comparator<BindsCallableId> =
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
   get() {
-    return context.pluginContext.metadataDeclarationRegistrar
-      .getCustomMetadataExtension(this, PLUGIN_ID)
-      ?.let { MetroMetadata.ADAPTER.decode(it) }
+    return context.metadataDeclarationRegistrar.getCustomMetadataExtension(this, PLUGIN_ID)?.let {
+      MetroMetadata.ADAPTER.decode(it)
+    }
   }
   set(value) {
     if (value == null) return
-    context.pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(
-      this,
-      PLUGIN_ID,
-      value.encode(),
-    )
+    context.metadataDeclarationRegistrar.addCustomMetadataExtension(this, PLUGIN_ID, value.encode())
   }
 
 context(context: IrMetroContext)

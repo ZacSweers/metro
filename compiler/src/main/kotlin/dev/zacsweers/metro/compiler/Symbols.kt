@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.backend.common.ir.BuiltinSymbolsBase
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -48,7 +49,7 @@ internal class Symbols(
   val pluginContext: IrPluginContext,
   val classIds: dev.zacsweers.metro.compiler.ClassIds,
   val options: MetroOptions,
-) {
+) : BuiltinSymbolsBase(pluginContext.irBuiltIns) {
 
   object StringNames {
     const val ADDITIONAL_SCOPES = "additionalScopes"
@@ -498,8 +499,8 @@ internal class Symbols(
 
     protected abstract fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol
 
+    context(context: IrMetroContext)
     fun IrBuilderWithScope.invokeDoubleCheckLazy(
-      metroContext: IrMetroContext,
       contextKey: IrContextualTypeKey,
       arg: IrExpression,
     ): IrExpression {
@@ -508,7 +509,7 @@ internal class Symbols(
         dispatchReceiver = irGetObject(doubleCheckCompanionObject),
         callee = lazySymbol,
         args = listOf(arg),
-        typeHint = contextKey.toIrType(metroContext),
+        typeHint = contextKey.toIrType(),
         typeArgs = listOf(arg.type, contextKey.typeKey.type),
       )
     }

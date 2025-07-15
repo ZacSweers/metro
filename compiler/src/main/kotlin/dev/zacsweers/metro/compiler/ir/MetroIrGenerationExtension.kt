@@ -28,12 +28,13 @@ public class MetroIrGenerationExtension(
     val symbols = Symbols(moduleFragment, pluginContext, classIds, options)
     val context = IrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
 
+    context(context) { generateInner(moduleFragment, symbols) }
+  }
+
+  context(context: IrMetroContext)
+  private fun generateInner(moduleFragment: IrModuleFragment, symbols: Symbols) {
     try {
-      context
-        .tracer(
-          moduleFragment.name.asString().removePrefix("<").removeSuffix(">"),
-          "Metro compiler",
-        )
+      tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
         .trace { tracer ->
           // First - collect all the contributions in this round
           val contributionData = IrContributionData(context)

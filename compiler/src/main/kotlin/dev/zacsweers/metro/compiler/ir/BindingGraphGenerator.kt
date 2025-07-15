@@ -105,7 +105,7 @@ internal class BindingGraphGenerator(
       val contextKey =
         if (providerFactory.annotations.isIntoMultibinding) {
           IrContextualTypeKey.create(
-            typeKey.transformMultiboundQualifier(metroContext, providerFactory.annotations)
+            typeKey.transformMultiboundQualifier(providerFactory.annotations)
           )
         } else {
           IrContextualTypeKey.create(typeKey)
@@ -122,7 +122,6 @@ internal class BindingGraphGenerator(
         val originalQualifier = providerFactory.function.qualifierAnnotation()
         graph
           .getOrCreateMultibinding(
-            pluginContext = pluginContext,
             annotations = providerFactory.annotations,
             contextKey = contextKey,
             declaration = providerFactory.function,
@@ -146,7 +145,7 @@ internal class BindingGraphGenerator(
     }
     bindsFunctionsToAdd.forEach { bindingCallable ->
       val annotations = bindingCallable.function.annotations
-      val parameters = bindingCallable.function.ir.parameters(metroContext)
+      val parameters = bindingCallable.function.ir.parameters()
       val bindsImplType =
         if (annotations.isBinds) {
           parameters.extensionOrFirstParameter?.contextualTypeKey
@@ -159,7 +158,7 @@ internal class BindingGraphGenerator(
 
       val targetTypeKey =
         if (annotations.isIntoMultibinding) {
-          bindingCallable.target.transformMultiboundQualifier(metroContext, annotations)
+          bindingCallable.target.transformMultiboundQualifier(annotations)
         } else {
           bindingCallable.target
         }
@@ -179,7 +178,6 @@ internal class BindingGraphGenerator(
       if (annotations.isIntoMultibinding) {
         graph
           .getOrCreateMultibinding(
-            pluginContext = pluginContext,
             annotations = annotations,
             contextKey = IrContextualTypeKey.create(targetTypeKey),
             declaration = bindingCallable.function.ir,
@@ -275,12 +273,7 @@ internal class BindingGraphGenerator(
         )
         if (contextualTypeKey.typeKey !in graph) {
           val multibinding =
-            Binding.Multibinding.fromMultibindsDeclaration(
-              metroContext,
-              getter,
-              multibinds,
-              contextualTypeKey,
-            )
+            Binding.Multibinding.fromMultibindsDeclaration(getter, multibinds, contextualTypeKey)
           graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
         } else {
           // If it's already in the graph, ensure its allowEmpty is up to date and update its
@@ -458,7 +451,7 @@ internal class BindingGraphGenerator(
               // Create a remapper for the target class type parameters
               val remapper = targetClass.deepRemapperFor(paramType)
               val params = generatedInjector?.mergedParameters(remapper)
-              params?.ir?.parameters(this, remapper) ?: params
+              params?.ir?.parameters(remapper) ?: params
             }
             .let { it ?: Parameters.empty() }
             .withCallableId(injector.callableId)

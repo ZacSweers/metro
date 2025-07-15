@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.LOG_PREFIX
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
 import java.nio.file.Path
@@ -19,38 +18,24 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.incremental.components.LookupTracker
-import org.jetbrains.kotlin.ir.IrDiagnosticReporter
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
-import org.jetbrains.kotlin.ir.builders.irGetObject
-import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrConstructor
-import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
-import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
-import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.ClassId
 
-// TODO make this extend IrPluginContext?
-internal interface IrMetroContext {
+internal interface IrMetroContext : IrPluginContext {
   val metroContext
     get() = this
 
   val pluginContext: IrPluginContext
-  val messageCollector: MessageCollector
-  val diagnosticReporter: IrDiagnosticReporter
-  val symbols: Symbols
+  override val symbols: Symbols
   val options: MetroOptions
   val debug: Boolean
     get() = options.debug
@@ -111,63 +96,6 @@ internal interface IrMetroContext {
     }
   }
 
-  fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
-    if (this == null) return null
-    return allAnnotations
-      .annotationsAnnotatedWith(symbols.qualifierAnnotations)
-      .singleOrNull()
-      ?.let(::IrAnnotation)
-  }
-
-  fun IrAnnotationContainer?.qualifierAnnotation() =
-    annotationsAnnotatedWith(symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
-
-  fun IrAnnotationContainer?.scopeAnnotations() =
-    annotationsAnnotatedWith(symbols.scopeAnnotations).mapToSet(::IrAnnotation)
-
-  /** Returns the `@MapKey` annotation itself, not any annotations annotated _with_ `@MapKey`. */
-  fun IrAnnotationContainer.explicitMapKeyAnnotation() =
-    annotationsIn(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
-
-  fun IrAnnotationContainer.mapKeyAnnotation() =
-    annotationsAnnotatedWith(symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
-
-  private fun IrAnnotationContainer?.annotationsAnnotatedWith(
-    annotationsToLookFor: Collection<ClassId>
-  ): Set<IrConstructorCall> {
-    if (this == null) return emptySet()
-    return annotations.annotationsAnnotatedWith(annotationsToLookFor)
-  }
-
-  private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
-    annotationsToLookFor: Collection<ClassId>
-  ): Set<IrConstructorCall> {
-    if (this == null) return emptySet()
-    return filterTo(LinkedHashSet()) {
-      it.type.classOrNull?.owner?.isAnnotatedWithAny(annotationsToLookFor) == true
-    }
-  }
-
-  fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-    return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(symbols.injectAnnotations)) {
-      primaryConstructor
-    } else {
-      constructors.singleOrNull { constructor ->
-        constructor.isAnnotatedWithAny(symbols.injectAnnotations)
-      }
-    }
-  }
-
-  // InstanceFactory(...)
-  fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
-    return irInvoke(
-      irGetObject(symbols.instanceFactoryCompanionObject),
-      callee = symbols.instanceFactoryInvoke,
-      typeArgs = listOf(type),
-      args = listOf(arg),
-    )
-  }
-
   companion object {
     operator fun invoke(
       pluginContext: IrPluginContext,
@@ -184,8 +112,7 @@ internal interface IrMetroContext {
       override val symbols: Symbols,
       override val options: MetroOptions,
       override val lookupTracker: LookupTracker?,
-    ) : IrMetroContext {
-      override val diagnosticReporter: IrDiagnosticReporter = pluginContext.diagnosticReporter
+    ) : IrMetroContext, IrPluginContext by pluginContext {
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
@@ -235,19 +162,22 @@ internal interface IrMetroContext {
   }
 }
 
-internal fun IrMetroContext.writeDiagnostic(fileName: String, text: () -> String) {
+context(context: IrMetroContext)
+internal fun writeDiagnostic(fileName: String, text: () -> String) {
   writeDiagnostic({ fileName }, text)
 }
 
-internal fun IrMetroContext.writeDiagnostic(fileName: () -> String, text: () -> String) {
-  reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
+context(context: IrMetroContext)
+internal fun writeDiagnostic(fileName: () -> String, text: () -> String) {
+  context.reportsDir?.resolve(fileName())?.apply { deleteIfExists() }?.writeText(text())
 }
 
-internal fun IrMetroContext.tracer(tag: String, description: String): Tracer =
-  if (traceLogFile != null || timingsFile != null || debug) {
+context(context: IrMetroContext)
+internal fun tracer(tag: String, description: String): Tracer =
+  if (context.traceLogFile != null || context.timingsFile != null || context.debug) {
     check(tag.isNotBlank()) { "Tag must not be blank" }
     check(description.isNotBlank()) { "description must not be blank" }
-    tracer(tag, description, ::logTrace, ::logTiming)
+    tracer(tag, description, context::logTrace, context::logTiming)
   } else {
     Tracer.NONE
   }

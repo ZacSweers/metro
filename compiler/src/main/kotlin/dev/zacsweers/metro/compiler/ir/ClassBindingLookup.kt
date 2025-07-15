@@ -129,7 +129,7 @@ internal class ClassBindingLookup(
         // Doesn't appear to be necessary but juuuuust in case
         trackFunctionCall(sourceGraph, classFactory.function)
       } else if (classAnnotations.isAssistedFactory) {
-        val function = irClass.singleAbstractFunction(metroContext).asMemberOf(key.type)
+        val function = irClass.singleAbstractFunction().asMemberOf(key.type)
         // Mark as wrapped for convenience in graph resolution to note that this whole node is
         // inherently deferrable
         val targetContextualTypeKey = IrContextualTypeKey.from(function, wrapInProvider = true)
@@ -139,7 +139,7 @@ internal class ClassBindingLookup(
             function = function,
             annotations = classAnnotations,
             typeKey = key,
-            parameters = function.parameters(metroContext),
+            parameters = function.parameters(),
             target = targetContextualTypeKey,
           )
       } else if (contextKey.hasDefault) {

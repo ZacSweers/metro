@@ -459,49 +459,37 @@ internal sealed interface Binding : BaseBinding<IrType, IrTypeKey, IrContextualT
        * Because these may both happen, if the key already exists in the graph we won't try to add
        * it again
        */
+      context(context: IrMetroContext)
       fun fromMultibindsDeclaration(
-        metroContext: IrMetroContext,
         getter: MetroSimpleFunction,
         multibinds: IrAnnotation,
         contextualTypeKey: IrContextualTypeKey,
       ): Multibinding {
         // Retain Dagger's behavior in interop if using their annotation
         val assumeAllowEmpty =
-          metroContext.options.enableDaggerRuntimeInterop &&
+          context.options.enableDaggerRuntimeInterop &&
             multibinds.ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
         return create(
-          metroContext = metroContext,
           typeKey = contextualTypeKey.typeKey,
           declaration = getter.ir,
           allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: assumeAllowEmpty,
         )
       }
 
-      fun fromContributor(
-        metroContext: IrMetroContext,
-        multibindingTypeKey: IrTypeKey,
-      ): Multibinding {
-        return create(
-          metroContext = metroContext,
-          typeKey = multibindingTypeKey,
-          declaration = null,
-          allowEmpty = false,
-        )
+      context(context: IrMetroContext)
+      fun fromContributor(multibindingTypeKey: IrTypeKey): Multibinding {
+        return create(typeKey = multibindingTypeKey, declaration = null, allowEmpty = false)
       }
 
+      context(context: IrMetroContext)
       private fun create(
-        metroContext: IrMetroContext,
         typeKey: IrTypeKey,
         declaration: IrSimpleFunction?,
         allowEmpty: Boolean = false,
       ): Multibinding {
         val rawType = typeKey.type.rawType()
 
-        val isSet =
-          rawType.implements(
-            metroContext.pluginContext,
-            metroContext.pluginContext.irBuiltIns.setClass.owner.classId!!,
-          )
+        val isSet = rawType.implements(context.irBuiltIns.setClass.owner.classId!!)
         val isMap = !isSet
 
         val bindingId: String =

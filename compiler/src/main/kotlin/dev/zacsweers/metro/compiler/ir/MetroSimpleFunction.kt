@@ -33,7 +33,8 @@ internal val MetroSimpleFunction.isAccessorCandidate: Boolean
       !annotations.isMultibinds
   }
 
-internal fun IrMetroContext.metroFunctionOf(
+context(context: IrMetroContext)
+internal fun metroFunctionOf(
   ir: IrSimpleFunction,
   annotations: MetroAnnotations<IrAnnotation> = metroAnnotationsOf(ir),
 ): MetroSimpleFunction {

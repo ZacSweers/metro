@@ -13,6 +13,8 @@ import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
@@ -107,7 +109,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
     // Transform them if necessary
     // and add new fake overrides
     declaration
-      .getAllSuperTypes(pluginContext)
+      .getAllSuperTypes()
       .filterNot { it.rawTypeOrNull()?.isExternalParent == true }
       .mapNotNull { it.rawTypeOrNull() }
       .forEach {
@@ -286,15 +288,15 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
   }
 
   private fun IrFunction.buildBindsAnnotation(): IrConstructorCall {
-    return pluginContext.buildAnnotation(symbol, symbols.bindsConstructor)
+    return buildAnnotation(symbol, symbols.bindsConstructor)
   }
 
   private fun IrFunction.buildIntoSetAnnotation(): IrConstructorCall {
-    return pluginContext.buildAnnotation(symbol, symbols.intoSetConstructor)
+    return buildAnnotation(symbol, symbols.intoSetConstructor)
   }
 
   private fun IrFunction.buildIntoMapAnnotation(): IrConstructorCall {
-    return pluginContext.buildAnnotation(symbol, symbols.intoMapConstructor)
+    return buildAnnotation(symbol, symbols.intoMapConstructor)
   }
 }
 
