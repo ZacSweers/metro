@@ -108,7 +108,7 @@ internal class DependencyGraphTransformer(
     // Native/WASM/JS compilation hint gen can't be done until
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints =
-      options.generateHintProperties &&
+      options.generateContributionHints &&
         !pluginContext.platform.isNative() &&
         !pluginContext.platform.isJs() &&
         !pluginContext.platform.isWasm()

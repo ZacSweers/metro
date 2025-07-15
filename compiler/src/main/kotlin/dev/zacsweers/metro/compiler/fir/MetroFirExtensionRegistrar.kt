@@ -54,7 +54,7 @@ public class MetroFirExtensionRegistrar(
     +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, true)
     +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, true)
     +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
-    if (options.generateHintProperties) {
+    if (options.generateContributionHints) {
       +declarationGenerator("FirGen - ContributionHints", ::ContributionHintFirGenerator, true)
     }
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)

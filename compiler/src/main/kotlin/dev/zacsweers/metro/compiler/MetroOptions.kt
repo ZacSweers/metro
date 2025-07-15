@@ -118,12 +118,12 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  GENERATE_HINT_PROPERTIES(
+  GENERATE_CONTRIBUTION_HINTS(
     RawMetroOption.boolean(
-      name = "generate-hint-properties",
+      name = "generate-contribution-hints",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable generation of hint properties.",
+      description = "Enable/disable generation of contribution hints.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -464,8 +464,8 @@ public data class MetroOptions(
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   val enableTopLevelFunctionInjection: Boolean =
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
-  val generateHintProperties: Boolean =
-    MetroOption.GENERATE_HINT_PROPERTIES.raw.defaultValue.expectAs(),
+  val generateContributionHints: Boolean =
+    MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
   val transformProvidersToPrivate: Boolean =
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val shrinkUnusedBindings: Boolean =
@@ -585,8 +585,8 @@ public data class MetroOptions(
             options =
               options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
 
-          MetroOption.GENERATE_HINT_PROPERTIES ->
-            options = options.copy(generateHintProperties = configuration.getAsBoolean(entry))
+          MetroOption.GENERATE_CONTRIBUTION_HINTS ->
+            options = options.copy(generateContributionHints = configuration.getAsBoolean(entry))
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))
