@@ -45,6 +45,21 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `do not suggest moving inject annotation to class if the option is disabled`() {
+    compile(
+      source(
+        """
+            class ExampleClass @Inject constructor()
+          """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(suggestClassInjectionIfNoParams = false)
+    ) {
+      assertNoWarningsOrErrors()
+    }
+  }
+
+  @Test
   fun `do not suggest moving inject annotation to class if secondary constructor is empty`() {
     compile(
       source(

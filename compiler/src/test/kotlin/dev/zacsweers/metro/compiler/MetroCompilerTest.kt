@@ -109,6 +109,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
+              MetroOption.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS ->
+                processor.option(entry.raw.cliOption, suggestClassInjectionIfNoParams)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
