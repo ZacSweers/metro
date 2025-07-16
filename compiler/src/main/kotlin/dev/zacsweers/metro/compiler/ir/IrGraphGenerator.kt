@@ -138,7 +138,7 @@ internal class IrGraphGenerator(
 
   fun IrField.initFinal(body: IrBuilderWithScope.() -> IrExpression): IrField = apply {
     isFinal = true
-    createIrBuilder(symbol).run { irExprBody(body()) }
+    initializer = createIrBuilder(symbol).run { irExprBody(body()) }
   }
 
   fun generate() =
