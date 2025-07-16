@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler
 import java.util.Locale
 import kotlin.contracts.contract
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 internal const val LOG_PREFIX = "[METRO]"
@@ -161,3 +162,5 @@ internal fun <T : Comparable<T>> List<T>.compareTo(other: List<T>): Int {
 
 internal fun String.suffixIfNot(suffix: String) =
   if (this.endsWith(suffix)) this else "$this$suffix"
+
+internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName

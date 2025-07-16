@@ -53,6 +53,12 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     public void testContributingTypesDependency() {
       runTest("compiler-tests/src/test/data/dump/fir/aggregation/ContributingTypesDependency.kt");
     }
+
+    @Test
+    @TestMetadata("FirHintGenerationWorks.kt")
+    public void testFirHintGenerationWorks() {
+      runTest("compiler-tests/src/test/data/dump/fir/aggregation/FirHintGenerationWorks.kt");
+    }
   }
 
   @Nested
