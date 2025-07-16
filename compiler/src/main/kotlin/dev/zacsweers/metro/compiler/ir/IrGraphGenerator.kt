@@ -136,12 +136,19 @@ internal class IrGraphGenerator(
     fieldInitializers += (this to init)
   }
 
+  fun IrField.initFinal(body: IrBuilderWithScope.() -> IrExpression): IrField = apply {
+    isFinal = true
+    createIrBuilder(symbol).run { irExprBody(body()) }
+  }
+
   fun generate() =
     with(graphClass) {
       val ctor = primaryConstructor!!
 
       val extraConstructorStatements =
         mutableListOf<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>()
+
+      val thisReceiverParameter = thisReceiverOrFail
 
       fun addBoundInstanceField(
         typeKey: IrTypeKey,
@@ -161,8 +168,8 @@ internal class IrGraphGenerator(
               fieldType = symbols.metroProvider.typeWith(typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
-            .withInit(typeKey) { thisReceiver, typeKey ->
-              instanceFactory(typeKey.type, initializer(thisReceiver, typeKey))
+            .initFinal {
+              instanceFactory(typeKey.type, initializer(thisReceiverParameter, typeKey))
             }
       }
 
@@ -248,8 +255,6 @@ internal class IrGraphGenerator(
             irCallConstructor(clazz.primaryConstructor!!.symbol, emptyList())
           }
         }
-
-      val thisReceiverParameter = thisReceiverOrFail
 
       // Don't add it if it's not used
       if (node.typeKey in sealResult.reachableKeys) {
@@ -377,7 +382,7 @@ internal class IrGraphGenerator(
                   fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
                   fieldVisibility = DescriptorVisibilities.PRIVATE,
                 )
-                .withInit(key) { thisReceiver, fieldIndex ->
+                .withInit(key) { thisReceiver, _ ->
                   // If this is in instance fields, just do a quick assignment
                   if (binding.typeKey in instanceFields) {
                     val field = instanceFields.getValue(binding.typeKey)
@@ -552,12 +557,10 @@ internal class IrGraphGenerator(
         // Small graph, just do it in the constructor
         // Assign those initializers directly to their fields and mark them as final
         for ((field, init) in fieldInitializers) {
-          field.isFinal = true
-          field.initializer =
-            createIrBuilder(field.symbol).run {
-              val typeKey = fieldsToTypeKeys.getValue(field)
-              irExprBody(init(thisReceiverParameter, typeKey))
-            }
+          field.initFinal {
+            val typeKey = fieldsToTypeKeys.getValue(field)
+            init(thisReceiverParameter, typeKey)
+          }
         }
         finalConstructorStatements = extraConstructorStatements
       }
