@@ -616,7 +616,8 @@ public data class MetroOptions(
               )
 
           MetroOption.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS ->
-            options = options.copy(suggestClassInjectionIfNoParams = configuration.getAsBoolean(entry))
+            options =
+              options.copy(suggestClassInjectionIfNoParams = configuration.getAsBoolean(entry))
 
           MetroOption.LOGGING -> {
             enabledLoggers +=

@@ -53,7 +53,7 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
           """
           .trimIndent()
       ),
-      options = metroOptions.copy(suggestClassInjectionIfNoParams = false)
+      options = metroOptions.copy(suggestClassInjectionIfNoParams = false),
     ) {
       assertNoWarningsOrErrors()
     }

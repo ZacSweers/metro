@@ -89,7 +89,9 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
         providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true)
       )
 
-  /** Enable/disable suggestion to lift @Inject to class if there is no params. Enabled by default. */
+  /**
+   * Enable/disable suggestion to lift @Inject to class if there is no params. Enabled by default.
+   */
   public val suggestClassInjectionIfNoParams: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
