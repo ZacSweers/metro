@@ -127,8 +127,8 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
-            "suggest-class-injection-if-no-params",
-            extension.suggestClassInjectionIfNoParams,
+            "warn-on-inject-annotation-placement",
+            extension.warnOnInjectAnnotationPlacement,
           )
         )
         add(

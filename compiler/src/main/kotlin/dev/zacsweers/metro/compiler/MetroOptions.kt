@@ -171,12 +171,12 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
-  SUGGEST_CLASS_INJECTION_IF_NO_PARAMS(
+  WARN_ON_INJECT_ANNOTATION_PLACEMENT(
     RawMetroOption.boolean(
-      name = "suggest-class-injection-if-no-params",
+      name = "warn-on-inject-annotation-placement",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable suggestion to lift @Inject to class if there is no params.",
+      description = "Enable/disable suggestion to lift @Inject to class when there is only one constructor.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -501,8 +501,8 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
-  val suggestClassInjectionIfNoParams: Boolean =
-    MetroOption.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS.raw.defaultValue.expectAs(),
+  val warnOnInjectAnnotationPlacement: Boolean =
+    MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -632,9 +632,9 @@ public data class MetroOptions(
                   }
               )
 
-          MetroOption.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS ->
+          MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
             options =
-              options.copy(suggestClassInjectionIfNoParams = configuration.getAsBoolean(entry))
+              options.copy(warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry))
 
           MetroOption.LOGGING -> {
             enabledLoggers +=
