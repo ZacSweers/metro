@@ -372,14 +372,16 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
               session,
               session.classIds.assistedAnnotations,
             )
-          if (!isAssisted) {
-            val inject =
-              it.resolvedCompilerAnnotationsWithClassIds
-                .annotationsIn(session, session.classIds.injectAnnotations)
-                .singleOrNull()
-            if (inject != null && KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)) {
-              reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION)
-            }
+          val inject =
+            it.resolvedCompilerAnnotationsWithClassIds
+              .annotationsIn(session, session.classIds.injectAnnotations)
+              .singleOrNull()
+          if (
+            !isAssisted &&
+              inject != null &&
+              KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)
+          ) {
+            reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION)
           }
         }
       }

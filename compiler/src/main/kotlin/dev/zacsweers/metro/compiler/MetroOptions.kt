@@ -176,7 +176,8 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       name = "warn-on-inject-annotation-placement",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable suggestion to lift @Inject to class when there is only one constructor.",
+      description =
+        "Enable/disable suggestion to lift @Inject to class when there is only one constructor.",
       required = false,
       allowMultipleOccurrences = false,
     )

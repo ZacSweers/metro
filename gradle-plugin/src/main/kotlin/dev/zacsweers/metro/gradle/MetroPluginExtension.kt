@@ -103,7 +103,8 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       )
 
   /**
-   * Enable/disable suggestion to lift @Inject to class when there is only one constructor. Enabled by default.
+   * Enable/disable suggestion to lift @Inject to class when there is only one constructor. Enabled
+   * by default.
    */
   public val warnOnInjectAnnotationPlacement: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
