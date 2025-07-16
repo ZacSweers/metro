@@ -363,6 +363,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("InjectingSubclassWithNoMembersButParentsDo.kt")
+      public void testInjectingSubclassWithNoMembersButParentsDo() {
+        runTest("compiler-tests/src/test/data/box/inject/member/InjectingSubclassWithNoMembersButParentsDo.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectorRequest.kt")
       public void testMemberInjectorRequest() {
         runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectorRequest.kt");
