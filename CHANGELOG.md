@@ -5,7 +5,7 @@ Changelog
 --------------
 
 - **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
-- **Enhancement:** Add a new Metro option `warnOnInjectAnnotationPlacement` to disable suggestion to lift @Inject to class when there is only one constructor.
+- **Enhancement:** Add a new Metro option `warnOnInjectAnnotationPlacement` to disable suggestion to lift @Inject to class when there is only one constructor, the warning applies to constructors with params too.
 - **Breaking change:** Rename the `generateHintProperties` Gradle DSL property to `generateContributionHints`.
 
 0.5.0
