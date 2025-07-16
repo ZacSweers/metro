@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
@@ -365,19 +366,19 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
       constructorInjections[0].also {
         val warnOnInjectAnnotationPlacement =
           session.metroFirBuiltIns.options.warnOnInjectAnnotationPlacement
-        if (warnOnInjectAnnotationPlacement && it.isPrimary) {
+        if (warnOnInjectAnnotationPlacement && constructors(session).size == 1) {
           val isAssisted =
             it.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(
               session,
               session.classIds.assistedAnnotations,
             )
-          if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
+          if (!isAssisted) {
             val inject =
               it.resolvedCompilerAnnotationsWithClassIds
                 .annotationsIn(session, session.classIds.injectAnnotations)
-                .single()
-            if (KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)) {
-              reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS)
+                .singleOrNull()
+            if (inject != null && KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)) {
+              reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION)
             }
           }
         }
