@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
@@ -905,7 +906,7 @@ internal class IrGraphGenerator(
   ): List<IrExpression?> {
     val params = function.parameters()
     // TODO only value args are supported atm
-    val paramsToMap = buildList {
+    var paramsToMap = buildList {
       if (
         binding is IrBinding.Provided &&
           targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
@@ -914,6 +915,44 @@ internal class IrGraphGenerator(
       }
       addAll(targetParams.regularParameters.filterNot { it.isAssisted })
     }
+
+    // Handle case where function has more parameters than the binding
+    // This can happen when parameters are inherited from ancestor classes
+    if (
+      binding is IrBinding.MembersInjected && function.regularParameters.size > paramsToMap.size
+    ) {
+      // For MembersInjected, we need to look at the target class and its ancestors
+      val nameToParam = mutableMapOf<Name, Parameter>()
+      val targetClass = pluginContext.referenceClass(binding.targetClassId)?.owner
+      targetClass // Look for inject methods in the target class and its ancestors
+        ?.getAllSuperTypes(excludeSelf = false, excludeAny = true)
+        ?.forEach { type ->
+          val clazz = type.rawType()
+          membersInjectorTransformer
+            .getOrGenerateInjector(clazz)
+            ?.declaredInjectFunctions
+            ?.forEach { (_, params) ->
+              for (param in params.regularParameters) {
+                nameToParam.putIfAbsent(param.name, param)
+              }
+            }
+        }
+      // Construct the list of parameters in order determined by the function
+      paramsToMap =
+        function.regularParameters.mapNotNull { functionParam -> nameToParam[functionParam.name] }
+      // If we still have a mismatch, log a detailed error
+      check(function.regularParameters.size == paramsToMap.size) {
+        """
+        Inconsistent parameter types for type ${binding.typeKey}!
+        Input type keys:
+          - ${paramsToMap.map { it.typeKey }.joinToString()}
+        Binding parameters (${function.kotlinFqName}):
+          - ${function.regularParameters.map { IrContextualTypeKey.from(it).typeKey }.joinToString()}
+        """
+          .trimIndent()
+      }
+    }
+
     if (
       binding is IrBinding.Provided &&
         binding.providerFactory.function.correspondingPropertySymbol == null
