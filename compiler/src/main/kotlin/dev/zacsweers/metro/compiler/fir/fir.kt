@@ -361,7 +361,9 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
     0 -> null
     1 -> {
       constructorInjections[0].also {
-        if (it.isPrimary) {
+        val suggestClassInjectionIfNoParams =
+          session.metroFirBuiltIns.options.suggestClassInjectionIfNoParams
+        if (suggestClassInjectionIfNoParams && it.isPrimary) {
           val isAssisted =
             it.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(
               session,
