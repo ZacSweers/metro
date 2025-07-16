@@ -160,6 +160,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
+  SUGGEST_CLASS_INJECTION_IF_NO_PARAMS(
+    RawMetroOption.boolean(
+      name = "suggest-class-injection-if-no-params",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description = "Enable/disable suggestion to lift @Inject to class if there is no params.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   LOGGING(
     RawMetroOption(
       name = "logging",
@@ -478,6 +488,8 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
+  val suggestClassInjectionIfNoParams: Boolean =
+    MetroOption.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -602,6 +614,9 @@ public data class MetroOptions(
                     DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
                   }
               )
+
+          MetroOption.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS ->
+            options = options.copy(suggestClassInjectionIfNoParams = configuration.getAsBoolean(entry))
 
           MetroOption.LOGGING -> {
             enabledLoggers +=

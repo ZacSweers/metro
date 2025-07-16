@@ -105,6 +105,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+        add(lazyOption("suggest-class-injection-if-no-params", extension.suggestClassInjectionIfNoParams))
         add(
           lazyOption(
             "enable-top-level-function-injection",
