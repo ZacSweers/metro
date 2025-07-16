@@ -63,7 +63,7 @@ import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
-import org.jetbrains.kotlin.fir.extensions.typeFromQualifierParts
+import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
@@ -100,6 +100,8 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.FirUserTypeRef
+import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -322,7 +324,7 @@ internal fun FirAnnotationCall.computeAnnotationHash(
         when (arg) {
           is FirLiteralExpression -> arg.value
           is FirGetClassCall -> {
-            typeResolver?.let { arg.resolvedClassArgumentTarget(it)?.classId }
+            typeResolver?.let { arg.resolvedArgumentConeKotlinType(it)?.classId }
               ?: run {
                 val argument = arg.argument
                 if (argument is FirResolvedQualifier) {
@@ -815,7 +817,7 @@ internal fun FirAnnotation.getAnnotationKClassArgument(
 ): ConeKotlinType? {
   val argument = findArgumentByNameSafe(name) ?: return null
   return argument.evaluateAs<FirGetClassCall>(session)?.getTargetType()
-    ?: typeResolver?.let { (argument as FirGetClassCall).resolvedClassArgumentTarget(it) }
+    ?: typeResolver?.let { (argument as FirGetClassCall).resolvedArgumentConeKotlinType(it) }
 }
 
 internal fun FirAnnotation.resolvedScopeClassId() = scopeArgument()?.resolvedClassId()
@@ -825,7 +827,7 @@ internal fun FirAnnotation.resolvedScopeClassId(typeResolver: TypeResolveService
   // Try to resolve it normally first. If this fails,
   // try to resolve within the enclosing scope
   return scopeArgument.resolvedClassId()
-    ?: scopeArgument.resolvedClassArgumentTarget(typeResolver)?.classId
+    ?: scopeArgument.resolvedArgumentConeKotlinType(typeResolver)?.classId
 }
 
 internal fun FirAnnotation.resolvedAdditionalScopesClassIds() =
@@ -851,7 +853,7 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
   // Try to resolve it normally first. If this fails,
   // try to resolve within the enclosing scope
   return additionalScopes.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
-    ?: additionalScopes.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
+    ?: additionalScopes.mapNotNull { it.resolvedArgumentConeKotlinType(typeResolver)?.classId }
 }
 
 internal fun FirAnnotation.resolvedExcludedClassIds(
@@ -860,11 +862,10 @@ internal fun FirAnnotation.resolvedExcludedClassIds(
   val excludesArgument =
     excludesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
       ?: return emptySet()
-  // Try to resolve it normally first. If this fails,
-  // try to resolve within the enclosing scope
+  // Try to resolve it normally first. If this fails, try to resolve within the enclosing scope
   val excluded =
     excludesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
-      ?: excludesArgument.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
+      ?: excludesArgument.mapNotNull { it.resolvedArgumentConeKotlinType(typeResolver)?.classId }
   return excluded.toSet()
 }
 
@@ -878,31 +879,37 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
   // try to resolve within the enclosing scope
   val replaced =
     replacesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
-      ?: replacesArgument.mapNotNull { it.resolvedClassArgumentTarget(typeResolver)?.classId }
+      ?: replacesArgument.mapNotNull { it.resolvedArgumentConeKotlinType(typeResolver)?.classId }
   return replaced.toSet()
 }
 
 internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
 
-internal fun FirAnnotation.resolvedClassArgumentTarget(
+internal fun FirAnnotation.resolvedArgumentConeKotlinType(
   name: Name,
   index: Int,
   typeResolver: TypeResolveService,
 ): ConeKotlinType? {
   // TODO if the annotation is resolved we can skip ahead
   val getClassCall = argumentAsOrNull<FirGetClassCall>(name, index) ?: return null
-  return getClassCall.resolvedClassArgumentTarget(typeResolver)
+  return getClassCall.resolvedArgumentConeKotlinType(typeResolver)
 }
 
-internal fun FirGetClassCall.resolvedClassArgumentTarget(
+internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService
 ): ConeKotlinType? {
   if (isResolved) {
     return (argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
   }
+
+  val ref = resolvedArgumentTypeRef() ?: return null
+  return typeResolver.resolveUserType(ref).coneType
+}
+
+internal fun FirGetClassCall.resolvedArgumentTypeRef(): FirUserTypeRef? {
   val source = source ?: return null
 
-  return typeFromQualifierParts(isMarkedNullable = false, typeResolver, source) {
+  return typeRefFromQualifierParts(isMarkedNullable = false, source) {
     fun visitQualifiers(expression: FirExpression) {
       if (expression !is FirPropertyAccessExpression) return
       expression.explicitReceiver?.let { visitQualifiers(it) }
@@ -1113,4 +1120,17 @@ private fun buildSubstitutionMapInner(
   }
 
   return result
+}
+
+internal fun typeRefFromQualifierParts(
+  isMarkedNullable: Boolean,
+  source: KtSourceElement,
+  builder: QualifierPartBuilder.() -> Unit,
+): FirUserTypeRef {
+  val userTypeRef = buildUserTypeRef {
+    this.isMarkedNullable = isMarkedNullable
+    this.source = source
+    QualifierPartBuilder(qualifier).builder()
+  }
+  return userTypeRef
 }

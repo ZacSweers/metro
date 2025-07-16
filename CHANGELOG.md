@@ -6,6 +6,7 @@ Changelog
 
 - **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
 - **Enhancement:** Add a new Metro option `suggestClassInjectionIfNoParams` to disable suggestion to lift @Inject to class if the primary constructor is empty.
+- **Breaking change:** Rename the `generateHintProperties` Gradle DSL property to `generateContributionHints`.
 
 0.5.0
 -----

@@ -59,9 +59,6 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.platform.isJs
-import org.jetbrains.kotlin.platform.isWasm
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
@@ -105,13 +102,10 @@ internal class DependencyGraphTransformer(
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM/JS compilation hint gen can't be done until
+    // Native/WASM/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints =
-      options.generateHintProperties &&
-        !pluginContext.platform.isNative() &&
-        !pluginContext.platform.isJs() &&
-        !pluginContext.platform.isWasm()
+      options.generateContributionHints && !options.generateJvmContributionHintsInFir
     if (generateHints) {
       contributionHintIrTransformer.visitClass(declaration)
     }
