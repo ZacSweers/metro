@@ -568,7 +568,7 @@ internal class IrGraphGenerator(
       // Add extra constructor statements
       with(ctor) {
         val originalBody = checkNotNull(body)
-        buildBlockBody() {
+        buildBlockBody {
           +originalBody.statements
           for (statement in finalConstructorStatements) {
             +statement(thisReceiverParameter)
