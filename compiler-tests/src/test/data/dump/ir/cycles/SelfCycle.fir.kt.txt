@@ -30,7 +30,7 @@ class S {
 
     }
 
-    constructor(sProvider: Provider<S>, sLazy: Provider<S>) /* primary */ {
+    private constructor(sProvider: Provider<S>, sLazy: Provider<S>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -68,7 +68,7 @@ class S {
 
     }
 
-    constructor(sLazy: Provider<S>) /* primary */ {
+    private constructor(sLazy: Provider<S>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -107,7 +107,7 @@ interface SelfCycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : SelfCycleGraph {
     private /* final field */ val sProvider: Provider<S> = DelegateFactory<S>()
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 

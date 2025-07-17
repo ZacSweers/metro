@@ -19,7 +19,7 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 
     }
 
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -64,7 +64,7 @@ class ClassWithBounds<T : Any> {
 
     }
 
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -109,7 +109,7 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
 
     }
 
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -154,7 +154,7 @@ class ClassWithNullable<T : Any?, E : T?> {
 
     }
 
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -199,7 +199,7 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 
     }
 
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -244,7 +244,7 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 
     }
 
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -289,7 +289,7 @@ class SimpleClass<T : Any?> {
 
     }
 
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 

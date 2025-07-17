@@ -24,7 +24,7 @@ class Bar : Foo {
 
     }
 
-    constructor(fooProvider: Provider<Foo>) /* primary */ {
+    private constructor(fooProvider: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -67,7 +67,7 @@ interface BindsCycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : BindsCycleGraph {
     private /* final field */ val barProvider: Provider<Bar> = DelegateFactory<Bar>()
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
