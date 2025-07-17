@@ -15,7 +15,7 @@ class ExampleClass {
 
 fun box(): String {
   @Suppress("DEPRECATION_ERROR")
-  val injector: MembersInjector<ExampleClass> = ExampleClass.`$$MetroMembersInjector`(
+  val injector: MembersInjector<ExampleClass> = ExampleClass.`$$MetroMembersInjector`.create(
     providerOf("a"),
     providerOf("b"),
     providerOf(listOf("c")),

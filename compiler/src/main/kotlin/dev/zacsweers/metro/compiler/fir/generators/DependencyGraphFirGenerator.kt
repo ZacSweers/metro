@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
@@ -329,6 +330,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             isPrimary = true,
             generateDelegatedNoArgConstructorCall = true,
           ) {
+          visibility = Visibilities.Private
             if (creator != null) {
               log("Generating graph SAM - ${samFunction?.callableId}")
               samFunction?.valueParameterSymbols?.forEach { valueParameterSymbol ->
@@ -356,7 +358,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           Keys.Default,
           isPrimary = true,
           generateDelegatedNoArgConstructorCall = true,
-        )
+        ) {
+          visibility = Visibilities.Private
+        }
       } else {
         return emptyList()
       }

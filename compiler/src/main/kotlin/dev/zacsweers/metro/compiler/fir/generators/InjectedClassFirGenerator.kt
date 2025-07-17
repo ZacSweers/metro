@@ -27,6 +27,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
@@ -512,6 +513,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           isPrimary = true,
           generateDelegatedNoArgConstructorCall = true,
         ) {
+        visibility = Visibilities.Private
           for (param in nonAssistedParams) {
             valueParameter(
               param.name,
