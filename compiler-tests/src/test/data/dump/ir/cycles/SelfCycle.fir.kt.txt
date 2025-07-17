@@ -58,7 +58,7 @@ class S {
 
       }
 
-      fun create(sLazy: Provider<S>): MembersInjector<$$MetroMembersInjector> {
+      fun create(sLazy: Provider<S>): MembersInjector<S> {
         return $$MetroMembersInjector(sLazy = sLazy)
       }
 

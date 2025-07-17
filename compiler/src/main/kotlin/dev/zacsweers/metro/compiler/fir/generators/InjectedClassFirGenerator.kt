@@ -698,7 +698,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               nonNullContext,
               {
                 val targetClassType =
-                  targetClass.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
+                  injectedClass.classSymbol.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
                 Symbols.ClassIds.MembersInjector.constructClassLikeType(arrayOf(targetClassType))
               },
               null,

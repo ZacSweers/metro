@@ -170,7 +170,7 @@ class C {
 
       }
 
-      fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<$$MetroMembersInjector> {
+      fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<C> {
         return $$MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
