@@ -330,7 +330,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             isPrimary = true,
             generateDelegatedNoArgConstructorCall = true,
           ) {
-          visibility = Visibilities.Private
+            visibility = Visibilities.Private
             if (creator != null) {
               log("Generating graph SAM - ${samFunction?.callableId}")
               samFunction?.valueParameterSymbols?.forEach { valueParameterSymbol ->

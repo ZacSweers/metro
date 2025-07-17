@@ -513,7 +513,7 @@ internal class InjectedClassFirGenerator(session: FirSession) :
           isPrimary = true,
           generateDelegatedNoArgConstructorCall = true,
         ) {
-        visibility = Visibilities.Private
+          visibility = Visibilities.Private
           for (param in nonAssistedParams) {
             valueParameter(
               param.name,
@@ -698,7 +698,9 @@ internal class InjectedClassFirGenerator(session: FirSession) :
               nonNullContext,
               {
                 val targetClassType =
-                  injectedClass.classSymbol.constructType(it.mapToArray(FirTypeParameterRef::toConeType))
+                  injectedClass.classSymbol.constructType(
+                    it.mapToArray(FirTypeParameterRef::toConeType)
+                  )
                 Symbols.ClassIds.MembersInjector.constructClassLikeType(arrayOf(targetClassType))
               },
               null,

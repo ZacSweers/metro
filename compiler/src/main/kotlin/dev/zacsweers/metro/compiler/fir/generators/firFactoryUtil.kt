@@ -72,7 +72,7 @@ internal fun FirExtension.buildFactoryConstructor(
       isPrimary = true,
       generateDelegatedNoArgConstructorCall = true,
     ) {
-    visibility = Visibilities.Private
+      visibility = Visibilities.Private
       instanceReceiver?.let {
         valueParameter(Symbols.Names.instance, it, key = Keys.InstanceParameter)
       }
