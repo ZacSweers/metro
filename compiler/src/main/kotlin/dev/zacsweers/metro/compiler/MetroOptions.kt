@@ -171,6 +171,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       valueMapper = { it },
     )
   ),
+  WARN_ON_INJECT_ANNOTATION_PLACEMENT(
+    RawMetroOption.boolean(
+      name = "warn-on-inject-annotation-placement",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable suggestion to lift @Inject to class when there is only one constructor.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   LOGGING(
     RawMetroOption(
       name = "logging",
@@ -491,6 +502,8 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
+  val warnOnInjectAnnotationPlacement: Boolean =
+    MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -619,6 +632,10 @@ public data class MetroOptions(
                     DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
                   }
               )
+
+          MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+            options =
+              options.copy(warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry))
 
           MetroOption.LOGGING -> {
             enabledLoggers +=

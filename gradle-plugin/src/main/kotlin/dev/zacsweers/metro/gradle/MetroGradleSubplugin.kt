@@ -127,6 +127,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
         add(
           lazyOption(
+            "warn-on-inject-annotation-placement",
+            extension.warnOnInjectAnnotationPlacement,
+          )
+        )
+        add(
+          lazyOption(
             "enable-top-level-function-injection",
             extension.enableTopLevelFunctionInjection,
           )

@@ -111,6 +111,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, shrinkUnusedBindings)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
+              MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+                processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })

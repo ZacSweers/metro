@@ -39,13 +39,28 @@ class InjectConstructorErrorsTest : MetroCompilerTest() {
       )
     ) {
       assertDiagnostics(
-        "w: ExampleClass.kt:6:20 There are no parameters on the @Inject-annotated constructor. Consider moving the annotation to the class instead."
+        "w: ExampleClass.kt:6:20 There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead."
       )
     }
   }
 
   @Test
-  fun `do not suggest moving inject annotation to class if secondary constructor is empty`() {
+  fun `do not suggest moving inject annotation to class if the option is disabled`() {
+    compile(
+      source(
+        """
+            class ExampleClass @Inject constructor()
+          """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(warnOnInjectAnnotationPlacement = false),
+    ) {
+      assertNoWarningsOrErrors()
+    }
+  }
+
+  @Test
+  fun `do not suggest moving inject annotation to class if there are multiple constructors`() {
     compile(
       source(
         """
