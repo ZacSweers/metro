@@ -513,7 +513,10 @@ internal class IrGraphGenerator(
 
       val finalConstructorStatements:
         List<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>
-      if (fieldInitializers.size + extraConstructorStatements.size > STATEMENTS_PER_METHOD) {
+      if (
+        options.chunkFieldInits &&
+          fieldInitializers.size + extraConstructorStatements.size > STATEMENTS_PER_METHOD
+      ) {
         // Larger graph, split statements
         // Chunk our constructor statements and split across multiple init functions
         val chunks =
