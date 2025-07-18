@@ -868,16 +868,21 @@ internal fun FirAnnotation.resolvedExcludedClassIds(
 }
 
 internal fun FirAnnotation.resolvedReplacedClassIds(
-  typeResolver: TypeResolveService
+  typeResolver: MetroFirTypeResolver
 ): Set<ClassId> {
   val replacesArgument =
     replacesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
       ?: return emptySet()
-  // Try to resolve it normally first. If this fails,
-  // try to resolve within the enclosing scope
   val replaced =
-    replacesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
-      ?: replacesArgument.mapNotNull { it.resolvedArgumentConeKotlinType(typeResolver)?.classId }
+    replacesArgument.mapNotNull { getClassCall ->
+      // If it's available and resolved, just use it directly!
+      getClassCall.coneTypeIfResolved()?.classId?.let {
+        return@mapNotNull it
+      }
+      // Otherwise fall back to trying to parse from the reference
+      val reference = getClassCall.resolvedArgumentTypeRef() ?: return@mapNotNull null
+      typeResolver.resolveType(reference).classId
+    }
   return replaced.toSet()
 }
 
@@ -896,12 +901,19 @@ internal fun FirAnnotation.resolvedArgumentConeKotlinType(
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService
 ): ConeKotlinType? {
-  if (isResolved) {
-    return (argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
+  coneTypeIfResolved()?.let {
+    return it
   }
-
   val ref = resolvedArgumentTypeRef() ?: return null
   return typeResolver.resolveUserType(ref).coneType
+}
+
+private fun FirGetClassCall.coneTypeIfResolved(): ConeKotlinType? {
+  return if (isResolved) {
+    (argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
+  } else {
+    null
+  }
 }
 
 internal fun FirGetClassCall.resolvedArgumentTypeRef(): FirUserTypeRef? {
