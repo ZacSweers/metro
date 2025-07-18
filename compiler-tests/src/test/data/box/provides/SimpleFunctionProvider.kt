@@ -2,8 +2,8 @@
 interface ExampleGraph {
   val provider: Provider<String>
 
-//  @Provides
-//  fun provideValue(): String = "Hello, world!"
+  @Provides
+  fun provideValue(): String = "Hello, world!"
 }
 
 fun box(): String {
