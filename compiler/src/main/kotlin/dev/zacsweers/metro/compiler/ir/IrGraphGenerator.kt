@@ -260,8 +260,7 @@ internal class IrGraphGenerator(
       if (node.typeKey in sealResult.reachableKeys) {
         val thisGraphField =
           addSimpleInstanceField(fieldNameAllocator.newName("thisGraphInstance"), node.typeKey) {
-            thisReceiver ->
-            irGet(thisReceiver)
+            irGet(thisReceiverParameter)
           }
 
         instanceFields[node.typeKey] = thisGraphField
@@ -278,8 +277,11 @@ internal class IrGraphGenerator(
               fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
-            .withInit(node.typeKey) { thisReceiver, _ ->
-              instanceFactory(node.typeKey.type, irGetField(irGet(thisReceiver), thisGraphField))
+            .initFinal {
+              instanceFactory(
+                node.typeKey.type,
+                irGetField(irGet(thisReceiverParameter), thisGraphField),
+              )
             }
       }
 
@@ -695,14 +697,14 @@ internal class IrGraphGenerator(
   private fun IrClass.addSimpleInstanceField(
     name: String,
     typeKey: IrTypeKey,
-    initializerExpression: IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrExpression,
+    initializerExpression: IrBuilderWithScope.() -> IrExpression,
   ): IrField =
     addField(
         fieldName = name,
         fieldType = typeKey.type,
         fieldVisibility = DescriptorVisibilities.PRIVATE,
       )
-      .withInit(typeKey) { thisReceiver, _ -> initializerExpression(thisReceiver) }
+      .initFinal { initializerExpression() }
 
   private fun DependencyGraphNode.implementOverrides(
     context: GraphGenerationContext,
