@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
+- **Fix:** Fix compilation error for members-injected classes with no direct, but only inherited `@Inject` attributes.
 - **Breaking change:** Rename the `generateHintProperties` Gradle DSL property to `generateContributionHints`.
 - **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
 - **Enhancement:** Mark generated factories and member injectors' constructors as `private`, matching the same [change in Dagger 2.57](https://github.com/google/dagger/releases/tag/dagger-2.57).
