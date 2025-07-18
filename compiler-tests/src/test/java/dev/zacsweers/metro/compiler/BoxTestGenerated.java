@@ -57,6 +57,22 @@ public class BoxTestGenerated extends AbstractBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/bindingcontainers")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Bindingcontainers {
+    @Test
+    public void testAllFilesPresentInBindingcontainers() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ContributedAcrossModules.kt")
+    public void testContributedAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModules.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/contributesgraphextension")
   @TestDataPath("$PROJECT_ROOT")
   public class Contributesgraphextension {

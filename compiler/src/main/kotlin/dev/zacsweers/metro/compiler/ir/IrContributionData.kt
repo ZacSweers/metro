@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -98,21 +99,25 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
         filteredContributions.removeIf { it.symbol == replacedClass.symbol }
       }
 
-    return filteredContributions
-      .flatMap { it.nestedClasses }
-      .mapNotNullToSet { nestedClass ->
-        val metroContribution =
-          nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
-            ?: return@mapNotNullToSet null
-        val contributionScope =
-          metroContribution.scopeOrNull()
-            ?: error("No scope found for @MetroContribution annotation")
-        if (contributionScope == scopeClassId) {
-          nestedClass.defaultType
-        } else {
-          null
+    return filteredContributions.flatMapToSet {
+      if (it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)) {
+        setOf(it.defaultType)
+      } else {
+        it.nestedClasses.mapNotNullToSet { nestedClass ->
+          val metroContribution =
+            nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
+              ?: return@mapNotNullToSet null
+          val contributionScope =
+            metroContribution.scopeOrNull()
+              ?: error("No scope found for @MetroContribution annotation")
+          if (contributionScope == scopeClassId) {
+            nestedClass.defaultType
+          } else {
+            null
+          }
         }
       }
+    }
   }
 
   fun addScopedInject(scope: IrAnnotation, contribution: IrTypeKey) {

@@ -11,6 +11,8 @@ Changelog
 - **Enhancement:** Add a new Metro option `warnOnInjectAnnotationPlacement` to disable suggestion to lift @Inject to class when there is only one constructor, the warning applies to constructors with params too.
 - **Fix:** Fix `@Contributes*.replaces` not working if the contributed type is in the same compilation but a different file.
 - **Fix:** Fix generated `MembersInjector.create()` return types' generic argument to use the target class.
+- **Fix:** Don't generated nested MetroContribution classes for binding containers.
+- **Fix:** Fix contributing binding containers across compilations.
 
 0.5.0
 -----
