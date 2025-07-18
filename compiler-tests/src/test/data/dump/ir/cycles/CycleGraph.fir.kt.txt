@@ -29,7 +29,7 @@ class A {
 
     }
 
-    constructor(b: Provider<B>, e: Provider<E>) /* primary */ {
+    private constructor(b: Provider<B>, e: Provider<E>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -79,7 +79,7 @@ class B {
 
     }
 
-    constructor(c: Provider<C>) /* primary */ {
+    private constructor(c: Provider<C>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -140,7 +140,7 @@ class C {
 
     }
 
-    constructor(aProvider: Provider<A>, aLazy: Provider<A>, aLazyProvider: Provider<A>) /* primary */ {
+    private constructor(aProvider: Provider<A>, aLazy: Provider<A>, aLazyProvider: Provider<A>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -170,7 +170,7 @@ class C {
 
       }
 
-      fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<$$MetroMembersInjector> {
+      fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<C> {
         return $$MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
       }
 
@@ -184,7 +184,7 @@ class C {
 
     }
 
-    constructor(aLazy: Provider<A>, aLazyProvider: Provider<A>) /* primary */ {
+    private constructor(aLazy: Provider<A>, aLazyProvider: Provider<A>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -231,7 +231,7 @@ class D {
 
     }
 
-    constructor(b: Provider<B>) /* primary */ {
+    private constructor(b: Provider<B>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -281,7 +281,7 @@ class E {
 
     }
 
-    constructor(d: Provider<D>) /* primary */ {
+    private constructor(d: Provider<D>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -330,7 +330,7 @@ interface ChildCycleGraph {
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
-    constructor(@Extends cycleGraph: CycleGraph) /* primary */ {
+    private constructor(@Extends cycleGraph: CycleGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -393,7 +393,7 @@ interface CycleGraph {
     private /* final field */ val provideObjectWithCycleProvider: Provider<Any> = DelegateFactory<Any>()
     private /* final field */ val bProvider: Provider<B> = Companion.create(c = <this>.#cProvider)
     private /* final field */ val aProvider: Provider<A> = Companion.create(b = <this>.#bProvider, e = Companion.create(d = Companion.create(b = <this>.#bProvider)))
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -449,7 +449,7 @@ interface CycleGraph {
 
     }
 
-    constructor(instance: CycleGraph, obj: Provider<Any>) /* primary */ {
+    private constructor(instance: CycleGraph, obj: Provider<Any>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

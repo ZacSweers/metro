@@ -64,7 +64,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
-    val platformCanGnerateContributionHints =
+    val platformCanGenerateContributionHints =
       when (kotlinCompilation.platformType) {
         KotlinPlatformType.common,
         KotlinPlatformType.jvm,
@@ -112,7 +112,7 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(
           lazyOption(
             "generate-contribution-hints",
-            extension.generateContributionHints.orElse(platformCanGnerateContributionHints),
+            extension.generateContributionHints.orElse(platformCanGenerateContributionHints),
           )
         )
         add(
@@ -125,6 +125,12 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+        add(
+          lazyOption(
+            "warn-on-inject-annotation-placement",
+            extension.warnOnInjectAnnotationPlacement,
+          )
+        )
         add(
           lazyOption(
             "enable-top-level-function-injection",

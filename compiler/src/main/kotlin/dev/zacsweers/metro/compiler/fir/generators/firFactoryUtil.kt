@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.fir.copyParameters
 import dev.zacsweers.metro.compiler.fir.generateMemberFunction
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassForStaticMemberAttr
@@ -71,6 +72,7 @@ internal fun FirExtension.buildFactoryConstructor(
       isPrimary = true,
       generateDelegatedNoArgConstructorCall = true,
     ) {
+      visibility = Visibilities.Private
       instanceReceiver?.let {
         valueParameter(Symbols.Names.instance, it, key = Keys.InstanceParameter)
       }

@@ -31,7 +31,7 @@ interface ExampleGraph {
       return <this>.#accessorsInstance.<get-string>()
     }
 )
-    constructor(@Includes accessors: Accessors) /* primary */ {
+    private constructor(@Includes accessors: Accessors) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

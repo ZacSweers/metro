@@ -5,8 +5,12 @@ Changelog
 --------------
 
 - **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
-- **Fix:** Fix `@Contributes*.replaces` not working if the contributed type is in the same compilation but a different file.
 - **Breaking change:** Rename the `generateHintProperties` Gradle DSL property to `generateContributionHints`.
+- **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
+- **Enhancement:** Mark generated factories and member injectors' constructors as `private`, matching the same [change in Dagger 2.57](https://github.com/google/dagger/releases/tag/dagger-2.57).
+- **Enhancement:** Add a new Metro option `warnOnInjectAnnotationPlacement` to disable suggestion to lift @Inject to class when there is only one constructor, the warning applies to constructors with params too.
+- **Fix:** Fix `@Contributes*.replaces` not working if the contributed type is in the same compilation but a different file.
+- **Fix:** Fix generated `MembersInjector.create()` return types' generic argument to use the target class.
 
 0.5.0
 -----

@@ -65,7 +65,7 @@ FILE: ProvidersAreMadePrivate.kt
         }
 
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldBePrivate), isPropertyAccessor = Boolean(false), startOffset = Int(60), endOffset = Int(111)) public final class ShouldBePrivate$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
-            public constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate$$MetroFactory| {
+            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate$$MetroFactory| {
                 super<R|kotlin/Any|>()
             }
 
@@ -83,7 +83,7 @@ FILE: ProvidersAreMadePrivate.kt
         }
 
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldNotBePrivate1), isPropertyAccessor = Boolean(false), startOffset = Int(115), endOffset = Int(177)) public final class ShouldNotBePrivate1$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
-            public constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldNotBePrivate1$$MetroFactory| {
+            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldNotBePrivate1$$MetroFactory| {
                 super<R|kotlin/Any|>()
             }
 
@@ -101,7 +101,7 @@ FILE: ProvidersAreMadePrivate.kt
         }
 
         @R|kotlin/Deprecated|(message = String(This synthesized declaration should not be used directly), level = Q|kotlin/DeprecationLevel|.R|kotlin/DeprecationLevel.HIDDEN|) @R|dev/zacsweers/metro/internal/ProvidesCallableId|(callableName = String(shouldBePrivate2), isPropertyAccessor = Boolean(false), startOffset = Int(181), endOffset = Int(241)) public final class ShouldBePrivate2$$MetroFactory : R|dev/zacsweers/metro/internal/Factory<kotlin/String>| {
-            public constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate2$$MetroFactory| {
+            private constructor(instance: R|ExampleProviders|): R|ExampleProviders.ShouldBePrivate2$$MetroFactory| {
                 super<R|kotlin/Any|>()
             }
 

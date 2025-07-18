@@ -160,6 +160,12 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/inject"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
+    @Test
+    @TestMetadata("SuggestInjectClassOnSingleContructor.kt")
+    public void testSuggestInjectClassOnSingleContructor() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/inject/SuggestInjectClassOnSingleContructor.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")

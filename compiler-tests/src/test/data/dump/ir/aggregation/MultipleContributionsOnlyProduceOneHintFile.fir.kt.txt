@@ -89,7 +89,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
     private /* final field */ val base1ImplProvider: Provider<Base1Impl> = Companion.provider<Provider<Base1Impl>, Base1Impl>(delegate = $$MetroFactory.create())
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
