@@ -25,23 +25,16 @@ class FakeDatabaseService : DatabaseService {
 
 @ContributesTo(AppScope::class, replaces = [RealProviders::class])
 interface FakeProviders {
-  @Provides
-  fun provideConfig(): String = "fake config"
+  @Provides fun provideConfig(): String = "fake config"
 }
 
 @ContributesTo(AppScope::class, replaces = [RealSetProviders::class])
 interface FakeSetProviders {
-  @Provides
-  @IntoSet
-  fun provideFakeFeature1(): String = "fake-feature-1"
-  
-  @Provides
-  @IntoSet
-  fun provideFakeFeature2(): String = "fake-feature-2"
-  
-  @Provides
-  @IntoSet
-  fun provideFakeFeature3(): String = "fake-feature-3"
+  @Provides @IntoSet fun provideFakeFeature1(): String = "fake-feature-1"
+
+  @Provides @IntoSet fun provideFakeFeature2(): String = "fake-feature-2"
+
+  @Provides @IntoSet fun provideFakeFeature3(): String = "fake-feature-3"
 }
 
 @ContributesTo(AppScope::class, replaces = [RealMapProviders::class])
@@ -50,12 +43,12 @@ interface FakeMapProviders {
   @IntoMap
   @StringKey("fake-handler-1")
   fun provideFakeHandler1(): String = "fake-handler-1-impl"
-  
+
   @Provides
   @IntoMap
   @StringKey("fake-handler-2")
   fun provideFakeHandler2(): String = "fake-handler-2-impl"
-  
+
   @Provides
   @IntoMap
   @StringKey("fake-handler-3")

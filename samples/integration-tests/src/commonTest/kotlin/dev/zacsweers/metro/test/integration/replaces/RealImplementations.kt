@@ -43,19 +43,14 @@ class DefaultPlatform : Platform {
 
 @ContributesTo(AppScope::class)
 interface RealProviders {
-  @Provides
-  fun provideConfig(): String = "real config"
+  @Provides fun provideConfig(): String = "real config"
 }
 
 @ContributesTo(AppScope::class)
 interface RealSetProviders {
-  @Provides
-  @IntoSet
-  fun provideRealFeature1(): String = "real-feature-1"
-  
-  @Provides
-  @IntoSet
-  fun provideRealFeature2(): String = "real-feature-2"
+  @Provides @IntoSet fun provideRealFeature1(): String = "real-feature-1"
+
+  @Provides @IntoSet fun provideRealFeature2(): String = "real-feature-2"
 }
 
 @ContributesTo(AppScope::class)
@@ -64,9 +59,9 @@ interface RealMapProviders {
   @IntoMap
   @StringKey("real-handler-1")
   fun provideRealHandler1(): String = "real-handler-1-impl"
-  
+
   @Provides
   @IntoMap
-  @StringKey("real-handler-2") 
+  @StringKey("real-handler-2")
   fun provideRealHandler2(): String = "real-handler-2-impl"
 }
