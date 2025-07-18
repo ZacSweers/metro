@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -70,7 +71,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .toSet()
   }
 
-  private val typeResolverFactory = MetroFirTypeResolver.Factory(session)
+  private val allSessions = session.memoizedAllSessionsSequence
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Set<ClassId>, TypeResolveService> =
@@ -285,13 +287,12 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .filterIsInstance<ConeClassLikeType>()
       .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
       .flatMap { contributingType ->
-        val localTypeResolver = typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
+        val localTypeResolver =
+          typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
 
         contributingType
           .annotationsIn(session, session.classIds.allContributesAnnotations)
-          .flatMap { annotation ->
-            annotation.resolvedReplacedClassIds(localTypeResolver)
-          }
+          .flatMap { annotation -> annotation.resolvedReplacedClassIds(localTypeResolver) }
       }
       .distinct()
       .forEach { replacedClassId ->

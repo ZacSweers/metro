@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
@@ -74,7 +75,8 @@ internal class ContributionHintFirGenerator(session: FirSession, options: MetroO
     return (injectedClasses + contributedClasses).filterIsInstance<FirClassSymbol<*>>()
   }
 
-  private val typeResolverFactory = MetroFirTypeResolver.Factory(session)
+  private val allSessions = session.memoizedAllSessionsSequence
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val contributedClassesByScope:
     FirCache<Unit, Map<CallableId, Set<FirClassSymbol<*>>>, Unit> =

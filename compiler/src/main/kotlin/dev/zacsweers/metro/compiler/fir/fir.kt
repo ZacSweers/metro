@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.memoized
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
@@ -64,6 +65,7 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeR
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
@@ -909,10 +911,11 @@ internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
 }
 
 private fun FirGetClassCall.coneTypeIfResolved(): ConeKotlinType? {
-  return if (isResolved) {
-    (argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
-  } else {
-    null
+  return when (val arg = argument) {
+    // I'm not really sure why these sometimes come down as different types but shrug
+    is FirClassReferenceExpression if (isResolved) -> arg.classTypeRef.coneTypeOrNull
+    is FirResolvedQualifier if (isResolved) -> arg.resolvedType
+    else -> null
   }
 }
 
@@ -1144,3 +1147,6 @@ internal fun typeRefFromQualifierParts(
   }
   return userTypeRef
 }
+
+internal val FirSession.memoizedAllSessionsSequence: Sequence<FirSession>
+  get() = sequenceOf(this).plus(moduleData.allDependsOnDependencies.map { it.session }).memoized()

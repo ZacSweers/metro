@@ -30,16 +30,19 @@ import org.jetbrains.kotlin.fir.types.coneType
 internal sealed interface MetroFirTypeResolver {
   fun resolveType(typeRef: FirTypeRef): ConeKotlinType
 
-  class Factory(private val session: FirSession) {
+  class Factory(private val session: FirSession, private val allSessions: Sequence<FirSession>) {
     private val scopeSession = ScopeSession()
     private val resolversByFile = mutableMapOf<FirFile, LocalMetroFirTypeResolver?>()
 
     fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
-      if (classSymbol.origin is FirDeclarationOrigin.Library) return ExternalMetroFirTypeResolver
+      if (classSymbol.origin !is FirDeclarationOrigin.Source) return ExternalMetroFirTypeResolver
+      // Look up through all firProviders as we may be a KMP compilation
       // The implementation of getFirClassifierContainerFileIfAny is an O(1) lookup in its impl in
       // FirProviderImpl
       val file: FirFile =
-        session.firProvider.getFirClassifierContainerFileIfAny(classSymbol) ?: return null
+        allSessions.firstNotNullOfOrNull {
+          it.firProvider.getFirClassifierContainerFileIfAny(classSymbol)
+        } ?: return null
       return resolversByFile.getOrPut(file) {
         val scopes = createImportingScopes(file, session, scopeSession)
         val configuration = TypeResolutionConfiguration(scopes, emptyList(), useSiteFile = file)
