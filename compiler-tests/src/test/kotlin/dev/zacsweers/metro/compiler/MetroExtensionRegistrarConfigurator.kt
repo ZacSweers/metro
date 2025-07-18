@@ -62,6 +62,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           MetroDirectives.ENABLE_SCOPED_INJECT_CLASS_HINTS in module.directives,
         shrinkUnusedBindings =
           module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS) ?: true,
+        chunkFieldInits =
+          module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS) ?: false,
         generateJvmContributionHintsInFir =
           MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR in module.directives,
         publicProviderSeverity =

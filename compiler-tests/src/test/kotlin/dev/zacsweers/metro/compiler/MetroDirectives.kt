@@ -21,6 +21,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val ENABLE_SCOPED_INJECT_CLASS_HINTS by directive("Enable scoped inject class hints.")
   val SHRINK_UNUSED_BINDINGS by
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
+  val CHUNK_FIELD_INITS by
+    valueDirective("Enable/disable chunking of field initializers.") { it.toBoolean() }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

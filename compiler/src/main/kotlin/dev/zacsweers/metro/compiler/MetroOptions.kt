@@ -159,6 +159,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  CHUNK_FIELD_INITS(
+    RawMetroOption.boolean(
+      name = "chunk-field-inits",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable chunking of field initializers in binding graphs.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -494,6 +504,7 @@ public data class MetroOptions(
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
+  val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -623,6 +634,9 @@ public data class MetroOptions(
 
           MetroOption.SHRINK_UNUSED_BINDINGS ->
             options = options.copy(shrinkUnusedBindings = configuration.getAsBoolean(entry))
+
+          MetroOption.CHUNK_FIELD_INITS ->
+            options = options.copy(chunkFieldInits = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =

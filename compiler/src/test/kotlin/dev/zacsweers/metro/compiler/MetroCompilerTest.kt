@@ -109,6 +109,8 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, transformProvidersToPrivate)
               MetroOption.SHRINK_UNUSED_BINDINGS ->
                 processor.option(entry.raw.cliOption, shrinkUnusedBindings)
+              MetroOption.CHUNK_FIELD_INITS ->
+                processor.option(entry.raw.cliOption, chunkFieldInits)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
               MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
