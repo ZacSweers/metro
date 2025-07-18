@@ -19,6 +19,10 @@ interface DatabaseService {
   fun query(): String
 }
 
+interface Platform {
+  val platformName: String
+}
+
 @ContributesBinding(AppScope::class)
 @Inject
 class RealNetworkService : NetworkService {
@@ -29,6 +33,12 @@ class RealNetworkService : NetworkService {
 @Inject
 class RealDatabaseService : DatabaseService {
   override fun query(): String = "real database data"
+}
+
+@ContributesBinding(AppScope::class)
+@Inject
+class DefaultPlatform : Platform {
+  override val platformName: String = "common"
 }
 
 @ContributesTo(AppScope::class)
