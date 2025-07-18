@@ -60,13 +60,47 @@
 
 @SingleIn(AppScope::class) @Inject class Service30(val s29: Service29)
 
+class InstanceType1
+
+class InstanceType2
+
+class InstanceType3
+
+class InstanceType4
+
+class InstanceType5
+
 @DependencyGraph(scope = AppScope::class)
 interface AppGraph {
   val service30: Service30
+
+  val instanceType1: InstanceType1
+  val instanceType2: InstanceType2
+  val instanceType3: InstanceType3
+  val instanceType4: InstanceType4
+  val instanceType5: InstanceType5
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(
+      @Provides instanceType1: InstanceType1,
+      @Provides instanceType2: InstanceType2,
+      @Provides instanceType3: InstanceType3,
+      @Provides instanceType4: InstanceType4,
+      @Provides instanceType5: InstanceType5,
+    ): AppGraph
+  }
 }
 
 fun box(): String {
-  val graph = createGraph<AppGraph>()
+  val graph =
+    createGraphFactory<AppGraph.Factory>()
+      .create(InstanceType1(), InstanceType2(), InstanceType3(), InstanceType4(), InstanceType5())
   assertNotNull(graph.service30)
+  assertNotNull(graph.instanceType1)
+  assertNotNull(graph.instanceType2)
+  assertNotNull(graph.instanceType3)
+  assertNotNull(graph.instanceType4)
+  assertNotNull(graph.instanceType5)
   return "OK"
 }
