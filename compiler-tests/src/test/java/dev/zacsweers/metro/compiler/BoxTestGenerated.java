@@ -70,6 +70,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testContributedAcrossModules() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModules.kt");
     }
+
+    @Test
+    @TestMetadata("SimpleContainersWithHintsWork.kt")
+    public void testSimpleContainersWithHintsWork() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
+    }
   }
 
   @Nested
