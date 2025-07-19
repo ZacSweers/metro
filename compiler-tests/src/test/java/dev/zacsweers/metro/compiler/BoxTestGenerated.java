@@ -407,6 +407,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testMemberInjectorRequestMultipleLocations() {
         runTest("compiler-tests/src/test/data/box/inject/member/MemberInjectorRequestMultipleLocations.kt");
       }
+
+      @Test
+      @TestMetadata("MultiLayeredMemberInjects.kt")
+      public void testMultiLayeredMemberInjects() {
+        runTest("compiler-tests/src/test/data/box/inject/member/MultiLayeredMemberInjects.kt");
+      }
     }
   }
 
