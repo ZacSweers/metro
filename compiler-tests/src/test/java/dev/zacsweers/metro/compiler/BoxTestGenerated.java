@@ -429,6 +429,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedDaggerFactoryClass.kt")
+      public void testAssistedDaggerFactoryClass() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerFactoryClass.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerFactoryClassWithDifferentInputs.kt")
+      public void testAssistedDaggerFactoryClassWithDifferentInputs() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerFactoryClassWithDifferentInputs.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerComponentModulesAnnotationInterop.kt")
       public void testDaggerComponentModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerComponentModulesAnnotationInterop.kt");
@@ -444,6 +456,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DaggerFactoryClassCanBeLoadedJakarta.kt")
       public void testDaggerFactoryClassCanBeLoadedJakarta() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoadedJakarta.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryClassWithDifferentInputs.kt")
+      public void testDaggerFactoryClassWithDifferentInputs() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassWithDifferentInputs.kt");
       }
 
       @Test
@@ -465,6 +483,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("InjectedDaggerLazyInteropWorks.kt")
+      public void testInjectedDaggerLazyInteropWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/InjectedDaggerLazyInteropWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedJavaxProviderInteropWorks.kt")
+      public void testInjectedJavaxProviderInteropWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/InjectedJavaxProviderInteropWorks.kt");
+      }
+
+      @Test
       @TestMetadata("JavaxProviderShouldWorkInMap.kt")
       public void testJavaxProviderShouldWorkInMap() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInMap.kt");
@@ -474,6 +504,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("JavaxProviderShouldWorkInSet.kt")
       public void testJavaxProviderShouldWorkInSet() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInSet.kt");
+      }
+
+      @Test
+      @TestMetadata("KotlinDaggerFactoryClassCanBeLoaded.kt")
+      public void testKotlinDaggerFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/KotlinDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("KotlinDaggerObjectFactoryClassCanBeLoaded.kt")
+      public void testKotlinDaggerObjectFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/KotlinDaggerObjectFactoryClassCanBeLoaded.kt");
       }
 
       @Nested
