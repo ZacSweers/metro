@@ -5,9 +5,11 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.Keys
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.constructType
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
@@ -17,7 +19,6 @@ import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
-import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -25,12 +26,6 @@ import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction
-import org.jetbrains.kotlin.fir.resolve.ScopeSession
-import org.jetbrains.kotlin.fir.resolve.SupertypeSupplier
-import org.jetbrains.kotlin.fir.resolve.TypeResolutionConfiguration
-import org.jetbrains.kotlin.fir.resolve.providers.firProvider
-import org.jetbrains.kotlin.fir.resolve.typeResolver
-import org.jetbrains.kotlin.fir.scopes.createImportingScopes
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.classId
@@ -80,7 +75,8 @@ internal class ContributionHintFirGenerator(session: FirSession, options: MetroO
     return (injectedClasses + contributedClasses).filterIsInstance<FirClassSymbol<*>>()
   }
 
-  val scopeSession = ScopeSession() // extension-level property
+  private val allSessions = session.memoizedAllSessionsSequence
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val contributedClassesByScope:
     FirCache<Unit, Map<CallableId, Set<FirClassSymbol<*>>>, Unit> =
@@ -96,26 +92,13 @@ internal class ContributionHintFirGenerator(session: FirSession, options: MetroO
 
         if (contributions.isEmpty()) continue
 
-        val file: FirFile =
-          session.firProvider.getFirClassifierContainerFileIfAny(contributingClass) ?: continue
-        val scopes = createImportingScopes(file, session, scopeSession)
-        val configuration = TypeResolutionConfiguration(scopes, emptyList(), useSiteFile = file)
+        val typeResolver = typeResolverFactory.create(contributingClass) ?: continue
 
         val contributionScopes: Set<ClassId> =
           contributions.mapNotNullToSet { annotation ->
             annotation.scopeArgument()?.let { getClassCall ->
               val reference = getClassCall.resolvedArgumentTypeRef() ?: return@let null
-              val result =
-                session.typeResolver.resolveType(
-                  typeRef = reference,
-                  configuration = configuration,
-                  areBareTypesAllowed = true,
-                  isOperandOfIsOperator = false,
-                  resolveDeprecations = false,
-                  supertypeSupplier = SupertypeSupplier.Default,
-                  expandTypeAliases = false,
-                )
-              result.type.classId ?: return@let null
+              typeResolver.resolveType(typeRef = reference).classId ?: return@let null
             }
           }
         for (contributionScope in contributionScopes) {

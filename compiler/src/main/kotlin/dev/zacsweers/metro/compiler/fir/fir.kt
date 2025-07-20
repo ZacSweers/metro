@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.generators.collectAbstractFunctions
 import dev.zacsweers.metro.compiler.mapToArray
+import dev.zacsweers.metro.compiler.memoized
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
@@ -29,6 +30,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirMemberDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
+import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.evaluateAs
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
@@ -64,6 +66,7 @@ import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeR
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.QualifierPartBuilder
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.render
@@ -363,20 +366,24 @@ internal inline fun FirClassSymbol<*>.findInjectConstructor(
     0 -> null
     1 -> {
       constructorInjections[0].also {
-        if (it.isPrimary) {
+        val warnOnInjectAnnotationPlacement =
+          session.metroFirBuiltIns.options.warnOnInjectAnnotationPlacement
+        if (warnOnInjectAnnotationPlacement && constructors(session).size == 1) {
           val isAssisted =
             it.resolvedCompilerAnnotationsWithClassIds.isAnnotatedWithAny(
               session,
               session.classIds.assistedAnnotations,
             )
-          if (!isAssisted && it.valueParameterSymbols.isEmpty()) {
-            val inject =
-              it.resolvedCompilerAnnotationsWithClassIds
-                .annotationsIn(session, session.classIds.injectAnnotations)
-                .single()
-            if (KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)) {
-              reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION_IF_NO_PARAMS)
-            }
+          val inject =
+            it.resolvedCompilerAnnotationsWithClassIds
+              .annotationsIn(session, session.classIds.injectAnnotations)
+              .singleOrNull()
+          if (
+            !isAssisted &&
+              inject != null &&
+              KotlinTarget.CLASS in inject.getAllowedAnnotationTargets(session)
+          ) {
+            reporter.reportOn(inject.source, FirMetroErrors.SUGGEST_CLASS_INJECTION)
           }
         }
       }
@@ -868,16 +875,21 @@ internal fun FirAnnotation.resolvedExcludedClassIds(
 }
 
 internal fun FirAnnotation.resolvedReplacedClassIds(
-  typeResolver: TypeResolveService
+  typeResolver: MetroFirTypeResolver
 ): Set<ClassId> {
   val replacesArgument =
     replacesArgument()?.argumentList?.arguments?.mapNotNull { it.expectAsOrNull<FirGetClassCall>() }
       ?: return emptySet()
-  // Try to resolve it normally first. If this fails,
-  // try to resolve within the enclosing scope
   val replaced =
-    replacesArgument.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
-      ?: replacesArgument.mapNotNull { it.resolvedArgumentConeKotlinType(typeResolver)?.classId }
+    replacesArgument.mapNotNull { getClassCall ->
+      // If it's available and resolved, just use it directly!
+      getClassCall.coneTypeIfResolved()?.classId?.let {
+        return@mapNotNull it
+      }
+      // Otherwise fall back to trying to parse from the reference
+      val reference = getClassCall.resolvedArgumentTypeRef() ?: return@mapNotNull null
+      typeResolver.resolveType(reference).classId
+    }
   return replaced.toSet()
 }
 
@@ -896,12 +908,20 @@ internal fun FirAnnotation.resolvedArgumentConeKotlinType(
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService
 ): ConeKotlinType? {
-  if (isResolved) {
-    return (argument as? FirClassReferenceExpression?)?.classTypeRef?.coneTypeOrNull
+  coneTypeIfResolved()?.let {
+    return it
   }
-
   val ref = resolvedArgumentTypeRef() ?: return null
   return typeResolver.resolveUserType(ref).coneType
+}
+
+private fun FirGetClassCall.coneTypeIfResolved(): ConeKotlinType? {
+  return when (val arg = argument) {
+    // I'm not really sure why these sometimes come down as different types but shrug
+    is FirClassReferenceExpression if (isResolved) -> arg.classTypeRef.coneTypeOrNull
+    is FirResolvedQualifier if (isResolved) -> arg.resolvedType
+    else -> null
+  }
 }
 
 internal fun FirGetClassCall.resolvedArgumentTypeRef(): FirUserTypeRef? {
@@ -1132,3 +1152,6 @@ internal fun typeRefFromQualifierParts(
   }
   return userTypeRef
 }
+
+internal val FirSession.memoizedAllSessionsSequence: Sequence<FirSession>
+  get() = sequenceOf(this).plus(moduleData.allDependsOnDependencies.map { it.session }).memoized()

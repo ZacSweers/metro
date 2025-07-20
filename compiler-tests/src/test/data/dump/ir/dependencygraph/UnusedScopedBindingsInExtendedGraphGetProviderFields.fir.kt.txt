@@ -20,7 +20,7 @@ interface AppGraph {
     private /* final field */ val thisGraphInstance: AppGraph = <this>
     private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val provideStringProvider: Provider<String> = Companion.provider<Provider<String>, String>(delegate = Companion.create(instance = <this>.#thisGraphInstance))
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -69,7 +69,7 @@ interface AppGraph {
 
     }
 
-    constructor(instance: AppGraph) /* primary */ {
+    private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -106,7 +106,7 @@ interface AppGraph {
 
     }
 
-    constructor(instance: AppGraph) /* primary */ {
+    private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

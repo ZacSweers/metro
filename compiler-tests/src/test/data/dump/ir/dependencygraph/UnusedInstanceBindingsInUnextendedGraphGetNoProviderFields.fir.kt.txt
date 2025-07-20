@@ -19,7 +19,7 @@ interface AppGraph {
   class $$MetroGraph : AppGraph {
     private /* final field */ val thisGraphInstance: AppGraph = <this>
     private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-    constructor(@Provides string: String) /* primary */ {
+    private constructor(@Provides string: String) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -53,7 +53,7 @@ interface AppGraph {
 
     }
 
-    constructor(instance: AppGraph) /* primary */ {
+    private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

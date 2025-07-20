@@ -58,7 +58,7 @@ interface ExampleGraph : $$MetroContributionToAppScope, $$MetroContributionToApp
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : ExampleGraph {
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 

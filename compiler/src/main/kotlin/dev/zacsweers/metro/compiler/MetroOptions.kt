@@ -159,6 +159,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  CHUNK_FIELD_INITS(
+    RawMetroOption.boolean(
+      name = "chunk-field-inits",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable chunking of field initializers in binding graphs.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -169,6 +179,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
+    )
+  ),
+  WARN_ON_INJECT_ANNOTATION_PLACEMENT(
+    RawMetroOption.boolean(
+      name = "warn-on-inject-annotation-placement",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable suggestion to lift @Inject to class when there is only one constructor.",
+      required = false,
+      allowMultipleOccurrences = false,
     )
   ),
   LOGGING(
@@ -483,6 +504,7 @@ public data class MetroOptions(
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
+  val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -491,6 +513,8 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
+  val warnOnInjectAnnotationPlacement: Boolean =
+    MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -611,6 +635,9 @@ public data class MetroOptions(
           MetroOption.SHRINK_UNUSED_BINDINGS ->
             options = options.copy(shrinkUnusedBindings = configuration.getAsBoolean(entry))
 
+          MetroOption.CHUNK_FIELD_INITS ->
+            options = options.copy(chunkFieldInits = configuration.getAsBoolean(entry))
+
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =
               options.copy(
@@ -619,6 +646,10 @@ public data class MetroOptions(
                     DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
                   }
               )
+
+          MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+            options =
+              options.copy(warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry))
 
           MetroOption.LOGGING -> {
             enabledLoggers +=

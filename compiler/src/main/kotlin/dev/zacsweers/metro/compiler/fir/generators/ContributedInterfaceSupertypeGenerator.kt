@@ -5,10 +5,12 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -22,7 +24,6 @@ import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
-import kotlin.sequences.filterNot
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -69,6 +70,9 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .filterIsInstance<FirRegularClassSymbol>()
       .toSet()
   }
+
+  private val allSessions = session.memoizedAllSessionsSequence
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Set<ClassId>, TypeResolveService> =
@@ -283,9 +287,12 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .filterIsInstance<ConeClassLikeType>()
       .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
       .flatMap { contributingType ->
+        val localTypeResolver =
+          typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
+
         contributingType
           .annotationsIn(session, session.classIds.allContributesAnnotations)
-          .flatMap { annotation -> annotation.resolvedReplacedClassIds(typeResolver) }
+          .flatMap { annotation -> annotation.resolvedReplacedClassIds(localTypeResolver) }
       }
       .distinct()
       .forEach { replacedClassId ->

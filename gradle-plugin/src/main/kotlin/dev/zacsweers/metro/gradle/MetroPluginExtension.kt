@@ -80,6 +80,10 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
+  /** Enable/disable chunking of field initializers. Disabled by default. */
+  public val chunkFieldInits: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
@@ -101,6 +105,13 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
       .convention(
         providers.gradleProperty("metro.version.check").map { it.toBoolean() }.orElse(true)
       )
+
+  /**
+   * Enable/disable suggestion to lift @Inject to class when there is only one constructor. Enabled
+   * by default.
+   */
+  public val warnOnInjectAnnotationPlacement: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /**
    * If set, the Metro compiler will dump report diagnostics about resolved dependency graphs to the

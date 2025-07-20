@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -188,6 +189,10 @@ internal class ContributionsFirGenerator(session: FirSession) :
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
+    // Don't generate nested classes for @BindingContainer-annotated classes
+    if (classSymbol.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
+      return emptySet()
+    }
     return contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
   }
 

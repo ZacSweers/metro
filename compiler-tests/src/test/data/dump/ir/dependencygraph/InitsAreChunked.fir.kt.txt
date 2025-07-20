@@ -63,7 +63,7 @@ class Service10 {
 
     }
 
-    constructor(s9: Provider<Service9>) /* primary */ {
+    private constructor(s9: Provider<Service9>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -115,7 +115,7 @@ class Service11 {
 
     }
 
-    constructor(s10: Provider<Service10>) /* primary */ {
+    private constructor(s10: Provider<Service10>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -167,7 +167,7 @@ class Service12 {
 
     }
 
-    constructor(s11: Provider<Service11>) /* primary */ {
+    private constructor(s11: Provider<Service11>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -219,7 +219,7 @@ class Service13 {
 
     }
 
-    constructor(s12: Provider<Service12>) /* primary */ {
+    private constructor(s12: Provider<Service12>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -271,7 +271,7 @@ class Service14 {
 
     }
 
-    constructor(s13: Provider<Service13>) /* primary */ {
+    private constructor(s13: Provider<Service13>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -323,7 +323,7 @@ class Service15 {
 
     }
 
-    constructor(s14: Provider<Service14>) /* primary */ {
+    private constructor(s14: Provider<Service14>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -375,7 +375,7 @@ class Service16 {
 
     }
 
-    constructor(s15: Provider<Service15>) /* primary */ {
+    private constructor(s15: Provider<Service15>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -427,7 +427,7 @@ class Service17 {
 
     }
 
-    constructor(s16: Provider<Service16>) /* primary */ {
+    private constructor(s16: Provider<Service16>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -479,7 +479,7 @@ class Service18 {
 
     }
 
-    constructor(s17: Provider<Service17>) /* primary */ {
+    private constructor(s17: Provider<Service17>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -531,7 +531,7 @@ class Service19 {
 
     }
 
-    constructor(s18: Provider<Service18>) /* primary */ {
+    private constructor(s18: Provider<Service18>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -583,7 +583,7 @@ class Service2 {
 
     }
 
-    constructor(s1: Provider<Service1>) /* primary */ {
+    private constructor(s1: Provider<Service1>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -635,7 +635,7 @@ class Service20 {
 
     }
 
-    constructor(s19: Provider<Service19>) /* primary */ {
+    private constructor(s19: Provider<Service19>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -687,7 +687,7 @@ class Service21 {
 
     }
 
-    constructor(s20: Provider<Service20>) /* primary */ {
+    private constructor(s20: Provider<Service20>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -739,7 +739,7 @@ class Service22 {
 
     }
 
-    constructor(s21: Provider<Service21>) /* primary */ {
+    private constructor(s21: Provider<Service21>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -791,7 +791,7 @@ class Service23 {
 
     }
 
-    constructor(s22: Provider<Service22>) /* primary */ {
+    private constructor(s22: Provider<Service22>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -843,7 +843,7 @@ class Service24 {
 
     }
 
-    constructor(s23: Provider<Service23>) /* primary */ {
+    private constructor(s23: Provider<Service23>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -895,7 +895,7 @@ class Service25 {
 
     }
 
-    constructor(s24: Provider<Service24>) /* primary */ {
+    private constructor(s24: Provider<Service24>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -947,7 +947,7 @@ class Service26 {
 
     }
 
-    constructor(s25: Provider<Service25>) /* primary */ {
+    private constructor(s25: Provider<Service25>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -999,7 +999,7 @@ class Service27 {
 
     }
 
-    constructor(s26: Provider<Service26>) /* primary */ {
+    private constructor(s26: Provider<Service26>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1051,7 +1051,7 @@ class Service28 {
 
     }
 
-    constructor(s27: Provider<Service27>) /* primary */ {
+    private constructor(s27: Provider<Service27>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1103,7 +1103,7 @@ class Service29 {
 
     }
 
-    constructor(s28: Provider<Service28>) /* primary */ {
+    private constructor(s28: Provider<Service28>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1155,7 +1155,7 @@ class Service3 {
 
     }
 
-    constructor(s2: Provider<Service2>) /* primary */ {
+    private constructor(s2: Provider<Service2>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1207,7 +1207,7 @@ class Service30 {
 
     }
 
-    constructor(s29: Provider<Service29>) /* primary */ {
+    private constructor(s29: Provider<Service29>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1259,7 +1259,7 @@ class Service4 {
 
     }
 
-    constructor(s3: Provider<Service3>) /* primary */ {
+    private constructor(s3: Provider<Service3>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1311,7 +1311,7 @@ class Service5 {
 
     }
 
-    constructor(s4: Provider<Service4>) /* primary */ {
+    private constructor(s4: Provider<Service4>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1363,7 +1363,7 @@ class Service6 {
 
     }
 
-    constructor(s5: Provider<Service5>) /* primary */ {
+    private constructor(s5: Provider<Service5>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1415,7 +1415,7 @@ class Service7 {
 
     }
 
-    constructor(s6: Provider<Service6>) /* primary */ {
+    private constructor(s6: Provider<Service6>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1467,7 +1467,7 @@ class Service8 {
 
     }
 
-    constructor(s7: Provider<Service7>) /* primary */ {
+    private constructor(s7: Provider<Service7>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1519,7 +1519,7 @@ class Service9 {
 
     }
 
-    constructor(s8: Provider<Service8>) /* primary */ {
+    private constructor(s8: Provider<Service8>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -1592,7 +1592,7 @@ interface AppGraph {
     private var service28Provider: Provider<Service28>
     private var service29Provider: Provider<Service29>
     private var service30Provider: Provider<Service30>
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 

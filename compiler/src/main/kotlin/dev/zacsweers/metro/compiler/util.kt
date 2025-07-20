@@ -59,6 +59,10 @@ internal fun <T, R : Any> Iterable<T>.mapNotNullToSet(transform: (T) -> R?): Set
   return mapNotNullTo(mutableSetOf(), transform)
 }
 
+internal fun <T, R : Any> Sequence<T>.mapNotNullToSet(transform: (T) -> R?): Set<R> {
+  return mapNotNullTo(mutableSetOf(), transform)
+}
+
 internal inline fun <T, reified R> List<T>.mapToArray(transform: (T) -> R): Array<R> {
   return Array(size) { transform(get(it)) }
 }

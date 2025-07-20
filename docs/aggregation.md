@@ -228,7 +228,9 @@ interface TestAppGraph {
 
 ## `@ContributesGraphExtension`
 
-Not yet implemented. Please share design feedback in [#165](https://github.com/ZacSweers/metro/issues/165)!
+`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
+
+See [Dependency Graphs](dependency-graphs.md#contributed-graph-extensions) for motivation and documentation.
 
 ## Implementation notes
 

@@ -24,7 +24,7 @@ class X {
 
     }
 
-    constructor(y: Provider<Y>) /* primary */ {
+    private constructor(y: Provider<Y>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -79,7 +79,7 @@ class Y {
 
     }
 
-    constructor(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>) /* primary */ {
+    private constructor(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -122,7 +122,7 @@ interface CycleMapGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : CycleMapGraph {
     private /* final field */ val yProvider: Provider<Y> = DelegateFactory<Y>()
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
