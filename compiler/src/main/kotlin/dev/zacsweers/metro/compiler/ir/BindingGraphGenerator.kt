@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -228,9 +229,6 @@ internal class BindingGraphGenerator(
         val multibinding =
           IrBinding.Multibinding.fromMultibindsDeclaration(getter, multibinds, contextualTypeKey)
         graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
-
-        // Record an IC lookup
-        trackFunctionCall(node.sourceGraph, getter.ir)
       } else {
         // If it's already in the graph, ensure its allowEmpty is up to date and update its
         // location
@@ -242,6 +240,10 @@ internal class BindingGraphGenerator(
             it.declaration = getter.ir
           }
       }
+
+      // Record an IC lookup
+      trackClassLookup(node.sourceGraph, getter.ir.propertyIfAccessor.parentAsClass)
+      trackFunctionCall(node.sourceGraph, getter.ir)
     }
 
     node.multibindsCallables.forEach { multibindsCallable ->
