@@ -163,10 +163,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         }
       }
 
+    val bindingContainerAnnotation = declaration
+      .annotationsIn(symbols.classIds.bindingContainerAnnotations)
+      .singleOrNull()
     val includes =
-      declaration
-        .annotationsIn(symbols.classIds.bindingContainerAnnotations)
-        .singleOrNull()
+      bindingContainerAnnotation
         ?.includedClasses()
         ?.mapNotNullToSet { it.classType.rawTypeOrNull()?.classIdOrFail }
 
@@ -181,26 +182,25 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         multibindsCallables,
       )
 
-    if (container.isEmpty()) {
-      cache[declarationFqName] = Optional.empty()
-      return null
-    }
-
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
     // providers to consume here even if they are private.
-    val shouldGenerateMetadata =
-      !container.isEmpty() &&
-        !declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations)
+    // We always generate metadata for binding containers because they can be included in graphs without inheritance
+    val shouldGenerateMetadata = bindingContainerAnnotation != null || (!(container.isEmpty() || isGraph))
 
     if (shouldGenerateMetadata) {
       val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = container.toProto())
       declaration.metroMetadata = metroMetadata
     }
 
-    cache[declarationFqName] = Optional.of(container)
-    generatedFactories.putAll(providerFactories)
-    return container
+    return if (container.isEmpty()) {
+      cache[declarationFqName] = Optional.empty()
+      null
+    } else {
+      cache[declarationFqName] = Optional.of(container)
+      generatedFactories.putAll(providerFactories)
+      container
+    }
   }
 
   private fun visitProperty(
