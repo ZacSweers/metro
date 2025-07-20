@@ -148,6 +148,12 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
         )
       },
     includedBindingContainers = includes.map { it.asString() },
+    multibindsCallableIds = multibindsCallables.mapToSet {
+      MultibindsCallableId(
+        it.callableId.classId!!.protoString,
+        it.callableId.callableName.asString(),
+      )
+    }
   )
 }
 
