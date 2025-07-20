@@ -414,7 +414,7 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
 
             @ContributesTo(AppScope::class)
             interface MultibindingsModule2 {
-              // Important for @Multibinding to be used for this test's coverage, as opposed to @ElementsIntoSet
+              // Important for @Multibinds to be used for this test's coverage, as opposed to @ElementsIntoSet
               @Multibinds(allowEmpty = true)
               fun provideMulti(): Set<@JvmSuppressWildcards MultiboundType>
             }

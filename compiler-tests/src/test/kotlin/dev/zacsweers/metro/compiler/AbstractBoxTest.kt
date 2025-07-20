@@ -3,7 +3,9 @@
 package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.config.JvmTarget
+import org.jetbrains.kotlin.test.backend.handlers.NoFir2IrCompilationErrorsHandler
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
+import org.jetbrains.kotlin.test.builders.configureIrHandlersStep
 import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
@@ -30,6 +32,13 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
         +WITH_STDLIB
 
         +IGNORE_DEXING // Avoids loading R8 from the classpath.
+      }
+
+      configureIrHandlersStep {
+        useHandlers(
+          // Errors in compiler plugin backend should fail test without running box function.
+          ::NoFir2IrCompilationErrorsHandler
+        )
       }
     }
   }

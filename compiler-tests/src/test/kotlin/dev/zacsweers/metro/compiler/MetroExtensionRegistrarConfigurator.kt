@@ -82,6 +82,24 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
               add(ClassId.fromString("dagger/Component"))
             }
           },
+        customAssistedAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/assisted/Assisted"))
+            }
+          },
+        customAssistedFactoryAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/assisted/AssistedFactory"))
+            }
+          },
+        customAssistedInjectAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/assisted/AssistedInject"))
+            }
+          },
         customGraphFactoryAnnotations =
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {
