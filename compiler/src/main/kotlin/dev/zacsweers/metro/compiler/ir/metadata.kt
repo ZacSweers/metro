@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.BindsCallableId
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
+import dev.zacsweers.metro.compiler.proto.MultibindsCallableId
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -21,6 +22,9 @@ import org.jetbrains.kotlin.name.ClassId
 
 private val BINDS_CALLABLE_ID_COMPARATOR: Comparator<BindsCallableId> =
   compareBy<BindsCallableId> { it.class_id }.thenBy { it.callable_name }.thenBy { it.is_property }
+
+private val MULTIBINDS_CALLABLE_ID_COMPARATOR: Comparator<MultibindsCallableId> =
+  compareBy<MultibindsCallableId> { it.class_id }.thenBy { it.callable_name }.thenBy { it.is_property }
 
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
@@ -35,6 +39,45 @@ internal var IrClass.metroMetadata: MetroMetadata?
   }
 
 context(context: IrMetroContext)
+private fun <T> createBindLikeCallableId(
+  declaration: IrSimpleFunction?,
+  createType: (String, String, Boolean) -> T
+): T? {
+  // Grab the right declaration. If this is an override, look up the original
+  val declarationToCheck =
+    declaration
+      ?.overriddenSymbolsSequence()
+      ?.map { it.owner }
+      ?.lastOrNull {
+        it.isAnnotatedWithAny(context.symbols.classIds.bindsAnnotations)
+      } ?: declaration
+
+  return declarationToCheck?.propertyIfAccessor?.expectAsOrNull<IrDeclarationWithName>()?.let {
+    when (it) {
+      is IrSimpleFunction -> {
+        val callableId = it.callableId
+        return@let createType(
+          callableId.classId!!.asString(),
+          callableId.callableName.asString(),
+          false,
+        )
+      }
+
+      is IrProperty -> {
+        val callableId = it.callableId
+        return@let createType(
+          callableId.classId!!.asString(),
+          callableId.callableName.asString(),
+          true,
+        )
+      }
+
+      else -> null
+    }
+  }
+}
+
+context(context: IrMetroContext)
 internal fun DependencyGraphNode.toProto(
   bindingGraph: IrBindingGraph,
   includedGraphClasses: Set<String>,
@@ -42,41 +85,28 @@ internal fun DependencyGraphNode.toProto(
   providerFields: List<String>,
   instanceFields: List<String>,
 ): DependencyGraphProto {
-  val bindsCallableIds =
-    bindingGraph.bindingsSnapshot().values.filterIsInstance<IrBinding.Alias>().mapNotNullToSet {
-      binding ->
+  val bindsCallableIds = mutableSetOf<BindsCallableId>()
+  val multibindsCallableIds = mutableSetOf<MultibindsCallableId>()
 
-      // Grab the right declaration. If this is an override, look up the original
-      val declarationToCheck =
-        binding.ir
-          ?.overriddenSymbolsSequence()
-          ?.map { it.owner }
-          ?.lastOrNull {
-            it.isAnnotatedWithAny(context.symbols.classIds.bindingContainerAnnotations)
-          } ?: binding.ir
-
-      declarationToCheck?.propertyIfAccessor?.expectAsOrNull<IrDeclarationWithName>()?.let {
-        when (it) {
-          is IrSimpleFunction -> {
-            val callableId = it.callableId
-            return@let BindsCallableId(
-              callableId.classId!!.asString(),
-              callableId.callableName.asString(),
-              is_property = false,
-            )
+  for (binding in bindingGraph.bindingsSnapshot().values) {
+    when (binding) {
+      is IrBinding.Alias -> {
+        binding.ir?.let { declaration ->
+          createBindLikeCallableId(declaration, ::BindsCallableId)?.let {
+            bindsCallableIds.add(it)
           }
-          is IrProperty -> {
-            val callableId = it.callableId
-            return@let BindsCallableId(
-              callableId.classId!!.asString(),
-              callableId.callableName.asString(),
-              is_property = true,
-            )
-          }
-          else -> null
         }
       }
+      is IrBinding.Multibinding -> {
+        binding.declaration?.let { declaration ->
+          createBindLikeCallableId(declaration, ::MultibindsCallableId)?.let {
+            multibindsCallableIds.add(it)
+          }
+        }
+      }
+      else -> continue
     }
+  }
 
   var multibindingAccessors = 0
   val accessorNames =
@@ -98,6 +128,7 @@ internal fun DependencyGraphNode.toProto(
     providerFactories = providerFactories,
     accessorNames = accessorNames,
     bindsCallableIds = bindsCallableIds,
+    multibindsCallableIds = multibindsCallableIds,
     includedGraphClasses = includedGraphClasses,
     parentGraphClasses = parentGraphClasses,
     multibindingAccessorIndices = multibindingAccessors,
@@ -130,6 +161,7 @@ private fun createGraphProto(
   accessorNames: Collection<String> = emptyList(),
   // TODO would be nice if we could store this info entirely in metadata but requires types
   bindsCallableIds: Set<BindsCallableId> = emptySet(),
+  multibindsCallableIds: Set<MultibindsCallableId> = emptySet(),
   includedGraphClasses: Collection<String> = emptyList(),
   parentGraphClasses: Collection<String> = emptyList(),
   multibindingAccessorIndices: Int = 0,
@@ -142,6 +174,7 @@ private fun createGraphProto(
     provider_factory_classes =
       providerFactories.map { (_, factory) -> factory.clazz.classIdOrFail.protoString }.sorted(),
     binds_callable_ids = bindsCallableIds.sortedWith(BINDS_CALLABLE_ID_COMPARATOR),
+    multibinds_callable_ids = multibindsCallableIds.sortedWith(MULTIBINDS_CALLABLE_ID_COMPARATOR),
     accessor_callable_names = accessorNames.sorted(),
     included_classes = includedGraphClasses.sorted(),
     parent_graph_classes = parentGraphClasses.sorted(),

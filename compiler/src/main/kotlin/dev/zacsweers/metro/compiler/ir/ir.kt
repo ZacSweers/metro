@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -1405,4 +1406,17 @@ internal fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression)
     typeArgs = listOf(type),
     args = listOf(arg),
   )
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotation.allowEmpty(): Boolean {
+  ir.getSingleConstBooleanArgumentOrNull()?.let {
+    // Explicit, return it
+    return it
+  }
+  // Retain Dagger's behavior in interop if using their annotation
+  val assumeAllowEmpty =
+    context.options.enableDaggerRuntimeInterop &&
+      ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
+  return assumeAllowEmpty
 }

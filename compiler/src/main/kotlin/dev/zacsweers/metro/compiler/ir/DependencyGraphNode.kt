@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.transformers.BindsCallable
+import dev.zacsweers.metro.compiler.ir.transformers.MultibindsCallable
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -32,6 +33,7 @@ internal data class DependencyGraphNode(
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val bindsCallables: Set<BindsCallable>,
+  val multibindsCallables: Set<MultibindsCallable>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
   /** Fake overrides of binds functions that need stubbing. */
@@ -60,10 +62,10 @@ internal data class DependencyGraphNode(
   val multibindingAccessors by unsafeLazy {
     proto
       ?.let {
-        val bitfield = it.multibinding_accessor_indices
+        val bitfield = BitField(it.multibinding_accessor_indices)
         val multibindingCallableIds =
           it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
-            (bitfield shr index) and 1 == 1
+            bitfield.isSet(index)
           }
         accessors
           .filter { it.first.ir.name.asString() in multibindingCallableIds }

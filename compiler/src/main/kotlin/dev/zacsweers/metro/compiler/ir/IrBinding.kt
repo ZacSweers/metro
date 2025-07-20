@@ -465,14 +465,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         multibinds: IrAnnotation,
         contextualTypeKey: IrContextualTypeKey,
       ): Multibinding {
-        // Retain Dagger's behavior in interop if using their annotation
-        val assumeAllowEmpty =
-          context.options.enableDaggerRuntimeInterop &&
-            multibinds.ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
         return create(
           typeKey = contextualTypeKey.typeKey,
           declaration = getter.ir,
-          allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: assumeAllowEmpty,
+          allowEmpty = multibinds.allowEmpty(),
         )
       }
 

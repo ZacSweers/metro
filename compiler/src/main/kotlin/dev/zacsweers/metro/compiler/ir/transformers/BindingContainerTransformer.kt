@@ -121,6 +121,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val providerFactories = mutableMapOf<CallableId, ProviderFactory>()
     val bindsCallables = mutableSetOf<BindsCallable>()
+    val multibindsCallables = mutableSetOf<MultibindsCallable>()
 
     declaration.declarations
       .asSequence()
@@ -137,10 +138,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
               providerFactories[nestedDeclaration.callableId] =
                 visitProperty(nestedDeclaration, metroFunction)
             } else if (metroFunction.annotations.isBinds) {
-              // Check if it's @Binds
-              if (metroFunction.annotations.isBinds) {
-                bindsCallables += metroFunction.toBindsCallable()
-              }
+              bindsCallables += metroFunction.toBindsCallable()
+            } else if (metroFunction.annotations.isMultibinds) {
+              multibindsCallables += metroFunction.toMultibindsCallable()
             }
           }
           is IrSimpleFunction -> {
@@ -149,10 +149,9 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
               providerFactories[nestedDeclaration.callableId] =
                 visitFunction(nestedDeclaration, metroFunction)
             } else if (metroFunction.annotations.isBinds) {
-              // Check if it's @Binds
-              if (metroFunction.annotations.isBinds) {
-                bindsCallables += metroFunction.toBindsCallable()
-              }
+              bindsCallables += metroFunction.toBindsCallable()
+            } else if (metroFunction.annotations.isMultibinds) {
+              multibindsCallables += metroFunction.toMultibindsCallable()
             }
           }
           is IrClass if (nestedDeclaration.isCompanionObject) -> {
@@ -171,14 +170,21 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         ?.includedClasses()
         ?.mapNotNullToSet { it.classType.rawTypeOrNull()?.classIdOrFail }
 
-    if (includes.isNullOrEmpty() && providerFactories.isEmpty() && bindsCallables.isEmpty()) {
+    val isGraph = declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations)
+    val container =
+      BindingContainer(
+        isGraph,
+        declaration,
+        includes.orEmpty(),
+        providerFactories,
+        bindsCallables,
+        multibindsCallables,
+      )
+
+    if (container.isEmpty()) {
       cache[declarationFqName] = Optional.empty()
       return null
     }
-
-    val isGraph = declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations)
-    val container =
-      BindingContainer(isGraph, declaration, includes.orEmpty(), providerFactories, bindsCallables)
 
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
@@ -705,6 +711,45 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         }
       }
 
+    // Add any multibinds callables
+    // TODO dedupe code
+    val multibindsCallables =
+      graphProto.multibinds_callable_ids.flatMapToSet { multibindsCallableId ->
+        val classId = ClassId.fromString(multibindsCallableId.class_id)
+        val callableId = CallableId(classId, multibindsCallableId.callable_name.asName())
+
+        val functions =
+          if (multibindsCallableId.is_property) {
+            pluginContext.referenceProperties(callableId).mapNotNull { it.owner.getter }
+          } else {
+            pluginContext.referenceFunctions(callableId).map { it.owner }
+          }
+
+        if (functions.isEmpty()) {
+          val message = buildString {
+            append("No function found for ")
+            appendLine(callableId)
+            callableId.classId?.let {
+              pluginContext.referenceClass(it)?.let {
+                appendLine("Class dump")
+                appendLine(it.owner.dumpKotlinLike())
+              }
+            }
+              ?: run {
+                append("No class found for ")
+                appendLine(callableId)
+              }
+          }
+          error(message)
+        }
+
+        functions.map { function ->
+          val metroFunction = metroFunctionOf(function)
+          val target = IrContextualTypeKey.from(function).typeKey
+          MultibindsCallable(callableId, metroFunction, target)
+        }
+      }
+
     val includedBindingContainers =
       graphProto.included_binding_containers.mapToSet { ClassId.fromString(it) }
 
@@ -715,6 +760,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         includedBindingContainers,
         providerFactories,
         bindsCallables,
+        multibindsCallables,
       )
 
     // Cache the results
@@ -731,19 +777,24 @@ internal class BindingContainer(
   val includes: Set<ClassId>,
   /** Mapping of provider factories by their [CallableId]. */
   val providerFactories: Map<CallableId, ProviderFactory>,
-  /** Mapping of binds callables by their [CallableId]. */
+  /** Set of binds callables by their [CallableId]. */
   val bindsCallables: Set<BindsCallable>,
+  /** Set of multibinds callables by their [BindsCallable]. */
+  val multibindsCallables: Set<MultibindsCallable>,
 ) {
   /**
    * Simple classes with a public, no-arg constructor can be managed directly by the consuming
    * graph.
    */
   val canBeManaged by unsafeLazy {
-    // TODO Primary constructor is checked in FIR
     ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT
   }
 
-  fun isEmpty() = includes.isEmpty() && providerFactories.isEmpty() && bindsCallables.isEmpty()
+  fun isEmpty() =
+    includes.isEmpty() &&
+      providerFactories.isEmpty() &&
+      bindsCallables.isEmpty() &&
+      multibindsCallables.isEmpty()
 }
 
 @Poko
@@ -752,6 +803,13 @@ internal class BindsCallable(
   @Poko.Skip val function: MetroSimpleFunction,
   val source: IrTypeKey,
   val target: IrTypeKey,
+)
+
+@Poko
+internal class MultibindsCallable(
+  val callableId: CallableId,
+  @Poko.Skip val function: MetroSimpleFunction,
+  val typeKey: IrTypeKey,
 )
 
 context(context: IrMetroContext)
@@ -769,4 +827,16 @@ internal fun MetroSimpleFunction.toBindsCallable(): BindsCallable {
     IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
     IrContextualTypeKey.from(ir).typeKey,
   )
+}
+
+context(context: IrMetroContext)
+internal fun MetroSimpleFunction.toMultibindsCallable(): MultibindsCallable {
+  val declarationToStore = ir.propertyIfAccessor
+  val callableId =
+    if (declarationToStore is IrProperty) {
+      declarationToStore.callableId
+    } else {
+      callableId
+    }
+  return MultibindsCallable(callableId, this, IrContextualTypeKey.from(ir).typeKey)
 }

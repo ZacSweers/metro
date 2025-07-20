@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.BindsCallable
+import dev.zacsweers.metro.compiler.ir.transformers.MultibindsCallable
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
@@ -90,6 +91,7 @@ internal class DependencyGraphNodeCache(
     private val accessors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableSetOf<BindsCallable>()
+    private val multibindsCallables = mutableSetOf<MultibindsCallable>()
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
@@ -444,6 +446,7 @@ internal class DependencyGraphNodeCache(
       for (container in mergedContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }
         bindsCallables += container.bindsCallables
+        multibindsCallables += container.multibindsCallables
 
         // Record an IC lookup of the container class
         trackClassLookup(graphDeclaration, container.ir)
@@ -463,6 +466,7 @@ internal class DependencyGraphNodeCache(
           scopes = scopes,
           bindsCallables = bindsCallables,
           bindsFunctions = bindsFunctions.map { it.first },
+          multibindsCallables = multibindsCallables,
           providerFactories = providerFactories,
           accessors = accessors,
           injectors = injectors,
@@ -606,6 +610,7 @@ internal class DependencyGraphNodeCache(
             exitProcessing()
           }
 
+          // TODO is this duplicating info we already have in the proto?
           bindingContainerTransformer
             .findContainer(graphDeclaration, graphProto = graphProto)
             ?.let { bindingContainer ->
@@ -613,6 +618,7 @@ internal class DependencyGraphNodeCache(
                 bindingContainer.providerFactories.values.map { it.typeKey to it }
 
               bindsCallables += bindingContainer.bindsCallables
+              multibindsCallables += bindingContainer.multibindsCallables
             }
 
           // Read scopes from annotations
@@ -658,6 +664,7 @@ internal class DependencyGraphNodeCache(
           providerFactories = providerFactories,
           accessors = accessors,
           bindsCallables = bindsCallables,
+          multibindsCallables = multibindsCallables,
           isExternal = true,
           proto = graphProto,
           extendedGraphNodes = extendedGraphNodes,

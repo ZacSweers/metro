@@ -219,6 +219,36 @@ internal class BindingGraphGenerator(
       )
     }
 
+    fun addOrUpdateMultibinding(
+      contextualTypeKey: IrContextualTypeKey,
+      getter: MetroSimpleFunction,
+      multibinds: IrAnnotation
+    ) {
+      if (contextualTypeKey.typeKey !in graph) {
+        val multibinding =
+          IrBinding.Multibinding.fromMultibindsDeclaration(getter, multibinds, contextualTypeKey)
+        graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
+
+        // Record an IC lookup
+        trackFunctionCall(node.sourceGraph, getter.ir)
+      } else {
+        // If it's already in the graph, ensure its allowEmpty is up to date and update its
+        // location
+        graph
+          .requireBinding(contextualTypeKey.typeKey, bindingStack)
+          .expectAs<IrBinding.Multibinding>()
+          .let {
+            it.allowEmpty = multibinds.allowEmpty()
+            it.declaration = getter.ir
+          }
+      }
+    }
+
+    node.multibindsCallables.forEach { multibindsCallable ->
+      val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
+      addOrUpdateMultibinding(contextKey, multibindsCallable.function, multibindsCallable.function.annotations.multibinds!!)
+    }
+
     // Traverse all parent graph supertypes to create binding aliases as needed
     node.allExtendedNodes.forEach { (typeKey, extendedNode) ->
       // If it's a contributed graph, add an alias for the parent types since that's what
@@ -271,22 +301,7 @@ internal class BindingGraphGenerator(
           contextualTypeKey,
           IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
         )
-        if (contextualTypeKey.typeKey !in graph) {
-          val multibinding =
-            IrBinding.Multibinding.fromMultibindsDeclaration(getter, multibinds, contextualTypeKey)
-          graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
-        } else {
-          // If it's already in the graph, ensure its allowEmpty is up to date and update its
-          // location
-          val allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
-          graph
-            .requireBinding(contextualTypeKey.typeKey, bindingStack)
-            .expectAs<IrBinding.Multibinding>()
-            .let {
-              it.allowEmpty = allowEmpty
-              it.declaration = getter.ir
-            }
-        }
+        addOrUpdateMultibinding(contextualTypeKey, getter, multibinds)
       } else {
         graph.addAccessor(
           contextualTypeKey,
