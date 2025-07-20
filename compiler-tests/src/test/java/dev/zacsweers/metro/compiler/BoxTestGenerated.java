@@ -72,12 +72,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("MultibindsOnlyInContainer.kt")
-    public void testMultibindsOnlyInContainer() {
-      runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
-    }
-
-    @Test
     @TestMetadata("ContributedEmpty.kt")
     public void testContributedEmpty() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedEmpty.kt");
@@ -87,6 +81,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ContributedWithOnlyMultibinds.kt")
     public void testContributedWithOnlyMultibinds() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedWithOnlyMultibinds.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsOnlyInContainer.kt")
+    public void testMultibindsOnlyInContainer() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
     }
 
     @Test
