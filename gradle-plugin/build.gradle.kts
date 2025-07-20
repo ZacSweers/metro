@@ -63,6 +63,7 @@ dependencies {
 }
 
 tasks.withType<Test>().configureEach {
+  maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   jvmArgs(
     "-Dcom.autonomousapps.plugin-under-test.version=${providers.gradleProperty("VERSION_NAME").get()}",
     "-Ddev.zacsweers.metro.gradle.test.kotlin-version=${libs.versions.kotlin.get()}",
