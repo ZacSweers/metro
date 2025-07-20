@@ -10,8 +10,10 @@ import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.doNotAnalyze
@@ -45,8 +47,14 @@ internal fun trackClassLookup(callingDeclaration: IrDeclaration, calleeClass: Ir
 context(context: IrMetroContext)
 internal fun trackFunctionCall(callingDeclaration: IrDeclaration, calleeFunction: IrFunction) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
-    val declaration =
+    val declaration: IrDeclarationWithName =
       (calleeFunction as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: calleeFunction
+    check(!declaration.isFakeOverride) {
+      "Cannot track fake overrides: $declaration"
+    }
+    checkNotNull(declaration.locationOrNull()) {
+      "Cannot track declaration without source: $declaration"
+    }
     trackLookup(
       container = calleeFunction.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
