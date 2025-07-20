@@ -223,7 +223,7 @@ internal class BindingGraphGenerator(
     fun addOrUpdateMultibinding(
       contextualTypeKey: IrContextualTypeKey,
       getter: MetroSimpleFunction,
-      multibinds: IrAnnotation
+      multibinds: IrAnnotation,
     ) {
       if (contextualTypeKey.typeKey !in graph) {
         val multibinding =
@@ -248,7 +248,11 @@ internal class BindingGraphGenerator(
 
     node.multibindsCallables.forEach { multibindsCallable ->
       val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
-      addOrUpdateMultibinding(contextKey, multibindsCallable.function, multibindsCallable.function.annotations.multibinds!!)
+      addOrUpdateMultibinding(
+        contextKey,
+        multibindsCallable.function,
+        multibindsCallable.function.annotations.multibinds!!,
+      )
     }
 
     // Traverse all parent graph supertypes to create binding aliases as needed

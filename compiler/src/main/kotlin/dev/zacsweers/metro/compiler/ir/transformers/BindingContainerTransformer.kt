@@ -163,13 +163,12 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         }
       }
 
-    val bindingContainerAnnotation = declaration
-      .annotationsIn(symbols.classIds.bindingContainerAnnotations)
-      .singleOrNull()
+    val bindingContainerAnnotation =
+      declaration.annotationsIn(symbols.classIds.bindingContainerAnnotations).singleOrNull()
     val includes =
-      bindingContainerAnnotation
-        ?.includedClasses()
-        ?.mapNotNullToSet { it.classType.rawTypeOrNull()?.classIdOrFail }
+      bindingContainerAnnotation?.includedClasses()?.mapNotNullToSet {
+        it.classType.rawTypeOrNull()?.classIdOrFail
+      }
 
     val isGraph = declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations)
     val container =
@@ -185,8 +184,10 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
     // providers to consume here even if they are private.
-    // We always generate metadata for binding containers because they can be included in graphs without inheritance
-    val shouldGenerateMetadata = bindingContainerAnnotation != null || (!(container.isEmpty() || isGraph))
+    // We always generate metadata for binding containers because they can be included in graphs
+    // without inheritance
+    val shouldGenerateMetadata =
+      bindingContainerAnnotation != null || (!(container.isEmpty() || isGraph))
 
     if (shouldGenerateMetadata) {
       val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = container.toProto())
@@ -786,9 +787,7 @@ internal class BindingContainer(
    * Simple classes with a public, no-arg constructor can be managed directly by the consuming
    * graph.
    */
-  val canBeManaged by unsafeLazy {
-    ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT
-  }
+  val canBeManaged by unsafeLazy { ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT }
 
   fun isEmpty() =
     includes.isEmpty() &&

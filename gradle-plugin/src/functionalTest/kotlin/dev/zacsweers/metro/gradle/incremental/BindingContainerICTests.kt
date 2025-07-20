@@ -1533,7 +1533,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
       .contains(
         """
         Target.kt:7:14 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
-    
+
             kotlin.collections.Set<kotlin.String> is injected at
                 [test.AppGraph] test.Target(…, strings)
             test.Target is requested at

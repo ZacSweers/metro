@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
-import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.BindsCallableId
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
@@ -24,7 +23,9 @@ private val BINDS_CALLABLE_ID_COMPARATOR: Comparator<BindsCallableId> =
   compareBy<BindsCallableId> { it.class_id }.thenBy { it.callable_name }.thenBy { it.is_property }
 
 private val MULTIBINDS_CALLABLE_ID_COMPARATOR: Comparator<MultibindsCallableId> =
-  compareBy<MultibindsCallableId> { it.class_id }.thenBy { it.callable_name }.thenBy { it.is_property }
+  compareBy<MultibindsCallableId> { it.class_id }
+    .thenBy { it.callable_name }
+    .thenBy { it.is_property }
 
 context(context: IrMetroContext)
 internal var IrClass.metroMetadata: MetroMetadata?
@@ -41,16 +42,15 @@ internal var IrClass.metroMetadata: MetroMetadata?
 context(context: IrMetroContext)
 private fun <T> createBindLikeCallableId(
   declaration: IrSimpleFunction?,
-  createType: (String, String, Boolean) -> T
+  createType: (String, String, Boolean) -> T,
 ): T? {
   // Grab the right declaration. If this is an override, look up the original
   val declarationToCheck =
     declaration
       ?.overriddenSymbolsSequence()
       ?.map { it.owner }
-      ?.lastOrNull {
-        it.isAnnotatedWithAny(context.symbols.classIds.bindsAnnotations)
-      } ?: declaration
+      ?.lastOrNull { it.isAnnotatedWithAny(context.symbols.classIds.bindsAnnotations) }
+      ?: declaration
 
   return declarationToCheck?.propertyIfAccessor?.expectAsOrNull<IrDeclarationWithName>()?.let {
     when (it) {
@@ -92,9 +92,7 @@ internal fun DependencyGraphNode.toProto(
     when (binding) {
       is IrBinding.Alias -> {
         binding.ir?.let { declaration ->
-          createBindLikeCallableId(declaration, ::BindsCallableId)?.let {
-            bindsCallableIds.add(it)
-          }
+          createBindLikeCallableId(declaration, ::BindsCallableId)?.let { bindsCallableIds.add(it) }
         }
       }
       is IrBinding.Multibinding -> {
@@ -148,12 +146,13 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
         )
       },
     includedBindingContainers = includes.map { it.asString() },
-    multibindsCallableIds = multibindsCallables.mapToSet {
-      MultibindsCallableId(
-        it.callableId.classId!!.protoString,
-        it.callableId.callableName.asString(),
-      )
-    }
+    multibindsCallableIds =
+      multibindsCallables.mapToSet {
+        MultibindsCallableId(
+          it.callableId.classId!!.protoString,
+          it.callableId.callableName.asString(),
+        )
+      },
   )
 }
 

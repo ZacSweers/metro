@@ -49,9 +49,7 @@ internal fun trackFunctionCall(callingDeclaration: IrDeclaration, calleeFunction
   callingDeclaration.withAnalyzableKtFile { filePath ->
     val declaration: IrDeclarationWithName =
       (calleeFunction as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: calleeFunction
-    check(!declaration.isFakeOverride) {
-      "Cannot track fake overrides: $declaration"
-    }
+    check(!declaration.isFakeOverride) { "Cannot track fake overrides: $declaration" }
     trackLookup(
       container = calleeFunction.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
