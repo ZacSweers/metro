@@ -52,9 +52,6 @@ internal fun trackFunctionCall(callingDeclaration: IrDeclaration, calleeFunction
     check(!declaration.isFakeOverride) {
       "Cannot track fake overrides: $declaration"
     }
-    checkNotNull(declaration.locationOrNull()) {
-      "Cannot track declaration without source: $declaration"
-    }
     trackLookup(
       container = calleeFunction.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
