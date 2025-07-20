@@ -4,6 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix:** Write `@Multibinds` information to metro metadata.
+- **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
+
 0.5.1
 -----
 
