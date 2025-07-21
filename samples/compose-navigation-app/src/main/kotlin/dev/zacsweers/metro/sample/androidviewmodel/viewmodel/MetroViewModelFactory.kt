@@ -20,9 +20,8 @@ import kotlin.reflect.KClass
 @ContributesBinding(AppScope::class)
 @Inject
 class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory {
-
   override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-    val viewModelGraph = createGraphFactory<ViewModelGraph.Factory>().create(appGraph, extras)
+    val viewModelGraph = viewModelGraph(extras)
 
     println(viewModelGraph.viewModelProviders)
 
@@ -33,4 +32,7 @@ class MetroViewModelFactory(val appGraph: AppGraph) : ViewModelProvider.Factory 
     @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
     return modelClass.cast(provider())
   }
+
+  fun viewModelGraph(extras: CreationExtras): ViewModelGraph =
+    createGraphFactory<ViewModelGraph.Factory>().create(appGraph, extras)
 }
