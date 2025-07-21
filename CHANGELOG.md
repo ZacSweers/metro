@@ -4,6 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: De-dupe contributions before processing in contributed graphs.
+- **Fix**: Don't extend contributed binding container classes in generated contributed graphs.
+
 0.5.1
 -----
 
