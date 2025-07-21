@@ -134,6 +134,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AssistedFactoryCycleWithInjectedType.kt")
+    public void testAssistedFactoryCycleWithInjectedType() {
+      runTest("compiler-tests/src/test/data/box/cycles/AssistedFactoryCycleWithInjectedType.kt");
+    }
+
+    @Test
     @TestMetadata("BindsCycleGraph.kt")
     public void testBindsCycleGraph() {
       runTest("compiler-tests/src/test/data/box/cycles/BindsCycleGraph.kt");
