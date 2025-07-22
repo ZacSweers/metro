@@ -15,8 +15,7 @@ import dev.zacsweers.metro.sample.androidviewmodel.viewmodel.metroViewModel
 
 @Composable
 fun AssistedCounterScreen(onNavigate: (Any) -> Unit) {
-  val viewModel =
-    metroViewModel<AssistedCounterViewModel> { assistedCounterFactory.create(10) }
+  val viewModel = metroViewModel<AssistedCounterViewModel> { assistedCounterFactory.create(10) }
 
   val value by viewModel.count.collectAsStateWithLifecycle()
 
