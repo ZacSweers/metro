@@ -30,6 +30,7 @@
 * When extending parent graphs, they must be annotated with `@Extends` in the child graph's creator.
 * Metro does not process Java code.
 * Metro does not support assisted parameters in `@Provides` functions.
+- Metro map multibindings use static [map keys](bindings.md#multibindings) rather than aggregating via `Pair` contributions. More details on why can be found [here](https://github.com/ZacSweers/metro/discussions/770#discussioncomment-13852087).
 
 #### …from Anvil
 
