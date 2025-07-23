@@ -395,7 +395,8 @@ class DependencyGraphProcessingTest {
       fun create(@Provides message: String): AssistedInjectGraph
     }
 
-    class ExampleClass @Inject constructor(@Assisted val intValue: Int, val message: String) {
+    @Inject
+    class ExampleClass(@Assisted val intValue: Int, val message: String) {
       @AssistedFactory
       fun interface Factory {
         fun create(intValue: Int): ExampleClass
@@ -422,9 +423,8 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphWithCustomAssistedKeys {
     val factory: ExampleClass.Factory
 
-    class ExampleClass
     @Inject
-    constructor(@Assisted("1") val intValue1: Int, @Assisted("2") val intValue2: Int) {
+    class ExampleClass(@Assisted("1") val intValue1: Int, @Assisted("2") val intValue2: Int) {
       @AssistedFactory
       fun interface Factory {
         fun create(@Assisted("2") intValue2: Int, @Assisted("1") intValue1: Int): ExampleClass
@@ -444,7 +444,8 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphWithGenericFactorySupertype {
     val factory: ExampleClass.Factory
 
-    class ExampleClass @Inject constructor(@Assisted val intValue: Int) {
+    @Inject
+    class ExampleClass(@Assisted val intValue: Int) {
       fun interface BaseFactory<T> {
         fun create(intValue: Int): T
       }
@@ -468,7 +469,8 @@ class DependencyGraphProcessingTest {
   interface AssistedInjectGraphDiamondInheritance {
     val factory: ExampleClass.Factory
 
-    class ExampleClass @Inject constructor(@Assisted val intValue: Int) {
+    @Inject
+    class ExampleClass(@Assisted val intValue: Int) {
       fun interface GrandParentBaseFactory<T> {
         fun create(intValue: Int): T
       }
