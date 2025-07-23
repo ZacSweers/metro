@@ -211,8 +211,4 @@ plugins.withType<YarnPlugin> {
   }
 }
 
-plugins.withType<NodeJsRootPlugin> {
-  the<NodeJsEnvSpec>().apply {
-    this.version = "24.4.1"
-  }
-}
+plugins.withType<NodeJsRootPlugin> { the<NodeJsEnvSpec>().apply { this.version = "24.4.1" } }
