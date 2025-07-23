@@ -13,7 +13,7 @@ copyright: 'Copyright &copy; 2025 Zac Sweers'
 
 theme:
   name: 'material'
-#  favicon: images/metro_logo_small.png
+  favicon: ':metro:'
 #  logo: images/metro_logo.png
   palette:
     - media: '(prefers-color-scheme: light)'
