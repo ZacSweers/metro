@@ -81,10 +81,10 @@ nav:
       - 'Validation & Error Reporting': validation-and-error-reporting.md
       - 'Interop': interop.md
       - 'Generating Custom Metro Code': generating-metro-code.md
-      - 'Adoption Strategies': adoption.md
   - 'Performance': performance.md
   - 'Debugging': debugging.md
   - 'Compatibility': compatibility.md
+  - 'Adoption Strategies': adoption.md
   - 'FAQ': faq.md
   - 'Samples': samples.md
   - 'API': api/0.x/index.html
