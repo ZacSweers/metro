@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Zac Sweers
+// Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension

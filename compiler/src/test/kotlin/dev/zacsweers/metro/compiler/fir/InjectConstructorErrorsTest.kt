@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Zac Sweers
+// Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir
 
