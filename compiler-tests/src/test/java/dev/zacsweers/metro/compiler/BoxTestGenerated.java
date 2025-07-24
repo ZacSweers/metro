@@ -596,6 +596,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("LazyProvides.kt")
+    public void testLazyProvides() {
+      runTest("compiler-tests/src/test/data/box/provides/LazyProvides.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesParametersCanHaveDefaults.kt")
     public void testProvidesParametersCanHaveDefaults() {
       runTest("compiler-tests/src/test/data/box/provides/ProvidesParametersCanHaveDefaults.kt");
