@@ -2,15 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
-import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.METRO_VERSION
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -79,7 +76,6 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
-import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -106,6 +102,8 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
    */
   private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<BindingContainer>>()
 
+  private val bindsMirrorClassTransformer = BindsMirrorClassTransformer(context)
+
   fun findContainer(
     declaration: IrClass,
     declarationFqName: FqName = declaration.kotlinFqName,
@@ -117,10 +115,12 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     if (declaration.isExternalParent) {
       return loadExternalBindingContainer(declaration, declarationFqName, graphProto)
+    } else if (declaration.name == Symbols.Names.BindsMirrorClass) {
+      cache[declarationFqName] = Optional.empty()
+      return null
     }
 
     val providerFactories = mutableMapOf<CallableId, ProviderFactory>()
-    val bindsCallables = mutableSetOf<BindsCallable>()
 
     declaration.declarations
       .asSequence()
@@ -136,11 +136,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             if (metroFunction.annotations.isProvides) {
               providerFactories[nestedDeclaration.callableId] =
                 visitProperty(nestedDeclaration, metroFunction)
-            } else if (metroFunction.annotations.isBinds) {
-              // Check if it's @Binds
-              if (metroFunction.annotations.isBinds) {
-                bindsCallables += metroFunction.toBindsCallable()
-              }
             }
           }
           is IrSimpleFunction -> {
@@ -148,11 +143,6 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
             if (metroFunction.annotations.isProvides) {
               providerFactories[nestedDeclaration.callableId] =
                 visitFunction(nestedDeclaration, metroFunction)
-            } else if (metroFunction.annotations.isBinds) {
-              // Check if it's @Binds
-              if (metroFunction.annotations.isBinds) {
-                bindsCallables += metroFunction.toBindsCallable()
-              }
             }
           }
           is IrClass if (nestedDeclaration.isCompanionObject) -> {
@@ -164,37 +154,40 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         }
       }
 
+    val bindingContainerAnnotation =
+      declaration.annotationsIn(symbols.classIds.bindingContainerAnnotations).singleOrNull()
     val includes =
-      declaration
-        .annotationsIn(symbols.classIds.bindingContainerAnnotations)
-        .singleOrNull()
-        ?.includedClasses()
-        ?.mapNotNullToSet { it.classType.rawTypeOrNull()?.classIdOrFail }
+      bindingContainerAnnotation?.includedClasses()?.mapNotNullToSet {
+        it.classType.rawTypeOrNull()?.classIdOrFail
+      }
 
-    if (includes.isNullOrEmpty() && providerFactories.isEmpty() && bindsCallables.isEmpty()) {
-      cache[declarationFqName] = Optional.empty()
-      return null
-    }
+    val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
 
     val isGraph = declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations)
     val container =
-      BindingContainer(isGraph, declaration, includes.orEmpty(), providerFactories, bindsCallables)
+      BindingContainer(isGraph, declaration, includes.orEmpty(), providerFactories, bindsMirror)
 
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
     // providers to consume here even if they are private.
+    // We always generate metadata for binding containers because they can be included in graphs
+    // without inheritance
     val shouldGenerateMetadata =
-      !container.isEmpty() &&
-        !declaration.isAnnotatedWithAny(symbols.classIds.dependencyGraphAnnotations)
+      bindingContainerAnnotation != null || (!(container.isEmpty() || isGraph))
 
     if (shouldGenerateMetadata) {
       val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = container.toProto())
       declaration.metroMetadata = metroMetadata
     }
 
-    cache[declarationFqName] = Optional.of(container)
-    generatedFactories.putAll(providerFactories)
-    return container
+    return if (container.isEmpty()) {
+      cache[declarationFqName] = Optional.empty()
+      null
+    } else {
+      cache[declarationFqName] = Optional.of(container)
+      generatedFactories.putAll(providerFactories)
+      container
+    }
   }
 
   private fun visitProperty(
@@ -667,44 +660,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         }
 
     // Add any binds callables
-    val bindsCallables =
-      graphProto.binds_callable_ids.flatMapToSet { bindsCallableId ->
-        val classId = ClassId.fromString(bindsCallableId.class_id)
-        val callableId = CallableId(classId, bindsCallableId.callable_name.asName())
-
-        val functions =
-          if (bindsCallableId.is_property) {
-            pluginContext.referenceProperties(callableId).mapNotNull { it.owner.getter }
-          } else {
-            pluginContext.referenceFunctions(callableId).map { it.owner }
-          }
-
-        if (functions.isEmpty()) {
-          val message = buildString {
-            append("No function found for ")
-            appendLine(callableId)
-            callableId.classId?.let {
-              pluginContext.referenceClass(it)?.let {
-                appendLine("Class dump")
-                appendLine(it.owner.dumpKotlinLike())
-              }
-            }
-              ?: run {
-                append("No class found for ")
-                appendLine(callableId)
-              }
-          }
-          error(message)
-        }
-
-        functions.map { function ->
-          val metroFunction = metroFunctionOf(function)
-          val source = IrContextualTypeKey.from(function.nonDispatchParameters.single()).typeKey
-          val target = IrContextualTypeKey.from(function).typeKey
-          BindsCallable(callableId, metroFunction, source, target)
-        }
-      }
-
+    val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
     val includedBindingContainers =
       graphProto.included_binding_containers.mapToSet { ClassId.fromString(it) }
 
@@ -714,7 +670,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         declaration,
         includedBindingContainers,
         providerFactories,
-        bindsCallables,
+        bindsMirror,
       )
 
     // Cache the results
@@ -731,42 +687,14 @@ internal class BindingContainer(
   val includes: Set<ClassId>,
   /** Mapping of provider factories by their [CallableId]. */
   val providerFactories: Map<CallableId, ProviderFactory>,
-  /** Mapping of binds callables by their [CallableId]. */
-  val bindsCallables: Set<BindsCallable>,
+  val bindsMirror: BindsMirror?,
 ) {
   /**
    * Simple classes with a public, no-arg constructor can be managed directly by the consuming
    * graph.
    */
-  val canBeManaged by unsafeLazy {
-    // TODO Primary constructor is checked in FIR
-    ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT
-  }
+  val canBeManaged by unsafeLazy { ir.kind == ClassKind.CLASS && ir.modality != Modality.ABSTRACT }
 
-  fun isEmpty() = includes.isEmpty() && providerFactories.isEmpty() && bindsCallables.isEmpty()
-}
-
-@Poko
-internal class BindsCallable(
-  val callableId: CallableId,
-  @Poko.Skip val function: MetroSimpleFunction,
-  val source: IrTypeKey,
-  val target: IrTypeKey,
-)
-
-context(context: IrMetroContext)
-internal fun MetroSimpleFunction.toBindsCallable(): BindsCallable {
-  val declarationToStore = ir.propertyIfAccessor
-  val callableId =
-    if (declarationToStore is IrProperty) {
-      declarationToStore.callableId
-    } else {
-      callableId
-    }
-  return BindsCallable(
-    callableId,
-    this,
-    IrContextualTypeKey.from(ir.nonDispatchParameters.single()).typeKey,
-    IrContextualTypeKey.from(ir).typeKey,
-  )
+  fun isEmpty() =
+    includes.isEmpty() && providerFactories.isEmpty() && (bindsMirror?.isEmpty() ?: true)
 }

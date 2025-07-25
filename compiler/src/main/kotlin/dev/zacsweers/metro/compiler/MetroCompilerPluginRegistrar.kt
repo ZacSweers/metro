@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 
 public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
@@ -40,8 +41,19 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     FirExtensionRegistrarAdapter.registerExtension(MetroFirExtensionRegistrar(classIds, options))
     val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
+    val expectActualTracker: ExpectActualTracker =
+      configuration.get(
+        CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER,
+        ExpectActualTracker.DoNothing,
+      )
     IrGenerationExtension.registerExtension(
-      MetroIrGenerationExtension(messageCollector, classIds, options, lookupTracker)
+      MetroIrGenerationExtension(
+        messageCollector,
+        classIds,
+        options,
+        lookupTracker,
+        expectActualTracker,
+      )
     )
   }
 }

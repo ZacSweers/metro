@@ -286,12 +286,13 @@ internal class DependencyGraphTransformer(
         implementCreatorFunctions(node.sourceGraph, node.creator, node.sourceGraph.metroGraphOrFail)
 
         node.accessors
-          .map { it.first }
-          .plus(node.injectors.map { it.first })
-          .plus(node.bindsCallables.map { it.function })
-          .plus(node.contributedGraphs.map { it.value })
+          .map { it.first.ir }
+          .plus(node.injectors.map { it.first.ir })
+          .plus(node.bindsCallables.map { it.callableMetadata.function })
+          .plus(node.contributedGraphs.map { it.value.ir })
+          .filterNot { it.isExternalParent }
           .forEach { function ->
-            with(function.ir) {
+            with(function) {
               val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
               if (declarationToFinalize.isFakeOverride) {
                 declarationToFinalize.finalizeFakeOverride(

@@ -5,6 +5,9 @@
 # It requires Python to run.
 # Install the packages with the following command:
 # pip install mkdocs mkdocs-material mdx_truly_sane_lists
+#
+# To run the site locally with hot-reload support, use:
+# ./deploy_website.sh --local
 
 if [[ "$1" = "--local" ]]; then local=true; fi
 

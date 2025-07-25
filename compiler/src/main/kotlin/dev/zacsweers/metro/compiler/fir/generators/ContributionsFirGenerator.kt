@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
@@ -22,6 +23,7 @@ import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.backend.native.interop.parentsWithSelf
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
@@ -31,16 +33,20 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMappi
 import org.jetbrains.kotlin.fir.expressions.toReference
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
+import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
+import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.SpecialNames
 
 // TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
 internal class ContributionsFirGenerator(session: FirSession) :
@@ -185,10 +191,48 @@ internal class ContributionsFirGenerator(session: FirSession) :
     }
   }
 
+  // TODO dedupe with BindingMirrorClassFirGenerator
+  override fun getCallableNamesForClass(
+    classSymbol: FirClassSymbol<*>,
+    context: MemberGenerationContext,
+  ): Set<Name> {
+    // Only generate constructor for the mirror class
+    return if (classSymbol.name == Symbols.Names.BindsMirrorClass) {
+      setOf(SpecialNames.INIT)
+    } else {
+      emptySet()
+    }
+  }
+
+  // TODO dedupe with BindingMirrorClassFirGenerator
+  override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
+    return if (context.owner.name == Symbols.Names.BindsMirrorClass) {
+      // Private constructor to prevent instantiation
+      listOf(createDefaultPrivateConstructor(context.owner, Keys.Default).symbol)
+    } else {
+      emptyList()
+    }
+  }
+
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
+    if (context.owner.hasOrigin(Keys.MetroContributionClassDeclaration)) {
+      // Metro contribution class that needs a binding mirror IFF it's not a @ContributesTo
+      val isContributesTo =
+        context.owner
+          .parentsWithSelf(session)
+          .drop(1)
+          .firstOrNull { it is FirClassSymbol }
+          ?.isAnnotatedWithAny(session, session.classIds.contributesToLikeAnnotations) ?: false
+      return if (!isContributesTo) {
+        setOf(Symbols.Names.BindsMirrorClass)
+      } else {
+        emptySet()
+      }
+    }
+
     // Don't generate nested classes for @BindingContainer-annotated classes
     if (classSymbol.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
       return emptySet()
@@ -213,6 +257,14 @@ internal class ContributionsFirGenerator(session: FirSession) :
     name: Name,
     context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
+    if (name == Symbols.Names.BindsMirrorClass) {
+      return createNestedClass(owner, name, Keys.BindingMirrorClassDeclaration) {
+          modality = Modality.ABSTRACT
+        }
+        .apply { markAsDeprecatedHidden(session) }
+        .symbol
+    }
+
     if (!name.identifier.startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)) return null
     val contributions = findContributions(owner) ?: return null
     return createNestedClass(

@@ -13,7 +13,7 @@ copyright: 'Copyright &copy; 2025 Zac Sweers'
 
 theme:
   name: 'material'
-  favicon: ':metro:'
+  favicon: site-assets/img/favicon.ico
 #  logo: images/metro_logo.png
   palette:
     - media: '(prefers-color-scheme: light)'
@@ -36,6 +36,9 @@ theme:
   features:
     - content.code.copy
     - content.code.select
+  # Custom dir for theme overrides (eg. custom 404 page)
+  # - https://squidfunk.github.io/mkdocs-material/customization/
+  custom_dir: 'docs/site-assets/overrides'
 
 #extra_css:
 #  - 'css/app.css'

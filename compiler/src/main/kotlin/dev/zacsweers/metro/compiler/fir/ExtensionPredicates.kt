@@ -15,6 +15,14 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
     DeclarationPredicate.create {
       metaAnnotated(classIds.qualifierAnnotations.asFqNames(), includeItself = false)
     }
+  internal val scopesPredicate =
+    DeclarationPredicate.create {
+      metaAnnotated(classIds.scopeAnnotations.asFqNames(), includeItself = false)
+    }
+  internal val mapKeysPredicate =
+    DeclarationPredicate.create {
+      metaAnnotated(classIds.mapKeyAnnotations.asFqNames(), includeItself = false)
+    }
 
   internal val bindingContainerPredicate =
     annotated(classIds.bindingContainerAnnotations.asFqNames())
@@ -51,4 +59,8 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val assistedFactoryAnnotationPredicate =
     annotated(classIds.assistedFactoryAnnotations.asFqNames())
+
+  internal val bindsAnnotationPredicate = annotated(classIds.bindsAnnotations.asFqNames())
+
+  internal val multibindsAnnotationPredicate = annotated(classIds.multibindsAnnotations.asFqNames())
 }

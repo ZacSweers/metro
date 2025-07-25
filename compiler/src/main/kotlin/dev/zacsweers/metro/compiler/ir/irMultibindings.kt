@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
@@ -25,11 +26,11 @@ internal fun IrTypeKey.transformMultiboundQualifier(
   }
 
   val rawSymbol = annotations.symbol ?: error("No symbol found for multibinding annotation")
-  val symbol =
-    rawSymbol.expectAsOrNull<IrSymbol>()
+  val declaration =
+    rawSymbol.expectAsOrNull<IrSymbol>()?.owner?.expectAsOrNull<IrOverridableDeclaration<*>>()
       ?: error("Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}")
 
-  val elementId = symbol.multibindingElementId
+  val elementId = declaration.multibindingElementId
   val bindingId =
     if (annotations.isIntoMap) {
       val mapKey = annotations.mapKeys.first()
@@ -44,7 +45,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
     }
 
   val newQualifier =
-    buildAnnotation(symbol, context.symbols.multibindingElement) {
+    buildAnnotation(rawSymbol, context.symbols.multibindingElement) {
       it.arguments[0] = irString(bindingId)
       it.arguments[1] = irString(elementId)
     }
@@ -53,7 +54,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
 }
 
 /** Returns a unique ID for this specific binding */
-internal val IrSymbol.multibindingElementId: String
+internal val IrOverridableDeclaration<*>.multibindingElementId: String
   get() {
     // Signature is only present if public, so we can't rely on it here.
     return hashCode().toString()

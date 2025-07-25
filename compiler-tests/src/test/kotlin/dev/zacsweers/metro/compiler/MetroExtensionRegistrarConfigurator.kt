@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.messageCollector
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
@@ -197,6 +198,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         options = options,
         // TODO ever support this in tests?
         lookupTracker = null,
+        expectActualTracker = ExpectActualTracker.DoNothing,
       )
     )
   }
