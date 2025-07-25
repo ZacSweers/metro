@@ -4,8 +4,12 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Generate synthetic `$$BindingMirror` classes to...
+    - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
+    - allow these declarations to be `private`
 - **Enhancement:** Allow `@Binds` and `@Multibinds` functions to be private.
 - **Fix:** When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.
+- **Fix:** Record IC lookups to `@Multibinds` declarations.
 - **Fix:** Write `@Multibinds` information to metro metadata.
 - **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
 
