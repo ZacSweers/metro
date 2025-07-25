@@ -12,6 +12,7 @@ Changelog
 - **Fix:** Record IC lookups to `@Multibinds` declarations.
 - **Fix:** Write `@Multibinds` information to metro metadata.
 - **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
+- **Fix:** Disambiguate contributed nullable bindings from non-nullable bindings.
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
 
