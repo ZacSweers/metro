@@ -28,7 +28,7 @@ It uses a `ViewModelProvider.Factory` that is exposed via the Activity.
 ```kotlin
 @Inject
 class MainActivity(private val viewModelFactory: ViewModelProvider.Factory) : ComponentActivity() {
-    
+
     override val defaultViewModelProviderFactory: ViewModelProvider.Factory
         get() = viewModelFactory
 }
@@ -78,7 +78,7 @@ class MetroAppComponentFactory : AppComponentFactory() {
         activityProviders = (app as MetroApp).appGraph.activityProviders
         return app
     }
-    
+
     override fun instantiateActivityCompat(
         cl: ClassLoader,
         className: String,
@@ -109,4 +109,3 @@ It must be registered in the `AndroidManifest.xml`.
     android:name=".MetroApp"
     android:appComponentFactory="dev.zacsweers.metro.sample.androidviewmodel.components.MetroAppComponentFactory" />
 ```
-

@@ -48,24 +48,22 @@ class MetroAppComponentFactory : AppComponentFactory() {
     return app
   }
 
-    override fun instantiateReceiverCompat(
-        cl: ClassLoader,
-        className: String,
-        intent: Intent?
-    ): BroadcastReceiver = TODO("Not currently used")
+  override fun instantiateReceiverCompat(
+    cl: ClassLoader,
+    className: String,
+    intent: Intent?,
+  ): BroadcastReceiver = TODO("Not currently used")
 
-    override fun instantiateServiceCompat(
-        cl: ClassLoader,
-        className: String,
-        intent: Intent?
-    ): Service = TODO("Not currently used")
+  override fun instantiateServiceCompat(
+    cl: ClassLoader,
+    className: String,
+    intent: Intent?,
+  ): Service = TODO("Not currently used")
 
-    override fun instantiateProviderCompat(
-        cl: ClassLoader,
-        className: String
-    ): ContentProvider = TODO("Not currently used")
+  override fun instantiateProviderCompat(cl: ClassLoader, className: String): ContentProvider =
+    TODO("Not currently used")
 
-    // AppComponentFactory can be created multiple times
+  // AppComponentFactory can be created multiple times
   companion object {
     private lateinit var activityProviders: Map<KClass<out Activity>, Provider<Activity>>
   }
