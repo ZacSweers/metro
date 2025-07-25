@@ -72,6 +72,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedAcrossModulesToContributedGraphs.kt")
+    public void testContributedAcrossModulesToContributedGraphs() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModulesToContributedGraphs.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedEmpty.kt")
     public void testContributedEmpty() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedEmpty.kt");
@@ -87,12 +93,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("MultibindsOnlyInContainer.kt")
     public void testMultibindsOnlyInContainer() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
-    }
-
-    @Test
-    @TestMetadata("ContributedAcrossModulesToContributedGraphs.kt")
-    public void testContributedAcrossModulesToContributedGraphs() {
-      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModulesToContributedGraphs.kt");
     }
 
     @Test
