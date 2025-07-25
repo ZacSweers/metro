@@ -4,6 +4,28 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Generate synthetic `$$BindsMirror` classes to...
+    - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
+    - allow these declarations to be `private`
+- **Enhancement:** Allow `@Binds` and `@Multibinds` functions to be private.
+- **Fix:** When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.
+- **Fix:** Record IC lookups to `@Multibinds` declarations.
+- **Fix:** Write `@Multibinds` information to metro metadata.
+- **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
+- Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
+- Small improvements to the doc site (404 page, favicon, etc.)
+
+0.5.2
+-----
+
+_2025-07-21_
+
+- **Enhancement**: De-dupe contributions before processing in contributed graphs.
+- **Fix**: Don't extend contributed binding container classes in generated contributed graphs.
+- Small doc fixes.
+
+Special thanks to [@bnorm](https://github.com/bnorm) and [@alexvanyo](https://github.com/alexvanyo) for contributing to this release!
+
 0.5.1
 -----
 

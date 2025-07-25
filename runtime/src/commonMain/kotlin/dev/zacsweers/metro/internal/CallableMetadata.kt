@@ -4,9 +4,9 @@ package dev.zacsweers.metro.internal
 
 import kotlin.annotation.AnnotationTarget.CLASS
 
-/** Marker for generated factories indicating their source callable ID. */
-@Target(CLASS)
-public annotation class ProvidesCallableId(
+/** Marker for generated factories or binding mirrors indicating their source callable ID. */
+@Target(CLASS, AnnotationTarget.FUNCTION)
+public annotation class CallableMetadata(
   val callableName: String,
   val isPropertyAccessor: Boolean,
   // Store original offsets for error reporting. When constructing the "real" function from the

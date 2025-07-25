@@ -7,7 +7,9 @@ import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.asIrAnnotation
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
@@ -29,8 +31,11 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 
 @Poko
 internal class MetroAnnotations<T>(
@@ -517,4 +522,29 @@ private fun FirBasedSymbol<*>.metroAnnotations(
 internal fun <T> expectNullAndSet(type: String, current: T?, value: T): T {
   check(current == null) { "Multiple $type annotations found! Found $current and $value." }
   return value
+}
+
+/** Returns a list of annotations for copying to mirror functions. */
+context(context: IrMetroContext)
+internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
+  symbol: IrSymbol
+): List<IrConstructorCall> {
+  return buildList {
+    if (isProvides) {
+      add(buildAnnotation(symbol, context.symbols.providesConstructor))
+    } else if (isBinds) {
+      add(buildAnnotation(symbol, context.symbols.bindsConstructor))
+    }
+    if (isIntoSet) {
+      add(buildAnnotation(symbol, context.symbols.intoSetConstructor))
+    } else if (isElementsIntoSet) {
+      add(buildAnnotation(symbol, context.symbols.elementsIntoSetConstructor))
+    } else if (isIntoMap) {
+      add(buildAnnotation(symbol, context.symbols.intoMapConstructor))
+    }
+    scope?.let { add(it.ir.deepCopyWithSymbols()) }
+    qualifier?.let { add(it.ir.deepCopyWithSymbols()) }
+    multibinds?.let { add(it.ir.deepCopyWithSymbols()) }
+    addAll(mapKeys.map { it.ir.deepCopyWithSymbols() })
+  }
 }

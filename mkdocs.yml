@@ -13,7 +13,7 @@ copyright: 'Copyright &copy; 2025 Zac Sweers'
 
 theme:
   name: 'material'
-#  favicon: images/metro_logo_small.png
+  favicon: site-assets/img/favicon.ico
 #  logo: images/metro_logo.png
   palette:
     - media: '(prefers-color-scheme: light)'
@@ -36,6 +36,9 @@ theme:
   features:
     - content.code.copy
     - content.code.select
+  # Custom dir for theme overrides (eg. custom 404 page)
+  # - https://squidfunk.github.io/mkdocs-material/customization/
+  custom_dir: 'docs/site-assets/overrides'
 
 #extra_css:
 #  - 'css/app.css'
@@ -81,14 +84,14 @@ nav:
       - 'Validation & Error Reporting': validation-and-error-reporting.md
       - 'Interop': interop.md
       - 'Generating Custom Metro Code': generating-metro-code.md
-      - 'Adoption Strategies': adoption.md
   - 'Performance': performance.md
   - 'Debugging': debugging.md
   - 'Compatibility': compatibility.md
+  - 'Adoption Strategies': adoption.md
   - 'FAQ': faq.md
   - 'Samples': samples.md
   - 'API': api/0.x/index.html
   - 'Discussions ⏏': https://github.com/ZacSweers/metro/discussions
   - 'Change Log': changelog.md
   - 'Contributing': contributing.md
-#  - 'CoC': code-of-conduct.md
+  - 'CoC': code-of-conduct.md

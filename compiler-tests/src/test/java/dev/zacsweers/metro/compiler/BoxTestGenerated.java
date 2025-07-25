@@ -72,6 +72,30 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedAcrossModulesToContributedGraphs.kt")
+    public void testContributedAcrossModulesToContributedGraphs() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModulesToContributedGraphs.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedEmpty.kt")
+    public void testContributedEmpty() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedEmpty.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedWithOnlyMultibinds.kt")
+    public void testContributedWithOnlyMultibinds() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedWithOnlyMultibinds.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsOnlyInContainer.kt")
+    public void testMultibindsOnlyInContainer() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleContainersWithHintsWork.kt")
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
@@ -225,6 +249,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("OverrideCompatibleBindingAccessors.kt")
     public void testOverrideCompatibleBindingAccessors() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateBinds.kt")
+    public void testPrivateBinds() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateBindsInOtherModule.kt")
+    public void testPrivateBindsInOtherModule() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBindsInOtherModule.kt");
     }
 
     @Test

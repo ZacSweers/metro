@@ -54,11 +54,11 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       val functionsInPackage =
         metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
       val contributingClasses =
-        functionsInPackage.map { contribution ->
+        functionsInPackage.mapToSet { contribution ->
           // This is the single value param
           contribution.owner.regularParameters.single().type.classOrFail.owner
         }
-      getScopedContributions(contributingClasses, scopeClassId)
+      getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = false)
     }
   }
 
@@ -69,21 +69,23 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
       val functionsInPackage =
         metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
       val contributingClasses =
-        functionsInPackage.map { contribution ->
+        functionsInPackage.mapToSet { contribution ->
           // This is the single value param
           contribution.owner.regularParameters.single().type.classOrFail.owner
         }
-      getScopedContributions(contributingClasses, scopeClassId).mapNotNullToSet {
-        it.classOrNull?.owner?.takeIf {
-          it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+      getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = true)
+        .mapNotNullToSet {
+          it.classOrNull?.owner?.takeIf {
+            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+          }
         }
-      }
     }
   }
 
   private fun getScopedContributions(
-    contributingClasses: List<IrClass>,
+    contributingClasses: Collection<IrClass>,
     scopeClassId: ClassId,
+    bindingContainersOnly: Boolean,
   ): Set<IrType> {
     val filteredContributions = contributingClasses.toMutableList()
 
@@ -99,25 +101,37 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
         filteredContributions.removeIf { it.symbol == replacedClass.symbol }
       }
 
-    return filteredContributions.flatMapToSet {
-      if (it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)) {
-        setOf(it.defaultType)
-      } else {
-        it.nestedClasses.mapNotNullToSet { nestedClass ->
-          val metroContribution =
-            nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
-              ?: return@mapNotNullToSet null
-          val contributionScope =
-            metroContribution.scopeOrNull()
-              ?: error("No scope found for @MetroContribution annotation")
-          if (contributionScope == scopeClassId) {
-            nestedClass.defaultType
-          } else {
-            null
+    return filteredContributions
+      .let { contributions ->
+        if (bindingContainersOnly) {
+          contributions.filter {
+            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
+          }
+        } else {
+          contributions.filterNot {
+            it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
           }
         }
       }
-    }
+      .flatMapToSet {
+        if (it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)) {
+          setOf(it.defaultType)
+        } else {
+          it.nestedClasses.mapNotNullToSet { nestedClass ->
+            val metroContribution =
+              nestedClass.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
+                ?: return@mapNotNullToSet null
+            val contributionScope =
+              metroContribution.scopeOrNull()
+                ?: error("No scope found for @MetroContribution annotation")
+            if (contributionScope == scopeClassId) {
+              nestedClass.defaultType
+            } else {
+              null
+            }
+          }
+        }
+      }
   }
 
   fun addScopedInject(scope: IrAnnotation, contribution: IrTypeKey) {

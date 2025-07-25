@@ -28,7 +28,8 @@ interface TestRendererGraph {
   val factory: TestRenderer.Factory
 }
 
-class TestRenderer @Inject constructor(@Assisted private val binding: ActivityMainBinding) {
+@Inject
+class TestRenderer(@Assisted private val binding: ActivityMainBinding) {
   @AssistedFactory abstract class Factory : BaseFactory<ActivityMainBinding, TestRenderer>
 }
 

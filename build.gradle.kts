@@ -2,13 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
+import kotlin.apply
 import kotlinx.validation.ExperimentalBCVApi
+import org.gradle.kotlin.dsl.assign
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootEnvSpec
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -194,3 +201,14 @@ dependencies {
   dokka(project(":interop-dagger"))
   dokka(project(":runtime"))
 }
+
+plugins.withType<YarnPlugin> {
+  the<YarnRootEnvSpec>().apply {
+    version = "1.22.22"
+    yarnLockAutoReplace = true
+    installationDirectory = projectDir
+    ignoreScripts = false
+  }
+}
+
+plugins.withType<NodeJsRootPlugin> { the<NodeJsEnvSpec>().apply { this.version = "24.4.1" } }
