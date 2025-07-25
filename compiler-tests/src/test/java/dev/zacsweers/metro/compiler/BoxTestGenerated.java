@@ -246,6 +246,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("PrivateBinds.kt")
+    public void testPrivateBinds() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateBindsInOtherModule.kt")
+    public void testPrivateBindsInOtherModule() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBindsInOtherModule.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiersWithEnumsWork.kt")
     public void testQualifiersWithEnumsWork() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/QualifiersWithEnumsWork.kt");
