@@ -363,19 +363,33 @@ internal class BindingGraphGenerator(
           )
         }
 
+        val irGetter = getter.ir
+        val getterToUse =
+          if (
+            irGetter.parentAsClass.name == Symbols.Names.MetroGraph ||
+              irGetter.name.asString().startsWith(Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX)
+          ) {
+            // Use the original graph decl so we don't tie this invocation to `$$MetroGraph`
+            // specifically
+            irGetter.overriddenSymbolsSequence().first().owner
+          } else {
+            irGetter
+          }
+
         graph.addBinding(
           contextualTypeKey.typeKey,
           IrBinding.GraphDependency(
             ownerKey = depNode.typeKey,
             graph = depNode.sourceGraph,
-            getter = getter.ir,
+            getter = getterToUse,
             isProviderFieldAccessor = false,
             typeKey = contextualTypeKey.typeKey,
           ),
           bindingStack,
         )
         // Record a lookup for IC
-        trackFunctionCall(node.sourceGraph, getter.ir)
+        trackFunctionCall(node.sourceGraph, irGetter)
+        trackFunctionCall(node.sourceGraph, getterToUse)
       }
     }
 
