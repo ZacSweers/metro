@@ -13,6 +13,17 @@ Changelog
 - **Fix:** Write `@Multibinds` information to metro metadata.
 - **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
 
+0.5.2
+-----
+
+_2025-07-21_
+
+- **Enhancement**: De-dupe contributions before processing in contributed graphs.
+- **Fix**: Don't extend contributed binding container classes in generated contributed graphs.
+- Small doc fixes.
+
+Special thanks to [@bnorm](https://github.com/bnorm) and [@alexvanyo](https://github.com/alexvanyo) for contributing to this release!
+
 0.5.1
 -----
 

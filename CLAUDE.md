@@ -19,6 +19,7 @@ See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 
 ### Documentation
 - `./gradlew dokkaHtml` - Generate API documentation
+- `docs/` - Contains all markdown documentation
 
 ### Benchmarks
 - `cd benchmark && ./run_benchmarks.sh metro` - Run performance benchmarks

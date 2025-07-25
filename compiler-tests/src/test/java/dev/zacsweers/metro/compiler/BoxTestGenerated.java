@@ -90,6 +90,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedAcrossModulesToContributedGraphs.kt")
+    public void testContributedAcrossModulesToContributedGraphs() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModulesToContributedGraphs.kt");
+    }
+
+    @Test
     @TestMetadata("SimpleContainersWithHintsWork.kt")
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
