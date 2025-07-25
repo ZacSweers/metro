@@ -172,7 +172,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
           // We need a unique name because addFakeOverrides() doesn't handle overloads with
           // different return types
-          val name = (callableName + "As" + suffix).asName()
+          val name = (callableName + suffix).asName()
           addFunction {
               this.name = name
               this.returnType = bindingType
