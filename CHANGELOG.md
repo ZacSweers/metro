@@ -4,7 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
-- **Enhancement:** Generate synthetic `$$BindingMirror` classes to...
+- **Enhancement:** Generate synthetic `$$BindsMirror` classes to...
     - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
     - allow these declarations to be `private`
 - **Enhancement:** Allow `@Binds` and `@Multibinds` functions to be private.
