@@ -47,6 +47,30 @@ class Base1Impl : Base1, Base2, Base3 {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
   interface $$MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    abstract class $$BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @IntoSet
+      @Binds
+      @CallableMetadata(callableName = "bindIntoSetAsAsBase2", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      abstract fun bindIntoSetAsAsBase2_intoset(instance: Base1Impl): Base2
+
+      @IntoSet
+      @Binds
+      @CallableMetadata(callableName = "bindIntoSetAsAsBase3", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      abstract fun bindIntoSetAsAsBase3_intoset(instance: Base1Impl): Base3
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsAsBase1", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      abstract fun bindsAsAsBase1(instance: Base1Impl): Base1
+
+    }
+
     @IntoSet
     @Binds
     abstract fun bindIntoSetAsAsBase2(instance: Base1Impl): Base2

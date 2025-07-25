@@ -49,7 +49,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false, startOffset = 117, endOffset = 160)
+  @CallableMetadata(callableName = "provideInt", isPropertyAccessor = false, startOffset = 117, endOffset = 160)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
