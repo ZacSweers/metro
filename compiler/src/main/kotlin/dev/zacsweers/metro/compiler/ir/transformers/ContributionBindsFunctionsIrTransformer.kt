@@ -33,6 +33,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -156,6 +157,9 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
           val suffix = buildString {
             append("As")
+            if (bindingType.isMarkedNullable()) {
+              append("Nullable")
+            }
             bindingType
               .rawType()
               .classIdOrFail
