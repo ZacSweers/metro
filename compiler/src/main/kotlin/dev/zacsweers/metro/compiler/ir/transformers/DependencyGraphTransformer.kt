@@ -42,6 +42,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -286,12 +287,13 @@ internal class DependencyGraphTransformer(
         implementCreatorFunctions(node.sourceGraph, node.creator, node.sourceGraph.metroGraphOrFail)
 
         node.accessors
-          .map { it.first }
-          .plus(node.injectors.map { it.first })
-          .plus(node.bindsCallables.map { it.function })
-          .plus(node.contributedGraphs.map { it.value })
+          .map { it.first.ir }
+          .plus(node.injectors.map { it.first.ir })
+          .plus(node.bindsCallables.map { it.callableMetadata.function })
+          .plus(node.contributedGraphs.map { it.value.ir })
+          .filterNot { it.isExternalParent }
           .forEach { function ->
-            with(function.ir) {
+            with(function) {
               val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
               if (declarationToFinalize.isFakeOverride) {
                 declarationToFinalize.finalizeFakeOverride(

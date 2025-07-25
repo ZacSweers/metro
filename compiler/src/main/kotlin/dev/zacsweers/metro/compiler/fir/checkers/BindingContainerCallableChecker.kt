@@ -182,10 +182,11 @@ internal object BindingContainerCallableChecker :
         }
       }
     } else if (isPrivate /* && is FirProperty */) {
+      val annotationName = if (annotations.isProvides) "Provides" else "Binds"
       reporter.reportOn(
         source,
         FirMetroErrors.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE,
-        "`@Provides` properties cannot be private yet.",
+        "`@$annotationName` properties cannot be private yet.",
       )
       return
     }

@@ -448,6 +448,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val reportableDeclaration: IrDeclaration? = declaration
 
+    fun addSourceBinding(source: IrTypeKey) {
+      if (source in sourceBindings) {
+        error("Duplicate multibinding source: $source. This is a bug in the compiler.")
+      }
+      sourceBindings.add(source)
+    }
+
     companion object {
       /**
        * Special case! Multibindings may be created under two conditions:
@@ -459,13 +466,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
        */
       context(context: IrMetroContext)
       fun fromMultibindsDeclaration(
-        getter: MetroSimpleFunction,
+        getter: IrSimpleFunction,
         multibinds: IrAnnotation,
         contextualTypeKey: IrContextualTypeKey,
       ): Multibinding {
         return create(
           typeKey = contextualTypeKey.typeKey,
-          declaration = getter.ir,
+          declaration = getter,
           allowEmpty = multibinds.allowEmpty(),
         )
       }

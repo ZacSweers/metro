@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -129,8 +130,7 @@ internal class BindingGraphGenerator(
             originalQualifier = originalQualifier,
             bindingStack = bindingStack,
           )
-          .sourceBindings
-          .add(contextKey.typeKey)
+          .addSourceBinding(contextKey.typeKey)
       }
 
       graph.addBinding(contextKey.typeKey, provider, bindingStack)
@@ -145,13 +145,13 @@ internal class BindingGraphGenerator(
       )
     }
     bindsFunctionsToAdd.forEach { bindingCallable ->
-      val annotations = bindingCallable.function.annotations
-      val parameters = bindingCallable.function.ir.parameters()
+      val annotations = bindingCallable.callableMetadata.annotations
+      val parameters = bindingCallable.function.parameters()
       val bindsImplType =
         if (annotations.isBinds) {
           parameters.extensionOrFirstParameter?.contextualTypeKey
             ?: error(
-              "Missing receiver parameter for @Binds function: ${bindingCallable.function.ir.dumpKotlinLike()} in class ${bindingCallable.function.ir.parentAsClass.classId}"
+              "Missing receiver parameter for @Binds function: ${bindingCallable.function.dumpKotlinLike()} in class ${bindingCallable.function.parentAsClass.classId}"
             )
         } else {
           null
@@ -167,26 +167,25 @@ internal class BindingGraphGenerator(
       val binding =
         IrBinding.Alias(
           targetTypeKey,
-          bindsImplType!!.typeKey,
-          bindingCallable.function.ir,
+          bindsImplType?.typeKey ?: error("Missing binds impl type for ${bindingCallable.function.name} in ${bindingCallable.function.parentAsClass.dumpKotlinLike()}"),
+          bindingCallable.function,
           parameters,
           annotations,
         )
 
       // Track a lookup of the target for IC
-      trackFunctionCall(node.sourceGraph, bindingCallable.function.ir)
+      trackFunctionCall(node.sourceGraph, bindingCallable.function)
 
       if (annotations.isIntoMultibinding) {
         graph
           .getOrCreateMultibinding(
             annotations = annotations,
             contextKey = IrContextualTypeKey.create(targetTypeKey),
-            declaration = bindingCallable.function.ir,
+            declaration = bindingCallable.function,
             originalQualifier = annotations.qualifier,
             bindingStack = bindingStack,
           )
-          .sourceBindings
-          .add(binding.typeKey)
+          .addSourceBinding(binding.typeKey)
       }
 
       graph.addBinding(binding.typeKey, binding, bindingStack)
@@ -222,7 +221,7 @@ internal class BindingGraphGenerator(
 
     fun addOrUpdateMultibinding(
       contextualTypeKey: IrContextualTypeKey,
-      getter: MetroSimpleFunction,
+      getter: IrSimpleFunction,
       multibinds: IrAnnotation,
     ) {
       if (contextualTypeKey.typeKey !in graph) {
@@ -237,13 +236,13 @@ internal class BindingGraphGenerator(
           .expectAs<IrBinding.Multibinding>()
           .let {
             it.allowEmpty = multibinds.allowEmpty()
-            it.declaration = getter.ir
+            it.declaration = getter
           }
       }
 
       // Record an IC lookup
-      trackClassLookup(node.sourceGraph, getter.ir.propertyIfAccessor.parentAsClass)
-      trackFunctionCall(node.sourceGraph, getter.ir)
+      trackClassLookup(node.sourceGraph, getter.propertyIfAccessor.parentAsClass)
+      trackFunctionCall(node.sourceGraph, getter)
     }
 
     node.multibindsCallables.forEach { multibindsCallable ->
@@ -251,7 +250,7 @@ internal class BindingGraphGenerator(
       addOrUpdateMultibinding(
         contextKey,
         multibindsCallable.function,
-        multibindsCallable.function.annotations.multibinds!!,
+        multibindsCallable.callableMetadata.annotations.multibinds!!,
       )
     }
 
@@ -307,7 +306,7 @@ internal class BindingGraphGenerator(
           contextualTypeKey,
           IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
         )
-        addOrUpdateMultibinding(contextualTypeKey, getter, multibinds)
+        addOrUpdateMultibinding(contextualTypeKey, getter.ir, multibinds)
       } else {
         graph.addAccessor(
           contextualTypeKey,

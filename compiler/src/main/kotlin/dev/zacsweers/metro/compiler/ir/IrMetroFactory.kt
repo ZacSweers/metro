@@ -4,10 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -19,17 +17,11 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
-import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.getAnnotation
-import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
@@ -153,14 +145,25 @@ internal sealed interface ClassFactory : IrMetroFactory {
 
 internal class ProviderFactory(
   val clazz: IrClass,
-  val mirrorFunction: IrSimpleFunction,
-  val callableId: CallableId,
-  override val function: IrSimpleFunction,
-  val annotations: MetroAnnotations<IrAnnotation>,
   val typeKey: IrTypeKey,
-  val isPropertyAccessor: Boolean,
+  private val callableMetadata: IrCallableMetadata,
   parametersLazy: Lazy<Parameters>,
 ) : IrMetroFactory {
+  val mirrorFunction: IrSimpleFunction
+    get() = callableMetadata.function
+
+  val callableId: CallableId
+    get() = callableMetadata.callableId
+
+  override val function: IrSimpleFunction
+    get() = callableMetadata.function
+
+  val annotations: MetroAnnotations<IrAnnotation>
+    get() = callableMetadata.annotations
+
+  val isPropertyAccessor: Boolean
+    get() = callableMetadata.isPropertyAccessor
+
   companion object {
     context(context: IrMetroContext)
     operator fun invoke(
@@ -169,41 +172,14 @@ internal class ProviderFactory(
       mirrorFunction: IrSimpleFunction,
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
     ): ProviderFactory {
-      val providesCallableIdAnno =
-        clazz.getAnnotation(Symbols.FqNames.ProvidesCallableIdClass)
-          ?: error(
-            "No @ProvidesCallableId found on class ${clazz.classId}. This is a bug in the Metro compiler."
-          )
-      val callableName = providesCallableIdAnno.getAnnotationStringValue("callableName")
-      val callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
-      val isPropertyAccessor =
-        providesCallableIdAnno.getConstBooleanArgumentOrNull(
-          Symbols.StringNames.IS_PROPERTY_ACCESSOR.asName()
-        ) ?: false
-      // Fake a reference to the "real" function by making a copy of this mirror that reflects the
-      // real one
-      val function =
-        mirrorFunction.deepCopyWithSymbols().apply {
-          name = callableId.callableName
-          parent = clazz
-          // Point at the original class
-          setDispatchReceiver(clazz.parentAsClass.thisReceiverOrFail.copyTo(this))
-          // Read back the original offsets in the original source
-          startOffset = providesCallableIdAnno.constArgumentOfTypeAt<Int>(2)!!
-          endOffset = providesCallableIdAnno.constArgumentOfTypeAt<Int>(3)!!
-        }
-      val annotations = sourceAnnotations ?: function.metroAnnotations(context.symbols.classIds)
-      val typeKey = sourceTypeKey.copy(qualifier = annotations.qualifier)
+      val callableMetadata = clazz.irCallableMetadata(mirrorFunction, sourceAnnotations)
+      val typeKey = sourceTypeKey.copy(qualifier = callableMetadata.annotations.qualifier)
 
       return ProviderFactory(
         clazz = clazz,
-        mirrorFunction = mirrorFunction,
-        callableId = callableId,
-        function = function,
-        annotations = annotations,
         typeKey = typeKey,
-        isPropertyAccessor = isPropertyAccessor,
-        parametersLazy = unsafeLazy { function.parameters() },
+        callableMetadata = callableMetadata,
+        parametersLazy = unsafeLazy { callableMetadata.function.parameters() },
       )
     }
   }

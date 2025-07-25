@@ -55,13 +55,13 @@ class Base1Impl : Base1, Base2, Base3 {
 
       }
 
-      @IntoSet
       @Binds
+      @IntoSet
       @CallableMetadata(callableName = "bindIntoSetAsAsBase2", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
       abstract fun bindIntoSetAsAsBase2_intoset(instance: Base1Impl): Base2
 
-      @IntoSet
       @Binds
+      @IntoSet
       @CallableMetadata(callableName = "bindIntoSetAsAsBase3", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
       abstract fun bindIntoSetAsAsBase3_intoset(instance: Base1Impl): Base3
 

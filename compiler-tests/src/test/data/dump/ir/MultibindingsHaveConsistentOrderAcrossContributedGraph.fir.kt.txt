@@ -82,13 +82,13 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     }
 
-    @IntoSet
     @Binds
+    @IntoSet
     @CallableMetadata(callableName = "<get-bind>", isPropertyAccessor = true, startOffset = 272, endOffset = 312)
     abstract fun TaskImpl1.bind_intoset(): Task
 
-    @IntoSet
     @Binds
+    @IntoSet
     @CallableMetadata(callableName = "<get-bind>", isPropertyAccessor = true, startOffset = 229, endOffset = 269)
     abstract fun TaskImpl2.bind_intoset(): Task
 

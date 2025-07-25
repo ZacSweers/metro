@@ -340,9 +340,12 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
   return Objects.hash(
     type.rawType().classIdOrFail,
     arguments
-      .map {
-        it?.computeHashSource()
-          ?: error("Unknown annotation argument type: ${it?.let { it::class.java }}")
+      .filterNotNull()
+      .mapIndexed { i, arg ->
+        arg.computeHashSource()
+          ?: error(
+            "Unknown annotation argument type: ${arg::class.java }. Annotation: ${dumpKotlinLike()}"
+          )
       }
       .toTypedArray()
       .contentDeepHashCode(),

@@ -28,11 +28,11 @@ public class MetroIrGenerationExtension(
     val symbols = Symbols(moduleFragment, pluginContext, classIds, options)
     val context = IrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
 
-    context(context) { generateInner(moduleFragment, symbols) }
+    context(context) { generateInner(moduleFragment) }
   }
 
   context(context: IrMetroContext)
-  private fun generateInner(moduleFragment: IrModuleFragment, symbols: Symbols) {
+  private fun generateInner(moduleFragment: IrModuleFragment) {
     try {
       tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
         .trace { tracer ->
@@ -42,7 +42,7 @@ public class MetroIrGenerationExtension(
             moduleFragment.accept(IrContributionVisitor(context), contributionData)
           }
 
-          // First.5 - transform $$MetroContribution interfaces to add their binds functions
+          // First part 2 - transform $$MetroContribution interfaces to add their binds functions
           tracer.traceNested("Transforming Metro contributions") {
             moduleFragment.transform(ContributionBindsFunctionsIrTransformer(context), null)
           }
