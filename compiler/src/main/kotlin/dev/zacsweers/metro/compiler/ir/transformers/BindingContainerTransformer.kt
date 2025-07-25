@@ -102,7 +102,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
    */
   private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<BindingContainer>>()
 
-  private val bindingMirrorClassTransformer = BindingMirrorClassTransformer(context)
+  private val bindsMirrorClassTransformer = BindsMirrorClassTransformer(context)
 
   fun findContainer(
     declaration: IrClass,
@@ -161,7 +161,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         it.classType.rawTypeOrNull()?.classIdOrFail
       }
 
-    val bindsMirror = bindingMirrorClassTransformer.getOrComputeBindingMirror(declaration)
+    val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
 
     val isGraph = declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations)
     val container =
@@ -660,7 +660,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         }
 
     // Add any binds callables
-    val bindsMirror = bindingMirrorClassTransformer.getOrComputeBindingMirror(declaration)
+    val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
     val includedBindingContainers =
       graphProto.included_binding_containers.mapToSet { ClassId.fromString(it) }
 
@@ -687,7 +687,7 @@ internal class BindingContainer(
   val includes: Set<ClassId>,
   /** Mapping of provider factories by their [CallableId]. */
   val providerFactories: Map<CallableId, ProviderFactory>,
-  val bindsMirror: BindingMirror?,
+  val bindsMirror: BindsMirror?,
 ) {
   /**
    * Simple classes with a public, no-arg constructor can be managed directly by the consuming

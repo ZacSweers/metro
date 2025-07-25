@@ -40,11 +40,11 @@ import org.jetbrains.kotlin.name.ClassId
  * Transforms binding mirror classes generated in FIR by adding mirror functions for `@Binds` and
  * `@Multibinds` declarations.
  */
-internal class BindingMirrorClassTransformer(context: IrMetroContext) : IrMetroContext by context {
-  private val cache = mutableMapOf<ClassId, Optional<BindingMirror>>()
+internal class BindsMirrorClassTransformer(context: IrMetroContext) : IrMetroContext by context {
+  private val cache = mutableMapOf<ClassId, Optional<BindsMirror>>()
 
   // When we generate binds/providers we need to genreate a mirror class too
-  fun getOrComputeBindingMirror(declaration: IrClass): BindingMirror? {
+  fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
         val mirrorClass = declaration.nestedClassOrNull(Symbols.Names.BindsMirrorClass)
@@ -63,7 +63,7 @@ internal class BindingMirrorClassTransformer(context: IrMetroContext) : IrMetroC
   }
 }
 
-internal data class BindingMirror(
+internal data class BindsMirror(
   val ir: IrClass,
   /** Set of binds callables by their [CallableId]. */
   val bindsCallables: Set<BindsCallable>,
@@ -74,7 +74,7 @@ internal data class BindingMirror(
 }
 
 context(context: IrMetroContext)
-private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrClass): BindingMirror {
+private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrClass): BindsMirror {
   val isExternal = mirrorClass.isExternalParent
   // Find all @Binds and @Multibinds declarations in the parent class
   val bindsCallables = mutableSetOf<BindsCallable>()
@@ -109,8 +109,8 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
     }
   }
 
-  val bindingMirror = BindingMirror(mirrorClass, bindsCallables, multibindsCallables)
-  return bindingMirror
+  val bindsMirror = BindsMirror(mirrorClass, bindsCallables, multibindsCallables)
+  return bindsMirror
 }
 
 context(context: IrMetroContext)

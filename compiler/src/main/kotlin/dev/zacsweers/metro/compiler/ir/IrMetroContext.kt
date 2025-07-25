@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
+import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.appendText
 import kotlin.io.path.createDirectories
@@ -17,6 +18,7 @@ import kotlin.io.path.writeText
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
@@ -30,7 +32,6 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.VisibilityPrintingStrategy
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
-import org.jetbrains.kotlin.konan.file.File
 import org.jetbrains.kotlin.name.ClassId
 
 internal interface IrMetroContext : IrPluginContext {
@@ -44,6 +45,7 @@ internal interface IrMetroContext : IrPluginContext {
     get() = options.debug
 
   val lookupTracker: LookupTracker?
+  val expectActualTracker: ExpectActualTracker
 
   val irTypeSystemContext: IrTypeSystemContext
 
@@ -55,6 +57,7 @@ internal interface IrMetroContext : IrPluginContext {
   val traceLogFile: Path?
   val timingsFile: Path?
   val lookupFile: Path?
+  val expectActualFile: Path?
 
   val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
 
@@ -88,6 +91,10 @@ internal interface IrMetroContext : IrPluginContext {
     )
   }
 
+  fun logExpectActualReport(expectedFile: File, actualFile: File?) {
+    expectActualFile?.appendText("\n${expectedFile.name},${actualFile?.name}")
+  }
+
   fun IrClass.dumpToMetroLog() {
     val name =
       parentDeclarationsWithSelf.filterIsInstance<IrClass>().toList().asReversed().joinToString(
@@ -119,8 +126,16 @@ internal interface IrMetroContext : IrPluginContext {
       symbols: Symbols,
       options: MetroOptions,
       lookupTracker: LookupTracker?,
+      expectActualTracker: ExpectActualTracker,
     ): IrMetroContext =
-      SimpleIrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
+      SimpleIrMetroContext(
+        pluginContext,
+        messageCollector,
+        symbols,
+        options,
+        lookupTracker,
+        expectActualTracker,
+      )
 
     private class SimpleIrMetroContext(
       override val pluginContext: IrPluginContext,
@@ -128,6 +143,7 @@ internal interface IrMetroContext : IrPluginContext {
       override val symbols: Symbols,
       override val options: MetroOptions,
       lookupTracker: LookupTracker?,
+      expectActualTracker: ExpectActualTracker,
     ) : IrMetroContext, IrPluginContext by pluginContext {
       override val lookupTracker: LookupTracker? =
         lookupTracker?.let {
@@ -137,6 +153,14 @@ internal interface IrMetroContext : IrPluginContext {
             lookupTracker
           }
         }
+
+      override val expectActualTracker: ExpectActualTracker =
+        if (options.reportsDestination != null) {
+          RecordingExpectActualTracker(this, expectActualTracker)
+        } else {
+          expectActualTracker
+        }
+
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
@@ -176,6 +200,16 @@ internal interface IrMetroContext : IrPluginContext {
             deleteIfExists()
             createFile()
             appendText("file,position,scopeFqName,scopeKind,name")
+          }
+        }
+      }
+
+      override val expectActualFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("expectActualReports.csv").apply {
+            deleteIfExists()
+            createFile()
+            appendText("expected,actual")
           }
         }
       }

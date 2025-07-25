@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
@@ -22,11 +23,20 @@ public class MetroIrGenerationExtension(
   private val classIds: ClassIds,
   private val options: MetroOptions,
   private val lookupTracker: LookupTracker?,
+  private val expectActualTracker: ExpectActualTracker,
 ) : IrGenerationExtension {
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
     val symbols = Symbols(moduleFragment, pluginContext, classIds, options)
-    val context = IrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
+    val context =
+      IrMetroContext(
+        pluginContext,
+        messageCollector,
+        symbols,
+        options,
+        lookupTracker,
+        expectActualTracker,
+      )
 
     context(context) { generateInner(moduleFragment) }
   }

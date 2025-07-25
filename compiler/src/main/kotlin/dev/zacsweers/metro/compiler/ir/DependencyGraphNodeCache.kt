@@ -155,6 +155,9 @@ internal class DependencyGraphNodeCache(
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
           if (parameter.isIncludes) {
             val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
+
+            linkDeclarationsInCompilation(graphDeclaration, parameterClass)
+
             if (parameterClass.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
               bindingContainerFields = bindingContainerFields.withSet(i)
             }
@@ -214,7 +217,7 @@ internal class DependencyGraphNodeCache(
           // It's a graph-like
           val node =
             bindingStack.withEntry(
-              IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
+              IrBindingStack.Entry.requestedAt(graphContextKey, nonNullCreator.function)
             ) {
               nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
             }
@@ -403,6 +406,7 @@ internal class DependencyGraphNodeCache(
           .mapNotNullToSet { it.classType.rawTypeOrNull() }
           .let(bindingContainerTransformer::resolveAllBindingContainersCached)
           .onEach { container ->
+            linkDeclarationsInCompilation(graphDeclaration, container.ir)
             // Annotation-included containers may need to be managed directly
             if (container.canBeManaged) {
               managedBindingContainers += container.ir
