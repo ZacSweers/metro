@@ -4,9 +4,9 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.Symbols.FqNames.kotlinCollectionsPackageFqn
 import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
+import dev.zacsweers.metro.compiler.Symbols.StringNames.CALLABLE_METADATA
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
-import dev.zacsweers.metro.compiler.Symbols.StringNames.CALLABLE_METADATA
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -142,8 +142,7 @@ internal class Symbols(
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
-    val CallableMetadata =
-      ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
+    val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
     val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)

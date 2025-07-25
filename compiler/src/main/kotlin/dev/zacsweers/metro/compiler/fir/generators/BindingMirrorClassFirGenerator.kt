@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.fir.Keys
-import dev.zacsweers.metro.compiler.fir.hasOrigin
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -64,7 +63,8 @@ internal class BindingMirrorClassFirGenerator(session: FirSession) :
     context: NestedClassGenerationContext,
   ): Set<Name> {
     // Check if this class has any @Binds or @Multibinds members or is a contribution class decl
-    val hasBindingMembers = classSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { callable ->
+    val hasBindingMembers =
+      classSymbol.declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { callable ->
         val annotations = callable.metroAnnotations(session)
         annotations.isBinds || annotations.isMultibinds
       }

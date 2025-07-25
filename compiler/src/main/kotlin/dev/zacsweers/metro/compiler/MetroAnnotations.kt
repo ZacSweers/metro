@@ -524,11 +524,11 @@ internal fun <T> expectNullAndSet(type: String, current: T?, value: T): T {
   return value
 }
 
-/**
- * Returns a list of annotations for copying to mirror functions.
- */
+/** Returns a list of annotations for copying to mirror functions. */
 context(context: IrMetroContext)
-internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(symbol: IrSymbol): List<IrConstructorCall> {
+internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
+  symbol: IrSymbol
+): List<IrConstructorCall> {
   return buildList {
     if (isProvides) {
       add(buildAnnotation(symbol, context.symbols.providesConstructor))

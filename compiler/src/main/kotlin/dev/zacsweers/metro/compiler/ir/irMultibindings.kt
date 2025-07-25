@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
-import org.jetbrains.kotlin.ir.util.IdSignature
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.render
 
@@ -28,9 +27,7 @@ internal fun IrTypeKey.transformMultiboundQualifier(
 
   val rawSymbol = annotations.symbol ?: error("No symbol found for multibinding annotation")
   val declaration =
-    rawSymbol.expectAsOrNull<IrSymbol>()
-      ?.owner
-      ?.expectAsOrNull<IrOverridableDeclaration<*>>()
+    rawSymbol.expectAsOrNull<IrSymbol>()?.owner?.expectAsOrNull<IrOverridableDeclaration<*>>()
       ?: error("Expected symbol to be an IrSymbol but was ${rawSymbol::class.simpleName}")
 
   val elementId = declaration.multibindingElementId

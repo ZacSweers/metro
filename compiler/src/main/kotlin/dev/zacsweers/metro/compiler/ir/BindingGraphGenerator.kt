@@ -167,7 +167,10 @@ internal class BindingGraphGenerator(
       val binding =
         IrBinding.Alias(
           targetTypeKey,
-          bindsImplType?.typeKey ?: error("Missing binds impl type for ${bindingCallable.function.name} in ${bindingCallable.function.parentAsClass.dumpKotlinLike()}"),
+          bindsImplType?.typeKey
+            ?: error(
+              "Missing binds impl type for ${bindingCallable.function.name} in ${bindingCallable.function.parentAsClass.dumpKotlinLike()}"
+            ),
           bindingCallable.function,
           parameters,
           annotations,
