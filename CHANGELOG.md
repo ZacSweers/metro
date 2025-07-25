@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement:** Allow `@Binds` and `@Multibinds` declarations to be private.
 - **Fix:** When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.
 - **Fix:** Write `@Multibinds` information to metro metadata.
 - **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
