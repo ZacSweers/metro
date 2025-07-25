@@ -269,6 +269,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/dependencygraph/QualifiersWithEnumsWork.kt");
     }
 
+    @Test
+    @TestMetadata("StaticGraphCompanions.kt")
+    public void testStaticGraphCompanions() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/StaticGraphCompanions.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticGraphCompanionsSeparateModules.kt")
+    public void testStaticGraphCompanionsSeparateModules() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/StaticGraphCompanionsSeparateModules.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers")
     @TestDataPath("$PROJECT_ROOT")
