@@ -103,6 +103,7 @@ internal class BindingGraphGenerator(
       // Track a lookup of the provider class for IC
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
       trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
+      trackFunctionCall(node.sourceGraph, providerFactory.function)
 
       val contextKey =
         if (providerFactory.annotations.isIntoMultibinding) {
@@ -177,7 +178,10 @@ internal class BindingGraphGenerator(
         )
 
       // Track a lookup of the target for IC
+      trackClassLookup(node.sourceGraph, bindingCallable.function.parentAsClass)
+      trackClassLookup(node.sourceGraph, bindingCallable.callableMetadata.mirrorFunction.parentAsClass)
       trackFunctionCall(node.sourceGraph, bindingCallable.function)
+      trackFunctionCall(node.sourceGraph, bindingCallable.callableMetadata.mirrorFunction)
 
       if (annotations.isIntoMultibinding) {
         graph
@@ -252,9 +256,13 @@ internal class BindingGraphGenerator(
       val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
       addOrUpdateMultibinding(
         contextKey,
-        multibindsCallable.function,
+        multibindsCallable.callableMetadata.mirrorFunction,
         multibindsCallable.callableMetadata.annotations.multibinds!!,
       )
+
+      // Record an IC lookup of the original function/class for good measure
+      trackFunctionCall(node.sourceGraph, multibindsCallable.function)
+      trackClassLookup(node.sourceGraph, multibindsCallable.function.propertyIfAccessor.parentAsClass)
     }
 
     // Traverse all parent graph supertypes to create binding aliases as needed

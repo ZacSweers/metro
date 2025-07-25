@@ -150,7 +150,7 @@ internal class ProviderFactory(
   parametersLazy: Lazy<Parameters>,
 ) : IrMetroFactory {
   val mirrorFunction: IrSimpleFunction
-    get() = callableMetadata.function
+    get() = callableMetadata.mirrorFunction
 
   val callableId: CallableId
     get() = callableMetadata.callableId
