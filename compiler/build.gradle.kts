@@ -63,6 +63,10 @@ val shadowJar =
         // or we'll get two artifacts that have the same classifier
         archiveClassifier.set("ignored")
       }
+
+      enableRelocation = true
+      relocationPrefix = "dev.zacsweers.metro.compiler.shaded"
+
       // TODO these are relocated, do we need to/can we exclude these?
       //  exclude("META-INF/wire-runtime.kotlin_module")
       //  exclude("META-INF/okio.kotlin_module")
@@ -72,17 +76,6 @@ val shadowJar =
         exclude(dependency("org.jetbrains.kotlin:.*"))
         exclude(dependency("dev.drewhamilton.poko:.*"))
       }
-      relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
-      relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
-      relocate(
-        "com.jakewharton.picnic",
-        "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic",
-      )
-      relocate(
-        "com.jakewharton.crossword",
-        "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
-      )
-      relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
     }
   }
 
