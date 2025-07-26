@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.predicates
 import org.jetbrains.kotlin.fir.FirSession
@@ -11,6 +12,7 @@ import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.extensions.ExperimentalSupertypesGenerationApi
@@ -18,7 +20,7 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.getContainingDeclaration
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
@@ -63,6 +65,7 @@ internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
+    register(session.predicates.dependencyGraphPredicate)
     register(session.predicates.dependencyGraphCompanionPredicate)
   }
 
@@ -100,40 +103,60 @@ internal class GraphFactoryFirSupertypeGenerator(session: FirSession) :
     companionClass: FirClassLikeDeclaration,
     typeResolver: TypeResolveService,
   ): ConeClassLikeType? {
-    val graphCreator =
-      resolveCreatorInterfaceFromGraphCompanion(companionClass, typeResolver) ?: return null
+    val graphClass = companionClass.getContainingDeclaration(session) ?: return null
+    if (graphClass !is FirClass) return null
+    val graphCreator = resolveCreatorInterface(graphClass) ?: return null
+
+    if (isCompanionTheTarget(graphClass.symbol, companionClass, typeResolver)) {
+      return null
+    }
+
     // TODO generics?
-    // TODO check for existing supertype?
-    return graphCreator.defaultType()
+    val type = graphCreator.defaultType()
+    return type
   }
 
-  @OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
-  private fun resolveCreatorInterfaceFromGraphCompanion(
-    declaration: FirClassLikeDeclaration,
+  private fun isCompanionTheTarget(
+    graphClass: FirClassSymbol<*>,
+    companionClass: FirClassLikeDeclaration,
     typeResolver: TypeResolveService,
-  ): FirClass? {
-    val graphClass = declaration.getContainingDeclaration(session) ?: return null
-    if (graphClass !is FirClass) return null
-
-    return graphClass.declarations.filterIsInstance<FirClass>().firstOrNull {
-      if (it.symbol.isCompanion) return@firstOrNull false
-      if (!it.symbol.isInterface) return@firstOrNull false
-
-      for (annotation in it.annotations) {
-        val typeRef = annotation.annotationTypeRef
-        // Resolve the annotation type
-        val refToCheck =
-          if (typeRef is FirUserTypeRef) {
-            typeResolver.resolveUserType(typeRef)
-          } else {
-            typeRef
-          }
-        val classId = refToCheck.coneTypeOrNull?.classId ?: continue
-        if (classId in session.classIds.dependencyGraphFactoryAnnotations) {
-          return@firstOrNull true
+  ): Boolean {
+    // Check for existing supertype?
+    if (companionClass is FirClass && companionClass.superTypeRefs.isNotEmpty()) {
+      val graphClassId = graphClass.classId
+      for (superTypeRef in companionClass.superTypeRefs) {
+        val coneType =
+          superTypeRef.coneTypeOrNull
+            ?: run {
+              if (superTypeRef is FirUserTypeRef) {
+                typeResolver.resolveUserType(superTypeRef).coneType
+              } else {
+                null
+              }
+            }
+            ?: continue
+        if (coneType.classId == graphClassId) {
+          // Already implements it in source, assume the user knows what they're doing here
+          return true
         }
       }
-      false
     }
+    return false
+  }
+
+  @OptIn(DirectDeclarationsAccess::class)
+  private fun resolveCreatorInterface(graphClass: FirClass): FirClassSymbol<*>? {
+    var creator: FirClassSymbol<*>? = null
+    for (klass in graphClass.declarations.filterIsInstance<FirClass>()) {
+      if (creator != null) continue
+      val symbol = klass.symbol
+      if (symbol.isCompanion) continue
+      if (!symbol.isInterface) continue
+
+      if (symbol.isAnnotatedWithAny(session, session.classIds.dependencyGraphFactoryAnnotations)) {
+        creator = symbol
+      }
+    }
+    return creator
   }
 }
