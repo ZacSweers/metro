@@ -61,7 +61,7 @@ mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.19.3" }
 shadow = { id = "com.gradleup.shadow", version = "9.0.0-rc1" }
 spotless = { id = "com.diffplug.spotless", version = "7.2.1" }
-testkit = { id = "com.autonomousapps.testkit", version = "0.13" }
+testkit = { id = "com.autonomousapps.testkit", version = "0.14" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 [libraries]
