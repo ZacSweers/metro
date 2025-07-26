@@ -23,456 +23,436 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
-  @TestMetadata("compiler-tests/src/test/data/diagnostic/fir")
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/bindingcontainer")
   @TestDataPath("$PROJECT_ROOT")
-  public class Fir {
+  public class Bindingcontainer {
     @Test
-    public void testAllFilesPresentInFir() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    @TestMetadata("AbstractContainersCannotHaveProvides.kt")
+    public void testAbstractContainersCannotHaveProvides() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/AbstractContainersCannotHaveProvides.kt");
+    }
+
+    @Test
+    public void testAllFilesPresentInBindingcontainer() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/bindingcontainer"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("CannotAnnotateBothGraphAndContainer.kt")
+    public void testCannotAnnotateBothGraphAndContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/CannotAnnotateBothGraphAndContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotIncludeGenericContainer.kt")
+    public void testCannotIncludeGenericContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/CannotIncludeGenericContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("IllegalTypes.kt")
+    public void testIllegalTypes() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/IllegalTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedMustBeAContainer.kt")
+    public void testIncludedMustBeAContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/IncludedMustBeAContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingNoArgConstructor.kt")
+    public void testMissingNoArgConstructor() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/MissingNoArgConstructor.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/createGraph")
+  @TestDataPath("$PROJECT_ROOT")
+  public class CreateGraph {
+    @Test
+    public void testAllFilesPresentInCreateGraph() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/createGraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_GraphHasFactory.kt")
+    public void testCreateGraph_GraphHasFactory() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_GraphHasFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_MustBeGraph.kt")
+    public void testCreateGraph_MustBeGraph() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_MustBeGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_MustBeGraphFactory.kt")
+    public void testCreateGraph_MustBeGraphFactory() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_MustBeGraphFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("CreateGraph_OkCase.kt")
+    public void testCreateGraph_OkCase() {
+      runTest("compiler-tests/src/test/data/diagnostic/createGraph/CreateGraph_OkCase.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/cycles")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Cycles {
+    @Test
+    public void testAllFilesPresentInCycles() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("CyclesShouldFailAcrossMultipleGraphs.kt")
+    public void testCyclesShouldFailAcrossMultipleGraphs() {
+      runTest("compiler-tests/src/test/data/diagnostic/cycles/CyclesShouldFailAcrossMultipleGraphs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/dependencygraph")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Dependencygraph {
+    @Test
+    public void testAllFilesPresentInDependencygraph() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
+    public void testGraphsCannotDirectlyExtendOtherGraphs() {
+      runTest("compiler-tests/src/test/data/diagnostic/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/functioninject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Functioninject {
+    @Test
+    public void testAllFilesPresentInFunctioninject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/functioninject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("CannotBeScoped.kt")
+    public void testCannotBeScoped() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotBeScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveContextParams.kt")
+    public void testCannotHaveContextParams() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveContextParams.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveExtensionReceivers.kt")
+    public void testCannotHaveExtensionReceivers() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveExtensionReceivers.kt");
+    }
+
+    @Test
+    @TestMetadata("CannotHaveTypeArgs.kt")
+    public void testCannotHaveTypeArgs() {
+      runTest("compiler-tests/src/test/data/diagnostic/functioninject/CannotHaveTypeArgs.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/inject")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Inject {
+    @Test
+    public void testAllFilesPresentInInject() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("SuggestInjectClassOnSingleContructor.kt")
+    public void testSuggestInjectClassOnSingleContructor() {
+      runTest("compiler-tests/src/test/data/diagnostic/inject/SuggestInjectClassOnSingleContructor.kt");
     }
 
     @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer")
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/inject/assisted")
     @TestDataPath("$PROJECT_ROOT")
-    public class Bindingcontainer {
+    public class Assisted {
       @Test
-      @TestMetadata("AbstractContainersCannotHaveProvides.kt")
-      public void testAbstractContainersCannotHaveProvides() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/AbstractContainersCannotHaveProvides.kt");
-      }
-
-      @Test
-      public void testAllFilesPresentInBindingcontainer() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      public void testAllFilesPresentInAssisted() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
       }
 
       @Test
-      @TestMetadata("CannotAnnotateBothGraphAndContainer.kt")
-      public void testCannotAnnotateBothGraphAndContainer() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/CannotAnnotateBothGraphAndContainer.kt");
-      }
-
-      @Test
-      @TestMetadata("CannotIncludeGenericContainer.kt")
-      public void testCannotIncludeGenericContainer() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/CannotIncludeGenericContainer.kt");
-      }
-
-      @Test
-      @TestMetadata("IllegalTypes.kt")
-      public void testIllegalTypes() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/IllegalTypes.kt");
-      }
-
-      @Test
-      @TestMetadata("IncludedMustBeAContainer.kt")
-      public void testIncludedMustBeAContainer() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/IncludedMustBeAContainer.kt");
-      }
-
-      @Test
-      @TestMetadata("MissingNoArgConstructor.kt")
-      public void testMissingNoArgConstructor() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/bindingcontainer/MissingNoArgConstructor.kt");
-      }
-    }
-
-    @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/createGraph")
-    @TestDataPath("$PROJECT_ROOT")
-    public class CreateGraph {
-      @Test
-      public void testAllFilesPresentInCreateGraph() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/createGraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-      }
-
-      @Test
-      @TestMetadata("CreateGraph_GraphHasFactory.kt")
-      public void testCreateGraph_GraphHasFactory() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/createGraph/CreateGraph_GraphHasFactory.kt");
-      }
-
-      @Test
-      @TestMetadata("CreateGraph_MustBeGraph.kt")
-      public void testCreateGraph_MustBeGraph() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/createGraph/CreateGraph_MustBeGraph.kt");
-      }
-
-      @Test
-      @TestMetadata("CreateGraph_MustBeGraphFactory.kt")
-      public void testCreateGraph_MustBeGraphFactory() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/createGraph/CreateGraph_MustBeGraphFactory.kt");
-      }
-
-      @Test
-      @TestMetadata("CreateGraph_OkCase.kt")
-      public void testCreateGraph_OkCase() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/createGraph/CreateGraph_OkCase.kt");
-      }
-    }
-
-    @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/dependencygraph")
-    @TestDataPath("$PROJECT_ROOT")
-    public class Dependencygraph {
-      @Test
-      public void testAllFilesPresentInDependencygraph() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-      }
-
-      @Test
-      @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
-      public void testGraphsCannotDirectlyExtendOtherGraphs() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
-      }
-    }
-
-    @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/functioninject")
-    @TestDataPath("$PROJECT_ROOT")
-    public class Functioninject {
-      @Test
-      public void testAllFilesPresentInFunctioninject() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/functioninject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-      }
-
-      @Test
-      @TestMetadata("CannotBeScoped.kt")
-      public void testCannotBeScoped() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotBeScoped.kt");
-      }
-
-      @Test
-      @TestMetadata("CannotHaveContextParams.kt")
-      public void testCannotHaveContextParams() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotHaveContextParams.kt");
-      }
-
-      @Test
-      @TestMetadata("CannotHaveExtensionReceivers.kt")
-      public void testCannotHaveExtensionReceivers() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotHaveExtensionReceivers.kt");
-      }
-
-      @Test
-      @TestMetadata("CannotHaveTypeArgs.kt")
-      public void testCannotHaveTypeArgs() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/functioninject/CannotHaveTypeArgs.kt");
-      }
-    }
-
-    @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/inject")
-    @TestDataPath("$PROJECT_ROOT")
-    public class Inject {
-      @Test
-      public void testAllFilesPresentInInject() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/inject"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-      }
-
-      @Test
-      @TestMetadata("SuggestInjectClassOnSingleContructor.kt")
-      public void testSuggestInjectClassOnSingleContructor() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/inject/SuggestInjectClassOnSingleContructor.kt");
-      }
-
-      @Nested
-      @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/inject/assisted")
-      @TestDataPath("$PROJECT_ROOT")
-      public class Assisted {
-        @Test
-        public void testAllFilesPresentInAssisted() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-        }
-
-        @Test
-        @TestMetadata("LazyAssistedFactoryInjection.kt")
-        public void testLazyAssistedFactoryInjection() {
-          runTest("compiler-tests/src/test/data/diagnostic/fir/inject/assisted/LazyAssistedFactoryInjection.kt");
-        }
-      }
-
-      @Nested
-      @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/inject/member")
-      @TestDataPath("$PROJECT_ROOT")
-      public class Member {
-        @Test
-        public void testAllFilesPresentInMember() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-        }
-
-        @Test
-        @TestMetadata("FunctionMemberInjectsCannotHaveTypeParams.kt")
-        public void testFunctionMemberInjectsCannotHaveTypeParams() {
-          runTest("compiler-tests/src/test/data/diagnostic/fir/inject/member/FunctionMemberInjectsCannotHaveTypeParams.kt");
-        }
+      @TestMetadata("LazyAssistedFactoryInjection.kt")
+      public void testLazyAssistedFactoryInjection() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/assisted/LazyAssistedFactoryInjection.kt");
       }
     }
 
     @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/interop")
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/inject/member")
     @TestDataPath("$PROJECT_ROOT")
-    public class Interop {
+    public class Member {
       @Test
-      public void testAllFilesPresentInInterop() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-      }
-
-      @Nested
-      @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/interop/dagger")
-      @TestDataPath("$PROJECT_ROOT")
-      public class Dagger {
-        @Test
-        public void testAllFilesPresentInDagger() {
-          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-        }
-
-        @Test
-        @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
-        public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
-          runTest("compiler-tests/src/test/data/diagnostic/fir/interop/dagger/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");
-        }
-      }
-    }
-
-    @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/fir/provides")
-    @TestDataPath("$PROJECT_ROOT")
-    public class Provides {
-      @Test
-      public void testAllFilesPresentInProvides() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/fir/provides"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      public void testAllFilesPresentInMember() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
       }
 
       @Test
-      @TestMetadata("AssistedParametersAreNotSupportedOnProvides.kt")
-      public void testAssistedParametersAreNotSupportedOnProvides() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/AssistedParametersAreNotSupportedOnProvides.kt");
+      @TestMetadata("FunctionMemberInjectsCannotHaveTypeParams.kt")
+      public void testFunctionMemberInjectsCannotHaveTypeParams() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/FunctionMemberInjectsCannotHaveTypeParams.kt");
       }
 
       @Test
-      @TestMetadata("BindsMayNotHaveScopes.kt")
-      public void testBindsMayNotHaveScopes() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsMayNotHaveScopes.kt");
+      @TestMetadata("MembersInjectorParameterWithNoDefaultShouldError.kt")
+      public void testMembersInjectorParameterWithNoDefaultShouldError() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/MembersInjectorParameterWithNoDefaultShouldError.kt");
       }
 
       @Test
-      @TestMetadata("BindsNonThisReturningBodiesShouldError_AbstractClass.kt")
-      public void testBindsNonThisReturningBodiesShouldError_AbstractClass() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsNonThisReturningBodiesShouldError_AbstractClass.kt");
+      @TestMetadata("MissingMemberInjectionShouldFailBinding1.kt")
+      public void testMissingMemberInjectionShouldFailBinding1() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/MissingMemberInjectionShouldFailBinding1.kt");
       }
 
       @Test
-      @TestMetadata("BindsNonThisReturningBodiesShouldError_Interface.kt")
-      public void testBindsNonThisReturningBodiesShouldError_Interface() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsNonThisReturningBodiesShouldError_Interface.kt");
-      }
-
-      @Test
-      @TestMetadata("BindsWithBodiesShouldBePrivate_InAbstractClass.kt")
-      public void testBindsWithBodiesShouldBePrivate_InAbstractClass() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsWithBodiesShouldBePrivate_InAbstractClass.kt");
-      }
-
-      @Test
-      @TestMetadata("BindsWithBodiesShouldBePrivate_InInterface.kt")
-      public void testBindsWithBodiesShouldBePrivate_InInterface() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/BindsWithBodiesShouldBePrivate_InInterface.kt");
-      }
-
-      @Test
-      @TestMetadata("Binds_Interface_OkCase.kt")
-      public void testBinds_Interface_OkCase() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/Binds_Interface_OkCase.kt");
-      }
-
-      @Test
-      @TestMetadata("Binds_interface_BoundTypesMustBeSubtypes.kt")
-      public void testBinds_interface_BoundTypesMustBeSubtypes() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/Binds_interface_BoundTypesMustBeSubtypes.kt");
-      }
-
-      @Test
-      @TestMetadata("Binds_interface_SameTypesCannotHaveSameQualifiers.kt")
-      public void testBinds_interface_SameTypesCannotHaveSameQualifiers() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/Binds_interface_SameTypesCannotHaveSameQualifiers.kt");
-      }
-
-      @Test
-      @TestMetadata("Binds_interface_ShouldNotHaveBodies.kt")
-      public void testBinds_interface_ShouldNotHaveBodies() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/Binds_interface_ShouldNotHaveBodies.kt");
-      }
-
-      @Test
-      @TestMetadata("DaggerReusable_IsUnsupported.kt")
-      public void testDaggerReusable_IsUnsupported() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/DaggerReusable_IsUnsupported.kt");
-      }
-
-      @Test
-      @TestMetadata("PrivateProviderOption_Error.kt")
-      public void testPrivateProviderOption_Error() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/PrivateProviderOption_Error.kt");
-      }
-
-      @Test
-      @TestMetadata("PrivateProviderOption_None.kt")
-      public void testPrivateProviderOption_None() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/PrivateProviderOption_None.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified.kt")
-      public void testProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidedInjectedClassesWithMatchingTypeKeysAreReportedAsWarnings.kt")
-      public void testProvidedInjectedClassesWithMatchingTypeKeysAreReportedAsWarnings() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidedInjectedClassesWithMatchingTypeKeysAreReportedAsWarnings.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidedInjectedClassesWithMatchingTypeKeysButDifferentScopesAreOk.kt")
-      public void testProvidedInjectedClassesWithMatchingTypeKeysButDifferentScopesAreOk() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidedInjectedClassesWithMatchingTypeKeysButDifferentScopesAreOk.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesCannotHaveReceivers_AbstractClass.kt")
-      public void testProvidesCannotHaveReceivers_AbstractClass() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesCannotHaveReceivers_AbstractClass.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesCannotHaveReceivers_Interface.kt")
-      public void testProvidesCannotHaveReceivers_Interface() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesCannotHaveReceivers_Interface.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesCannotLiveInObjects.kt")
-      public void testProvidesCannotLiveInObjects() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesCannotLiveInObjects.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesFunctionsCannotBeTopLevel.kt")
-      public void testProvidesFunctionsCannotBeTopLevel() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesFunctionsCannotBeTopLevel.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesMustHaveABody_AbstractClass.kt")
-      public void testProvidesMustHaveABody_AbstractClass() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesMustHaveABody_AbstractClass.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesMustHaveABody_Interface.kt")
-      public void testProvidesMustHaveABody_Interface() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesMustHaveABody_Interface.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesMustHaveExplicitReturnTypes.kt")
-      public void testProvidesMustHaveExplicitReturnTypes() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesMustHaveExplicitReturnTypes.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesNamesMustBeUniqueInContainer.kt")
-      public void testProvidesNamesMustBeUniqueInContainer() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesNamesMustBeUniqueInContainer.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesNamesMustBeUniqueInGraph.kt")
-      public void testProvidesNamesMustBeUniqueInGraph() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesNamesMustBeUniqueInGraph.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesPropertiesCannotBeMutable.kt")
-      public void testProvidesPropertiesCannotBeMutable() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesPropertiesCannotBeMutable.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesShouldBePrivate_InAbstractClass.kt")
-      public void testProvidesShouldBePrivate_InAbstractClass() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesShouldBePrivate_InAbstractClass.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesShouldBePrivate_InInterface.kt")
-      public void testProvidesShouldBePrivate_InInterface() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesShouldBePrivate_InInterface.kt");
-      }
-
-      @Test
-      @TestMetadata("ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt")
-      public void testProvidesWithExtensionsAndNonThisReturningBodiesShouldError() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt");
-      }
-
-      @Test
-      @TestMetadata("Provides_AbstractClass_MayNotHaveTypeParameters.kt")
-      public void testProvides_AbstractClass_MayNotHaveTypeParameters() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/Provides_AbstractClass_MayNotHaveTypeParameters.kt");
-      }
-
-      @Test
-      @TestMetadata("Provides_Interface_MayNotHaveTypeParameters.kt")
-      public void testProvides_Interface_MayNotHaveTypeParameters() {
-        runTest("compiler-tests/src/test/data/diagnostic/fir/provides/Provides_Interface_MayNotHaveTypeParameters.kt");
+      @TestMetadata("MissingMemberInjectionShouldFailBinding2.kt")
+      public void testMissingMemberInjectionShouldFailBinding2() {
+        runTest("compiler-tests/src/test/data/diagnostic/inject/member/MissingMemberInjectionShouldFailBinding2.kt");
       }
     }
   }
 
   @Nested
-  @TestMetadata("compiler-tests/src/test/data/diagnostic/ir")
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/interop")
   @TestDataPath("$PROJECT_ROOT")
-  public class Ir {
+  public class Interop {
     @Test
-    public void testAllFilesPresentInIr() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/ir"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
-    }
-
-    @Test
-    @TestMetadata("MembersInjectorParameterWithNoDefaultShouldError.kt")
-    public void testMembersInjectorParameterWithNoDefaultShouldError() {
-      runTest("compiler-tests/src/test/data/diagnostic/ir/MembersInjectorParameterWithNoDefaultShouldError.kt");
-    }
-
-    @Test
-    @TestMetadata("MissingMemberInjectionShouldFailBinding1.kt")
-    public void testMissingMemberInjectionShouldFailBinding1() {
-      runTest("compiler-tests/src/test/data/diagnostic/ir/MissingMemberInjectionShouldFailBinding1.kt");
-    }
-
-    @Test
-    @TestMetadata("MissingMemberInjectionShouldFailBinding2.kt")
-    public void testMissingMemberInjectionShouldFailBinding2() {
-      runTest("compiler-tests/src/test/data/diagnostic/ir/MissingMemberInjectionShouldFailBinding2.kt");
+    public void testAllFilesPresentInInterop() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
     }
 
     @Nested
-    @TestMetadata("compiler-tests/src/test/data/diagnostic/ir/cycles")
+    @TestMetadata("compiler-tests/src/test/data/diagnostic/interop/dagger")
     @TestDataPath("$PROJECT_ROOT")
-    public class Cycles {
+    public class Dagger {
       @Test
-      public void testAllFilesPresentInCycles() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/ir/cycles"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      public void testAllFilesPresentInDagger() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
       }
 
       @Test
-      @TestMetadata("CyclesShouldFailAcrossMultipleGraphs.kt")
-      public void testCyclesShouldFailAcrossMultipleGraphs() {
-        runTest("compiler-tests/src/test/data/diagnostic/ir/cycles/CyclesShouldFailAcrossMultipleGraphs.kt");
+      @TestMetadata("DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt")
+      public void testDoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject() {
+        runTest("compiler-tests/src/test/data/diagnostic/interop/dagger/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt");
       }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/provides")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Provides {
+    @Test
+    public void testAllFilesPresentInProvides() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/provides"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("AssistedParametersAreNotSupportedOnProvides.kt")
+    public void testAssistedParametersAreNotSupportedOnProvides() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/AssistedParametersAreNotSupportedOnProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsMayNotHaveScopes.kt")
+    public void testBindsMayNotHaveScopes() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsMayNotHaveScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsNonThisReturningBodiesShouldError_AbstractClass.kt")
+    public void testBindsNonThisReturningBodiesShouldError_AbstractClass() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsNonThisReturningBodiesShouldError_AbstractClass.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsNonThisReturningBodiesShouldError_Interface.kt")
+    public void testBindsNonThisReturningBodiesShouldError_Interface() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsNonThisReturningBodiesShouldError_Interface.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsWithBodiesShouldBePrivate_InAbstractClass.kt")
+    public void testBindsWithBodiesShouldBePrivate_InAbstractClass() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsWithBodiesShouldBePrivate_InAbstractClass.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsWithBodiesShouldBePrivate_InInterface.kt")
+    public void testBindsWithBodiesShouldBePrivate_InInterface() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/BindsWithBodiesShouldBePrivate_InInterface.kt");
+    }
+
+    @Test
+    @TestMetadata("Binds_Interface_OkCase.kt")
+    public void testBinds_Interface_OkCase() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_Interface_OkCase.kt");
+    }
+
+    @Test
+    @TestMetadata("Binds_interface_BoundTypesMustBeSubtypes.kt")
+    public void testBinds_interface_BoundTypesMustBeSubtypes() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_interface_BoundTypesMustBeSubtypes.kt");
+    }
+
+    @Test
+    @TestMetadata("Binds_interface_SameTypesCannotHaveSameQualifiers.kt")
+    public void testBinds_interface_SameTypesCannotHaveSameQualifiers() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_interface_SameTypesCannotHaveSameQualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("Binds_interface_ShouldNotHaveBodies.kt")
+    public void testBinds_interface_ShouldNotHaveBodies() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Binds_interface_ShouldNotHaveBodies.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerReusable_IsUnsupported.kt")
+    public void testDaggerReusable_IsUnsupported() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/DaggerReusable_IsUnsupported.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateProviderOption_Error.kt")
+    public void testPrivateProviderOption_Error() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/PrivateProviderOption_Error.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateProviderOption_None.kt")
+    public void testPrivateProviderOption_None() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/PrivateProviderOption_None.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified.kt")
+    public void testProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedInjectedClassesWithMatchingTypeKeysAreReportedAsWarnings.kt")
+    public void testProvidedInjectedClassesWithMatchingTypeKeysAreReportedAsWarnings() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidedInjectedClassesWithMatchingTypeKeysAreReportedAsWarnings.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedInjectedClassesWithMatchingTypeKeysButDifferentScopesAreOk.kt")
+    public void testProvidedInjectedClassesWithMatchingTypeKeysButDifferentScopesAreOk() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidedInjectedClassesWithMatchingTypeKeysButDifferentScopesAreOk.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesCannotHaveReceivers_AbstractClass.kt")
+    public void testProvidesCannotHaveReceivers_AbstractClass() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesCannotHaveReceivers_AbstractClass.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesCannotHaveReceivers_Interface.kt")
+    public void testProvidesCannotHaveReceivers_Interface() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesCannotHaveReceivers_Interface.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesCannotLiveInObjects.kt")
+    public void testProvidesCannotLiveInObjects() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesCannotLiveInObjects.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesFunctionsCannotBeTopLevel.kt")
+    public void testProvidesFunctionsCannotBeTopLevel() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesFunctionsCannotBeTopLevel.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesMustHaveABody_AbstractClass.kt")
+    public void testProvidesMustHaveABody_AbstractClass() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesMustHaveABody_AbstractClass.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesMustHaveABody_Interface.kt")
+    public void testProvidesMustHaveABody_Interface() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesMustHaveABody_Interface.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesMustHaveExplicitReturnTypes.kt")
+    public void testProvidesMustHaveExplicitReturnTypes() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesMustHaveExplicitReturnTypes.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesNamesMustBeUniqueInContainer.kt")
+    public void testProvidesNamesMustBeUniqueInContainer() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesNamesMustBeUniqueInContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesNamesMustBeUniqueInGraph.kt")
+    public void testProvidesNamesMustBeUniqueInGraph() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesNamesMustBeUniqueInGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesPropertiesCannotBeMutable.kt")
+    public void testProvidesPropertiesCannotBeMutable() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesPropertiesCannotBeMutable.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesShouldBePrivate_InAbstractClass.kt")
+    public void testProvidesShouldBePrivate_InAbstractClass() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesShouldBePrivate_InAbstractClass.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesShouldBePrivate_InInterface.kt")
+    public void testProvidesShouldBePrivate_InInterface() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesShouldBePrivate_InInterface.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt")
+    public void testProvidesWithExtensionsAndNonThisReturningBodiesShouldError() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/ProvidesWithExtensionsAndNonThisReturningBodiesShouldError.kt");
+    }
+
+    @Test
+    @TestMetadata("Provides_AbstractClass_MayNotHaveTypeParameters.kt")
+    public void testProvides_AbstractClass_MayNotHaveTypeParameters() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_AbstractClass_MayNotHaveTypeParameters.kt");
+    }
+
+    @Test
+    @TestMetadata("Provides_Interface_MayNotHaveTypeParameters.kt")
+    public void testProvides_Interface_MayNotHaveTypeParameters() {
+      runTest("compiler-tests/src/test/data/diagnostic/provides/Provides_Interface_MayNotHaveTypeParameters.kt");
     }
   }
 }
