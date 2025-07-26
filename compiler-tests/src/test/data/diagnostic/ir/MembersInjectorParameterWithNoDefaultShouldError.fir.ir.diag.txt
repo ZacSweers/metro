@@ -1,4 +1,4 @@
-/MembersInjectorParameterWithNoDefaultShouldError.kt:(320,374): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: dev.zacsweers.metro.MembersInjector<ClassWithoutMembersInjector>
+/MembersInjectorParameterWithNoDefaultShouldError.kt:(384,438): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: dev.zacsweers.metro.MembersInjector<ClassWithoutMembersInjector>
 
     dev.zacsweers.metro.MembersInjector<ClassWithoutMembersInjector> is injected at
         [TestGraph] TestGraph#provideGenericMembersInjector(…, instance)
@@ -6,4 +6,4 @@
         [TestGraph] TestGraph#injector
 
 Similar bindings:
-  - MembersInjector<*> (Supertype). Type: Provided. Source: MembersInjectorParameterWithNoDefaultShouldError.kt:10:3
+  - MembersInjector<*> (Supertype). Type: Provided. Source: MembersInjectorParameterWithNoDefaultShouldError.kt:12:3

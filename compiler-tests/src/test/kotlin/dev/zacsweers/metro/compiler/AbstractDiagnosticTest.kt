@@ -4,7 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
-import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT
+import org.jetbrains.kotlin.test.directives.CodegenTestDirectives.IGNORE_DEXING
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.JVM_TARGET
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTes
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.TestPhase
 
-open class AbstractIrDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
+open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return ClasspathBasedStandardLibrariesPathProvider
   }
@@ -26,10 +26,10 @@ open class AbstractIrDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest()
       defaultDirectives {
         JVM_TARGET.with(JvmTarget.JVM_11)
         +FULL_JDK
-        +RENDER_IR_DIAGNOSTICS_FULL_TEXT
-        // FIR2IR is the phase that IR transformers run in. We don't want to run till BACKEND
-        // because that would (expectedly) fail
-        RUN_PIPELINE_TILL.with(TestPhase.FIR2IR)
+        +IGNORE_DEXING // Avoids loading R8 from the classpath.
+
+        // Unless overriden, assume the test will fail within the frontend.
+        RUN_PIPELINE_TILL.with(TestPhase.FRONTEND)
       }
     }
   }
