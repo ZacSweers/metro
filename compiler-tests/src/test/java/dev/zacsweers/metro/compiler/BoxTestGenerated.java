@@ -50,6 +50,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributingMultibileNullableBindings.kt")
+    public void testContributingMultibileNullableBindings() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributingMultibileNullableBindings.kt");
+    }
+
+    @Test
     @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
     public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
       runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
