@@ -1,0 +1,1 @@
+/AsContributionCannotWorkOnContributedExtensions.kt:(636,646): error: `asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.

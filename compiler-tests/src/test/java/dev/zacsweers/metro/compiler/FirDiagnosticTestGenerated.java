@@ -111,6 +111,18 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AsContributionCannotWorkOnContributedExtensions.kt")
+    public void testAsContributionCannotWorkOnContributedExtensions() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/dependencygraph/AsContributionCannotWorkOnContributedExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("AsContributionCannotWorkOnContributedExtensionsMultiModule.kt")
+    public void testAsContributionCannotWorkOnContributedExtensionsMultiModule() {
+      runTest("compiler-tests/src/test/data/diagnostic/fir/dependencygraph/AsContributionCannotWorkOnContributedExtensionsMultiModule.kt");
+    }
+
+    @Test
     @TestMetadata("GraphsCannotDirectlyExtendOtherGraphs.kt")
     public void testGraphsCannotDirectlyExtendOtherGraphs() {
       runTest("compiler-tests/src/test/data/diagnostic/fir/dependencygraph/GraphsCannotDirectlyExtendOtherGraphs.kt");
