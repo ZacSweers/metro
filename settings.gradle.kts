@@ -20,7 +20,14 @@ plugins { id("com.gradle.develocity") }
 
 rootProject.name = "metro"
 
-include(":compiler", ":compiler-tests", ":gradle-plugin", ":interop-dagger", ":runtime")
+include(
+  ":compiler",
+  ":compiler-tests",
+  ":gradle-plugin",
+  ":interop-dagger",
+  ":runtime",
+  ":metrox:android",
+)
 
 val VERSION_NAME: String by extra.properties
 
