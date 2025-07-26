@@ -335,7 +335,9 @@ internal class BindingGraphGenerator(
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen
     // TODO try to make accessors in this single-pass
-    node.allIncludedNodes.forEach { depNode ->
+    // Only add it if it's a directly included node. Indirect will be propagated by metro
+    // accessors
+    node.includedGraphNodes.forEach { depNodeKey, depNode ->
       val accessorNames =
         depNode.proto?.provider_field_names?.toSet().orEmpty() +
           depNode.proto?.instance_field_names?.toSet().orEmpty()
@@ -349,13 +351,11 @@ internal class BindingGraphGenerator(
         }
 
         // Add a ref to the included graph if not already present
-        // Only add it if it's a directly included node. Indirect will be propagated by metro
-        // accessors
-        if (depNode.typeKey !in graph && depNode.typeKey in node.includedGraphNodes) {
+        if (depNodeKey !in graph) {
           graph.addBinding(
-            depNode.typeKey,
+            depNodeKey,
             IrBinding.BoundInstance(
-              depNode.typeKey,
+              depNodeKey,
               "${depNode.sourceGraph.name}Provider",
               depNode.sourceGraph,
             ),
@@ -379,7 +379,7 @@ internal class BindingGraphGenerator(
         graph.addBinding(
           contextualTypeKey.typeKey,
           IrBinding.GraphDependency(
-            ownerKey = depNode.typeKey,
+            ownerKey = depNodeKey,
             graph = depNode.sourceGraph,
             getter = getterToUse,
             isProviderFieldAccessor = false,

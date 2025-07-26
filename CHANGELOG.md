@@ -15,6 +15,8 @@ Changelog
 - **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
 - **Fix:** When `@Includes`-ing other graphs, link against the original interface accessor rather than the generated `$$MetroGraph` accessor.
 - **Fix:** Disambiguate contributed nullable bindings from non-nullable bindings.
+- **Fix:** When computing `@Includes` graph dependencies from accessors, only consider directly included graphs and not transitively included graphs.
+- **Fix:** Expose `@Includes` graph dependencies as synthetic `_metroAccessor` types for extended graphs rather than exposing the included graph directly.
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
 
