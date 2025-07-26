@@ -1,3 +1,5 @@
+// RUN_PIPELINE_TILL: FIR2IR
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
 // Repro for https://github.com/ZacSweers/metro/issues/656
 import kotlin.reflect.KClass
 
@@ -8,6 +10,16 @@ interface Base
 class Implementation() : Base
 
 abstract class AppSubscope
+
+@ContributesTo(AppSubscope::class)
+interface SubscopeMultibindingModule {
+
+  @Binds
+  @IntoMap
+  @ClassKey(ClassWithoutMembersInjector::class)
+  @ForScope(AppSubscope::class)
+  fun bindClassWithoutMembersInjector(<!METRO_ERROR!>instance: MembersInjector<ClassWithoutMembersInjector><!>): MembersInjector<*>
+}
 
 @ContributesGraphExtension(AppSubscope::class)
 interface SubscopeGraph {
@@ -20,10 +32,6 @@ interface SubscopeGraph {
   interface Factory {
     fun create(): SubscopeGraph
   }
-
-  // This should fail because of missing @Inject on Implementation, but it doesn't
-  @Binds
-  fun bindImplementation(<!METRO_ERROR!>instance: Implementation<!>): Base
 }
 
 @DependencyGraph(AppScope::class, isExtendable = true)
