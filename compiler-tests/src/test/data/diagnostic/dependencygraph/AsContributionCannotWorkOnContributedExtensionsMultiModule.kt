@@ -1,7 +1,5 @@
 // RENDER_DIAGNOSTICS_FULL_TEXT
 // https://github.com/ZacSweers/metro/issues/774
-// TODO won't pass till merged diagnostics
-
 // MODULE: lib
 
 abstract class ChildScope
