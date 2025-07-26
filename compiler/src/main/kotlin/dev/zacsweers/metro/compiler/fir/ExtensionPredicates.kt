@@ -29,6 +29,8 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
   internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
   internal val contributesGraphExtensionPredicate =
     annotated(classIds.contributesGraphExtensionAnnotations.asFqNames())
+  internal val contributesGraphExtensionFactoryPredicate =
+    annotated(classIds.contributesGraphExtensionFactoryAnnotations.asFqNames())
 
   /** Includes both `@DependencyGraph` and `@ContributesGraphExtension` */
   internal val aggregatingAnnotationsPredicate =

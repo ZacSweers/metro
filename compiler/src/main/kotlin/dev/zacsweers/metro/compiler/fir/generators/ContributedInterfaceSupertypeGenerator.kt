@@ -184,7 +184,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       register(
         dependencyGraphPredicate,
         contributesAnnotationPredicate,
-        contributesGraphExtensionPredicate,
+        contributesGraphExtensionFactoryPredicate,
         qualifiersPredicate,
         bindingContainerPredicate,
       )
