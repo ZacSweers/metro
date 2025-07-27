@@ -6,11 +6,17 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
+import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.moduleDescriptor
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.file
+import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.ClassId
 
@@ -47,17 +53,30 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     addAll(findExternalBindingContainerContributions(scope))
   }
 
+  private fun findVisibleContributionClassesForScopeInHints(scopeClassId: ClassId): Set<IrClass> {
+    val functionsInPackage =
+      metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
+    val contributingClasses =
+      functionsInPackage
+        .filter {
+          if (it.owner.visibility == Visibilities.Internal) {
+            it.owner.isVisibleAsInternal(it.owner.file)
+          } else {
+            true
+          }
+        }
+        .mapToSet { contribution ->
+          // This is the single value param
+          contribution.owner.regularParameters.single().type.classOrFail.owner
+        }
+    return contributingClasses
+  }
+
   // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
   //  something we could possibly optimize in the future.
   private fun findExternalContributions(scopeClassId: ClassId): Set<IrType> {
     return externalContributions.getOrPut(scopeClassId) {
-      val functionsInPackage =
-        metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
-      val contributingClasses =
-        functionsInPackage.mapToSet { contribution ->
-          // This is the single value param
-          contribution.owner.regularParameters.single().type.classOrFail.owner
-        }
+      val contributingClasses = findVisibleContributionClassesForScopeInHints(scopeClassId)
       getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = false)
     }
   }
@@ -66,13 +85,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   //  something we could possibly optimize in the future.
   private fun findExternalBindingContainerContributions(scopeClassId: ClassId): Set<IrClass> {
     return externalBindingContainerContributions.getOrPut(scopeClassId) {
-      val functionsInPackage =
-        metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
-      val contributingClasses =
-        functionsInPackage.mapToSet { contribution ->
-          // This is the single value param
-          contribution.owner.regularParameters.single().type.classOrFail.owner
-        }
+      val contributingClasses = findVisibleContributionClassesForScopeInHints(scopeClassId)
       getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = true)
         .mapNotNullToSet {
           it.classOrNull?.owner?.takeIf {
@@ -157,5 +170,14 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
 
       return unfilteredScopedInjectClasses
     }
+  }
+
+  // Copied from CheckerUtils.kt
+  private fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Boolean {
+    val referencedDeclarationPackageFragment = getPackageFragment()
+    val module = file.module
+    return module.descriptor.shouldSeeInternalsOf(
+      referencedDeclarationPackageFragment.moduleDescriptor
+    )
   }
 }

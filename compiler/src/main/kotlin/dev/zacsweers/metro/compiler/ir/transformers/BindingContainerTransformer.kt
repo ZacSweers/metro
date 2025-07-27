@@ -327,7 +327,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // Generate a metadata-visible function that matches the signature of the target provider
     // This is used in downstream compilations to read the provider's signature
     val mirrorFunction =
-      generateMetadataVisibleMirrorFunction(factoryClass = factoryCls, target = providesFunction)
+      generateMetadataVisibleMirrorFunction(factoryClass = factoryCls, target = providesFunction, annotations = reference.annotations)
 
     val providerFactory =
       ProviderFactory(

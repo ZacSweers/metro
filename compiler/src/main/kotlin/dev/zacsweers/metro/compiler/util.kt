@@ -39,6 +39,10 @@ internal fun String.capitalizeUS() = replaceFirstChar {
 
 internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US) }
 
+internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
+  return filterTo(mutableSetOf(), predicate)
+}
+
 internal fun <T, R> Iterable<T>.mapToSet(transform: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), transform)
 }

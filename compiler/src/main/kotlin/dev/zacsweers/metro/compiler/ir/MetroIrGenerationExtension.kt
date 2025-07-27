@@ -46,15 +46,15 @@ public class MetroIrGenerationExtension(
     try {
       tracer(moduleFragment.name.asString().removePrefix("<").removeSuffix(">"), "Metro compiler")
         .trace { tracer ->
-          // First - collect all the contributions in this round
+          // First part 1 - transform $$MetroContribution interfaces to add their binds functions
+          tracer.traceNested("Transforming Metro contributions") {
+            moduleFragment.transform(ContributionBindsFunctionsIrTransformer(context), null)
+          }
+
+          // First part 2 - collect all the contributions in this round
           val contributionData = IrContributionData(context)
           tracer.traceNested("Collecting contributions") {
             moduleFragment.accept(IrContributionVisitor(context), contributionData)
-          }
-
-          // First part 2 - transform $$MetroContribution interfaces to add their binds functions
-          tracer.traceNested("Transforming Metro contributions") {
-            moduleFragment.transform(ContributionBindsFunctionsIrTransformer(context), null)
           }
 
           // Second - transform the dependency graphs

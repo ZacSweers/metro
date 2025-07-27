@@ -4,7 +4,7 @@
 # https://squidfunk.github.io/mkdocs-material/
 # It requires Python to run.
 # Install the packages with the following command:
-# pip install mkdocs mkdocs-material mdx_truly_sane_lists
+# pip install mkdocs mkdocs-material mdx_truly_sane_lists "mkdocs-material[imaging]"
 #
 # To run the site locally with hot-reload support, use:
 # ./deploy_website.sh --local

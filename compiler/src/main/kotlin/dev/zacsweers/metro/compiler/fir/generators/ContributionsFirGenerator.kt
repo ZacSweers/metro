@@ -49,6 +49,10 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
 // TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
+/**
+ * Generates `@MetroContribution`-annotated nested contribution classes for
+ * `@Contributes*`-annotated classes.
+ */
 internal class ContributionsFirGenerator(session: FirSession) :
   FirDeclarationGenerationExtension(session) {
 

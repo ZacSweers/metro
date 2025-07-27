@@ -5,6 +5,7 @@
 site_name: Metro
 repo_name: Metro
 repo_url: https://github.com/ZacSweers/metro
+site_url: https://zacsweers.github.io/metro/
 site_description: "A multiplatform dependency injection framework for Kotlin"
 site_author: Zac Sweers
 remote_branch: gh-pages
@@ -14,7 +15,7 @@ copyright: 'Copyright &copy; 2025 Zac Sweers'
 theme:
   name: 'material'
   favicon: site-assets/img/favicon.ico
-#  logo: images/metro_logo.png
+  logo: site-assets/img/metro-icon.svg
   palette:
     - media: '(prefers-color-scheme: light)'
       scheme: default
@@ -39,6 +40,11 @@ theme:
   # Custom dir for theme overrides (eg. custom 404 page)
   # - https://squidfunk.github.io/mkdocs-material/customization/
   custom_dir: 'docs/site-assets/overrides'
+
+plugins:
+  # Social plugin for delightful card previews on social media
+  # https://squidfunk.github.io/mkdocs-material/plugins/social/
+  - social
 
 #extra_css:
 #  - 'css/app.css'

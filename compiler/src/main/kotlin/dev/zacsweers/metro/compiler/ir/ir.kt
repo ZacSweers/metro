@@ -1391,12 +1391,17 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(context.symbols.injectAnnotations)) {
+  return findInjectableConstructor(onlyUsePrimaryConstructor, context.symbols.injectAnnotations)
+}
+
+internal fun IrClass.findInjectableConstructor(
+  onlyUsePrimaryConstructor: Boolean,
+  injectAnnotations: Set<ClassId>,
+): IrConstructor? {
+  return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(injectAnnotations)) {
     primaryConstructor
   } else {
-    constructors.singleOrNull { constructor ->
-      constructor.isAnnotatedWithAny(context.symbols.injectAnnotations)
-    }
+    constructors.singleOrNull { constructor -> constructor.isAnnotatedWithAny(injectAnnotations) }
   }
 }
 
