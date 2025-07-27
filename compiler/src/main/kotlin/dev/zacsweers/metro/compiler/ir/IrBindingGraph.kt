@@ -445,19 +445,7 @@ internal class IrBindingGraph(
     val declaration =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
-    if (declaration.fileOrNull == null) {
-      // TODO move to diagnostic reporter in 2.2.20 https://youtrack.jetbrains.com/issue/KT-78280
-      metroContext.logVerbose(
-        "File-less declaration for ${declaration.dumpKotlinLike()} in ${declaration.parentClassOrNull?.dumpKotlinLike()}"
-      )
-      metroContext.messageCollector.report(
-        CompilerMessageSeverity.ERROR,
-        message,
-        declaration.locationOrNull(),
-      )
-    } else {
-      metroContext.diagnosticReporter.at(declaration).report(MetroDiagnostics.METRO_ERROR, message)
-    }
+    metroContext.diagnosticReporter.at(declaration).report(MetroDiagnostics.METRO_ERROR, message)
     exitProcessing()
   }
 

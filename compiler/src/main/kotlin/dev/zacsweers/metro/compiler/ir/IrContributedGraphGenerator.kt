@@ -96,12 +96,7 @@ internal class IrContributedGraphGenerator(
             append("::class])`).")
           }
         }
-        // TODO in kotlin 2.2.20 remove message collector
-        if (sourceGraph.fileOrNull == null) {
-          messageCollector.report(CompilerMessageSeverity.ERROR, message, sourceGraph.location())
-        } else {
-          diagnosticReporter.at(sourceGraph).report(MetroDiagnostics.METRO_ERROR, message)
-        }
+        diagnosticReporter.at(sourceGraph).report(MetroDiagnostics.METRO_ERROR, message)
         exitProcessing()
       }
     }

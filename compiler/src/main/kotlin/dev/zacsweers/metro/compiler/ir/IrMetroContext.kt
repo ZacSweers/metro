@@ -62,12 +62,10 @@ internal interface IrMetroContext : IrPluginContext {
   val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
 
   fun log(message: String) {
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     logFile?.appendText("$message\n")
   }
 
   fun logTrace(message: String) {
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     traceLogFile?.appendText("$message\n")
   }
 
