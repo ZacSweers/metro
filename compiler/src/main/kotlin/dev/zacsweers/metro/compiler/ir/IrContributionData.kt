@@ -53,25 +53,30 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     addAll(findExternalBindingContainerContributions(scope))
   }
 
+  private fun findVisibleContributionClassesForScopeInHints(scopeClassId: ClassId): Set<IrClass> {
+    val functionsInPackage =
+      metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
+    val contributingClasses =
+      functionsInPackage
+        .filter {
+          if (it.owner.visibility == Visibilities.Internal) {
+            it.owner.isVisibleAsInternal(it.owner.file)
+          } else {
+            true
+          }
+        }
+        .mapToSet { contribution ->
+          // This is the single value param
+          contribution.owner.regularParameters.single().type.classOrFail.owner
+        }
+    return contributingClasses
+  }
+
   // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
   //  something we could possibly optimize in the future.
   private fun findExternalContributions(scopeClassId: ClassId): Set<IrType> {
     return externalContributions.getOrPut(scopeClassId) {
-      val functionsInPackage =
-        metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
-      val contributingClasses =
-        functionsInPackage
-          .filter {
-            if (it.owner.visibility == Visibilities.Internal) {
-              it.owner.isVisibleAsInternal(it.owner.file)
-            } else {
-              true
-            }
-          }
-          .mapToSet { contribution ->
-            // This is the single value param
-            contribution.owner.regularParameters.single().type.classOrFail.owner
-          }
+      val contributingClasses = findVisibleContributionClassesForScopeInHints(scopeClassId)
       getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = false)
     }
   }
@@ -80,21 +85,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   //  something we could possibly optimize in the future.
   private fun findExternalBindingContainerContributions(scopeClassId: ClassId): Set<IrClass> {
     return externalBindingContainerContributions.getOrPut(scopeClassId) {
-      val functionsInPackage =
-        metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
-      val contributingClasses =
-        functionsInPackage
-          .filter {
-            if (it.owner.visibility == Visibilities.Internal) {
-              it.owner.isVisibleAsInternal(it.owner.file)
-            } else {
-              true
-            }
-          }
-          .mapToSet { contribution ->
-            // This is the single value param
-            contribution.owner.regularParameters.single().type.classOrFail.owner
-          }
+      val contributingClasses = findVisibleContributionClassesForScopeInHints(scopeClassId)
       getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = true)
         .mapNotNullToSet {
           it.classOrNull?.owner?.takeIf {
