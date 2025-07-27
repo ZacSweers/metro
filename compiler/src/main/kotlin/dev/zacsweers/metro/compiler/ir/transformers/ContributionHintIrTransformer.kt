@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.scopeHintFunctionName
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 
 /**
@@ -27,7 +28,8 @@ internal class ContributionHintIrTransformer(
 
   fun visitClass(declaration: IrClass) {
     // Don't generate hints for non-public APIs
-    if (!declaration.visibility.isPublicAPI) return
+    // Internal is allowed for friend paths
+    if (!declaration.visibility.isPublicAPI && declaration.visibility != Visibilities.Internal) return
 
     val contributions =
       declaration.annotationsIn(symbols.classIds.allContributesAnnotations).toList()
