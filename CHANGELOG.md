@@ -27,6 +27,7 @@ Changelog
 - **Fix:** Don't short-circuit class visiting in contribution visiting in IR.
 - **Fix:** Propagate property annotations for `@Provides`-properties, previously only the accessor function annotations were being included.
 - **Fix:** Propagate class annotations for `@Inject`-annotated constructors to factory class mirror functions, previously only the constructor's annotations were being included.
+- **Fix:** Fix dispatch receiver for `DelegateFactory` fields when `chunkFieldInits` is enabled.
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
 
