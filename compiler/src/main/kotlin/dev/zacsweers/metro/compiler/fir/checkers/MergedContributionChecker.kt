@@ -63,6 +63,7 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
 
         val isInternalInFriendModule =
           effectiveSuperVis == Visibilities.Internal &&
+            effectiveVisibility == Visibilities.Internal &&
             (contributedType.moduleData == session.moduleData ||
               session.moduleVisibilityChecker?.isInFriendModule(contributedType) == true)
 
