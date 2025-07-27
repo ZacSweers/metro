@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Behavior change:** The `enableScopedInjectClassHints` option is no longer enabled by default. This option is tricky to get right and will be iterated on further in [#764](https://github.com/ZacSweers/metro/issues/764).
 - **Enhancement:** Generate synthetic `$$BindsMirror` classes to...
     - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
     - allow these declarations to be `private`
