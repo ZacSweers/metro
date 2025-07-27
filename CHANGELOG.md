@@ -22,6 +22,8 @@ Changelog
 - **Fix:** Only process `@DependencyGraph` types in FIR supertype generation. Contributed graph extension supertypes are merged only in IR.
 - **Fix:** Generate `$$MetroContribution` binds functions before aggregating contributions.
 - **Fix:** Don't short-circuit class visiting in contribution visiting in IR.
+- **Fix:** Propagate property annotations for `@Provides`-properties, previously only the accessor function annotations were being included.
+- **Fix:** Propagate class annotations for `@Inject`-annotated constructors to factory class mirror functions, previously only the constructor's annotations were being included.
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
 
