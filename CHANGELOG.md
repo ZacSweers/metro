@@ -10,6 +10,7 @@ Changelog
     - allow these declarations to be `private`
 - **Enhancement:** Allow `@Binds` and `@Multibinds` functions to be private.
 - **Enhancement:** Allow "static graphs" via companions implementing the graph interface itself.
+- **Fix:** Sort soft edges before hard edges within (valid) cycles. Previously we would just apply a standard topological sort here, but in this scenario we want to add extra weight to ready-up nodes that depend directly on the deferred type being used to break the cycle first.
 - **Fix:** When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.
 - **Fix:** Record IC lookups to `@Multibinds` declarations.
 - **Fix:** Write `@Multibinds` information to metro metadata.
