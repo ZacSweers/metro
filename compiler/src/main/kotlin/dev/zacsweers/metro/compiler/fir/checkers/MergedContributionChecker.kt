@@ -18,6 +18,8 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.moduleVisibilityChecker
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.getContainingDeclaration
 import org.jetbrains.kotlin.fir.types.classId
@@ -58,15 +60,23 @@ internal object MergedContributionChecker : FirClassChecker(MppCheckerKind.Commo
 
       val compared = Visibilities.compare(effectiveVisibility, effectiveSuperVis) ?: continue
       if (compared > 0) {
-        val declarationVis =
-          if (declaration.visibility != effectiveVisibility) " effectively" else ""
-        val supertypeVis =
-          if (contributedType.visibility != effectiveSuperVis) " effectively" else ""
-        reporter.reportOn(
-          supertype.source,
-          FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
-          "${dependencyGraphAnno.toAnnotationClassIdSafe(session)?.shortClassName?.asString()} declarations may not extend declarations with narrower visibility. Contributed supertype '${contributedType.classId.asFqNameString()}' is$supertypeVis $effectiveSuperVis but graph declaration '${declaration.classId.asFqNameString()}' is$declarationVis ${effectiveVisibility}.",
-        )
+
+        val isInternalInFriendModule =
+          effectiveSuperVis == Visibilities.Internal &&
+            (contributedType.moduleData == session.moduleData ||
+              session.moduleVisibilityChecker?.isInFriendModule(contributedType) == true)
+
+        if (!isInternalInFriendModule) {
+          val declarationVis =
+            if (declaration.visibility != effectiveVisibility) " effectively" else ""
+          val supertypeVis =
+            if (contributedType.visibility != effectiveSuperVis) " effectively" else ""
+          reporter.reportOn(
+            supertype.source,
+            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            "${dependencyGraphAnno.toAnnotationClassIdSafe(session)?.shortClassName?.asString()} declarations may not extend declarations with narrower visibility. Contributed supertype '${contributedType.classId.asFqNameString()}' is$supertypeVis $effectiveSuperVis but graph declaration '${declaration.classId.asFqNameString()}' is$declarationVis ${effectiveVisibility}.",
+          )
+        }
       }
     }
   }
