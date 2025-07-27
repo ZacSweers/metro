@@ -59,7 +59,7 @@ internal object BindingContainerCallableChecker :
     // If we ever wanted to allow providers in the future, this is the check to remove
     if (declaration.isOverride) {
       val overridesAProvider =
-        declaration.symbol.directOverriddenSymbolsSafe(context).any {
+        declaration.symbol.directOverriddenSymbolsSafe().any {
           it.isAnnotatedWithAny(session, classIds.providesAnnotations)
         }
       if (overridesAProvider) {

@@ -5,3 +5,5 @@
 interface ConfusedContainer {
   @Binds val Int.bind: Number
 }
+
+/* GENERATED_FIR_TAGS: interfaceDeclaration, propertyDeclaration, propertyWithExtensionReceiver */

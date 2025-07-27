@@ -29,3 +29,5 @@ interface <!GRAPH_DEPENDENCY_CYCLE!>StringGraph<!> {
     fun create(@Includes charSequenceGraph: CharSequenceGraph): StringGraph
   }
 }
+
+/* GENERATED_FIR_TAGS: funInterface, functionDeclaration, interfaceDeclaration, nestedClass, propertyDeclaration */

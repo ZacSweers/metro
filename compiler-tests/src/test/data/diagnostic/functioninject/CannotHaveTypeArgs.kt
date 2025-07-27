@@ -4,3 +4,5 @@
 fun <!FUNCTION_INJECT_TYPE_PARAMETERS_ERROR!><T><!> Example() {
 
 }
+
+/* GENERATED_FIR_TAGS: functionDeclaration, nullableType, typeParameter */

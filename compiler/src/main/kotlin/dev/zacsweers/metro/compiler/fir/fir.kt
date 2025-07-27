@@ -1047,7 +1047,7 @@ internal fun StringBuilder.renderType(short: Boolean, type: ConeKotlinType) {
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.nestedClasses(): List<FirRegularClassSymbol> {
   val collected = mutableListOf<FirRegularClassSymbol>()
-  declaredMemberScope(context).processAllClassifiers { symbol ->
+  declaredMemberScope().processAllClassifiers { symbol ->
     if (symbol is FirRegularClassSymbol) {
       collected += symbol
     }
@@ -1068,7 +1068,7 @@ internal fun NestedClassGenerationContext.nestedClasses(): List<FirRegularClassS
 context(context: CheckerContext)
 internal fun FirClassSymbol<*>.directCallableSymbols(): List<FirCallableSymbol<*>> {
   val collected = mutableListOf<FirCallableSymbol<*>>()
-  declaredMemberScope(context).processAllCallables { collected += it }
+  declaredMemberScope().processAllCallables { collected += it }
   return collected
 }
 
