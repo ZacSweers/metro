@@ -46,7 +46,7 @@ plugins:
   # https://squidfunk.github.io/mkdocs-material/plugins/social/
   - social:
      cards_layout_options:
-       background_color: "#CFD8DC" # Material Blue Gray 100
+       background_color: "#FFFFFF"
 
 #extra_css:
 #  - 'css/app.css'
