@@ -44,9 +44,7 @@ theme:
 plugins:
   # Social plugin for delightful card previews on social media
   # https://squidfunk.github.io/mkdocs-material/plugins/social/
-  - social:
-     cards_layout_options:
-       background_color: "#FFFFFF"
+  - social
 
 #extra_css:
 #  - 'css/app.css'
