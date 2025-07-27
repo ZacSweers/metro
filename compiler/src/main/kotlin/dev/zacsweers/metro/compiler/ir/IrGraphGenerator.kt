@@ -493,7 +493,7 @@ internal class IrGraphGenerator(
             // TODO de-dupe?
             args =
               listOf(
-                irGetField(irGet(thisReceiverParameter), field),
+                irGetField(irGet(thisReceiver), field),
                 createIrBuilder(symbol).run {
                   generateBindingCode(
                       binding,
@@ -544,7 +544,7 @@ internal class IrGraphGenerator(
               .apply {
                 val localReceiver = thisReceiverParameter.copyTo(this)
                 setDispatchReceiver(localReceiver)
-                buildBlockBody() {
+                buildBlockBody {
                   for (statement in statementsChunk) {
                     +statement(localReceiver)
                   }
