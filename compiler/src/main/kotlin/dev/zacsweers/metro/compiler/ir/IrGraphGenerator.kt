@@ -104,7 +104,7 @@ internal class IrGraphGenerator(
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
 
-  private val fieldNameAllocator = NameAllocator()
+  private val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   private val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
   // TODO we can end up in awkward situations where we
@@ -356,7 +356,7 @@ internal class IrGraphGenerator(
 
       // Collect bindings and their dependencies for provider field ordering
       val initOrder =
-        parentTracer.traceNested("Collect bindings") { tracer ->
+        parentTracer.traceNested("Collect bindings") {
           val providerFieldBindings = ProviderFieldCollector(bindingGraph).collect()
           buildList(providerFieldBindings.size) {
             for (key in sealResult.sortedKeys) {
