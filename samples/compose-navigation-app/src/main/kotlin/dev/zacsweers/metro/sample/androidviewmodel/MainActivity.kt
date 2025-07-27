@@ -60,9 +60,11 @@ class MainActivity(private val viewModelFactory: ViewModelProvider.Factory) : Co
             Text("Route View Model Instance: ${routeViewModel.instance}")
             Button(onClick = { onNavigate(Counter("One")) }) { Text("Counter One") }
             Button(onClick = { onNavigate(Counter("Two")) }) { Text("Counter Two") }
+            Button(onClick = { onNavigate(AssistedCounter) }) { Text("Assisted Counter") }
           }
         }
         composable<Counter> { CounterScreen(onNavigate) }
+        composable<AssistedCounter> { AssistedCounterScreen(onNavigate) }
       }
     }
   }
@@ -76,3 +78,5 @@ class MainActivity(private val viewModelFactory: ViewModelProvider.Factory) : Co
 @Serializable data object Menu
 
 @Serializable data class Counter(val name: String)
+
+@Serializable data object AssistedCounter

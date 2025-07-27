@@ -716,7 +716,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject() {
         override fun sources() = listOf(exampleClass, exampleGraph, main)
 
         val exampleClass =
@@ -817,7 +817,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnNonContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject(metroOptions = MetroOptionOverrides(enableScopedInjectClassHints = true)) {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -1093,7 +1093,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun icWorksWhenChangingAContributionScope() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject() {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -1218,7 +1218,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithZeroToOneParams() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject() {
         override fun sources() = listOf(appGraph, main)
 
         override val gradleProject: GradleProject
@@ -1327,7 +1327,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithMultipleParams() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject() {
         override fun sources() = listOf(appGraph, main)
 
         override val gradleProject: GradleProject

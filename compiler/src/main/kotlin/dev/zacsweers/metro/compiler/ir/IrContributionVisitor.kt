@@ -20,6 +20,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
   }
 
   override fun visitClass(declaration: IrClass, data: IrContributionData) {
+    visitClassInner(declaration, data)
+    super.visitClass(declaration, data)
+  }
+
+  private fun visitClassInner(declaration: IrClass, data: IrContributionData) {
     val metroContribution =
       declaration.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
     if (metroContribution != null) {

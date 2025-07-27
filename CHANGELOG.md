@@ -4,6 +4,40 @@ Changelog
 **Unreleased**
 --------------
 
+- **Behavior change:** The `enableScopedInjectClassHints` option is no longer enabled by default. This option is tricky to get right and will be iterated on further in [#764](https://github.com/ZacSweers/metro/issues/764).
+- **Enhancement:** Generate synthetic `$$BindsMirror` classes to...
+    - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
+    - allow these declarations to be `private`
+- **Enhancement:** Allow `@Binds` and `@Multibinds` functions to be private.
+- **Enhancement:** Allow "static graphs" via companions implementing the graph interface itself.
+- **Fix:** When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.
+- **Fix:** Record IC lookups to `@Multibinds` declarations.
+- **Fix:** Write `@Multibinds` information to metro metadata.
+- **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
+- **Fix:** When `@Includes`-ing other graphs, link against the original interface accessor rather than the generated `$$MetroGraph` accessor.
+- **Fix:** Disambiguate contributed nullable bindings from non-nullable bindings.
+- **Fix:** When computing `@Includes` graph dependencies from accessors, only consider directly included graphs and not transitively included graphs.
+- **Fix:** Expose `@Includes` graph dependencies as synthetic `_metroAccessor` types for extended graphs rather than exposing the included graph directly.
+- **Fix:** Prohibit calling `.asContribution()` on `@ContributesGraphExtension`-annotated types. `@ContributesGraphExtension`-annotated types cannot be validated at compile-time with this function as their generated class is definitionally contextual and the compiler cannot infer that from callsites of this function alone.
+- **Fix:** Only process `@DependencyGraph` types in FIR supertype generation. Contributed graph extension supertypes are merged only in IR.
+- **Fix:** Generate `$$MetroContribution` binds functions before aggregating contributions.
+- **Fix:** Don't short-circuit class visiting in contribution visiting in IR.
+- **Fix:** Propagate property annotations for `@Provides`-properties, previously only the accessor function annotations were being included.
+- **Fix:** Propagate class annotations for `@Inject`-annotated constructors to factory class mirror functions, previously only the constructor's annotations were being included.
+- Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
+- Small improvements to the doc site (404 page, favicon, etc.)
+
+0.5.2
+-----
+
+_2025-07-21_
+
+- **Enhancement**: De-dupe contributions before processing in contributed graphs.
+- **Fix**: Don't extend contributed binding container classes in generated contributed graphs.
+- Small doc fixes.
+
+Special thanks to [@bnorm](https://github.com/bnorm) and [@alexvanyo](https://github.com/alexvanyo) for contributing to this release!
+
 0.5.1
 -----
 

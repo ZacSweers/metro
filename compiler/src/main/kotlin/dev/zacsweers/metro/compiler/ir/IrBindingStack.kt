@@ -433,7 +433,7 @@ internal fun bindingStackEntryForDependency(
         callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
-        isMirrorFunction = true,
+        isMirrorFunction = false,
       )
     }
     is IrBinding.Assisted -> {

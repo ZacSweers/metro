@@ -33,7 +33,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false, startOffset = 96, endOffset = 139)
+  @CallableMetadata(callableName = "provideInt", isPropertyAccessor = false, startOffset = 96, endOffset = 139)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -71,6 +71,21 @@ interface AppGraph {
 
   @Factory
   interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    object $$Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Provides string: String): AppGraph {
+        return $$MetroGraph(string = string)
+      }
+
+    }
+
     abstract fun create(@Provides string: String): AppGraph
 
   }

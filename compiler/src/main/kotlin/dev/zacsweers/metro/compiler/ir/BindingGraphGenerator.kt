@@ -12,11 +12,13 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -101,6 +103,7 @@ internal class BindingGraphGenerator(
       // Track a lookup of the provider class for IC
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
       trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
+      trackFunctionCall(node.sourceGraph, providerFactory.function)
 
       val contextKey =
         if (providerFactory.annotations.isIntoMultibinding) {
@@ -128,8 +131,7 @@ internal class BindingGraphGenerator(
             originalQualifier = originalQualifier,
             bindingStack = bindingStack,
           )
-          .sourceBindings
-          .add(contextKey.typeKey)
+          .addSourceBinding(contextKey.typeKey)
       }
 
       graph.addBinding(contextKey.typeKey, provider, bindingStack)
@@ -144,13 +146,13 @@ internal class BindingGraphGenerator(
       )
     }
     bindsFunctionsToAdd.forEach { bindingCallable ->
-      val annotations = bindingCallable.function.annotations
-      val parameters = bindingCallable.function.ir.parameters()
+      val annotations = bindingCallable.callableMetadata.annotations
+      val parameters = bindingCallable.function.parameters()
       val bindsImplType =
         if (annotations.isBinds) {
           parameters.extensionOrFirstParameter?.contextualTypeKey
             ?: error(
-              "Missing receiver parameter for @Binds function: ${bindingCallable.function.ir.dumpKotlinLike()} in class ${bindingCallable.function.ir.parentAsClass.classId}"
+              "Missing receiver parameter for @Binds function: ${bindingCallable.function.dumpKotlinLike()} in class ${bindingCallable.function.parentAsClass.classId}"
             )
         } else {
           null
@@ -166,26 +168,34 @@ internal class BindingGraphGenerator(
       val binding =
         IrBinding.Alias(
           targetTypeKey,
-          bindsImplType!!.typeKey,
-          bindingCallable.function.ir,
+          bindsImplType?.typeKey
+            ?: error(
+              "Missing binds impl type for ${bindingCallable.function.name} in ${bindingCallable.function.parentAsClass.dumpKotlinLike()}"
+            ),
+          bindingCallable.function,
           parameters,
           annotations,
         )
 
       // Track a lookup of the target for IC
-      trackFunctionCall(node.sourceGraph, bindingCallable.function.ir)
+      trackClassLookup(node.sourceGraph, bindingCallable.function.parentAsClass)
+      trackClassLookup(
+        node.sourceGraph,
+        bindingCallable.callableMetadata.mirrorFunction.parentAsClass,
+      )
+      trackFunctionCall(node.sourceGraph, bindingCallable.function)
+      trackFunctionCall(node.sourceGraph, bindingCallable.callableMetadata.mirrorFunction)
 
       if (annotations.isIntoMultibinding) {
         graph
           .getOrCreateMultibinding(
             annotations = annotations,
             contextKey = IrContextualTypeKey.create(targetTypeKey),
-            declaration = bindingCallable.function.ir,
+            declaration = bindingCallable.function,
             originalQualifier = annotations.qualifier,
             bindingStack = bindingStack,
           )
-          .sourceBindings
-          .add(binding.typeKey)
+          .addSourceBinding(binding.typeKey)
       }
 
       graph.addBinding(binding.typeKey, binding, bindingStack)
@@ -216,6 +226,48 @@ internal class BindingGraphGenerator(
         typeKey,
         IrBinding.BoundInstance(typeKey, it.name.asString(), it),
         bindingStack,
+      )
+    }
+
+    fun addOrUpdateMultibinding(
+      contextualTypeKey: IrContextualTypeKey,
+      getter: IrSimpleFunction,
+      multibinds: IrAnnotation,
+    ) {
+      if (contextualTypeKey.typeKey !in graph) {
+        val multibinding =
+          IrBinding.Multibinding.fromMultibindsDeclaration(getter, multibinds, contextualTypeKey)
+        graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
+      } else {
+        // If it's already in the graph, ensure its allowEmpty is up to date and update its
+        // location
+        graph
+          .requireBinding(contextualTypeKey.typeKey, bindingStack)
+          .expectAs<IrBinding.Multibinding>()
+          .let {
+            it.allowEmpty = multibinds.allowEmpty()
+            it.declaration = getter
+          }
+      }
+
+      // Record an IC lookup
+      trackClassLookup(node.sourceGraph, getter.propertyIfAccessor.parentAsClass)
+      trackFunctionCall(node.sourceGraph, getter)
+    }
+
+    node.multibindsCallables.forEach { multibindsCallable ->
+      val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
+      addOrUpdateMultibinding(
+        contextKey,
+        multibindsCallable.callableMetadata.mirrorFunction,
+        multibindsCallable.callableMetadata.annotations.multibinds!!,
+      )
+
+      // Record an IC lookup of the original function/class for good measure
+      trackFunctionCall(node.sourceGraph, multibindsCallable.function)
+      trackClassLookup(
+        node.sourceGraph,
+        multibindsCallable.function.propertyIfAccessor.parentAsClass,
       )
     }
 
@@ -271,22 +323,7 @@ internal class BindingGraphGenerator(
           contextualTypeKey,
           IrBindingStack.Entry.requestedAt(contextualTypeKey, getter.ir),
         )
-        if (contextualTypeKey.typeKey !in graph) {
-          val multibinding =
-            IrBinding.Multibinding.fromMultibindsDeclaration(getter, multibinds, contextualTypeKey)
-          graph.addBinding(contextualTypeKey.typeKey, multibinding, bindingStack)
-        } else {
-          // If it's already in the graph, ensure its allowEmpty is up to date and update its
-          // location
-          val allowEmpty = multibinds.ir.getSingleConstBooleanArgumentOrNull() ?: false
-          graph
-            .requireBinding(contextualTypeKey.typeKey, bindingStack)
-            .expectAs<IrBinding.Multibinding>()
-            .let {
-              it.allowEmpty = allowEmpty
-              it.declaration = getter.ir
-            }
-        }
+        addOrUpdateMultibinding(contextualTypeKey, getter.ir, multibinds)
       } else {
         graph.addAccessor(
           contextualTypeKey,
@@ -298,7 +335,9 @@ internal class BindingGraphGenerator(
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen
     // TODO try to make accessors in this single-pass
-    node.allIncludedNodes.forEach { depNode ->
+    // Only add it if it's a directly included node. Indirect will be propagated by metro
+    // accessors
+    node.includedGraphNodes.forEach { depNodeKey, depNode ->
       val accessorNames =
         depNode.proto?.provider_field_names?.toSet().orEmpty() +
           depNode.proto?.instance_field_names?.toSet().orEmpty()
@@ -312,13 +351,11 @@ internal class BindingGraphGenerator(
         }
 
         // Add a ref to the included graph if not already present
-        // Only add it if it's a directly included node. Indirect will be propagated by metro
-        // accessors
-        if (depNode.typeKey !in graph && depNode.typeKey in node.includedGraphNodes) {
+        if (depNodeKey !in graph) {
           graph.addBinding(
-            depNode.typeKey,
+            depNodeKey,
             IrBinding.BoundInstance(
-              depNode.typeKey,
+              depNodeKey,
               "${depNode.sourceGraph.name}Provider",
               depNode.sourceGraph,
             ),
@@ -326,19 +363,33 @@ internal class BindingGraphGenerator(
           )
         }
 
+        val irGetter = getter.ir
+        val getterToUse =
+          if (
+            irGetter.parentAsClass.name == Symbols.Names.MetroGraph ||
+              irGetter.name.asString().startsWith(Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX)
+          ) {
+            // Use the original graph decl so we don't tie this invocation to `$$MetroGraph`
+            // specifically
+            irGetter.overriddenSymbolsSequence().first().owner
+          } else {
+            irGetter
+          }
+
         graph.addBinding(
           contextualTypeKey.typeKey,
           IrBinding.GraphDependency(
-            ownerKey = depNode.typeKey,
+            ownerKey = depNodeKey,
             graph = depNode.sourceGraph,
-            getter = getter.ir,
+            getter = getterToUse,
             isProviderFieldAccessor = false,
             typeKey = contextualTypeKey.typeKey,
           ),
           bindingStack,
         )
         // Record a lookup for IC
-        trackFunctionCall(node.sourceGraph, getter.ir)
+        trackFunctionCall(node.sourceGraph, irGetter)
+        trackFunctionCall(node.sourceGraph, getterToUse)
       }
     }
 

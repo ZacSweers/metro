@@ -603,12 +603,16 @@ internal class IrGraphGenerator(
                   .filterKeys { typeKey ->
                     val binding = bindingGraph.requireBinding(typeKey, IrBindingStack.empty())
                     when {
-                      // Don't re-expose existing accessors
-                      binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor ->
-                        false
+                      // Don't re-expose existing metro accessors. Do expose included graph
+                      // accessors
+                      binding is IrBinding.GraphDependency &&
+                        binding.isProviderFieldAccessor &&
+                        binding.ownerKey !in node.includedGraphNodes -> false
                       // Only expose scoped bindings. Some provider fields may be for non-scoped
                       // bindings just for reuse. BoundInstance bindings still need to be passed on
-                      binding.scope == null && binding !is IrBinding.BoundInstance -> false
+                      binding.scope == null &&
+                        binding !is IrBinding.BoundInstance &&
+                        binding !is IrBinding.GraphDependency -> false
                       else -> true
                     }
                   }
@@ -643,12 +647,22 @@ internal class IrGraphGenerator(
         sequence {
             for (entry in providerFields) {
               val binding = bindingGraph.requireBinding(entry.key, IrBindingStack.empty())
-              if (binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor) {
-                // This'll get looked up directly by child graphs
+              if (
+                binding is IrBinding.GraphDependency &&
+                  binding.isProviderFieldAccessor &&
+                  binding.ownerKey !in node.includedGraphNodes
+              ) {
+                // This'll get looked up directly by child graphs. Included graphs though _should_
+                // be propagated because they are accessors-only APIs
                 continue
-              } else if (binding.scope == null && binding !is IrBinding.BoundInstance) {
+              } else if (
+                binding.scope == null &&
+                  binding !is IrBinding.BoundInstance &&
+                  binding !is IrBinding.GraphDependency
+              ) {
                 // Don't expose redundant accessors for unscoped bindings. BoundInstance bindings
-                // still get passed on
+                // still get passed on. GraphDependency bindings (if it reached here) should also
+                // pass on
                 continue
               }
               yield(entry)

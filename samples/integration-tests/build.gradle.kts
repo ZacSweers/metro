@@ -94,3 +94,7 @@ fun KotlinMultiplatformExtension.configureOrCreateNativePlatforms() {
   mingwX64()
   watchosDeviceArm64()
 }
+
+tasks.withType<Test>().configureEach {
+  maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
+}

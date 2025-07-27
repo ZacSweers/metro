@@ -128,4 +128,8 @@ internal object Keys {
   data object ContributionHint : GeneratedDeclarationKey() {
     override fun toString() = "ContributionHint"
   }
+
+  data object BindingMirrorClassDeclaration : GeneratedDeclarationKey() {
+    override fun toString() = "BindingMirrorClassDeclaration"
+  }
 }

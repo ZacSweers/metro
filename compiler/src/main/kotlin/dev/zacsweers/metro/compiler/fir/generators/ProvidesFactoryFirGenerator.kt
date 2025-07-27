@@ -245,7 +245,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           markAsDeprecatedHidden(session)
           // Add the source callable info
           replaceAnnotationsSafe(
-            annotations + listOf(buildProvidesCallableIdAnnotation(sourceCallable))
+            annotations + listOf(buildCallableMetadataAnnotation(sourceCallable))
           )
         }
         .symbol
@@ -267,9 +267,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     return ProviderCallable(owner, this, instanceReceiver, params)
   }
 
-  private fun buildProvidesCallableIdAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
+  private fun buildCallableMetadataAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
     return buildAnnotation {
-      val anno = session.metroFirBuiltIns.providesCallableIdClassSymbol
+      val anno = session.metroFirBuiltIns.callableMetadataClassSymbol
 
       annotationTypeRef = anno.defaultType().toFirResolvedTypeRef()
 

@@ -1,0 +1,4 @@
+/MissingMemberInjectionShouldFailBinding2.kt:(505,559): error: [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: dev.zacsweers.metro.MembersInjector<ClassWithoutMembersInjector>
+
+    dev.zacsweers.metro.MembersInjector<ClassWithoutMembersInjector> is injected at
+        [TestGraph.$$ContributedSubscopeGraph] SubscopeMultibindingModule#bindClassWithoutMembersInjector(…, instance)
