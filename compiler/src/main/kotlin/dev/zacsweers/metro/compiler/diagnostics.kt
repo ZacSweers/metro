@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.diagnostics.AbstractSourceElementPositioningStrategy
 import org.jetbrains.kotlin.diagnostics.DiagnosticFactory0DelegateProvider
 import org.jetbrains.kotlin.diagnostics.DiagnosticFactory1DelegateProvider
 import org.jetbrains.kotlin.diagnostics.DiagnosticFactory2DelegateProvider
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.diagnostics.SourceElementPositioningStrategies
 
@@ -25,6 +26,7 @@ internal val psiElementClass by lazy {
 }
 
 /* Copies of errors/warnings with a hack for the correct `PsiElement` class. */
+context(container: KtDiagnosticsContainer)
 internal fun warning0(
   positioningStrategy: AbstractSourceElementPositioningStrategy =
     SourceElementPositioningStrategies.DEFAULT
@@ -33,8 +35,10 @@ internal fun warning0(
     severity = Severity.WARNING,
     positioningStrategy = positioningStrategy,
     psiType = psiElementClass,
+    container = container
   )
 
+context(container: KtDiagnosticsContainer)
 internal fun <T> warning1(
   positioningStrategy: AbstractSourceElementPositioningStrategy =
     SourceElementPositioningStrategies.DEFAULT
@@ -43,8 +47,10 @@ internal fun <T> warning1(
     severity = Severity.WARNING,
     positioningStrategy = positioningStrategy,
     psiType = psiElementClass,
+    container = container
   )
 
+context(container: KtDiagnosticsContainer)
 internal fun error0(
   positioningStrategy: AbstractSourceElementPositioningStrategy =
     SourceElementPositioningStrategies.DEFAULT
@@ -53,8 +59,10 @@ internal fun error0(
     severity = Severity.ERROR,
     positioningStrategy = positioningStrategy,
     psiType = psiElementClass,
+    container = container
   )
 
+context(container: KtDiagnosticsContainer)
 internal fun <A> error1(
   positioningStrategy: AbstractSourceElementPositioningStrategy =
     SourceElementPositioningStrategies.DEFAULT
@@ -63,8 +71,10 @@ internal fun <A> error1(
     severity = Severity.ERROR,
     positioningStrategy = positioningStrategy,
     psiType = psiElementClass,
+    container = container
   )
 
+context(container: KtDiagnosticsContainer)
 internal fun <A, B> error2(
   positioningStrategy: AbstractSourceElementPositioningStrategy =
     SourceElementPositioningStrategies.DEFAULT
@@ -73,4 +83,5 @@ internal fun <A, B> error2(
     severity = Severity.ERROR,
     positioningStrategy = positioningStrategy,
     psiType = psiElementClass,
+    container = container
   )

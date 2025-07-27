@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.BindingGraphGenerator
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNode
 import dev.zacsweers.metro.compiler.ir.DependencyGraphNodeCache
@@ -16,7 +17,6 @@ import dev.zacsweers.metro.compiler.ir.IrBindingStack
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrGraphGenerator
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
@@ -218,7 +218,7 @@ internal class DependencyGraphTransformer(
                 if (toReport.fileOrNull != null) {
                   diagnosticReporter
                     .at(declaration ?: dependencyGraphDeclaration)
-                    .report(MetroIrErrors.METRO_ERROR, message)
+                    .report(MetroDiagnostics.METRO_ERROR, message)
                 } else {
                   messageCollector.report(
                     CompilerMessageSeverity.ERROR,
@@ -257,7 +257,7 @@ internal class DependencyGraphTransformer(
           diagnosticReporter
             .at(parent.sourceGraph)
             .report(
-              MetroIrErrors.METRO_ERROR,
+              MetroDiagnostics.METRO_ERROR,
               "Extended parent graph ${parent.sourceGraph.kotlinFqName} is missing Metro metadata. Was it compiled by the Metro compiler?",
             )
           exitProcessing()
