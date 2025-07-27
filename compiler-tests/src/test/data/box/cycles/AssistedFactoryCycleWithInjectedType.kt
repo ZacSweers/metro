@@ -1,7 +1,8 @@
+// https://github.com/ZacSweers/metro/pull/761
 /*
 Foo  <---------------|
 |- Bar.Factory       |
-    |- Qux.Factory   |
+    |- Baz.Factory   |
         |- Foo ------|
  */
 @DependencyGraph
@@ -15,7 +16,7 @@ class Foo(barFactory: Bar.Factory)
 @Inject
 class Bar(
   @Assisted str: String,
-  quxFactory: Qux.Factory,
+  bazFactory: Baz.Factory,
 ) {
   @AssistedFactory
   interface Factory {
@@ -24,13 +25,13 @@ class Bar(
 }
 
 @Inject
-class Qux(
+class Baz(
   @Assisted str: String,
   foo: Foo,
 ) {
   @AssistedFactory
   interface Factory {
-    fun create(str: String): Qux
+    fun create(str: String): Baz
   }
 }
 
