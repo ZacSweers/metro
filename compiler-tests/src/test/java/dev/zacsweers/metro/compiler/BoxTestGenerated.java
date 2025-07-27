@@ -276,6 +276,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InitsAreChunkedWithCycleBox.kt")
+    public void testInitsAreChunkedWithCycleBox() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/InitsAreChunkedWithCycleBox.kt");
+    }
+
+    @Test
     @TestMetadata("MultiLevelTransitiveIncludes.kt")
     public void testMultiLevelTransitiveIncludes() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultiLevelTransitiveIncludes.kt");
