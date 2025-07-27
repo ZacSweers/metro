@@ -152,6 +152,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testQualifiedMemberInjectionPropagatesAcrossModules() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
     }
+
+    @Test
+    @TestMetadata("WithContributesBinding.kt")
+    public void testWithContributesBinding() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/WithContributesBinding.kt");
+    }
   }
 
   @Nested
