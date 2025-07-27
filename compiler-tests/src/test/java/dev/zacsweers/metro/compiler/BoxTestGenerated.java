@@ -62,6 +62,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("InternalHintsInContributedGraph.kt")
+    public void testInternalHintsInContributedGraph() {
+      runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInContributedGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("InternalHintsInGraph.kt")
+    public void testInternalHintsInGraph() {
+      runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInGraph.kt");
+    }
+
+    @Test
     @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
     public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
       runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");

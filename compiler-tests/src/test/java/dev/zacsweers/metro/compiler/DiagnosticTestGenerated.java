@@ -23,6 +23,22 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/aggregation")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Aggregation {
+    @Test
+    public void testAllFilesPresentInAggregation() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("InternalHintsAreNotVisibleWithoutFriends.kt")
+    public void testInternalHintsAreNotVisibleWithoutFriends() {
+      runTest("compiler-tests/src/test/data/diagnostic/aggregation/InternalHintsAreNotVisibleWithoutFriends.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/bindingcontainer")
   @TestDataPath("$PROJECT_ROOT")
   public class Bindingcontainer {
