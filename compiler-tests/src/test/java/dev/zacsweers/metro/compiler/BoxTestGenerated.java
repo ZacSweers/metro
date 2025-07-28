@@ -32,6 +32,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ComputedPropertiesIntoSet.kt")
+    public void testComputedPropertiesIntoSet() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ComputedPropertiesIntoSet.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedBindingContainerExclusions.kt")
     public void testContributedBindingContainerExclusions() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerExclusions.kt");
@@ -50,9 +56,73 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributingMultibileNullableBindings.kt")
+    public void testContributingMultibileNullableBindings() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributingMultibileNullableBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("InternalHintsInContributedGraph.kt")
+    public void testInternalHintsInContributedGraph() {
+      runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInContributedGraph.kt");
+    }
+
+    @Test
+    @TestMetadata("InternalHintsInGraph.kt")
+    public void testInternalHintsInGraph() {
+      runTest("compiler-tests/src/test/data/box/aggregation/InternalHintsInGraph.kt");
+    }
+
+    @Test
     @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
     public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
       runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/bindingcontainers")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Bindingcontainers {
+    @Test
+    public void testAllFilesPresentInBindingcontainers() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+    }
+
+    @Test
+    @TestMetadata("ContributedAcrossModules.kt")
+    public void testContributedAcrossModules() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedAcrossModulesToContributedGraphs.kt")
+    public void testContributedAcrossModulesToContributedGraphs() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedAcrossModulesToContributedGraphs.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedEmpty.kt")
+    public void testContributedEmpty() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedEmpty.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedWithOnlyMultibinds.kt")
+    public void testContributedWithOnlyMultibinds() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedWithOnlyMultibinds.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsOnlyInContainer.kt")
+    public void testMultibindsOnlyInContainer() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("SimpleContainersWithHintsWork.kt")
+    public void testSimpleContainersWithHintsWork() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
     }
   }
 
@@ -94,6 +164,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testQualifiedMemberInjectionPropagatesAcrossModules() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
     }
+
+    @Test
+    @TestMetadata("WithContributesBinding.kt")
+    public void testWithContributesBinding() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/WithContributesBinding.kt");
+    }
   }
 
   @Nested
@@ -109,6 +185,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("AssistedFactoryCycle.kt")
     public void testAssistedFactoryCycle() {
       runTest("compiler-tests/src/test/data/box/cycles/AssistedFactoryCycle.kt");
+    }
+
+    @Test
+    @TestMetadata("AssistedFactoryCycleWithInjectedType.kt")
+    public void testAssistedFactoryCycleWithInjectedType() {
+      runTest("compiler-tests/src/test/data/box/cycles/AssistedFactoryCycleWithInjectedType.kt");
     }
 
     @Test
@@ -170,6 +252,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("IncludedGraphsCanStillUseNonGraphs.kt")
+    public void testIncludedGraphsCanStillUseNonGraphs() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/IncludedGraphsCanStillUseNonGraphs.kt");
+    }
+
+    @Test
     @TestMetadata("IncludesDeepInheritedInterfacesWork.kt")
     public void testIncludesDeepInheritedInterfacesWork() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/IncludesDeepInheritedInterfacesWork.kt");
@@ -185,6 +273,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("InitsAreChunkedBox.kt")
     public void testInitsAreChunkedBox() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/InitsAreChunkedBox.kt");
+    }
+
+    @Test
+    @TestMetadata("InitsAreChunkedWithCycleBox.kt")
+    public void testInitsAreChunkedWithCycleBox() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/InitsAreChunkedWithCycleBox.kt");
+    }
+
+    @Test
+    @TestMetadata("MultiLevelTransitiveIncludes.kt")
+    public void testMultiLevelTransitiveIncludes() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/MultiLevelTransitiveIncludes.kt");
     }
 
     @Test
@@ -206,9 +306,33 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("PrivateBinds.kt")
+    public void testPrivateBinds() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateBindsInOtherModule.kt")
+    public void testPrivateBindsInOtherModule() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBindsInOtherModule.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiersWithEnumsWork.kt")
     public void testQualifiersWithEnumsWork() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/QualifiersWithEnumsWork.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticGraphCompanions.kt")
+    public void testStaticGraphCompanions() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/StaticGraphCompanions.kt");
+    }
+
+    @Test
+    @TestMetadata("StaticGraphCompanionsSeparateModules.kt")
+    public void testStaticGraphCompanionsSeparateModules() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/StaticGraphCompanionsSeparateModules.kt");
     }
 
     @Nested
@@ -425,6 +549,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("AssistedDaggerFactoryClass.kt")
+      public void testAssistedDaggerFactoryClass() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerFactoryClass.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerFactoryClassWithDifferentInputs.kt")
+      public void testAssistedDaggerFactoryClassWithDifferentInputs() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/AssistedDaggerFactoryClassWithDifferentInputs.kt");
+      }
+
+      @Test
       @TestMetadata("DaggerComponentModulesAnnotationInterop.kt")
       public void testDaggerComponentModulesAnnotationInterop() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerComponentModulesAnnotationInterop.kt");
@@ -440,6 +576,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("DaggerFactoryClassCanBeLoadedJakarta.kt")
       public void testDaggerFactoryClassCanBeLoadedJakarta() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassCanBeLoadedJakarta.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryClassWithDifferentInputs.kt")
+      public void testDaggerFactoryClassWithDifferentInputs() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/DaggerFactoryClassWithDifferentInputs.kt");
       }
 
       @Test
@@ -461,6 +603,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("InjectedDaggerLazyInteropWorks.kt")
+      public void testInjectedDaggerLazyInteropWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/InjectedDaggerLazyInteropWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedJavaxProviderInteropWorks.kt")
+      public void testInjectedJavaxProviderInteropWorks() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/InjectedJavaxProviderInteropWorks.kt");
+      }
+
+      @Test
       @TestMetadata("JavaxProviderShouldWorkInMap.kt")
       public void testJavaxProviderShouldWorkInMap() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInMap.kt");
@@ -470,6 +624,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("JavaxProviderShouldWorkInSet.kt")
       public void testJavaxProviderShouldWorkInSet() {
         runTest("compiler-tests/src/test/data/box/interop/dagger/JavaxProviderShouldWorkInSet.kt");
+      }
+
+      @Test
+      @TestMetadata("KotlinDaggerFactoryClassCanBeLoaded.kt")
+      public void testKotlinDaggerFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/KotlinDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("KotlinDaggerObjectFactoryClassCanBeLoaded.kt")
+      public void testKotlinDaggerObjectFactoryClassCanBeLoaded() {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/KotlinDaggerObjectFactoryClassCanBeLoaded.kt");
       }
 
       @Nested
@@ -547,6 +713,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ProvidesParametersCanHaveDefaults.kt")
     public void testProvidesParametersCanHaveDefaults() {
       runTest("compiler-tests/src/test/data/box/provides/ProvidesParametersCanHaveDefaults.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiersOnDifferentAnnotationSites.kt")
+    public void testQualifiersOnDifferentAnnotationSites() {
+      runTest("compiler-tests/src/test/data/box/provides/QualifiersOnDifferentAnnotationSites.kt");
     }
 
     @Test

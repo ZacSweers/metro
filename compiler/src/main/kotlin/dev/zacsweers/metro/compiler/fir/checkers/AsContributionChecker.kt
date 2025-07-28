@@ -36,7 +36,7 @@ internal object AsContributionChecker : FirFunctionCallChecker(MppCheckerKind.Co
           if (
             rawType.isAnnotatedWithAny(
               session,
-              session.metroFirBuiltIns.classIds.graphLikeAnnotations,
+              session.metroFirBuiltIns.classIds.dependencyGraphAnnotations,
             )
           ) {
             resolvedType

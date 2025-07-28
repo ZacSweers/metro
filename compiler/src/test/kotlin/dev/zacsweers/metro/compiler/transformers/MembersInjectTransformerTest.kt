@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.invokeNewInstance
 import dev.zacsweers.metro.compiler.newInstanceStrict
 import dev.zacsweers.metro.compiler.staticInjectMethod
 import dev.zacsweers.metro.providerOf
+import java.lang.reflect.Constructor
 import org.junit.Test
 
 class MembersInjectTransformerTest : MetroCompilerTest() {
@@ -95,7 +96,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
 
-    val constructor = membersInjector.declaredConstructors.single()
+    val constructor = membersInjector.injectorClassConstructor()
     assertThat(constructor.parameterTypes.toList())
       .containsExactly(
         Provider::class.java,
@@ -187,7 +188,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
 
-    val constructor = membersInjector.declaredConstructors.single()
+    val constructor = membersInjector.injectorClassConstructor()
     assertThat(constructor.parameterTypes.toList())
       .containsExactly(
         Provider::class.java,
@@ -246,7 +247,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
 
-    val constructor = membersInjector.declaredConstructors.single()
+    val constructor = membersInjector.injectorClassConstructor()
     assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
 
     @Suppress("UNCHECKED_CAST")
@@ -301,7 +302,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
     val membersInjector = result.ExampleClass.generatedMembersInjector()
 
-    val injectorConstructor = membersInjector.declaredConstructors.single()
+    val injectorConstructor = membersInjector.injectorClassConstructor()
     assertThat(injectorConstructor.parameterTypes.toList())
       .containsExactly(
         Provider::class.java,
@@ -359,7 +360,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     ) {
       val membersInjector = ExampleClass.generatedMembersInjector()
 
-      val constructor = membersInjector.declaredConstructors.single()
+      val constructor = membersInjector.injectorClassConstructor()
       assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
     }
   }
@@ -377,7 +378,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
     ) {
       val membersInjector = ExampleClass.generatedMembersInjector()
 
-      val constructor = membersInjector.declaredConstructors.single()
+      val constructor = membersInjector.injectorClassConstructor()
       assertThat(constructor.parameterTypes.toList()).containsExactly(Provider::class.java)
     }
   }
@@ -412,7 +413,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       val baseMembersInjector = classLoader.loadClass("test.Base").generatedMembersInjector()
       val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
 
-      val constructor = injectClassMembersInjector.declaredConstructors.single()
+      val constructor = injectClassMembersInjector.injectorClassConstructor()
       assertThat(constructor.parameterTypes.toList())
         .containsExactly(Provider::class.java, Provider::class.java)
 
@@ -473,7 +474,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
       val middleMembersInjector = classLoader.loadClass("test.Middle").generatedMembersInjector()
       val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
 
-      val constructor = injectClassMembersInjector.declaredConstructors.single()
+      val constructor = injectClassMembersInjector.injectorClassConstructor()
       assertThat(constructor.parameterTypes.toList())
         .containsExactly(Provider::class.java, Provider::class.java, Provider::class.java)
 
@@ -543,7 +544,7 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
 
       val injectClassMembersInjector = ExampleClass.generatedMembersInjector()
 
-      val constructor = injectClassMembersInjector.declaredConstructors.single()
+      val constructor = injectClassMembersInjector.injectorClassConstructor()
       assertThat(constructor.parameterTypes.toList())
         .containsExactly(Provider::class.java, Provider::class.java)
 
@@ -954,5 +955,9 @@ class MembersInjectTransformerTest : MetroCompilerTest() {
           .trimIndent()
       )
     }
+  }
+
+  private fun Class<MembersInjector<*>>.injectorClassConstructor(): Constructor<*> {
+    return declaredConstructors.single { !it.isSynthetic }.also { it.isAccessible = true }
   }
 }

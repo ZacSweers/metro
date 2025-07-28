@@ -31,7 +31,7 @@ interface ExampleGraph {
       return <this>.#accessorsInstance.<get-string>()
     }
 )
-    constructor(@Includes accessors: Accessors) /* primary */ {
+    private constructor(@Includes accessors: Accessors) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -51,6 +51,21 @@ interface ExampleGraph {
 
   @Factory
   interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    object $$Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Includes accessors: Accessors): ExampleGraph {
+        return $$MetroGraph(accessors = accessors)
+      }
+
+    }
+
     abstract fun create(@Includes accessors: Accessors): ExampleGraph
 
   }

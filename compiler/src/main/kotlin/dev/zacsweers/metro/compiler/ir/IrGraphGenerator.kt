@@ -105,7 +105,7 @@ internal class IrGraphGenerator(
   private val assistedFactoryTransformer: AssistedFactoryTransformer,
 ) : IrMetroContext by metroContext {
 
-  private val fieldNameAllocator = NameAllocator()
+  private val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   private val functionNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
   // TODO we can end up in awkward situations where we
@@ -137,12 +137,19 @@ internal class IrGraphGenerator(
     fieldInitializers += (this to init)
   }
 
+  fun IrField.initFinal(body: IrBuilderWithScope.() -> IrExpression): IrField = apply {
+    isFinal = true
+    initializer = createIrBuilder(symbol).run { irExprBody(body()) }
+  }
+
   fun generate() =
     with(graphClass) {
       val ctor = primaryConstructor!!
 
       val extraConstructorStatements =
         mutableListOf<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>()
+
+      val thisReceiverParameter = thisReceiverOrFail
 
       fun addBoundInstanceField(
         typeKey: IrTypeKey,
@@ -162,8 +169,8 @@ internal class IrGraphGenerator(
               fieldType = symbols.metroProvider.typeWith(typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
-            .withInit(typeKey) { thisReceiver, typeKey ->
-              instanceFactory(typeKey.type, initializer(thisReceiver, typeKey))
+            .initFinal {
+              instanceFactory(typeKey.type, initializer(thisReceiverParameter, typeKey))
             }
       }
 
@@ -250,14 +257,11 @@ internal class IrGraphGenerator(
           }
         }
 
-      val thisReceiverParameter = thisReceiverOrFail
-
       // Don't add it if it's not used
       if (node.typeKey in sealResult.reachableKeys) {
         val thisGraphField =
           addSimpleInstanceField(fieldNameAllocator.newName("thisGraphInstance"), node.typeKey) {
-            thisReceiver ->
-            irGet(thisReceiver)
+            irGet(thisReceiverParameter)
           }
 
         instanceFields[node.typeKey] = thisGraphField
@@ -274,8 +278,11 @@ internal class IrGraphGenerator(
               fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
             )
-            .withInit(node.typeKey) { thisReceiver, _ ->
-              instanceFactory(node.typeKey.type, irGetField(irGet(thisReceiver), thisGraphField))
+            .initFinal {
+              instanceFactory(
+                node.typeKey.type,
+                irGetField(irGet(thisReceiverParameter), thisGraphField),
+              )
             }
       }
 
@@ -350,7 +357,7 @@ internal class IrGraphGenerator(
 
       // Collect bindings and their dependencies for provider field ordering
       val initOrder =
-        parentTracer.traceNested("Collect bindings") { tracer ->
+        parentTracer.traceNested("Collect bindings") {
           val providerFieldBindings = ProviderFieldCollector(bindingGraph).collect()
           buildList(providerFieldBindings.size) {
             for (key in sealResult.sortedKeys) {
@@ -378,7 +385,7 @@ internal class IrGraphGenerator(
                   fieldType = symbols.metroProvider.typeWith(node.typeKey.type),
                   fieldVisibility = DescriptorVisibilities.PRIVATE,
                 )
-                .withInit(key) { thisReceiver, fieldIndex ->
+                .withInit(key) { thisReceiver, _ ->
                   // If this is in instance fields, just do a quick assignment
                   if (binding.typeKey in instanceFields) {
                     val field = instanceFields.getValue(binding.typeKey)
@@ -487,7 +494,7 @@ internal class IrGraphGenerator(
             // TODO de-dupe?
             args =
               listOf(
-                irGetField(irGet(thisReceiverParameter), field),
+                irGetField(irGet(thisReceiver), field),
                 createIrBuilder(symbol).run {
                   generateBindingCode(
                       binding,
@@ -507,7 +514,10 @@ internal class IrGraphGenerator(
 
       val finalConstructorStatements:
         List<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>
-      if (fieldInitializers.size + extraConstructorStatements.size > STATEMENTS_PER_METHOD) {
+      if (
+        options.chunkFieldInits &&
+          fieldInitializers.size + extraConstructorStatements.size > STATEMENTS_PER_METHOD
+      ) {
         // Larger graph, split statements
         // Chunk our constructor statements and split across multiple init functions
         val chunks =
@@ -535,7 +545,7 @@ internal class IrGraphGenerator(
               .apply {
                 val localReceiver = thisReceiverParameter.copyTo(this)
                 setDispatchReceiver(localReceiver)
-                buildBlockBody() {
+                buildBlockBody {
                   for (statement in statementsChunk) {
                     +statement(localReceiver)
                   }
@@ -553,12 +563,10 @@ internal class IrGraphGenerator(
         // Small graph, just do it in the constructor
         // Assign those initializers directly to their fields and mark them as final
         for ((field, init) in fieldInitializers) {
-          field.isFinal = true
-          field.initializer =
-            createIrBuilder(field.symbol).run {
-              val typeKey = fieldsToTypeKeys.getValue(field)
-              irExprBody(init(thisReceiverParameter, typeKey))
-            }
+          field.initFinal {
+            val typeKey = fieldsToTypeKeys.getValue(field)
+            init(thisReceiverParameter, typeKey)
+          }
         }
         finalConstructorStatements = extraConstructorStatements
       }
@@ -566,7 +574,7 @@ internal class IrGraphGenerator(
       // Add extra constructor statements
       with(ctor) {
         val originalBody = checkNotNull(body)
-        buildBlockBody() {
+        buildBlockBody {
           +originalBody.statements
           for (statement in finalConstructorStatements) {
             +statement(thisReceiverParameter)
@@ -596,12 +604,16 @@ internal class IrGraphGenerator(
                   .filterKeys { typeKey ->
                     val binding = bindingGraph.requireBinding(typeKey, IrBindingStack.empty())
                     when {
-                      // Don't re-expose existing accessors
-                      binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor ->
-                        false
+                      // Don't re-expose existing metro accessors. Do expose included graph
+                      // accessors
+                      binding is IrBinding.GraphDependency &&
+                        binding.isProviderFieldAccessor &&
+                        binding.ownerKey !in node.includedGraphNodes -> false
                       // Only expose scoped bindings. Some provider fields may be for non-scoped
                       // bindings just for reuse. BoundInstance bindings still need to be passed on
-                      binding.scope == null && binding !is IrBinding.BoundInstance -> false
+                      binding.scope == null &&
+                        binding !is IrBinding.BoundInstance &&
+                        binding !is IrBinding.GraphDependency -> false
                       else -> true
                     }
                   }
@@ -636,12 +648,22 @@ internal class IrGraphGenerator(
         sequence {
             for (entry in providerFields) {
               val binding = bindingGraph.requireBinding(entry.key, IrBindingStack.empty())
-              if (binding is IrBinding.GraphDependency && binding.isProviderFieldAccessor) {
-                // This'll get looked up directly by child graphs
+              if (
+                binding is IrBinding.GraphDependency &&
+                  binding.isProviderFieldAccessor &&
+                  binding.ownerKey !in node.includedGraphNodes
+              ) {
+                // This'll get looked up directly by child graphs. Included graphs though _should_
+                // be propagated because they are accessors-only APIs
                 continue
-              } else if (binding.scope == null && binding !is IrBinding.BoundInstance) {
+              } else if (
+                binding.scope == null &&
+                  binding !is IrBinding.BoundInstance &&
+                  binding !is IrBinding.GraphDependency
+              ) {
                 // Don't expose redundant accessors for unscoped bindings. BoundInstance bindings
-                // still get passed on
+                // still get passed on. GraphDependency bindings (if it reached here) should also
+                // pass on
                 continue
               }
               yield(entry)
@@ -693,14 +715,14 @@ internal class IrGraphGenerator(
   private fun IrClass.addSimpleInstanceField(
     name: String,
     typeKey: IrTypeKey,
-    initializerExpression: IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrExpression,
+    initializerExpression: IrBuilderWithScope.() -> IrExpression,
   ): IrField =
     addField(
         fieldName = name,
         fieldType = typeKey.type,
         fieldVisibility = DescriptorVisibilities.PRIVATE,
       )
-      .withInit(typeKey) { thisReceiver, _ -> initializerExpression(thisReceiver) }
+      .initFinal { initializerExpression() }
 
   private fun DependencyGraphNode.implementOverrides(
     context: GraphGenerationContext,

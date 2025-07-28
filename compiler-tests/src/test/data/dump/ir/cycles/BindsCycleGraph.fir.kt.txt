@@ -24,7 +24,7 @@ class Bar : Foo {
 
     }
 
-    constructor(fooProvider: Provider<Foo>) /* primary */ {
+    private constructor(fooProvider: Provider<Foo>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -50,6 +50,20 @@ class Bar : Foo {
 
 @DependencyGraph
 interface BindsCycleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class $$BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "foo", isPropertyAccessor = false, startOffset = 307, endOffset = 336)
+    abstract fun foo(bar: Bar): Foo
+
+  }
+
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -67,7 +81,7 @@ interface BindsCycleGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : BindsCycleGraph {
     private /* final field */ val barProvider: Provider<Bar> = DelegateFactory<Bar>()
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 

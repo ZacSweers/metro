@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.tracer
+import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.appendText
 import kotlin.io.path.createDirectories
@@ -17,7 +18,10 @@ import kotlin.io.path.writeText
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LookupTracker
+import org.jetbrains.kotlin.incremental.components.Position
+import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrType
@@ -41,6 +45,7 @@ internal interface IrMetroContext : IrPluginContext {
     get() = options.debug
 
   val lookupTracker: LookupTracker?
+  val expectActualTracker: ExpectActualTracker
 
   val irTypeSystemContext: IrTypeSystemContext
 
@@ -51,12 +56,14 @@ internal interface IrMetroContext : IrPluginContext {
   val logFile: Path?
   val traceLogFile: Path?
   val timingsFile: Path?
+  val lookupFile: Path?
+  val expectActualFile: Path?
 
   val typeRemapperCache: MutableMap<Pair<ClassId, IrType>, TypeRemapper>
 
   fun log(message: String) {
     messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
-    logFile?.appendText("\n$message")
+    logFile?.appendText("$message\n")
   }
 
   fun logTrace(message: String) {
@@ -70,6 +77,22 @@ internal interface IrMetroContext : IrPluginContext {
 
   fun logTiming(tag: String, description: String, durationMs: Long) {
     timingsFile?.appendText("\n$tag,$description,${durationMs}")
+  }
+
+  fun logLookup(
+    filePath: String,
+    position: Position,
+    scopeFqName: String,
+    scopeKind: ScopeKind,
+    name: String,
+  ) {
+    lookupFile?.appendText(
+      "\n${filePath.substringAfterLast(File.separatorChar)},${position.line}:${position.column},$scopeFqName,$scopeKind,$name"
+    )
+  }
+
+  fun logExpectActualReport(expectedFile: File, actualFile: File?) {
+    expectActualFile?.appendText("\n${expectedFile.name},${actualFile?.name}")
   }
 
   fun IrClass.dumpToMetroLog() {
@@ -103,16 +126,41 @@ internal interface IrMetroContext : IrPluginContext {
       symbols: Symbols,
       options: MetroOptions,
       lookupTracker: LookupTracker?,
+      expectActualTracker: ExpectActualTracker,
     ): IrMetroContext =
-      SimpleIrMetroContext(pluginContext, messageCollector, symbols, options, lookupTracker)
+      SimpleIrMetroContext(
+        pluginContext,
+        messageCollector,
+        symbols,
+        options,
+        lookupTracker,
+        expectActualTracker,
+      )
 
     private class SimpleIrMetroContext(
       override val pluginContext: IrPluginContext,
       override val messageCollector: MessageCollector,
       override val symbols: Symbols,
       override val options: MetroOptions,
-      override val lookupTracker: LookupTracker?,
+      lookupTracker: LookupTracker?,
+      expectActualTracker: ExpectActualTracker,
     ) : IrMetroContext, IrPluginContext by pluginContext {
+      override val lookupTracker: LookupTracker? =
+        lookupTracker?.let {
+          if (options.reportsDestination != null) {
+            RecordingLookupTracker(this, lookupTracker)
+          } else {
+            lookupTracker
+          }
+        }
+
+      override val expectActualTracker: ExpectActualTracker =
+        if (options.reportsDestination != null) {
+          RecordingExpectActualTracker(this, expectActualTracker)
+        } else {
+          expectActualTracker
+        }
+
       override val irTypeSystemContext: IrTypeSystemContext =
         IrTypeSystemContextImpl(pluginContext.irBuiltIns)
       private val loggerCache = mutableMapOf<MetroLogger.Type, MetroLogger>()
@@ -142,6 +190,26 @@ internal interface IrMetroContext : IrPluginContext {
             deleteIfExists()
             createFile()
             appendText("tag,description,durationMs")
+          }
+        }
+      }
+
+      override val lookupFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("lookups.csv").apply {
+            deleteIfExists()
+            createFile()
+            appendText("file,position,scopeFqName,scopeKind,name")
+          }
+        }
+      }
+
+      override val expectActualFile: Path? by lazy {
+        reportsDir?.let {
+          it.resolve("expectActualReports.csv").apply {
+            deleteIfExists()
+            createFile()
+            appendText("expected,actual")
           }
         }
       }

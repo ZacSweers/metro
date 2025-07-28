@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.wrapInProviderIfNecessary
 import dev.zacsweers.metro.compiler.mapToArray
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.typeParameterSymbols
@@ -162,6 +163,7 @@ internal class AssistedFactoryImplFirGenerator(session: FirSession) :
           isPrimary = true,
           generateDelegatedNoArgConstructorCall = true,
         ) {
+          visibility = Visibilities.Private
           valueParameter(
             name = Symbols.Names.delegateFactory,
             typeProvider = { typeParameterRefs ->

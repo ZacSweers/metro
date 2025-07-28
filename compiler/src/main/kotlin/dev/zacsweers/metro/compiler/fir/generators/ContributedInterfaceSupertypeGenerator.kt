@@ -5,10 +5,12 @@ package dev.zacsweers.metro.compiler.fir.generators
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.fir.memoizedAllSessionsSequence
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
@@ -22,7 +24,7 @@ import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
-import kotlin.sequences.filterNot
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
@@ -32,12 +34,15 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.declarations.utils.classId
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.firForVisibilityChecker
 import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.moduleData
+import org.jetbrains.kotlin.fir.moduleVisibilityChecker
 import org.jetbrains.kotlin.fir.recordFqNameLookup
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
@@ -59,16 +64,18 @@ import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
-// Toe-hold for contributed types
 internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   FirSupertypeGenerationExtension(session) {
 
   private val dependencyGraphs by lazy {
     session.predicateBasedProvider
-      .getSymbolsByPredicate(session.predicates.aggregatingAnnotationsPredicate)
+      .getSymbolsByPredicate(session.predicates.dependencyGraphPredicate)
       .filterIsInstance<FirRegularClassSymbol>()
       .toSet()
   }
+
+  private val allSessions = session.memoizedAllSessionsSequence
+  private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val inCompilationScopesToContributions:
     FirCache<ClassId, Set<ClassId>, TypeResolveService> =
@@ -109,6 +116,15 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
       val contributingClasses =
         functionsInPackage
+          .filter {
+            when (it.visibility) {
+              Visibilities.Internal -> {
+                it.moduleData == session.moduleData ||
+                  session.moduleVisibilityChecker?.isInFriendModule(it.firForVisibilityChecker) == true
+              }
+              else -> true
+            }
+          }
           .mapNotNull { contribution ->
             // This is the single value param
             contribution.valueParameterSymbols
@@ -159,15 +175,17 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .mapToSet { (_, nestedContributionId) -> nestedContributionId }
   }
 
-  private fun FirAnnotationContainer.graphLikeAnnotation(): FirAnnotation? {
-    return annotations.annotationsIn(session, session.classIds.graphLikeAnnotations).firstOrNull()
+  private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
+    return annotations
+      .annotationsIn(session, session.classIds.dependencyGraphAnnotations)
+      .firstOrNull()
   }
 
   override fun needTransformSupertypes(declaration: FirClassLikeDeclaration): Boolean {
     if (declaration.symbol !in dependencyGraphs) {
       return false
     }
-    val graphAnnotation = declaration.graphLikeAnnotation() ?: return false
+    val graphAnnotation = declaration.graphAnnotation() ?: return false
 
     // TODO in an FIR checker, disallow omitting scope but defining additional scopes
     // Can't check the scope class ID here but we'll check in computeAdditionalSupertypes
@@ -179,7 +197,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       register(
         dependencyGraphPredicate,
         contributesAnnotationPredicate,
-        contributesGraphExtensionPredicate,
+        contributesGraphExtensionFactoryPredicate,
         qualifiersPredicate,
         bindingContainerPredicate,
       )
@@ -191,7 +209,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     resolvedSupertypes: List<FirResolvedTypeRef>,
     typeResolver: TypeResolveService,
   ): List<ConeKotlinType> {
-    val graphAnnotation = classLikeDeclaration.graphLikeAnnotation()!!
+    val graphAnnotation = classLikeDeclaration.graphAnnotation()!!
 
     val scopes =
       buildSet {
@@ -283,9 +301,12 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       .filterIsInstance<ConeClassLikeType>()
       .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
       .flatMap { contributingType ->
+        val localTypeResolver =
+          typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
+
         contributingType
           .annotationsIn(session, session.classIds.allContributesAnnotations)
-          .flatMap { annotation -> annotation.resolvedReplacedClassIds(typeResolver) }
+          .flatMap { annotation -> annotation.resolvedReplacedClassIds(localTypeResolver) }
       }
       .distinct()
       .forEach { replacedClassId ->

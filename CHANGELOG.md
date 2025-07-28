@@ -4,9 +4,60 @@ Changelog
 **Unreleased**
 --------------
 
-- **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs.
+- **Behavior change:** The `enableScopedInjectClassHints` option is no longer enabled by default. This option is tricky to get right and will be iterated on further in [#764](https://github.com/ZacSweers/metro/issues/764).
+- **Enhancement:** Generate synthetic `$$BindsMirror` classes to...
+    - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
+    - allow these declarations to be `private`
+- **Enhancement:** Allow `@Binds` and `@Multibinds` functions to be private.
+- **Enhancement:** Allow "static graphs" via companions implementing the graph interface itself.
+- **Enhancement:** Allow graphs to aggregate `internal` contributions from other compilations IFF those compilations are marked as friend paths. This mainly allows for test graphs to consume contributions from their corresponding main source sets.
+- **Enhancement:** Allow `internal` graphs to extend `internal` contributed interfaces from other compilations IFF those compilations are marked as friend paths.
+- **Fix:** Sort soft edges before hard edges within (valid) cycles. Previously we would just apply a standard topological sort here, but in this scenario we want to add extra weight to ready-up nodes that depend directly on the deferred type being used to break the cycle first.
+- **Fix:** When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.
+- **Fix:** Record IC lookups to `@Multibinds` declarations.
+- **Fix:** Write `@Multibinds` information to metro metadata.
+- **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
+- **Fix:** When `@Includes`-ing other graphs, link against the original interface accessor rather than the generated `$$MetroGraph` accessor.
+- **Fix:** Disambiguate contributed nullable bindings from non-nullable bindings.
+- **Fix:** When computing `@Includes` graph dependencies from accessors, only consider directly included graphs and not transitively included graphs.
+- **Fix:** Expose `@Includes` graph dependencies as synthetic `_metroAccessor` types for extended graphs rather than exposing the included graph directly.
+- **Fix:** Prohibit calling `.asContribution()` on `@ContributesGraphExtension`-annotated types. `@ContributesGraphExtension`-annotated types cannot be validated at compile-time with this function as their generated class is definitionally contextual and the compiler cannot infer that from callsites of this function alone.
+- **Fix:** Only process `@DependencyGraph` types in FIR supertype generation. Contributed graph extension supertypes are merged only in IR.
+- **Fix:** Generate `$$MetroContribution` binds functions before aggregating contributions.
+- **Fix:** Don't short-circuit class visiting in contribution visiting in IR.
+- **Fix:** Propagate property annotations for `@Provides`-properties, previously only the accessor function annotations were being included.
+- **Fix:** Propagate class annotations for `@Inject`-annotated constructors to factory class mirror functions, previously only the constructor's annotations were being included.
+- **Fix:** Fix dispatch receiver for `DelegateFactory` fields when `chunkFieldInits` is enabled.
 - **Fix:** Fix compilation error for members-injected classes with no direct, but only inherited `@Inject` attributes.
+- Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
+- Small improvements to the doc site (404 page, favicon, etc.)
+
+0.5.2
+-----
+
+_2025-07-21_
+
+- **Enhancement**: De-dupe contributions before processing in contributed graphs.
+- **Fix**: Don't extend contributed binding container classes in generated contributed graphs.
+- Small doc fixes.
+
+Special thanks to [@bnorm](https://github.com/bnorm) and [@alexvanyo](https://github.com/alexvanyo) for contributing to this release!
+
+0.5.1
+-----
+
+_2025-07-18_
+
 - **Breaking change:** Rename the `generateHintProperties` Gradle DSL property to `generateContributionHints`.
+- **Enhancement:** Chunk field initializers and constructor statements across multiple init functions to avoid `MethodTooLargeException` in large graphs. This is currently experimental and gated behind the `chunkFieldInits()` Gradle DSL.
+- **Enhancement:** Mark generated factories and member injectors' constructors as `private`, matching the same [change in Dagger 2.57](https://github.com/google/dagger/releases/tag/dagger-2.57).
+- **Enhancement:** Add a new Metro option `warnOnInjectAnnotationPlacement` to disable suggestion to lift @Inject to class when there is only one constructor, the warning applies to constructors with params too.
+- **Fix:** Fix `@Contributes*.replaces` not working if the contributed type is in the same compilation but a different file.
+- **Fix:** Fix generated `MembersInjector.create()` return types' generic argument to use the target class.
+- **Fix:** Don't generated nested MetroContribution classes for binding containers.
+- **Fix:** Fix contributing binding containers across compilations.
+
+Special thanks to [@kevinguitar](https://github.com/kevinguitar) and [@ChristianKatzmann](https://github.com/ChristianKatzmann) for contributing to this release!
 
 0.5.0
 -----

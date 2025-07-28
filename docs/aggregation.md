@@ -67,9 +67,6 @@ interface TestNetworkProviders {
 }
 ```
 
-!!! warning
-    `@Contributes*.replaces` cannot replace classes in the _same compilation_ as the _graph that is merging them_.
-
 ## @ContributesBinding
 
 This annotation is used to contribute injected classes to a target scope as a given bound type.
@@ -228,7 +225,9 @@ interface TestAppGraph {
 
 ## `@ContributesGraphExtension`
 
-Not yet implemented. Please share design feedback in [#165](https://github.com/ZacSweers/metro/issues/165)!
+`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
+
+See [Dependency Graphs](dependency-graphs.md#contributed-graph-extensions) for motivation and documentation.
 
 ## Implementation notes
 

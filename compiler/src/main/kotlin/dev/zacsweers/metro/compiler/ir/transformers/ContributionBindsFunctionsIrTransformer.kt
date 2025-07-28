@@ -33,6 +33,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -156,6 +157,9 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
           val suffix = buildString {
             append("As")
+            if (bindingType.isMarkedNullable()) {
+              append("Nullable")
+            }
             bindingType
               .rawType()
               .classIdOrFail
@@ -168,7 +172,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
           // We need a unique name because addFakeOverrides() doesn't handle overloads with
           // different return types
-          val name = (callableName + "As" + suffix).asName()
+          val name = (callableName + suffix).asName()
           addFunction {
               this.name = name
               this.returnType = bindingType
