@@ -160,6 +160,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ProvidesWithMemberInjection.kt")
+    public void testProvidesWithMemberInjection() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ProvidesWithMemberInjection.kt");
+    }
+
+    @Test
     @TestMetadata("QualifiedMemberInjectionPropagatesAcrossModules.kt")
     public void testQualifiedMemberInjectionPropagatesAcrossModules() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/QualifiedMemberInjectionPropagatesAcrossModules.kt");
