@@ -44,6 +44,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedBindingContainerGetsExcluded.kt")
+    public void testContributedBindingContainerGetsExcluded() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerGetsExcluded.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedBindingContainerReplacements.kt")
     public void testContributedBindingContainerReplacements() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerReplacements.kt");
