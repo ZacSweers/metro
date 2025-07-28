@@ -31,6 +31,7 @@ Changelog
 - **Fix:** Fix compilation error for members-injected classes with no direct, but only inherited `@Inject` attributes.
 - **Fix:** Always look up member injectors of ancestor classes of classes member-injected by graphs (sorry, word soup I know).
 - **Fix:** Ensure `$$MetroContribution` interfaces are not generated for binding containers by ensuring binding container annotations are readable during their generation.
+- Change to `UnsupportedOperationException` for compiler intrinsic stubs, matching what the stdlib does.
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
 

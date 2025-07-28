@@ -20,5 +20,5 @@ package dev.zacsweers.metro
  */
 @Suppress("UnusedReceiverParameter")
 public inline fun <reified T : Any> Any.asContribution(): T {
-  throw NotImplementedError("Implemented by the compiler")
+  throw UnsupportedOperationException("Implemented by the compiler")
 }
