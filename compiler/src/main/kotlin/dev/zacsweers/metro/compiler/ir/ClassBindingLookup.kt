@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer.MemberInjectClass
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.typeOrFail
@@ -84,13 +85,17 @@ internal class ClassBindingLookup(
         return bindings
       }
 
+      val remapper by unsafeLazy { irClass.deepRemapperFor(key.type) }
+      val membersInjectBindings = unsafeLazy {
+        irClass.computeMembersInjectorBindings(currentBindings, remapper).also { bindings += it }
+      }
+
       val classFactory = findClassFactory(irClass)
       if (classFactory != null) {
         // We don't actually call this function but it stores information about qualifier/scope
         // annotations, so reference it here so IC triggers
         trackFunctionCall(sourceGraph, classFactory.function)
 
-        val remapper = irClass.deepRemapperFor(key.type)
         val mappedFactory = classFactory.remapTypes(remapper)
 
         // Not sure this can ever happen but report a detailed error in case.
@@ -108,10 +113,6 @@ internal class ClassBindingLookup(
           exitProcessing()
         }
 
-        val membersInjectBindings =
-          irClass.computeMembersInjectorBindings(currentBindings, remapper)
-        bindings += membersInjectBindings
-
         val binding =
           IrBinding.ConstructorInjected(
             type = irClass,
@@ -119,7 +120,7 @@ internal class ClassBindingLookup(
             annotations = classAnnotations,
             typeKey = key,
             injectedMembers =
-              membersInjectBindings.mapToSet { binding -> binding.contextualTypeKey },
+              membersInjectBindings.value.mapToSet { binding -> binding.contextualTypeKey },
           )
         bindings += binding
 
@@ -145,7 +146,9 @@ internal class ClassBindingLookup(
       } else if (contextKey.hasDefault) {
         bindings += IrBinding.Absent(key)
       } else {
-        // Do nothing
+        // It's a regular class, not injected, not assisted. Initialize member injections still just
+        // in case
+        membersInjectBindings.value
       }
       return bindings
     }

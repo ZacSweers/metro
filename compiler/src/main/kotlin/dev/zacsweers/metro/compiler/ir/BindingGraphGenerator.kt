@@ -488,7 +488,8 @@ internal class BindingGraphGenerator(
 
       graph.addInjector(contextKey, entry)
       bindingStack.withEntry(entry) {
-        val paramType = injector.ir.regularParameters.single().type
+        val param = injector.ir.regularParameters.single()
+        val paramType = param.type
         val targetClass = paramType.rawType()
         // Don't return null on missing because it's legal to inject a class with no member
         // injections
@@ -519,6 +520,18 @@ internal class BindingGraphGenerator(
           )
 
         graph.addBinding(contextKey.typeKey, binding, bindingStack)
+
+        // Ensure that we traverse the target class's superclasses and lookup relevant bindings for
+        // them too, namely ancestor member injectors
+        val extraBindings =
+          classBindingLookup.lookup(
+            IrContextualTypeKey.from(param),
+            graph.bindingsSnapshot().keys,
+            bindingStack,
+          )
+        for (extraBinding in extraBindings) {
+          graph.addBinding(extraBinding.typeKey, extraBinding, bindingStack)
+        }
       }
     }
 
