@@ -306,6 +306,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ParentScopedClassUnusedInParent.kt")
+    public void testParentScopedClassUnusedInParent() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/ParentScopedClassUnusedInParent.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateBinds.kt")
     public void testPrivateBinds() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/PrivateBinds.kt");
