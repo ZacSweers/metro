@@ -114,6 +114,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedWithOnlyMultibindsUsedInGraphExtension.kt")
+    public void testContributedWithOnlyMultibindsUsedInGraphExtension() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedWithOnlyMultibindsUsedInGraphExtension.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindsOnlyInContainer.kt")
     public void testMultibindsOnlyInContainer() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
