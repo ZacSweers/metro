@@ -1,3 +1,4 @@
+// Regression test for https://github.com/ZacSweers/metro/issues/664
 @DependencyGraph(AppScope::class, isExtendable = true)
 interface ParentGraph
 
