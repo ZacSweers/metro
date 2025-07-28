@@ -50,6 +50,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedBindingContainerReplacesContributedBinding.kt")
+    public void testContributedBindingContainerReplacesContributedBinding() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerReplacesContributedBinding.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
     public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
