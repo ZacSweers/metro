@@ -21,7 +21,6 @@ import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.singleOrError
 import java.util.TreeMap
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -78,7 +77,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   private val typeResolverFactory = MetroFirTypeResolver.Factory(session, allSessions)
 
   private val inCompilationScopesToContributions:
-    FirCache<ClassId, Set<ClassId>, TypeResolveService> =
+    FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
       // In a KMP compilation we want to capture _all_ sessions' symbols. For example, if we are
       // generating supertypes for a graph in jvmMain, we want to capture contributions declared in
@@ -97,15 +96,13 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             )
           }
           .filterIsInstance<FirRegularClassSymbol>()
-          .filterNot {
-            it.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)
-          }
           .toList()
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
 
-  private val generatedScopesToContributions: FirCache<ClassId, Set<ClassId>, TypeResolveService> =
+  private val generatedScopesToContributions:
+    FirCache<ClassId, Map<ClassId, Boolean>, TypeResolveService> =
     session.firCachesFactory.createCache { scopeClassId, typeResolver ->
       val scopeHintFqName = Symbols.FqNames.scopeHint(scopeClassId)
       val functionsInPackage =
@@ -120,7 +117,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             when (it.visibility) {
               Visibilities.Internal -> {
                 it.moduleData == session.moduleData ||
-                  session.moduleVisibilityChecker?.isInFriendModule(it.firForVisibilityChecker) == true
+                  session.moduleVisibilityChecker?.isInFriendModule(it.firForVisibilityChecker) ==
+                    true
               }
               else -> true
             }
@@ -132,24 +130,34 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
               .resolvedReturnType
               .toRegularClassSymbol(session)
           }
-          .filterNot {
-            it.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)
-          }
 
       getScopedContributions(contributingClasses, scopeClassId, typeResolver)
     }
 
   /**
    * @param contributingClasses The classes annotated with some number of @ContributesX annotations.
-   * @return A mapping of scope ids to @MetroContribution-annotated nested classes.
+   * @return A mapping of contributions to the given [scopeClassId] and boolean indicating if
+   *   they're a binding container or not.
    */
   private fun getScopedContributions(
     contributingClasses: List<FirRegularClassSymbol>,
     scopeClassId: ClassId,
     typeResolver: TypeResolveService,
-  ): Set<ClassId> {
-    return contributingClasses
-      .flatMap { originClass ->
+  ): Map<ClassId, Boolean> {
+    return buildMap {
+      for (originClass in contributingClasses) {
+        if (originClass.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
+          val scopeId =
+            originClass
+              .annotationsIn(session, session.classIds.contributesToAnnotations)
+              .single()
+              .resolvedScopeClassId(typeResolver)
+          if (scopeId == scopeClassId) {
+            put(originClass.classId, true)
+          }
+          continue
+        }
+
         val classDeclarationContainer =
           originClass.declaredMemberScope(session, memberRequiredPhase = null)
 
@@ -158,21 +166,20 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
             it.identifier.startsWith(Symbols.Names.MetroContributionNamePrefix.identifier)
           }
 
-        contributionNames
-          .mapNotNull { nestedClassName ->
-            val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
+        for (nestedClassName in contributionNames) {
+          val nestedClass = classDeclarationContainer.getSingleClassifier(nestedClassName)
 
+          val scopeId =
             nestedClass
               ?.annotationsIn(session, setOf(Symbols.ClassIds.metroContribution))
               ?.single()
               ?.resolvedScopeClassId(typeResolver)
-              ?.let { scopeId ->
-                scopeId to originClass.classId.createNestedClassId(nestedClassName)
-              }
+          if (scopeId == scopeClassId) {
+            put(originClass.classId.createNestedClassId(nestedClassName), false)
           }
-          .filter { it.first == scopeClassId }
+        }
       }
-      .mapToSet { (_, nestedContributionId) -> nestedContributionId }
+    }
   }
 
   private fun FirAnnotationContainer.graphAnnotation(): FirAnnotation? {
@@ -228,29 +235,35 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       )
     }
 
-    val contributions =
-      scopes
-        .flatMap { scopeClassId ->
+    val contributionMappingsByClassId =
+      mutableMapOf<ClassId, Boolean>().apply {
+        for (scopeClassId in scopes) {
           val classPathContributions =
             generatedScopesToContributions.getValue(scopeClassId, typeResolver)
 
           val inCompilationContributions =
             inCompilationScopesToContributions.getValue(scopeClassId, typeResolver)
+          for ((classId, isBindingContainer) in
+            (inCompilationContributions + classPathContributions)) {
+            put(classId, isBindingContainer)
+          }
+        }
+      }
 
-          (inCompilationContributions + classPathContributions).map {
-            it.constructClassLikeType(emptyArray())
-          }
+    val contributionClassLikes =
+      contributionMappingsByClassId.keys.map { classId ->
+        classId.constructClassLikeType(emptyArray())
+      }
+
+    // Stable sort
+    val contributions =
+      TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
+        for (contribution in contributionClassLikes) {
+          // This is always the $$MetroContribution, the contribution is its parent
+          val classId = contribution.classId?.parentClassId ?: continue
+          put(classId, contribution)
         }
-        .let {
-          // Stable sort
-          TreeMap<ClassId, ConeKotlinType>(compareBy(ClassId::asString)).apply {
-            for (contribution in it) {
-              // This is always the $$MetroContribution, the contribution is its parent
-              val classId = contribution.classId?.parentClassId ?: continue
-              put(classId, contribution)
-            }
-          }
-        }
+      }
 
     val excluded = graphAnnotation.resolvedExcludedClassIds(typeResolver)
     if (contributions.isEmpty() && excluded.isEmpty()) {
@@ -264,6 +277,11 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
       if (removed == null) {
         unmatchedExclusions += excludedClassId
       }
+
+      // If the target is a binding container, remove it from our mappings
+      contributionMappingsByClassId[excludedClassId]
+        ?.takeIf { it }
+        ?.let { contributionMappingsByClassId.remove(excludedClassId) }
 
       // If the target is `@ContributesGraphExtension`, also implicitly exclude its nested factory
       // TODO this is finicky and the target class's annotations aren't resolved.
@@ -297,9 +315,17 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
     // Process replacements
     val unmatchedReplacements = mutableSetOf<ClassId>()
-    contributions.values
-      .filterIsInstance<ConeClassLikeType>()
-      .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
+    contributionClassLikes
+      .mapNotNull {
+        val symbol = it.toClassSymbol(session)
+        if (contributionMappingsByClassId[it.classId] == true) {
+          // It's a binding container, use as-is
+          symbol
+        } else {
+          // It's a contribution, get its original parent
+          symbol?.getContainingClassSymbol()
+        }
+      }
       .flatMap { contributingType ->
         val localTypeResolver =
           typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
@@ -337,11 +363,11 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     }
 
     val declarationClassId = classLikeDeclaration.classId
-    return contributions.values.filterNot { metroContribution ->
-      // We'll check this in a separate checker, but for now just avoid this as it's not legal in
-      // kotlin
-      // Check two levels up. ID is something like LoggedInGraph.Factory.$$MetroContribution
-      metroContribution.classId?.parentClassId?.parentClassId == declarationClassId
+    return contributions.values.filter { metroContribution ->
+      // Filter out binding containers at the end, they participate in replacements but not in
+      // supertypes
+      metroContribution.classId?.parentClassId?.parentClassId != declarationClassId &&
+        contributionMappingsByClassId[metroContribution.classId] != true
     }
   }
 
