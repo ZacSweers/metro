@@ -136,6 +136,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AsContributionExample.kt")
+    public void testAsContributionExample() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/AsContributionExample.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedFactoryIsAvailableAsBinding.kt")
     public void testContributedFactoryIsAvailableAsBinding() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributedFactoryIsAvailableAsBinding.kt");
