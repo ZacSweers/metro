@@ -9,7 +9,7 @@ class Impl2 : MyType
 
 @ContributesTo(AppScope::class, replaces = [Impl1::class])
 @BindingContainer
-interface ContributedInterface {
+interface ContributedContainer {
   @Binds fun bindMyType(
     impl: Impl2
   ): MyType
