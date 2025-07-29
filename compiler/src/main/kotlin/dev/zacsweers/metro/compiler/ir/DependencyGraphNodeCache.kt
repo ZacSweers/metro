@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -252,7 +253,7 @@ internal class DependencyGraphNodeCache(
         }
         diagnosticReporter
           .at(graphDeclaration)
-          .report(MetroIrErrors.GRAPH_DEPENDENCY_CYCLE, message)
+          .report(MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE, message)
         exitProcessing()
       }
     }
@@ -498,7 +499,7 @@ internal class DependencyGraphNodeCache(
             diagnosticReporter
               .at(graphDeclaration)
               .report(
-                MetroIrErrors.METRO_ERROR,
+                MetroDiagnostics.METRO_ERROR,
                 buildString {
                   appendLine(
                     "Graph extensions (@Extends) may not have multiple ancestors with the same scopes:"
@@ -519,7 +520,7 @@ internal class DependencyGraphNodeCache(
         diagnosticReporter
           .at(graphDeclaration)
           .report(
-            MetroIrErrors.METRO_ERROR,
+            MetroDiagnostics.METRO_ERROR,
             buildString {
               appendLine(
                 "Graph extensions (@Extends) may not have overlapping scopes with its ancestor graphs but the following scopes overlap:"
@@ -550,7 +551,7 @@ internal class DependencyGraphNodeCache(
             diagnosticReporter
               .at(graphDeclaration)
               .report(
-                MetroIrErrors.METRO_ERROR,
+                MetroDiagnostics.METRO_ERROR,
                 "Missing metadata for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
               )
             exitProcessing()
@@ -565,7 +566,7 @@ internal class DependencyGraphNodeCache(
             diagnosticReporter
               .at(graphDeclaration)
               .report(
-                MetroIrErrors.METRO_ERROR,
+                MetroDiagnostics.METRO_ERROR,
                 "Missing graph data for extendable graph ${graphDeclaration.kotlinFqName}. Was this compiled by the Metro compiler?",
               )
             exitProcessing()

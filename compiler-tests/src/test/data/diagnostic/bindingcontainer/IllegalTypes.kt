@@ -18,3 +18,6 @@ sealed class SealedClass
 
 <!BINDING_CONTAINER_ERROR!>@BindingContainer<!>
 sealed interface SealedInterface
+
+/* GENERATED_FIR_TAGS: annotationDeclaration, classDeclaration, companionObject, enumDeclaration, enumEntry,
+interfaceDeclaration, objectDeclaration, sealed */

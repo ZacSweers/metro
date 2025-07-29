@@ -1698,7 +1698,7 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     assertThat(secondBuildResult.output)
       .contains(
         """
-        MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+        MyBindingContainer.kt:9:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
 
         If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
         """

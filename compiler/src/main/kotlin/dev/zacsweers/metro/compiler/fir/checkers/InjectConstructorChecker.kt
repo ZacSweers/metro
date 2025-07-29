@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.asFirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -42,14 +42,14 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
     declaration
       .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
       ?.let {
-        reporter.reportOn(it.source ?: source, FirMetroErrors.DAGGER_REUSABLE_ERROR)
+        reporter.reportOn(it.source ?: source, MetroDiagnostics.DAGGER_REUSABLE_ERROR)
         return
       }
 
     if (classInjectAnnotation.isNotEmpty() && injectedConstructor != null) {
       reporter.reportOn(
         injectedConstructor.source,
-        FirMetroErrors.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
+        MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS,
       )
       return
     }
@@ -71,7 +71,7 @@ internal object InjectConstructorChecker : FirClassChecker(MppCheckerKind.Common
         if (canonicalClass.isAnnotatedWithAny(session, classIds.assistedFactoryAnnotations)) {
           reporter.reportOn(
             parameter.resolvedReturnTypeRef.source ?: parameter.source ?: source,
-            FirMetroErrors.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
+            MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY,
             canonicalClass.name.asString(),
             canonicalClass.classId.asFqNameString(),
           )

@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
@@ -444,19 +445,7 @@ internal class IrBindingGraph(
     val declaration =
       stack.lastEntryOrGraph?.originalDeclarationIfOverride()
         ?: node.reportableSourceGraphDeclaration
-    if (declaration.fileOrNull == null) {
-      // TODO move to diagnostic reporter in 2.2.20 https://youtrack.jetbrains.com/issue/KT-78280
-      metroContext.logVerbose(
-        "File-less declaration for ${declaration.dumpKotlinLike()} in ${declaration.parentClassOrNull?.dumpKotlinLike()}"
-      )
-      metroContext.messageCollector.report(
-        CompilerMessageSeverity.ERROR,
-        message,
-        declaration.locationOrNull(),
-      )
-    } else {
-      metroContext.diagnosticReporter.at(declaration).report(MetroIrErrors.METRO_ERROR, message)
-    }
+    metroContext.diagnosticReporter.at(declaration).report(MetroDiagnostics.METRO_ERROR, message)
     exitProcessing()
   }
 
@@ -560,7 +549,7 @@ internal class IrBindingGraph(
         }
         metroContext.diagnosticReporter
           .at(declarationToReport)
-          .report(MetroIrErrors.METRO_ERROR, message)
+          .report(MetroDiagnostics.METRO_ERROR, message)
       }
     }
   }
@@ -594,7 +583,7 @@ internal class IrBindingGraph(
       }
       metroContext.diagnosticReporter
         .at(declaration ?: node.sourceGraph)
-        .report(MetroIrErrors.METRO_ERROR, message)
+        .report(MetroDiagnostics.METRO_ERROR, message)
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->

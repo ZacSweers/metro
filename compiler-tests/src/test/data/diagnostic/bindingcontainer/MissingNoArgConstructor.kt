@@ -44,3 +44,6 @@ interface IncludingContainer
     [SomeBindings::class, SomeBindings2::class, SomeBindings3::class, <!BINDING_CONTAINER_ERROR!>SomeBindings4::class<!>, <!BINDING_CONTAINER_ERROR!>SomeBindings5::class<!>]
 )
 interface AppGraph
+
+/* GENERATED_FIR_TAGS: classDeclaration, classReference, collectionLiteral, functionDeclaration, integerLiteral,
+interfaceDeclaration, primaryConstructor, secondaryConstructor */
