@@ -29,7 +29,7 @@ if ! [[ ${local} ]]; then
 
   # Generate the API docs
   # --rerun-tasks because Dokka has bugs :(
-  ./gradlew :dokkaGenerate --rerun-tasks
+  ./gradlew :dokkaGenerate --rerun-tasks --no-build-cache
 
   cd ..
   rm -rf ${DIR}

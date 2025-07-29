@@ -160,6 +160,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AsContributionExample.kt")
+    public void testAsContributionExample() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/AsContributionExample.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedFactoryIsAvailableAsBinding.kt")
     public void testContributedFactoryIsAvailableAsBinding() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributedFactoryIsAvailableAsBinding.kt");
@@ -181,6 +187,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ParentIncludesTypesAreSeenByExtensions.kt")
     public void testParentIncludesTypesAreSeenByExtensions() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ParentIncludesTypesAreSeenByExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidesWithMemberInjection.kt")
+    public void testProvidesWithMemberInjection() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ProvidesWithMemberInjection.kt");
     }
 
     @Test

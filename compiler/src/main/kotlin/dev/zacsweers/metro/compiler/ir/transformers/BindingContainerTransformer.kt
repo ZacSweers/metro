@@ -48,6 +48,7 @@ import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -68,6 +69,7 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.callableId
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -163,9 +165,20 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     val bindsMirror = bindsMirrorClassTransformer.getOrComputeBindsMirror(declaration)
 
-    val isGraph = declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations)
+    val graphAnnotation =
+      declaration.annotationsIn(symbols.classIds.graphLikeAnnotations).firstOrNull()
+    val isContributedGraph =
+      graphAnnotation?.annotationClass?.classId in
+        symbols.classIds.contributesGraphExtensionAnnotations
+    val isGraph = graphAnnotation != null
     val container =
-      BindingContainer(isGraph, declaration, includes.orEmpty(), providerFactories, bindsMirror)
+      BindingContainer(
+        isGraph = isGraph,
+        ir = declaration,
+        includes = includes.orEmpty(),
+        providerFactories = providerFactories,
+        bindsMirror = bindsMirror,
+      )
 
     // If it's got providers but _not_ a @DependencyGraph, generate factory information onto this
     // class's metadata. This allows consumers in downstream compilations to know if there are
@@ -173,7 +186,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // We always generate metadata for binding containers because they can be included in graphs
     // without inheritance
     val shouldGenerateMetadata =
-      bindingContainerAnnotation != null || (!(container.isEmpty() || isGraph))
+      bindingContainerAnnotation != null || isContributedGraph || !container.isEmpty()
 
     if (shouldGenerateMetadata) {
       val metroMetadata = MetroMetadata(METRO_VERSION, dependency_graph = container.toProto())
@@ -327,7 +340,11 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
     // Generate a metadata-visible function that matches the signature of the target provider
     // This is used in downstream compilations to read the provider's signature
     val mirrorFunction =
-      generateMetadataVisibleMirrorFunction(factoryClass = factoryCls, target = providesFunction, annotations = reference.annotations)
+      generateMetadataVisibleMirrorFunction(
+        factoryClass = factoryCls,
+        target = providesFunction,
+        annotations = reference.annotations,
+      )
 
     val providerFactory =
       ProviderFactory(
@@ -630,7 +647,7 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
 
     if (graphProto == null) {
       val requireMetadata =
-        declaration.isAnnotatedWithAny(symbols.dependencyGraphAnnotations) ||
+        declaration.isAnnotatedWithAny(symbols.classIds.graphLikeAnnotations) ||
           declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)
       if (requireMetadata) {
         val message =

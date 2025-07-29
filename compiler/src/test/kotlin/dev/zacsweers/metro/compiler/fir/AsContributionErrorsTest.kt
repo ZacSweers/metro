@@ -177,9 +177,9 @@ class AsContributionErrorsTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: graphs.kt:11:3 `asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.
-            e: graphs.kt:12:21 `asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.
-            e: graphs.kt:13:44 `asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.
+            e: graphs.kt:11:3 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+            e: graphs.kt:12:21 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
+            e: graphs.kt:13:44 `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.
           """
           .trimIndent()
       )

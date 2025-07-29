@@ -48,7 +48,7 @@ internal object AsContributionChecker : FirFunctionCallChecker(MppCheckerKind.Co
           reporter.reportOn(
             expression.extensionReceiver?.source ?: source,
             AS_CONTRIBUTION_ERROR,
-            "`asContribution` receiver must be annotated with a `@DependencyGraph` or `@ContributesGraphExtension` annotation.",
+            "`asContribution` receiver must be annotated with a `@DependencyGraph` annotation.",
           )
           return
         }

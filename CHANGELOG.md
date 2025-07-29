@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+0.5.3
+-----
+
+_2025-07-28_
+
 - **Behavior change:** The `enableScopedInjectClassHints` option is no longer enabled by default. This option is tricky to get right and will be iterated on further in [#764](https://github.com/ZacSweers/metro/issues/764).
 - **Enhancement:** Generate synthetic `$$BindsMirror` classes to...
     - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
@@ -31,8 +36,11 @@ Changelog
 - **Fix:** Fix compilation error for members-injected classes with no direct, but only inherited `@Inject` attributes.
 - **Fix:** Always look up member injectors of ancestor classes of classes member-injected by graphs (sorry, word soup I know).
 - **Fix:** Ensure `$$MetroContribution` interfaces are not generated for binding containers by ensuring binding container annotations are readable during their generation.
+- Change to `UnsupportedOperationException` for compiler intrinsic stubs, matching what the stdlib does.
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
+
+Special thanks to [@hossain-khan](https://github.com/hossain-khan), [@bnorm](https://github.com/bnorm), [@yschimke](https://github.com/yschimke), [@kevinguitar](https://github.com/kevinguitar), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
 
 0.5.2
 -----
