@@ -117,7 +117,9 @@ internal class IrContributedGraphGenerator(
           // Ensure a unique name
           name =
             nameAllocator
-              .newName($$$"$$Contributed$$${sourceGraph.name.asString().capitalizeUS()}")
+              .newName(
+                "${Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX}${sourceGraph.name.asString().capitalizeUS()}"
+              )
               .asName()
           origin = Origins.ContributedGraph
           kind = ClassKind.CLASS

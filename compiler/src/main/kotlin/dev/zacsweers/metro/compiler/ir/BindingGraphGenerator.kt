@@ -335,7 +335,9 @@ internal class BindingGraphGenerator(
     // Add bindings from graph dependencies
     // TODO dedupe this allDependencies iteration with graph gen
     // TODO try to make accessors in this single-pass
-    node.allIncludedNodes.forEach { depNode ->
+    // Only add it if it's a directly included node. Indirect will be propagated by metro
+    // accessors
+    node.includedGraphNodes.forEach { depNodeKey, depNode ->
       val accessorNames =
         depNode.proto?.provider_field_names?.toSet().orEmpty() +
           depNode.proto?.instance_field_names?.toSet().orEmpty()
@@ -349,13 +351,11 @@ internal class BindingGraphGenerator(
         }
 
         // Add a ref to the included graph if not already present
-        // Only add it if it's a directly included node. Indirect will be propagated by metro
-        // accessors
-        if (depNode.typeKey !in graph && depNode.typeKey in node.includedGraphNodes) {
+        if (depNodeKey !in graph) {
           graph.addBinding(
-            depNode.typeKey,
+            depNodeKey,
             IrBinding.BoundInstance(
-              depNode.typeKey,
+              depNodeKey,
               "${depNode.sourceGraph.name}Provider",
               depNode.sourceGraph,
             ),
@@ -363,19 +363,33 @@ internal class BindingGraphGenerator(
           )
         }
 
+        val irGetter = getter.ir
+        val getterToUse =
+          if (
+            irGetter.parentAsClass.name == Symbols.Names.MetroGraph ||
+              irGetter.name.asString().startsWith(Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX)
+          ) {
+            // Use the original graph decl so we don't tie this invocation to `$$MetroGraph`
+            // specifically
+            irGetter.overriddenSymbolsSequence().first().owner
+          } else {
+            irGetter
+          }
+
         graph.addBinding(
           contextualTypeKey.typeKey,
           IrBinding.GraphDependency(
-            ownerKey = depNode.typeKey,
+            ownerKey = depNodeKey,
             graph = depNode.sourceGraph,
-            getter = getter.ir,
+            getter = getterToUse,
             isProviderFieldAccessor = false,
             typeKey = contextualTypeKey.typeKey,
           ),
           bindingStack,
         )
         // Record a lookup for IC
-        trackFunctionCall(node.sourceGraph, getter.ir)
+        trackFunctionCall(node.sourceGraph, irGetter)
+        trackFunctionCall(node.sourceGraph, getterToUse)
       }
     }
 
@@ -474,7 +488,8 @@ internal class BindingGraphGenerator(
 
       graph.addInjector(contextKey, entry)
       bindingStack.withEntry(entry) {
-        val paramType = injector.ir.regularParameters.single().type
+        val param = injector.ir.regularParameters.single()
+        val paramType = param.type
         val targetClass = paramType.rawType()
         // Don't return null on missing because it's legal to inject a class with no member
         // injections
@@ -505,6 +520,18 @@ internal class BindingGraphGenerator(
           )
 
         graph.addBinding(contextKey.typeKey, binding, bindingStack)
+
+        // Ensure that we traverse the target class's superclasses and lookup relevant bindings for
+        // them too, namely ancestor member injectors
+        val extraBindings =
+          classBindingLookup.lookup(
+            IrContextualTypeKey.from(param),
+            graph.bindingsSnapshot().keys,
+            bindingStack,
+          )
+        for (extraBinding in extraBindings) {
+          graph.addBinding(extraBinding.typeKey, extraBinding, bindingStack)
+        }
       }
     }
 

@@ -29,8 +29,7 @@ class AnvilTest {
     val message: String
   }
 
-  @ContributesBinding(AppScope::class)
-  class Impl @Inject constructor(override val message: String) : BaseClass
+  @ContributesBinding(AppScope::class) @Inject class Impl(override val message: String) : BaseClass
 
   @ContributesTo(AppScope::class) interface ContributedInterface
 

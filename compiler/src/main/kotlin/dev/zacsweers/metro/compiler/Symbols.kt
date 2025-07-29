@@ -64,6 +64,7 @@ internal class Symbols(
     const val BOUND_TYPE = "boundType"
     const val COMPOSABLE = "Composable"
     const val CONTRIBUTED = "contributed"
+    const val CONTRIBUTED_GRAPH_PREFIX = $$$"$$Contributed"
     const val CREATE = "create"
     const val CREATE_FACTORY_PROVIDER = "createFactoryProvider"
     const val CREATE_GRAPH = "createGraph"

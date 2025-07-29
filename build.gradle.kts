@@ -1,11 +1,9 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
-import kotlin.apply
 import kotlinx.validation.ExperimentalBCVApi
-import org.gradle.kotlin.dsl.assign
-import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -52,6 +50,17 @@ dokka {
 
 val ktfmtVersion = libs.versions.ktfmt.get()
 
+spotless {
+  predeclareDeps()
+}
+
+configure<SpotlessExtensionPredeclare> {
+  kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
+  kotlinGradle { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
+  java { googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true) }
+}
+
+// Configure spotless in subprojects
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
@@ -63,7 +72,6 @@ allprojects {
     }
     java {
       target("src/**/*.java")
-      googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true)
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.java")
@@ -72,7 +80,6 @@ allprojects {
     }
     kotlin {
       target("src/**/*.kt")
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
@@ -80,7 +87,6 @@ allprojects {
     }
     kotlinGradle {
       target("*.kts")
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       licenseHeaderFile(

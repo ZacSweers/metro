@@ -4,16 +4,43 @@ Changelog
 **Unreleased**
 --------------
 
+0.5.3
+-----
+
+_2025-07-28_
+
+- **Behavior change:** The `enableScopedInjectClassHints` option is no longer enabled by default. This option is tricky to get right and will be iterated on further in [#764](https://github.com/ZacSweers/metro/issues/764).
 - **Enhancement:** Generate synthetic `$$BindsMirror` classes to...
     - support full IC compatibility with changing annotations and return types on `@Binds` and `@Multibinds` declarations
     - allow these declarations to be `private`
 - **Enhancement:** Allow `@Binds` and `@Multibinds` functions to be private.
+- **Enhancement:** Allow "static graphs" via companions implementing the graph interface itself.
+- **Enhancement:** Allow graphs to aggregate `internal` contributions from other compilations IFF those compilations are marked as friend paths. This mainly allows for test graphs to consume contributions from their corresponding main source sets.
+- **Enhancement:** Allow `internal` graphs to extend `internal` contributed interfaces from other compilations IFF those compilations are marked as friend paths.
+- **Fix:** Sort soft edges before hard edges within (valid) cycles. Previously we would just apply a standard topological sort here, but in this scenario we want to add extra weight to ready-up nodes that depend directly on the deferred type being used to break the cycle first.
 - **Fix:** When recording IC lookups of overridable declarations, only record the original declaration and not fake overrides.
 - **Fix:** Record IC lookups to `@Multibinds` declarations.
 - **Fix:** Write `@Multibinds` information to metro metadata.
 - **Fix:** Always write metro metadata to `@BindingContainer` classes, even if empty.
+- **Fix:** When `@Includes`-ing other graphs, link against the original interface accessor rather than the generated `$$MetroGraph` accessor.
+- **Fix:** Disambiguate contributed nullable bindings from non-nullable bindings.
+- **Fix:** When computing `@Includes` graph dependencies from accessors, only consider directly included graphs and not transitively included graphs.
+- **Fix:** Expose `@Includes` graph dependencies as synthetic `_metroAccessor` types for extended graphs rather than exposing the included graph directly.
+- **Fix:** Prohibit calling `.asContribution()` on `@ContributesGraphExtension`-annotated types. `@ContributesGraphExtension`-annotated types cannot be validated at compile-time with this function as their generated class is definitionally contextual and the compiler cannot infer that from callsites of this function alone.
+- **Fix:** Only process `@DependencyGraph` types in FIR supertype generation. Contributed graph extension supertypes are merged only in IR.
+- **Fix:** Generate `$$MetroContribution` binds functions before aggregating contributions.
+- **Fix:** Don't short-circuit class visiting in contribution visiting in IR.
+- **Fix:** Propagate property annotations for `@Provides`-properties, previously only the accessor function annotations were being included.
+- **Fix:** Propagate class annotations for `@Inject`-annotated constructors to factory class mirror functions, previously only the constructor's annotations were being included.
+- **Fix:** Fix dispatch receiver for `DelegateFactory` fields when `chunkFieldInits` is enabled.
+- **Fix:** Fix compilation error for members-injected classes with no direct, but only inherited `@Inject` attributes.
+- **Fix:** Always look up member injectors of ancestor classes of classes member-injected by graphs (sorry, word soup I know).
+- **Fix:** Ensure `$$MetroContribution` interfaces are not generated for binding containers by ensuring binding container annotations are readable during their generation.
+- Change to `UnsupportedOperationException` for compiler intrinsic stubs, matching what the stdlib does.
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
+
+Special thanks to [@hossain-khan](https://github.com/hossain-khan), [@bnorm](https://github.com/bnorm), [@yschimke](https://github.com/yschimke), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
 
 0.5.2
 -----

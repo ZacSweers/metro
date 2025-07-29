@@ -1,3 +1,5 @@
+// RUN_PIPELINE_TILL: FIR2IR
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
 // Repro https://github.com/ZacSweers/metro/issues/659
 class ClassWithoutMembersInjector
 
