@@ -20,8 +20,9 @@ import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.ClassId
 
+private typealias Scope = ClassId
+
 internal class IrContributionData(private val metroContext: IrMetroContext) {
-  private typealias Scope = ClassId
 
   private val contributions = mutableMapOf<Scope, MutableSet<IrType>>()
   private val externalContributions = mutableMapOf<Scope, Set<IrType>>()
