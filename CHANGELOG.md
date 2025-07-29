@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Allow binding containers and regular contributed classes to replace each other in contribution merging.
 - **Enhancement**: Support `excludes`, `bindingContainers`, and `additionalScopes` in `@ContributesGraphExtension`.
 - **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
 
