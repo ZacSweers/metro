@@ -13,7 +13,7 @@ plugins {
 
 kotlin {
   compilerOptions {
-    freeCompilerArgs.add("-Xcontext-parameters")
+    freeCompilerArgs.addAll("-Xcontext-parameters", "-Xnested-type-aliases")
     optIn.addAll(
       "dev.drewhamilton.poko.SkipSupport",
       "kotlin.contracts.ExperimentalContracts",
