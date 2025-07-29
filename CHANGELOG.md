@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
+
 0.5.3
 -----
 
