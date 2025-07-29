@@ -75,6 +75,9 @@ internal inline fun <T, reified R> Array<T>.mapToArray(transform: (T) -> R): Arr
   return Array(size) { transform(get(it)) }
 }
 
+internal inline fun <T, C : Collection<T>, O> C.ifNotEmpty(body: C.() -> O?): O? =
+  if (isNotEmpty()) this.body() else null
+
 internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set<R>, Set<R>> {
   val dupes = mutableSetOf<R>()
   val destination = mutableSetOf<R>()

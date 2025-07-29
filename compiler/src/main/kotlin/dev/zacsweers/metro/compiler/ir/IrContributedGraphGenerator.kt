@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irBoolean
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
-import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -29,9 +28,10 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
+import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
-import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
@@ -128,25 +128,34 @@ internal class IrContributedGraphGenerator(
           createThisReceiverParameter()
           // Add a @DependencyGraph(...) annotation
           annotations +=
-            buildAnnotation(symbol, symbols.metroDependencyGraphAnnotationConstructor) {
-              // Copy over the scope annotation
-              it.arguments[0] = kClassReference(sourceScope.symbol)
-              // Pass on if it's extendable
-              it.arguments[3] =
+            buildAnnotation(symbol, symbols.metroDependencyGraphAnnotationConstructor) { annotation
+              ->
+              // scope
+              annotation.arguments[0] = kClassReference(sourceScope.symbol)
+
+              // additionalScopes
+              contributesGraphExtensionAnno.additionalScopes().copyToIrVararg()?.let {
+                annotation.arguments[1] = it
+              }
+
+              // excludes
+              contributesGraphExtensionAnno.excludedClasses().copyToIrVararg()?.let {
+                annotation.arguments[2] = it
+              }
+
+              // isExtendable
+              annotation.arguments[3] =
                 irBoolean(
                   contributesGraphExtensionAnno.getConstBooleanArgumentOrNull(
                     Symbols.Names.isExtendable
                   ) ?: false
                 )
-              // Pass on containers if any
-              val containers =
-                contributesGraphExtensionAnno.bindingContainerClasses(
-                  includeModulesArg = options.enableDaggerRuntimeInterop
-                )
-              if (containers.isNotEmpty()) {
-                it.arguments[4] =
-                  irVararg(containers.first().type, containers.map { it.deepCopyWithSymbols() })
-              }
+
+              // bindingContainers
+              contributesGraphExtensionAnno
+                .bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
+                .copyToIrVararg()
+                ?.let { annotation.arguments[4] = it }
             }
           superTypes += sourceGraph.defaultType
         }
@@ -183,11 +192,53 @@ internal class IrContributedGraphGenerator(
       }
 
     // Merge contributed types
+    val graphExtensionAnno =
+      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first()
+
     val scope =
-      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first().let {
-        it.scopeOrNull() ?: error("No scope found for ${sourceGraph.name}: ${it.dumpKotlinLike()}")
+      graphExtensionAnno.scopeOrNull()
+        ?: error("No scope found for ${sourceGraph.name}: ${graphExtensionAnno.dumpKotlinLike()}")
+
+    // Get all contributions and binding containers
+    val allContributions =
+      contributionData.getContributions(scope).groupByTo(mutableMapOf()) {
+        // For Metro contributions, we need to check the parent class ID
+        // This is always the $$MetroContribution, the contribution's parent is the actual class
+        it.rawType().classIdOrFail.parentClassId!!
       }
-    contributedGraph.superTypes += contributionData.getContributions(scope)
+    val bindingContainers =
+      contributionData.getBindingContainerContributions(scope).associateByTo(mutableMapOf()) {
+        it.classIdOrFail
+      }
+
+    // Process excludes
+    val excluded = graphExtensionAnno.excludedClasses()
+    for (excludedClass in excluded) {
+      val excludedClassId = excludedClass.classType.rawType().classIdOrFail
+
+      // Remove excluded binding containers - they won't contribute their bindings
+      bindingContainers.remove(excludedClassId)
+
+      // Remove contributions from excluded classes that have nested $$MetroContribution classes
+      // (binding containers don't have these, so this only affects @ContributesBinding etc.)
+      allContributions.remove(excludedClassId)
+    }
+
+    // Apply replacements from remaining (non-excluded) binding containers
+    bindingContainers.values.forEach { bindingContainer ->
+      bindingContainer
+        .annotationsIn(symbols.classIds.allContributesAnnotations)
+        .flatMap { annotation -> annotation.replacedClasses() }
+        .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
+        .forEach { replacedClassId -> allContributions.remove(replacedClassId) }
+    }
+
+    // Add only non-binding-container contributions as supertypes
+    contributedGraph.superTypes +=
+      allContributions.values
+        .flatten()
+        // Deterministic sort
+        .sortedBy { it.render(short = false) }
 
     parentGraph.addChild(contributedGraph)
 
