@@ -199,17 +199,24 @@ internal class IrContributedGraphGenerator(
       graphExtensionAnno.scopeOrNull()
         ?: error("No scope found for ${sourceGraph.name}: ${graphExtensionAnno.dumpKotlinLike()}")
 
+    val additionalScopes =
+      graphExtensionAnno.additionalScopes().map { it.classType.rawType().classIdOrFail }
+
+    val allScopes = (additionalScopes + scope).toSet()
+
     // Get all contributions and binding containers
     val allContributions =
-      contributionData.getContributions(scope).groupByTo(mutableMapOf()) {
-        // For Metro contributions, we need to check the parent class ID
-        // This is always the $$MetroContribution, the contribution's parent is the actual class
-        it.rawType().classIdOrFail.parentClassId!!
-      }
+      allScopes
+        .flatMap { contributionData.getContributions(it) }
+        .groupByTo(mutableMapOf()) {
+          // For Metro contributions, we need to check the parent class ID
+          // This is always the $$MetroContribution, the contribution's parent is the actual class
+          it.rawType().classIdOrFail.parentClassId!!
+        }
     val bindingContainers =
-      contributionData.getBindingContainerContributions(scope).associateByTo(mutableMapOf()) {
-        it.classIdOrFail
-      }
+      allScopes
+        .flatMap { contributionData.getBindingContainerContributions(it) }
+        .associateByTo(mutableMapOf()) { it.classIdOrFail }
 
     // Process excludes
     val excluded = graphExtensionAnno.excludedClasses()
