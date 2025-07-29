@@ -4,6 +4,7 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Support `excludes`, `bindingContainers`, and `additionalScopes` in `@ContributesGraphExtension`.
 - **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
 
 0.5.3
