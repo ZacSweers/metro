@@ -1,4 +1,4 @@
-// https://github.com/ZacSweers/metro/issues/744
+// https://github.com/ZacSweers/metro/issues/835
 // MODULE: lib
 interface MultiboundType
 
