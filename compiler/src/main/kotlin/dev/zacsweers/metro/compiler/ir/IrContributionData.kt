@@ -103,7 +103,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
     val filteredContributions = contributingClasses.toMutableList()
 
     // Remove replaced contributions
-    filteredContributions
+    contributingClasses
       .flatMap { contributingType ->
         contributingType
           .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
