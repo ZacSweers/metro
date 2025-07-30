@@ -57,7 +57,6 @@ public class MetroFirExtensionRegistrar(
       false,
     )
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
-    +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
     }
