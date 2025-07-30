@@ -51,7 +51,12 @@ public class MetroFirExtensionRegistrar(
     if (options.transformProvidersToPrivate) {
       +statusTransformer("Status transformations - private", ::FirProvidesStatusTransformer, false)
     }
-    +::FirAccessorOverrideStatusTransformer
+    +statusTransformer(
+      "Status transformations - overrides",
+      ::FirAccessorOverrideStatusTransformer,
+      false,
+    )
+    +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
