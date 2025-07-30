@@ -35,7 +35,7 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
     if (declaration !is FirCallableDeclaration) return false
 
     // If it's already an override, nothing needed here
-    if (declaration.symbol.isOverride) return false
+    if (declaration.symbol.rawStatus.isOverride) return false
 
     // Only abstract callables
     if (
