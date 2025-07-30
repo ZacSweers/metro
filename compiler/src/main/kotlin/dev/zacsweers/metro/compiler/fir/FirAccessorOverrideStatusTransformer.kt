@@ -77,7 +77,7 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
 
     val containingClass = declaration.getContainingClassSymbol() ?: return status
 
-    val name = declaration.symbol.callableId.callableName
+    val name = declaration.symbol.callableId?.callableName ?: return status
 
     var needsOverride = false
     for (superType in containingClass.getSuperTypes(session, recursive = false)) {
