@@ -48,6 +48,7 @@ public class MetroFirExtensionRegistrar(
     if (options.transformProvidersToPrivate) {
       +::FirProvidesStatusTransformer
     }
+    +::FirAccessorOverrideStatusTransformer
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
     if (options.generateAssistedFactories) {
       +declarationGenerator("FirGen - AssistedFactory", ::AssistedFactoryFirGenerator, true)
