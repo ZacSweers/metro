@@ -1,7 +1,7 @@
 # Generates and deploys static site to GitHub Pages
 # https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
 # Reference workflow: https://github.com/actions/starter-workflows/blob/main/pages/jekyll-gh-pages.yml
-name: Docs Site
+name: Metro Docs Site
 
 on:
   push:
