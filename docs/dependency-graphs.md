@@ -311,6 +311,23 @@ interface AppGraph {
 
 This allows you to bring any instance to the graph with its own internal logic.
 
+As an alternative: if you already have the instance that you want to provide, Metro also supports injection directly from constructor parameters in `@BindingContainer` classes:
+
+```kotlin
+@BindingContainer
+class NetworkBindings(@get:Provides val client: HttpClient)
+
+@DependencyGraph
+interface AppGraph {
+    val httpClient: HttpClient
+
+    @DependencyGraph.Factory
+    interface Factory {
+        fun create(@Includes networkBindings: NetworkBindings): AppGraph
+    }
+}
+```
+
 ### Including via `@DependencyGraph.bindingContainers`
 
 For simple binding containers, you can declare them directly in the graph annotation:
