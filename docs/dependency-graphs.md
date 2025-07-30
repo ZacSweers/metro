@@ -100,6 +100,8 @@ interface AppGraph {
 !!! warning
     Includes parameters cannot be injected from the graph.
 
+[Binding Containers](#binding-containers) are a special type of `@Includes` type, see more in its section below.
+
 ### Extends
 
 `@Extends`-annotated parameters are for extending parent graphs. See _Graph Extensions_ at the bottom of this doc for more information.
@@ -276,6 +278,128 @@ override fun create(userId: String): LoggedInGraph {
     Abstract factory classes cannot be used as graph contributions.
 
 Contributed graphs may also be chained, but note that `@ContributesGraphExtension.isExtendable` must be true to do so!
+
+## Binding Containers
+
+Binding containers are classes, objects, or interfaces annotated with `@BindingContainer` that contain binding declarations (`@Provides` or `@Binds`) but are not themselves complete dependency graphs. They're analogous to Dagger's `@Module` annotation and can be used in cases where defining bindings in an (extended) interface is unwieldy or not helpful.
+
+Unlike graphs and other `@Includes` types, their public accessors are _not_ read. Only `@Binds` and `@Provides` declarations are read.
+
+!!! tip
+    Binding containers can be seen as partial graphs and are intended to be reusable, composable units that are _included_ in a complete graph.
+
+### Including via `@Includes` Parameters
+
+The most flexible way to include binding containers is via `@Includes`-annotated parameters on graph factories.
+
+```kotlin
+@BindingContainer
+class NetworkBindings(private val baseUrl: String) {
+  @Provides fun provideHttpClient(): HttpClient = HttpClient(baseUrl)
+}
+
+@DependencyGraph
+interface AppGraph {
+  val httpClient: HttpClient
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@Includes networkBindings: NetworkBindings): AppGraph
+  }
+}
+```
+
+This allows you to bring any instance to the graph with its own internal logic.
+
+### Including via `@DependencyGraph.bindingContainers`
+
+For simple binding containers, you can declare them directly in the graph annotation:
+
+```kotlin
+@BindingContainer
+object NetworkBindings {
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+}
+
+@DependencyGraph(bindingContainers = [NetworkBindings::class])
+interface AppGraph {
+  val httpClient: HttpClient
+}
+```
+
+This method works for:
+
+- `object` classes
+- `interface` or `abstract class` types with only `@Binds` providers or companion object `@Provides` providers
+- Simple classes with a public, no-arg constructor
+
+### Chaining Binding Containers
+
+Binding containers can include other binding containers using the `includes` parameter:
+
+```kotlin
+@BindingContainer
+object CacheBindings {
+  @Provides fun provideHttpCache(): Cache = Cache()
+}
+
+@BindingContainer(includes = [CacheBindings::class])
+object NetworkBindings {
+  @Provides fun provideHttpClient(cache: Cache): HttpClient = HttpClient(cache)
+}
+
+@DependencyGraph(bindingContainers = [NetworkBindings::class])
+interface AppGraph {
+  val httpClient: HttpClient
+}
+```
+
+The transitive closure of all included binding containers will be included in the final consuming graph.
+
+### Contributing Binding Containers
+
+Binding containers can be contributed to scopes via `@ContributesTo`:
+
+```kotlin
+@ContributesTo(AppScope::class)
+@BindingContainer
+object NetworkBindings {
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+}
+
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val httpClient: HttpClient
+}
+```
+
+They can also replace other contributed binding containers:
+
+```kotlin
+// In a test variant
+@ContributesTo(AppScope::class, replaces = [NetworkBindings::class])
+@BindingContainer
+object FakeNetworkBindings {
+  @Provides fun provideFakeHttpClient(): HttpClient = FakeHttpClient()
+}
+```
+
+Graphs may exclude contributed containers:
+
+```kotlin
+@DependencyGraph(AppScope::class, excludes = [NetworkBindings::class])
+interface AppGraph {
+  val httpClient: HttpClient
+}
+```
+
+### Notes
+
+- Companion objects, annotation classes, and enum classes/entries cannot be annotated with `@BindingContainer`.
+- Provides within a binding container's companion object are automatically included.
+- Enclosing classes of `@Binds` or `@Provides` providers don't need to be annotated with `@BindingContainer` for Metro to process them - the annotation is primarily for reference to `@DependencyGraph.Factory` and the ability to use `includes`.
+- Binding containers may also be [contributed](aggregation.md#contributing-binding-containers).
+- See [#172](https://github.com/ZacSweers/metro/issues/172) for more details.
 
 ## Implementation Notes
 

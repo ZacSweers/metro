@@ -108,13 +108,12 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           in classIds.contributesToAnnotations -> {
             val contribution = Contribution.ContributesTo(declaration, annotation, scope, replaces)
             addContributionAndCheckForDuplicate(
+              session,
               contribution,
               ContributionKind.CONTRIBUTES_TO,
               contributesToAnnotations,
               annotation,
               scope,
-              reporter,
-              context,
             ) {
               return
             }
@@ -312,37 +311,35 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val contribution = createBinding(typeKey, mapKey)
     addContributionAndCheckForDuplicate(
+      session,
       contribution,
       kind,
       collection,
       annotation,
       scope,
-      reporter,
-      context,
     ) {
       return false
     }
     return true
   }
 
+  context(context: CheckerContext, reporter: DiagnosticReporter)
   private inline fun <T : Contribution> addContributionAndCheckForDuplicate(
+    session: FirSession,
     contribution: T,
     kind: ContributionKind,
     collection: MutableSet<T>,
     annotation: FirAnnotation,
     scope: ClassId,
-    reporter: DiagnosticReporter,
-    context: CheckerContext,
     onError: () -> Nothing,
   ) {
-    checkContributionKind(kind, annotation, contribution, reporter, context) { onError() }
+    checkContributionKind(session, kind, annotation, contribution) { onError() }
     val added = collection.add(contribution)
     if (!added) {
       reporter.reportOn(
         annotation.source,
         FirMetroErrors.AGGREGATION_ERROR,
         "Duplicate `@${kind}` annotations contributing to scope `${scope.shortClassName}`.",
-        context,
       )
 
       val existing = collection.first { it == contribution }
@@ -350,29 +347,29 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         existing.annotation.source,
         FirMetroErrors.AGGREGATION_ERROR,
         "Duplicate `@${kind}` annotations contributing to scope `${scope.shortClassName}`.",
-        context,
       )
 
       onError()
     }
   }
 
+  context(context: CheckerContext, reporter: DiagnosticReporter)
   private inline fun checkContributionKind(
+    session: FirSession,
     kind: ContributionKind,
     annotation: FirAnnotation,
     contribution: Contribution,
-    reporter: DiagnosticReporter,
-    context: CheckerContext,
     onError: () -> Nothing,
   ) {
     if (kind != ContributionKind.CONTRIBUTES_TO) return
     val declaration = (contribution as Contribution.ContributesTo).declaration
+    if (declaration.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations))
+      return
     if (declaration.classKind != ClassKind.INTERFACE) {
       reporter.reportOn(
         annotation.source,
         FirMetroErrors.AGGREGATION_ERROR,
         "`@${kind}` annotations only permitted on interfaces. However ${declaration.nameOrSpecialName} is a ${declaration.classKind}.",
-        context,
       )
       onError()
     }

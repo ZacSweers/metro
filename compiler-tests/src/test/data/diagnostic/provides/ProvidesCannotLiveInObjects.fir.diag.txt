@@ -1,0 +1,1 @@
+/ProvidesCannotLiveInObjects.kt:(104,117): error: @Provides declarations must be within an either a @BindingContainer-annotated class XOR interface, class, or companion object. `provideString` appears to be defined directly within a (non-companion) object that is not annotated @BindingContainer.

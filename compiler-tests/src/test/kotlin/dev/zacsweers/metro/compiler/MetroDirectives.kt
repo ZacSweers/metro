@@ -10,6 +10,10 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val ENABLE_TOP_LEVEL_FUNCTION_INJECTION by directive("Enable top-level function injection.")
   val DISABLE_TRANSFORM_PROVIDERS_TO_PRIVATE by
     directive("Disables automatic transformation of providers to be private.")
+  val GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR by
+    directive(
+      "Enable/disable generation of contribution hint generation in FIR for JVM compilations types."
+    )
   val PUBLIC_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public providers."
@@ -17,6 +21,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
   val ENABLE_SCOPED_INJECT_CLASS_HINTS by directive("Enable scoped inject class hints.")
   val SHRINK_UNUSED_BINDINGS by
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
+  val CHUNK_FIELD_INITS by
+    valueDirective("Enable/disable chunking of field initializers.") { it.toBoolean() }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

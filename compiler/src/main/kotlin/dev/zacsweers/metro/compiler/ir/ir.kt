@@ -5,12 +5,15 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.letIf
+import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.singleOrError
 import java.io.File
@@ -20,6 +23,7 @@ import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.ir.createExtensionReceiver
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.backend.jvm.ir.isWithFlexibleNullability
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
@@ -45,6 +49,7 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -108,6 +113,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -124,6 +130,7 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.ClassId
@@ -242,11 +249,13 @@ internal fun <T> IrConst.valueAs(): T {
   return value as T
 }
 
-internal fun IrPluginContext.irType(
+context(context: IrPluginContext)
+internal fun irType(
   classId: ClassId,
   nullable: Boolean = false,
   arguments: List<IrTypeArgument> = emptyList(),
-): IrType = referenceClass(classId)!!.createType(hasQuestionMark = nullable, arguments = arguments)
+): IrType =
+  context.referenceClass(classId)!!.createType(hasQuestionMark = nullable, arguments = arguments)
 
 internal fun IrGeneratorContext.createIrBuilder(symbol: IrSymbol): DeclarationIrBuilder {
   return DeclarationIrBuilder(this, symbol, symbol.owner.startOffset, symbol.owner.endOffset)
@@ -333,9 +342,12 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
   return Objects.hash(
     type.rawType().classIdOrFail,
     arguments
-      .map {
-        it?.computeHashSource()
-          ?: error("Unknown annotation argument type: ${it?.let { it::class.java }}")
+      .filterNotNull()
+      .mapIndexed { i, arg ->
+        arg.computeHashSource()
+          ?: error(
+            "Unknown annotation argument type: ${arg::class.java }. Annotation: ${dumpKotlinLike()}"
+          )
       }
       .toTypedArray()
       .contentDeepHashCode(),
@@ -386,13 +398,13 @@ internal fun IrClass.allCallableMembers(
 ): Sequence<MetroSimpleFunction> {
   return functions
     .letIf(excludeAnyFunctions) {
-      it.filterNot { function -> function.isInheritedFromAny(context.pluginContext.irBuiltIns) }
+      it.filterNot { function -> function.isInheritedFromAny(context.irBuiltIns) }
     }
     .filter(functionFilter)
     .plus(properties.filter(propertyFilter).mapNotNull { property -> property.getter })
     .letIf(excludeInheritedMembers) { it.filterNot { function -> function.isFakeOverride } }
     .let { parentClassCallables ->
-      val asFunctions = parentClassCallables.map { context.metroFunctionOf(it) }
+      val asFunctions = parentClassCallables.map { metroFunctionOf(it) }
       if (excludeCompanionObjectMembers) {
         asFunctions
       } else {
@@ -410,8 +422,8 @@ internal fun IrClass.allCallableMembers(
 
 // From
 // https://kotlinlang.slack.com/archives/C7L3JB43G/p1672258639333069?thread_ts=1672258597.659509&cid=C7L3JB43G
+context(context: IrPluginContext)
 internal fun irLambda(
-  context: IrPluginContext,
   parent: IrDeclarationParent,
   receiverParameter: IrType?,
   valueParameters: List<IrType>,
@@ -472,8 +484,8 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
 }
 
 /** For use with generated factory creator functions, converts parameters to Provider<T> types. */
+context(context: IrMetroContext)
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
-  context: IrMetroContext,
   parameters: Parameters,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
@@ -482,16 +494,14 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
     addAll(
       parameters.allParameters
         .filterNot { it.isAssisted }
-        .map { parameter ->
-          parameterAsProviderArgument(context, parameter, receiver, parametersToFields)
-        }
+        .map { parameter -> parameterAsProviderArgument(parameter, receiver, parametersToFields) }
     )
   }
 }
 
 /** For use with generated factory create() functions. */
+context(context: IrMetroContext)
 internal fun IrBuilderWithScope.parameterAsProviderArgument(
-  context: IrMetroContext,
   parameter: Parameter,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
@@ -501,7 +511,6 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
   val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
   val typeMetadata = parameter.contextualTypeKey
   return typeAsProviderArgument(
-    context,
     typeMetadata,
     providerInstance,
     isAssisted = parameter.isAssisted,
@@ -509,15 +518,15 @@ internal fun IrBuilderWithScope.parameterAsProviderArgument(
   )
 }
 
+context(context: IrMetroContext)
 internal fun IrBuilderWithScope.typeAsProviderArgument(
-  context: IrMetroContext,
   contextKey: IrContextualTypeKey,
   bindingCode: IrExpression,
   isAssisted: Boolean,
   isGraphInstance: Boolean,
 ): IrExpression {
   val symbols = context.symbols
-  val providerType = bindingCode.type.findProviderSupertype(context)
+  val providerType = bindingCode.type.findProviderSupertype()
   if (providerType == null) {
     // Not a provider, nothing else to do here!
     return bindingCode
@@ -557,7 +566,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
     contextKey.isWrappedInLazy -> {
       // DoubleCheck.lazy(...)
-      with(providerSymbols) { invokeDoubleCheckLazy(context, contextKey, providerExpression) }
+      with(providerSymbols) { invokeDoubleCheckLazy(contextKey, providerExpression) }
     }
 
     isAssisted || isGraphInstance -> {
@@ -581,7 +590,8 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 }
 
 // TODO eventually just return a Map<TypeKey, IrField>
-internal fun IrMetroContext.assignConstructorParamsToFields(
+context(context: IrMetroContext)
+internal fun assignConstructorParamsToFields(
   constructor: IrConstructor,
   clazz: IrClass,
 ): Map<IrValueParameter, IrField> {
@@ -590,14 +600,15 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
       val irField =
         clazz.addField(irParameter.name, irParameter.type, DescriptorVisibilities.PRIVATE).apply {
           isFinal = true
-          initializer = pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
+          initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter)) }
         }
       put(irParameter, irField)
     }
   }
 }
 
-internal fun IrMetroContext.assignConstructorParamsToFields(
+context(context: IrMetroContext)
+internal fun assignConstructorParamsToFields(
   parameters: Parameters,
   clazz: IrClass,
 ): Map<Parameter, IrField> {
@@ -607,13 +618,12 @@ internal fun IrMetroContext.assignConstructorParamsToFields(
         clazz
           .addField(
             irParameter.name,
-            irParameter.contextualTypeKey.toIrType(this@assignConstructorParamsToFields),
+            irParameter.contextualTypeKey.toIrType(),
             DescriptorVisibilities.PRIVATE,
           )
           .apply {
             isFinal = true
-            initializer =
-              pluginContext.createIrBuilder(symbol).run { irExprBody(irGet(irParameter.ir)) }
+            initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(irParameter.ir)) }
           }
       put(irParameter, irField)
     }
@@ -632,8 +642,8 @@ internal fun IrBuilderWithScope.dispatchReceiverFor(function: IrFunction): IrExp
 internal val IrClass.thisReceiverOrFail: IrValueParameter
   get() = this.thisReceiver ?: error("No thisReceiver for $classId")
 
+context(pluginContext: IrPluginContext)
 internal fun IrClass.getAllSuperTypes(
-  pluginContext: IrPluginContext,
   excludeSelf: Boolean = true,
   excludeAny: Boolean = true,
 ): Sequence<IrType> {
@@ -677,7 +687,8 @@ internal fun IrExpression.doubleCheck(
     )
   }
 
-internal fun IrClass.singleAbstractFunction(context: IrMetroContext): IrSimpleFunction {
+context(context: IrMetroContext)
+internal fun IrClass.singleAbstractFunction(): IrSimpleFunction {
   return abstractFunctions().toList().singleOrError {
     buildString {
       append("Required a single abstract function for ")
@@ -688,7 +699,7 @@ internal fun IrClass.singleAbstractFunction(context: IrMetroContext): IrSimpleFu
           "- " +
             function.kotlinFqName.asString() +
             "\n  - " +
-            function.computeJvmDescriptorIsh(context, includeReturnType = false)
+            function.computeJvmDescriptorIsh(includeReturnType = false)
         }
       )
     }
@@ -705,17 +716,14 @@ internal fun IrClass.abstractFunctions(): Sequence<IrSimpleFunction> {
   return functions.filter { it.isAbstractAndVisible() }
 }
 
-internal fun IrClass.implements(pluginContext: IrPluginContext, superType: ClassId): Boolean {
-  return implementsAny(pluginContext, setOf(superType))
+context(context: IrPluginContext)
+internal fun IrClass.implements(superType: ClassId): Boolean {
+  return implementsAny(setOf(superType))
 }
 
-internal fun IrClass.implementsAny(
-  pluginContext: IrPluginContext,
-  superTypes: Set<ClassId>,
-): Boolean {
-  return getAllSuperTypes(pluginContext, excludeSelf = false).any {
-    it.rawTypeOrNull()?.classId in superTypes
-  }
+context(context: IrPluginContext)
+internal fun IrClass.implementsAny(superTypes: Set<ClassId>): Boolean {
+  return getAllSuperTypes(excludeSelf = false).any { it.rawTypeOrNull()?.classId in superTypes }
 }
 
 /**
@@ -734,24 +742,47 @@ internal fun IrConstructorCall.replacesArgument() =
   getValueArgument(Symbols.Names.replaces)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
-  return replacesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
-    ?: return emptySet()
+  return replacesArgument().toClassReferences()
+}
+
+internal fun IrConstructorCall.excludesArgument() =
+  getValueArgument(Symbols.Names.excludes)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.additionalScopesArgument() =
+  getValueArgument(Symbols.Names.additionalScopes)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.excludedClasses(): Set<IrClassReference> {
+  return excludesArgument().toClassReferences()
+}
+
+internal fun IrConstructorCall.additionalScopes(): Set<IrClassReference> {
+  return additionalScopesArgument().toClassReferences()
 }
 
 internal fun IrConstructorCall.includesArgument() =
   getValueArgument(Symbols.Names.includes)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.includedClasses(): Set<IrClassReference> {
-  return includesArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
-    ?: return emptySet()
+  return includesArgument().toClassReferences()
 }
 
 internal fun IrConstructorCall.bindingContainersArgument() =
   getValueArgument(Symbols.Names.bindingContainers)?.expectAsOrNull<IrVararg>()
 
-internal fun IrConstructorCall.bindingContainerClasses(): Set<IrClassReference> {
-  return bindingContainersArgument()?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet()
-    ?: return emptySet()
+internal fun IrConstructorCall.modulesArgument() =
+  getValueArgument(Symbols.Names.modules)?.expectAsOrNull<IrVararg>()
+
+internal fun IrConstructorCall.bindingContainerClasses(
+  includeModulesArg: Boolean
+): Set<IrClassReference> {
+  // Check both
+  val argument =
+    bindingContainersArgument() ?: if (includeModulesArg) modulesArgument() else return emptySet()
+  return argument.toClassReferences()
+}
+
+internal fun IrVararg?.toClassReferences(): Set<IrClassReference> {
+  return this?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet() ?: return emptySet()
 }
 
 internal fun IrConstructorCall.requireScope(): ClassId {
@@ -800,10 +831,8 @@ internal val IrDeclarationParent.isExternalParent: Boolean
 internal fun IrBuilderWithScope.irExprBodySafe(symbol: IrSymbol, expression: IrExpression) =
   context.createIrBuilder(symbol).irBlockBody { +irReturn(expression) }
 
-internal fun IrFunction.buildBlockBody(
-  context: IrPluginContext,
-  blockBody: IrBlockBodyBuilder.() -> Unit,
-) {
+context(context: IrPluginContext)
+internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit) {
   body = context.createIrBuilder(symbol).irBlockBody(body = blockBody)
 }
 
@@ -901,8 +930,9 @@ internal val IrProperty.allAnnotations: List<IrConstructorCall>
       .distinct()
   }
 
-internal fun IrMetroContext.metroAnnotationsOf(ir: IrAnnotationContainer) =
-  ir.metroAnnotations(symbols.classIds)
+context(context: IrMetroContext)
+internal fun metroAnnotationsOf(ir: IrAnnotationContainer) =
+  ir.metroAnnotations(context.symbols.classIds)
 
 internal fun IrClass.requireSimpleFunction(name: String) =
   getSimpleFunction(name)
@@ -976,26 +1006,24 @@ private fun <S> IrOverridableDeclaration<S>.overriddenSymbolsSequence(
 }
 
 context(context: IrMetroContext)
-internal fun IrFunction.stubExpressionBody(): IrBlockBody {
-  return context.pluginContext.createIrBuilder(symbol).run {
-    irExprBodySafe(symbol, stubExpression())
-  }
+internal fun IrFunction.stubExpressionBody(message: String = "Never called"): IrBlockBody {
+  return context.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression(message)) }
 }
 
 context(context: IrMetroContext)
-internal fun IrBuilderWithScope.stubExpression(): IrMemberAccessExpression<*> {
-  return irInvoke(
-    callee = context.symbols.stdlibErrorFunction,
-    args = listOf(irString("Never called")),
-  )
+internal fun IrBuilderWithScope.stubExpression(
+  message: String = "Never called"
+): IrMemberAccessExpression<*> {
+  return irInvoke(callee = context.symbols.stdlibErrorFunction, args = listOf(irString(message)))
 }
 
-internal fun IrPluginContext.buildAnnotation(
+context(context: IrPluginContext)
+internal fun buildAnnotation(
   symbol: IrSymbol,
   callee: IrConstructorSymbol,
   body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
 ): IrConstructorCall {
-  return createIrBuilder(symbol).run {
+  return context.createIrBuilder(symbol).run {
     irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
   }
 }
@@ -1013,27 +1041,28 @@ internal val IrClass.metroGraphOrNull: IrClass?
 
 // Adapted from compose-compiler
 // https://github.com/JetBrains/kotlin/blob/d36a97bb4b935c719c44b76dc8de952579404f91/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/lower/AbstractComposeLowering.kt#L1608
-internal fun IrMetroContext.hiddenDeprecated(
+context(context: IrMetroContext)
+internal fun hiddenDeprecated(
   message: String = "This synthesized declaration should not be used directly"
 ): IrConstructorCall {
   return IrConstructorCallImpl.fromSymbolOwner(
-      type = symbols.deprecated.defaultType,
-      constructorSymbol = metroContext.symbols.deprecatedAnnotationConstructor,
+      type = context.symbols.deprecated.defaultType,
+      constructorSymbol = context.symbols.deprecatedAnnotationConstructor,
     )
     .also {
       it.arguments[0] =
         IrConstImpl.string(
           SYNTHETIC_OFFSET,
           SYNTHETIC_OFFSET,
-          pluginContext.irBuiltIns.stringType,
+          context.irBuiltIns.stringType,
           message,
         )
       it.arguments[2] =
         IrGetEnumValueImpl(
           SYNTHETIC_OFFSET,
           SYNTHETIC_OFFSET,
-          symbols.deprecationLevel.defaultType,
-          symbols.hiddenDeprecationLevel,
+          context.symbols.deprecationLevel.defaultType,
+          context.symbols.hiddenDeprecationLevel,
         )
     }
 }
@@ -1314,4 +1343,102 @@ private fun IrType.substitute(substitutions: Map<IrTypeParameterSymbol, IrType>)
   if (substitutions.isEmpty()) return this
   val remapper = DeepTypeSubstitutor(substitutions)
   return remapper.remapType(this)
+}
+
+internal fun IrConstructorCall.isExtendable(): Boolean {
+  val isExtendable = getConstBooleanArgumentOrNull(Symbols.Names.isExtendable)
+  return if (isExtendable == null) {
+    // Not present. Default false in metro annotations, true everywhere else
+    val isMetroGraph = annotationClass.classId?.packageFqName == Symbols.FqNames.metroRuntimePackage
+    !isMetroGraph
+  } else {
+    isExtendable
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
+  if (this == null) return null
+  return allAnnotations
+    .annotationsAnnotatedWith(context.symbols.qualifierAnnotations)
+    .singleOrNull()
+    ?.let(::IrAnnotation)
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer?.qualifierAnnotation() =
+  annotationsAnnotatedWith(context.symbols.qualifierAnnotations).singleOrNull()?.let(::IrAnnotation)
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer?.scopeAnnotations() =
+  annotationsAnnotatedWith(context.symbols.scopeAnnotations).mapToSet(::IrAnnotation)
+
+/** Returns the `@MapKey` annotation itself, not any annotations annotated _with_ `@MapKey`. */
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.explicitMapKeyAnnotation() =
+  annotationsIn(context.symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.mapKeyAnnotation() =
+  annotationsAnnotatedWith(context.symbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+
+private fun IrAnnotationContainer?.annotationsAnnotatedWith(
+  annotationsToLookFor: Collection<ClassId>
+): Set<IrConstructorCall> {
+  if (this == null) return emptySet()
+  return annotations.annotationsAnnotatedWith(annotationsToLookFor)
+}
+
+private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
+  annotationsToLookFor: Collection<ClassId>
+): Set<IrConstructorCall> {
+  if (this == null) return emptySet()
+  return filterTo(LinkedHashSet()) {
+    it.type.classOrNull?.owner?.isAnnotatedWithAny(annotationsToLookFor) == true
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
+  return findInjectableConstructor(onlyUsePrimaryConstructor, context.symbols.injectAnnotations)
+}
+
+internal fun IrClass.findInjectableConstructor(
+  onlyUsePrimaryConstructor: Boolean,
+  injectAnnotations: Set<ClassId>,
+): IrConstructor? {
+  return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(injectAnnotations)) {
+    primaryConstructor
+  } else {
+    constructors.singleOrNull { constructor -> constructor.isAnnotatedWithAny(injectAnnotations) }
+  }
+}
+
+// InstanceFactory(...)
+context(context: IrMetroContext)
+internal fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression): IrExpression {
+  return irInvoke(
+    irGetObject(context.symbols.instanceFactoryCompanionObject),
+    callee = context.symbols.instanceFactoryInvoke,
+    typeArgs = listOf(type),
+    args = listOf(arg),
+  )
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotation.allowEmpty(): Boolean {
+  ir.getSingleConstBooleanArgumentOrNull()?.let {
+    // Explicit, return it
+    return it
+  }
+  // Retain Dagger's behavior in interop if using their annotation
+  val assumeAllowEmpty =
+    context.options.enableDaggerRuntimeInterop &&
+      ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
+  return assumeAllowEmpty
+}
+
+context(scope: IrBuilderWithScope)
+internal fun Collection<IrClassReference>.copyToIrVararg() = ifNotEmpty {
+  scope.irVararg(first().type, map { value -> value.deepCopyWithSymbols() })
 }

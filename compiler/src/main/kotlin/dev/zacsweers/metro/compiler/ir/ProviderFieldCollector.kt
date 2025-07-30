@@ -7,26 +7,26 @@ private const val INITIAL_VALUE = 512
 /** Computes the set of bindings that must end up in provider fields. */
 internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
 
-  private data class Node(val binding: Binding, var refCount: Int = 0) {
+  private data class Node(val binding: IrBinding, var refCount: Int = 0) {
     val needsField: Boolean
       get() {
         // Scoped, graph, and members injector bindings always need provider fields
         if (binding.scope != null) return true
-        if (binding is Binding.GraphDependency) return true
-        if (binding is Binding.MembersInjected && !binding.isFromInjectorFunction) return true
+        if (binding is IrBinding.GraphDependency) return true
+        if (binding is IrBinding.MembersInjected && !binding.isFromInjectorFunction) return true
         // Multibindings are always created adhoc
-        if (binding is Binding.Multibinding) return false
+        if (binding is IrBinding.Multibinding) return false
         // Assisted types always need to be a single field to ensure use of the same provider
-        if (binding is Binding.Assisted) return true
+        if (binding is IrBinding.Assisted) return true
         // TODO what about assisted but no assisted params? These also don't become providers
         //  we would need to track a set of assisted targets somewhere
-        if (binding is Binding.ConstructorInjected && binding.isAssisted) return true
+        if (binding is IrBinding.ConstructorInjected && binding.isAssisted) return true
 
         // If it's unscoped but used more than once and not into a multibinding,
         // we can generate a reusable field
         if (refCount < 2) return false
         val isMultibindingProvider =
-          (binding is Binding.BindingWithAnnotations) && binding.annotations.isIntoMultibinding
+          (binding is IrBinding.BindingWithAnnotations) && binding.annotations.isIntoMultibinding
         return !isMultibindingProvider
       }
 
@@ -39,7 +39,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
 
   private val nodes = HashMap<IrTypeKey, Node>(INITIAL_VALUE)
 
-  fun collect(): Map<IrTypeKey, Binding> {
+  fun collect(): Map<IrTypeKey, IrBinding> {
     // Count references for each dependency
     for ((key, binding) in graph.bindingsSnapshot()) {
       // Ensure each key has a node
@@ -65,7 +65,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
     return binding.mark()
   }
 
-  private fun Binding.mark(): Boolean {
+  private fun IrBinding.mark(): Boolean {
     val node = nodes.getOrPut(typeKey) { Node(this) }
     return node.mark()
   }

@@ -1,9 +1,14 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+@file:Suppress("UPPER_BOUND_VIOLATED_BASED_ON_JAVA_ANNOTATIONS")
+
 package dev.zacsweers.metro.gradle.incremental
 
 import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
+import com.autonomousapps.kit.GradleProject
+import com.autonomousapps.kit.GradleProject.DslKind
+import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Ignore
@@ -711,7 +716,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject() {
         override fun sources() = listOf(exampleClass, exampleGraph, main)
 
         val exampleClass =
@@ -812,7 +817,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun scopingChangeOnNonContributedClassIsDetected() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject(metroOptions = MetroOptionOverrides(enableScopedInjectClassHints = true)) {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -1088,7 +1093,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun icWorksWhenChangingAContributionScope() {
     val fixture =
-      object : MetroProject(debug = true) {
+      object : MetroProject() {
         override fun sources() =
           listOf(unusedScope, exampleClass, exampleGraph, loggedInGraph, main)
 
@@ -1208,5 +1213,225 @@ class ICTests : BaseIncrementalCompilationTest() {
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithZeroToOneParams() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, main)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(
+                    Dependency.implementation(":common"),
+                    Dependency.implementation(":lib"),
+                  )
+                }
+              }
+              .withSubproject("common") {
+                sources.add(bar)
+                withBuildScript { applyMetroDefault() }
+              }
+              .withSubproject("lib") {
+                sources.add(foo)
+                withBuildScript {
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":common"))
+                }
+              }
+              .write()
+
+        private val bar =
+          source(
+            """
+              interface Bar
+
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class BarImpl : Bar
+            """
+              .trimIndent()
+          )
+
+        val foo =
+          source(
+            """
+              interface Foo
+
+              @SingleIn(AppScope::class)
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class FooImpl : Foo
+            """
+              .trimIndent()
+          )
+
+        private val appGraph =
+          source(
+            """
+              @DependencyGraph(AppScope::class, isExtendable = true)
+              interface AppGraph
+            """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Any {
+              return createGraph<AppGraph>()
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    fun buildAndAssertOutput() {
+      val buildResult = build(project.rootDir, "compileKotlin")
+      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+      val mainClass = project.classLoader().loadClass("test.MainKt")
+      val graph = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+      assertThat(graph).isNotNull()
+    }
+
+    buildAndAssertOutput()
+
+    // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
+    libProject.modify(
+      project.rootDir,
+      fixture.foo,
+      """
+      interface Foo
+
+      @SingleIn(AppScope::class)
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class FooImpl(bar: Bar) : Foo
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertOutput()
+  }
+
+  @Test
+  fun icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithMultipleParams() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, main)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(
+                    Dependency.implementation(":common"),
+                    Dependency.implementation(":lib"),
+                  )
+                }
+              }
+              .withSubproject("common") {
+                sources.add(bar)
+                withBuildScript { applyMetroDefault() }
+              }
+              .withSubproject("lib") {
+                sources.add(foo)
+                withBuildScript {
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":common"))
+                }
+              }
+              .write()
+
+        private val bar =
+          source(
+            """
+              interface Bar
+
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class BarImpl : Bar
+            """
+              .trimIndent()
+          )
+
+        val foo =
+          source(
+            """
+              interface Foo
+
+              @SingleIn(AppScope::class)
+              @Inject
+              @ContributesBinding(AppScope::class)
+              class FooImpl(int: Int) : Foo
+            """
+              .trimIndent()
+          )
+
+        private val appGraph =
+          source(
+            """
+              @DependencyGraph(AppScope::class, isExtendable = true)
+              interface AppGraph {
+                @Provides fun provideInt(): Int = 0
+              }
+            """
+              .trimIndent()
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Any {
+              return createGraph<AppGraph>()
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    fun buildAndAssertOutput() {
+      val buildResult = build(project.rootDir, "compileKotlin")
+      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+      val mainClass = project.classLoader().loadClass("test.MainKt")
+      val graph = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as Any
+      assertThat(graph).isNotNull()
+    }
+
+    buildAndAssertOutput()
+
+    // Adding a bar param to FooImpl, FooImpl.$$MetroFactory should be regenerated with member field
+    libProject.modify(
+      project.rootDir,
+      fixture.foo,
+      """
+      interface Foo
+
+      @SingleIn(AppScope::class)
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class FooImpl(int: Int, bar: Bar) : Foo
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertOutput()
   }
 }

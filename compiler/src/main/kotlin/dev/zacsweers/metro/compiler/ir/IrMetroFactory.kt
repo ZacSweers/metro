@@ -4,10 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
-import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -19,17 +17,11 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
-import org.jetbrains.kotlin.ir.util.classId
-import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
-import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.getAnnotation
-import org.jetbrains.kotlin.ir.util.getAnnotationStringValue
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.isObject
-import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
@@ -67,7 +59,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
       // TODO can we pass the remapper in?
       val newFunction =
         function.deepCopyWithSymbols(factoryClass).also { it.remapTypes(typeRemapper) }
-      return MetroFactory(factoryClass, newFunction.parameters(context))
+      return MetroFactory(factoryClass, newFunction.parameters())
     }
 
     override fun IrBuilderWithScope.invokeCreateExpression(
@@ -107,7 +99,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
       // TODO can we pass the remapper in?
       val newFunction =
         function.deepCopyWithSymbols(factoryClass).also { it.remapTypes(typeRemapper) }
-      return DaggerFactory(metroContext, factoryClass, newFunction.parameters(context))
+      return DaggerFactory(metroContext, factoryClass, newFunction.parameters())
     }
 
     override fun IrBuilderWithScope.invokeCreateExpression(
@@ -138,7 +130,7 @@ internal sealed interface ClassFactory : IrMetroFactory {
         )
 
       // Wrap in a metro provider if this is a provider
-      return if (factoryClass.defaultType.implementsProviderType(metroContext)) {
+      return if (context(metroContext) { factoryClass.defaultType.implementsProviderType() }) {
         irInvoke(
             extensionReceiver = createExpression,
             callee = metroContext.symbols.daggerSymbols.asMetroProvider,
@@ -152,45 +144,45 @@ internal sealed interface ClassFactory : IrMetroFactory {
 }
 
 internal class ProviderFactory(
-  val context: IrMetroContext,
-  sourceTypeKey: IrTypeKey,
   val clazz: IrClass,
-  val mirrorFunction: IrSimpleFunction,
-  sourceAnnotations: MetroAnnotations<IrAnnotation>?,
+  val typeKey: IrTypeKey,
+  private val callableMetadata: IrCallableMetadata,
+  parametersLazy: Lazy<Parameters>,
 ) : IrMetroFactory {
-  val callableId: CallableId
-  override val function: IrSimpleFunction
-  val annotations: MetroAnnotations<IrAnnotation>
-  val typeKey: IrTypeKey
-  val isPropertyAccessor: Boolean
+  val mirrorFunction: IrSimpleFunction
+    get() = callableMetadata.mirrorFunction
 
-  init {
-    val providesCallableIdAnno =
-      clazz.getAnnotation(Symbols.FqNames.ProvidesCallableIdClass)
-        ?: error(
-          "No @ProvidesCallableId found on class ${clazz.classId}. This is a bug in the Metro compiler."
-        )
-    val callableName = providesCallableIdAnno.getAnnotationStringValue("callableName")
-    callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
-    isPropertyAccessor =
-      providesCallableIdAnno.getConstBooleanArgumentOrNull(
-        Symbols.StringNames.IS_PROPERTY_ACCESSOR.asName()
-      ) ?: false
-    // Fake a reference to the "real" function by making a copy of this mirror that reflects the
-    // real one
-    function =
-      mirrorFunction.deepCopyWithSymbols().apply {
-        name = callableId.callableName
-        parent = clazz
-        // Point at the original class
-        setDispatchReceiver(clazz.parentAsClass.thisReceiverOrFail.copyTo(this))
-        // Read back the original offsets in the original source
-        startOffset = providesCallableIdAnno.constArgumentOfTypeAt<Int>(2)!!
-        endOffset = providesCallableIdAnno.constArgumentOfTypeAt<Int>(3)!!
-      }
-    annotations = sourceAnnotations ?: function.metroAnnotations(context.symbols.classIds)
-    typeKey = sourceTypeKey.copy(qualifier = annotations.qualifier)
+  val callableId: CallableId
+    get() = callableMetadata.callableId
+
+  override val function: IrSimpleFunction
+    get() = callableMetadata.function
+
+  val annotations: MetroAnnotations<IrAnnotation>
+    get() = callableMetadata.annotations
+
+  val isPropertyAccessor: Boolean
+    get() = callableMetadata.isPropertyAccessor
+
+  companion object {
+    context(context: IrMetroContext)
+    operator fun invoke(
+      sourceTypeKey: IrTypeKey,
+      clazz: IrClass,
+      mirrorFunction: IrSimpleFunction,
+      sourceAnnotations: MetroAnnotations<IrAnnotation>?,
+    ): ProviderFactory {
+      val callableMetadata = clazz.irCallableMetadata(mirrorFunction, sourceAnnotations)
+      val typeKey = sourceTypeKey.copy(qualifier = callableMetadata.annotations.qualifier)
+
+      return ProviderFactory(
+        clazz = clazz,
+        typeKey = typeKey,
+        callableMetadata = callableMetadata,
+        parametersLazy = unsafeLazy { callableMetadata.function.parameters() },
+      )
+    }
   }
 
-  val parameters by unsafeLazy { function.parameters(context) }
+  val parameters by parametersLazy
 }

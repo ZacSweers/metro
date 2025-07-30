@@ -101,14 +101,20 @@ abstract class MetroCompilerTest {
                 processor.option(entry.raw.cliOption, generateAssistedFactories)
               MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
                 processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
-              MetroOption.GENERATE_HINT_PROPERTIES ->
-                processor.option(entry.raw.cliOption, generateHintProperties)
+              MetroOption.GENERATE_CONTRIBUTION_HINTS ->
+                processor.option(entry.raw.cliOption, generateContributionHints)
+              MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
+                processor.option(entry.raw.cliOption, generateJvmContributionHintsInFir)
               MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
                 processor.option(entry.raw.cliOption, transformProvidersToPrivate)
               MetroOption.SHRINK_UNUSED_BINDINGS ->
                 processor.option(entry.raw.cliOption, shrinkUnusedBindings)
+              MetroOption.CHUNK_FIELD_INITS ->
+                processor.option(entry.raw.cliOption, chunkFieldInits)
               MetroOption.PUBLIC_PROVIDER_SEVERITY ->
                 processor.option(entry.raw.cliOption, publicProviderSeverity)
+              MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+                processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
               MetroOption.LOGGING -> {
                 if (enabledLoggers.isEmpty()) continue
                 processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })

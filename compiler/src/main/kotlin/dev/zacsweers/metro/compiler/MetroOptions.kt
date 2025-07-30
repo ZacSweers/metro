@@ -118,12 +118,23 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
-  GENERATE_HINT_PROPERTIES(
+  GENERATE_CONTRIBUTION_HINTS(
     RawMetroOption.boolean(
-      name = "generate-hint-properties",
+      name = "generate-contribution-hints",
       defaultValue = true,
       valueDescription = "<true | false>",
-      description = "Enable/disable generation of hint properties.",
+      description = "Enable/disable generation of contribution hints.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
+  GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR(
+    RawMetroOption.boolean(
+      name = "generate-jvm-contribution-hints-in-fir",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable generation of contribution hint generation in FIR for JVM compilations types.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -148,6 +159,16 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  CHUNK_FIELD_INITS(
+    RawMetroOption.boolean(
+      name = "chunk-field-inits",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable/disable chunking of field initializers in binding graphs.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   PUBLIC_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "public-provider-severity",
@@ -158,6 +179,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
       valueMapper = { it },
+    )
+  ),
+  WARN_ON_INJECT_ANNOTATION_PLACEMENT(
+    RawMetroOption.boolean(
+      name = "warn-on-inject-annotation-placement",
+      defaultValue = true,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable suggestion to lift @Inject to class when there is only one constructor.",
+      required = false,
+      allowMultipleOccurrences = false,
     )
   ),
   LOGGING(
@@ -438,7 +470,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   ENABLE_SCOPED_INJECT_CLASS_HINTS(
     RawMetroOption.boolean(
       name = "enable-scoped-inject-class-hints",
-      defaultValue = true,
+      defaultValue = false,
       valueDescription = "<true | false>",
       description =
         "Enable/disable generating hints for scoped @Inject classes. By default, a scoped injectable class that isn't used in its associated graph node will result in an error if a graph extension later tries to inject it. Enabling this setting prevents such errors by generating a binding for all scoped types within the graph node. See https://github.com/ZacSweers/metro/issues/377 for more context.",
@@ -464,12 +496,15 @@ public data class MetroOptions(
     MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
   val enableTopLevelFunctionInjection: Boolean =
     MetroOption.ENABLE_TOP_LEVEL_FUNCTION_INJECTION.raw.defaultValue.expectAs(),
-  val generateHintProperties: Boolean =
-    MetroOption.GENERATE_HINT_PROPERTIES.raw.defaultValue.expectAs(),
+  val generateContributionHints: Boolean =
+    MetroOption.GENERATE_CONTRIBUTION_HINTS.raw.defaultValue.expectAs(),
+  val generateJvmContributionHintsInFir: Boolean =
+    MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
   val transformProvidersToPrivate: Boolean =
     MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE.raw.defaultValue.expectAs(),
   val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
+  val chunkFieldInits: Boolean = MetroOption.CHUNK_FIELD_INITS.raw.defaultValue.expectAs(),
   val publicProviderSeverity: DiagnosticSeverity =
     if (transformProvidersToPrivate) {
       DiagnosticSeverity.NONE
@@ -478,6 +513,8 @@ public data class MetroOptions(
         DiagnosticSeverity.valueOf(it)
       }
     },
+  val warnOnInjectAnnotationPlacement: Boolean =
+    MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT.raw.defaultValue.expectAs(),
   val enabledLoggers: Set<MetroLogger.Type> =
     if (debug) {
       // Debug enables _all_
@@ -585,14 +622,21 @@ public data class MetroOptions(
             options =
               options.copy(enableTopLevelFunctionInjection = configuration.getAsBoolean(entry))
 
-          MetroOption.GENERATE_HINT_PROPERTIES ->
-            options = options.copy(generateHintProperties = configuration.getAsBoolean(entry))
+          MetroOption.GENERATE_CONTRIBUTION_HINTS ->
+            options = options.copy(generateContributionHints = configuration.getAsBoolean(entry))
+
+          MetroOption.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR ->
+            options =
+              options.copy(generateJvmContributionHintsInFir = configuration.getAsBoolean(entry))
 
           MetroOption.TRANSFORM_PROVIDERS_TO_PRIVATE ->
             options = options.copy(transformProvidersToPrivate = configuration.getAsBoolean(entry))
 
           MetroOption.SHRINK_UNUSED_BINDINGS ->
             options = options.copy(shrinkUnusedBindings = configuration.getAsBoolean(entry))
+
+          MetroOption.CHUNK_FIELD_INITS ->
+            options = options.copy(chunkFieldInits = configuration.getAsBoolean(entry))
 
           MetroOption.PUBLIC_PROVIDER_SEVERITY ->
             options =
@@ -602,6 +646,10 @@ public data class MetroOptions(
                     DiagnosticSeverity.valueOf(it.uppercase(Locale.US))
                   }
               )
+
+          MetroOption.WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+            options =
+              options.copy(warnOnInjectAnnotationPlacement = configuration.getAsBoolean(entry))
 
           MetroOption.LOGGING -> {
             enabledLoggers +=
@@ -692,7 +740,7 @@ public data class MetroOptions(
           customProvidesAnnotations = customProvidesAnnotations,
           customQualifierAnnotations = customQualifierAnnotations,
           customScopeAnnotations = customScopeAnnotations,
-          customBindingContainerAnnotations = customScopeAnnotations,
+          customBindingContainerAnnotations = customBindingContainerAnnotations,
           customContributesIntoSetAnnotations = customContributesIntoSetAnnotations,
         )
 

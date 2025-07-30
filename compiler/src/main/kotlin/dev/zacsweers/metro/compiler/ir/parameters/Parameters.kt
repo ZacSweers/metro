@@ -47,15 +47,15 @@ internal class Parameters(
       }
     }
 
-  val extensionOrFirstParameter: Parameter?
-    get() = extensionReceiverParameter ?: regularParameters.firstOrNull()
-
   val nonDispatchParameters: List<Parameter> by unsafeLazy {
     buildList {
       extensionReceiverParameter?.let(::add)
       addAll(regularParameters)
     }
   }
+
+  val extensionOrFirstParameter: Parameter?
+    get() = nonDispatchParameters.firstOrNull()
 
   val allParameters: List<Parameter> by unsafeLazy {
     buildList {
@@ -180,26 +180,22 @@ internal class Parameters(
   }
 }
 
-internal fun IrFunction.parameters(
-  context: IrMetroContext,
-  remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
-): Parameters {
+context(context: IrMetroContext)
+internal fun IrFunction.parameters(remapper: TypeRemapper = NOOP_TYPE_REMAPPER): Parameters {
   return Parameters(
     callableId = callableId,
     instance =
       dispatchReceiverParameter?.toConstructorParameter(
-        context,
         IrParameterKind.DispatchReceiver,
         remapper = remapper,
       ),
     extensionReceiver =
       extensionReceiverParameterCompat?.toConstructorParameter(
-        context,
         IrParameterKind.ExtensionReceiver,
         remapper = remapper,
       ),
-    regularParameters = regularParameters.mapToConstructorParameters(context, remapper),
-    contextParameters = contextParameters.mapToConstructorParameters(context, remapper),
+    regularParameters = regularParameters.mapToConstructorParameters(remapper),
+    contextParameters = contextParameters.mapToConstructorParameters(remapper),
     ir = this,
   )
 }

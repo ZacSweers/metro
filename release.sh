@@ -70,6 +70,9 @@ echo "Publishing $NEW_VERSION"
 
 # Prepare release
 update_gradle_properties "$NEW_VERSION"
+
+./metrow regen
+
 git commit -am "Prepare for release $NEW_VERSION."
 git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
 
@@ -79,6 +82,9 @@ git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
 # Prepare next snapshot
 echo "Setting next snapshot version $NEXT_SNAPSHOT_VERSION"
 update_gradle_properties "$NEXT_SNAPSHOT_VERSION"
+
+./metrow regen
+
 git commit -am "Prepare next development version."
 
 # Push it all up

@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -15,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -34,6 +37,7 @@ import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.isObject
@@ -50,8 +54,8 @@ import org.jetbrains.kotlin.ir.util.parentAsClass
  * fun <T> create(valueProvider: Provider<T>): Example_Factory<T> = Example_Factory<T>(valueProvider)
  * ```
  */
+context(context: IrMetroContext)
 internal fun generateStaticCreateFunction(
-  context: IrMetroContext,
   parentClass: IrClass,
   targetClass: IrClass,
   targetConstructor: IrConstructorSymbol,
@@ -65,7 +69,7 @@ internal fun generateStaticCreateFunction(
     if (patchCreationParams) {
       val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
       val valueParamsToPatch = regularParameters.filter { it.origin == Origins.RegularParameter }
-      context.copyParameterDefaultValues(
+      copyParameterDefaultValues(
         providerFunction = providerFunction,
         sourceParameters = parameters.regularParameters.filterNot { it.isAssisted }.map { it.ir },
         targetParameters = valueParamsToPatch,
@@ -75,7 +79,7 @@ internal fun generateStaticCreateFunction(
     }
 
     body =
-      context.pluginContext.createIrBuilder(symbol).run {
+      context.createIrBuilder(symbol).run {
         irExprBodySafe(
           symbol,
           if (targetClass.isObject) {
@@ -102,8 +106,8 @@ internal fun generateStaticCreateFunction(
  * fun newInstance(value: Provider<String>): Example = Example(value)
  * ```
  */
+context(context: IrMetroContext)
 internal fun generateStaticNewInstanceFunction(
-  context: IrMetroContext,
   parentClass: IrClass,
   sourceParameters: List<IrValueParameter>,
   targetFunction: IrFunction? = null,
@@ -114,17 +118,14 @@ internal fun generateStaticNewInstanceFunction(
   return function.apply {
     val instanceParam = regularParameters.find { it.origin == Origins.InstanceParameter }
     val valueParametersToMap = regularParameters.filter { it.origin == Origins.RegularParameter }
-    context.copyParameterDefaultValues(
+    copyParameterDefaultValues(
       providerFunction = targetFunction,
       sourceParameters = sourceParameters,
       targetParameters = valueParametersToMap,
       targetGraphParameter = instanceParam,
     )
 
-    body =
-      context.pluginContext.createIrBuilder(symbol).run {
-        irExprBodySafe(symbol, buildBody(this@apply))
-      }
+    body = context.createIrBuilder(symbol).run { irExprBodySafe(symbol, buildBody(this@apply)) }
   }
 }
 
@@ -137,6 +138,7 @@ context(context: IrMetroContext)
 internal fun generateMetadataVisibleMirrorFunction(
   factoryClass: IrClass,
   target: IrFunction,
+  annotations: MetroAnnotations<IrAnnotation>,
 ): IrSimpleFunction {
   val function =
     factoryClass
@@ -162,13 +164,14 @@ internal fun generateMetadataVisibleMirrorFunction(
           copyTypeParametersFrom(sourceClass)
         } else {
           // If it's a regular (provides) function, just always copy its annotations
-          // Exclude @Provides to avoid reentrant factory gen
-          // TODO maybe make this more precise in what it copies?
-          copyAnnotationsFrom(target)
-          annotations =
-            annotations.filterNot {
-              it.annotationClass.classId in context.symbols.classIds.providesAnnotations
-            }
+          this.annotations =
+            annotations
+              .mirrorIrConstructorCalls(symbol)
+              .filterNot {
+                // Exclude @Provides to avoid reentrant factory gen
+                it.annotationClass.classId in context.symbols.classIds.providesAnnotations
+              }
+              .map { it.deepCopyWithSymbols() }
         }
         copyParametersFrom(target)
         setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
@@ -177,17 +180,13 @@ internal fun generateMetadataVisibleMirrorFunction(
           // If it has a default value expression, just replace it with a stub. We don't need it to
           // be functional, we just need it to be indicated
           if (it.hasDefaultValue()) {
-            it.defaultValue =
-              context.pluginContext.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
+            it.defaultValue = context.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
           }
         }
         // The function's signature already matches the target function's signature, all we need
         // this for
-        body =
-          context.pluginContext.createIrBuilder(symbol).run {
-            irExprBodySafe(symbol, stubExpression())
-          }
+        body = context.createIrBuilder(symbol).run { irExprBodySafe(symbol, stubExpression()) }
       }
-  context.pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
+  context.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(function)
   return function
 }

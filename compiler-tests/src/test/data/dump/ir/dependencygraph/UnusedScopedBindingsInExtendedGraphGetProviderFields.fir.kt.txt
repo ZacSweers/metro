@@ -20,7 +20,7 @@ interface AppGraph {
     private /* final field */ val thisGraphInstance: AppGraph = <this>
     private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
     private /* final field */ val provideStringProvider: Provider<String> = Companion.provider<Provider<String>, String>(delegate = Companion.create(instance = <this>.#thisGraphInstance))
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -49,7 +49,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false, startOffset = 279, endOffset = 322)
+  @CallableMetadata(callableName = "provideInt", isPropertyAccessor = false, startOffset = 279, endOffset = 322)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -69,7 +69,7 @@ interface AppGraph {
 
     }
 
-    constructor(instance: AppGraph) /* primary */ {
+    private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -86,7 +86,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideString", isPropertyAccessor = false, startOffset = 117, endOffset = 276)
+  @CallableMetadata(callableName = "provideString", isPropertyAccessor = false, startOffset = 117, endOffset = 276)
   class ProvideString$$MetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -106,7 +106,7 @@ interface AppGraph {
 
     }
 
-    constructor(instance: AppGraph) /* primary */ {
+    private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 

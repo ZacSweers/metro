@@ -7,9 +7,12 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
-import dev.zacsweers.metro.compiler.joinSimpleNames
+import dev.zacsweers.metro.compiler.mapNotNullToSet
+import dev.zacsweers.metro.compiler.scopeHintFunctionName
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 
 /**
@@ -25,17 +28,23 @@ internal class ContributionHintIrTransformer(
 
   fun visitClass(declaration: IrClass) {
     // Don't generate hints for non-public APIs
-    if (!declaration.visibility.isPublicAPI) return
+    // Internal is allowed for friend paths
+    if (
+      !declaration.visibility.isPublicAPI &&
+        declaration.visibility != DescriptorVisibilities.INTERNAL
+    ) {
+      return
+    }
 
     val contributions =
       declaration.annotationsIn(symbols.classIds.allContributesAnnotations).toList()
 
-    val contributionScopes = contributions.mapNotNullTo(mutableSetOf()) { it.scopeOrNull() }
+    val contributionScopes = contributions.mapNotNullToSet { it.scopeOrNull() }
 
     for (contributionScope in contributionScopes) {
       hintGenerator.generateHint(
         sourceClass = declaration,
-        hintName = contributionScope.joinSimpleNames().shortClassName,
+        hintName = contributionScope.scopeHintFunctionName(),
       )
     }
 

@@ -71,6 +71,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           name = hintName
           origin = Origins.Default
           returnType = pluginContext.irBuiltIns.unitType
+          visibility = sourceClass.visibility
         }
         .apply {
           parameters +=

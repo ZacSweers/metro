@@ -1,1 +1,0 @@
-/ProvidesCannotLiveInObjects.kt:(104,117): error: @Provides declarations must be within an interface, class, or companion object. `provideString` appears to be defined directly within a (non-companion) object.

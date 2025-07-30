@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.builtins.functions.FunctionTypeKind
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.computeTypeAttributes
@@ -179,7 +180,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
       emptySet()
     } else if (classSymbol.classId in providerFactoryClassIdsToCallables) {
       // It's a generated factory, give it a companion object if it isn't going to be an object
-      if (classSymbol.classKind == ClassKind.OBJECT) {
+      if (classSymbol.classKind.isObject) {
         emptySet()
       } else {
         setOf(SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT)
@@ -244,7 +245,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
           markAsDeprecatedHidden(session)
           // Add the source callable info
           replaceAnnotationsSafe(
-            annotations + listOf(buildProvidesCallableIdAnnotation(sourceCallable))
+            annotations + listOf(buildCallableMetadataAnnotation(sourceCallable))
           )
         }
         .symbol
@@ -255,7 +256,7 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
   }
 
   private fun FirCallableSymbol<*>.asProviderCallable(owner: FirClassSymbol<*>): ProviderCallable? {
-    val instanceReceiver = if (owner.isCompanion) null else owner.defaultType()
+    val instanceReceiver = if (owner.classKind.isObject) null else owner.defaultType()
     val params =
       when (this) {
         is FirPropertySymbol -> emptyList()
@@ -266,9 +267,9 @@ internal class ProvidesFactoryFirGenerator(session: FirSession) :
     return ProviderCallable(owner, this, instanceReceiver, params)
   }
 
-  private fun buildProvidesCallableIdAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
+  private fun buildCallableMetadataAnnotation(sourceCallable: ProviderCallable): FirAnnotation {
     return buildAnnotation {
-      val anno = session.metroFirBuiltIns.providesCallableIdClassSymbol
+      val anno = session.metroFirBuiltIns.callableMetadataClassSymbol
 
       annotationTypeRef = anno.defaultType().toFirResolvedTypeRef()
 

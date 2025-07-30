@@ -10,6 +10,8 @@ import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
@@ -145,7 +147,7 @@ internal class AssistedFactoryTransformer(
     }
     val remapper = typeRemapperFor(typeSubstitutions)
 
-    val creatorFunction = samFunction.toAssistedFactoryFunction(this, samFunction, remapper)
+    val creatorFunction = samFunction.toAssistedFactoryFunction(samFunction, remapper)
 
     val generatedFactory =
       injectConstructorTransformer.getOrGenerateFactory(
@@ -154,7 +156,7 @@ internal class AssistedFactoryTransformer(
         doNotErrorOnMissing = false,
       ) ?: return null
 
-    val constructorParams = injectConstructor.parameters(this)
+    val constructorParams = injectConstructor.parameters()
     val assistedParameters =
       constructorParams.regularParameters.filter { parameter -> parameter.isAssisted }
 
@@ -241,12 +243,12 @@ internal class AssistedFactoryTransformer(
   ) {
 
     companion object {
+      context(context: IrMetroContext)
       fun IrSimpleFunction.toAssistedFactoryFunction(
-        context: IrMetroContext,
         originalDeclaration: IrSimpleFunction,
         remapper: TypeRemapper? = null,
       ): AssistedFactoryFunction {
-        val params = parameters(context)
+        val params = parameters()
         return AssistedFactoryFunction(
           simpleName = originalDeclaration.name.asString(),
           qualifiedName = originalDeclaration.kotlinFqName.asString(),

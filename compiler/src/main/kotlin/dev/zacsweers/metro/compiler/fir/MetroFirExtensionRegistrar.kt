@@ -7,7 +7,9 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryImplFirGenerator
+import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributedInterfaceSupertypeGenerator
+import dev.zacsweers.metro.compiler.fir.generators.ContributionHintFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ContributionsFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.DependencyGraphFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
@@ -53,7 +55,15 @@ public class MetroFirExtensionRegistrar(
     }
     +declarationGenerator("FirGen - AssistedFactoryImpl", ::AssistedFactoryImplFirGenerator, true)
     +declarationGenerator("FirGen - ProvidesFactory", ::ProvidesFactoryFirGenerator, true)
+    +declarationGenerator("FirGen - BindingMirrorClass", ::BindingMirrorClassFirGenerator, true)
     +declarationGenerator("FirGen - ContributionsGenerator", ::ContributionsFirGenerator, true)
+    if (options.generateContributionHints) {
+      +declarationGenerator(
+        "FirGen - ContributionHints",
+        ContributionHintFirGenerator.Factory(options)::create,
+        true,
+      )
+    }
     +declarationGenerator("FirGen - DependencyGraph", ::DependencyGraphFirGenerator, true)
   }
 

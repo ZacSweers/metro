@@ -64,6 +64,15 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
   ): Provider<List<SubpluginOption>> {
     val project = kotlinCompilation.target.project
     val extension = project.extensions.getByType(MetroPluginExtension::class.java)
+    val platformCanGenerateContributionHints =
+      when (kotlinCompilation.platformType) {
+        KotlinPlatformType.common,
+        KotlinPlatformType.jvm,
+        KotlinPlatformType.androidJvm -> true
+        KotlinPlatformType.js,
+        KotlinPlatformType.native,
+        KotlinPlatformType.wasm -> false
+      }
 
     // Ensure that the languageVersion is 2.x
     kotlinCompilation.compileTaskProvider.configure { task ->
@@ -100,11 +109,29 @@ public class MetroGradleSubplugin : KotlinCompilerPluginSupportPlugin {
         add(lazyOption("enabled", extension.enabled))
         add(lazyOption("debug", extension.debug))
         add(lazyOption("generate-assisted-factories", extension.generateAssistedFactories))
-        add(lazyOption("generate-hint-properties", extension.generateHintProperties))
+        add(
+          lazyOption(
+            "generate-contribution-hints",
+            extension.generateContributionHints.orElse(platformCanGenerateContributionHints),
+          )
+        )
+        add(
+          lazyOption(
+            "generate-jvm-contribution-hints-in-fir",
+            extension.generateJvmContributionHintsInFir,
+          )
+        )
         add(lazyOption("enable-scoped-inject-class-hints", extension.enableScopedInjectClassHints))
         add(lazyOption("transform-providers-to-private", extension.transformProvidersToPrivate))
         add(lazyOption("shrink-unused-bindings", extension.shrinkUnusedBindings))
+        add(lazyOption("chunk-field-inits", extension.chunkFieldInits))
         add(lazyOption("public-provider-severity", extension.publicProviderSeverity))
+        add(
+          lazyOption(
+            "warn-on-inject-annotation-placement",
+            extension.warnOnInjectAnnotationPlacement,
+          )
+        )
         add(
           lazyOption(
             "enable-top-level-function-injection",

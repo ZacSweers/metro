@@ -20,6 +20,11 @@ internal class IrContributionVisitor(context: IrMetroContext) :
   }
 
   override fun visitClass(declaration: IrClass, data: IrContributionData) {
+    visitClassInner(declaration, data)
+    super.visitClass(declaration, data)
+  }
+
+  private fun visitClassInner(declaration: IrClass, data: IrContributionData) {
     val metroContribution =
       declaration.findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
     if (metroContribution != null) {
@@ -31,25 +36,31 @@ internal class IrContributionVisitor(context: IrMetroContext) :
               .report(MetroIrErrors.METRO_ERROR, "No scope found for @MetroContribution annotation")
             exitProcessing()
           }
-      data.addContribution(scope, declaration.defaultType)
+      if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
+        data.addBindingContainerContribution(scope, declaration)
+      } else {
+        data.addContribution(scope, declaration.defaultType)
+      }
       return
     }
 
-    // Check if it's a plain old ContributesTo
-    for (contributesToAnno in
-      declaration.annotationsIn(symbols.classIds.contributesToLikeAnnotations)) {
-      val scope =
-        contributesToAnno.scopeOrNull()
-          ?: with(metroContext) {
-            diagnosticReporter
-              .at(declaration)
-              .report(
-                MetroIrErrors.METRO_ERROR,
-                "No scope found for @${contributesToAnno.annotationClass.name} annotation",
-              )
-            exitProcessing()
-          }
-      data.addContribution(scope, declaration.defaultType)
+    // @BindingContainer handling
+    if (declaration.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
+      for (contributesToAnno in
+        declaration.annotationsIn(symbols.classIds.contributesToLikeAnnotations)) {
+        val scope =
+          contributesToAnno.scopeOrNull()
+            ?: with(metroContext) {
+              diagnosticReporter
+                .at(declaration)
+                .report(
+                  MetroIrErrors.METRO_ERROR,
+                  "No scope found for @${contributesToAnno.annotationClass.name} annotation",
+                )
+              exitProcessing()
+            }
+        data.addBindingContainerContribution(scope, declaration)
+      }
       return
     }
 

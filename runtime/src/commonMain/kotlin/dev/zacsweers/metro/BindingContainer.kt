@@ -49,6 +49,9 @@ import kotlin.reflect.KClass
  * Binding containers added via [DependencyGraph.Factory] parameters do _not_ need to be declared in
  * [DependencyGraph.bindingContainers].
  *
+ * Binding containers may be _contributed_ with [ContributesTo] and can replace other contributed
+ * binding containers.
+ *
  * ## Notes
  * - It is an error to annotate companion objects, annotation classes, or enum classes/entries.
  *     - companion object providers within a binding container are automatically included.

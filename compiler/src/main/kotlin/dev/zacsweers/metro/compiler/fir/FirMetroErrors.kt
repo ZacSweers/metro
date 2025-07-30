@@ -34,7 +34,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val DEPENDENCY_GRAPH_ERROR by error1<String>(NAME_IDENTIFIER)
 
   // Inject constructor errors
-  val SUGGEST_CLASS_INJECTION_IF_NO_PARAMS by warning0(NAME_IDENTIFIER)
+  val SUGGEST_CLASS_INJECTION by warning0(NAME_IDENTIFIER)
 
   // Inject/assisted constructor errors
   val CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS by error0(NAME_IDENTIFIER)
@@ -71,6 +71,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
   val DAGGER_REUSABLE_ERROR by error0(NAME_IDENTIFIER)
   val FUNCTION_INJECT_ERROR by error1<String>(NAME_IDENTIFIER)
   val FUNCTION_INJECT_TYPE_PARAMETERS_ERROR by error1<String>(TYPE_PARAMETERS_LIST)
+  val BINDING_CONTAINER_ERROR by error1<String>(NAME_IDENTIFIER)
 
   override val MAP: KtDiagnosticFactoryToRendererMap =
     KtDiagnosticFactoryToRendererMap("FirMetroErrors").apply {
@@ -97,8 +98,8 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
 
       // Inject Constructor errors
       put(
-        SUGGEST_CLASS_INJECTION_IF_NO_PARAMS,
-        "There are no parameters on the @Inject-annotated constructor. Consider moving the annotation to the class instead.",
+        SUGGEST_CLASS_INJECTION,
+        "There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.",
       )
 
       // Inject/assisted Constructor errors
@@ -143,6 +144,7 @@ internal object FirMetroErrors : BaseDiagnosticRendererFactory() {
       put(PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE, "{0}", STRING)
       put(FUNCTION_INJECT_ERROR, "{0}", STRING)
       put(FUNCTION_INJECT_TYPE_PARAMETERS_ERROR, "{0}", STRING)
+      put(BINDING_CONTAINER_ERROR, "{0}", STRING)
       put(
         PROVIDER_OVERRIDES,
         "Do not override `@Provides` declarations. Consider using `@ContributesTo.replaces`, `@ContributesBinding.replaces`, and `@DependencyGraph.excludes` instead.",

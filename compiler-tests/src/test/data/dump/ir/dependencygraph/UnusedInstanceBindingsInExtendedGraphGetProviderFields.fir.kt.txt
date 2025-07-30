@@ -20,7 +20,7 @@ interface AppGraph {
     private /* final field */ val stringInstanceProvider: Provider<String> = Companion.invoke<String>(value = string)
     private /* final field */ val thisGraphInstance: AppGraph = <this>
     private /* final field */ val appGraphProvider: Provider<AppGraph> = Companion.invoke<AppGraph>(value = <this>.#thisGraphInstance)
-    constructor(@Provides string: String) /* primary */ {
+    private constructor(@Provides string: String) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -49,7 +49,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false, startOffset = 117, endOffset = 160)
+  @CallableMetadata(callableName = "provideInt", isPropertyAccessor = false, startOffset = 117, endOffset = 160)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -69,7 +69,7 @@ interface AppGraph {
 
     }
 
-    constructor(instance: AppGraph) /* primary */ {
+    private constructor(instance: AppGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -87,6 +87,21 @@ interface AppGraph {
 
   @Factory
   interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    object $$Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Provides string: String): AppGraph {
+        return $$MetroGraph(string = string)
+      }
+
+    }
+
     abstract fun create(@Provides string: String): AppGraph
 
   }

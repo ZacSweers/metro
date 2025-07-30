@@ -13,6 +13,7 @@ import dev.zacsweers.metro.Extends
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.sample.androidviewmodel.AssistedCounterViewModel
 import dev.zacsweers.metro.sample.androidviewmodel.components.AppGraph
 import kotlin.reflect.KClass
 
@@ -27,6 +28,8 @@ interface ViewModelGraph {
   @Provides
   fun provideSavedStateHandle(creationExtras: CreationExtras): SavedStateHandle =
     creationExtras.createSavedStateHandle()
+
+  val assistedCounterFactory: AssistedCounterViewModel.Factory
 
   @DependencyGraph.Factory
   fun interface Factory {

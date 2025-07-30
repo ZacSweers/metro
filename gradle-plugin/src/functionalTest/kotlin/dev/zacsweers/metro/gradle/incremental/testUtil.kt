@@ -26,14 +26,25 @@ private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 fun String.cleanOutputLine(): String = FILE_PATH_REGEX.replace(trimEnd(), "")
 
 fun GradleProject.classLoader(): ClassLoader {
-  val classesDir = rootDir.toPath().resolve("build/classes/kotlin/main").absolute()
+  val rootClassesDir = rootDir.toPath().resolve("build/classes/kotlin/main").absolute()
 
-  check(classesDir.exists()) { "Classes dir not found: ${classesDir.toAbsolutePath()}" }
+  check(rootClassesDir.exists()) {
+    "Root classes dir not found: ${rootClassesDir.toAbsolutePath()}"
+  }
+
+  val subprojectClassesDirs =
+    subprojects.map { subproject ->
+      val dir = rootDir.toPath().resolve("${subproject.name}/build/classes/kotlin/main").absolute()
+      check(rootClassesDir.exists()) {
+        "Subproject ${subproject.name} classes dir not found: ${dir.toAbsolutePath()}"
+      }
+      dir.toUri().toURL()
+    }
 
   return URLClassLoader(
     // Include the original classpaths and the output directory to be able to load classes from
     // dependencies.
-    arrayOf(classesDir.toUri().toURL()),
+    (subprojectClassesDirs + rootClassesDir.toUri().toURL()).toTypedArray(),
     this::class.java.classLoader,
   )
 }

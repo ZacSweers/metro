@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.mapToSet
@@ -29,7 +30,12 @@ internal data class DependencyGraphNode(
   // Types accessible via this graph (includes inherited)
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
-  val bindsFunctions: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
+  val bindsCallables: Set<BindsCallable>,
+  val multibindsCallables: Set<MultibindsCallable>,
+  /** Binding containers that need a managed instance. */
+  val bindingContainers: Set<IrClass>,
+  /** Fake overrides of binds functions that need stubbing. */
+  val bindsFunctions: List<MetroSimpleFunction>,
   // TypeKey key is the injected type wrapped in MembersInjector
   val injectors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val isExternal: Boolean,
@@ -54,10 +60,10 @@ internal data class DependencyGraphNode(
   val multibindingAccessors by unsafeLazy {
     proto
       ?.let {
-        val bitfield = it.multibinding_accessor_indices
+        val bitfield = BitField(it.multibinding_accessor_indices)
         val multibindingCallableIds =
           it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
-            (bitfield shr index) and 1 == 1
+            bitfield.isSet(index)
           }
         accessors
           .filter { it.first.ir.name.asString() in multibindingCallableIds }
@@ -75,16 +81,19 @@ internal data class DependencyGraphNode(
   sealed interface Creator {
     val function: IrFunction
     val parameters: Parameters
+    val bindingContainersParameterIndices: BitField
 
     data class Constructor(
       override val function: IrConstructor,
       override val parameters: Parameters,
+      override val bindingContainersParameterIndices: BitField,
     ) : Creator
 
     data class Factory(
       val type: IrClass,
       override val function: IrSimpleFunction,
       override val parameters: Parameters,
+      override val bindingContainersParameterIndices: BitField,
     ) : Creator
   }
 }
@@ -94,7 +103,7 @@ private fun DependencyGraphNode.recurseIncludedNodes(
 ) {
   for ((key, node) in includedGraphNodes) {
     if (key !in builder) {
-      builder.put(key, node)
+      builder[key] = node
       node.recurseIncludedNodes(builder)
     }
   }

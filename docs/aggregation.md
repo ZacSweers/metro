@@ -67,9 +67,6 @@ interface TestNetworkProviders {
 }
 ```
 
-!!! warning
-    `@Contributes*.replaces` cannot replace classes in the _same compilation_ as the _graph that is merging them_.
-
 ## @ContributesBinding
 
 This annotation is used to contribute injected classes to a target scope as a given bound type.
@@ -169,9 +166,68 @@ class CacheImpl(...) : Cache
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
 
+## Contributing Binding Containers
+
+Binding containers (see [Binding Containers](dependency-graphs.md#binding-containers)) can also be contributed to scopes via `@ContributesTo`:
+
+```kotlin
+@ContributesTo(AppScope::class)
+@BindingContainer
+object NetworkBindings {
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+}
+
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val httpClient: HttpClient
+}
+```
+
+### Replacing Contributed Binding Containers
+
+Similar to other contribution types, binding containers can replace other contributed binding containers:
+
+```kotlin
+// In production
+@ContributesTo(AppScope::class)
+@BindingContainer
+object NetworkBindings {
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+}
+
+// In tests
+@ContributesTo(AppScope::class, replaces = [NetworkBindings::class])
+@BindingContainer
+object FakeNetworkBindings {
+  @Provides fun provideFakeHttpClient(): HttpClient = FakeHttpClient()
+}
+```
+
+### Excluding Contributed Binding Containers
+
+Graphs can exclude specific contributed binding containers:
+
+```kotlin
+@ContributesTo(AppScope::class)
+@BindingContainer
+object NetworkBindings {
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
+}
+
+@DependencyGraph(AppScope::class, excludes = [NetworkBindings::class])
+interface TestAppGraph {
+  // NetworkBindings will not be included
+}
+```
+
+!!! info
+    Currently, contributed binding containers cannot replace non-contributed-container types (i.e. `@ContributesBinding` classes) yet.
+
 ## `@ContributesGraphExtension`
 
-Not yet implemented. Please share design feedback in [#165](https://github.com/ZacSweers/metro/issues/165)!
+`@ContributesGraphExtension` is a specialized type of graph that is _contributed_ to some parent scope. Its generation is deferred until the parent graph interface is merged.
+
+See [Dependency Graphs](dependency-graphs.md#contributed-graph-extensions) for motivation and documentation.
 
 ## Implementation notes
 

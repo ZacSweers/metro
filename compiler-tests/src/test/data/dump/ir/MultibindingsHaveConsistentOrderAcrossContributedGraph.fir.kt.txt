@@ -74,6 +74,26 @@ class TaskImpl2 : Task {
 
 @DependencyGraph(scope = AppScope::class, isExtendable = true)
 interface ExampleGraph : $$MetroContributionToAppScope {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class $$BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "<get-bind>", isPropertyAccessor = true, startOffset = 272, endOffset = 312)
+    abstract fun TaskImpl1.bind_intoset(): Task
+
+    @Binds
+    @IntoSet
+    @CallableMetadata(callableName = "<get-bind>", isPropertyAccessor = true, startOffset = 229, endOffset = 269)
+    abstract fun TaskImpl2.bind_intoset(): Task
+
+  }
+
   @DependencyGraph(scope = Unit::class, isExtendable = false)
   class $$ContributedLoggedInGraph : LoggedInGraph {
     constructor(@Extends exampleGraph: ExampleGraph) /* primary */ {
@@ -111,7 +131,7 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   class $$MetroGraph : ExampleGraph {
     private /* final field */ val thisGraphInstance: ExampleGraph = <this>
     private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 

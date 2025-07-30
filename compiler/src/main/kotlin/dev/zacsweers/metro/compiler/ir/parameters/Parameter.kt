@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
+import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -195,17 +196,17 @@ private constructor(
   }
 }
 
+context(context: IrMetroContext)
 internal fun List<IrValueParameter>.mapToConstructorParameters(
-  context: IrMetroContext,
-  remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
+  remapper: TypeRemapper = NOOP_TYPE_REMAPPER
 ): List<Parameter> {
   return map { valueParameter ->
-    valueParameter.toConstructorParameter(context, IrParameterKind.Regular, remapper)
+    valueParameter.toConstructorParameter(IrParameterKind.Regular, remapper)
   }
 }
 
+context(context: IrMetroContext)
 internal fun IrValueParameter.toConstructorParameter(
-  context: IrMetroContext,
   kind: IrParameterKind = IrParameterKind.Regular,
   remapper: TypeRemapper = NOOP_TYPE_REMAPPER,
 ): Parameter {
@@ -213,12 +214,7 @@ internal fun IrValueParameter.toConstructorParameter(
   // type mangling
   val declaredType = remapper.remapType(this@toConstructorParameter.type)
 
-  val contextKey =
-    declaredType.asContextualTypeKey(
-      context,
-      with(context) { qualifierAnnotation() },
-      defaultValue != null,
-    )
+  val contextKey = declaredType.asContextualTypeKey(qualifierAnnotation(), defaultValue != null)
 
   val assistedAnnotation = annotationsIn(context.symbols.assistedAnnotations).singleOrNull()
 
@@ -257,14 +253,13 @@ internal fun IrValueParameter.toConstructorParameter(
   )
 }
 
+context(context: IrMetroContext)
 internal fun List<IrValueParameter>.mapToMemberInjectParameters(
-  context: IrMetroContext,
   nameAllocator: NameAllocator,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
 ): List<Parameter> {
   return map { valueParameter ->
     valueParameter.toMemberInjectParameter(
-      context = context,
       uniqueName = nameAllocator.newName(valueParameter.name.asString()).asName(),
       kind = IrParameterKind.Regular,
       typeParameterRemapper = typeParameterRemapper,
@@ -272,8 +267,8 @@ internal fun List<IrValueParameter>.mapToMemberInjectParameters(
   }
 }
 
+context(context: IrMetroContext)
 internal fun IrProperty.toMemberInjectParameter(
-  context: IrMetroContext,
   uniqueName: Name,
   kind: IrParameterKind = IrParameterKind.Regular,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
@@ -297,11 +292,7 @@ internal fun IrProperty.toMemberInjectParameter(
       getter?.body ?: backingField?.initializer
     }
   val contextKey =
-    declaredType.asContextualTypeKey(
-      context,
-      with(context) { qualifierAnnotation() },
-      defaultValue != null,
-    )
+    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null)
 
   return Parameter.member(
     kind = kind,
@@ -312,8 +303,8 @@ internal fun IrProperty.toMemberInjectParameter(
   )
 }
 
+context(context: IrMetroContext)
 internal fun IrValueParameter.toMemberInjectParameter(
-  context: IrMetroContext,
   uniqueName: Name,
   kind: IrParameterKind = IrParameterKind.Regular,
   typeParameterRemapper: ((IrType) -> IrType)? = null,
@@ -325,11 +316,7 @@ internal fun IrValueParameter.toMemberInjectParameter(
       ?: this@toMemberInjectParameter.type
 
   val contextKey =
-    declaredType.asContextualTypeKey(
-      context,
-      with(context) { qualifierAnnotation() },
-      defaultValue != null,
-    )
+    declaredType.asContextualTypeKey(with(context) { qualifierAnnotation() }, defaultValue != null)
 
   return Parameter.member(
     kind = kind,
@@ -365,7 +352,6 @@ internal fun IrFunction.memberInjectParameters(
       val property = propertyIfAccessor as IrProperty
       listOf(
         property.toMemberInjectParameter(
-          context = context,
           uniqueName = nameAllocator.newName(property.name.asString()).asName(),
           kind = IrParameterKind.Regular,
           typeParameterRemapper = mapper,
@@ -373,7 +359,6 @@ internal fun IrFunction.memberInjectParameters(
       )
     } else {
       regularParameters.mapToMemberInjectParameters(
-        context = context,
         nameAllocator = nameAllocator,
         typeParameterRemapper = mapper,
       )

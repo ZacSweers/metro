@@ -24,7 +24,7 @@ class X {
 
     }
 
-    constructor(y: Provider<Y>) /* primary */ {
+    private constructor(y: Provider<Y>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -79,7 +79,7 @@ class Y {
 
     }
 
-    constructor(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>) /* primary */ {
+    private constructor(mapOfProvidersOfX: Provider<Map<String, Provider<X>>>, mapOfProvidersOfY: Provider<Map<String, Provider<Y>>>) /* primary */ {
       super/*Any*/()
       /* <init>() */
 
@@ -105,6 +105,28 @@ class Y {
 
 @DependencyGraph
 interface CycleMapGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class $$BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @IntoMap
+    @StringKey(value = "X")
+    @CallableMetadata(callableName = "<get-x>", isPropertyAccessor = true, startOffset = 263, endOffset = 305)
+    abstract fun X.x3540965534_intomap(): X
+
+    @Binds
+    @IntoMap
+    @StringKey(value = "Y")
+    @CallableMetadata(callableName = "<get-y>", isPropertyAccessor = true, startOffset = 309, endOffset = 351)
+    abstract fun Y.y3540965535_intomap(): Y
+
+  }
+
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()
@@ -122,7 +144,7 @@ interface CycleMapGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   class $$MetroGraph : CycleMapGraph {
     private /* final field */ val yProvider: Provider<Y> = DelegateFactory<Y>()
-    constructor() /* primary */ {
+    private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
 

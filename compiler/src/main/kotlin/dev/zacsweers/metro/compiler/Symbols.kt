@@ -4,9 +4,9 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.Symbols.FqNames.kotlinCollectionsPackageFqn
 import dev.zacsweers.metro.compiler.Symbols.FqNames.metroHintsPackage
+import dev.zacsweers.metro.compiler.Symbols.StringNames.CALLABLE_METADATA
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_INTERNAL_PACKAGE
 import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
-import dev.zacsweers.metro.compiler.Symbols.StringNames.PROVIDES_CALLABLE_ID
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.backend.common.ir.BuiltinSymbolsBase
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
@@ -48,7 +49,7 @@ internal class Symbols(
   val pluginContext: IrPluginContext,
   val classIds: dev.zacsweers.metro.compiler.ClassIds,
   val options: MetroOptions,
-) {
+) : BuiltinSymbolsBase(pluginContext.irBuiltIns) {
 
   object StringNames {
     const val ADDITIONAL_SCOPES = "additionalScopes"
@@ -63,6 +64,7 @@ internal class Symbols(
     const val BOUND_TYPE = "boundType"
     const val COMPOSABLE = "Composable"
     const val CONTRIBUTED = "contributed"
+    const val CONTRIBUTED_GRAPH_PREFIX = $$$"$$Contributed"
     const val CREATE = "create"
     const val CREATE_FACTORY_PROVIDER = "createFactoryProvider"
     const val CREATE_GRAPH = "createGraph"
@@ -85,11 +87,11 @@ internal class Symbols(
     const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
     const val METRO_ACCESSOR = "_metroAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
-    const val METRO_CONTRIBUTION_NAME_PREFIX = "$\$MetroContribution"
-    const val METRO_FACTORY = "$\$MetroFactory"
+    const val METRO_CONTRIBUTION_NAME_PREFIX = $$$"$$MetroContribution"
+    const val METRO_FACTORY = $$$"$$MetroFactory"
     const val METRO_HINTS_PACKAGE = "metro.hints"
-    const val METRO_IMPL = "$\$Impl"
-    const val METRO_GRAPH = "$\$MetroGraph"
+    const val METRO_IMPL = $$$"$$Impl"
+    const val METRO_GRAPH = $$$"$$MetroGraph"
     const val METRO_RUNTIME_INTERNAL_PACKAGE = "dev.zacsweers.metro.internal"
     const val METRO_RUNTIME_PACKAGE = "dev.zacsweers.metro"
     const val MIRROR_FUNCTION = "mirrorFunction"
@@ -97,7 +99,7 @@ internal class Symbols(
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
     const val PROVIDER = "provider"
     const val PROVIDES = "Provides"
-    const val PROVIDES_CALLABLE_ID = "ProvidesCallableId"
+    const val CALLABLE_METADATA = "CallableMetadata"
     const val RANK = "rank"
     const val REPLACES = "replaces"
     const val SCOPE = "scope"
@@ -113,7 +115,7 @@ internal class Symbols(
     val metroRuntimePackage = FqName(METRO_RUNTIME_PACKAGE)
     val GraphFactoryInvokeFunctionMarkerClass =
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
-    val ProvidesCallableIdClass = metroRuntimeInternalPackage.child(PROVIDES_CALLABLE_ID.asName())
+    val CallableMetadataClass = metroRuntimeInternalPackage.child(CALLABLE_METADATA.asName())
 
     fun scopeHint(scopeClassId: ClassId): FqName {
       return CallableIds.scopeHint(scopeClassId).asSingleFqName()
@@ -141,8 +143,7 @@ internal class Symbols(
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
-    val ProvidesCallableId =
-      ClassId(FqNames.metroRuntimeInternalPackage, StringNames.PROVIDES_CALLABLE_ID.asName())
+    val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
     val Stable = ClassId(FqNames.composeRuntime, StringNames.STABLE.asName())
     val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
     val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)
@@ -163,13 +164,15 @@ internal class Symbols(
 
   object Names {
     val Binds = "Binds".asName()
+    val BindsMirrorClass = $$$"$$BindsMirror".asName()
     val FactoryClass = "Factory".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
-    val MetroGraph = "$\$MetroGraph".asName()
+    val MetroGraph = $$$"$$MetroGraph".asName()
     val MetroImpl = StringNames.METRO_IMPL.asName()
-    val MetroMembersInjector = "$\$MetroMembersInjector".asName()
+    val MetroMembersInjector = $$$"$$MetroMembersInjector".asName()
     val ProviderClass = "Provider".asName()
+    val Provides = StringNames.PROVIDES.asName()
     val additionalScopes = StringNames.ADDITIONAL_SCOPES.asName()
     val asContribution = "asContribution".asName()
     val binding = StringNames.BINDING.asName()
@@ -195,6 +198,7 @@ internal class Symbols(
     val membersInjector = "MembersInjector".asName()
     val metroAccessor = StringNames.METRO_ACCESSOR.asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
+    val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
     val provider = StringNames.PROVIDER.asName()
     val rank = StringNames.RANK.asName()
@@ -296,6 +300,10 @@ internal class Symbols(
 
   val metroDependencyGraphAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(classIds.dependencyGraphAnnotation)!!.constructors.first()
+  }
+
+  val callableMetadataAnnotationConstructor: IrConstructorSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.CallableMetadata)!!.constructors.first()
   }
 
   val metroExtendsAnnotationConstructor: IrConstructorSymbol by lazy {
@@ -438,6 +446,13 @@ internal class Symbols(
       .single()
   }
 
+  val providesConstructor by lazy {
+    pluginContext
+      .referenceClass(ClassId(metroRuntime.packageFqName, Names.Provides))!!
+      .constructors
+      .single()
+  }
+
   val deprecatedAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first {
       it.owner.isPrimary
@@ -497,8 +512,8 @@ internal class Symbols(
 
     protected abstract fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol
 
+    context(context: IrMetroContext)
     fun IrBuilderWithScope.invokeDoubleCheckLazy(
-      metroContext: IrMetroContext,
       contextKey: IrContextualTypeKey,
       arg: IrExpression,
     ): IrExpression {
@@ -507,7 +522,7 @@ internal class Symbols(
         dispatchReceiver = irGetObject(doubleCheckCompanionObject),
         callee = lazySymbol,
         args = listOf(arg),
-        typeHint = contextKey.toIrType(metroContext),
+        typeHint = contextKey.toIrType(),
         typeArgs = listOf(arg.type, contextKey.typeKey.type),
       )
     }

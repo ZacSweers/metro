@@ -100,9 +100,21 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("CreatorParamsDoNotGetChunked.kt")
+    public void testCreatorParamsDoNotGetChunked() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/CreatorParamsDoNotGetChunked.kt");
+    }
+
+    @Test
     @TestMetadata("GraphAccessors.kt")
     public void testGraphAccessors() {
       runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/GraphAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("InitsAreChunked.kt")
+    public void testInitsAreChunked() {
+      runTest("compiler-tests/src/test/data/dump/ir/dependencygraph/InitsAreChunked.kt");
     }
 
     @Test

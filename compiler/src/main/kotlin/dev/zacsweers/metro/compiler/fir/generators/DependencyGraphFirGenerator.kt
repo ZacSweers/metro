@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.fir.buildSimpleAnnotation
 import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.copyTypeParametersFrom
 import dev.zacsweers.metro.compiler.fir.hasOrigin
+import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.fir.joinToRender
@@ -20,6 +21,7 @@ import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
 import dev.zacsweers.metro.compiler.mapToArray
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
@@ -180,6 +182,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
     register(session.predicates.dependencyGraphAndFactoryPredicate)
   }
 
+  @OptIn(DirectDeclarationsAccess::class)
   override fun getNestedClassifiersNames(
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
@@ -198,10 +201,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
       }
     } else if (classSymbol.isGraphFactory(session)) {
       log("Found graph factory ${classSymbol.classId}")
-      val shouldGenerateImpl = !classSymbol.isInterface
-      if (shouldGenerateImpl) {
-        names += Symbols.Names.MetroImpl
-      }
+      // Always generate this impl though we may not use it. It's just easier to do it this way in
+      // FIR unfortunately due to lifecycles
+      names += Symbols.Names.MetroImpl
     }
 
     if (names.isNotEmpty()) {
@@ -329,6 +331,7 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
             isPrimary = true,
             generateDelegatedNoArgConstructorCall = true,
           ) {
+            visibility = Visibilities.Private
             if (creator != null) {
               log("Generating graph SAM - ${samFunction?.callableId}")
               samFunction?.valueParameterSymbols?.forEach { valueParameterSymbol ->
@@ -356,7 +359,9 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
           Keys.Default,
           isPrimary = true,
           generateDelegatedNoArgConstructorCall = true,
-        )
+        ) {
+          visibility = Visibilities.Private
+        }
       } else {
         return emptyList()
       }
@@ -445,8 +450,8 @@ internal class DependencyGraphFirGenerator(session: FirSession) :
                 )
               }
           functions += generatedFunction.symbol
-        } else if (creator.isInterface) {
-          // It's an interface creator, generate the SAM function
+        } else if (owner.implements(creator.classSymbol.classId, session)) {
+          // Companion is the interface
           val samFunction = creator.classSymbol.findSamFunction(session)
           log("Generating graph creator function $samFunction")
           samFunction?.let { functions += generateSAMFunction(graphObject.classSymbol, it) }

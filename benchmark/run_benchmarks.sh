@@ -415,8 +415,10 @@ main() {
     build_only=$(echo "$parsed_output" | head -n1)
     local include_clean_builds
     include_clean_builds=$(echo "$parsed_output" | head -n2 | tail -n1)
-    local args
-    readarray -t args < <(echo "$parsed_output" | tail -n+3)
+    local args=()
+    while IFS= read -r line; do
+        args+=("$line")
+    done < <(echo "$parsed_output" | tail -n+3)
     
     # Check prerequisites (skip gradle-profiler check if build-only mode)
     if [ "$build_only" = true ]; then

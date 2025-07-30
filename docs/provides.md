@@ -16,6 +16,8 @@ Provider _functions_ should be `private` by default and are _automatically_ tran
 
 Provider _properties_ cannot be private yet due to [KT-76257](https://youtrack.jetbrains.com/issue/KT-76257/), but may be supported in the future.
 
+Providers may also be declared in [binding Containers](dependency-graphs.md#binding-containers).
+
 !!! tip
     It’s recommended to *not* call providers from each other.
 

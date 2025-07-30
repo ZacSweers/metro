@@ -1,4 +1,7 @@
 // ENABLE_DAGGER_INTEROP
+
+// Regression test for https://github.com/ZacSweers/metro/issues/334
+
 import dagger.multibindings.Multibinds
 
 @DependencyGraph

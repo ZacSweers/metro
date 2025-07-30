@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
@@ -34,6 +35,7 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import dev.zacsweers.metro.compiler.unsafeLazy
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -51,15 +53,13 @@ import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.isLocal
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.platform.isJs
-import org.jetbrains.kotlin.platform.isWasm
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class DependencyGraphTransformer(
   context: IrMetroContext,
@@ -81,7 +81,8 @@ internal class DependencyGraphTransformer(
   // Keyed by the source declaration
   private val processedMetroDependencyGraphsByClass = mutableMapOf<ClassId, IrClass>()
 
-  private val dependencyGraphNodeCache = DependencyGraphNodeCache(this, bindingContainerTransformer)
+  private val dependencyGraphNodeCache =
+    DependencyGraphNodeCache(this, contributionData, bindingContainerTransformer)
 
   override fun visitCall(expression: IrCall): IrExpression {
     return CreateGraphTransformer.visitCall(expression, metroContext)
@@ -90,28 +91,33 @@ internal class DependencyGraphTransformer(
   }
 
   override fun visitClass(declaration: IrClass): IrStatement {
+    val shouldNotProcess =
+      declaration.isLocal ||
+        declaration.kind == ClassKind.ENUM_CLASS ||
+        declaration.kind == ClassKind.ENUM_ENTRY
+    if (shouldNotProcess) {
+      return super.visitClass(declaration)
+    }
+
     log("Reading ${declaration.kotlinFqName}")
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM/JS compilation hint gen can't be done until
+    // Native/WASM/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints =
-      options.generateHintProperties &&
-        !pluginContext.platform.isNative() &&
-        !pluginContext.platform.isJs() &&
-        !pluginContext.platform.isWasm()
+      options.generateContributionHints && !options.generateJvmContributionHintsInFir
     if (generateHints) {
       contributionHintIrTransformer.visitClass(declaration)
     }
     membersInjectorTransformer.visitClass(declaration)
     injectConstructorTransformer.visitClass(declaration)
     assistedFactoryTransformer.visitClass(declaration)
-    bindingContainerTransformer.visitClass(declaration)
+    bindingContainerTransformer.findContainer(declaration)
 
     val dependencyGraphAnno =
       declaration.annotationsIn(symbols.dependencyGraphAnnotations).singleOrNull()
-    if (dependencyGraphAnno == null) return super.visitClass(declaration)
+        ?: return super.visitClass(declaration)
 
     val metroGraph =
       if (declaration.origin === Origins.ContributedGraph) {
@@ -260,17 +266,17 @@ internal class DependencyGraphTransformer(
 
       parentTracer.traceNested("Transform metro graph") { tracer ->
         IrGraphGenerator(
-            metroContext,
-            contributionData,
-            dependencyGraphNodeCache::get,
-            node,
-            metroGraph,
-            bindingGraph,
-            result,
-            tracer,
-            bindingContainerTransformer,
-            membersInjectorTransformer,
-            assistedFactoryTransformer,
+            metroContext = metroContext,
+            contributionData = contributionData,
+            dependencyGraphNodesByClass = dependencyGraphNodeCache::get,
+            node = node,
+            graphClass = metroGraph,
+            bindingGraph = bindingGraph,
+            sealResult = result,
+            parentTracer = tracer,
+            bindingContainerTransformer = bindingContainerTransformer,
+            membersInjectorTransformer = membersInjectorTransformer,
+            assistedFactoryTransformer = assistedFactoryTransformer,
           )
           .generate()
       }
@@ -281,12 +287,13 @@ internal class DependencyGraphTransformer(
         implementCreatorFunctions(node.sourceGraph, node.creator, node.sourceGraph.metroGraphOrFail)
 
         node.accessors
-          .map { it.first }
-          .plus(node.injectors.map { it.first })
-          .plus(node.bindsFunctions.map { it.first })
-          .plus(node.contributedGraphs.map { it.value })
+          .map { it.first.ir }
+          .plus(node.injectors.map { it.first.ir })
+          .plus(node.bindsCallables.map { it.callableMetadata.function })
+          .plus(node.contributedGraphs.map { it.value.ir })
+          .filterNot { it.isExternalParent }
           .forEach { function ->
-            with(function.ir) {
+            with(function) {
               val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
               if (declarationToFinalize.isFakeOverride) {
                 declarationToFinalize.finalizeFakeOverride(
@@ -294,7 +301,7 @@ internal class DependencyGraphTransformer(
                 )
                 body =
                   if (returnType != pluginContext.irBuiltIns.unitType) {
-                    stubExpressionBody()
+                    stubExpressionBody("Graph transform failed")
                   } else {
                     pluginContext.createIrBuilder(symbol).run {
                       irBlockBody { +irReturn(irGetObject(pluginContext.irBuiltIns.unitClass)) }
@@ -336,8 +343,10 @@ internal class DependencyGraphTransformer(
     val companionObject = sourceGraph.companionObject() ?: return
     val factoryCreator = creator?.expectAsOrNull<DependencyGraphNode.Creator.Factory>()
     if (factoryCreator != null) {
+      // TODO would be nice if we could just class delegate to the $$Impl object
       val implementFactoryFunction: IrClass.() -> Unit = {
-        requireSimpleFunction(factoryCreator.function.name.asString()).owner.apply {
+        val samName = factoryCreator.function.name.asString()
+        requireSimpleFunction(samName).owner.apply {
           if (isFakeOverride) {
             finalizeFakeOverride(metroGraph.thisReceiverOrFail)
           }
@@ -355,17 +364,20 @@ internal class DependencyGraphTransformer(
         }
       }
 
-      companionObject.apply {
-        if (factoryCreator.type.isInterface) {
-          // Implement the interface creator function directly in this companion object
-          implementFactoryFunction()
-        } else {
-          // Implement the factory's $$Impl class
-          val factoryClass =
-            factoryCreator.type
-              .requireNestedClass(Symbols.Names.MetroImpl)
-              .apply(implementFactoryFunction)
+      // Implement the factory's $$Impl class if present
+      val factoryImpl =
+        factoryCreator.type
+          .requireNestedClass(Symbols.Names.MetroImpl)
+          .apply(implementFactoryFunction)
 
+      if (
+        factoryCreator.type.isInterface &&
+          companionObject.implements(factoryCreator.type.classIdOrFail)
+      ) {
+        // Implement the interface creator function directly in this companion object
+        companionObject.implementFactoryFunction()
+      } else {
+        companionObject.apply {
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
             if (origin == Origins.MetroGraphFactoryCompanionGetter) {
@@ -376,7 +388,7 @@ internal class DependencyGraphTransformer(
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
                     symbol,
-                    irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()),
+                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList()),
                   )
                 }
             }

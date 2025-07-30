@@ -47,7 +47,8 @@ internal class IrContextualTypeKey(
     }
   }
 
-  fun toIrType(metroContext: IrMetroContext): IrType {
+  context(context: IrMetroContext)
+  fun toIrType(): IrType {
     rawType?.let {
       // Already cached it, use it
       return it
@@ -56,23 +57,20 @@ internal class IrContextualTypeKey(
     return when (val wt = wrappedType) {
       is WrappedType.Canonical -> wt.type
       is WrappedType.Provider -> {
-        val innerType =
-          IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType(metroContext)
-        innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.providerType)!!)
+        val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
+        innerType.wrapInProvider(context.referenceClass(wt.providerType)!!)
       }
       is WrappedType.Lazy -> {
-        val innerType =
-          IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType(metroContext)
-        innerType.wrapInProvider(metroContext.pluginContext.referenceClass(wt.lazyType)!!)
+        val innerType = IrContextualTypeKey(typeKey, wt.innerType, hasDefault).toIrType()
+        innerType.wrapInProvider(context.referenceClass(wt.lazyType)!!)
       }
       is WrappedType.Map -> {
         // For Map types, we need to create a Map<K, V> type
         val keyType = wt.keyType
-        val valueType =
-          IrContextualTypeKey(typeKey, wt.valueType, hasDefault).toIrType(metroContext)
+        val valueType = IrContextualTypeKey(typeKey, wt.valueType, hasDefault).toIrType()
 
         // Create a Map type with the key type and the processed value type
-        val mapClass = metroContext.pluginContext.irBuiltIns.mapClass
+        val mapClass = context.irBuiltIns.mapClass
         return mapClass.typeWith(keyType, valueType)
       }
     }
@@ -93,7 +91,6 @@ internal class IrContextualTypeKey(
           type
         }
       return typeToConvert.asContextualTypeKey(
-        context,
         with(context) {
           function.correspondingPropertySymbol?.owner?.qualifierAnnotation()
             ?: function.qualifierAnnotation()
@@ -105,7 +102,6 @@ internal class IrContextualTypeKey(
     context(context: IrMetroContext)
     fun from(parameter: IrValueParameter, type: IrType = parameter.type): IrContextualTypeKey =
       type.asContextualTypeKey(
-        context = context,
         qualifierAnnotation = with(context) { parameter.qualifierAnnotation() },
         hasDefault = parameter.defaultValue != null,
       )
@@ -161,21 +157,23 @@ internal class IrContextualTypeKey(
   }
 }
 
-internal fun IrType.findProviderSupertype(context: IrMetroContext): IrType? {
+context(context: IrMetroContext)
+internal fun IrType.findProviderSupertype(): IrType? {
   check(this is IrSimpleType) { "Unrecognized IrType '${javaClass}': ${render()}" }
   val rawTypeClass = rawTypeOrNull() ?: return null
   // Get the specific provider type it implements
-  return rawTypeClass.getAllSuperTypes(context.pluginContext, excludeSelf = false).firstOrNull {
+  return rawTypeClass.getAllSuperTypes(excludeSelf = false).firstOrNull {
     it.rawTypeOrNull()?.classId in context.symbols.providerTypes
   }
 }
 
-internal fun IrType.implementsProviderType(context: IrMetroContext): Boolean {
-  return findProviderSupertype(context) != null
+context(context: IrMetroContext)
+internal fun IrType.implementsProviderType(): Boolean {
+  return findProviderSupertype() != null
 }
 
+context(context: IrMetroContext)
 internal fun IrType.asContextualTypeKey(
-  context: IrMetroContext,
   qualifierAnnotation: IrAnnotation?,
   hasDefault: Boolean,
 ): IrContextualTypeKey {
@@ -184,7 +182,7 @@ internal fun IrType.asContextualTypeKey(
   val declaredType = this
 
   // Analyze the type to determine its wrapped structure
-  val wrappedType = declaredType.asWrappedType(context)
+  val wrappedType = declaredType.asWrappedType()
 
   val typeKey =
     IrTypeKey(
@@ -205,7 +203,8 @@ internal fun IrType.asContextualTypeKey(
   )
 }
 
-private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrType> {
+context(context: IrMetroContext)
+private fun IrSimpleType.asWrappedType(): WrappedType<IrType> {
   val rawClassId = rawTypeOrNull()?.classId
 
   // Check if this is a Map type
@@ -214,10 +213,10 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
     val valueType = arguments[1].typeOrFail
 
     // Recursively analyze the value type
-    val valueWrappedType = valueType.expectAs<IrSimpleType>().asWrappedType(context)
+    val valueWrappedType = valueType.expectAs<IrSimpleType>().asWrappedType()
 
     return WrappedType.Map(keyType, valueWrappedType) {
-      context.pluginContext.irBuiltIns.mapClass.typeWith(keyType, valueWrappedType.canonicalType())
+      context.irBuiltIns.mapClass.typeWith(keyType, valueWrappedType.canonicalType())
     }
   }
 
@@ -226,7 +225,7 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type
-    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(context)
+    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType()
 
     return WrappedType.Provider(innerWrappedType, rawClassId!!)
   }
@@ -236,7 +235,7 @@ private fun IrSimpleType.asWrappedType(context: IrMetroContext): WrappedType<IrT
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type
-    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType(context)
+    val innerWrappedType = innerType.expectAs<IrSimpleType>().asWrappedType()
 
     return WrappedType.Lazy(innerWrappedType, rawClassId!!)
   }
@@ -251,20 +250,20 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
     is WrappedType.Canonical -> type
     is WrappedType.Provider -> {
       val innerIrType = innerType.toIrType()
-      val providerType = context.pluginContext.referenceClass(providerType)!!
+      val providerType = context.referenceClass(providerType)!!
       providerType.typeWith(innerIrType)
     }
 
     is WrappedType.Lazy -> {
       val innerIrType = innerType.toIrType()
-      val lazyType = context.pluginContext.referenceClass(lazyType)!!
+      val lazyType = context.referenceClass(lazyType)!!
       lazyType.typeWith(innerIrType)
     }
 
     is WrappedType.Map -> {
       val keyIrType = keyType
       val valueIrType = valueType.toIrType()
-      context.pluginContext.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType)
+      context.irBuiltIns.mapClass.typeWith(keyIrType, valueIrType)
     }
   }
 }

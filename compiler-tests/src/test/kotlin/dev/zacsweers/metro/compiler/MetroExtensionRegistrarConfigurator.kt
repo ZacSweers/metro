@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.messageCollector
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
@@ -62,6 +63,10 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           MetroDirectives.ENABLE_SCOPED_INJECT_CLASS_HINTS in module.directives,
         shrinkUnusedBindings =
           module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS) ?: true,
+        chunkFieldInits =
+          module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS) ?: false,
+        generateJvmContributionHintsInFir =
+          MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR in module.directives,
         publicProviderSeverity =
           if (transformProvidersToPrivate) {
             MetroOptions.DiagnosticSeverity.NONE
@@ -76,6 +81,24 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             }
             if (addDaggerAnnotations) {
               add(ClassId.fromString("dagger/Component"))
+            }
+          },
+        customAssistedAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/assisted/Assisted"))
+            }
+          },
+        customAssistedFactoryAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/assisted/AssistedFactory"))
+            }
+          },
+        customAssistedInjectAnnotations =
+          buildSet {
+            if (addDaggerAnnotations) {
+              add(ClassId.fromString("dagger/assisted/AssistedInject"))
             }
           },
         customGraphFactoryAnnotations =
@@ -103,6 +126,20 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {
               add(ClassId.fromString("com/squareup/anvil/annotations/ContributesMultibinding"))
+            }
+          },
+        customContributesGraphExtensionAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent"))
+            }
+          },
+        customContributesGraphExtensionFactoryAnnotations =
+          buildSet {
+            if (MetroDirectives.WITH_ANVIL in module.directives) {
+              add(
+                ClassId.fromString("com/squareup/anvil/annotations/ContributesSubcomponent.Factory")
+              )
             }
           },
         customInjectAnnotations =
@@ -161,6 +198,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         options = options,
         // TODO ever support this in tests?
         lookupTracker = null,
+        expectActualTracker = ExpectActualTracker.DoNothing,
       )
     )
   }

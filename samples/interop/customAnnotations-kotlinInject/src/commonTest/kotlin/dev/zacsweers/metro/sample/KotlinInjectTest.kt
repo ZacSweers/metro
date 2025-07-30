@@ -39,14 +39,12 @@ class KotlinInjectTest {
     }
   }
 
-  class InjectedClass
   @Inject
-  constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
+  class InjectedClass(val message: String, @Named("qualified") val qualifiedMessage: String)
 
   @Singleton
-  class ScopedInjectedClass
   @Inject
-  constructor(val message: String, @Named("qualified") val qualifiedMessage: String)
+  class ScopedInjectedClass(val message: String, @Named("qualified") val qualifiedMessage: String)
 
   @Inject
   class AssistedClass(@Assisted val assisted: String, val message: String) {

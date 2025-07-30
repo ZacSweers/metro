@@ -61,6 +61,8 @@ interface AppGraph {
 }
 ```
 
+`@Binds` declarations may also be declared in [binding Containers](dependency-graphs.md#binding-containers).
+
 !!! note
     In theory, you can implement a provider with a getter that replicates this (similar to how kotlin-inject uses `@get:Provider` + `this`), but this will be an error in FIR because Metro can generate more efficient code at compile-time if you use `@Binds`. This is because Metro can avoid calling the function entirely and just use this information at compile-time to optimize the generated code.
 
@@ -109,7 +111,7 @@ Alternatively, they can be declared with an `@Multibinds`-annotated accessor pro
 ```kotlin
 @DependencyGraph
 interface MapMultibinding {
-  @Multibinding
+  @Multibinds
   val ints: Map<Int, Int>
 }
 ```
@@ -121,7 +123,7 @@ Map multibindings support injecting *map providers*, where the value type can be
 ```kotlin
 @DependencyGraph
 interface MapMultibinding {
-  @Multibinding
+  @Multibinds
   val ints: Map<Int, Provider<Int>>
 }
 ```

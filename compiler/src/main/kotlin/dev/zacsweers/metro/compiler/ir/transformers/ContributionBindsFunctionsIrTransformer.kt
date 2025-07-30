@@ -13,6 +13,8 @@ import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.getConstBooleanArgumentOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireNestedClass
@@ -31,6 +33,7 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -107,7 +110,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
     // Transform them if necessary
     // and add new fake overrides
     declaration
-      .getAllSuperTypes(pluginContext)
+      .getAllSuperTypes()
       .filterNot { it.rawTypeOrNull()?.isExternalParent == true }
       .mapNotNull { it.rawTypeOrNull() }
       .forEach {
@@ -139,7 +142,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
       fun IrClass.generateBindingFunction(metroContext: IrMetroContext): IrSimpleFunction =
         with(metroContext) {
-          val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull(pluginContext)
+          val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull()
           val bindingType =
             explicitBindingType ?: annotatedType.superTypes.single() // Checked in FIR
 
@@ -154,6 +157,9 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
           val suffix = buildString {
             append("As")
+            if (bindingType.isMarkedNullable()) {
+              append("Nullable")
+            }
             bindingType
               .rawType()
               .classIdOrFail
@@ -166,7 +172,7 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
 
           // We need a unique name because addFakeOverrides() doesn't handle overloads with
           // different return types
-          val name = (callableName + "As" + suffix).asName()
+          val name = (callableName + suffix).asName()
           addFunction {
               this.name = name
               this.returnType = bindingType
@@ -286,28 +292,27 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
   }
 
   private fun IrFunction.buildBindsAnnotation(): IrConstructorCall {
-    return pluginContext.buildAnnotation(symbol, symbols.bindsConstructor)
+    return buildAnnotation(symbol, symbols.bindsConstructor)
   }
 
   private fun IrFunction.buildIntoSetAnnotation(): IrConstructorCall {
-    return pluginContext.buildAnnotation(symbol, symbols.intoSetConstructor)
+    return buildAnnotation(symbol, symbols.intoSetConstructor)
   }
 
   private fun IrFunction.buildIntoMapAnnotation(): IrConstructorCall {
-    return pluginContext.buildAnnotation(symbol, symbols.intoMapConstructor)
+    return buildAnnotation(symbol, symbols.intoMapConstructor)
   }
 }
 
 // Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
 // checks for non-interop
-private fun IrConstructorCall.bindingTypeOrNull(
-  pluginContext: IrPluginContext
-): Pair<IrType?, Boolean> {
+context(context: IrPluginContext)
+private fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
   // Return a binding defined using Metro's API
   getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
     // bindingType is actually an annotation
     return bindingType.typeArguments.getOrNull(0)?.takeUnless {
-      it == pluginContext.irBuiltIns.nothingType
+      it == context.irBuiltIns.nothingType
     } to false
   }
   // Return a boundType defined using anvil KClass
