@@ -10,8 +10,11 @@ import org.jetbrains.kotlin.fir.analysis.checkers.classKind
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
+import org.jetbrains.kotlin.fir.declarations.FirField
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.utils.hasBody
@@ -31,7 +34,11 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
 
   override fun needTransformStatus(declaration: FirDeclaration): Boolean {
     // First check if this is an accessor in a dependency graph
+    // Actually wild that this happens??
+    if (declaration.origin is FirDeclarationOrigin.Java.Source) return false
     if (declaration !is FirCallableDeclaration) return false
+    if (declaration is FirConstructor) return false
+    if (declaration is FirField) return false
 
     // If it's already an override, nothing needed here
     if (declaration.symbol.rawStatus.isOverride) return false
