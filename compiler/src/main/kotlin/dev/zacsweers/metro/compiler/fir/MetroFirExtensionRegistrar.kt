@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.fir.generators.LoggingFirDeclarationGenerati
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactorySupertypeGenerator
+import dev.zacsweers.metro.compiler.fir.generators.kotlinOnly
 import kotlin.io.path.appendText
 import kotlin.io.path.createFile
 import kotlin.io.path.createParentDirectories
@@ -107,11 +108,13 @@ public class MetroFirExtensionRegistrar(
         } else {
           MetroLogger.NONE
         }
-      if (logger == MetroLogger.NONE) {
-        delegate(session)
-      } else {
-        LoggingFirDeclarationGenerationExtension(session, logger, delegate(session))
-      }
+      val extension =
+        if (logger == MetroLogger.NONE) {
+          delegate(session)
+        } else {
+          LoggingFirDeclarationGenerationExtension(session, logger, delegate(session))
+        }
+      extension.kotlinOnly()
     }
   }
 
@@ -127,11 +130,13 @@ public class MetroFirExtensionRegistrar(
         } else {
           MetroLogger.NONE
         }
-      if (logger == MetroLogger.NONE) {
-        delegate(session)
-      } else {
-        LoggingFirSupertypeGenerationExtension(session, logger, delegate(session))
-      }
+      val extension =
+        if (logger == MetroLogger.NONE) {
+          delegate(session)
+        } else {
+          LoggingFirSupertypeGenerationExtension(session, logger, delegate(session))
+        }
+      extension.kotlinOnly()
     }
   }
 }
