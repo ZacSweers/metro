@@ -33,7 +33,7 @@ internal class FirProvidesStatusTransformer(session: FirSession) :
 
     return when (declaration) {
       is FirCallableDeclaration -> {
-        if (declaration.symbol.isOverride) return false
+        if (declaration.symbol.rawStatus.isOverride) return false
         if (declaration !is FirSimpleFunction) return false
 
         // A later FIR checker will check this case
