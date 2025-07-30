@@ -113,13 +113,20 @@ import kotlin.reflect.KClass
  * Contributed graphs may also be chained, but note that [isExtendable] must be true to do so!
  *
  * @property scope The scope in which to include this contributed graph interface.
+ * @property excludes Optional list of excluded contributing classes (requires a [scope] to be
+ *   defined).
  * @property isExtendable If enabled, marks this graph as available for extension and generates
  *   extra metadata about this graph's available bindings for child graphs to read.
+ * @property bindingContainers Optional list of included binding containers. See the doc on
+ *   [BindingContainer] for more details.
  */
 @Target(CLASS)
 public annotation class ContributesGraphExtension(
-  val scope: KClass<*>,
+  val scope: KClass<*> = Nothing::class,
+  val additionalScopes: Array<KClass<*>> = [],
+  val excludes: Array<KClass<*>> = [],
   val isExtendable: Boolean = false,
+  val bindingContainers: Array<KClass<*>> = [],
 ) {
   /**
    * A factory for the contributed graph extension.

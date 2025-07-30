@@ -44,9 +44,33 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedBindingContainerGetsExcluded.kt")
+    public void testContributedBindingContainerGetsExcluded() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerGetsExcluded.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedBindingContainerGetsExcludedInContributedGraph.kt")
+    public void testContributedBindingContainerGetsExcludedInContributedGraph() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerGetsExcludedInContributedGraph.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedBindingContainerReplacements.kt")
     public void testContributedBindingContainerReplacements() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerReplacements.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedBindingContainerReplacesContributedBinding.kt")
+    public void testContributedBindingContainerReplacesContributedBinding() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerReplacesContributedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedBindingContainerReplacesContributedBindingInContributedGraph.kt")
+    public void testContributedBindingContainerReplacesContributedBindingInContributedGraph() {
+      runTest("compiler-tests/src/test/data/box/aggregation/ContributedBindingContainerReplacesContributedBindingInContributedGraph.kt");
     }
 
     @Test

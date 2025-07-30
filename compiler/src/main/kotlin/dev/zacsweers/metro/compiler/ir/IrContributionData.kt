@@ -20,12 +20,15 @@ import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.name.ClassId
 
-internal class IrContributionData(private val metroContext: IrMetroContext) {
-  private val contributions = mutableMapOf<ClassId, MutableSet<IrType>>()
-  private val externalContributions = mutableMapOf<ClassId, Set<IrType>>()
+private typealias Scope = ClassId
 
-  private val bindingContainerContributions = mutableMapOf<ClassId, MutableSet<IrClass>>()
-  private val externalBindingContainerContributions = mutableMapOf<ClassId, Set<IrClass>>()
+internal class IrContributionData(private val metroContext: IrMetroContext) {
+
+  private val contributions = mutableMapOf<Scope, MutableSet<IrType>>()
+  private val externalContributions = mutableMapOf<Scope, Set<IrType>>()
+
+  private val bindingContainerContributions = mutableMapOf<Scope, MutableSet<IrClass>>()
+  private val externalBindingContainerContributions = mutableMapOf<Scope, Set<IrClass>>()
 
   // Scoped inject classes are currently tracked separately from contributions because we need to
   // maintain the full scope info (e.g. @Singleton, @SingleIn(AppScope)) for accurate comparisons.
@@ -35,27 +38,26 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
   private val scopeToInjectClasses = mutableMapOf<IrAnnotation, MutableSet<IrTypeKey>>()
   private val externalScopeToInjectClasses = mutableMapOf<IrAnnotation, Set<IrTypeKey>>()
 
-  fun addContribution(scope: ClassId, contribution: IrType) {
+  fun addContribution(scope: Scope, contribution: IrType) {
     contributions.getOrPut(scope) { mutableSetOf() }.add(contribution)
   }
 
-  fun getContributions(scope: ClassId): Set<IrType> = buildSet {
+  fun getContributions(scope: Scope): Set<IrType> = buildSet {
     contributions[scope]?.let(::addAll)
     addAll(findExternalContributions(scope))
   }
 
-  fun addBindingContainerContribution(scope: ClassId, contribution: IrClass) {
+  fun addBindingContainerContribution(scope: Scope, contribution: IrClass) {
     bindingContainerContributions.getOrPut(scope) { mutableSetOf() }.add(contribution)
   }
 
-  fun getBindingContainerContributions(scope: ClassId): Set<IrClass> = buildSet {
+  fun getBindingContainerContributions(scope: Scope): Set<IrClass> = buildSet {
     bindingContainerContributions[scope]?.let(::addAll)
     addAll(findExternalBindingContainerContributions(scope))
   }
 
-  private fun findVisibleContributionClassesForScopeInHints(scopeClassId: ClassId): Set<IrClass> {
-    val functionsInPackage =
-      metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scopeClassId))
+  private fun findVisibleContributionClassesForScopeInHints(scope: Scope): Set<IrClass> {
+    val functionsInPackage = metroContext.referenceFunctions(Symbols.CallableIds.scopeHint(scope))
     val contributingClasses =
       functionsInPackage
         .filter {
@@ -74,19 +76,19 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
 
   // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
   //  something we could possibly optimize in the future.
-  private fun findExternalContributions(scopeClassId: ClassId): Set<IrType> {
-    return externalContributions.getOrPut(scopeClassId) {
-      val contributingClasses = findVisibleContributionClassesForScopeInHints(scopeClassId)
-      getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = false)
+  private fun findExternalContributions(scope: Scope): Set<IrType> {
+    return externalContributions.getOrPut(scope) {
+      val contributingClasses = findVisibleContributionClassesForScopeInHints(scope)
+      getScopedContributions(contributingClasses, scope, bindingContainersOnly = false)
     }
   }
 
   // TODO this may do multiple lookups of the same origin class if it contributes to multiple scopes
   //  something we could possibly optimize in the future.
-  private fun findExternalBindingContainerContributions(scopeClassId: ClassId): Set<IrClass> {
-    return externalBindingContainerContributions.getOrPut(scopeClassId) {
-      val contributingClasses = findVisibleContributionClassesForScopeInHints(scopeClassId)
-      getScopedContributions(contributingClasses, scopeClassId, bindingContainersOnly = true)
+  private fun findExternalBindingContainerContributions(scope: Scope): Set<IrClass> {
+    return externalBindingContainerContributions.getOrPut(scope) {
+      val contributingClasses = findVisibleContributionClassesForScopeInHints(scope)
+      getScopedContributions(contributingClasses, scope, bindingContainersOnly = true)
         .mapNotNullToSet {
           it.classOrNull?.owner?.takeIf {
             it.isAnnotatedWithAny(metroContext.symbols.classIds.bindingContainerAnnotations)
@@ -97,16 +99,17 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
 
   private fun getScopedContributions(
     contributingClasses: Collection<IrClass>,
-    scopeClassId: ClassId,
+    scope: Scope,
     bindingContainersOnly: Boolean,
   ): Set<IrType> {
     val filteredContributions = contributingClasses.toMutableList()
 
     // Remove replaced contributions
-    filteredContributions
+    contributingClasses
       .flatMap { contributingType ->
         contributingType
           .annotationsIn(metroContext.symbols.classIds.allContributesAnnotations)
+          .filter { it.scopeOrNull() == scope }
           .flatMap { annotation -> annotation.replacedClasses() }
       }
       .distinct()
@@ -137,7 +140,7 @@ internal class IrContributionData(private val metroContext: IrMetroContext) {
             val contributionScope =
               metroContribution.scopeOrNull()
                 ?: error("No scope found for @MetroContribution annotation")
-            if (contributionScope == scopeClassId) {
+            if (contributionScope == scope) {
               nestedClass.defaultType
             } else {
               null

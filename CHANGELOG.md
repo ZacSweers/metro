@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+- **Enhancement**: Support `excludes`, `bindingContainers`, and `additionalScopes` in `@ContributesGraphExtension`.
+- **Enhancement**: Allow binding containers and regular contributed classes to replace each other in contribution merging.
+- **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
+
 0.5.3
 -----
 
@@ -40,7 +44,7 @@ _2025-07-28_
 - Add a `ViewModel` assisted injection example to `compose-navigation-app` sample.
 - Small improvements to the doc site (404 page, favicon, etc.)
 
-Special thanks to [@hossain-khan](https://github.com/hossain-khan), [@bnorm](https://github.com/bnorm), [@yschimke](https://github.com/yschimke), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
+Special thanks to [@hossain-khan](https://github.com/hossain-khan), [@bnorm](https://github.com/bnorm), [@yschimke](https://github.com/yschimke), [@kevinguitar](https://github.com/kevinguitar), and [@JoelWilcox](https://github.com/JoelWilcox) for contributing to this release!
 
 0.5.2
 -----

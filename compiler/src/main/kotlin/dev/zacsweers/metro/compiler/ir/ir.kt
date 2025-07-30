@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
@@ -48,6 +49,7 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -746,8 +748,15 @@ internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
 internal fun IrConstructorCall.excludesArgument() =
   getValueArgument(Symbols.Names.excludes)?.expectAsOrNull<IrVararg>()
 
+internal fun IrConstructorCall.additionalScopesArgument() =
+  getValueArgument(Symbols.Names.additionalScopes)?.expectAsOrNull<IrVararg>()
+
 internal fun IrConstructorCall.excludedClasses(): Set<IrClassReference> {
   return excludesArgument().toClassReferences()
+}
+
+internal fun IrConstructorCall.additionalScopes(): Set<IrClassReference> {
+  return additionalScopesArgument().toClassReferences()
 }
 
 internal fun IrConstructorCall.includesArgument() =
@@ -1427,4 +1436,9 @@ internal fun IrAnnotation.allowEmpty(): Boolean {
     context.options.enableDaggerRuntimeInterop &&
       ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
   return assumeAllowEmpty
+}
+
+context(scope: IrBuilderWithScope)
+internal fun Collection<IrClassReference>.copyToIrVararg() = ifNotEmpty {
+  scope.irVararg(first().type, map { value -> value.deepCopyWithSymbols() })
 }
