@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.generators.DependencyGraphFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.GraphFactoryFirSupertypeGenerator
 import dev.zacsweers.metro.compiler.fir.generators.InjectedClassFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.fir.generators.LoggingFirStatusTransformerExtension
 import dev.zacsweers.metro.compiler.fir.generators.LoggingFirSupertypeGenerationExtension
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.ProvidesFactorySupertypeGenerator
@@ -26,6 +27,7 @@ import kotlin.io.path.deleteIfExists
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension
 
 public class MetroFirExtensionRegistrar(
@@ -47,7 +49,7 @@ public class MetroFirExtensionRegistrar(
       false,
     )
     if (options.transformProvidersToPrivate) {
-      +::FirProvidesStatusTransformer
+      +statusTransformer("Status transformations - private", ::FirProvidesStatusTransformer, false)
     }
     +::FirAccessorOverrideStatusTransformer
     +declarationGenerator("FirGen - InjectedClass", ::InjectedClassFirGenerator, true)
@@ -136,6 +138,28 @@ public class MetroFirExtensionRegistrar(
           delegate(session)
         } else {
           LoggingFirSupertypeGenerationExtension(session, logger, delegate(session))
+        }
+      extension.kotlinOnly()
+    }
+  }
+
+  private fun statusTransformer(
+    tag: String,
+    delegate: ((FirSession) -> FirStatusTransformerExtension),
+    enableLogging: Boolean = false,
+  ): FirStatusTransformerExtension.Factory {
+    return FirStatusTransformerExtension.Factory { session ->
+      val logger =
+        if (enableLogging) {
+          loggerFor(MetroLogger.Type.FirStatusTransformation, tag)
+        } else {
+          MetroLogger.NONE
+        }
+      val extension =
+        if (logger == MetroLogger.NONE) {
+          delegate(session)
+        } else {
+          LoggingFirStatusTransformerExtension(session, logger, delegate(session))
         }
       extension.kotlinOnly()
     }
