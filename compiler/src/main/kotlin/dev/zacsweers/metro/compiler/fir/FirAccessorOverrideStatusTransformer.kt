@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 
 internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
@@ -102,7 +103,14 @@ internal class FirAccessorOverrideStatusTransformer(session: FirSession) :
       val matchingCallable =
         contributedInterface
           .callableDeclarations(session, includeSelf = true, includeAncestors = false)
-          .firstOrNull { it.name == name && it.resolvedReturnType == returnType }
+          .firstOrNull {
+            // Functions with params are not accessor candidates
+            if (it is FirNamedFunctionSymbol && it.valueParameterSymbols.isNotEmpty())
+              return@firstOrNull false
+            // Extensions are not accessor candidates
+            if (it.receiverParameterSymbol != null) return@firstOrNull false
+            it.name == name && it.resolvedReturnType == returnType
+          }
 
       if (matchingCallable != null) {
         needsOverride = true
