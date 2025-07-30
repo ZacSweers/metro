@@ -15,7 +15,7 @@ if ! [[ ${local} ]]; then
   set -ex
 
   export GIT_CLONE_PROTECTION_ACTIVE=false
-  REPO="git@github.com:zacsweers/metro.git"
+  REPO="https://github.com/ZacSweers/metro.git"
   DIR=temp-clone
 
   # Delete any existing temporary website clone
@@ -27,20 +27,16 @@ if ! [[ ${local} ]]; then
   # Move working directory into temp folder
   cd ${DIR}
 
-  # Generate the API docs
-  # --rerun-tasks because Dokka has bugs :(
-  ./gradlew :dokkaGenerate --rerun-tasks --no-build-cache
+  # Generate API docs using shared script
+  ./scripts/generate_docs_dokka.sh
 
   cd ..
   rm -rf ${DIR}
   rm -rf site
 fi
 
-# Copy in special files that GitHub wants in the project root.
-cp CHANGELOG.md docs/changelog.md
-cp .github/CONTRIBUTING.md docs/contributing.md
-cp samples/README.md docs/samples.md
-cp .github/CODE_OF_CONDUCT.md docs/code-of-conduct.md
+# Copy documentation files using shared script
+./scripts/copy_docs_files.sh
 
 # Build the site and push the new files up to GitHub
 if ! [[ ${local} ]]; then
