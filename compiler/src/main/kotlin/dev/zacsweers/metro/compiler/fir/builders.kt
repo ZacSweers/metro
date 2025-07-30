@@ -124,7 +124,7 @@ internal fun FirExtension.copyParameters(
       buildValueParameterCopy(originalFir) {
           name = original.name
           origin = Keys.RegularParameter.origin
-          symbol = FirValueParameterSymbol(original.symbol.name)
+          symbol = FirValueParameterSymbol()
           containingDeclarationSymbol = functionBuilder.symbol
           parameterInit(original)
           if (!copyParameterDefaults) {
@@ -173,7 +173,7 @@ internal fun FirExtension.buildSimpleValueParameter(
     this.origin = origin
     returnTypeRef = type
     this.name = name
-    symbol = FirValueParameterSymbol(name)
+    symbol = FirValueParameterSymbol()
     if (hasDefaultValue) {
       // TODO: check how it will actually work in fir2ir
       defaultValue = buildExpressionStub {

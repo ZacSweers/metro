@@ -3,3 +3,5 @@
 object InvalidContainer {
   @Provides fun <!PROVIDES_ERROR!>provideString<!>(): String = "Hello"
 }
+
+/* GENERATED_FIR_TAGS: functionDeclaration, objectDeclaration, stringLiteral */

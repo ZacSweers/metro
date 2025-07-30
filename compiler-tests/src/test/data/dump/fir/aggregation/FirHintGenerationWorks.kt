@@ -10,3 +10,5 @@ interface ContributedInterface2
 @ContributesTo(AppScope::class)
 @ContributesTo(Unit::class)
 interface ContributedInterface3
+
+/* GENERATED_FIR_TAGS: classReference, interfaceDeclaration */

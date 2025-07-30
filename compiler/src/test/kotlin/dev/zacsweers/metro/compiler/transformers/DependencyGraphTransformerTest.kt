@@ -238,7 +238,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
+            e: ExampleGraph.kt:13:28 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.String
 
                 kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
@@ -271,7 +271,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-            e: ExampleGraph.kt:13:20 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
+            e: ExampleGraph.kt:13:44 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: @dev.zacsweers.metro.Named("hello") kotlin.String
 
                 @dev.zacsweers.metro.Named("hello") kotlin.String is injected at
                     [test.ExampleGraph] test.ExampleClass(…, text)
@@ -1881,7 +1881,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
           e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
           ├─ Binding 1: ExampleGraph.kt:10:3
-          ├─ Binding 2: ExampleGraph.kt:11:3
+          ├─ Binding 2: ExampleGraph.kt:11:10
         """
           .trimIndent()
       )
@@ -1912,8 +1912,8 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
       assertDiagnostics(
         """
           e: ExampleGraph.kt:7:11 [Metro/DuplicateBinding] Duplicate binding for test.ExampleClass
-          ├─ Binding 1: ExampleGraph.kt:10:3
-          ├─ Binding 2: ExampleGraph.kt:11:3
+          ├─ Binding 1: ExampleGraph.kt:10:10
+          ├─ Binding 2: ExampleGraph.kt:11:10
         """
           .trimIndent()
       )

@@ -49,7 +49,7 @@ internal fun IrAnnotationContainer.irCallableMetadata(
   val callableMetadataAnno =
     getAnnotation(Symbols.FqNames.CallableMetadataClass)
       ?: error(
-        "No @CallableMetadata found on ${expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}. This is a bug in the Metro compiler."
+        "No @CallableMetadata found on ${this.expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}. This is a bug in the Metro compiler."
       )
   return callableMetadataAnno.toIrCallableMetadata(mirrorFunction, sourceAnnotations)
 }

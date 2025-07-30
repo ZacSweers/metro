@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -95,12 +96,7 @@ internal class IrContributedGraphGenerator(
             append("::class])`).")
           }
         }
-        // TODO in kotlin 2.2.20 remove message collector
-        if (sourceGraph.fileOrNull == null) {
-          messageCollector.report(CompilerMessageSeverity.ERROR, message, sourceGraph.location())
-        } else {
-          diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
-        }
+        diagnosticReporter.at(sourceGraph).report(MetroDiagnostics.METRO_ERROR, message)
         exitProcessing()
       }
     }

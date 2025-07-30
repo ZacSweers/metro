@@ -10,3 +10,5 @@ interface LoggedInGraph {
 
 @DependencyGraph(scope = AppScope::class, isExtendable = true)
 interface ExampleGraph
+
+/* GENERATED_FIR_TAGS: classDeclaration, classReference, functionDeclaration, interfaceDeclaration, nestedClass */

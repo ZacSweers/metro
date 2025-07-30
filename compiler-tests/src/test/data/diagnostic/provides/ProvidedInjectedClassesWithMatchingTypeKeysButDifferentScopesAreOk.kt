@@ -8,3 +8,5 @@ interface ExampleGraph {
 
 @Inject
 class ExampleClass
+
+/* GENERATED_FIR_TAGS: classDeclaration, classReference, functionDeclaration, interfaceDeclaration, propertyDeclaration */

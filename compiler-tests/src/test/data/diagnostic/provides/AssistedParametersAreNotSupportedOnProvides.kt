@@ -4,3 +4,5 @@ interface Example {
   @Provides
   fun provideString(<!PROVIDES_ERROR!>@Assisted<!> int: Int): String = "Hello, assisted parameters"
 }
+
+/* GENERATED_FIR_TAGS: functionDeclaration, interfaceDeclaration, stringLiteral */

@@ -13,3 +13,6 @@ interface ExampleGraph {
   @Binds fun String.<!PROVIDES_ERROR!>bindSelf<!>(): String
   @Binds @Named("named") fun @receiver:Named("named") String.<!PROVIDES_ERROR!>bindSameNamed<!>(): String
 }
+
+/* GENERATED_FIR_TAGS: annotationUseSiteTargetReceiver, funWithExtensionReceiver, functionDeclaration,
+interfaceDeclaration, propertyDeclaration, propertyWithExtensionReceiver, stringLiteral */

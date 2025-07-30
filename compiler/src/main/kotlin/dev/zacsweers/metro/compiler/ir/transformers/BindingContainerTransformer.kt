@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBinding
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -653,14 +654,13 @@ internal class BindingContainerTransformer(context: IrMetroContext) : IrMetroCon
         val message =
           "No metadata found for ${metadataDeclaration.kotlinFqName} from " +
             "another module. Did you run the Metro compiler plugin on this module?"
-        error(message)
-        // TODO kotlin 2.2.20
-        //  diagnosticReporter
-        //    .at(declaration)
-        //    .report(
-        //      MetroIrErrors.METRO_ERROR,
-        //      message,
-        //    )
+        diagnosticReporter
+          .at(declaration)
+          .report(
+            MetroDiagnostics.METRO_ERROR,
+            message,
+          )
+        return null
       }
       cache[declarationFqName] = Optional.empty()
       return null

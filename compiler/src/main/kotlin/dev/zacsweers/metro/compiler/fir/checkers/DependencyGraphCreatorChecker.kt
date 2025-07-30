@@ -3,8 +3,8 @@
 package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -53,7 +53,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (declaration.classKind != ClassKind.INTERFACE) {
         reporter.reportOn(
           declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations can only be interfaces.",
         )
         return
@@ -86,7 +86,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (targetGraphAnnotation == null) {
         reporter.reportOn(
           createFunction.resolvedReturnTypeRef.source ?: declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
         )
         return
@@ -100,7 +100,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         ) {
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,
-            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            MetroDiagnostics.GRAPH_CREATORS_ERROR,
             "${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a contributed graph extension but found ${it.classId.asSingleFqName()}.",
           )
           return
@@ -109,7 +109,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         if (it.classId != declaration.getContainingClassSymbol()?.classId) {
           reporter.reportOn(
             targetGraphAnnotation.source ?: declaration.source,
-            FirMetroErrors.GRAPH_CREATORS_ERROR,
+            MetroDiagnostics.GRAPH_CREATORS_ERROR,
             "${annotationClassId.relativeClassName.asString()} declarations must be nested within the contributed graph they create but was ${declaration.getContainingClassSymbol()?.classId?.asSingleFqName() ?: "top-level"}.",
           )
           return
@@ -132,7 +132,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (overlapping.isNotEmpty()) {
         reporter.reportOn(
           graphFactoryAnnotation.source ?: declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations must contribute to a different scope than their contributed graph. However, this factory and its contributed graph both contribute to '${overlapping.map { it.asFqNameString() }.single()}'.",
         )
         return
@@ -148,7 +148,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (!paramTypes.add(typeKey)) {
         reporter.reportOn(
           param.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters must be unique.",
         )
         continue
@@ -178,7 +178,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       val reportAnnotationCountError = {
         reporter.reportOn(
           param.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} abstract function parameters must be annotated with exactly one @Includes, @Provides, or @Extends.",
         )
       }
@@ -193,7 +193,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
       if (type.classId == targetGraph?.classId) {
         reporter.reportOn(
           param.resolvedReturnTypeRef.source ?: param.source ?: declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "${annotationClassId.relativeClassName.asString()} declarations cannot have their target graph type as parameters.",
         )
         continue
@@ -204,7 +204,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
           if (type.classKind in NON_INCLUDES_KINDS || type.classId.isPlatformType()) {
             reporter.reportOn(
               param.source,
-              FirMetroErrors.GRAPH_CREATORS_ERROR,
+              MetroDiagnostics.GRAPH_CREATORS_ERROR,
               "@Includes cannot be applied to enums, annotations, or platform types.",
             )
           }
@@ -221,7 +221,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             dependencyGraphAnno == null -> {
               reporter.reportOn(
                 param.source,
-                FirMetroErrors.GRAPH_CREATORS_ERROR,
+                MetroDiagnostics.GRAPH_CREATORS_ERROR,
                 "@Extends types must be annotated with @DependencyGraph.",
               )
             }
@@ -229,7 +229,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             dependencyGraphAnno.getBooleanArgument(Symbols.Names.isExtendable, session) != true -> {
               reporter.reportOn(
                 param.source,
-                FirMetroErrors.GRAPH_CREATORS_ERROR,
+                MetroDiagnostics.GRAPH_CREATORS_ERROR,
                 "@Extends graphs must be extendable (set DependencyGraph.isExtendable to true).",
               )
             }
@@ -240,7 +240,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
               if (overlaps.isNotEmpty()) {
                 reporter.reportOn(
                   param.source,
-                  FirMetroErrors.GRAPH_CREATORS_ERROR,
+                  MetroDiagnostics.GRAPH_CREATORS_ERROR,
                   buildString {
                     appendLine(
                       "Graph extensions (@Extends) may not have overlapping aggregation scopes with its parent graph but the following scopes overlap:"
@@ -257,7 +257,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                 seenParentScopesToParent.put(parentScope, parentClassId)?.let { previous ->
                   reporter.reportOn(
                     param.source,
-                    FirMetroErrors.GRAPH_CREATORS_ERROR,
+                    MetroDiagnostics.GRAPH_CREATORS_ERROR,
                     buildString {
                       appendLine(
                         "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
@@ -282,7 +282,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
               if (overlaps.isNotEmpty()) {
                 reporter.reportOn(
                   param.source,
-                  FirMetroErrors.GRAPH_CREATORS_ERROR,
+                  MetroDiagnostics.GRAPH_CREATORS_ERROR,
                   buildString {
                     appendLine(
                       "Graph extensions (@Extends) may not have overlapping scope annotations with its parent graph but the following annotations overlap:"
@@ -302,7 +302,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                   ->
                   reporter.reportOn(
                     param.source,
-                    FirMetroErrors.GRAPH_CREATORS_ERROR,
+                    MetroDiagnostics.GRAPH_CREATORS_ERROR,
                     buildString {
                       appendLine(
                         "Graph extensions (@Extends) may not have multiple parents with the same aggregation scopes:"
