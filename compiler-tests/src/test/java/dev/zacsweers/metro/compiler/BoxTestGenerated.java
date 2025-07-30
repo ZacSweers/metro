@@ -329,15 +329,16 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultibindingGraphWithWithScopedSetDeps.kt");
     }
 
+    @Test
     @TestMetadata("MultipleBindsInSeparateGraphsAreValid.kt")
     public void testMultipleBindsInSeparateGraphsAreValid() {
       runTest("compiler-tests/src/test/data/box/dependencygraph/MultipleBindsInSeparateGraphsAreValid.kt");
     }
 
     @Test
-    @TestMetadata("OverrideCompatibleBindingAccessors.kt")
-    public void testOverrideCompatibleBindingAccessors() {
-      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleBindingAccessors.kt");
+    @TestMetadata("OverrideCompatibleGraphBindingAccessors.kt")
+    public void testOverrideCompatibleGraphBindingAccessors() {
+      runTest("compiler-tests/src/test/data/box/dependencygraph/OverrideCompatibleGraphBindingAccessors.kt");
     }
 
     @Test
