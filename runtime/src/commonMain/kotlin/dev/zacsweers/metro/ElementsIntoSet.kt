@@ -17,10 +17,13 @@ package dev.zacsweers.metro
 
 /**
  * The callable's return type is a `Collection<T>` and all values are contributed to the set. The
- * `Collection<T>` produced from the accumulation of values will be immutable. An example use is to
- * provide a default empty set binding, which is otherwise not possible using [IntoSet].
+ * `Collection<T>` produced from the accumulation of values will be immutable.
  */
 @MustBeDocumented
-@Target(AnnotationTarget.FUNCTION)
+@Target(AnnotationTarget.FUNCTION,
+  AnnotationTarget.FIELD,
+  AnnotationTarget.PROPERTY,
+  AnnotationTarget.PROPERTY_GETTER,
+)
 @Retention(AnnotationRetention.RUNTIME)
 public annotation class ElementsIntoSet

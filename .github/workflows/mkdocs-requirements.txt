@@ -18,3 +18,8 @@ repackage==0.7.3
 six==1.17.0
 termcolor==3.1.0
 tornado==6.5.1
+
+# Imaging dependencies for mkdocs-material social plugin
+# https://squidfunk.github.io/mkdocs-material/plugins/requirements/image-processing/
+cairosvg==2.8.2
+pillow==11.3.0

@@ -108,13 +108,18 @@ internal class IrBindingGraph(
     originalQualifier: IrAnnotation?,
     bindingStack: IrBindingStack,
   ): IrBinding.Multibinding {
-    val multibindingType =
+    val multibindingTypeKey =
       when {
         annotations.isIntoSet -> {
-          metroContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
+          val setType = metroContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
+          contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
         }
 
-        annotations.isElementsIntoSet -> contextKey.typeKey.type
+        annotations.isElementsIntoSet -> {
+          val elementType = contextKey.typeKey.type.expectAs<IrSimpleType>().arguments.single().typeOrFail
+          val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
+          contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
+        }
         annotations.isIntoMap -> {
           val mapKey =
             annotations.mapKeys.firstOrNull()
@@ -124,21 +129,19 @@ internal class IrBindingGraph(
                 error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
               }
           val keyType = mapKeyType(mapKey)
-          metroContext.irBuiltIns.mapClass.typeWith(
+          val mapType = metroContext.irBuiltIns.mapClass.typeWith(
             // MapKey is the key type
             keyType,
             // Return type is the value type
             contextKey.typeKey.type.removeAnnotations(),
           )
+          contextKey.typeKey.copy(type = mapType, qualifier = originalQualifier)
         }
 
         else -> {
           error("Unrecognized provider: ${declaration.locationOrNull()}")
         }
       }
-
-    val multibindingTypeKey =
-      contextKey.typeKey.copy(type = multibindingType, qualifier = originalQualifier)
 
     var binding = realGraph[multibindingTypeKey]
 
