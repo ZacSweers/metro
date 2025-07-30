@@ -15,7 +15,7 @@ if ! [[ ${local} ]]; then
   set -ex
 
   export GIT_CLONE_PROTECTION_ACTIVE=false
-  REPO="https://github.com/ZacSweers/metro.git"
+  REPO="git@github.com:zacsweers/metro.git"
   DIR=temp-clone
 
   # Delete any existing temporary website clone
