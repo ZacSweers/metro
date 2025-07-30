@@ -132,6 +132,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedFromConstructorParameter.kt")
+    public void testContributedFromConstructorParameter() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedFromConstructorParameter.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedWithOnlyMultibinds.kt")
     public void testContributedWithOnlyMultibinds() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedWithOnlyMultibinds.kt");
