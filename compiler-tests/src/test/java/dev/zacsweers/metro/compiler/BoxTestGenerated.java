@@ -718,6 +718,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ElementsIntoSetProperty.kt")
+    public void testElementsIntoSetProperty() {
+      runTest("compiler-tests/src/test/data/box/multibindings/ElementsIntoSetProperty.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindingGraphWithWithScopedMapProviderDeps.kt")
     public void testMultibindingGraphWithWithScopedMapProviderDeps() {
       runTest("compiler-tests/src/test/data/box/multibindings/MultibindingGraphWithWithScopedMapProviderDeps.kt");
