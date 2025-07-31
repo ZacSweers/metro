@@ -108,6 +108,7 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.withNullability
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
@@ -124,6 +125,7 @@ import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.hasShape
+import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isStatic
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -1206,7 +1208,15 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
             val classifier = type.classifier
             if (classifier is IrTypeParameterSymbol) {
               val substitution = substitutionMap[classifier]
-              substitution?.let { remapType(it) } ?: type
+              substitution?.let {
+                val remapped = remapType(it)
+                // Preserve nullability
+                if (remapped is IrSimpleType) {
+                  remapped.withNullability(type.isNullable())
+                } else {
+                  remapped
+                }
+              } ?: type
             } else if (type.arguments.isEmpty()) {
               type
             } else {

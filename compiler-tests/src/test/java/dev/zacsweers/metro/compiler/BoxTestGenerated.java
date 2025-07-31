@@ -481,6 +481,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testGenericAssistedParams() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");
       }
+
+      @Test
+      @TestMetadata("PreserveNullabilityInRemapping.kt")
+      public void testPreserveNullabilityInRemapping() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityInRemapping.kt");
+      }
     }
 
     @Nested
