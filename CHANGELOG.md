@@ -11,6 +11,7 @@ Changelog
 - **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
 - **Fix**: Check `rawStatus` for overrides when merging contributed supertypes.
 - **Fix**: Correctly extract the element type when creating implicit `Set` multibindings from `@ElementsIntoSet` contributors.
+- **Fix**: Check `additionalScopes` when merging binding containers too.
 
 0.5.3
 -----

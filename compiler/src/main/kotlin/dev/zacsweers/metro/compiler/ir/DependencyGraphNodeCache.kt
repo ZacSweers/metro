@@ -418,10 +418,10 @@ internal class DependencyGraphNodeCache(
           it.classType.rawTypeOrNull()?.classId
         }
 
-      dependencyGraphAnno?.scopeClassOrNull()?.let { scope ->
+      for (scope in aggregationScopes) {
         bindingContainers +=
           contributionData
-            .getBindingContainerContributions(scope.classIdOrFail)
+            .getBindingContainerContributions(scope)
             .mapNotNull { bindingContainerTransformer.findContainer(it) }
             .filterNot { it.ir.classId in excludes }
             .onEach { container ->

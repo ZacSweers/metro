@@ -138,6 +138,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributingBindingWithAdditionalScopes.kt")
+    public void testContributingBindingWithAdditionalScopes() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributingBindingWithAdditionalScopes.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindsOnlyInContainer.kt")
     public void testMultibindsOnlyInContainer() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
