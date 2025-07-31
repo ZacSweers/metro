@@ -1,13 +1,18 @@
 // https://github.com/ZacSweers/metro/issues/853
 class FetchViewModel<P> @Inject constructor(
   @Assisted private val fetch: () -> P?,
+  @Assisted private val fetchNotNull: () -> P & Any,
 ) {
 
   fun doFetch(): P? = fetch()
+  fun doFetchNotNull(): P = fetchNotNull()
 
   @AssistedFactory
   interface Factory<P> {
-    fun create(fetch: () -> P?): FetchViewModel<P>
+    fun create(
+      fetch: () -> P?,
+      fetchNotNull: () -> P & Any
+    ): FetchViewModel<P>
   }
 }
 
@@ -19,8 +24,8 @@ interface AppGraph {
 fun box(): String {
   val graph = createGraph<AppGraph>()
   val factory = graph.factory
-  val vm = factory.create { 3 }
-  val value = vm.doFetch()
-  assertEquals(3, value)
+  val vm = factory.create({ null }) { 3 }
+  assertEquals(null, vm.doFetch())
+  assertEquals(3, vm.doFetchNotNull())
   return "OK"
 }
