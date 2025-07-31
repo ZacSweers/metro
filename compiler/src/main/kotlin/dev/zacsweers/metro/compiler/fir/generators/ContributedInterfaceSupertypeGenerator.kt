@@ -147,14 +147,11 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     return buildMap {
       for (originClass in contributingClasses) {
         if (originClass.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
-          val scopeId =
-            originClass
-              .annotationsIn(session, session.classIds.contributesToAnnotations)
-              .single()
-              .resolvedScopeClassId(typeResolver)
-          if (scopeId == scopeClassId) {
-            put(originClass.classId, true)
-          }
+          val hasMatchingScope =
+            originClass.annotationsIn(session, session.classIds.contributesToAnnotations).any {
+              it.resolvedScopeClassId(typeResolver) == scopeClassId
+            }
+          put(originClass.classId, hasMatchingScope)
           continue
         }
 
