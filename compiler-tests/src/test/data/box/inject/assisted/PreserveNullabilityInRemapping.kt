@@ -1,18 +1,18 @@
 // https://github.com/ZacSweers/metro/issues/853
-class FetchViewModel<P> @Inject constructor(
+class FetchViewModel<P>
+@Inject
+constructor(
   @Assisted private val fetch: () -> P?,
   @Assisted private val fetchNotNull: () -> P & Any,
 ) {
 
   fun doFetch(): P? = fetch()
+
   fun doFetchNotNull(): P = fetchNotNull()
 
   @AssistedFactory
   interface Factory<P> {
-    fun create(
-      fetch: () -> P?,
-      fetchNotNull: () -> P & Any
-    ): FetchViewModel<P>
+    fun create(fetch: () -> P?, fetchNotNull: () -> P & Any): FetchViewModel<P>
   }
 }
 
