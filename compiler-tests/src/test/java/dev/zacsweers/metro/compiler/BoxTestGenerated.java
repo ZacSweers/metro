@@ -144,6 +144,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("DedupeContainersContributedToMultipleScopes.kt")
+    public void testDedupeContainersContributedToMultipleScopes() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/DedupeContainersContributedToMultipleScopes.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindsOnlyInContainer.kt")
     public void testMultibindsOnlyInContainer() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");

@@ -13,6 +13,8 @@ Changelog
 - **Fix**: Check `rawStatus` for overrides when merging contributed supertypes.
 - **Fix**: Correctly extract the element type when creating implicit `Set` multibindings from `@ElementsIntoSet` contributors.
 - **Fix**: Check `additionalScopes` when merging binding containers too.
+- **Fix**: Don't fail if multiple contributing annotations on binding containers match the target scope when aggregating them.
+- **Fix**: Dedupe binding containers during graph node generation.
 
 0.5.3
 -----
