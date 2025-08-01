@@ -8,9 +8,13 @@ Changelog
 - **Enhancement**: Allow binding containers and regular contributed classes to replace each other in contribution merging.
 - **Enhancement**: Allow `@ElementsIntoSet` on properties.
 - **Enhancement**: Don't run FIR extensions on Java sources.
+- **Fix**: Preserve nullability when remapping type parameters.
 - **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
 - **Fix**: Check `rawStatus` for overrides when merging contributed supertypes.
 - **Fix**: Correctly extract the element type when creating implicit `Set` multibindings from `@ElementsIntoSet` contributors.
+- **Fix**: Check `additionalScopes` when merging binding containers too.
+- **Fix**: Don't fail if multiple contributing annotations on binding containers match the target scope when aggregating them.
+- **Fix**: Dedupe binding containers during graph node generation.
 
 0.5.3
 -----

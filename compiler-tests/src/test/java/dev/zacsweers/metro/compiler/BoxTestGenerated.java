@@ -144,6 +144,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributingBindingWithAdditionalScopes.kt")
+    public void testContributingBindingWithAdditionalScopes() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributingBindingWithAdditionalScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("DedupeContainersContributedToMultipleScopes.kt")
+    public void testDedupeContainersContributedToMultipleScopes() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/DedupeContainersContributedToMultipleScopes.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindsOnlyInContainer.kt")
     public void testMultibindsOnlyInContainer() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/MultibindsOnlyInContainer.kt");
@@ -480,6 +492,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("GenericAssistedParams.kt")
       public void testGenericAssistedParams() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PreserveNullabilityInRemapping.kt")
+      public void testPreserveNullabilityInRemapping() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityInRemapping.kt");
       }
     }
 
