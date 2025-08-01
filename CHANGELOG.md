@@ -15,6 +15,7 @@ Changelog
 - **Fix**: Check `additionalScopes` when merging binding containers too.
 - **Fix**: Don't fail if multiple contributing annotations on binding containers match the target scope when aggregating them.
 - **Fix**: Dedupe binding containers during graph node generation.
+- **Fix**: Add a checker for `@Provides` constructor parameters in binding containers.
 
 0.5.3
 -----
