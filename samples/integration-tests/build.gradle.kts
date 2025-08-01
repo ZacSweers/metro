@@ -102,8 +102,6 @@ tasks.withType<Test>().configureEach {
 // See https://github.com/GradleUp/shadow/issues/1540
 configurations.configureEach {
   if (name.startsWith("kotlinCompilerPluginClasspath")) {
-    attributes {
-      attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
-    }
+    attributes { attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED)) }
   }
 }
