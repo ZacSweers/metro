@@ -98,6 +98,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MultipleBindingReplacementsFromSameClass.kt")
+    public void testMultipleBindingReplacementsFromSameClass() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClass.kt");
+    }
+
+    @Test
     @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
     public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
       runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
