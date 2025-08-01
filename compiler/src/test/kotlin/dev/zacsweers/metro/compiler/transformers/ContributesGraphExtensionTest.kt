@@ -1166,6 +1166,50 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `suggest adding to parent if scoped constructor-injected class matches parent's parent scope but isn't provided`() {
+    compile(
+      source(
+        """
+          sealed interface IntermediateScope
+          sealed interface LoggedInScope
+
+          @Inject @SingleIn(AppScope::class) class Dependency
+          @Inject @SingleIn(LoggedInScope::class) class ChildDependency(val dep: Dependency)
+
+          @DependencyGraph(scope = AppScope::class, isExtendable = true)
+          interface ExampleGraph {
+            // Works if added explicitly like this
+            // val dependency: Dependency
+          }
+
+          @ContributesGraphExtension(IntermediateScope::class, isExtendable = true)
+          interface IntermediateGraph {
+              @ContributesGraphExtension.Factory(AppScope::class)
+              interface Factory {
+                  fun createIntermediateGraph(): IntermediateGraph
+              }
+          }
+
+          @ContributesGraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+              val childDependency: ChildDependency
+
+              @ContributesGraphExtension.Factory(IntermediateScope::class)
+              interface Factory {
+                  fun createLoggedInGraph(): LoggedInGraph
+              }
+          }
+        """
+          .trimIndent()
+      ),
+      options = metroOptions.copy(enableScopedInjectClassHints = false),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      // TODO add assertDiagnostics
+    }
+  }
+
+  @Test
   fun `contributed graph with qualified provider`() {
     compile(
       source(
