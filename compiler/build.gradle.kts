@@ -102,6 +102,29 @@ val shadowJar = tasks.register("shadowJar", ShadowJar::class.java) {
   relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
 }
 
+/**
+ * The wire and poko plugin add their dependency automatically.
+ * This is not needed because we embed the dependency.
+ *
+ * Note: this is done in `afterEvaluate` to run after wire:
+ * https://github.com/square/wire/blob/34931324f09c5827a624c056e1040dc8d01cbcd9/wire-gradle-plugin/src/main/kotlin/com/squareup/wire/gradle/WirePlugin.kt#L75
+ *
+ * Same for poko:
+ * https://github.com/drewhamilton/Poko/blob/7bde5b23cc65a95a894e0ba0fb305704c49382f0/poko-gradle-plugin/src/main/kotlin/dev/drewhamilton/poko/gradle/PokoGradlePlugin.kt#L19
+ */
+project.afterEvaluate {
+  configurations.getByName("api").apply {
+    dependencies.removeIf {
+      it is ExternalDependency && it.group == "com.squareup.wire"
+    }
+  }
+  configurations.getByName("implementation").apply {
+    dependencies.removeIf {
+      it is ExternalDependency && it.group == "dev.drewhamilton.poko"
+    }
+  }
+}
+
 for (c in setOf("apiElements", "runtimeElements")) {
   configurations.getByName(c).artifacts.apply {
     removeIf {
@@ -114,6 +137,7 @@ for (c in setOf("apiElements", "runtimeElements")) {
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
+  compileOnly(libs.poko.annotations)
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
 
