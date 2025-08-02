@@ -138,8 +138,11 @@ dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
+
   add(embedded.name, libs.picnic)
   add(embedded.name, libs.wire.runtime)
+
+  testCompileOnly(libs.poko.annotations)
 
   testImplementation(project(":runtime"))
   testImplementation(project(":interop-dagger"))
