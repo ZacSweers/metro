@@ -9,7 +9,7 @@ plugins {
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
-  alias(libs.plugins.shadow).apply(false)
+  alias(libs.plugins.shadow) apply false
   alias(libs.plugins.testkit)
 }
 
@@ -56,55 +56,47 @@ tasks.test {
 wire { kotlin { javaInterop = false } }
 
 /**
- * Kotlin native requires the compiler plugin to embed its dependencies.
- * (See https://youtrack.jetbrains.com/issue/KT-53477)
+ * Kotlin native requires the compiler plugin to embed its dependencies. (See
+ * https://youtrack.jetbrains.com/issue/KT-53477)
  *
- * In order to do this, we replace the default jar task with a shadowJar task
- * that embeds the dependencies from the "embedded" configuration.
+ * In order to do this, we replace the default jar task with a shadowJar task that embeds the
+ * dependencies from the "embedded" configuration.
  */
-@Suppress("UnstableApiUsage")
-val embedded = configurations.resolvable("embedded")
+@Suppress("UnstableApiUsage") val embedded = configurations.resolvable("embedded")
 
-configurations.named("compileOnly").configure {
-  extendsFrom(embedded.get())
-}
-configurations.named("testImplementation").configure {
-  extendsFrom(embedded.get())
-}
+configurations.named("compileOnly").configure { extendsFrom(embedded.get()) }
 
-tasks.jar.configure {
-  enabled = false
-}
+configurations.named("testImplementation").configure { extendsFrom(embedded.get()) }
 
-val shadowJar = tasks.register("shadowJar", ShadowJar::class.java) {
-  from(java.sourceSets.main.map { it.output })
-  configurations.add(embedded)
+tasks.jar.configure { enabled = false }
 
-  // TODO these are relocated, do we need to/can we exclude these?
-  //  exclude("META-INF/wire-runtime.kotlin_module")
-  //  exclude("META-INF/okio.kotlin_module")
-  dependencies {
-    exclude(dependency("org.jetbrains:.*"))
-    exclude(dependency("org.intellij:.*"))
-    exclude(dependency("org.jetbrains.kotlin:.*"))
-    exclude(dependency("dev.drewhamilton.poko:.*"))
+val shadowJar =
+  tasks.register("shadowJar", ShadowJar::class.java) {
+    from(java.sourceSets.main.map { it.output })
+    configurations.add(embedded)
+
+    // TODO these are relocated, do we need to/can we exclude these?
+    //  exclude("META-INF/wire-runtime.kotlin_module")
+    //  exclude("META-INF/okio.kotlin_module")
+    dependencies {
+      exclude(dependency("org.jetbrains:.*"))
+      exclude(dependency("org.intellij:.*"))
+      exclude(dependency("org.jetbrains.kotlin:.*"))
+      exclude(dependency("dev.drewhamilton.poko:.*"))
+    }
+    relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
+    relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
+    relocate("com.jakewharton.picnic", "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic")
+    relocate(
+      "com.jakewharton.crossword",
+      "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
+    )
+    relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
   }
-  relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
-  relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
-  relocate(
-    "com.jakewharton.picnic",
-    "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic",
-  )
-  relocate(
-    "com.jakewharton.crossword",
-    "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
-  )
-  relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
-}
 
 /**
- * The wire and poko plugin add their dependencies automatically.
- * This is not needed because we can either ignore or embed them so we remove them.
+ * The wire and poko plugin add their dependencies automatically. This is not needed because we can
+ * either ignore or embed them so we remove them.
  *
  * Note: this is done in `afterEvaluate` to run after wire:
  * https://github.com/square/wire/blob/34931324f09c5827a624c056e1040dc8d01cbcd9/wire-gradle-plugin/src/main/kotlin/com/squareup/wire/gradle/WirePlugin.kt#L75
@@ -113,24 +105,16 @@ val shadowJar = tasks.register("shadowJar", ShadowJar::class.java) {
  * https://github.com/drewhamilton/Poko/blob/7bde5b23cc65a95a894e0ba0fb305704c49382f0/poko-gradle-plugin/src/main/kotlin/dev/drewhamilton/poko/gradle/PokoGradlePlugin.kt#L19
  */
 project.afterEvaluate {
-  configurations.getByName("api").apply {
-    dependencies.removeIf {
-      it is ExternalDependency && it.group == "com.squareup.wire"
-    }
+  configurations.named("api") {
+    dependencies.removeIf { it is ExternalDependency && it.group == "com.squareup.wire" }
   }
-  configurations.getByName("implementation").apply {
-    dependencies.removeIf {
-      it is ExternalDependency && it.group == "dev.drewhamilton.poko"
-    }
+  configurations.named("implementation") {
+    dependencies.removeIf { it is ExternalDependency && it.group == "dev.drewhamilton.poko" }
   }
 }
 
-for (c in setOf("apiElements", "runtimeElements")) {
-  configurations.getByName(c).artifacts.apply {
-    removeIf {
-      true
-    }
-  }
+for (c in arrayOf("apiElements", "runtimeElements")) {
+  configurations.named(c) { artifacts.removeIf { true } }
   artifacts.add(c, shadowJar)
 }
 
