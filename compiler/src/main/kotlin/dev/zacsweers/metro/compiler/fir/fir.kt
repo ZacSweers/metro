@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.memoized
 import java.util.Objects
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -161,7 +162,28 @@ internal fun FirBasedSymbol<*>.annotationsIn(
   return resolvedCompilerAnnotationsWithClassIds
     .asSequence()
     .filter { it.isResolved }
-    .filter { it.toAnnotationClassIdSafe(session) in names }
+    .flatMap {
+      val classId =
+        it.toAnnotationClassIdSafe(session) ?: return@flatMap emptySequence<FirAnnotation>()
+      if (classId in names) {
+        if (classId in session.classIds.allRepeatableContributesAnnotationsContainers) {
+          it.flattenRepeatedAnnotations()
+        } else {
+          sequenceOf(it)
+        }
+      } else {
+        emptySequence()
+      }
+    }
+}
+
+/** @see [dev.zacsweers.metro.compiler.ClassIds.allRepeatableContributesAnnotationsContainers] */
+internal fun FirAnnotation.flattenRepeatedAnnotations(): Sequence<FirAnnotation> {
+  return argumentAsOrNull<FirArrayLiteral>(StandardNames.DEFAULT_VALUE_PARAMETER, 0)
+    ?.arguments
+    ?.asSequence()
+    ?.filterIsInstance<FirAnnotation>()
+    .orEmpty()
 }
 
 internal fun FirBasedSymbol<*>.isAnnotatedWithAny(
@@ -583,6 +605,10 @@ internal fun FirBasedSymbol<*>.mapKeyAnnotation(session: FirSession): MetroFirAn
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
 
+// TODO use FirExpression extensions
+//  fun FirExpression.extractClassesFromArgument(session: FirSession): List<FirRegularClassSymbol>
+//  fun FirExpression.extractClassFromArgument(session: FirSession): FirRegularClassSymbol?
+
 internal fun List<FirAnnotation>.scopeAnnotations(
   session: FirSession
 ): Sequence<MetroFirAnnotation> = asSequence().scopeAnnotations(session)
@@ -882,6 +908,7 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
       ?: return emptySet()
   val replaced =
     replacesArgument.mapNotNull { getClassCall ->
+      getClassCall.resolveClassId(typeResolver)
       // If it's available and resolved, just use it directly!
       getClassCall.coneTypeIfResolved()?.classId?.let {
         return@mapNotNull it
@@ -891,6 +918,18 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
       typeResolver.resolveType(reference).classId
     }
   return replaced.toSet()
+}
+
+internal fun FirGetClassCall.resolveClassId(
+  typeResolver: MetroFirTypeResolver
+): ClassId? {
+  // If it's available and resolved, just use it directly!
+  coneTypeIfResolved()?.classId?.let {
+    return it
+  }
+  // Otherwise fall back to trying to parse from the reference
+  val reference = resolvedArgumentTypeRef() ?: return null
+  return typeResolver.resolveType(reference).classId
 }
 
 internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId

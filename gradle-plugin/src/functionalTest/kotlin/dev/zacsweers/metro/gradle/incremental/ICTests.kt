@@ -1434,4 +1434,128 @@ class ICTests : BaseIncrementalCompilationTest() {
 
     buildAndAssertOutput()
   }
+
+  @Test
+  fun multipleBindingReplacementsAreRespectedWhenAddingNewContribution() {
+    val fixture =
+      object : MetroProject(debug = true) {
+        override fun sources() = listOf(appGraph, fakeImpl, main)
+
+        override val gradleProject: GradleProject
+          get() =
+            newGradleProjectBuilder(DslKind.KOTLIN)
+              .withRootProject {
+                withBuildScript {
+                  sources = sources()
+                  applyMetroDefault()
+                  dependencies(
+                    Dependency.implementation(":common"),
+                    Dependency.implementation(":lib"),
+                  )
+                }
+              }
+              .withSubproject("common") {
+                sources.add(fooBar)
+                withBuildScript { applyMetroDefault() }
+              }
+              .withSubproject("lib") {
+                sources.add(realImpl)
+                withBuildScript {
+                  applyMetroDefault()
+                  dependencies(Dependency.implementation(":common"))
+                }
+              }
+              .write()
+
+        private val appGraph =
+          source(
+            """
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val bar: Bar
+          }
+            """
+              .trimIndent()
+          )
+
+        private val fooBar =
+          source(
+            """
+          interface Foo
+          interface Bar : Foo {
+            val str: String
+          }
+            """.trimIndent()
+          )
+
+        val realImpl =
+          source(
+            """
+          @Inject
+          @ContributesBinding(AppScope::class, binding = binding<Foo>())
+          @ContributesBinding(AppScope::class, binding = binding<Bar>())
+          class RealImpl : Bar {
+            override val str: String = "real"
+          }
+          """
+              .trimIndent()
+          )
+
+        private val fakeImpl =
+          source(
+            """
+          @Inject
+          @ContributesBinding(AppScope::class, binding = binding<Foo>(), replaces = [RealImpl::class])
+          @ContributesBinding(AppScope::class, binding = binding<Bar>(), replaces = [RealImpl::class])
+          class FakeImpl : Bar {
+            override val str: String = "fake"
+          }
+          """
+              .trimIndent()
+          )
+
+        val placeholder =
+          source("")
+
+        val main =
+          source(
+            """
+            fun main(): String {
+              val graph = createGraph<AppGraph>()
+              return graph.bar.str
+            }
+            """
+              .trimIndent()
+          )
+      }
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+
+    fun buildAndAssertOutput() {
+      val buildResult = build(project.rootDir, "compileKotlin")
+      assertThat(buildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+      val mainClass = project.classLoader().loadClass("test.MainKt")
+      val string = mainClass.declaredMethods.first { it.name == "main" }.invoke(null) as String
+      assertThat(string).isEqualTo("fake")
+    }
+
+    buildAndAssertOutput()
+
+    // Adding a new binding contribution should be alright
+    libProject.modify(
+      project.rootDir,
+      fixture.placeholder,
+      """
+      interface Baz
+
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class BazImpl : Baz
+      """
+        .trimIndent(),
+    )
+
+    buildAndAssertOutput()
+  }
 }

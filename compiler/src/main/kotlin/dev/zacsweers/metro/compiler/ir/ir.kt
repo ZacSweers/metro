@@ -106,6 +106,7 @@ import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
+import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
@@ -1205,8 +1206,18 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
           is IrSimpleType -> {
             val classifier = type.classifier
             if (classifier is IrTypeParameterSymbol) {
-              val substitution = substitutionMap[classifier]
-              substitution?.let { remapType(it) } ?: type
+              substitutionMap[classifier]?.let { substitutedType ->
+                val remapped = remapType(substitutedType)
+                // Preserve nullability
+                when (remapped) {
+                  // Java type args always come with @FlexibleNullability, which we choose to
+                  // interpret as strictly not null
+                  is IrSimpleType if (!type.isWithFlexibleNullability()) -> {
+                    remapped.mergeNullability(type)
+                  }
+                  else -> remapped
+                }
+              } ?: type
             } else if (type.arguments.isEmpty()) {
               type
             } else {

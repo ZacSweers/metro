@@ -18,7 +18,7 @@ androidx-lint-gradle = "1.0.0-alpha05"
 anvil = "0.4.1"
 atomicfu = "0.29.0"
 autoService = "1.1.1"
-circuit = "0.29.1"
+circuit = "0.30.0"
 classgraph = "4.8.181"
 compose-jb = "1.8.2"
 dagger = "2.57"
@@ -59,7 +59,7 @@ dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
 poko = { id = "dev.drewhamilton.poko", version = "0.19.3" }
-shadow = { id = "com.gradleup.shadow", version = "9.0.0-rc1" }
+shadow = { id = "com.gradleup.shadow", version = "9.0.0-rc3" }
 spotless = { id = "com.diffplug.spotless", version = "7.2.1" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.14" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
