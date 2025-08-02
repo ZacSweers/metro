@@ -214,11 +214,11 @@ internal class DependencyGraphTransformer(
               for ((declaration, message) in errors) {
                 // TODO in kotlin 2.2.20 we can just use the reporter
                 val toReport =
-                  declaration?.takeIf { it.fileOrNull != null } ?: dependencyGraphDeclaration
-                if (toReport.fileOrNull != null) {
-                  diagnosticReporter
-                    .at(declaration ?: dependencyGraphDeclaration)
-                    .report(MetroIrErrors.METRO_ERROR, message)
+                  declaration?.takeIf {
+                    it.fileOrNull != null && it.origin != Origins.ContributedGraph
+                  } ?: dependencyGraphDeclaration
+                if (toReport.fileOrNull != null && toReport.origin != Origins.ContributedGraph) {
+                  diagnosticReporter.at(toReport).report(MetroIrErrors.METRO_ERROR, message)
                 } else {
                   messageCollector.report(
                     CompilerMessageSeverity.ERROR,

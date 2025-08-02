@@ -1937,4 +1937,51 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       )
     )
   }
+
+  // https://github.com/ZacSweers/metro/issues/866
+  // Not in compiler-tests because for some reason IR diagnostics don't write in multi-compilation
+  @Test
+  fun `empty multibinds reporting in contributed graph`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          abstract class LoginScope
+
+          @ContributesGraphExtension(LoginScope::class)
+          interface LoginGraph {
+            @Multibinds
+            fun multibinds(): Map<Class<*>, Any>
+
+            @ContributesGraphExtension.Factory(AppScope::class)
+            interface Factory {
+              fun create(): LoginGraph
+            }
+          }
+        """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+          @DependencyGraph(AppScope::class, isExtendable = true)
+          interface MainGraph
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+      previousCompilationResult = firstCompilation,
+    ) {
+      assertDiagnostics(
+        """
+          e: MainGraph.kt [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Map<java.lang.Class<*>, kotlin.Any>' was unexpectedly empty.
+
+          If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        """
+          .trimIndent()
+      )
+    }
+  }
 }
