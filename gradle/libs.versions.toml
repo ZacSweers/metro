@@ -38,6 +38,7 @@ ktor = "3.2.2"
 okhttp = "5.1.0"
 okio = "3.16.0"
 pluginId = "dev.zacsweers.metro.compiler"
+poko = "0.19.3"
 wire = "5.3.5"
 
 [plugins]
@@ -58,7 +59,7 @@ buildConfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.7" }
 dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.34.0" }
-poko = { id = "dev.drewhamilton.poko", version = "0.19.3" }
+poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
 shadow = { id = "com.gradleup.shadow", version = "9.0.0-rc3" }
 spotless = { id = "com.diffplug.spotless", version = "7.2.1" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.14" }
@@ -148,6 +149,8 @@ okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 
 picnic = "com.jakewharton.picnic:picnic:0.7.0"
+
+poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
 
 slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
 
