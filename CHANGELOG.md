@@ -8,6 +8,7 @@ Changelog
 - **Enhancement**: Allow binding containers and regular contributed classes to replace each other in contribution merging.
 - **Enhancement**: Allow `@ElementsIntoSet` on properties.
 - **Enhancement**: Don't run FIR extensions on Java sources.
+- **Fix**: Report incompatible scopes in nested contributed graphs to `MessageCollector` until Kotlin 2.2.20.
 - **Fix**: Preserve nullability when remapping type parameters.
 - **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
 - **Fix**: Check `rawStatus` for overrides when merging contributed supertypes.
@@ -15,6 +16,9 @@ Changelog
 - **Fix**: Check `additionalScopes` when merging binding containers too.
 - **Fix**: Don't fail if multiple contributing annotations on binding containers match the target scope when aggregating them.
 - **Fix**: Dedupe binding containers during graph node generation.
+- **Fix**: Add a checker for `@Provides` constructor parameters in binding containers.
+- **Fix**: Fix reading repeated external contributed annotations.
+- **Fix**: Filter by matching scopes when merging contributed types with repeated annotations.
 
 0.5.3
 -----

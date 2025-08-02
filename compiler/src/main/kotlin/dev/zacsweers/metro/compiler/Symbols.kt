@@ -165,6 +165,7 @@ internal class Symbols(
   object Names {
     val Binds = "Binds".asName()
     val BindsMirrorClass = $$$"$$BindsMirror".asName()
+    val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()

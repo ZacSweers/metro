@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
+import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.declarations.utils.classId
@@ -327,8 +329,15 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         val localTypeResolver =
           typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
 
+        val annotationsToCheck =
+          if (contributingType.origin == FirDeclarationOrigin.Library) {
+            session.classIds.allContributesAnnotationsWithContainers
+          } else {
+            session.classIds.allContributesAnnotations
+          }
         contributingType
-          .annotationsIn(session, session.classIds.allContributesAnnotations)
+          .annotationsIn(session, annotationsToCheck)
+          .filter { it.scopeArgument()?.resolveClassId(localTypeResolver) in scopes }
           .flatMap { annotation -> annotation.resolvedReplacedClassIds(localTypeResolver) }
       }
       .distinct()
