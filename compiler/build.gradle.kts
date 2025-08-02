@@ -19,7 +19,6 @@ kotlin {
       "kotlin.contracts.ExperimentalContracts",
       "org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi",
       "org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI",
-      "org.jetbrains.kotlin.backend.common.extensions.ExperimentalAPIForScriptingPlugin",
     )
   }
 }

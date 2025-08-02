@@ -6,9 +6,9 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.joinSimpleNames
 import kotlin.io.path.Path
@@ -101,7 +101,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
         diagnosticReporter
           .at(sourceClass)
           .report(
-            MetroIrErrors.METRO_ERROR,
+            MetroDiagnostics.METRO_ERROR,
             "Class ${sourceClass.classId} does not have a valid metadata source. Found ${sourceClass.metadata?.javaClass?.canonicalName}.",
           )
       }

@@ -6,3 +6,5 @@
 fun <!FUNCTION_INJECT_ERROR!>String<!>.Example() {
 
 }
+
+/* GENERATED_FIR_TAGS: funWithExtensionReceiver, functionDeclaration, functionDeclarationWithContext */

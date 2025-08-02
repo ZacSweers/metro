@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -43,7 +43,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (!annotations.isIntoMap && annotations.mapKeys.isNotEmpty()) {
       reporter.reportOn(
         annotations.mapKeys.first().fir.source ?: source,
-        FirMetroErrors.MULTIBINDS_ERROR,
+        MetroDiagnostics.MULTIBINDS_ERROR,
         "`@MapKey` annotations are only allowed on `@IntoMap` declarations.",
       )
       return
@@ -57,7 +57,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (!(isMultibinds xor isElementsIntoSet xor isIntoMap xor isIntoSet)) {
       reporter.reportOn(
         source,
-        FirMetroErrors.MULTIBINDS_ERROR,
+        MetroDiagnostics.MULTIBINDS_ERROR,
         "Only one of `@Multibinds`, `@ElementsIntoSet`, `@IntoMap`, or `@IntoSet` is allowed.",
       )
       return
@@ -67,7 +67,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (declaration.isOverride) {
       reporter.reportOn(
         source,
-        FirMetroErrors.MULTIBINDS_OVERRIDE_ERROR,
+        MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR,
         "Multibinding contributors cannot be overrides.",
       )
       return
@@ -78,7 +78,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       if (!declaration.isAbstract && declaration.visibility != Visibilities.Private) {
         reporter.reportOn(
           source,
-          FirMetroErrors.MULTIBINDS_ERROR,
+          MetroDiagnostics.MULTIBINDS_ERROR,
           "`@Multibinds` declarations must be abstract.",
         )
         return
@@ -88,7 +88,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       if (annotations.isProvides || annotations.isBinds) {
         reporter.reportOn(
           source,
-          FirMetroErrors.MULTIBINDS_ERROR,
+          MetroDiagnostics.MULTIBINDS_ERROR,
           "`@Multibinds` declarations cannot also be annotated with `@Provides` or `@Binds` annotations.",
         )
         return
@@ -98,7 +98,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       if (scopeAnnotation != null) {
         reporter.reportOn(
           scopeAnnotation.fir.source,
-          FirMetroErrors.MULTIBINDS_ERROR,
+          MetroDiagnostics.MULTIBINDS_ERROR,
           "@Multibinds declarations cannot be scoped.",
         )
         return
@@ -114,7 +114,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       if (returnTypeClassId != StandardClassIds.Map && returnTypeClassId != StandardClassIds.Set) {
         reporter.reportOn(
           declaration.returnTypeRef.source ?: source,
-          FirMetroErrors.MULTIBINDS_ERROR,
+          MetroDiagnostics.MULTIBINDS_ERROR,
           "`@Multibinds` declarations can only return a `Map` or `Set`.",
         )
         return
@@ -123,7 +123,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
           ConeStarProjection -> {
             reporter.reportOn(
               declaration.returnTypeRef.source ?: source,
-              FirMetroErrors.MULTIBINDS_ERROR,
+              MetroDiagnostics.MULTIBINDS_ERROR,
               "Multibinding Map keys cannot be star projections. Use a concrete type instead.",
             )
             return
@@ -132,7 +132,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
             if (keyType.type?.isMarkedNullable == true) {
               reporter.reportOn(
                 declaration.returnTypeRef.source ?: source,
-                FirMetroErrors.MULTIBINDS_ERROR,
+                MetroDiagnostics.MULTIBINDS_ERROR,
                 "Multibinding map keys cannot be nullable. Use a non-nullable type instead.",
               )
               return
@@ -152,7 +152,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         if (isStar) {
           reporter.reportOn(
             declaration.returnTypeRef.source ?: source,
-            FirMetroErrors.MULTIBINDS_ERROR,
+            MetroDiagnostics.MULTIBINDS_ERROR,
             "Multibinding Map values cannot be star projections. Use a concrete type instead.",
           )
           return
@@ -161,7 +161,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         if (returnType.typeArguments[0] == ConeStarProjection) {
           reporter.reportOn(
             declaration.returnTypeRef.source ?: source,
-            FirMetroErrors.MULTIBINDS_ERROR,
+            MetroDiagnostics.MULTIBINDS_ERROR,
             "Multibinding Set elements cannot be star projections. Use a concrete type instead.",
           )
           return
@@ -174,7 +174,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (!(annotations.isProvides || annotations.isBinds)) {
       reporter.reportOn(
         source,
-        FirMetroErrors.MULTIBINDS_ERROR,
+        MetroDiagnostics.MULTIBINDS_ERROR,
         "`@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.",
       )
       return
@@ -187,7 +187,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
         if (!returnType.isOrImplements(StandardClassIds.Collection, session)) {
           reporter.reportOn(
             source,
-            FirMetroErrors.MULTIBINDS_ERROR,
+            MetroDiagnostics.MULTIBINDS_ERROR,
             "`@ElementsIntoSet` must return a Collection.",
           )
           return
@@ -200,7 +200,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
       for (key in annotations.mapKeys) {
         reporter.reportOn(
           key.fir.source,
-          FirMetroErrors.MULTIBINDS_ERROR,
+          MetroDiagnostics.MULTIBINDS_ERROR,
           "Only one @MapKey should be be used on a given @IntoMap declaration.",
         )
       }
@@ -208,7 +208,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     } else if (annotations.isIntoMap && annotations.mapKeys.isEmpty()) {
       reporter.reportOn(
         source,
-        FirMetroErrors.MULTIBINDS_ERROR,
+        MetroDiagnostics.MULTIBINDS_ERROR,
         "`@IntoMap` declarations must define a @MapKey annotation.",
       )
       return

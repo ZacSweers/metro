@@ -62,4 +62,6 @@ object ClasspathBasedStandardLibrariesPathProvider : KotlinStandardLibrariesPath
   override fun scriptingPluginFilesForTests(): Collection<File> {
     TODO("KT-67573")
   }
+
+  override fun commonStdlibForTests(): File = getFile("kotlin-common-stdlib")
 }

@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Zac Sweers
+# Copyright (C) 2024 Zac Sweers
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,12 +27,12 @@ jdk = "23"
 junit5 = "5.13.4"
 jvmTarget = "11"
 kct = "0.8.0"
-kotlin = "2.2.0"
+kotlin = "2.2.20-Beta2"
 kotlinInject = "0.8.0"
 kotlinInject-anvil = "0.1.6"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
-ksp = "2.2.0-2.0.2"
+ksp = "2.2.20-Beta1-2.0.2"
 ktfmt = "0.56"
 ktor = "3.2.2"
 okhttp = "5.1.0"

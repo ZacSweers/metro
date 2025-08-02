@@ -12,3 +12,5 @@ interface ParentGraph {
 // MODULE: main(lib)
 @DependencyGraph
 interface ChildGraph : <!DEPENDENCY_GRAPH_ERROR!>ParentGraph<!>
+
+/* GENERATED_FIR_TAGS: functionDeclaration, integerLiteral, interfaceDeclaration, propertyDeclaration */

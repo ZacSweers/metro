@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
-import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -65,7 +65,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       if (!hasNestedFactory) {
         reporter.reportOn(
           declaration.source,
-          FirMetroErrors.GRAPH_CREATORS_ERROR,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "@${graphAnnotationClassId.relativeClassName.asString()} declarations must have a nested class annotated with @ContributesGraphExtension.Factory.",
         )
         return
@@ -79,7 +79,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
     if (additionalScopes.isNotEmpty() && scope == null) {
       reporter.reportOn(
         dependencyGraphAnno.additionalScopesArgument()?.source ?: dependencyGraphAnno.source,
-        FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+        MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
         "@${graphAnnotationClassId.shortClassName.asString()} should have a primary `scope` defined if `additionalScopes` are defined.",
       )
     }
@@ -96,7 +96,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       if (constructor.valueParameterSymbols.isNotEmpty()) {
         reporter.reportOn(
           constructor.source,
-          FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
           "Dependency graphs cannot have constructor parameters. Use @DependencyGraph.Factory instead.",
         )
         return
@@ -109,7 +109,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
       if (supertypeClass.isAnnotatedWithAny(session, classIds.graphLikeAnnotations)) {
         reporter.reportOn(
           supertypeRef.source ?: declaration.source,
-          FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+          MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
           "Graph class '${declaration.classId.asSingleFqName()}' may not directly extend graph class '${supertypeClass.classId.asSingleFqName()}'. Use @Extends instead.",
         )
         return
@@ -136,14 +136,14 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         if (returnType.isUnit) {
           reporter.reportOn(
             callable.resolvedReturnTypeRef.source ?: callable.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members must have a return type and cannot be Unit.",
           )
           continue
         } else if (returnType.isNothing) {
           reporter.reportOn(
             callable.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members cannot return Nothing.",
           )
           continue
@@ -153,7 +153,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         for (scopeAnnotation in scopeAnnotations) {
           reporter.reportOn(
             scopeAnnotation.fir.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Graph accessor members cannot be scoped.",
           )
         }
@@ -164,7 +164,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
         if (!callable.resolvedReturnTypeRef.coneType.isUnit) {
           reporter.reportOn(
             callable.resolvedReturnTypeRef.source,
-            FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+            MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
             "Inject functions must not return anything other than Unit.",
           )
           continue
@@ -181,7 +181,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             if (isInjected) {
               reporter.reportOn(
                 parameter.source,
-                FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+                MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
                 "Injected type is constructor-injected and can be instantiated by Metro directly, so this inject function is unnecessary.",
               )
             }
@@ -191,7 +191,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
             // TODO Not actually sure what dagger does. Maybe we should support this?
             reporter.reportOn(
               callable.source,
-              FirMetroErrors.DEPENDENCY_GRAPH_ERROR,
+              MetroDiagnostics.DEPENDENCY_GRAPH_ERROR,
               "Inject functions must have exactly one parameter.",
             )
           }

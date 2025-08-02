@@ -6,3 +6,6 @@ abstract class ExampleGraph {
   @Binds val String.provideCharSequence: CharSequence get() = this
   @Binds fun Int.<!PROVIDES_OR_BINDS_SHOULD_BE_PRIVATE_WARNING!>provideNumber<!>(): Number = this
 }
+
+/* GENERATED_FIR_TAGS: classDeclaration, funWithExtensionReceiver, functionDeclaration, getter, propertyDeclaration,
+propertyWithExtensionReceiver, thisExpression */

@@ -9,3 +9,5 @@ class InjectPrimaryConstructor @Inject constructor(int: Int) {
 class InjectSecondaryConstructor internal constructor(int: Int) {
   @Inject constructor() : this(0)
 }
+
+/* GENERATED_FIR_TAGS: classDeclaration, integerLiteral, primaryConstructor, secondaryConstructor */
