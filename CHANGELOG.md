@@ -16,6 +16,8 @@ Changelog
 - **Fix**: Don't fail if multiple contributing annotations on binding containers match the target scope when aggregating them.
 - **Fix**: Dedupe binding containers during graph node generation.
 - **Fix**: Add a checker for `@Provides` constructor parameters in binding containers.
+- **Fix**: Fix reading repeated external contributed annotations.
+- **Fix**: Filter by matching scopes when merging contributed types with repeated annotations.
 
 0.5.3
 -----
