@@ -82,6 +82,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testMissingNoArgConstructor() {
       runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/MissingNoArgConstructor.kt");
     }
+
+    @Test
+    @TestMetadata("NoProvidesOnParams.kt")
+    public void testNoProvidesOnParams() {
+      runTest("compiler-tests/src/test/data/diagnostic/bindingcontainer/NoProvidesOnParams.kt");
+    }
   }
 
   @Nested
