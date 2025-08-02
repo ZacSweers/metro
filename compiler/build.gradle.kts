@@ -1,10 +1,7 @@
-// Copyright (C) 2025 Zac Sweers
-// SPDX-License-Identifier: Apache-2.0
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.gradle.kotlin.dsl.from
-
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.dokka)
