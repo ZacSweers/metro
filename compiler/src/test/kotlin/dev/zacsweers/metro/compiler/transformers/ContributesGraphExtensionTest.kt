@@ -1205,7 +1205,26 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
       options = metroOptions.copy(enableScopedInjectClassHints = false),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
-      // TODO add assertDiagnostics
+      assertDiagnostics(
+        $$$"""
+          e: IntermediateScope.kt [Metro/IncompatiblyScopedBindings] test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph (scopes '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes:
+              test.Dependency (scoped to '@SingleIn(AppScope::class)')
+              test.Dependency is injected at
+                  [test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
+              test.ChildDependency is requested at
+                  [test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
+          
+          
+          (Hint)
+          $$ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph.$$ContributedIntermediateGraph'.
+          
+          (Hint)
+          It appears that extended parent graph 'test.ExampleGraph' does declare the '@SingleIn(AppScope::class)' scope but doesn't use 'Dependency' directly.
+          To work around this, consider declaring an accessor for 'Dependency' in that graph (i.e. `val dependency: Dependency`) or enabling the `enableScopedInjectClassHints` option.
+          See https://github.com/ZacSweers/metro/issues/377 for more details.
+        """
+          .trimIndent()
+      )
     }
   }
 
