@@ -4,6 +4,8 @@ Changelog
 **Unreleased**
 --------------
 
+- **Behavior change**: `chunkFieldInits()` is now enabled by default.
+
 0.5.5
 -----
 

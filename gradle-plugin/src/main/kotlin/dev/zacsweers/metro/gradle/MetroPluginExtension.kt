@@ -80,9 +80,9 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
-  /** Enable/disable chunking of field initializers. Disabled by default. */
+  /** Enable/disable chunking of field initializers. Enabled by default. */
   public val chunkFieldInits: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =
