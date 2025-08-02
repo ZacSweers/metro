@@ -1,3 +1,8 @@
+// Copyright (C) 2025 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.kotlin.dsl.from
+
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 plugins {
@@ -7,7 +12,7 @@ plugins {
   alias(libs.plugins.poko)
   alias(libs.plugins.buildConfig)
   alias(libs.plugins.wire)
-  alias(libs.plugins.shadow)
+  alias(libs.plugins.shadow).apply(false)
   alias(libs.plugins.testkit)
 }
 
@@ -53,49 +58,64 @@ tasks.test {
 
 wire { kotlin { javaInterop = false } }
 
-val isPublishing = providers.environmentVariable("PUBLISHING").isPresent
+/**
+ * Kotlin native requires the compiler plugin to embed its dependencies.
+ * (See https://youtrack.jetbrains.com/issue/KT-53477)
+ *
+ * In order to do this, we replace the default jar task with a shadowJar task
+ * that embeds the dependencies from the "embedded" configuration.
+ */
+@Suppress("UnstableApiUsage")
+val embedded = configurations.resolvable("embedded")
 
-val shadowJar =
-  tasks.shadowJar.apply {
-    configure {
-      if (isPublishing) {
-        // Since we change the classifier of the shadowJar we need to disable the default jar task
-        // or we'll get two artifacts that have the same classifier
-        archiveClassifier.set("ignored")
-      }
-      // TODO these are relocated, do we need to/can we exclude these?
-      //  exclude("META-INF/wire-runtime.kotlin_module")
-      //  exclude("META-INF/okio.kotlin_module")
-      dependencies {
-        exclude(dependency("org.jetbrains:.*"))
-        exclude(dependency("org.intellij:.*"))
-        exclude(dependency("org.jetbrains.kotlin:.*"))
-        exclude(dependency("dev.drewhamilton.poko:.*"))
-      }
-      relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
-      relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
-      relocate(
-        "com.jakewharton.picnic",
-        "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic",
-      )
-      relocate(
-        "com.jakewharton.crossword",
-        "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
-      )
-      relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
+configurations.named("compileOnly").configure {
+  extendsFrom(embedded.get())
+}
+
+tasks.jar.configure {
+  enabled = false
+}
+
+val shadowJar = tasks.register("shadowJar", ShadowJar::class.java) {
+  from(java.sourceSets.main.map { it.output })
+  configurations.add(embedded)
+
+  // TODO these are relocated, do we need to/can we exclude these?
+  //  exclude("META-INF/wire-runtime.kotlin_module")
+  //  exclude("META-INF/okio.kotlin_module")
+  dependencies {
+    exclude(dependency("org.jetbrains:.*"))
+    exclude(dependency("org.intellij:.*"))
+    exclude(dependency("org.jetbrains.kotlin:.*"))
+    exclude(dependency("dev.drewhamilton.poko:.*"))
+  }
+  relocate("com.squareup.wire", "dev.zacsweers.metro.compiler.shaded.com.squareup.wire")
+  relocate("com.squareup.okio", "dev.zacsweers.metro.compiler.shaded.com.squareup.okio")
+  relocate(
+    "com.jakewharton.picnic",
+    "dev.zacsweers.metro.compiler.shaded.com.jakewharton.picnic",
+  )
+  relocate(
+    "com.jakewharton.crossword",
+    "dev.zacsweers.metro.compiler.shaded.com.jakewharton.crossword",
+  )
+  relocate("okio", "dev.zacsweers.metro.compiler.shaded.okio")
+}
+
+for (c in setOf("apiElements", "runtimeElements")) {
+  configurations.getByName(c).artifacts.apply {
+    removeIf {
+      true
     }
   }
-
-artifacts {
-  runtimeOnly(shadowJar)
-  archives(shadowJar)
+  artifacts.add(c, shadowJar)
 }
 
 dependencies {
   compileOnly(libs.kotlin.compilerEmbeddable)
   compileOnly(libs.kotlin.stdlib)
-  shadow(libs.picnic)
-  shadow(libs.wire.runtime)
+  add(embedded.name, libs.picnic)
+  add(embedded.name, libs.wire.runtime)
 
   testImplementation(project(":runtime"))
   testImplementation(project(":interop-dagger"))
