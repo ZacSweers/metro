@@ -4,6 +4,13 @@ Changelog
 **Unreleased**
 --------------
 
+0.5.5
+-----
+
+_2025-08-02_
+
+- **Fix**: Fix Wire shading in native targets.
+
 0.5.4
 -----
 
