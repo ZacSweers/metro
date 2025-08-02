@@ -98,6 +98,30 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("MultipleBindingReplacementsFromSameClass.kt")
+    public void testMultipleBindingReplacementsFromSameClass() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClass.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleBindingReplacementsFromSameClassAndSameModule.kt")
+    public void testMultipleBindingReplacementsFromSameClassAndSameModule() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClassAndSameModule.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleBindingReplacementsFromSameClassAndSameModuleAndDifferentScopes.kt")
+    public void testMultipleBindingReplacementsFromSameClassAndSameModuleAndDifferentScopes() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClassAndSameModuleAndDifferentScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleBindingReplacementsFromSameClassDifferentScopes.kt")
+    public void testMultipleBindingReplacementsFromSameClassDifferentScopes() {
+      runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClassDifferentScopes.kt");
+    }
+
+    @Test
     @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
     public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
       runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
@@ -135,6 +159,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("ContributedWithOnlyMultibinds.kt")
     public void testContributedWithOnlyMultibinds() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributedWithOnlyMultibinds.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributingBindingWithAdditionalScopes.kt")
+    public void testContributingBindingWithAdditionalScopes() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/ContributingBindingWithAdditionalScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("DedupeContainersContributedToMultipleScopes.kt")
+    public void testDedupeContainersContributedToMultipleScopes() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/DedupeContainersContributedToMultipleScopes.kt");
     }
 
     @Test
@@ -480,6 +516,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("GenericAssistedParams.kt")
       public void testGenericAssistedParams() {
         runTest("compiler-tests/src/test/data/box/inject/assisted/GenericAssistedParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PreserveNullabilityInRemapping.kt")
+      public void testPreserveNullabilityInRemapping() {
+        runTest("compiler-tests/src/test/data/box/inject/assisted/PreserveNullabilityInRemapping.kt");
       }
     }
 

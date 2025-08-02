@@ -116,7 +116,8 @@ internal class IrBindingGraph(
         }
 
         annotations.isElementsIntoSet -> {
-          val elementType = contextKey.typeKey.type.expectAs<IrSimpleType>().arguments.single().typeOrFail
+          val elementType =
+            contextKey.typeKey.type.expectAs<IrSimpleType>().arguments.single().typeOrFail
           val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
           contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
         }
@@ -129,12 +130,13 @@ internal class IrBindingGraph(
                 error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
               }
           val keyType = mapKeyType(mapKey)
-          val mapType = metroContext.irBuiltIns.mapClass.typeWith(
-            // MapKey is the key type
-            keyType,
-            // Return type is the value type
-            contextKey.typeKey.type.removeAnnotations(),
-          )
+          val mapType =
+            metroContext.irBuiltIns.mapClass.typeWith(
+              // MapKey is the key type
+              keyType,
+              // Return type is the value type
+              contextKey.typeKey.type.removeAnnotations(),
+            )
           contextKey.typeKey.copy(type = mapType, qualifier = originalQualifier)
         }
 
@@ -550,9 +552,18 @@ internal class IrBindingGraph(
             }
           }
         }
-        metroContext.diagnosticReporter
-          .at(declarationToReport)
-          .report(MetroDiagnostics.METRO_ERROR, message)
+        // TODO remove messagecollector in 2.2.20
+        if (declarationToReport.origin == Origins.ContributedGraph) {
+          metroContext.messageCollector.report(
+            CompilerMessageSeverity.ERROR,
+            message,
+            declarationToReport.location(),
+          )
+        } else {
+          metroContext.diagnosticReporter
+            .at(declarationToReport)
+            .report(MetroDiagnostics.METRO_ERROR, message)
+        }
       }
     }
   }

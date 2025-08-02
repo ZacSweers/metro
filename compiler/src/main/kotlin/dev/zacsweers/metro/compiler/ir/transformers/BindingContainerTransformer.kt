@@ -706,6 +706,8 @@ internal class BindingContainer(
   val providerFactories: Map<CallableId, ProviderFactory>,
   val bindsMirror: BindsMirror?,
 ) {
+  private val classId = ir.classIdOrFail
+
   /**
    * Simple classes with a public, no-arg constructor can be managed directly by the consuming
    * graph.
@@ -714,4 +716,17 @@ internal class BindingContainer(
 
   fun isEmpty() =
     includes.isEmpty() && providerFactories.isEmpty() && (bindsMirror?.isEmpty() ?: true)
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as BindingContainer
+
+    return classId == other.classId
+  }
+
+  override fun hashCode(): Int = classId.hashCode()
+
+  override fun toString(): String = classId.asString()
 }

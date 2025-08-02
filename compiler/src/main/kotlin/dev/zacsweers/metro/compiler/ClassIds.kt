@@ -147,6 +147,7 @@ public class ClassIds(
       customContributesGraphExtensionFactoryAnnotations
   internal val contributesToLikeAnnotations =
     contributesToAnnotations + contributesGraphExtensionFactoryAnnotations
+
   internal val allContributesAnnotations =
     contributesToAnnotations +
       contributesBindingAnnotations +
@@ -154,6 +155,20 @@ public class ClassIds(
       contributesIntoMapAnnotations +
       customContributesIntoSetAnnotations +
       contributesGraphExtensionFactoryAnnotations
+
+  /**
+   * Repeatable annotations in compiled sources behave interestingly. They get an implicit
+   * `Container` nested class that has an array value of the repeated annotations. For example:
+   * `ContributesBinding.Container`
+   *
+   * Note that not all of these may actually be repeatable, but this doesn't need to resolve it for
+   * sure and is just a general catch-all.
+   */
+  internal val allRepeatableContributesAnnotationsContainers =
+    allContributesAnnotations.mapToSet { it.createNestedClassId(Symbols.Names.Container) }
+
+  internal val allContributesAnnotationsWithContainers =
+    allContributesAnnotations + allRepeatableContributesAnnotationsContainers
 
   internal val graphLikeAnnotations =
     dependencyGraphAnnotations + contributesGraphExtensionAnnotations

@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
+import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
@@ -147,14 +148,11 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
     return buildMap {
       for (originClass in contributingClasses) {
         if (originClass.isAnnotatedWithAny(session, session.classIds.bindingContainerAnnotations)) {
-          val scopeId =
-            originClass
-              .annotationsIn(session, session.classIds.contributesToAnnotations)
-              .single()
-              .resolvedScopeClassId(typeResolver)
-          if (scopeId == scopeClassId) {
-            put(originClass.classId, true)
-          }
+          val hasMatchingScope =
+            originClass.annotationsIn(session, session.classIds.contributesToAnnotations).any {
+              it.resolvedScopeClassId(typeResolver) == scopeClassId
+            }
+          put(originClass.classId, hasMatchingScope)
           continue
         }
 
@@ -331,7 +329,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
 
         contributingType
-          .annotationsIn(session, session.classIds.allContributesAnnotations)
+          .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
+          .filter { it.scopeArgument()?.resolveClassId(localTypeResolver) in scopes }
           .flatMap { annotation -> annotation.resolvedReplacedClassIds(localTypeResolver) }
       }
       .distinct()
