@@ -103,8 +103,8 @@ val shadowJar = tasks.register("shadowJar", ShadowJar::class.java) {
 }
 
 /**
- * The wire and poko plugin add their dependency automatically.
- * This is not needed because we embed the dependency.
+ * The wire and poko plugin add their dependencies automatically.
+ * This is not needed because we can either ignore or embed them so we remove them.
  *
  * Note: this is done in `afterEvaluate` to run after wire:
  * https://github.com/square/wire/blob/34931324f09c5827a624c056e1040dc8d01cbcd9/wire-gradle-plugin/src/main/kotlin/com/squareup/wire/gradle/WirePlugin.kt#L75
