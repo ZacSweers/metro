@@ -12,7 +12,6 @@ import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
@@ -26,12 +25,9 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
-import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.parentClassOrNull
 
 internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
@@ -552,18 +548,9 @@ internal class IrBindingGraph(
             }
           }
         }
-        // TODO remove messagecollector in 2.2.20
-        if (declarationToReport.origin == Origins.ContributedGraph) {
-          metroContext.messageCollector.report(
-            CompilerMessageSeverity.ERROR,
-            message,
-            declarationToReport.location(),
-          )
-        } else {
-          metroContext.diagnosticReporter
-            .at(declarationToReport)
-            .report(MetroDiagnostics.METRO_ERROR, message)
-        }
+        metroContext.diagnosticReporter
+          .at(declarationToReport)
+          .report(MetroDiagnostics.METRO_ERROR, message)
       }
     }
   }

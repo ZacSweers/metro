@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 
 public class MetroIrGenerationExtension(
-  private val messageCollector: MessageCollector,
   private val classIds: ClassIds,
   private val options: MetroOptions,
   private val lookupTracker: LookupTracker?,
@@ -31,7 +30,6 @@ public class MetroIrGenerationExtension(
     val context =
       IrMetroContext(
         pluginContext,
-        messageCollector,
         symbols,
         options,
         lookupTracker,
