@@ -1213,11 +1213,11 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
                   [test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph] test.ChildDependency(…, dep)
               test.ChildDependency is requested at
                   [test.ExampleGraph.$$ContributedIntermediateGraph.$$ContributedLoggedInGraph] test.LoggedInGraph#childDependency
-          
-          
+
+
           (Hint)
           $$ContributedLoggedInGraph is contributed by 'test.LoggedInGraph' to 'test.ExampleGraph.$$ContributedIntermediateGraph'.
-          
+
           (Hint)
           It appears that extended parent graph 'test.ExampleGraph' does declare the '@SingleIn(AppScope::class)' scope but doesn't use 'Dependency' directly.
           To work around this, consider declaring an accessor for 'Dependency' in that graph (i.e. `val dependency: Dependency`) or enabling the `enableScopedInjectClassHints` option.
