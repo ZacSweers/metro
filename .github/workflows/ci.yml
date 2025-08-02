@@ -265,7 +265,7 @@ jobs:
 
   publish:
     runs-on: macos-latest
-    if: github.ref == 'refs/heads/main' && github.repository == 'zacsweers/metro'
+    if: github.ref == 'refs/heads/main' && github.event.repository.fork == false
     needs:
       - final-status
 
