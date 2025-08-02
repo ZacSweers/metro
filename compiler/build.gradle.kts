@@ -71,6 +71,9 @@ val embedded = configurations.resolvable("embedded")
 configurations.named("compileOnly").configure {
   extendsFrom(embedded.get())
 }
+configurations.named("testImplementation").configure {
+  extendsFrom(embedded.get())
+}
 
 tasks.jar.configure {
   enabled = false
