@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.declarations.utils.classId
@@ -329,14 +328,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         val localTypeResolver =
           typeResolverFactory.create(contributingType) ?: return@flatMap emptySequence()
 
-        val annotationsToCheck =
-          if (contributingType.origin == FirDeclarationOrigin.Library) {
-            session.classIds.allContributesAnnotationsWithContainers
-          } else {
-            session.classIds.allContributesAnnotations
-          }
         contributingType
-          .annotationsIn(session, annotationsToCheck)
+          .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
           .filter { it.scopeArgument()?.resolveClassId(localTypeResolver) in scopes }
           .flatMap { annotation -> annotation.resolvedReplacedClassIds(localTypeResolver) }
       }

@@ -1438,7 +1438,7 @@ class ICTests : BaseIncrementalCompilationTest() {
   @Test
   fun multipleBindingReplacementsAreRespectedWhenAddingNewContribution() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(debug = true) {
         override fun sources() = listOf(appGraph, fakeImpl, main)
 
         override val gradleProject: GradleProject
