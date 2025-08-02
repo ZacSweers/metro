@@ -3,6 +3,7 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
@@ -98,3 +99,12 @@ fun KotlinMultiplatformExtension.configureOrCreateNativePlatforms() {
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
 }
+
+// There don't seem to be tests for these, only WASM
+tasks
+  .withType<KotlinJsTest>()
+  .named {
+    // Keep the wasm test
+    it != "wasmJsBrowserTest"
+  }
+  .configureEach { enabled = false }
