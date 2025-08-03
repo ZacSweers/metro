@@ -205,7 +205,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         // bound
         if (explicitBindingType.isNothing) {
           reporter.reportOn(
-            explicitBindingType.source,
+            explicitBindingType.source ?: annotation.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Explicit bound types should not be `Nothing` or `Nothing?`.",
           )
@@ -217,7 +217,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
         if (refClassId == declaration.symbol.classId) {
           reporter.reportOn(
-            explicitBindingType.source,
+            explicitBindingType.source ?: annotation.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Redundant explicit bound type ${refClassId.asSingleFqName()} is the same as the annotated class ${refClassId.asSingleFqName()}.",
           )
