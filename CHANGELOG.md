@@ -5,7 +5,11 @@ Changelog
 --------------
 
 - **Behavior change**: `chunkFieldInits()` is now enabled by default.
+- **Enhancement**: Allow contributing annotations on assisted-injected classes.
 - **Fix**: Don't link expect/actual declarations if they're in the same file.
+- **Fix**: Don't copy map keys over into generated `@Binds` contributions unless it's an `@IntoMap` binding.
+- **Fix**: Fall back to annotation sources if needed when reporting errors with bound types in FIR.
+- [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5
 -----
