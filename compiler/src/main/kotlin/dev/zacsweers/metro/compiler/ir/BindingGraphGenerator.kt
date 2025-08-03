@@ -4,14 +4,15 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroLogger
+import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
+import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -19,7 +20,6 @@ import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
-import org.jetbrains.kotlin.name.Name
 
 /**
  * Generates an [IrBindingGraph] for the given [node]. This only constructs the graph from available
@@ -338,14 +338,10 @@ internal class BindingGraphGenerator(
     // Only add it if it's a directly included node. Indirect will be propagated by metro
     // accessors
     node.includedGraphNodes.forEach { depNodeKey, depNode ->
-      val accessorNames =
-        depNode.proto?.provider_field_names?.toSet().orEmpty() +
-          depNode.proto?.instance_field_names?.toSet().orEmpty()
       // Only add accessors for included types. If they're an accessor to a scoped provider, they
       // will be handled by the provider field accessor later
       for ((getter, contextualTypeKey) in depNode.accessors) {
-        val name = getter.ir.name.asString()
-        if (name.removeSuffix(Symbols.StringNames.METRO_ACCESSOR) in accessorNames) {
+        if (getter.annotations.isMetroAccessor) {
           // We'll handle this farther down
           continue
         }
@@ -364,14 +360,22 @@ internal class BindingGraphGenerator(
         }
 
         val irGetter = getter.ir
+        val parentClass = irGetter.parentAsClass
+        val parentName = parentClass.name
         val getterToUse =
           if (
-            irGetter.parentAsClass.name == Symbols.Names.MetroGraph ||
-              irGetter.name.asString().startsWith(Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX)
+            parentName == Symbols.Names.MetroGraph ||
+              parentClass.origin == Origins.ContributedGraph ||
+              parentName.asString().startsWith(Symbols.StringNames.CONTRIBUTED_GRAPH_PREFIX)
           ) {
             // Use the original graph decl so we don't tie this invocation to `$$MetroGraph`
             // specifically
-            irGetter.overriddenSymbolsSequence().first().owner
+            irGetter.overriddenSymbolsSequence().firstOrNull()?.owner
+              ?: run {
+                error(
+                  "${irGetter.dumpKotlinLike()} overrides nothing, this is a bug in the Metro compiler"
+                )
+              }
           } else {
             irGetter
           }
@@ -395,89 +399,39 @@ internal class BindingGraphGenerator(
 
     node.allExtendedNodes.values.forEach { depNode ->
       if (depNode.isExtendable) {
-        depNode.proto?.let { proto ->
-          val providerFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
-          val instanceFieldAccessorsByName = mutableMapOf<Name, MetroSimpleFunction>()
+        val graphImpl = depNode.sourceGraph.metroGraphOrFail
+        for (accessor in graphImpl.functions) {
+          // Exclude toString/equals/hashCode or use marker annotation?
+          if (accessor.isInheritedFromAny(pluginContext.irBuiltIns)) {
+            continue
+          }
 
-          val providerFieldsSet = proto.provider_field_names.toSet()
-          val instanceFieldsSet = proto.instance_field_names.toSet()
+          val annotations = accessor.metroAnnotations(symbols.classIds)
+          if (!annotations.isMetroAccessor) continue
 
-          val graphImpl = depNode.sourceGraph.metroGraphOrFail
-          for (accessor in graphImpl.functions) {
-            // Exclude toString/equals/hashCode or use marker annotation?
-            if (accessor.isInheritedFromAny(pluginContext.irBuiltIns)) {
+          val metroFunction = metroFunctionOf(accessor, annotations)
+          val contextualTypeKey = IrContextualTypeKey.from(metroFunction.ir)
+          val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
+          if (existingBinding != null) {
+            // If it's a graph type we can just proceed, can happen with common ancestors
+            val rawType = existingBinding.typeKey.type.rawTypeOrNull()
+            if (rawType?.annotationsIn(symbols.dependencyGraphAnnotations).orEmpty().any()) {
               continue
             }
-            when (accessor.name.asString().removeSuffix(Symbols.StringNames.METRO_ACCESSOR)) {
-              in providerFieldsSet -> {
-                val metroFunction = metroFunctionOf(accessor)
-                providerFieldAccessorsByName[metroFunction.ir.name] = metroFunction
-              }
-
-              in instanceFieldsSet -> {
-                val metroFunction = metroFunctionOf(accessor)
-                instanceFieldAccessorsByName[metroFunction.ir.name] = metroFunction
-              }
-            }
           }
-
-          proto.provider_field_names.forEach { providerField ->
-            val accessor =
-              providerFieldAccessorsByName.getValue(
-                "${providerField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
-              )
-            val contextualTypeKey = IrContextualTypeKey.from(accessor.ir)
-            val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
-            if (existingBinding != null) {
-              // If it's a graph type we can just proceed, can happen with common ancestors
-              val rawType = existingBinding.typeKey.type.rawTypeOrNull()
-              if (rawType?.annotationsIn(symbols.dependencyGraphAnnotations).orEmpty().any()) {
-                return@forEach
-              }
-            }
-            graph.addBinding(
-              contextualTypeKey.typeKey,
-              IrBinding.GraphDependency(
-                ownerKey = depNode.typeKey,
-                graph = depNode.sourceGraph,
-                getter = accessor.ir,
-                isProviderFieldAccessor = true,
-                typeKey = contextualTypeKey.typeKey,
-              ),
-              bindingStack,
-            )
-            // Record a lookup for IC
-            trackFunctionCall(node.sourceGraph, accessor.ir)
-          }
-
-          proto.instance_field_names.forEach { instanceField ->
-            val accessor =
-              instanceFieldAccessorsByName.getValue(
-                "${instanceField}${Symbols.StringNames.METRO_ACCESSOR}".asName()
-              )
-            val contextualTypeKey = IrContextualTypeKey.from(accessor.ir)
-            val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
-            if (existingBinding != null) {
-              // If it's a graph type we can just proceed, can happen with common ancestors
-              val rawType = existingBinding.typeKey.type.rawTypeOrNull()
-              if (rawType?.annotationsIn(symbols.dependencyGraphAnnotations).orEmpty().any()) {
-                return@forEach
-              }
-            }
-            graph.addBinding(
-              contextualTypeKey.typeKey,
-              IrBinding.GraphDependency(
-                ownerKey = depNode.typeKey,
-                graph = depNode.sourceGraph,
-                getter = accessor.ir,
-                isProviderFieldAccessor = true,
-                typeKey = contextualTypeKey.typeKey,
-              ),
-              bindingStack,
-            )
-            // Record a lookup for IC
-            trackFunctionCall(node.sourceGraph, accessor.ir)
-          }
+          graph.addBinding(
+            contextualTypeKey.typeKey,
+            IrBinding.GraphDependency(
+              ownerKey = depNode.typeKey,
+              graph = depNode.sourceGraph,
+              getter = metroFunction.ir,
+              isProviderFieldAccessor = true,
+              typeKey = contextualTypeKey.typeKey,
+            ),
+            bindingStack,
+          )
+          // Record a lookup for IC
+          trackFunctionCall(node.sourceGraph, metroFunction.ir)
         }
       }
     }
