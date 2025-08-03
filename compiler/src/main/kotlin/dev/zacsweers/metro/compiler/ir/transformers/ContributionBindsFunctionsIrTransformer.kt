@@ -186,7 +186,9 @@ internal class ContributionBindsFunctionsIrTransformer(private val context: IrMe
                 //  bound type?
               }
               qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
-              mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+              if (this@BindingContribution is ContributesIntoMapBinding) {
+                mapKey?.let { annotations += it.ir.deepCopyWithSymbols() }
+              }
               pluginContext.metadataDeclarationRegistrar.registerFunctionAsMetadataVisible(this)
             }
         }
