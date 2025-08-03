@@ -85,7 +85,7 @@ internal class Symbols(
     const val INVOKE = "invoke"
     const val IS_EXTENDABLE = "isExtendable"
     const val IS_PROPERTY_ACCESSOR = "isPropertyAccessor"
-    const val METRO_ACCESSOR = "_metroAccessor"
+    const val METRO_ACCESSOR_SUFFIX = "_metroAccessor"
     const val METRO_CONTRIBUTION = "MetroContribution"
     const val METRO_CONTRIBUTION_NAME_PREFIX = $$$"$$MetroContribution"
     const val METRO_FACTORY = $$$"$$MetroFactory"
@@ -113,6 +113,8 @@ internal class Symbols(
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
     val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroRuntimePackage = FqName(METRO_RUNTIME_PACKAGE)
+    val MetroAccessor =
+      metroRuntimeInternalPackage.child(Names.MetroAccessor)
     val GraphFactoryInvokeFunctionMarkerClass =
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass = metroRuntimeInternalPackage.child(CALLABLE_METADATA.asName())
@@ -141,6 +143,7 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
+    val MetroAccessor = ClassId(FqNames.metroRuntimeInternalPackage, Names.MetroAccessor)
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
     val CallableMetadata = ClassId(FqNames.metroRuntimeInternalPackage, CALLABLE_METADATA.asName())
@@ -167,6 +170,7 @@ internal class Symbols(
     val BindsMirrorClass = $$$"$$BindsMirror".asName()
     val Container = "Container".asName()
     val FactoryClass = "Factory".asName()
+    val MetroAccessor = "MetroAccessor".asName()
     val MetroContributionNamePrefix = StringNames.METRO_CONTRIBUTION_NAME_PREFIX.asName()
     val MetroFactory = StringNames.METRO_FACTORY.asName()
     val MetroGraph = $$$"$$MetroGraph".asName()
@@ -197,7 +201,7 @@ internal class Symbols(
     val isExtendable = StringNames.IS_EXTENDABLE.asName()
     val isPropertyAccessor = StringNames.IS_PROPERTY_ACCESSOR.asName()
     val membersInjector = "MembersInjector".asName()
-    val metroAccessor = StringNames.METRO_ACCESSOR.asName()
+    val metroAccessorSuffix = StringNames.METRO_ACCESSOR_SUFFIX.asName()
     val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
     val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
@@ -305,6 +309,10 @@ internal class Symbols(
 
   val callableMetadataAnnotationConstructor: IrConstructorSymbol by lazy {
     pluginContext.referenceClass(ClassIds.CallableMetadata)!!.constructors.first()
+  }
+
+  val metroAccessorAnnotationConstructor: IrConstructorSymbol by lazy {
+    pluginContext.referenceClass(ClassIds.MetroAccessor)!!.constructors.first()
   }
 
   val metroExtendsAnnotationConstructor: IrConstructorSymbol by lazy {
