@@ -5,6 +5,7 @@ Changelog
 --------------
 
 - **Behavior change**: `chunkFieldInits()` is now enabled by default.
+- **Fix**: Don't link expect/actual declarations if they're in the same file.
 
 0.5.5
 -----
