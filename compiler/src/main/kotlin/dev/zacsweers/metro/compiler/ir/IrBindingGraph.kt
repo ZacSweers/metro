@@ -140,7 +140,7 @@ internal class IrBindingGraph(
         }
 
         else -> {
-          error("Unrecognized provider: ${declaration.locationOrNull()}")
+          error("Unrecognized provider: ${declaration.locationOrNull() ?: ("\n" + declaration.dumpKotlinLike())}")
         }
       }
 
