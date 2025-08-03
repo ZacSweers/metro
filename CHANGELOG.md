@@ -11,6 +11,7 @@ Changelog
 - **Fix**: Don't copy map keys over into generated `@Binds` contributions unless it's an `@IntoMap` binding.
 - **Fix**: Fall back to annotation sources if needed when reporting errors with bound types in FIR.
 - **Fix**: Use `MapProviderFactory.builder().build()` for Dagger interop on `Map<Key, Provider<Value>>` types as there is no `MapProviderFactory.empty()`.
+- **Fix**: Don't assume `@ContributesGraphExtension` to have aggregation scopes during graph generation.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5

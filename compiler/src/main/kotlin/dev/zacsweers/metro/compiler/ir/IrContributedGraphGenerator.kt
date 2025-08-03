@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -54,7 +53,7 @@ internal class IrContributedGraphGenerator(
     factoryFunction: IrSimpleFunction,
   ): IrClass {
     val contributesGraphExtensionAnno =
-      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).firstOrNull()
+      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first()
 
     // If the parent graph is not extendable, error out here
     val parentIsContributed = parentGraph.origin === Origins.ContributedGraph
@@ -105,9 +104,7 @@ internal class IrContributedGraphGenerator(
       }
     }
 
-    val sourceScope =
-      contributesGraphExtensionAnno?.scopeClassOrNull()
-        ?: error("No scope found for ${sourceGraph.name}: ${sourceGraph.dumpKotlinLike()}")
+    val sourceScope = contributesGraphExtensionAnno.scopeClassOrNull()
 
     // Source is a `@ContributesGraphExtension`-annotated class, we want to generate a header impl
     // class
@@ -131,7 +128,7 @@ internal class IrContributedGraphGenerator(
             buildAnnotation(symbol, symbols.metroDependencyGraphAnnotationConstructor) { annotation
               ->
               // scope
-              annotation.arguments[0] = kClassReference(sourceScope.symbol)
+              sourceScope?.let { annotation.arguments[0] = kClassReference(it.symbol) }
 
               // additionalScopes
               contributesGraphExtensionAnno.additionalScopes().copyToIrVararg()?.let {
@@ -195,57 +192,57 @@ internal class IrContributedGraphGenerator(
     val graphExtensionAnno =
       sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first()
 
-    val scope =
-      graphExtensionAnno.scopeOrNull()
-        ?: error("No scope found for ${sourceGraph.name}: ${graphExtensionAnno.dumpKotlinLike()}")
+    val scope = graphExtensionAnno.scopeOrNull()
 
-    val additionalScopes =
-      graphExtensionAnno.additionalScopes().map { it.classType.rawType().classIdOrFail }
+    if (scope != null) {
+      val additionalScopes =
+        graphExtensionAnno.additionalScopes().map { it.classType.rawType().classIdOrFail }
 
-    val allScopes = (additionalScopes + scope).toSet()
+      val allScopes = (additionalScopes + scope).toSet()
 
-    // Get all contributions and binding containers
-    val allContributions =
-      allScopes
-        .flatMap { contributionData.getContributions(it) }
-        .groupByTo(mutableMapOf()) {
-          // For Metro contributions, we need to check the parent class ID
-          // This is always the $$MetroContribution, the contribution's parent is the actual class
-          it.rawType().classIdOrFail.parentClassId!!
-        }
-    val bindingContainers =
-      allScopes
-        .flatMap { contributionData.getBindingContainerContributions(it) }
-        .associateByTo(mutableMapOf()) { it.classIdOrFail }
+      // Get all contributions and binding containers
+      val allContributions =
+        allScopes
+          .flatMap { contributionData.getContributions(it) }
+          .groupByTo(mutableMapOf()) {
+            // For Metro contributions, we need to check the parent class ID
+            // This is always the $$MetroContribution, the contribution's parent is the actual class
+            it.rawType().classIdOrFail.parentClassId!!
+          }
+      val bindingContainers =
+        allScopes
+          .flatMap { contributionData.getBindingContainerContributions(it) }
+          .associateByTo(mutableMapOf()) { it.classIdOrFail }
 
-    // Process excludes
-    val excluded = graphExtensionAnno.excludedClasses()
-    for (excludedClass in excluded) {
-      val excludedClassId = excludedClass.classType.rawType().classIdOrFail
+      // Process excludes
+      val excluded = graphExtensionAnno.excludedClasses()
+      for (excludedClass in excluded) {
+        val excludedClassId = excludedClass.classType.rawType().classIdOrFail
 
-      // Remove excluded binding containers - they won't contribute their bindings
-      bindingContainers.remove(excludedClassId)
+        // Remove excluded binding containers - they won't contribute their bindings
+        bindingContainers.remove(excludedClassId)
 
-      // Remove contributions from excluded classes that have nested $$MetroContribution classes
-      // (binding containers don't have these, so this only affects @ContributesBinding etc.)
-      allContributions.remove(excludedClassId)
+        // Remove contributions from excluded classes that have nested $$MetroContribution classes
+        // (binding containers don't have these, so this only affects @ContributesBinding etc.)
+        allContributions.remove(excludedClassId)
+      }
+
+      // Apply replacements from remaining (non-excluded) binding containers
+      bindingContainers.values.forEach { bindingContainer ->
+        bindingContainer
+          .annotationsIn(symbols.classIds.allContributesAnnotations)
+          .flatMap { annotation -> annotation.replacedClasses() }
+          .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
+          .forEach { replacedClassId -> allContributions.remove(replacedClassId) }
+      }
+
+      // Add only non-binding-container contributions as supertypes
+      contributedGraph.superTypes +=
+        allContributions.values
+          .flatten()
+          // Deterministic sort
+          .sortedBy { it.render(short = false) }
     }
-
-    // Apply replacements from remaining (non-excluded) binding containers
-    bindingContainers.values.forEach { bindingContainer ->
-      bindingContainer
-        .annotationsIn(symbols.classIds.allContributesAnnotations)
-        .flatMap { annotation -> annotation.replacedClasses() }
-        .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-        .forEach { replacedClassId -> allContributions.remove(replacedClassId) }
-    }
-
-    // Add only non-binding-container contributions as supertypes
-    contributedGraph.superTypes +=
-      allContributions.values
-        .flatten()
-        // Deterministic sort
-        .sortedBy { it.render(short = false) }
 
     parentGraph.addChild(contributedGraph)
 
