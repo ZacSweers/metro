@@ -6,6 +6,7 @@ Changelog
 
 - **Behavior change**: `chunkFieldInits()` is now enabled by default.
 - **Enhancement**: Allow contributing annotations on assisted-injected classes.
+- **Enhancement**: Improve dagger interop with `dagger.Lazy` types by allowing `Provider` subtypes to be wrapped too.
 - **Fix**: Don't link expect/actual declarations if they're in the same file.
 - **Fix**: Don't copy map keys over into generated `@Binds` contributions unless it's an `@IntoMap` binding.
 - **Fix**: Fall back to annotation sources if needed when reporting errors with bound types in FIR.

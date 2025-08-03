@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.Symbols.StringNames.METRO_RUNTIME_PACKAGE
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.getAllSuperTypes
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
@@ -113,8 +114,7 @@ internal class Symbols(
     val metroHintsPackage = FqName(StringNames.METRO_HINTS_PACKAGE)
     val metroRuntimeInternalPackage = FqName(METRO_RUNTIME_INTERNAL_PACKAGE)
     val metroRuntimePackage = FqName(METRO_RUNTIME_PACKAGE)
-    val MetroAccessor =
-      metroRuntimeInternalPackage.child(Names.MetroAccessor)
+    val MetroAccessor = metroRuntimeInternalPackage.child(Names.MetroAccessor)
     val GraphFactoryInvokeFunctionMarkerClass =
       metroRuntimeInternalPackage.child("GraphFactoryInvokeFunctionMarker".asName())
     val CallableMetadataClass = metroRuntimeInternalPackage.child(CALLABLE_METADATA.asName())
@@ -519,6 +519,7 @@ internal class Symbols(
     val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
     val doubleCheckProvider by lazy { doubleCheckCompanionObject.requireSimpleFunction("provider") }
 
+    context(context: IrMetroContext)
     protected abstract fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol
 
     context(context: IrMetroContext)
@@ -537,12 +538,14 @@ internal class Symbols(
     }
 
     /** Transforms a given [metroProvider] into the [target] type's provider equivalent. */
+    context(context: IrMetroContext)
     abstract fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
       target: IrContextualTypeKey,
     ): IrExpression
 
     /** Transforms a given [provider] into a Metro provider. */
+    context(context: IrMetroContext)
     abstract fun IrBuilderWithScope.transformToMetroProvider(
       provider: IrExpression,
       type: IrType,
@@ -595,7 +598,7 @@ internal class Symbols(
     }
 
     abstract val mapProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
-    abstract val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol
+    abstract val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol?
 
     val mapProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
       mapProviderFactoryBuilder.requireSimpleFunction("put")
@@ -672,6 +675,7 @@ internal class Symbols(
       mapProviderFactoryCompanionObject.requireSimpleFunction("empty")
     }
 
+    context(context: IrMetroContext)
     override fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
       target: IrContextualTypeKey,
@@ -680,6 +684,7 @@ internal class Symbols(
       return metroProvider
     }
 
+    context(context: IrMetroContext)
     override fun IrBuilderWithScope.transformToMetroProvider(
       provider: IrExpression,
       type: IrType,
@@ -688,6 +693,7 @@ internal class Symbols(
       return provider
     }
 
+    context(context: IrMetroContext)
     override fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol {
       // Nothing to do here!
       return doubleCheckLazy
@@ -791,23 +797,24 @@ internal class Symbols(
       }
     }
 
-    override val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
-      // Static function in this case
-      mapProviderFactory.requireSimpleFunction("empty")
-    }
+    override val mapProviderFactoryEmptyFunction: IrSimpleFunctionSymbol? = null
 
+    context(context: IrMetroContext)
     override fun IrBuilderWithScope.transformMetroProvider(
       metroProvider: IrExpression,
       target: IrContextualTypeKey,
     ): IrExpression {
+      val targetClass = target.rawType?.classOrNull?.owner
       val targetClassId =
-        target.rawType?.classOrNull?.owner?.classId
-          ?: error("Unexpected non-jakarta/javax provider type $target")
+        targetClass?.classId ?: error("Unexpected non-jakarta/javax provider type $target")
       val interopFunction =
         when (targetClassId) {
           ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> asDaggerInternalProvider
           ClassIds.JAVAX_PROVIDER_CLASS_ID -> asJavaxProvider
           ClassIds.JAKARTA_PROVIDER_CLASS_ID -> asJakartaProvider
+          ClassIds.DAGGER_LAZY_CLASS_ID -> {
+            return invokeDoubleCheckLazy(target, metroProvider)
+          }
           else -> error("Unexpected non-dagger/jakarta/javax provider $targetClassId")
         }
       return irInvoke(
@@ -817,6 +824,7 @@ internal class Symbols(
       )
     }
 
+    context(context: IrMetroContext)
     override fun IrBuilderWithScope.transformToMetroProvider(
       provider: IrExpression,
       type: IrType,
@@ -897,14 +905,23 @@ internal class Symbols(
         .first()
     }
 
+    context(context: IrMetroContext)
     override fun lazyFor(providerType: IrType): IrSimpleFunctionSymbol {
-      return when (providerType.rawTypeOrNull()?.classId) {
-        ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> lazyFromDaggerProvider
-        ClassIds.JAVAX_PROVIDER_CLASS_ID -> lazyFromJavaxProvider
-        ClassIds.JAKARTA_PROVIDER_CLASS_ID -> lazyFromJakartaProvider
-        Symbols.ClassIds.metroProvider -> lazyFromMetroProvider
-        else -> error("Unexpected provider type: ${providerType.dumpKotlinLike()}")
+      providerType.rawTypeOrNull()?.let { initialRawType ->
+        for (type in initialRawType.getAllSuperTypes(excludeSelf = false, excludeAny = true)) {
+          val classId = type.classOrNull?.owner?.classId ?: continue
+          val symbol =
+            when (classId) {
+              ClassIds.DAGGER_INTERNAL_PROVIDER_CLASS_ID -> lazyFromDaggerProvider
+              ClassIds.JAVAX_PROVIDER_CLASS_ID -> lazyFromJavaxProvider
+              ClassIds.JAKARTA_PROVIDER_CLASS_ID -> lazyFromJakartaProvider
+              Symbols.ClassIds.metroProvider -> lazyFromMetroProvider
+              else -> continue
+            }
+          return symbol
+        }
       }
+      error("Unexpected provider type: ${providerType.dumpKotlinLike()}")
     }
 
     object ClassIds {
