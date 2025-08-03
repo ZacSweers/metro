@@ -1508,19 +1508,32 @@ internal class IrGraphGenerator(
         )
         .wrapInProvider(symbols.metroProvider)
 
-    // TODO check if binding allows empty?
     if (size == 0) {
       // If it's empty then short-circuit here
-      val emptyCallee =
-        if (useProviderFactory) {
-          // MapProviderFactory.empty()
-          valueProviderSymbols.mapProviderFactoryEmptyFunction
+      return if (useProviderFactory) {
+        // MapProviderFactory.empty()
+        val emptyCallee = valueProviderSymbols.mapProviderFactoryEmptyFunction
+        if (emptyCallee != null) {
+          irInvoke(callee = emptyCallee, typeHint = mapProviderType)
         } else {
-          // MapFactory.empty()
-          valueProviderSymbols.mapFactoryEmptyFunction
+          // Call builder().build()
+          // build()
+          irInvoke(
+            callee = valueProviderSymbols.mapProviderFactoryBuilderBuildFunction,
+            typeHint = mapProviderType,
+            // builder()
+            dispatchReceiver =
+              irInvoke(
+                callee = valueProviderSymbols.mapProviderFactoryBuilderFunction,
+                typeHint = mapProviderType,
+                args = listOf(irInt(0)),
+              ),
+          )
         }
-
-      return irInvoke(callee = emptyCallee, typeHint = mapProviderType)
+      } else {
+        // MapFactory.empty()
+        irInvoke(callee = valueProviderSymbols.mapFactoryEmptyFunction, typeHint = mapProviderType)
+      }
     }
 
     val builderFunction =
