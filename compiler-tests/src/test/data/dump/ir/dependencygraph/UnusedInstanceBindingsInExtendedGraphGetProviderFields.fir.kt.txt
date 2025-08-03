@@ -27,16 +27,19 @@ interface AppGraph {
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor
     fun appGraphProvider_metroAccessor(): Provider<AppGraph> {
       return <this>.#appGraphProvider
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor
     fun stringInstanceProvider_metroAccessor(): Provider<String> {
       return <this>.#stringInstanceProvider
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor(isInstanceAccessor = true)
     fun thisGraphInstance_metroAccessor(): AppGraph {
       return <this>.#thisGraphInstance
     }
