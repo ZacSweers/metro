@@ -36,6 +36,6 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.material3)
   implementation(libs.androidx.navigationCompose)
-  implementation(libs.androidx.viewmodel)
+  implementation(libs.androidx.viewmodelKtx)
   implementation(libs.kotlinx.serialization.json)
 }

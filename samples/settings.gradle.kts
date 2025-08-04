@@ -36,6 +36,10 @@ include(
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
   ":weather-app",
+  ":multi-module-viewmodels:app",
+  ":multi-module-viewmodels:core",
+  ":multi-module-viewmodels:screen-details",
+  ":multi-module-viewmodels:screen-home",
 )
 
 includeBuild("..")

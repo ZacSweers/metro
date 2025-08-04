@@ -29,6 +29,6 @@ dependencies {
   implementation(libs.androidx.core)
   implementation(libs.androidx.fragment)
   implementation(libs.androidx.material3)
-  implementation(libs.androidx.viewmodel)
+  implementation(libs.androidx.viewmodelKtx)
   implementation(libs.androidx.work)
 }
