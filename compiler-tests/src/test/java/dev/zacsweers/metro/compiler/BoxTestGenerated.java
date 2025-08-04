@@ -479,6 +479,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("MatchingParentBindingsAreSuperseded.kt")
+      public void testMatchingParentBindingsAreSuperseded() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MatchingParentBindingsAreSuperseded.kt");
+      }
+
+      @Test
       @TestMetadata("ParentBindingsAreAlsoIncluded.kt")
       public void testParentBindingsAreAlsoIncluded() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentBindingsAreAlsoIncluded.kt");

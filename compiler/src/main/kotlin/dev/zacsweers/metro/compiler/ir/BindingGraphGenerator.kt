@@ -86,24 +86,31 @@ internal class BindingGraphGenerator(
       superTypeToAlias.putIfAbsent(superTypeKey, node.typeKey)
     }
 
-    val providerFactoriesToAdd = buildList {
-      addAll(node.providerFactories)
-      addAll(
-        node.allExtendedNodes.flatMap { (_, extendedNode) ->
+    val inheritedProviderFactories =
+      node.allExtendedNodes
+        .flatMap { (_, extendedNode) ->
           extendedNode.providerFactories.filterNot {
             // Do not include scoped providers as these should _only_ come from this graph
             // instance
             it.second.annotations.isScoped
           }
         }
-      )
+        .associateBy { it.first }
+    val providerFactoriesToAdd = buildList {
+      addAll(node.providerFactories)
+      addAll(inheritedProviderFactories.values)
     }
 
-    providerFactoriesToAdd.forEach { (typeKey, providerFactory) ->
+    for ((typeKey, providerFactory) in providerFactoriesToAdd) {
       // Track a lookup of the provider class for IC
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
       trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
       trackFunctionCall(node.sourceGraph, providerFactory.function)
+
+      if (typeKey in graph && typeKey in inheritedProviderFactories) {
+        // If we already have a binding provisioned in this scenario, ignore the parent's version
+        continue
+      }
 
       val contextKey =
         if (providerFactory.annotations.isIntoMultibinding) {
@@ -113,6 +120,7 @@ internal class BindingGraphGenerator(
         } else {
           IrContextualTypeKey.create(typeKey)
         }
+
       val provider =
         IrBinding.Provided(
           providerFactory = providerFactory,
@@ -138,13 +146,31 @@ internal class BindingGraphGenerator(
     }
 
     // Add aliases ("@Binds")
+    val inheritedBindsCallables =
+      node.allExtendedNodes.values
+        .filter { it.isExtendable }
+        .flatMapToSet { it.bindsCallables }
+        .associateBy { it.target }
     val bindsFunctionsToAdd = buildList {
       addAll(node.bindsCallables)
-      addAll(
-        node.allExtendedNodes.values.filter { it.isExtendable }.flatMapToSet { it.bindsCallables }
-      )
+      addAll(inheritedBindsCallables.values)
     }
-    bindsFunctionsToAdd.forEach { bindingCallable ->
+
+    for (bindingCallable in bindsFunctionsToAdd) {
+      // Track a lookup of the target for IC
+      trackClassLookup(node.sourceGraph, bindingCallable.function.parentAsClass)
+      trackClassLookup(
+        node.sourceGraph,
+        bindingCallable.callableMetadata.mirrorFunction.parentAsClass,
+      )
+      trackFunctionCall(node.sourceGraph, bindingCallable.function)
+      trackFunctionCall(node.sourceGraph, bindingCallable.callableMetadata.mirrorFunction)
+
+      if (bindingCallable.target in graph && bindingCallable.target in inheritedBindsCallables) {
+        // If we already have a binding provisioned in this scenario, ignore the parent's version
+        continue
+      }
+
       val annotations = bindingCallable.callableMetadata.annotations
       val parameters = bindingCallable.function.parameters()
       val bindsImplType =
@@ -175,15 +201,6 @@ internal class BindingGraphGenerator(
           parameters,
           annotations,
         )
-
-      // Track a lookup of the target for IC
-      trackClassLookup(node.sourceGraph, bindingCallable.function.parentAsClass)
-      trackClassLookup(
-        node.sourceGraph,
-        bindingCallable.callableMetadata.mirrorFunction.parentAsClass,
-      )
-      trackFunctionCall(node.sourceGraph, bindingCallable.function)
-      trackFunctionCall(node.sourceGraph, bindingCallable.callableMetadata.mirrorFunction)
 
       if (annotations.isIntoMultibinding) {
         graph
@@ -430,11 +447,9 @@ internal class BindingGraphGenerator(
 
           val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
           if (existingBinding != null) {
-            // If it's a graph type we can just proceed, can happen with common ancestors
-            val rawType = existingBinding.typeKey.type.rawTypeOrNull()
-            if (rawType?.annotationsIn(symbols.dependencyGraphAnnotations).orEmpty().any()) {
-              continue
-            }
+            // If we already have a binding provisioned in this scenario, ignore the parent's
+            // version
+            continue
           }
           graph.addBinding(
             contextualTypeKey.typeKey,
