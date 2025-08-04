@@ -371,8 +371,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
   }
 
   /**
-   * This provides ContributesBinding.rank interop for users migrating from Dagger-Anvil to make the
-   * migration to Metro more feasible.
+   * This provides `ContributesBinding.rank` interop for users migrating from Dagger-Anvil to make
+   * the migration to Metro more feasible.
    *
    * @return The bindings which have been outranked and should not be included in the merged graph.
    */
@@ -413,16 +413,19 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
                   } ?: contributingType.implicitBoundType(typeResolver)
 
                 ContributedBinding(
-                  contributingType,
-                  FirTypeKey(
-                    boundType,
-                    contributingType.qualifierAnnotation(session, typeResolver),
-                  ),
-                  annotation.rankValue(),
+                  contributingType = contributingType,
+                  typeKey =
+                    FirTypeKey(
+                      boundType,
+                      contributingType.qualifierAnnotation(session, typeResolver),
+                    ),
+                  // TODO do we need to use type resolver service here for RANK_NORMAL?
+                  rank = annotation.rankValue(),
                 )
               }
             }
         }
+
     val bindingGroups =
       rankedBindings
         .groupBy { binding -> binding.typeKey }
