@@ -483,6 +483,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       public void testParentBindingsAreAlsoIncluded() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentBindingsAreAlsoIncluded.kt");
       }
+
+      @Test
+      @TestMetadata("ParentMultibindingsAreAlsoIncluded.kt")
+      public void testParentMultibindingsAreAlsoIncluded() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentMultibindingsAreAlsoIncluded.kt");
+      }
     }
   }
 

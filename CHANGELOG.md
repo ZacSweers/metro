@@ -16,6 +16,7 @@ Changelog
 - **Fix**: Use `MapProviderFactory.builder().build()` for Dagger interop on `Map<Key, Provider<Value>>` types as there is no `MapProviderFactory.empty()`.
 - **Fix**: Don't assume `@ContributesGraphExtension` to have aggregation scopes during graph generation.
 - **Fix**: When extending graphs, ignore bindings of the same type as the inheriting graph.
+- **Fix**: Propagate parent graph empty `@Multibinds` declarations to extensions.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5

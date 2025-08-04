@@ -140,7 +140,6 @@ internal class BindingGraphGenerator(
     // Add aliases ("@Binds")
     val bindsFunctionsToAdd = buildList {
       addAll(node.bindsCallables)
-      // Exclude scoped Binds, those will be exposed via provider field accessor
       addAll(
         node.allExtendedNodes.values.filter { it.isExtendable }.flatMapToSet { it.bindsCallables }
       )
@@ -255,7 +254,16 @@ internal class BindingGraphGenerator(
       trackFunctionCall(node.sourceGraph, getter)
     }
 
-    node.multibindsCallables.forEach { multibindsCallable ->
+    val allMultibindsCallables = buildList {
+      addAll(node.multibindsCallables)
+      addAll(
+        node.allExtendedNodes.values
+          .filter { it.isExtendable }
+          .flatMapToSet { it.multibindsCallables }
+      )
+    }
+
+    allMultibindsCallables.forEach { multibindsCallable ->
       val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
       addOrUpdateMultibinding(
         contextKey,
