@@ -301,9 +301,17 @@ internal class IrGraphGenerator(
               // This has a single "isInstanceAccessor" property
               metroAccessor.getSingleConstBooleanArgumentOrNull() == true
             }
-            .map {
-              val metroFunction = metroFunctionOf(it)
+            .mapNotNull {
               val contextKey = IrContextualTypeKey.from(it)
+
+              if (
+                contextKey.typeKey == node.typeKey || contextKey.typeKey == node.creator?.typeKey
+              ) {
+                // Accessor of this graph extension or its factory, no need to include these
+                return@mapNotNull null
+              }
+
+              val metroFunction = metroFunctionOf(it)
               metroFunction to contextKey
             }
 

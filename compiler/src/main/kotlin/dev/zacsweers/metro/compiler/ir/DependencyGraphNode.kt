@@ -78,23 +78,27 @@ internal data class DependencyGraphNode(
 
   override fun toString(): String = typeKey.render(short = true)
 
-  sealed interface Creator {
-    val function: IrFunction
-    val parameters: Parameters
-    val bindingContainersParameterIndices: BitField
+  sealed class Creator {
+    abstract val type: IrClass
+    abstract val function: IrFunction
+    abstract val parameters: Parameters
+    abstract val bindingContainersParameterIndices: BitField
+
+    val typeKey by unsafeLazy { IrTypeKey(type.typeWith()) }
 
     data class Constructor(
+      override val type: IrClass,
       override val function: IrConstructor,
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
-    ) : Creator
+    ) : Creator()
 
     data class Factory(
-      val type: IrClass,
+      override val type: IrClass,
       override val function: IrSimpleFunction,
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
-    ) : Creator
+    ) : Creator()
   }
 }
 

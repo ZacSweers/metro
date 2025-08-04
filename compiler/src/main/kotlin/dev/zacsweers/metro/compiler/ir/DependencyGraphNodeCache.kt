@@ -171,6 +171,7 @@ internal class DependencyGraphNodeCache(
           val ctorParams = ctor.parameters()
           populateBindingContainerFields(ctorParams)
           DependencyGraphNode.Creator.Constructor(
+            graphDeclaration,
             graphDeclaration.primaryConstructor!!,
             ctorParams,
             bindingContainerFields,

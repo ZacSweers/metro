@@ -12,6 +12,7 @@ Changelog
 - **Fix**: Fall back to annotation sources if needed when reporting errors with bound types in FIR.
 - **Fix**: Use `MapProviderFactory.builder().build()` for Dagger interop on `Map<Key, Provider<Value>>` types as there is no `MapProviderFactory.empty()`.
 - **Fix**: Don't assume `@ContributesGraphExtension` to have aggregation scopes during graph generation.
+- **Fix**: When extending graphs, ignore bindings of the same type as the inheriting graph.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5
