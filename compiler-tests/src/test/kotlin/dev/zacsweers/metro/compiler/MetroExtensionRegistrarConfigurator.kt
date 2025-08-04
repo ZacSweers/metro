@@ -78,6 +78,7 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
               ?: optionDefaults.publicProviderSeverity
           },
+        enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
         customGraphAnnotations =
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {

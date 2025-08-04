@@ -74,12 +74,6 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
-    @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
-    public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
-      runTest("compiler-tests/src/test/data/box/aggregation/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
-    }
-
-    @Test
     @TestMetadata("ContributingMultibileNullableBindings.kt")
     public void testContributingMultibileNullableBindings() {
       runTest("compiler-tests/src/test/data/box/aggregation/ContributingMultibileNullableBindings.kt");
@@ -121,10 +115,32 @@ public class BoxTestGenerated extends AbstractBoxTest {
       runTest("compiler-tests/src/test/data/box/aggregation/MultipleBindingReplacementsFromSameClassDifferentScopes.kt");
     }
 
-    @Test
-    @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
-    public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
-      runTest("compiler-tests/src/test/data/box/aggregation/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/aggregation/interop")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Interop {
+      @Test
+      public void testAllFilesPresentInInterop() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/interop"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphsSupportRankings.kt")
+      public void testContributedGraphsSupportRankings() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportRankings.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
+      public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
+      }
+
+      @Test
+      @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
+      public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
+      }
     }
   }
 

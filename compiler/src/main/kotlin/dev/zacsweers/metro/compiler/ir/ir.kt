@@ -1367,6 +1367,23 @@ internal fun IrConstructorCall.isExtendable(): Boolean {
   }
 }
 
+internal fun IrConstructorCall.rankValue(): Long {
+  // Although the parameter is defined as an Int, the value we receive here may end up being
+  // an Int or a Long so we need to handle both
+  return getValueArgument(Symbols.Names.rank)?.let { arg ->
+    when (arg) {
+      is IrConst -> {
+        when (val value = arg.value) {
+          is Long -> value
+          is Int -> value.toLong()
+          else -> Long.MIN_VALUE
+        }
+      }
+      else -> Long.MIN_VALUE
+    }
+  } ?: Long.MIN_VALUE
+}
+
 context(context: IrMetroContext)
 internal fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
   if (this == null) return null

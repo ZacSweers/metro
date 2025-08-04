@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -24,8 +25,11 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrBody
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
 import org.jetbrains.kotlin.ir.util.classId
@@ -34,9 +38,12 @@ import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
+import org.jetbrains.kotlin.name.ClassId
 
 internal class IrContributedGraphGenerator(
   context: IrMetroContext,
@@ -236,6 +243,14 @@ internal class IrContributedGraphGenerator(
           .forEach { replacedClassId -> allContributions.remove(replacedClassId) }
       }
 
+      // Process rank-based replacements if Dagger-Anvil interop is enabled
+      if (options.enableDaggerAnvilInterop) {
+        val rankReplacements = processRankBasedReplacements(allScopes, allContributions)
+        for (replacedClassId in rankReplacements) {
+          allContributions.remove(replacedClassId)
+        }
+      }
+
       // Add only non-binding-container contributions as supertypes
       contributedGraph.superTypes +=
         allContributions.values
@@ -271,4 +286,102 @@ internal class IrContributedGraphGenerator(
       )
     }
   }
+
+  /**
+   * This provides `ContributesBinding.rank` interop for users migrating from Dagger-Anvil to make
+   * the migration to Metro more feasible.
+   *
+   * @return The bindings which have been outranked and should not be included in the merged graph.
+   */
+  private fun processRankBasedReplacements(
+    allScopes: Set<ClassId>,
+    contributions: Map<ClassId, List<IrType>>,
+  ): Set<ClassId> {
+    val pendingRankReplacements = mutableSetOf<ClassId>()
+
+    val rankedBindings =
+      contributions.values
+        .flatten()
+        .map { it.rawType().parentAsClass }
+        .distinctBy { it.classIdOrFail }
+        .flatMap { contributingType ->
+          contributingType
+            .annotationsIn(symbols.classIds.contributesBindingAnnotations)
+            .mapNotNull { annotation ->
+              val scope = annotation.scopeOrNull() ?: return@mapNotNull null
+              if (scope !in allScopes) return@mapNotNull null
+
+              val explicitBindingMissingMetadata =
+                annotation.getValueArgument(Symbols.Names.binding)
+
+              if (explicitBindingMissingMetadata != null) {
+                // This is a case where an explicit binding is specified but we receive the argument
+                // as FirAnnotationImpl without the metadata containing the type arguments so we
+                // short-circuit since we lack the info to compare it against other bindings.
+                null
+              } else {
+                val boundType =
+                  annotation.bindingTypeOrNull() ?: contributingType.implicitBoundType()
+
+                ContributedIrBinding(
+                  contributingType = contributingType,
+                  typeKey = IrTypeKey(boundType, contributingType.qualifierAnnotation()),
+                  rank = annotation.rankValue(),
+                )
+              }
+            }
+        }
+
+    val bindingGroups =
+      rankedBindings
+        .groupBy { binding -> binding.typeKey }
+        .filter { bindingGroup -> bindingGroup.value.size > 1 }
+
+    for (bindingGroup in bindingGroups.values) {
+      val topBindings =
+        bindingGroup
+          .groupBy { binding -> binding.rank }
+          .toSortedMap()
+          .let { it.getValue(it.lastKey()) }
+
+      // These are the bindings that were outranked and should not be processed further
+      bindingGroup.minus(topBindings).forEach {
+        pendingRankReplacements += it.contributingType.classIdOrFail
+      }
+    }
+
+    return pendingRankReplacements
+  }
+
+  private fun IrClass.implicitBoundType(): IrType {
+    return superTypes
+      .filterNot { it.rawType().classId == metroContext.irBuiltIns.anyClass.owner.classId }
+      .singleOrNull()
+      ?: error(
+        "$kotlinFqName has a ranked binding with no explicit bound type and ${superTypes.size} supertypes. There must be exactly one supertype or an explicit bound type."
+      )
+  }
+
+  private fun IrConstructorCall.bindingTypeOrNull(): IrType? {
+    // Return a binding defined using Metro's API
+    getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType
+      ->
+      // bindingType is actually an annotation
+      return bindingType.typeArguments.getOrNull(0)?.takeUnless {
+        it == metroContext.irBuiltIns.nothingType
+      }
+    }
+    // Return a boundType defined using anvil KClass
+    return anvilKClassBoundTypeArgument()
+  }
+
+  private fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
+    return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
+  }
+
+  private data class ContributedIrBinding(
+    val contributingType: IrClass,
+    val typeKey: IrTypeKey,
+    val rank: Long,
+  )
 }

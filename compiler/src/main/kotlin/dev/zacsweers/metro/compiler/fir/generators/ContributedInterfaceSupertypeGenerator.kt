@@ -347,7 +347,7 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
 
     if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
       val unmatchedRankReplacements = mutableSetOf<ClassId>()
-      val pendingRankReplacements = processRankBasedReplacements(contributions, typeResolver)
+      val pendingRankReplacements = processRankBasedReplacements(scopes, contributions, typeResolver)
 
       pendingRankReplacements.distinct().forEach { replacedClassId ->
         val removed = contributions.remove(replacedClassId)
@@ -377,7 +377,8 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
    * @return The bindings which have been outranked and should not be included in the merged graph.
    */
   private fun processRankBasedReplacements(
-    contributions: TreeMap<ClassId, ConeKotlinType>,
+    allScopes: Set<ClassId>,
+    contributions: Map<ClassId, ConeKotlinType>,
     typeResolver: TypeResolveService,
   ): Set<ClassId> {
     val pendingRankReplacements = mutableSetOf<ClassId>()
@@ -390,6 +391,10 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
           contributingType
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
             .mapNotNull { annotation ->
+
+              val scope = annotation.resolvedScopeClassId(typeResolver) ?: return@mapNotNull null
+              if (scope !in allScopes) return@mapNotNull null
+
               val explicitBindingMissingMetadata =
                 annotation.argumentAsOrNull<FirAnnotation>(Symbols.Names.binding, index = 1)
 
@@ -417,7 +422,6 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
                       boundType,
                       contributingType.qualifierAnnotation(session, typeResolver),
                     ),
-                  // TODO do we need to use type resolver service here for RANK_NORMAL?
                   rank = annotation.rankValue(),
                 )
               }
