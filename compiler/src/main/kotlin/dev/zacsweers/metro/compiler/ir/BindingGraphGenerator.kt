@@ -411,6 +411,15 @@ internal class BindingGraphGenerator(
 
           val metroFunction = metroFunctionOf(accessor, annotations)
           val contextualTypeKey = IrContextualTypeKey.from(metroFunction.ir)
+
+          if (
+            contextualTypeKey.typeKey == node.originalTypeKey ||
+              contextualTypeKey.typeKey == node.creator?.typeKey
+          ) {
+            // Accessor of this graph extension or its factory, no need to include these
+            continue
+          }
+
           val existingBinding = graph.findBinding(contextualTypeKey.typeKey)
           if (existingBinding != null) {
             // If it's a graph type we can just proceed, can happen with common ancestors

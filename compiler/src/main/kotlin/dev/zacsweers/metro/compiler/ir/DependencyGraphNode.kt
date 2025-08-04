@@ -46,6 +46,18 @@ internal data class DependencyGraphNode(
   //  maybe we track these protos separately somewhere?
   var proto: DependencyGraphProto? = null,
 ) {
+  /** [IrTypeKey] of the contributed graph extension, if any. */
+  val contributedGraphTypeKey: IrTypeKey? by unsafeLazy {
+    if (sourceGraph.origin == Origins.ContributedGraph) {
+      IrTypeKey(sourceGraph.superTypes.first())
+    } else {
+      null
+    }
+  }
+
+  /** [contributedGraphTypeKey] if not null, otherwise [typeKey]. */
+  val originalTypeKey
+    get() = contributedGraphTypeKey ?: typeKey
 
   val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
 

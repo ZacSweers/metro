@@ -305,7 +305,8 @@ internal class IrGraphGenerator(
               val contextKey = IrContextualTypeKey.from(it)
 
               if (
-                contextKey.typeKey == node.typeKey || contextKey.typeKey == node.creator?.typeKey
+                contextKey.typeKey == node.originalTypeKey ||
+                  contextKey.typeKey == node.creator?.typeKey
               ) {
                 // Accessor of this graph extension or its factory, no need to include these
                 return@mapNotNull null

@@ -389,8 +389,6 @@ internal class ContributedInterfaceSupertypeGenerator(session: FirSession) :
         .flatMap { contributingType ->
           contributingType
             .annotationsIn(session, session.classIds.contributesBindingAnnotations)
-            // TODO Can enforce non-null boundTypes here once type arguments are saved to metadata
-            // https://youtrack.jetbrains.com/issue/KT-76954/Some-type-arguments-are-not-saved-to-metadata-in-FIR
             .mapNotNull { annotation ->
               val explicitBindingMissingMetadata =
                 annotation.argumentAsOrNull<FirAnnotation>(Symbols.Names.binding, index = 1)
