@@ -250,8 +250,12 @@ internal class IrGraphGenerator(
         }
       }
 
-      // Create binding containers instance fields if used
-      node.bindingContainers
+      // Create managed binding containers instance fields if used
+      val allBindingContainers = buildSet {
+        addAll(node.bindingContainers)
+        addAll(node.allExtendedNodes.values.flatMap { it.bindingContainers })
+      }
+      allBindingContainers
         .sortedBy { it.kotlinFqName.asString() }
         .forEach { clazz ->
           addBoundInstanceField(IrTypeKey(clazz), clazz.name) { _, _ ->

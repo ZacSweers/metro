@@ -479,6 +479,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ManagedBindingContainerInstancesPlumbDown.kt")
+      public void testManagedBindingContainerInstancesPlumbDown() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ManagedBindingContainerInstancesPlumbDown.kt");
+      }
+
+      @Test
       @TestMetadata("MatchingParentBindingsAreSuperseded.kt")
       public void testMatchingParentBindingsAreSuperseded() {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/MatchingParentBindingsAreSuperseded.kt");

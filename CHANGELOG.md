@@ -18,6 +18,7 @@ Changelog
 - **Fix**: Don't assume `@ContributesGraphExtension` to have aggregation scopes during graph generation.
 - **Fix**: When extending graphs, ignore bindings of the same type as the inheriting graph.
 - **Fix**: Propagate parent graph empty `@Multibinds` declarations to extensions.
+- **Fix**: Propagate managed binding containers to extension graphs.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5

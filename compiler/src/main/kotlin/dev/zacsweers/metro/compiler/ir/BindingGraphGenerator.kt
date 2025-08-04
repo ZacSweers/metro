@@ -236,7 +236,11 @@ internal class BindingGraphGenerator(
       }
     }
 
-    node.bindingContainers.forEach {
+    val allManagedBindingContainerInstances = buildSet {
+      addAll(node.bindingContainers)
+      addAll(node.allExtendedNodes.values.flatMapToSet { it.bindingContainers })
+    }
+    for (it in allManagedBindingContainerInstances) {
       val typeKey = IrTypeKey(it)
       graph.addBinding(
         typeKey,
