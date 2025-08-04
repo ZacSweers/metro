@@ -117,6 +117,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -1469,6 +1470,11 @@ internal fun IrAnnotation.allowEmpty(): Boolean {
 context(scope: IrBuilderWithScope)
 internal fun Collection<IrClassReference>.copyToIrVararg() = ifNotEmpty {
   scope.irVararg(first().type, map { value -> value.deepCopyWithSymbols() })
+}
+
+context(scope: IrBuilderWithScope)
+internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
+  scope.irVararg(first().defaultType, map { value -> scope.kClassReference(first().symbol) })
 }
 
 context(context: IrPluginContext)

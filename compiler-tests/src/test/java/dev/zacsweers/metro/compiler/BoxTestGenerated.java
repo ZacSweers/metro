@@ -206,6 +206,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testSimpleContainersWithHintsWork() {
       runTest("compiler-tests/src/test/data/box/bindingcontainers/SimpleContainersWithHintsWork.kt");
     }
+
+    @Test
+    @TestMetadata("TransitiveContributedContainersInContributedGraphs.kt")
+    public void testTransitiveContributedContainersInContributedGraphs() {
+      runTest("compiler-tests/src/test/data/box/bindingcontainers/TransitiveContributedContainersInContributedGraphs.kt");
+    }
   }
 
   @Nested

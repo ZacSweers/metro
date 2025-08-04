@@ -9,6 +9,8 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
+import kotlin.collections.plusAssign
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -48,6 +50,12 @@ internal class IrContributedGraphGenerator(
   private val parentGraph: IrClass,
 ) : IrMetroContext by context {
 
+  /**
+   * Cache for transitive closure of all included binding containers. Maps [ClassId] ->
+   * [Set<IrClass>][BindingContainer] where the values represent all transitively included binding
+   * containers starting from the given [ClassId].
+   */
+  private val transitiveBindingContainerCache = mutableMapOf<ClassId, Set<IrClass>>()
   private val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
   @OptIn(DelicateIrParameterIndexSetter::class)
@@ -109,6 +117,69 @@ internal class IrContributedGraphGenerator(
     }
 
     val sourceScope = contributesGraphExtensionAnno.scopeClassOrNull()
+    val scope = sourceScope?.classId
+    val contributedSupertypes = mutableSetOf<IrType>()
+    val contributedBindingContainers = mutableMapOf<ClassId, IrClass>()
+
+    // Merge contributed types
+    if (scope != null) {
+      val additionalScopes =
+        contributesGraphExtensionAnno.additionalScopes().map {
+          it.classType.rawType().classIdOrFail
+        }
+
+      val allScopes = (additionalScopes + scope).toSet()
+
+      // Get all contributions and binding containers
+      val allContributions =
+        allScopes
+          .flatMap { contributionData.getContributions(it) }
+          .groupByTo(mutableMapOf()) {
+            // For Metro contributions, we need to check the parent class ID
+            // This is always the $$MetroContribution, the contribution's parent is the actual class
+            it.rawType().classIdOrFail.parentClassId!!
+          }
+
+      contributedBindingContainers.putAll(
+        allScopes
+          .flatMap { contributionData.getBindingContainerContributions(it) }
+          .associateByTo(mutableMapOf()) { it.classIdOrFail }
+      )
+
+      // TODO do we exclude directly contributed ones or also include transitives?
+
+      // Process excludes
+      val excluded = contributesGraphExtensionAnno.excludedClasses()
+      for (excludedClass in excluded) {
+        val excludedClassId = excludedClass.classType.rawType().classIdOrFail
+
+        // Remove excluded binding containers - they won't contribute their bindings
+        contributedBindingContainers.remove(excludedClassId)
+
+        // Remove contributions from excluded classes that have nested $$MetroContribution classes
+        // (binding containers don't have these, so this only affects @ContributesBinding etc.)
+        allContributions.remove(excludedClassId)
+      }
+
+      // Apply replacements from remaining (non-excluded) binding containers
+      contributedBindingContainers.values.forEach { bindingContainer ->
+        bindingContainer
+          .annotationsIn(symbols.classIds.allContributesAnnotations)
+          .flatMap { annotation -> annotation.replacedClasses() }
+          .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
+          .forEach { replacedClassId -> allContributions.remove(replacedClassId) }
+      }
+
+      // Process rank-based replacements if Dagger-Anvil interop is enabled
+      if (options.enableDaggerAnvilInterop) {
+        val rankReplacements = processRankBasedReplacements(allScopes, allContributions)
+        for (replacedClassId in rankReplacements) {
+          allContributions.remove(replacedClassId)
+        }
+      }
+
+      contributedSupertypes += allContributions.values.flatten()
+    }
 
     // Source is a `@ContributesGraphExtension`-annotated class, we want to generate a header impl
     // class
@@ -153,12 +224,26 @@ internal class IrContributedGraphGenerator(
                 )
 
               // bindingContainers
-              contributesGraphExtensionAnno
-                .bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
-                .copyToIrVararg()
-                ?.let { annotation.arguments[4] = it }
+              val allContainers = buildSet {
+                val declaredContainers =
+                  contributesGraphExtensionAnno
+                    .bindingContainerClasses(includeModulesArg = options.enableDaggerRuntimeInterop)
+                    .map { it.classType.rawType() }
+                addAll(declaredContainers)
+                addAll(contributedBindingContainers.values)
+              }
+              allContainers.let(::resolveAllBindingContainersCached).toIrVararg()?.let {
+                annotation.arguments[4] = it
+              }
             }
+
           superTypes += sourceGraph.defaultType
+
+          // Add only non-binding-container contributions as supertypes
+          superTypes +=
+            contributedSupertypes
+              // Deterministic sort
+              .sortedBy { it.rawType().classIdOrFail.toString() }
         }
 
     contributedGraph
@@ -191,70 +276,6 @@ internal class IrContributedGraphGenerator(
 
         body = generateDefaultConstructorBody(this)
       }
-
-    // Merge contributed types
-    val graphExtensionAnno =
-      sourceGraph.annotationsIn(symbols.classIds.contributesGraphExtensionAnnotations).first()
-
-    val scope = graphExtensionAnno.scopeOrNull()
-
-    if (scope != null) {
-      val additionalScopes =
-        graphExtensionAnno.additionalScopes().map { it.classType.rawType().classIdOrFail }
-
-      val allScopes = (additionalScopes + scope).toSet()
-
-      // Get all contributions and binding containers
-      val allContributions =
-        allScopes
-          .flatMap { contributionData.getContributions(it) }
-          .groupByTo(mutableMapOf()) {
-            // For Metro contributions, we need to check the parent class ID
-            // This is always the $$MetroContribution, the contribution's parent is the actual class
-            it.rawType().classIdOrFail.parentClassId!!
-          }
-      val bindingContainers =
-        allScopes
-          .flatMap { contributionData.getBindingContainerContributions(it) }
-          .associateByTo(mutableMapOf()) { it.classIdOrFail }
-
-      // Process excludes
-      val excluded = graphExtensionAnno.excludedClasses()
-      for (excludedClass in excluded) {
-        val excludedClassId = excludedClass.classType.rawType().classIdOrFail
-
-        // Remove excluded binding containers - they won't contribute their bindings
-        bindingContainers.remove(excludedClassId)
-
-        // Remove contributions from excluded classes that have nested $$MetroContribution classes
-        // (binding containers don't have these, so this only affects @ContributesBinding etc.)
-        allContributions.remove(excludedClassId)
-      }
-
-      // Apply replacements from remaining (non-excluded) binding containers
-      bindingContainers.values.forEach { bindingContainer ->
-        bindingContainer
-          .annotationsIn(symbols.classIds.allContributesAnnotations)
-          .flatMap { annotation -> annotation.replacedClasses() }
-          .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-          .forEach { replacedClassId -> allContributions.remove(replacedClassId) }
-      }
-
-      // Process rank-based replacements if Dagger-Anvil interop is enabled
-      if (options.enableDaggerAnvilInterop) {
-        val rankReplacements = processRankBasedReplacements(allScopes, allContributions)
-        for (replacedClassId in rankReplacements) {
-          allContributions.remove(replacedClassId)
-        }
-      }
-
-      // Add only non-binding-container contributions as supertypes
-      contributedGraph.superTypes +=
-        allContributions.values
-          .flatten()
-          // Deterministic sort
-          .sortedBy { it.render(short = false) }
-    }
 
     parentGraph.addChild(contributedGraph)
 
@@ -354,6 +375,78 @@ internal class IrContributedGraphGenerator(
     }
 
     return pendingRankReplacements
+  }
+
+  /**
+   * Resolves all binding containers transitively starting from the given roots. This method handles
+   * caching and cycle detection to build the transitive closure of all included binding containers.
+   */
+  // TODO merge logic with BindingContainerTransformer's impl
+  private fun resolveAllBindingContainersCached(roots: Set<IrClass>): Set<IrClass> {
+    val result = mutableSetOf<IrClass>()
+    val visitedClasses = mutableSetOf<ClassId>()
+
+    for (root in roots) {
+      val classId = root.classIdOrFail
+
+      // Check if we already have this in cache
+      transitiveBindingContainerCache[classId]?.let { cachedResult ->
+        result.addAll(cachedResult)
+        continue
+      }
+
+      // Compute transitive closure for this root
+      val rootTransitiveClosure = computeTransitiveBindingContainers(root, visitedClasses)
+
+      // Cache the result
+      transitiveBindingContainerCache[classId] = rootTransitiveClosure
+      result.addAll(rootTransitiveClosure)
+    }
+
+    return result
+  }
+
+  private fun computeTransitiveBindingContainers(
+    root: IrClass,
+    globalVisited: MutableSet<ClassId>,
+  ): Set<IrClass> {
+    val result = mutableSetOf<IrClass>()
+    val localVisited = mutableSetOf<ClassId>()
+    val queue = ArrayDeque<IrClass>()
+
+    queue += root
+
+    while (queue.isNotEmpty()) {
+      val bindingContainerClass = queue.removeFirst()
+      val classId = bindingContainerClass.classIdOrFail
+
+      // Skip if we've already processed this class in any context
+      if (classId in globalVisited || classId in localVisited) continue
+      localVisited += classId
+      globalVisited += classId
+
+      // Check cache first for this specific class
+      transitiveBindingContainerCache[classId]?.let { cachedResult ->
+        result += cachedResult
+        continue
+      }
+
+      val bindingContainerAnno =
+        bindingContainerClass
+          .annotationsIn(symbols.classIds.bindingContainerAnnotations)
+          .firstOrNull() ?: continue
+      result += bindingContainerClass
+
+      // Add included binding containers to the queue
+      for (includedClass in
+        bindingContainerAnno.includedClasses().map { it.classType.rawTypeOrNull() }) {
+        if (includedClass != null && includedClass.classIdOrFail !in localVisited) {
+          queue += includedClass
+        }
+      }
+    }
+
+    return result
   }
 
   private data class ContributedIrBinding(
