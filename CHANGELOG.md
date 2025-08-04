@@ -8,6 +8,7 @@ Changelog
 - **Enhancement**: Allow contributing annotations on assisted-injected classes.
 - **Enhancement**: Improve dagger interop with `dagger.Lazy` types by allowing `Provider` subtypes to be wrapped too.
 - **Enhancement**: Support `rank` interop on Anvil annotations in contributed graph extensions.
+- **Enhancement**: Support `ignoreQualifier` interop on Anvil annotations in contributed graph extensions.
 - **Enhancement**: Only process contributions to the consuming graph's scopes when processing `rank` replacements in FIR.
 - **Fix**: Don't link expect/actual declarations if they're in the same file.
 - **Fix**: Don't copy map keys over into generated `@Binds` contributions unless it's an `@IntoMap` binding.

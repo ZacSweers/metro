@@ -1470,3 +1470,33 @@ context(scope: IrBuilderWithScope)
 internal fun Collection<IrClassReference>.copyToIrVararg() = ifNotEmpty {
   scope.irVararg(first().type, map { value -> value.deepCopyWithSymbols() })
 }
+
+context(context: IrPluginContext)
+internal fun IrClass.implicitBoundTypeOrNull(): IrType? {
+  return superTypes
+    .filterNot { it.rawType().classId == context.irBuiltIns.anyClass.owner.classId }
+    .singleOrNull()
+}
+
+// Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
+// checks for non-interop
+context(context: IrPluginContext)
+internal fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
+  // Return a binding defined using Metro's API
+  getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
+    // bindingType is actually an annotation
+    return bindingType.typeArguments.getOrNull(0)?.takeUnless {
+      it == context.irBuiltIns.nothingType
+    } to false
+  }
+  // Return a boundType defined using anvil KClass
+  return anvilKClassBoundTypeArgument() to anvilIgnoreQualifier()
+}
+
+internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
+  return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
+}
+
+internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
+  return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
+}

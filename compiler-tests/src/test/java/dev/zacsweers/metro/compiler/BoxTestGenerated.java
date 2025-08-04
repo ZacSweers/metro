@@ -125,6 +125,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ContributedGraphsSupportIgnoreQualifier.kt")
+      public void testContributedGraphsSupportIgnoreQualifier() {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportIgnoreQualifier.kt");
+      }
+
+      @Test
       @TestMetadata("ContributedGraphsSupportRankings.kt")
       public void testContributedGraphsSupportRankings() {
         runTest("compiler-tests/src/test/data/box/aggregation/interop/ContributedGraphsSupportRankings.kt");

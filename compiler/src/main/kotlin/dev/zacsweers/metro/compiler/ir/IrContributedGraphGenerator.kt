@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.exitProcessing
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -25,8 +24,6 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
-import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -320,12 +317,18 @@ internal class IrContributedGraphGenerator(
                 // short-circuit since we lack the info to compare it against other bindings.
                 null
               } else {
+                val (explicitBindingType, ignoreQualifier) = annotation.bindingTypeOrNull()
                 val boundType =
-                  annotation.bindingTypeOrNull() ?: contributingType.implicitBoundType()
+                  explicitBindingType
+                    ?: contributingType.implicitBoundTypeOrNull()!! // Checked in FIR
 
                 ContributedIrBinding(
                   contributingType = contributingType,
-                  typeKey = IrTypeKey(boundType, contributingType.qualifierAnnotation()),
+                  typeKey =
+                    IrTypeKey(
+                      boundType,
+                      if (ignoreQualifier) null else contributingType.qualifierAnnotation(),
+                    ),
                   rank = annotation.rankValue(),
                 )
               }
@@ -351,32 +354,6 @@ internal class IrContributedGraphGenerator(
     }
 
     return pendingRankReplacements
-  }
-
-  private fun IrClass.implicitBoundType(): IrType {
-    return superTypes
-      .filterNot { it.rawType().classId == metroContext.irBuiltIns.anyClass.owner.classId }
-      .singleOrNull()
-      ?: error(
-        "$kotlinFqName has a ranked binding with no explicit bound type and ${superTypes.size} supertypes. There must be exactly one supertype or an explicit bound type."
-      )
-  }
-
-  private fun IrConstructorCall.bindingTypeOrNull(): IrType? {
-    // Return a binding defined using Metro's API
-    getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType
-      ->
-      // bindingType is actually an annotation
-      return bindingType.typeArguments.getOrNull(0)?.takeUnless {
-        it == metroContext.irBuiltIns.nothingType
-      }
-    }
-    // Return a boundType defined using anvil KClass
-    return anvilKClassBoundTypeArgument()
-  }
-
-  private fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
-    return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
   }
 
   private data class ContributedIrBinding(
