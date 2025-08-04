@@ -208,6 +208,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesIntoMapFromMultipleSources.kt")
+    public void testContributesIntoMapFromMultipleSources() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributesIntoMapFromMultipleSources.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultipleGraphsToSameParent.kt")
     public void testContributingMultipleGraphsToSameParent() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/ContributingMultipleGraphsToSameParent.kt");
