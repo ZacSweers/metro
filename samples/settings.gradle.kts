@@ -36,16 +36,16 @@ include(
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
   ":weather-app",
-  ":multi-module-compose:core",
-  ":multi-module-compose:screen-home",
-  ":multi-module-compose:screen-details",
-  ":multi-module-compose:app",
   ":multi-module-test:common",
   ":multi-module-test:parent-graph",
   ":multi-module-test:child-graph",
   ":multi-module-test:contributor",
   ":multi-module-test:aggregator",
   ":multi-module-test:app",
+  ":multi-module-viewmodels:app",
+  ":multi-module-viewmodels:core",
+  ":multi-module-viewmodels:screen-details",
+  ":multi-module-viewmodels:screen-home",
 )
 
 includeBuild("..")
