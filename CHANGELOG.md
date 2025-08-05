@@ -23,6 +23,7 @@ Changelog
 - **Fix**: Propagate transitively included binding containers contributed to contributed graphs (sorry, word soup).
 - **Fix**: Make generated multibinding element IDs stable across compilations.
 - **Fix**: Handle location-less declarations when reporting invalid assisted inject bindings.
+- **Fix**: Don't chunk parent graph validation statements as these must be in the original constructor body.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5

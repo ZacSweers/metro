@@ -148,7 +148,10 @@ internal class IrGraphGenerator(
     with(graphClass) {
       val ctor = primaryConstructor!!
 
-      val extraConstructorStatements =
+      val constructorStatements =
+        mutableListOf<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>()
+
+      val initStatements =
         mutableListOf<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>()
 
       val thisReceiverParameter = thisReceiverOrFail
@@ -216,7 +219,7 @@ internal class IrGraphGenerator(
               // Only do this for $$MetroGraph instances. Not necessary for ContributedGraphs
               if (graphDep.sourceGraph != graphClass) {
                 val depMetroGraph = graphDep.sourceGraph.metroGraphOrFail
-                extraConstructorStatements.add {
+                constructorStatements.add {
                   irIfThen(
                     condition = irNotIs(irGet(irParam), depMetroGraph.defaultType),
                     type = irBuiltIns.unitType,
@@ -500,7 +503,7 @@ internal class IrGraphGenerator(
       // fields for everything else. This is important in case they reference each other
       for ((deferredTypeKey, field) in deferredFields) {
         val binding = bindingGraph.requireBinding(deferredTypeKey, IrBindingStack.empty())
-        extraConstructorStatements.add { thisReceiver ->
+        initStatements.add { thisReceiver ->
           irInvoke(
             dispatchReceiver = irGetObject(symbols.metroDelegateFactoryCompanion),
             callee = symbols.metroDelegateFactorySetDelegate,
@@ -526,11 +529,9 @@ internal class IrGraphGenerator(
         }
       }
 
-      val finalConstructorStatements:
-        List<IrBuilderWithScope.(thisReceiver: IrValueParameter) -> IrStatement>
       if (
         options.chunkFieldInits &&
-          fieldInitializers.size + extraConstructorStatements.size > STATEMENTS_PER_METHOD
+          fieldInitializers.size + initStatements.size > STATEMENTS_PER_METHOD
       ) {
         // Larger graph, split statements
         // Chunk our constructor statements and split across multiple init functions
@@ -546,7 +547,7 @@ internal class IrGraphGenerator(
                   )
                 }
               }
-              for (statement in extraConstructorStatements) {
+              for (statement in initStatements) {
                 add { thisReceiver -> statement(thisReceiver) }
               }
             }
@@ -566,7 +567,7 @@ internal class IrGraphGenerator(
                 }
               }
           }
-        finalConstructorStatements = buildList {
+        constructorStatements += buildList {
           for (initFunction in initFunctionsToCall) {
             add { dispatchReceiver ->
               irInvoke(dispatchReceiver = irGet(dispatchReceiver), callee = initFunction.symbol)
@@ -582,7 +583,7 @@ internal class IrGraphGenerator(
             init(thisReceiverParameter, typeKey)
           }
         }
-        finalConstructorStatements = extraConstructorStatements
+        constructorStatements += initStatements
       }
 
       // Add extra constructor statements
@@ -590,7 +591,7 @@ internal class IrGraphGenerator(
         val originalBody = checkNotNull(body)
         buildBlockBody {
           +originalBody.statements
-          for (statement in finalConstructorStatements) {
+          for (statement in constructorStatements) {
             +statement(thisReceiverParameter)
           }
         }
