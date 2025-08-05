@@ -410,7 +410,7 @@ internal class IrGraphGenerator(
                   } else {
                     generateBindingCode(
                       binding = binding,
-                      generationContext = baseGenerationContext,
+                      generationContext = baseGenerationContext.withReceiver(thisReceiver),
                       fieldInitKey = key,
                     )
                   }
