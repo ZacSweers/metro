@@ -169,7 +169,7 @@ internal class IrGraphGenerator(
           addField(
               fieldName =
                 fieldNameAllocator.newName(
-                  name.asString().suffixIfNot("Instance").suffixIfNot("Provider")
+                  name.asString().suffixIfNot("Instance").suffixIfNot("Provider").decapitalizeUS()
                 ),
               fieldType = symbols.metroProvider.typeWith(typeKey.type),
               fieldVisibility = DescriptorVisibilities.PRIVATE,
