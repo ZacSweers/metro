@@ -16,7 +16,7 @@ dependencies {
   implementation(project(":multi-module-viewmodels:screen-home"))
   implementation(project(":multi-module-viewmodels:screen-details"))
 
-  implementation(libs.androidx.viewmodelCore)
+  implementation(libs.androidx.viewmodel)
   implementation(compose.desktop.currentOs)
   implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.0-beta04")
 
