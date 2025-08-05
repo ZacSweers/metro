@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import dev.zacsweers.metro.compiler.Symbols
+import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
+import org.jetbrains.kotlin.ir.util.classId
+
 private const val INITIAL_VALUE = 512
 
 /** Computes the set of bindings that must end up in provider fields. */
@@ -22,12 +26,16 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
         //  we would need to track a set of assisted targets somewhere
         if (binding is IrBinding.ConstructorInjected && binding.isAssisted) return true
 
+        if (
+          binding.typeKey.qualifier?.ir?.annotationClass?.classId ==
+            Symbols.ClassIds.MultibindingElement
+        ) {
+          return true
+        }
+
         // If it's unscoped but used more than once and not into a multibinding,
         // we can generate a reusable field
-        if (refCount < 2) return false
-        val isMultibindingProvider =
-          (binding is IrBinding.BindingWithAnnotations) && binding.annotations.isIntoMultibinding
-        return !isMultibindingProvider
+        return refCount < 2
       }
 
     /** @return true if we've referenced this binding before. */

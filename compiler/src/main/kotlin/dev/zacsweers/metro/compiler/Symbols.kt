@@ -143,6 +143,8 @@ internal class Symbols(
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
     val Lazy = StandardClassIds.byName("Lazy")
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
+    val MultibindingElement =
+      ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
     val MetroAccessor = ClassId(FqNames.metroRuntimeInternalPackage, Names.MetroAccessor)
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
@@ -295,12 +297,7 @@ internal class Symbols(
   }
 
   val multibindingElement: IrConstructorSymbol by lazy {
-    pluginContext
-      .referenceClass(
-        ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
-      )!!
-      .constructors
-      .first()
+    pluginContext.referenceClass(ClassIds.MultibindingElement)!!.constructors.first()
   }
 
   val metroDependencyGraphAnnotationConstructor: IrConstructorSymbol by lazy {
