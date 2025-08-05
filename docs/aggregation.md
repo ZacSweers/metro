@@ -166,6 +166,35 @@ class CacheImpl(...) : Cache
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
 
+You can use `@IntoMap`/`@IntoSet` to provide into the same container:
+
+```kotlin
+// Method 1: applying @ContributesIntoMap to bind directly from the implementation class
+@ContributesIntoMap(AppScope::class)
+@StringKey("remote")
+@Inject
+class RemoteCache(...) : Cache
+
+// Method 2: Declare the class, then provide @IntoMap binding separately via a BindingContainer
+class LocalCache(...) : Cache
+
+@BindingContainer
+@ContributesTo(AppScope::class)
+object CacheBindingContainer {
+  @Provides
+  @IntoMap
+  @StringKey("local")
+  fun cache(): Cache = LocalCache(...)
+}
+
+// Accessing the resultant map, containing both implementations:
+@Inject
+class CompositeCache(private val caches: Map<String, Cache>) {
+  val local: Cache = caches["local"]
+  val remote: Cache = caches["remote"]
+}
+```
+
 ## Contributing Binding Containers
 
 Binding containers (see [Binding Containers](dependency-graphs.md#binding-containers)) can also be contributed to scopes via `@ContributesTo`:
