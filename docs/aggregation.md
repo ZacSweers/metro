@@ -193,6 +193,17 @@ class CompositeCache(private val caches: Map<String, Cache>) {
   val local: Cache = caches["local"]
   val remote: Cache = caches["remote"]
 }
+
+// Alternatively, specify Provider in the map type to lazily-initialize the implementations
+@Inject
+class CompositeCacheAlternate(private val caches: Map<String, Provider<Cache>>) {
+  val local: Cache = caches["local"]()
+  val remote: Provider<Cache> = caches["remote"]
+  
+  fun someTimeLater() {
+    remote().doSomethingWithCache()
+  }
+}
 ```
 
 ## Contributing Binding Containers
