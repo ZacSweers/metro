@@ -95,7 +95,7 @@ internal class BindingGraphGenerator(
             it.second.annotations.isScoped
           }
         }
-        .associateBy { it.first }
+        .associateBy { it.second }
     val providerFactoriesToAdd = buildList {
       addAll(node.providerFactories)
       addAll(inheritedProviderFactories.values)
@@ -107,7 +107,11 @@ internal class BindingGraphGenerator(
       trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
       trackFunctionCall(node.sourceGraph, providerFactory.function)
 
-      if (typeKey in graph && typeKey in inheritedProviderFactories) {
+      if (
+        !providerFactory.annotations.isIntoMultibinding &&
+          typeKey in graph &&
+          providerFactory in inheritedProviderFactories
+      ) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
         continue
       }
@@ -147,13 +151,10 @@ internal class BindingGraphGenerator(
 
     // Add aliases ("@Binds")
     val inheritedBindsCallables =
-      node.allExtendedNodes.values
-        .filter { it.isExtendable }
-        .flatMapToSet { it.bindsCallables }
-        .associateBy { it.target }
+      node.allExtendedNodes.values.filter { it.isExtendable }.flatMapToSet { it.bindsCallables }
     val bindsFunctionsToAdd = buildList {
       addAll(node.bindsCallables)
-      addAll(inheritedBindsCallables.values)
+      addAll(inheritedBindsCallables)
     }
 
     for (bindingCallable in bindsFunctionsToAdd) {
@@ -166,7 +167,11 @@ internal class BindingGraphGenerator(
       trackFunctionCall(node.sourceGraph, bindingCallable.function)
       trackFunctionCall(node.sourceGraph, bindingCallable.callableMetadata.mirrorFunction)
 
-      if (bindingCallable.target in graph && bindingCallable.target in inheritedBindsCallables) {
+      if (
+        !bindingCallable.callableMetadata.annotations.isIntoMultibinding &&
+          bindingCallable.target in graph &&
+          bindingCallable in inheritedBindsCallables
+      ) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
         continue
       }
