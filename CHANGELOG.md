@@ -11,6 +11,7 @@ Changelog
 - **Enhancement**: Support `rank` interop on Anvil annotations in contributed graph extensions.
 - **Enhancement**: Support `ignoreQualifier` interop on Anvil annotations in contributed graph extensions.
 - **Enhancement**: Only process contributions to the consuming graph's scopes when processing `rank` replacements in FIR.
+- **Enhancement**: Improve error message for invalid assisted inject bindings to injected target.
 - **Fix**: Don't link expect/actual declarations if they're in the same file.
 - **Fix**: Don't copy map keys over into generated `@Binds` contributions unless it's an `@IntoMap` binding.
 - **Fix**: Fall back to annotation sources if needed when reporting errors with bound types in FIR.
@@ -21,6 +22,7 @@ Changelog
 - **Fix**: Propagate managed binding containers to extension graphs.
 - **Fix**: Propagate transitively included binding containers contributed to contributed graphs (sorry, word soup).
 - **Fix**: Make generated multibinding element IDs stable across compilations.
+- **Fix**: Handle location-less declarations when reporting invalid assisted inject bindings.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5

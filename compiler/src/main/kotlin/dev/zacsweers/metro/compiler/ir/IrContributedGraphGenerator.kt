@@ -108,7 +108,7 @@ internal class IrContributedGraphGenerator(
         }
         // TODO in kotlin 2.2.20 remove message collector
         if (sourceGraph.fileOrNull == null) {
-          messageCollector.report(CompilerMessageSeverity.ERROR, message, sourceGraph.location())
+          messageCollector.report(CompilerMessageSeverity.ERROR, message, sourceGraph.locationOrNull())
         } else {
           diagnosticReporter.at(sourceGraph).report(MetroIrErrors.METRO_ERROR, message)
         }

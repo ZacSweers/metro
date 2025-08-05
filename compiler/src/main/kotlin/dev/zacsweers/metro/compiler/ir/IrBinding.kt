@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.render
 import dev.zacsweers.metro.compiler.unsafeLazy
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -45,7 +44,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   val parameters: Parameters
   val nameHint: String
   override val contextualTypeKey: IrContextualTypeKey
-  val reportableDeclaration: IrDeclaration?
+  val reportableDeclaration: IrDeclarationWithName?
 
   override fun renderLocationDiagnostic(): String {
     // First check if we have the contributing file and line number
@@ -102,7 +101,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = type
 
     fun parameterFor(typeKey: IrTypeKey) =
@@ -140,7 +139,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = type.name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey.create(typeKey)
 
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = type
 
     override fun toString() = buildString {
@@ -189,7 +188,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val nameHint: String = providerFactory.callableId.callableName.asString()
 
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = providerFactory.function
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
@@ -252,7 +251,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = ir?.name?.asString() ?: typeKey.type.rawType().name.asString()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
     // TODO dedupe with the below render()
-    override val reportableDeclaration: IrDeclaration?
+    override val reportableDeclaration: IrDeclarationWithName?
       get() {
         if (ir == null) return null
         return (ir.overriddenSymbolsSequence().lastOrNull()?.owner ?: ir).let {
@@ -334,7 +333,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String = type.name.asString()
     override val scope: IrAnnotation? = null
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
-    override val reportableDeclaration: IrDeclaration
+    override val reportableDeclaration: IrDeclarationWithName?
       get() = type
 
     override val isImplicitlyDeferrable: Boolean = true
@@ -355,11 +354,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   data class BoundInstance(
     override val typeKey: IrTypeKey,
     override val nameHint: String,
-    override val reportableDeclaration: IrDeclaration,
+    override val reportableDeclaration: IrDeclarationWithName?,
   ) : IrBinding {
     constructor(
       parameter: Parameter,
-      reportableLocation: IrDeclaration,
+      reportableLocation: IrDeclarationWithName,
     ) : this(parameter.typeKey, "${parameter.name.asString()}Instance", reportableLocation)
 
     override val dependencies: List<IrContextualTypeKey> = emptyList()
@@ -379,7 +378,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclaration? = null
+    override val reportableDeclaration: IrDeclarationWithName? = null
     override val isTransient: Boolean = true
   }
 
@@ -411,8 +410,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = Parameters.empty()
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclaration
-      get() = getter.propertyIfAccessor
+    override val reportableDeclaration: IrDeclarationWithName?
+      get() = getter.propertyIfAccessor.expectAs<IrDeclarationWithName>()
 
     override fun toString(): String {
       return "${graph.kotlinFqName}#${(getter.propertyIfAccessor as IrDeclarationWithName).name}: ${getter.returnType.dumpKotlinLike()}"
@@ -446,7 +445,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override val contextualTypeKey: IrContextualTypeKey = IrContextualTypeKey(typeKey)
 
-    override val reportableDeclaration: IrDeclaration? = declaration
+    override val reportableDeclaration: IrDeclarationWithName? = declaration
 
     fun addSourceBinding(source: IrTypeKey) {
       if (source in sourceBindings) {
@@ -517,7 +516,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // Always MembersInjected<TargetClass>
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
-    override val reportableDeclaration: IrDeclaration?,
+    override val reportableDeclaration: IrDeclarationWithName?,
     // Only present for inject() functions
     val function: IrFunction?,
     val isFromInjectorFunction: Boolean,

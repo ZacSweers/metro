@@ -888,8 +888,8 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-          e: ExampleClass.kt:25:16 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+        $$$"""
+          e: ExampleClass.kt:25:16 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.Consumer.$$MetroFactory.mirrorFunction.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
 
           (Hint)
           It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
@@ -931,10 +931,10 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:22:33 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:22:33 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.provideConsumer.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
 
-          (Hint)
-          It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+(Hint)
+It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
         """
           .trimIndent()
       )
@@ -973,11 +973,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
       expectedExitCode = COMPILATION_ERROR,
     ) {
       assertDiagnostics(
-        """
-          e: ExampleClass.kt:16:1 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+        $$$"""
+          e: ExampleClass.kt:16:1 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.$$MetroGraph.inject'. You must inject a corresponding @AssistedFactory type instead.
 
-          (Hint)
-          It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+(Hint)
+It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
         """
           .trimIndent()
       )
@@ -1013,10 +1013,10 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:19:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:19:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
 
-          (Hint)
-          It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
+(Hint)
+It looks like the @AssistedFactory for 'test.ExampleClass' is 'test.ExampleClassFactory'.
         """
           .trimIndent()
       )
@@ -1054,7 +1054,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-          e: ExampleClass.kt:21:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead.
+          e: ExampleClass.kt:21:7 [Metro/InvalidBinding] 'test.ExampleClass' uses assisted injection and cannot be injected directly into 'test.ExampleGraph.exampleClass'. You must inject a corresponding @AssistedFactory type instead.
         """
           .trimIndent()
       )
