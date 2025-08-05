@@ -20,6 +20,7 @@ Changelog
 - **Fix**: Propagate parent graph empty `@Multibinds` declarations to extensions.
 - **Fix**: Propagate managed binding containers to extension graphs.
 - **Fix**: Propagate transitively included binding containers contributed to contributed graphs (sorry, word soup).
+- **Fix**: Make generated multibinding element IDs stable across compilations.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5
