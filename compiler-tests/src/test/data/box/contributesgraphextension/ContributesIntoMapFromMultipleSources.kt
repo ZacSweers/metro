@@ -31,14 +31,14 @@ object FooBindingContainer {
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val foos: Map<KClass<out Foo>, Provider<Foo>>
+  val foos: Map<KClass<out Foo>, Foo>
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
   val foos = graph.foos
   assertEquals(expected = 2, actual = foos.size)
-  assertIs<Provider<FooBoundDirectly>>(foos[FooBoundDirectly::class])
-  assertIs<Provider<FooFromBindingContainer>>(foos[FooFromBindingContainer::class])
+  assertIs<FooBoundDirectly>(foos[FooBoundDirectly::class])
+  assertIs<FooFromBindingContainer>(foos[FooFromBindingContainer::class])
   return "OK"
 }
