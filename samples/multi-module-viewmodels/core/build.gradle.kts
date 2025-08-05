@@ -15,7 +15,5 @@ kotlin {
       api(libs.androidx.viewmodelCompose)
       api(compose.runtime)
     }
-
-    commonTest.dependencies { implementation(kotlin("test")) }
   }
 }

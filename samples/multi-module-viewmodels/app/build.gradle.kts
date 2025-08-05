@@ -21,6 +21,5 @@ dependencies {
   implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.0-beta04")
 
   // To set main dispatcher on desktop app
-  val coroutineVersion = libs.versions.kotlinx.coroutines.get()
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:$coroutineVersion")
+  implementation(libs.coroutines.swing)
 }
