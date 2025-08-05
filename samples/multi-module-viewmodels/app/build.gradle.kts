@@ -17,8 +17,8 @@ dependencies {
   implementation(project(":multi-module-viewmodels:screen-details"))
 
   implementation(libs.androidx.viewmodel)
+  implementation(libs.jetbrains.navigation.desktop)
   implementation(compose.desktop.currentOs)
-  implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.0-beta04")
 
   // To set main dispatcher on desktop app
   implementation(libs.coroutines.swing)
