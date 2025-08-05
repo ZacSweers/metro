@@ -1474,7 +1474,7 @@ internal fun Collection<IrClassReference>.copyToIrVararg() = ifNotEmpty {
 
 context(scope: IrBuilderWithScope)
 internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
-  scope.irVararg(first().defaultType, map { value -> scope.kClassReference(first().symbol) })
+  scope.irVararg(first().defaultType, map { value -> scope.kClassReference(value.symbol) })
 }
 
 context(context: IrPluginContext)
