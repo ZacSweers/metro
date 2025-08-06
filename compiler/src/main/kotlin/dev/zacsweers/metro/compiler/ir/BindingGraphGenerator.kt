@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
@@ -14,7 +13,6 @@ import dev.zacsweers.metro.compiler.ir.transformers.InjectConstructorTransformer
 import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.metroAnnotations
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.functions
@@ -34,10 +32,10 @@ internal class BindingGraphGenerator(
   private val contributionData: IrContributionData,
 ) : IrMetroContext by metroContext {
   fun generate(): IrBindingGraph {
-    val classBindingLookup =
-      ClassBindingLookup(
-        metroContext,
-        node.sourceGraph,
+    val bindingLookup =
+      BindingLookup(
+        metroContext = metroContext,
+        sourceGraph = node.sourceGraph,
         findClassFactory = { clazz ->
           injectConstructorTransformer.getOrGenerateFactory(
             clazz,
@@ -55,7 +53,7 @@ internal class BindingGraphGenerator(
         newBindingStack = {
           IrBindingStack(node.sourceGraph, loggerFor(MetroLogger.Type.BindingGraphConstruction))
         },
-        classBindingLookup = classBindingLookup,
+        bindingLookup = bindingLookup,
       )
 
     // Add explicit bindings from @Provides methods
@@ -96,13 +94,19 @@ internal class BindingGraphGenerator(
           }
         }
         .associateBy { it.second }
+
+    // Track IC lookups for binds callables but don't add bindings yet - they'll be added lazily
+    val inheritedBindsCallables =
+      node.allExtendedNodes.values.filter { it.isExtendable }.flatMapToSet { it.bindsCallables }
+
     val providerFactoriesToAdd = buildList {
       addAll(node.providerFactories)
       addAll(inheritedProviderFactories.values)
     }
 
     for ((typeKey, providerFactory) in providerFactoriesToAdd) {
-      // Track a lookup of the provider class for IC
+      // Track IC lookups for provider factories but don't add bindings yet - they'll be added
+      // lazily
       trackClassLookup(node.sourceGraph, providerFactory.clazz)
       trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
       trackFunctionCall(node.sourceGraph, providerFactory.function)
@@ -116,16 +120,16 @@ internal class BindingGraphGenerator(
         continue
       }
 
-      val contextKey =
+      val typeKey = typeKey.transformMultiboundQualifier(providerFactory.annotations)
+      val targetTypeKey =
         if (providerFactory.annotations.isIntoMultibinding) {
-          IrContextualTypeKey.create(
-            typeKey.transformMultiboundQualifier(providerFactory.annotations)
-          )
+          typeKey.transformMultiboundQualifier(providerFactory.annotations)
         } else {
-          IrContextualTypeKey.create(typeKey)
+          providerFactory.typeKey
         }
+      val contextKey = IrContextualTypeKey(targetTypeKey)
 
-      val provider =
+      val binding =
         IrBinding.Provided(
           providerFactory = providerFactory,
           contextualTypeKey = contextKey,
@@ -133,7 +137,51 @@ internal class BindingGraphGenerator(
           annotations = providerFactory.annotations,
         )
 
-      if (provider.isIntoMultibinding) {
+      // Check for duplicates before adding to cache
+      // TODO aggregate duplicates and report all
+      val existingProvider = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Provided
+      if (existingProvider != null && existingProvider != binding) {
+        // Check if the existing one is from an inherited graph
+        val isExistingInherited = existingProvider.providerFactory in inheritedProviderFactories
+        val isCurrentInherited = providerFactory in inheritedProviderFactories
+
+        if (isExistingInherited && !isCurrentInherited) {
+          // Current graph's binding replaces the inherited one
+          bindingLookup.putBinding(binding)
+        } else if (!isExistingInherited && isCurrentInherited) {
+          // Current graph already has this binding, skip the inherited one
+          // Do nothing - keep the existing binding
+        } else {
+          // Both are from the same level (both current or both inherited) - this is an error
+          graph.reportDuplicateBinding(typeKey, existingProvider, binding, bindingStack)
+        }
+      } else if (existingProvider == null) {
+        // Also check if there's already a provider factory for this key
+        val existingAlias = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Alias
+        if (existingAlias != null) {
+          // Check if the existing provider is from an inherited graph
+          val isAliasInherited = existingAlias.bindsCallable in inheritedBindsCallables
+          val isCurrentInherited = providerFactory in inheritedProviderFactories
+
+          if (isAliasInherited && !isCurrentInherited) {
+            // Current graph's @Binds replaces the inherited @Provides
+            bindingLookup.removeAliasBinding(targetTypeKey)
+            bindingLookup.putBinding(binding)
+          } else if (!isAliasInherited && isCurrentInherited) {
+            // Current graph already has @Binds, skip the inherited @Provides
+            // Do nothing - keep the existing provider factory
+          } else {
+            // Both are from the same level - this is an error
+            graph.reportDuplicateBinding(targetTypeKey, existingAlias, binding, bindingStack)
+          }
+        } else {
+          // Add to cache for O(1) lookups
+          bindingLookup.putBinding(binding)
+        }
+      }
+
+      // Handle multibinding setup (but don't add the binding itself)
+      if (providerFactory.annotations.isIntoMultibinding) {
         val originalQualifier = providerFactory.function.qualifierAnnotation()
         graph
           .getOrCreateMultibinding(
@@ -146,12 +194,13 @@ internal class BindingGraphGenerator(
           .addSourceBinding(contextKey.typeKey)
       }
 
-      graph.addBinding(contextKey.typeKey, provider, bindingStack)
+      if (options.enableStrictValidation) {
+        graph.addBinding(binding.typeKey, binding, bindingStack)
+      } else {
+        // The actual binding will be added lazily via BindingLookup when needed
+      }
     }
 
-    // Add aliases ("@Binds")
-    val inheritedBindsCallables =
-      node.allExtendedNodes.values.filter { it.isExtendable }.flatMapToSet { it.bindsCallables }
     val bindsFunctionsToAdd = buildList {
       addAll(node.bindsCallables)
       addAll(inheritedBindsCallables)
@@ -164,62 +213,114 @@ internal class BindingGraphGenerator(
         node.sourceGraph,
         bindingCallable.callableMetadata.mirrorFunction.parentAsClass,
       )
-      trackFunctionCall(node.sourceGraph, bindingCallable.function)
-      trackFunctionCall(node.sourceGraph, bindingCallable.callableMetadata.mirrorFunction)
+    }
+
+    for (bindsCallable in bindsFunctionsToAdd) {
+      // Track a lookup of the target for IC
+      trackFunctionCall(node.sourceGraph, bindsCallable.function)
+      trackFunctionCall(node.sourceGraph, bindsCallable.callableMetadata.mirrorFunction)
+      trackClassLookup(node.sourceGraph, bindsCallable.function.parentAsClass)
+      trackClassLookup(
+        node.sourceGraph,
+        bindsCallable.callableMetadata.mirrorFunction.parentAsClass,
+      )
 
       if (
-        !bindingCallable.callableMetadata.annotations.isIntoMultibinding &&
-          bindingCallable.target in graph &&
-          bindingCallable in inheritedBindsCallables
+        !bindsCallable.callableMetadata.annotations.isIntoMultibinding &&
+          bindsCallable.target in graph &&
+          bindsCallable in inheritedBindsCallables
       ) {
         // If we already have a binding provisioned in this scenario, ignore the parent's version
         continue
       }
 
-      val annotations = bindingCallable.callableMetadata.annotations
-      val parameters = bindingCallable.function.parameters()
+      val annotations = bindsCallable.callableMetadata.annotations
+      val targetTypeKey = bindsCallable.target.transformMultiboundQualifier(annotations)
+      val parameters = bindsCallable.function.parameters()
       val bindsImplType =
-        if (annotations.isBinds) {
-          parameters.extensionOrFirstParameter?.contextualTypeKey
-            ?: error(
-              "Missing receiver parameter for @Binds function: ${bindingCallable.function.dumpKotlinLike()} in class ${bindingCallable.function.parentAsClass.classId}"
-            )
-        } else {
-          null
-        }
-
-      val targetTypeKey =
-        if (annotations.isIntoMultibinding) {
-          bindingCallable.target.transformMultiboundQualifier(annotations)
-        } else {
-          bindingCallable.target
-        }
+        parameters.extensionOrFirstParameter?.contextualTypeKey
+          ?: error("Missing receiver parameter for @Binds function: ${bindsCallable.function}")
 
       val binding =
         IrBinding.Alias(
-          targetTypeKey,
-          bindsImplType?.typeKey
-            ?: error(
-              "Missing binds impl type for ${bindingCallable.function.name} in ${bindingCallable.function.parentAsClass.dumpKotlinLike()}"
-            ),
-          bindingCallable.function,
-          parameters,
-          annotations,
+          typeKey = targetTypeKey,
+          aliasedType = bindsImplType.typeKey,
+          bindsCallable = bindsCallable,
+          parameters = parameters,
         )
 
+      val contextKey = binding.contextualTypeKey
+
+      // Check for duplicates before adding to cache
+      // TODO aggregate duplicates and report all
+      val existingBinding = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Alias
+      if (existingBinding != null && existingBinding.bindsCallable != bindsCallable) {
+        // Check if the existing one is from an inherited graph
+        val isExistingInherited = existingBinding.bindsCallable in inheritedBindsCallables
+        val isCurrentInherited = bindsCallable in inheritedBindsCallables
+
+        if (isExistingInherited && !isCurrentInherited) {
+          // Current graph's binding replaces the inherited one
+          bindingLookup.putBinding(binding)
+        } else if (!isExistingInherited && isCurrentInherited) {
+          // Current graph already has this binding, skip the inherited one
+          // Do nothing - keep the existing binding
+        } else {
+          // Both are from the same level (both current or both inherited) - this is an error
+          // TODO Could check if there's a duplicate from provider factories to better message
+          graph.reportDuplicateBinding(targetTypeKey, existingBinding, binding, bindingStack)
+        }
+      } else if (existingBinding == null) {
+        // Also check if there's already a provider factory for this key
+        val existingProvider = bindingLookup.getStaticBinding(targetTypeKey) as? IrBinding.Provided
+        if (existingProvider != null) {
+          // Check if the existing provider is from an inherited graph
+          val isProviderInherited = existingProvider.providerFactory in inheritedProviderFactories
+          val isCurrentInherited = bindsCallable in inheritedBindsCallables
+
+          if (isProviderInherited && !isCurrentInherited) {
+            // Current graph's @Binds replaces the inherited @Provides
+            bindingLookup.removeProvidedBinding(targetTypeKey)
+            bindingLookup.putBinding(binding)
+          } else if (!isProviderInherited && isCurrentInherited) {
+            // Current graph already has @Provides, skip the inherited @Binds
+            // Do nothing - keep the existing provider factory
+          } else {
+            // Both are from the same level - this is an error
+            graph.reportDuplicateBinding(targetTypeKey, existingProvider, binding, bindingStack)
+          }
+        } else {
+          // Add to cache for O(1) lookups
+          bindingLookup.putBinding(binding)
+        }
+      }
+
+      // Handle multibinding setup (but don't add the binding itself)
       if (annotations.isIntoMultibinding) {
         graph
           .getOrCreateMultibinding(
             annotations = annotations,
-            contextKey = IrContextualTypeKey.create(targetTypeKey),
-            declaration = bindingCallable.function,
+            contextKey = contextKey,
+            declaration = bindsCallable.function,
             originalQualifier = annotations.qualifier,
             bindingStack = bindingStack,
           )
-          .addSourceBinding(binding.typeKey)
+          .addSourceBinding(targetTypeKey)
       }
 
-      graph.addBinding(binding.typeKey, binding, bindingStack)
+      if (options.enableStrictValidation) {
+        val bindings =
+          bindingLookup.lookup(
+            contextKey,
+            currentBindings = graph.bindingsSnapshot().keys,
+            bindingStack,
+          )
+        for (binding in bindings) {
+          graph.addBinding(binding.typeKey, binding, bindingStack)
+        }
+      } else {
+        // The actual binding will be added lazily via BindingLookup when needed
+      }
     }
 
     node.creator?.parameters?.regularParameters.orEmpty().forEach { creatorParam ->
@@ -326,13 +427,7 @@ internal class BindingGraphGenerator(
       if (superTypeKey !in graph) {
         graph.addBinding(
           superTypeKey,
-          IrBinding.Alias(
-            superTypeKey,
-            aliasedType,
-            null,
-            Parameters.empty(),
-            MetroAnnotations.none(),
-          ),
+          IrBinding.Alias(superTypeKey, aliasedType, null, Parameters.empty()),
           bindingStack,
         )
       }
@@ -519,7 +614,7 @@ internal class BindingGraphGenerator(
         // Ensure that we traverse the target class's superclasses and lookup relevant bindings for
         // them too, namely ancestor member injectors
         val extraBindings =
-          classBindingLookup.lookup(
+          bindingLookup.lookup(
             IrContextualTypeKey.from(param),
             graph.bindingsSnapshot().keys,
             bindingStack,
@@ -536,11 +631,7 @@ internal class BindingGraphGenerator(
         if (scopedClassTypeKey !in graph) {
           val contextKey = IrContextualTypeKey.create(scopedClassTypeKey)
           val bindings =
-            classBindingLookup.lookup(
-              contextKey,
-              graph.bindingsSnapshot().keys,
-              IrBindingStack.empty(),
-            )
+            bindingLookup.lookup(contextKey, graph.bindingsSnapshot().keys, IrBindingStack.empty())
           for (binding in bindings) {
             graph.addBinding(scopedClassTypeKey, binding, IrBindingStack.empty())
             // Mark this to be explicitly kept even after pruning unused

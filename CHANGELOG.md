@@ -14,6 +14,7 @@ Changelog
 - **Enhancement**: Support `ignoreQualifier` interop on Anvil annotations in contributed graph extensions.
 - **Enhancement**: Only process contributions to the consuming graph's scopes when processing `rank` replacements in FIR.
 - **Enhancement**: Improve error message for invalid assisted inject bindings to injected target.
+- **Enhancement**: Report similar bindings in missing binding errors where the similar binding doesn't have a qualifier but the requested binding does. Previously we only reported if the similar binding had a qualifier and the requested binding didn't.
 - **Fix**: Don't link expect/actual declarations if they're in the same file.
 - **Fix**: Don't copy map keys over into generated `@Binds` contributions unless it's an `@IntoMap` binding.
 - **Fix**: Fall back to annotation sources if needed when reporting errors with bound types in FIR.

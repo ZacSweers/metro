@@ -349,24 +349,52 @@ internal open class MutableBindingGraph<
       return
     }
     if (key in bindings) {
-      val message = buildString {
-        appendLine(
-          "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
-        )
-        val existing = bindings.getValue(key)
-        val duplicate = binding
-        appendLine("├─ Binding 1: ${existing.renderLocationDiagnostic()}")
-        appendLine("├─ Binding 2: ${duplicate.renderLocationDiagnostic()}")
-        if (existing === duplicate) {
-          appendLine("├─ Bindings are the same: $existing")
-        } else if (existing == duplicate) {
-          appendLine("├─ Bindings are equal: $existing")
-        }
-        appendBindingStack(bindingStack)
-      }
-      onError(message, bindingStack)
+      val existing = bindings.getValue(key)
+      val duplicate = binding
+      reportDuplicateBinding(key, existing, duplicate, bindingStack)
+    } else {
+      bindings[binding.typeKey] = binding
     }
-    bindings[binding.typeKey] = binding
+  }
+
+  fun reportDuplicateBinding(
+    key: TypeKey,
+    existing: Binding,
+    duplicate: Binding,
+    bindingStack: BindingStack,
+  ) {
+    reportDuplicateBinding(
+      key,
+      existing.renderLocationDiagnostic(),
+      duplicate.renderLocationDiagnostic(),
+      bindingStack,
+    ) {
+      if (existing === duplicate) {
+        appendLine("├─ Bindings are the same: $existing")
+      } else if (existing == duplicate) {
+        appendLine("├─ Bindings are equal: $existing")
+      }
+    }
+  }
+
+  fun reportDuplicateBinding(
+    key: TypeKey,
+    location1: String,
+    location2: String,
+    bindingStack: BindingStack,
+    extraContent: StringBuilder.() -> Unit = {},
+  ) {
+    val message = buildString {
+      appendLine(
+        "[Metro/DuplicateBinding] Duplicate binding for ${key.render(short = false, includeQualifier = true)}"
+      )
+      // TODO include a binding "type" key? i.e. @Binds
+      appendLine("├─ Binding 1: $location1")
+      appendLine("├─ Binding 2: $location2")
+      extraContent()
+      appendBindingStack(bindingStack)
+    }
+    onError(message, bindingStack)
   }
 
   override operator fun get(key: TypeKey): Binding? = bindings[key]

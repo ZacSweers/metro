@@ -19,12 +19,44 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isObject
 
-internal class ClassBindingLookup(
+internal class BindingLookup(
   private val metroContext: IrMetroContext,
   private val sourceGraph: IrClass,
   private val findClassFactory: (IrClass) -> ClassFactory?,
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
 ) {
+
+  // Cache for O(1) lookups of provider factories and binds callables
+  private val providedBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Provided>()
+  private val aliasBindingsCache = mutableMapOf<IrTypeKey, IrBinding.Alias>()
+
+  /** Returns all static bindings for similarity checking. */
+  fun getAvailableStaticBindings(): Map<IrTypeKey, IrBinding.StaticBinding> {
+    return buildMap(providedBindingsCache.size + aliasBindingsCache.size) {
+      putAll(providedBindingsCache)
+      putAll(aliasBindingsCache)
+    }
+  }
+
+  fun getStaticBinding(typeKey: IrTypeKey): IrBinding.StaticBinding? {
+    return providedBindingsCache[typeKey] ?: aliasBindingsCache[typeKey]
+  }
+
+  fun putBinding(binding: IrBinding.Provided) {
+    providedBindingsCache[binding.typeKey] = binding
+  }
+
+  fun putBinding(binding: IrBinding.Alias) {
+    aliasBindingsCache[binding.typeKey] = binding
+  }
+
+  fun removeProvidedBinding(typeKey: IrTypeKey) {
+    providedBindingsCache.remove(typeKey)
+  }
+
+  fun removeAliasBinding(typeKey: IrTypeKey) {
+    aliasBindingsCache.remove(typeKey)
+  }
 
   context(context: IrMetroContext)
   private fun IrClass.computeMembersInjectorBindings(
@@ -54,8 +86,29 @@ internal class ClassBindingLookup(
     return bindings
   }
 
-  /** Creates an expected class binding for the given [contextKey] or returns null. */
+  /** Looks up bindings for the given [contextKey] or returns an empty set. */
   internal fun lookup(
+    contextKey: IrContextualTypeKey,
+    currentBindings: Set<IrTypeKey>,
+    stack: IrBindingStack,
+  ): Set<IrBinding> {
+    val key = contextKey.typeKey
+
+    // First check @Provides
+    providedBindingsCache[key]?.let {
+      return setOf(it)
+    }
+
+    // Then check @Binds
+    aliasBindingsCache[key]?.let {
+      return setOf(it)
+    }
+
+    // Finally, fall back to class-based lookup
+    return lookupClassBinding(contextKey, currentBindings, stack)
+  }
+
+  private fun lookupClassBinding(
     contextKey: IrContextualTypeKey,
     currentBindings: Set<IrTypeKey>,
     stack: IrBindingStack,
