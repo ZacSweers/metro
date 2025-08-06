@@ -508,6 +508,28 @@ public class BoxTestGenerated extends AbstractBoxTest {
         runTest("compiler-tests/src/test/data/box/dependencygraph/extensions/ParentMultibindingsAreAlsoIncluded.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/dependencygraph/leniency")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Leniency {
+      @Test
+      public void testAllFilesPresentInLeniency() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, TargetBackend.JVM_IR, true);
+      }
+
+      @Test
+      @TestMetadata("UnusedProvidersAreNotValidated.kt")
+      public void testUnusedProvidersAreNotValidated() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedProvidersAreNotValidated.kt");
+      }
+
+      @Test
+      @TestMetadata("UnusedProvidersInContainersAreNotValidated.kt")
+      public void testUnusedProvidersInContainersAreNotValidated() {
+        runTest("compiler-tests/src/test/data/box/dependencygraph/leniency/UnusedProvidersInContainersAreNotValidated.kt");
+      }
+    }
   }
 
   @Nested
