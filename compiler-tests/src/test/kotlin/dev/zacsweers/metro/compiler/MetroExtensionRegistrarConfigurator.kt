@@ -69,6 +69,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         chunkFieldInits =
           module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)
             ?: optionDefaults.chunkFieldInits,
+        enableStrictValidation =
+          module.directives.singleOrZeroValue(MetroDirectives.ENABLE_STRICT_VALIDATION)
+            ?: optionDefaults.enableStrictValidation,
         generateJvmContributionHintsInFir =
           MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR in module.directives,
         publicProviderSeverity =
