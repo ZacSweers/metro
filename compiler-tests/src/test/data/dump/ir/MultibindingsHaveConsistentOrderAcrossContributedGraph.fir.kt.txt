@@ -116,6 +116,8 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   class $$ContributedLoggedInGraph : LoggedInGraph {
     private /* final field */ val exampleGraphInstance: ExampleGraph = exampleGraph
     private /* final field */ val exampleGraphInstanceProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = exampleGraph)
+    private /* final field */ val provide4Provider: Provider<Task> = Companion.create(instance = <this>.#exampleGraphInstance)
+    private /* final field */ val provide3Provider: Provider<Task> = Companion.create(instance = <this>.#exampleGraphInstance)
     constructor(@Extends exampleGraph: ExampleGraph) /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -128,8 +130,8 @@ interface ExampleGraph : $$MetroContributionToAppScope {
     override val tasksFromParent: Set<Task>
       override get(): Set<Task> {
         return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = Companion.create(instance = <this>.#exampleGraphInstance).invoke())
-          $receiver.add(element = Companion.create(instance = <this>.#exampleGraphInstance).invoke())
+          $receiver.add(element = <this>.#provide4Provider.invoke())
+          $receiver.add(element = <this>.#provide3Provider.invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
         }
@@ -156,6 +158,8 @@ interface ExampleGraph : $$MetroContributionToAppScope {
   class $$MetroGraph : ExampleGraph {
     private /* final field */ val thisGraphInstance: ExampleGraph = <this>
     private /* final field */ val exampleGraphProvider: Provider<ExampleGraph> = Companion.invoke<ExampleGraph>(value = <this>.#thisGraphInstance)
+    private /* final field */ val provide4Provider: Provider<Task> = Companion.create(instance = <this>.#thisGraphInstance)
+    private /* final field */ val provide3Provider: Provider<Task> = Companion.create(instance = <this>.#thisGraphInstance)
     private constructor() /* primary */ {
       super/*Any*/()
       /* <init>() */
@@ -195,8 +199,8 @@ interface ExampleGraph : $$MetroContributionToAppScope {
     override val tasks: Set<Task>
       override get(): Set<Task> {
         return buildSet<Task>(capacity = 4, builderAction = local fun MutableSet<Task>.<anonymous>() {
-          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
-          $receiver.add(element = Companion.create(instance = <this>.#thisGraphInstance).invoke())
+          $receiver.add(element = <this>.#provide4Provider.invoke())
+          $receiver.add(element = <this>.#provide3Provider.invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
           $receiver.add(element = $$MetroFactory.create().invoke())
         }

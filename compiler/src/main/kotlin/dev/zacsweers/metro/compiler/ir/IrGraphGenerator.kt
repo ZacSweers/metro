@@ -466,21 +466,28 @@ internal class IrGraphGenerator(
         }
         .forEach { binding ->
           val key = binding.typeKey
-          // Since assisted injections don't implement Factory, we can't just type these as
+          // Since assisted and member injections don't implement Factory, we can't just type these
+          // as
           // Provider<*> fields
+          var isProviderType = true
+          val suffix: String
           val fieldType =
-            if (binding is IrBinding.ConstructorInjected && binding.isAssisted) {
-              binding.classFactory.factoryClass.typeWith() // TODO generic factories?
-            } else {
-              symbols.metroProvider.typeWith(key.type)
+            when (binding) {
+              is IrBinding.ConstructorInjected if binding.isAssisted -> {
+                isProviderType = false
+                suffix = "Factory"
+                binding.classFactory.factoryClass.typeWith() // TODO generic factories?
+              }
+              else -> {
+                suffix = "Provider"
+                symbols.metroProvider.typeWith(key.type)
+              }
             }
 
           val field =
             addField(
                 fieldName =
-                  fieldNameAllocator.newName(
-                    binding.nameHint.decapitalizeUS().suffixIfNot("Provider")
-                  ),
+                  fieldNameAllocator.newName(binding.nameHint.decapitalizeUS().suffixIfNot(suffix)),
                 fieldType = fieldType,
                 fieldVisibility = DescriptorVisibilities.PRIVATE,
               )
@@ -490,7 +497,7 @@ internal class IrGraphGenerator(
                     baseGenerationContext.withReceiver(thisReceiver),
                     fieldInitKey = typeKey,
                   )
-                  .letIf(binding.scope != null) {
+                  .letIf(binding.scope != null && isProviderType) {
                     // If it's scoped, wrap it in double-check
                     // DoubleCheck.provider(<provider>)
                     it.doubleCheck(this@withInit, symbols, binding.typeKey)
@@ -1200,12 +1207,15 @@ internal class IrGraphGenerator(
 
         if (injectorClass == null) {
           // Return a noop
-          irInvoke(
+          val noopInjector =
+            irInvoke(
               dispatchReceiver = irGetObject(symbols.metroMembersInjectors),
               callee = symbols.metroMembersInjectorsNoOp,
               typeArgs = listOf(injectedType),
             )
-            .let { with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) } }
+          instanceFactory(noopInjector.type, noopInjector).let {
+            with(metroProviderSymbols) { transformMetroProvider(it, contextualTypeKey) }
+          }
         } else {
           val injectorCreatorClass =
             if (injectorClass.isObject) injectorClass else injectorClass.companionObject()!!

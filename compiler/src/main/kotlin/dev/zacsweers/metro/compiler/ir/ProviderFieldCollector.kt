@@ -35,7 +35,7 @@ internal class ProviderFieldCollector(private val graph: IrBindingGraph) {
 
         // If it's unscoped but used more than once and not into a multibinding,
         // we can generate a reusable field
-        return refCount < 2
+        return refCount >= 2
       }
 
     /** @return true if we've referenced this binding before. */
