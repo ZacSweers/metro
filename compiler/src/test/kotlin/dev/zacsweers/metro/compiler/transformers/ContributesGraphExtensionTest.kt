@@ -1287,42 +1287,6 @@ class ContributesGraphExtensionTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `a scoped @ContributesBinding class can be accessed in a child graph without an explicit accessor when associated hints are enabled`() {
-    compile(
-      source(
-        """
-          sealed interface LoggedInScope
-          interface Bob
-
-          @Inject
-          @SingleIn(AppScope::class)
-          @ContributesBinding(AppScope::class)
-          class Dependency : Bob
-
-          @DependencyGraph(scope = AppScope::class, isExtendable = true)
-          interface ExampleGraph
-
-          @ContributesGraphExtension(LoggedInScope::class)
-          interface LoggedInGraph {
-            val childDependency: Bob
-
-              @ContributesGraphExtension.Factory(AppScope::class)
-              interface Factory {
-                  fun createLoggedInGraph(): LoggedInGraph
-              }
-          }
-        """
-          .trimIndent()
-      ),
-      options = metroOptions.copy(enableScopedInjectClassHints = true),
-    ) {
-      val parentGraph = ExampleGraph.generatedMetroGraphClass().createGraphWithNoArgs()
-      val childGraph = parentGraph.callFunction<Any>("createLoggedInGraph")
-      assertThat(childGraph.callProperty<Any>("childDependency")).isNotNull()
-    }
-  }
-
-  @Test
   fun `a scoped inject class can be accessed in a child graph without an explicit accessor when associated hints are enabled (direct scope like @Singleton used)`() {
     compile(
       source(

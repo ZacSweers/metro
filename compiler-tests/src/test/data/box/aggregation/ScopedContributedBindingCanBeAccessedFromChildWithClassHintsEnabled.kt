@@ -1,0 +1,26 @@
+// ENABLE_STRICT_VALIDATION
+// ENABLE_SCOPED_INJECT_CLASS_HINTS
+sealed interface LoggedInScope
+
+interface Bob
+
+@Inject @SingleIn(AppScope::class) @ContributesBinding(AppScope::class) class Dependency : Bob
+
+@DependencyGraph(scope = AppScope::class, isExtendable = true) interface ExampleGraph
+
+@ContributesGraphExtension(LoggedInScope::class)
+interface LoggedInGraph {
+  val childDependency: Bob
+
+  @ContributesGraphExtension.Factory(AppScope::class)
+  interface Factory {
+    fun createLoggedInGraph(): LoggedInGraph
+  }
+}
+
+fun box(): String {
+  val parentGraph = createGraph<ExampleGraph>()
+  val childGraph = parentGraph.createLoggedInGraph()
+  assertNotNull(childGraph.childDependency)
+  return "OK"
+}
