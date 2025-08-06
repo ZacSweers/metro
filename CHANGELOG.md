@@ -4,6 +4,9 @@ Changelog
 **Unreleased**
 --------------
 
+- **Behavior change**: `@Provides` and `@Binds` bindings are now only validated if they are used by the _owning_ graph. Previously, they were always validated.
+    - If you want to keep the previous behavior, you can enable the `enableStrictValidation()` option.
+    - Scoped bindings of this type will no longer be automatically retained by the graph, which can result in some need to expose accessors for these types for child graphs in some cases. The compiler will report an error for these scope mismatches as needed. Unscoped bindings continue to be accessible to child graphs.
 - **Behavior change**: `chunkFieldInits()` is now enabled by default.
 - **Behavior change**: When adding bindings from extended parent graphs, ignore any that are provided directly in the child graph. Previously Metro only ignored the binding if the binding was itself a graph type.
 - **New**: Add diagnostic reports for (valid) cycles.
