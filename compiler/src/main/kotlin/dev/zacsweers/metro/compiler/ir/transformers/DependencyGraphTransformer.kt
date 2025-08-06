@@ -154,9 +154,10 @@ internal class DependencyGraphTransformer(
       return
     }
 
+    val tag = dependencyGraphDeclaration.kotlinFqName.shortName().asString()
     parentTracer.traceNested(
-      "Transform dependency graph",
-      dependencyGraphDeclaration.kotlinFqName.shortName().asString(),
+      "[$tag] Transform dependency graph",
+      tag,
     ) { tracer ->
       transformDependencyGraph(
         graphClassId,

@@ -6,6 +6,8 @@ Changelog
 
 - **Behavior change**: `chunkFieldInits()` is now enabled by default.
 - **Behavior change**: When adding bindings from extended parent graphs, ignore any that are provided directly in the child graph. Previously Metro only ignored the binding if the binding was itself a graph type. 
+- **New**: Add diagnostic reports for (valid) cycles.
+- **Enhancement**: In tracing logs, include the graph name in the "Transform dependency graph" sections.
 - **Enhancement**: Allow contributing annotations on assisted-injected classes.
 - **Enhancement**: Improve dagger interop with `dagger.Lazy` types by allowing `Provider` subtypes to be wrapped too.
 - **Enhancement**: Support `rank` interop on Anvil annotations in contributed graph extensions.

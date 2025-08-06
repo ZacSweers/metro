@@ -219,6 +219,13 @@ internal class IrBindingGraph(
                 realGraph.bindings.keys.sorted().joinToString("\n")
               }
             },
+            onSortedCycle = { elementsInCycle ->
+              writeDiagnostic(
+                "cycle-${parentTracer.tag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              ) {
+                elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
+              }
+            },
             validateBindings = ::validateBindings,
           )
         }
