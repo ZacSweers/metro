@@ -1,3 +1,5 @@
+// ENABLE_STRICT_VALIDATION
+
 @SingleIn(AppScope::class)
 @DependencyGraph(isExtendable = true)
 interface AppGraph {
