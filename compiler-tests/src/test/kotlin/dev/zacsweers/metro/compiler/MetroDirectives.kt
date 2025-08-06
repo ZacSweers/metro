@@ -23,6 +23,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Enable/disable shrinking of unused bindings.") { it.toBoolean() }
   val CHUNK_FIELD_INITS by
     valueDirective("Enable/disable chunking of field initializers.") { it.toBoolean() }
+  val ENABLE_STRICT_VALIDATION by
+    valueDirective(
+      "Enable/disable strict validation of binds and provides declarations even if they are unused."
+    ) {
+      it.toBoolean()
+    }
 
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")

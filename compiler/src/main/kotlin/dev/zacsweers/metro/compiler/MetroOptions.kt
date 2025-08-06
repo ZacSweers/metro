@@ -477,6 +477,17 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
       required = false,
       allowMultipleOccurrences = false,
     )
+  ),
+  ENABLE_STRICT_VALIDATION(
+    RawMetroOption.boolean(
+      name = "enable-strict-validation",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Enable/disable strict validation of all binds and provides declarations, even if they are unused.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
   );
 
   companion object {
@@ -570,6 +581,8 @@ public data class MetroOptions(
     MetroOption.ENABLE_DAGGER_ANVIL_INTEROP.raw.defaultValue.expectAs(),
   val enableScopedInjectClassHints: Boolean =
     MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS.raw.defaultValue.expectAs(),
+  val enableStrictValidation: Boolean =
+    MetroOption.ENABLE_STRICT_VALIDATION.raw.defaultValue.expectAs(),
 ) {
   internal companion object {
     fun load(configuration: CompilerConfiguration): MetroOptions {
@@ -709,6 +722,9 @@ public data class MetroOptions(
           }
           MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
             options = options.copy(enableScopedInjectClassHints = configuration.getAsBoolean(entry))
+          }
+          MetroOption.ENABLE_STRICT_VALIDATION -> {
+            options = options.copy(enableStrictValidation = configuration.getAsBoolean(entry))
           }
         }
       }

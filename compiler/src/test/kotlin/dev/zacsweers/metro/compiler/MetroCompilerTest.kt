@@ -246,6 +246,9 @@ abstract class MetroCompilerTest {
               MetroOption.ENABLE_SCOPED_INJECT_CLASS_HINTS -> {
                 processor.option(entry.raw.cliOption, enableScopedInjectClassHints)
               }
+              MetroOption.ENABLE_STRICT_VALIDATION -> {
+                processor.option(entry.raw.cliOption, enableStrictValidation)
+              }
             }
           yield(option)
         }
