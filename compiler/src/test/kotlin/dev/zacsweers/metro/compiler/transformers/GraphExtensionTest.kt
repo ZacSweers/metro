@@ -145,7 +145,8 @@ class GraphExtensionTest : MetroCompilerTest() {
               }
             }
         """
-      )
+      ),
+      options = metroOptions.copy(enableStrictValidation = true)
     ) {
       val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
@@ -180,7 +181,8 @@ class GraphExtensionTest : MetroCompilerTest() {
               }
             }
         """
-      )
+      ),
+      options = metroOptions.copy(enableStrictValidation = true)
     ) {
       val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
@@ -214,7 +216,8 @@ class GraphExtensionTest : MetroCompilerTest() {
               }
             }
         """
-      )
+      ),
+      options = metroOptions.copy(enableStrictValidation = true)
     ) {
       val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
@@ -955,7 +958,8 @@ class GraphExtensionTest : MetroCompilerTest() {
               }
             }
         """
-      )
+      ),
+      options = metroOptions.copy(enableStrictValidation = true)
     ) {
       val parentGraph = ParentGraph.generatedMetroGraphClass().createGraphWithNoArgs()
       val childGraph = ChildGraph.generatedMetroGraphClass().createGraphViaFactory(parentGraph)
