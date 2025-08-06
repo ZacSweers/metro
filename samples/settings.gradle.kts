@@ -16,7 +16,7 @@ dependencyResolutionManagement {
   }
 }
 
-plugins { id("com.android.settings") version "8.12.0" }
+plugins { id("com.android.settings") version "8.11.0" }
 
 android {
   compileSdk = 36
