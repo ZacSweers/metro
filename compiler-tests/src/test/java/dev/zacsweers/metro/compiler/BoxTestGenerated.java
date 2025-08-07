@@ -272,6 +272,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ScopedBindingUsedByExtensionIsExposed.kt")
+    public void testScopedBindingUsedByExtensionIsExposed() {
+      runTest("compiler-tests/src/test/data/box/contributesgraphextension/ScopedBindingUsedByExtensionIsExposed.kt");
+    }
+
+    @Test
     @TestMetadata("WithContributesBinding.kt")
     public void testWithContributesBinding() {
       runTest("compiler-tests/src/test/data/box/contributesgraphextension/WithContributesBinding.kt");
