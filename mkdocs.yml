@@ -45,6 +45,7 @@ plugins:
   # Social plugin for delightful card previews on social media
   # https://squidfunk.github.io/mkdocs-material/plugins/social/
   - social
+  - search
 
 #extra_css:
 #  - 'css/app.css'
