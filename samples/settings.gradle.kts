@@ -42,6 +42,10 @@ include(
   ":multi-module-test:contributor",
   ":multi-module-test:aggregator",
   ":multi-module-test:app",
+  ":multi-module-viewmodels:app",
+  ":multi-module-viewmodels:core",
+  ":multi-module-viewmodels:screen-details",
+  ":multi-module-viewmodels:screen-home",
 )
 
 includeBuild("..")
