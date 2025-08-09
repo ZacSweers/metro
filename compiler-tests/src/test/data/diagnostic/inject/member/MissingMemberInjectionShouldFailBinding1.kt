@@ -14,6 +14,8 @@ abstract class AppSubscope
 @ContributesGraphExtension(AppSubscope::class)
 interface SubscopeGraph {
 
+  val base: Base
+
   @Multibinds
   @ForScope(AppSubscope::class)
   val membersInjectors: Map<KClass<*>, MembersInjector<*>>
@@ -23,7 +25,7 @@ interface SubscopeGraph {
     fun create(): SubscopeGraph
   }
 
-  // This should fail because of missing @Inject on Implementation, but it doesn't
+  // This should fail because of missing @Inject on Implementation
   @Binds
   fun bindImplementation(<!METRO_ERROR!>instance: Implementation<!>): Base
 }

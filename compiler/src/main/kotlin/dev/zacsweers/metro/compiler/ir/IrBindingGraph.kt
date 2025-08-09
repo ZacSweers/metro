@@ -38,7 +38,7 @@ internal class IrBindingGraph(
   private val metroContext: IrMetroContext,
   private val node: DependencyGraphNode,
   newBindingStack: () -> IrBindingStack,
-  classBindingLookup: ClassBindingLookup,
+  private val bindingLookup: BindingLookup,
 ) {
   private val realGraph =
     MutableBindingGraph(
@@ -52,7 +52,7 @@ internal class IrBindingGraph(
       },
       absentBinding = { key -> IrBinding.Absent(key) },
       computeBindings = { contextKey, currentBindings, stack ->
-        classBindingLookup.lookup(contextKey, currentBindings, stack)
+        bindingLookup.lookup(contextKey, currentBindings, stack)
       },
       onError = ::onError,
       findSimilarBindings = { key -> findSimilarBindings(key).mapValues { it.value.toString() } },
@@ -255,6 +255,15 @@ internal class IrBindingGraph(
       return BindingGraphResult(sortedKeys, deferredTypes, reachableKeys)
     }
 
+  fun reportDuplicateBinding(
+    key: IrTypeKey,
+    existing: IrBinding,
+    duplicate: IrBinding,
+    bindingStack: IrBindingStack,
+  ) {
+    realGraph.reportDuplicateBinding(key, existing, duplicate, bindingStack)
+  }
+
   private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Nothing) {
     val multibindings = realGraph.bindings.values.filterIsInstance<IrBinding.Multibinding>()
     val errors = mutableListOf<GraphError>()
@@ -378,10 +387,19 @@ internal class IrBindingGraph(
       similarBindings.putIfAbsent(it.typeKey, SimilarBinding(it, nullabilityDescription))
     }
 
-    // Little more involved, iterate the bindings for ones with the same type
-    realGraph.bindings.forEach { (bindingKey, binding) ->
+    // Merge graph bindings and cached bindings from BindingLookup
+    val allBindings = buildMap {
+      putAll(realGraph.bindings)
+      // Add cached bindings that aren't already in the graph
+      bindingLookup.getAvailableStaticBindings().forEach { (bindingKey, binding) ->
+        putIfAbsent(bindingKey, binding)
+      }
+    }
+
+    // Iterate through all bindings to find similar ones
+    allBindings.forEach { (bindingKey, binding) ->
       when {
-        key.qualifier == null && bindingKey.type == key.type -> {
+        bindingKey.type == key.type && key.qualifier != bindingKey.qualifier -> {
           similarBindings.putIfAbsent(bindingKey, SimilarBinding(binding, "Different qualifier"))
         }
         binding is IrBinding.Multibinding -> {
@@ -555,18 +573,23 @@ internal class IrBindingGraph(
             )
           }
 
-          if (!isUnscoped && binding is IrBinding.ConstructorInjected) {
+          if (!isUnscoped) {
             val matchingParent =
               node.allExtendedNodes.values.firstOrNull { bindingScope in it.scopes }
             if (matchingParent != null) {
               appendLine()
               appendLine()
               val shortTypeKey = binding.typeKey.render(short = true)
+              val optionsHint = if (binding is IrBinding.ConstructorInjected) {
+                " or enabling the `enableScopedInjectClassHints` option"
+              } else {
+                " or enabling the `eagerlyValidateProviders` option"
+              }
               appendLine(
                 """
                   (Hint)
                   It appears that extended parent graph '${matchingParent.sourceGraph.kotlinFqName}' does declare the '$bindingScope' scope but doesn't use '$shortTypeKey' directly.
-                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`) or enabling the `enableScopedInjectClassHints` option.
+                  To work around this, consider declaring an accessor for '$shortTypeKey' in that graph (i.e. `val ${shortTypeKey.decapitalizeUS()}: $shortTypeKey`)$optionsHint.
                   See https://github.com/ZacSweers/metro/issues/377 for more details.
                 """
                   .trimIndent()

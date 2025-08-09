@@ -153,13 +153,16 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     }
   }
 
+  /** A binding that is statically defined in a graph or binding container. */
+  sealed interface StaticBinding : IrBinding, BindingWithAnnotations
+
   @Poko
   class Provided(
     @Poko.Skip val providerFactory: ProviderFactory,
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val contextualTypeKey: IrContextualTypeKey,
     override val parameters: Parameters,
-  ) : IrBinding, BindingWithAnnotations {
+  ) : StaticBinding {
     override val dependencies: List<IrContextualTypeKey> by unsafeLazy {
       parameters.allParameters.map { it.contextualTypeKey }
     }
@@ -227,10 +230,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   class Alias(
     override val typeKey: IrTypeKey,
     val aliasedType: IrTypeKey,
-    @Poko.Skip val ir: IrSimpleFunction?,
+    val bindsCallable: BindsCallable?,
     override val parameters: Parameters,
-    override val annotations: MetroAnnotations<IrAnnotation>,
-  ) : IrBinding, BindingWithAnnotations {
+  ) : StaticBinding {
+    val ir = bindsCallable?.function
+    override val annotations: MetroAnnotations<IrAnnotation> =
+      bindsCallable?.callableMetadata?.annotations ?: MetroAnnotations.none()
 
     init {
       if (ir != null && !annotations.isBinds) {
@@ -289,7 +294,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
           }
         }
       }
-      return super<IrBinding>.renderLocationDiagnostic()
+      return super<StaticBinding>.renderLocationDiagnostic()
     }
 
     override fun toString() = buildString {

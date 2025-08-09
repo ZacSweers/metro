@@ -76,6 +76,14 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
   public val enableScopedInjectClassHints: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(false)
 
+  /**
+   * Enable/disable strict validation of bindings. If enabled, _all_ declared `@Provides` and
+   * `@Binds` bindings will be validated even if they are not used by the graph. Disabled by
+   * default.
+   */
+  public val enableStrictValidation: Property<Boolean> =
+    objects.property(Boolean::class.javaObjectType).convention(false)
+
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
