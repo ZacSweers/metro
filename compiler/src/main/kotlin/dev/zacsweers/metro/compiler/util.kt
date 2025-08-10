@@ -39,6 +39,10 @@ internal fun String.capitalizeUS() = replaceFirstChar {
 
 internal fun String.decapitalizeUS() = replaceFirstChar { it.lowercase(Locale.US) }
 
+internal fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
+  return filterTo(mutableSetOf(), predicate)
+}
+
 internal fun <T, R> Iterable<T>.mapToSet(transform: (T) -> R): Set<R> {
   return mapTo(mutableSetOf(), transform)
 }
@@ -70,6 +74,9 @@ internal inline fun <T, reified R> List<T>.mapToArray(transform: (T) -> R): Arra
 internal inline fun <T, reified R> Array<T>.mapToArray(transform: (T) -> R): Array<R> {
   return Array(size) { transform(get(it)) }
 }
+
+internal inline fun <T, C : Collection<T>, O> C.ifNotEmpty(body: C.() -> O?): O? =
+  if (isNotEmpty()) this.body() else null
 
 internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set<R>, Set<R>> {
   val dupes = mutableSetOf<R>()

@@ -37,7 +37,7 @@ internal interface IrBindingStack :
     override val contextKey: IrContextualTypeKey,
     override val usage: String?,
     override val graphContext: String?,
-    val declaration: IrDeclaration?,
+    val declaration: IrDeclarationWithName?,
     override val displayTypeKey: IrTypeKey = contextKey.typeKey,
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
@@ -116,7 +116,7 @@ internal interface IrBindingStack :
         contextKey: IrContextualTypeKey,
         function: IrFunction?,
         param: IrValueParameter? = null,
-        declaration: IrDeclaration? = param,
+        declaration: IrDeclarationWithName? = param,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
         isMirrorFunction: Boolean = false,
@@ -433,7 +433,7 @@ internal fun bindingStackEntryForDependency(
         callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
-        isMirrorFunction = true,
+        isMirrorFunction = false,
       )
     }
     is IrBinding.Assisted -> {

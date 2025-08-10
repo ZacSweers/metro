@@ -50,6 +50,20 @@ class Bar : Foo {
 
 @DependencyGraph
 interface BindsCycleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class $$BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Binds
+    @CallableMetadata(callableName = "foo", isPropertyAccessor = false, startOffset = 307, endOffset = 336)
+    abstract fun foo(bar: Bar): Foo
+
+  }
+
   companion object Companion {
     private constructor() /* primary */ {
       super/*Any*/()

@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.transformers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -15,6 +17,7 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import org.jetbrains.kotlin.backend.jvm.codegen.AnnotationCodegen.Companion.annotationClass
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -34,6 +37,7 @@ import org.jetbrains.kotlin.ir.util.copyAnnotationsFrom
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasDefaultValue
 import org.jetbrains.kotlin.ir.util.isObject
@@ -134,6 +138,7 @@ context(context: IrMetroContext)
 internal fun generateMetadataVisibleMirrorFunction(
   factoryClass: IrClass,
   target: IrFunction,
+  annotations: MetroAnnotations<IrAnnotation>,
 ): IrSimpleFunction {
   val function =
     factoryClass
@@ -159,13 +164,14 @@ internal fun generateMetadataVisibleMirrorFunction(
           copyTypeParametersFrom(sourceClass)
         } else {
           // If it's a regular (provides) function, just always copy its annotations
-          // Exclude @Provides to avoid reentrant factory gen
-          // TODO maybe make this more precise in what it copies?
-          copyAnnotationsFrom(target)
-          annotations =
-            annotations.filterNot {
-              it.annotationClass.classId in context.symbols.classIds.providesAnnotations
-            }
+          this.annotations =
+            annotations
+              .mirrorIrConstructorCalls(symbol)
+              .filterNot {
+                // Exclude @Provides to avoid reentrant factory gen
+                it.annotationClass.classId in context.symbols.classIds.providesAnnotations
+              }
+              .map { it.deepCopyWithSymbols() }
         }
         copyParametersFrom(target)
         setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))

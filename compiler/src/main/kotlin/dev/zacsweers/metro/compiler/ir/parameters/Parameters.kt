@@ -47,15 +47,15 @@ internal class Parameters(
       }
     }
 
-  val extensionOrFirstParameter: Parameter?
-    get() = extensionReceiverParameter ?: regularParameters.firstOrNull()
-
   val nonDispatchParameters: List<Parameter> by unsafeLazy {
     buildList {
       extensionReceiverParameter?.let(::add)
       addAll(regularParameters)
     }
   }
+
+  val extensionOrFirstParameter: Parameter?
+    get() = nonDispatchParameters.firstOrNull()
 
   val allParameters: List<Parameter> by unsafeLazy {
     buildList {

@@ -356,6 +356,21 @@ interface ChildCycleGraph {
 
   @Factory
   fun interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    object $$Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Extends cycleGraph: CycleGraph): ChildCycleGraph {
+        return $$MetroGraph(cycleGraph = cycleGraph)
+      }
+
+    }
+
     abstract fun create(@Extends cycleGraph: CycleGraph): ChildCycleGraph
 
   }
@@ -403,11 +418,13 @@ interface CycleGraph {
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor
     fun cycleGraphProvider_metroAccessor(): Provider<CycleGraph> {
       return <this>.#cycleGraphProvider
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor(isInstanceAccessor = true)
     fun thisGraphInstance_metroAccessor(): CycleGraph {
       return <this>.#thisGraphInstance
     }
@@ -428,7 +445,7 @@ interface CycleGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideObjectWithCycle", isPropertyAccessor = false, startOffset = 468, endOffset = 565)
+  @CallableMetadata(callableName = "provideObjectWithCycle", isPropertyAccessor = false, startOffset = 468, endOffset = 565)
   class ProvideObjectWithCycle$$MetroFactory : Factory<Any> {
     private /* final field */ val instance: CycleGraph = instance
     private /* final field */ val obj: Provider<Any> = obj

@@ -67,9 +67,6 @@ interface TestNetworkProviders {
 }
 ```
 
-!!! warning
-    `@Contributes*.replaces` cannot replace classes in the _same compilation_ as the _graph that is merging them_.
-
 ## @ContributesBinding
 
 This annotation is used to contribute injected classes to a target scope as a given bound type.
@@ -168,6 +165,46 @@ class CacheImpl(...) : Cache
 ```
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
+
+You can use `@IntoMap`/`@IntoSet` to provide into the same container:
+
+```kotlin
+// Method 1: applying @ContributesIntoMap to bind directly from the implementation class
+@ContributesIntoMap(AppScope::class)
+@StringKey("remote")
+@Inject
+class RemoteCache(...) : Cache
+
+// Method 2: Declare the class, then provide @IntoMap binding separately via a BindingContainer
+class LocalCache(...) : Cache
+
+@BindingContainer
+@ContributesTo(AppScope::class)
+object CacheBindingContainer {
+  @Provides
+  @IntoMap
+  @StringKey("local")
+  fun cache(): Cache = LocalCache(...)
+}
+
+// Accessing the resultant map, containing both implementations:
+@Inject
+class CompositeCache(private val caches: Map<String, Cache>) {
+  val local: Cache = caches["local"]
+  val remote: Cache = caches["remote"]
+}
+
+// Alternatively, specify Provider in the map type to lazily-initialize the implementations
+@Inject
+class CompositeCacheAlternate(private val caches: Map<String, Provider<Cache>>) {
+  val local: Cache = caches["local"]()
+  val remote: Provider<Cache> = caches["remote"]
+  
+  fun someTimeLater() {
+    remote().doSomethingWithCache()
+  }
+}
+```
 
 ## Contributing Binding Containers
 

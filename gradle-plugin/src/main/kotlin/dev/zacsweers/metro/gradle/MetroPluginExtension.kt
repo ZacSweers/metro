@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Zac Sweers
+// Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle
 
@@ -68,21 +68,21 @@ constructor(layout: ProjectLayout, objects: ObjectFactory, providers: ProviderFa
     objects.property(Boolean::class.javaObjectType).convention(false)
 
   /**
-   * Enable/disable hint property generation for scoped inject classes. Enabled by default.
+   * Enable/disable hint property generation for scoped inject classes. Disabled by default.
    *
    * @see <a href="https://zacsweers.github.io/metro/dependency-graphs/#graph-extensions">Graph
    *   Extensions docs for more details</a>
    */
   public val enableScopedInjectClassHints: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(true)
+    objects.property(Boolean::class.javaObjectType).convention(false)
 
   /** Enable/disable shrinking of unused bindings. Enabled by default. */
   public val shrinkUnusedBindings: Property<Boolean> =
     objects.property(Boolean::class.javaObjectType).convention(true)
 
-  /** Enable/disable chunking of field initializers. Disabled by default. */
+  /** Enable/disable chunking of field initializers. Enabled by default. */
   public val chunkFieldInits: Property<Boolean> =
-    objects.property(Boolean::class.javaObjectType).convention(false)
+    objects.property(Boolean::class.javaObjectType).convention(true)
 
   /** Enable/disable automatic transformation of providers to be private. Enabled by default. */
   public val transformProvidersToPrivate: Property<Boolean> =

@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
-import dev.zacsweers.metro.compiler.ir.transformers.BindsCallable
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.unsafeLazy
@@ -32,6 +31,7 @@ internal data class DependencyGraphNode(
   // Dagger calls these "provision methods", but that's a bit vague IMO
   val accessors: List<Pair<MetroSimpleFunction, IrContextualTypeKey>>,
   val bindsCallables: Set<BindsCallable>,
+  val multibindsCallables: Set<MultibindsCallable>,
   /** Binding containers that need a managed instance. */
   val bindingContainers: Set<IrClass>,
   /** Fake overrides of binds functions that need stubbing. */
@@ -46,6 +46,18 @@ internal data class DependencyGraphNode(
   //  maybe we track these protos separately somewhere?
   var proto: DependencyGraphProto? = null,
 ) {
+  /** [IrTypeKey] of the contributed graph extension, if any. */
+  val contributedGraphTypeKey: IrTypeKey? by unsafeLazy {
+    if (sourceGraph.origin == Origins.ContributedGraph) {
+      IrTypeKey(sourceGraph.superTypes.first())
+    } else {
+      null
+    }
+  }
+
+  /** [contributedGraphTypeKey] if not null, otherwise [typeKey]. */
+  val originalTypeKey
+    get() = contributedGraphTypeKey ?: typeKey
 
   val publicAccessors by unsafeLazy { accessors.mapToSet { (_, contextKey) -> contextKey.typeKey } }
 
@@ -60,10 +72,10 @@ internal data class DependencyGraphNode(
   val multibindingAccessors by unsafeLazy {
     proto
       ?.let {
-        val bitfield = it.multibinding_accessor_indices
+        val bitfield = BitField(it.multibinding_accessor_indices)
         val multibindingCallableIds =
           it.accessor_callable_names.filterIndexedTo(mutableSetOf()) { index, _ ->
-            (bitfield shr index) and 1 == 1
+            bitfield.isSet(index)
           }
         accessors
           .filter { it.first.ir.name.asString() in multibindingCallableIds }
@@ -78,23 +90,27 @@ internal data class DependencyGraphNode(
 
   override fun toString(): String = typeKey.render(short = true)
 
-  sealed interface Creator {
-    val function: IrFunction
-    val parameters: Parameters
-    val bindingContainersParameterIndices: BitField
+  sealed class Creator {
+    abstract val type: IrClass
+    abstract val function: IrFunction
+    abstract val parameters: Parameters
+    abstract val bindingContainersParameterIndices: BitField
+
+    val typeKey by unsafeLazy { IrTypeKey(type.typeWith()) }
 
     data class Constructor(
+      override val type: IrClass,
       override val function: IrConstructor,
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
-    ) : Creator
+    ) : Creator()
 
     data class Factory(
-      val type: IrClass,
+      override val type: IrClass,
       override val function: IrSimpleFunction,
       override val parameters: Parameters,
       override val bindingContainersParameterIndices: BitField,
-    ) : Creator
+    ) : Creator()
   }
 }
 

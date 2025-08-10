@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.MetroIrErrors
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
+import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.isExternalParent
@@ -153,9 +154,10 @@ internal class DependencyGraphTransformer(
       return
     }
 
+    val tag = dependencyGraphDeclaration.kotlinFqName.shortName().asString()
     parentTracer.traceNested(
-      "Transform dependency graph",
-      dependencyGraphDeclaration.kotlinFqName.shortName().asString(),
+      "[$tag] Transform dependency graph",
+      tag,
     ) { tracer ->
       transformDependencyGraph(
         graphClassId,
@@ -213,11 +215,11 @@ internal class DependencyGraphTransformer(
               for ((declaration, message) in errors) {
                 // TODO in kotlin 2.2.20 we can just use the reporter
                 val toReport =
-                  declaration?.takeIf { it.fileOrNull != null } ?: dependencyGraphDeclaration
-                if (toReport.fileOrNull != null) {
-                  diagnosticReporter
-                    .at(declaration ?: dependencyGraphDeclaration)
-                    .report(MetroIrErrors.METRO_ERROR, message)
+                  declaration?.takeIf {
+                    it.fileOrNull != null && it.origin != Origins.ContributedGraph
+                  } ?: dependencyGraphDeclaration
+                if (toReport.fileOrNull != null && toReport.origin != Origins.ContributedGraph) {
+                  diagnosticReporter.at(toReport).report(MetroIrErrors.METRO_ERROR, message)
                 } else {
                   messageCollector.report(
                     CompilerMessageSeverity.ERROR,
@@ -286,12 +288,13 @@ internal class DependencyGraphTransformer(
         implementCreatorFunctions(node.sourceGraph, node.creator, node.sourceGraph.metroGraphOrFail)
 
         node.accessors
-          .map { it.first }
-          .plus(node.injectors.map { it.first })
-          .plus(node.bindsCallables.map { it.function })
-          .plus(node.contributedGraphs.map { it.value })
+          .map { it.first.ir }
+          .plus(node.injectors.map { it.first.ir })
+          .plus(node.bindsCallables.map { it.callableMetadata.function })
+          .plus(node.contributedGraphs.map { it.value.ir })
+          .filterNot { it.isExternalParent }
           .forEach { function ->
-            with(function.ir) {
+            with(function) {
               val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
               if (declarationToFinalize.isFakeOverride) {
                 declarationToFinalize.finalizeFakeOverride(
@@ -341,8 +344,10 @@ internal class DependencyGraphTransformer(
     val companionObject = sourceGraph.companionObject() ?: return
     val factoryCreator = creator?.expectAsOrNull<DependencyGraphNode.Creator.Factory>()
     if (factoryCreator != null) {
+      // TODO would be nice if we could just class delegate to the $$Impl object
       val implementFactoryFunction: IrClass.() -> Unit = {
-        requireSimpleFunction(factoryCreator.function.name.asString()).owner.apply {
+        val samName = factoryCreator.function.name.asString()
+        requireSimpleFunction(samName).owner.apply {
           if (isFakeOverride) {
             finalizeFakeOverride(metroGraph.thisReceiverOrFail)
           }
@@ -360,17 +365,20 @@ internal class DependencyGraphTransformer(
         }
       }
 
-      companionObject.apply {
-        if (factoryCreator.type.isInterface) {
-          // Implement the interface creator function directly in this companion object
-          implementFactoryFunction()
-        } else {
-          // Implement the factory's $$Impl class
-          val factoryClass =
-            factoryCreator.type
-              .requireNestedClass(Symbols.Names.MetroImpl)
-              .apply(implementFactoryFunction)
+      // Implement the factory's $$Impl class if present
+      val factoryImpl =
+        factoryCreator.type
+          .requireNestedClass(Symbols.Names.MetroImpl)
+          .apply(implementFactoryFunction)
 
+      if (
+        factoryCreator.type.isInterface &&
+          companionObject.implements(factoryCreator.type.classIdOrFail)
+      ) {
+        // Implement the interface creator function directly in this companion object
+        companionObject.implementFactoryFunction()
+      } else {
+        companionObject.apply {
           // Implement a factory() function that returns the factory impl instance
           requireSimpleFunction(Symbols.StringNames.FACTORY).owner.apply {
             if (origin == Origins.MetroGraphFactoryCompanionGetter) {
@@ -381,7 +389,7 @@ internal class DependencyGraphTransformer(
                 pluginContext.createIrBuilder(symbol).run {
                   irExprBodySafe(
                     symbol,
-                    irCallConstructor(factoryClass.primaryConstructor!!.symbol, emptyList()),
+                    irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList()),
                   )
                 }
             }

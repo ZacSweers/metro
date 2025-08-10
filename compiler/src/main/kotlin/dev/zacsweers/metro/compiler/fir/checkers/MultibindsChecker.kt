@@ -6,14 +6,17 @@ import dev.zacsweers.metro.compiler.fir.FirMetroErrors
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.metroAnnotations
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
@@ -26,6 +29,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
   override fun check(declaration: FirCallableDeclaration) {
+    if (declaration is FirPropertyAccessor) return // Handled by FirProperty checks
     val source = declaration.source ?: return
     val session = context.session
 
@@ -70,8 +74,8 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     }
 
     if (annotations.isMultibinds) {
-      // @Multibinds must be abstract
-      if (!declaration.isAbstract) {
+      // @Multibinds must be abstract unless private
+      if (!declaration.isAbstract && declaration.visibility != Visibilities.Private) {
         reporter.reportOn(
           source,
           FirMetroErrors.MULTIBINDS_ERROR,

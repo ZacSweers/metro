@@ -12,13 +12,11 @@ See @README.md, @docs, and @.github/CONTRIBUTING.md for project overview.
 - `./metrow check` - Runs _all_ validation and tests in the project (tests, linting, API validation). This is expensive.
 
 ### Code Quality
-- `./gradlew spotlessCheck` - Check code formatting
-- `./gradlew spotlessApply` - Apply code formatting fixes
-- `./gradlew apiCheck` - Validate public API compatibility
-- `./gradlew lint` - Run lint checks
+Don't bother running code formatting, I'll handle that in commits.
 
 ### Documentation
 - `./gradlew dokkaHtml` - Generate API documentation
+- `docs/` - Contains all markdown documentation
 
 ### Benchmarks
 - `cd benchmark && ./run_benchmarks.sh metro` - Run performance benchmarks
@@ -58,6 +56,8 @@ Metro is a compile-time dependency injection framework implemented as a Kotlin c
 - Box tests (`data/box/`) - Full compilation and execution validation
 - Diagnostic tests (`data/diagnostic/`) - Error reporting and validation
 - Dump tests (`data/dump/`) - FIR/IR tree inspection and verification
+
+To create a new test, add a source file under the appropriate directory and then run `./gradlew :compiler-tests:generateTests` to regenerate tests. This will then add a generated junit test that can be run via the standard `./gradlew :compiler-tests:test` task.
 
 **samples/** - Real-world integration examples
 - `weather-app/` - Basic multiplatform usage

@@ -1463,35 +1463,6 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `binding class must be not be assisted injected - ContributesBinding`() {
-    compile(
-      source(
-        """
-          interface ContributedInterface
-
-          @ContributesBinding(AppScope::class)
-          @Inject
-          class Impl(@Assisted input: String) : ContributedInterface {
-            @AssistedFactory
-            fun interface Factory {
-              fun create(input: String): Impl
-            }
-          }
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph
-        """
-          .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesBinding` doesn't make sense on assisted-injected class test.Impl. Did you mean to apply this to its assisted factory?"
-      )
-    }
-  }
-
-  @Test
   fun `binding with no explicit bound type or supertypes is an error - ContributesBinding`() {
     compile(
       source(
@@ -2188,35 +2159,6 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `binding class must be not be assisted injected - ContributesIntoSet`() {
-    compile(
-      source(
-        """
-          interface ContributedInterface
-
-          @ContributesIntoSet(AppScope::class)
-          @Inject
-          class Impl(@Assisted input: String) : ContributedInterface {
-            @AssistedFactory
-            fun interface Factory {
-              fun create(input: String): Impl
-            }
-          }
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph
-        """
-          .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoSet` doesn't make sense on assisted-injected class test.Impl. Did you mean to apply this to its assisted factory?"
-      )
-    }
-  }
-
-  @Test
   fun `binding with no explicit bound type or supertypes is an error - ContributesIntoSet`() {
     compile(
       source(
@@ -2737,35 +2679,6 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
-      )
-    }
-  }
-
-  @Test
-  fun `binding class must be not be assisted injected - ContributesIntoMap`() {
-    compile(
-      source(
-        """
-          interface ContributedInterface
-
-          @ContributesIntoMap(AppScope::class)
-          @Inject
-          class Impl(@Assisted input: String) : ContributedInterface {
-            @AssistedFactory
-            fun interface Factory {
-              fun create(input: String): Impl
-            }
-          }
-
-          @DependencyGraph(scope = AppScope::class)
-          interface ExampleGraph
-        """
-          .trimIndent()
-      ),
-      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-    ) {
-      assertDiagnostics(
-        "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` doesn't make sense on assisted-injected class test.Impl. Did you mean to apply this to its assisted factory?"
       )
     }
   }

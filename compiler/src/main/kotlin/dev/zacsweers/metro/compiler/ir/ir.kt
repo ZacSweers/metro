@@ -5,7 +5,9 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.Symbols
+import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
@@ -47,6 +49,7 @@ import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.builders.irVararg
 import org.jetbrains.kotlin.ir.declarations.DelicateIrParameterIndexSetter
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -103,6 +106,7 @@ import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
+import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
@@ -113,6 +117,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -339,9 +344,12 @@ internal fun IrConstructorCall.computeAnnotationHash(): Int {
   return Objects.hash(
     type.rawType().classIdOrFail,
     arguments
-      .map {
-        it?.computeHashSource()
-          ?: error("Unknown annotation argument type: ${it?.let { it::class.java }}")
+      .filterNotNull()
+      .mapIndexed { i, arg ->
+        arg.computeHashSource()
+          ?: error(
+            "Unknown annotation argument type: ${arg::class.java }. Annotation: ${dumpKotlinLike()}"
+          )
       }
       .toTypedArray()
       .contentDeepHashCode(),
@@ -742,8 +750,15 @@ internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
 internal fun IrConstructorCall.excludesArgument() =
   getValueArgument(Symbols.Names.excludes)?.expectAsOrNull<IrVararg>()
 
+internal fun IrConstructorCall.additionalScopesArgument() =
+  getValueArgument(Symbols.Names.additionalScopes)?.expectAsOrNull<IrVararg>()
+
 internal fun IrConstructorCall.excludedClasses(): Set<IrClassReference> {
   return excludesArgument().toClassReferences()
+}
+
+internal fun IrConstructorCall.additionalScopes(): Set<IrClassReference> {
+  return additionalScopesArgument().toClassReferences()
 }
 
 internal fun IrConstructorCall.includesArgument() =
@@ -1192,8 +1207,18 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
           is IrSimpleType -> {
             val classifier = type.classifier
             if (classifier is IrTypeParameterSymbol) {
-              val substitution = substitutionMap[classifier]
-              substitution?.let { remapType(it) } ?: type
+              substitutionMap[classifier]?.let { substitutedType ->
+                val remapped = remapType(substitutedType)
+                // Preserve nullability
+                when (remapped) {
+                  // Java type args always come with @FlexibleNullability, which we choose to
+                  // interpret as strictly not null
+                  is IrSimpleType if (!type.isWithFlexibleNullability()) -> {
+                    remapped.mergeNullability(type)
+                  }
+                  else -> remapped
+                }
+              } ?: type
             } else if (type.arguments.isEmpty()) {
               type
             } else {
@@ -1343,6 +1368,23 @@ internal fun IrConstructorCall.isExtendable(): Boolean {
   }
 }
 
+internal fun IrConstructorCall.rankValue(): Long {
+  // Although the parameter is defined as an Int, the value we receive here may end up being
+  // an Int or a Long so we need to handle both
+  return getValueArgument(Symbols.Names.rank)?.let { arg ->
+    when (arg) {
+      is IrConst -> {
+        when (val value = arg.value) {
+          is Long -> value
+          is Int -> value.toLong()
+          else -> Long.MIN_VALUE
+        }
+      }
+      else -> Long.MIN_VALUE
+    }
+  } ?: Long.MIN_VALUE
+}
+
 context(context: IrMetroContext)
 internal fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
   if (this == null) return null
@@ -1387,12 +1429,17 @@ private fun List<IrConstructorCall>?.annotationsAnnotatedWith(
 
 context(context: IrMetroContext)
 internal fun IrClass.findInjectableConstructor(onlyUsePrimaryConstructor: Boolean): IrConstructor? {
-  return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(context.symbols.injectAnnotations)) {
+  return findInjectableConstructor(onlyUsePrimaryConstructor, context.symbols.injectAnnotations)
+}
+
+internal fun IrClass.findInjectableConstructor(
+  onlyUsePrimaryConstructor: Boolean,
+  injectAnnotations: Set<ClassId>,
+): IrConstructor? {
+  return if (onlyUsePrimaryConstructor || isAnnotatedWithAny(injectAnnotations)) {
     primaryConstructor
   } else {
-    constructors.singleOrNull { constructor ->
-      constructor.isAnnotatedWithAny(context.symbols.injectAnnotations)
-    }
+    constructors.singleOrNull { constructor -> constructor.isAnnotatedWithAny(injectAnnotations) }
   }
 }
 
@@ -1405,4 +1452,57 @@ internal fun IrBuilderWithScope.instanceFactory(type: IrType, arg: IrExpression)
     typeArgs = listOf(type),
     args = listOf(arg),
   )
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotation.allowEmpty(): Boolean {
+  ir.getSingleConstBooleanArgumentOrNull()?.let {
+    // Explicit, return it
+    return it
+  }
+  // Retain Dagger's behavior in interop if using their annotation
+  val assumeAllowEmpty =
+    context.options.enableDaggerRuntimeInterop &&
+      ir.annotationClass.classId == DaggerSymbols.ClassIds.DAGGER_MULTIBINDS
+  return assumeAllowEmpty
+}
+
+context(scope: IrBuilderWithScope)
+internal fun Collection<IrClassReference>.copyToIrVararg() = ifNotEmpty {
+  scope.irVararg(first().type, map { value -> value.deepCopyWithSymbols() })
+}
+
+context(scope: IrBuilderWithScope)
+internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
+  scope.irVararg(first().defaultType, map { value -> scope.kClassReference(value.symbol) })
+}
+
+context(context: IrPluginContext)
+internal fun IrClass.implicitBoundTypeOrNull(): IrType? {
+  return superTypes
+    .filterNot { it.rawType().classId == context.irBuiltIns.anyClass.owner.classId }
+    .singleOrNull()
+}
+
+// Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
+// checks for non-interop
+context(context: IrPluginContext)
+internal fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
+  // Return a binding defined using Metro's API
+  getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
+    // bindingType is actually an annotation
+    return bindingType.typeArguments.getOrNull(0)?.takeUnless {
+      it == context.irBuiltIns.nothingType
+    } to false
+  }
+  // Return a boundType defined using anvil KClass
+  return anvilKClassBoundTypeArgument() to anvilIgnoreQualifier()
+}
+
+internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
+  return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
+}
+
+internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
+  return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }

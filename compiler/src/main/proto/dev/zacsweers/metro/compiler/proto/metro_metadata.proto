@@ -13,35 +13,20 @@ message DependencyGraphProto {
   // If is_graph is true, this includes _all_ inherited classes' factories too
   repeated string provider_factory_classes = 2;
 
-  // Set of provider field names (strings). Only present if is_graph is true
-  repeated string provider_field_names = 3;
-
-  // Set of binds callable IDs with details: classId, callable name, and isProperty
-  repeated BindsCallableId binds_callable_ids = 4;
-
   // Set of accessor callable names (strings)
-  repeated string accessor_callable_names = 5;
+  repeated string accessor_callable_names = 3;
 
   // Set of included class IDs (strings). Only present if is_graph is true
-  repeated string included_classes = 6;
+  repeated string included_classes = 4;
 
-  // Set of instance field names (strings). Only present if is_graph is true
-  repeated string instance_field_names = 7;
-
-  // Bit field to represent which accessor IDs are multibindings
-  int32 multibinding_accessor_indices = 8;
+  // Bit field to represent which accessor indices are multibindings
+  int32 multibinding_accessor_indices = 5;
 
   // Set of extended parent class IDs (strings). Only present if is_graph is true
-  repeated string parent_graph_classes = 9;
+  repeated string parent_graph_classes = 6;
 
   // Set of all transitively included binding container class IDs (strings)
-  repeated string included_binding_containers = 10;
-}
-
-message BindsCallableId {
-  string class_id = 1;
-  string callable_name = 2;
-  bool is_property = 3;
+  repeated string included_binding_containers = 7;
 }
 
 message InjectedClassProto {

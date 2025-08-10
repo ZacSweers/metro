@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
+import org.jetbrains.kotlin.backend.jvm.ir.getIoFile
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
 import org.jetbrains.kotlin.incremental.components.LocationInfo
 import org.jetbrains.kotlin.incremental.components.LookupTracker
@@ -10,11 +11,37 @@ import org.jetbrains.kotlin.incremental.components.Position
 import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
+import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.resolveFakeOverrideMaybeAbstract
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.doNotAnalyze
+
+/**
+ * This is a hack for IC using the [IrMetroContext.expectActualTracker] to link the
+ * [callingDeclaration] file's compilation to the [calleeDeclaration]. This (ab)uses the
+ * expect/actual IC support for cases where the standard [IrMetroContext.lookupTracker] would not
+ * suffice.
+ *
+ * The standard example for this is binding containers, where we may reference a class from a graph
+ * but we also want to recompile the graph if _new_ binding declarations are added to the container.
+ *
+ * See `BindingContainerICTests.addingNewBindingToExistingBindingContainer()` for an example.
+ */
+context(context: IrMetroContext)
+internal fun linkDeclarationsInCompilation(
+  callingDeclaration: IrDeclaration,
+  calleeDeclaration: IrClass,
+) {
+  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
+  val actualFile = callingDeclaration.fileOrNull?.getIoFile() ?: return
+  if (expectedFile == actualFile) return
+  context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
+}
 
 /**
  * Tracks a call from one [callingDeclaration] to a [calleeClass] to inform incremental compilation.
@@ -45,10 +72,16 @@ internal fun trackClassLookup(callingDeclaration: IrDeclaration, calleeClass: Ir
 context(context: IrMetroContext)
 internal fun trackFunctionCall(callingDeclaration: IrDeclaration, calleeFunction: IrFunction) {
   callingDeclaration.withAnalyzableKtFile { filePath ->
-    val declaration =
-      (calleeFunction as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: calleeFunction
+    val callee =
+      if (calleeFunction is IrOverridableDeclaration<*> && calleeFunction.isFakeOverride) {
+        calleeFunction.resolveFakeOverrideMaybeAbstract() ?: calleeFunction
+      } else {
+        calleeFunction
+      }
+    val declaration: IrDeclarationWithName =
+      (callee as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: callee
     trackLookup(
-      container = calleeFunction.parent.kotlinFqName,
+      container = callee.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
       scopeKind = ScopeKind.CLASSIFIER,
       location =

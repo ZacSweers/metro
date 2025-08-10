@@ -7,7 +7,10 @@ import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
+import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.asIrAnnotation
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
+import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
@@ -23,14 +26,19 @@ import org.jetbrains.kotlin.fir.types.isResolved
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.parentAsClass
 
 @Poko
 internal class MetroAnnotations<T>(
@@ -45,6 +53,7 @@ internal class MetroAnnotations<T>(
   val isIntoMap: Boolean,
   val isAssistedFactory: Boolean,
   val isComposable: Boolean,
+  val isMetroAccessor: Boolean,
   val multibinds: T?,
   val assisted: T?,
   val scope: T?,
@@ -81,6 +90,7 @@ internal class MetroAnnotations<T>(
     isIntoMap: Boolean = this.isIntoMap,
     isAssistedFactory: Boolean = this.isAssistedFactory,
     isComposable: Boolean = this.isComposable,
+    isMetroAccessor: Boolean = this.isMetroAccessor,
     multibinds: T? = this.multibinds,
     assisted: T? = this.assisted,
     scope: T? = this.scope,
@@ -99,6 +109,7 @@ internal class MetroAnnotations<T>(
       isIntoMap,
       isAssistedFactory,
       isComposable,
+      isMetroAccessor,
       multibinds,
       assisted,
       scope,
@@ -141,6 +152,7 @@ internal class MetroAnnotations<T>(
         isIntoMap = false,
         isAssistedFactory = false,
         isComposable = false,
+        isMetroAccessor = false,
         multibinds = null,
         assisted = false,
         scope = null,
@@ -171,6 +183,7 @@ private fun IrAnnotationContainer.metroAnnotations(
   var isIntoMap = false
   var isAssistedFactory = false
   var isComposable = false
+  var isMetroAccessor = false
   var multibinds: IrAnnotation? = null
   var assisted: IrAnnotation? = null
   var scope: IrAnnotation? = null
@@ -228,6 +241,10 @@ private fun IrAnnotationContainer.metroAnnotations(
             isComposable = true
             continue
           }
+          Symbols.ClassIds.MetroAccessor -> {
+            isMetroAccessor = true
+            continue
+          }
         }
       }
 
@@ -282,6 +299,7 @@ private fun IrAnnotationContainer.metroAnnotations(
       isIntoMap = isIntoMap,
       isAssistedFactory = isAssistedFactory,
       isComposable = isComposable,
+      isMetroAccessor = isMetroAccessor,
       multibinds = multibinds,
       assisted = assisted,
       scope = scope,
@@ -296,37 +314,67 @@ private fun IrAnnotationContainer.metroAnnotations(
       yield(annotations)
 
       // You can fit so many annotations in properties
-      if (thisContainer is IrProperty) {
-        // Retrieve annotations from this property's various accessors
-        getter?.let { getter ->
-          if (getter != callingContainer) {
-            yield(getter.metroAnnotations(ids, callingContainer = thisContainer))
+      when (thisContainer) {
+        is IrProperty -> {
+          // Retrieve annotations from this property's various accessors
+          getter?.let { getter ->
+            if (getter != callingContainer) {
+              yield(getter.metroAnnotations(ids, callingContainer = thisContainer))
+            }
+          }
+          setter?.let { setter ->
+            if (setter != callingContainer) {
+              yield(setter.metroAnnotations(ids, callingContainer = thisContainer))
+            }
+          }
+          backingField?.let { field ->
+            if (field != callingContainer) {
+              yield(field.metroAnnotations(ids, callingContainer = thisContainer))
+            }
           }
         }
-        setter?.let { setter ->
-          if (setter != callingContainer) {
-            yield(setter.metroAnnotations(ids, callingContainer = thisContainer))
+
+        is IrSimpleFunction -> {
+          correspondingPropertySymbol?.owner?.let { property ->
+            if (property != callingContainer) {
+              val propertyAnnotations =
+                property.metroAnnotations(ids, callingContainer = thisContainer)
+              yield(propertyAnnotations)
+            }
           }
         }
-        backingField?.let { field ->
-          if (field != callingContainer) {
-            yield(field.metroAnnotations(ids, callingContainer = thisContainer))
+
+        is IrField -> {
+          correspondingPropertySymbol?.owner?.let { property ->
+            if (property != callingContainer) {
+              val propertyAnnotations =
+                property.metroAnnotations(ids, callingContainer = thisContainer)
+              yield(propertyAnnotations)
+            }
           }
         }
-      } else if (thisContainer is IrSimpleFunction) {
-        correspondingPropertySymbol?.owner?.let { property ->
-          if (property != callingContainer) {
-            val propertyAnnotations =
-              property.metroAnnotations(ids, callingContainer = thisContainer)
-            yield(propertyAnnotations)
+
+        is IrConstructor -> {
+          // Read from the class too
+          parentAsClass.let { parentClass ->
+            if (parentClass != callingContainer) {
+              val classAnnotations =
+                parentClass.metroAnnotations(ids, callingContainer = thisContainer)
+              yield(classAnnotations)
+            }
           }
         }
-      } else if (thisContainer is IrField) {
-        correspondingPropertySymbol?.owner?.let { property ->
-          if (property != callingContainer) {
-            val propertyAnnotations =
-              property.metroAnnotations(ids, callingContainer = thisContainer)
-            yield(propertyAnnotations)
+
+        is IrClass -> {
+          // Read from the inject constructor too
+          val constructor =
+            findInjectableConstructor(onlyUsePrimaryConstructor = false, ids.injectAnnotations)
+          if (constructor != null) {
+            if (constructor != callingContainer) {
+              val constructorAnnotations =
+                constructor.metroAnnotations(ids, callingContainer = thisContainer)
+              yield(constructorAnnotations)
+            }
           }
         }
       }
@@ -473,7 +521,8 @@ private fun FirBasedSymbol<*>.metroAnnotations(
       scope = scope,
       qualifier = qualifier,
       mapKeys = mapKeys,
-      // This is never used in FIR so always null
+      // These are never used in FIR
+      isMetroAccessor = false,
       symbol = null,
     )
 
@@ -517,4 +566,29 @@ private fun FirBasedSymbol<*>.metroAnnotations(
 internal fun <T> expectNullAndSet(type: String, current: T?, value: T): T {
   check(current == null) { "Multiple $type annotations found! Found $current and $value." }
   return value
+}
+
+/** Returns a list of annotations for copying to mirror functions. */
+context(context: IrMetroContext)
+internal fun MetroAnnotations<IrAnnotation>.mirrorIrConstructorCalls(
+  symbol: IrSymbol
+): List<IrConstructorCall> {
+  return buildList {
+    if (isProvides) {
+      add(buildAnnotation(symbol, context.symbols.providesConstructor))
+    } else if (isBinds) {
+      add(buildAnnotation(symbol, context.symbols.bindsConstructor))
+    }
+    if (isIntoSet) {
+      add(buildAnnotation(symbol, context.symbols.intoSetConstructor))
+    } else if (isElementsIntoSet) {
+      add(buildAnnotation(symbol, context.symbols.elementsIntoSetConstructor))
+    } else if (isIntoMap) {
+      add(buildAnnotation(symbol, context.symbols.intoMapConstructor))
+    }
+    scope?.let { add(it.ir.deepCopyWithSymbols()) }
+    qualifier?.let { add(it.ir.deepCopyWithSymbols()) }
+    multibinds?.let { add(it.ir.deepCopyWithSymbols()) }
+    addAll(mapKeys.map { it.ir.deepCopyWithSymbols() })
+  }
 }

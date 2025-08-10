@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.fir.FirMetroErrors
+import dev.zacsweers.metro.compiler.fir.FirMetroErrors.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
@@ -25,10 +26,13 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclara
 import org.jetbrains.kotlin.fir.analysis.checkers.directOverriddenSymbolsSafe
 import org.jetbrains.kotlin.fir.analysis.checkers.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.containingClassLookupTag
+import org.jetbrains.kotlin.fir.correspondingProperty
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
@@ -53,6 +57,36 @@ internal object BindingContainerCallableChecker :
     val source = declaration.source ?: return
     val session = context.session
     val classIds = session.classIds
+
+    if (declaration is FirConstructor) {
+      val isInBindingContainer =
+        declaration
+          .getContainingClassSymbol()
+          ?.isAnnotatedWithAny(session, classIds.bindingContainerAnnotations) ?: false
+      if (isInBindingContainer) {
+        // Check for Provides annotations on constructor params
+        for (param in declaration.valueParameters) {
+          val providesAnno =
+            listOfNotNull(
+                param,
+                param.correspondingProperty,
+                param.correspondingProperty?.getter,
+                param.correspondingProperty?.backingField,
+              )
+              .firstNotNullOfOrNull {
+                it.annotationsIn(session, classIds.providesAnnotations).singleOrNull()
+              }
+          if (providesAnno != null) {
+            reporter.reportOn(
+              providesAnno.source,
+              BINDING_CONTAINER_ERROR,
+              "@${providesAnno.toAnnotationClass(session)?.name} cannot be applied to constructor parameters. Use a member property or function in the class instead.",
+            )
+          }
+        }
+      }
+      return
+    }
 
     // Check if this is overriding a provider parent here and error if so. Otherwise people could
     // sneak these by!
@@ -182,10 +216,11 @@ internal object BindingContainerCallableChecker :
         }
       }
     } else if (isPrivate /* && is FirProperty */) {
+      val annotationName = if (annotations.isProvides) "Provides" else "Binds"
       reporter.reportOn(
         source,
         FirMetroErrors.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE,
-        "`@Provides` properties cannot be private yet.",
+        "`@$annotationName` properties cannot be private yet.",
       )
       return
     }

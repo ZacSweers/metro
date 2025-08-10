@@ -194,20 +194,6 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
       return false
     }
 
-    val isAssistedInject =
-      injectConstructor != null &&
-        injectConstructor.valueParameterSymbols.any {
-          it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations)
-        }
-    if (isAssistedInject) {
-      reporter.reportOn(
-        annotation.source,
-        FirMetroErrors.AGGREGATION_ERROR,
-        "`@$kind` doesn't make sense on assisted-injected class ${declaration.symbol.classId.asSingleFqName()}. Did you mean to apply this to its assisted factory?",
-      )
-      return false
-    }
-
     val supertypesExcludingAny = declaration.superTypeRefs.filterNot { it.coneType.isAny }
     val hasSupertypes = supertypesExcludingAny.isNotEmpty()
 
@@ -219,7 +205,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         // bound
         if (explicitBindingType.isNothing) {
           reporter.reportOn(
-            explicitBindingType.source,
+            explicitBindingType.source ?: annotation.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Explicit bound types should not be `Nothing` or `Nothing?`.",
           )
@@ -231,7 +217,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
         if (refClassId == declaration.symbol.classId) {
           reporter.reportOn(
-            explicitBindingType.source,
+            explicitBindingType.source ?: annotation.source,
             FirMetroErrors.AGGREGATION_ERROR,
             "Redundant explicit bound type ${refClassId.asSingleFqName()} is the same as the annotated class ${refClassId.asSingleFqName()}.",
           )

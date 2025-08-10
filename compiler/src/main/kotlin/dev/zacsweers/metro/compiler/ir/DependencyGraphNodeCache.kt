@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainerTransformer
-import dev.zacsweers.metro.compiler.ir.transformers.BindsCallable
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
@@ -82,14 +81,16 @@ internal class DependencyGraphNodeCache(
     private val graphDeclaration: IrClass,
     private val bindingStack: IrBindingStack,
     private val parentTracer: Tracer,
-    private val metroGraph: IrClass? = null,
+    metroGraph: IrClass? = null,
     cachedDependencyGraphAnno: IrConstructorCall? = null,
   ) : IrMetroContext by nodeCache {
+    private val metroGraph = metroGraph ?: graphDeclaration.metroGraphOrNull
     private val bindingContainerTransformer: BindingContainerTransformer =
       nodeCache.bindingContainerTransformer
     private val accessors = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsFunctions = mutableListOf<Pair<MetroSimpleFunction, IrContextualTypeKey>>()
     private val bindsCallables = mutableSetOf<BindsCallable>()
+    private val multibindsCallables = mutableSetOf<MultibindsCallable>()
     private val scopes = mutableSetOf<IrAnnotation>()
     private val providerFactories = mutableListOf<Pair<IrTypeKey, ProviderFactory>>()
     private val extendedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
@@ -106,9 +107,7 @@ internal class DependencyGraphNodeCache(
     private val aggregationScopes = mutableSetOf<ClassId>()
     private val isGraph = dependencyGraphAnno != null
     private val supertypes =
-      (graphDeclaration.metroGraphOrNull ?: graphDeclaration)
-        .getAllSuperTypes(excludeSelf = false)
-        .memoized()
+      (metroGraph ?: graphDeclaration).getAllSuperTypes(excludeSelf = false).memoized()
     private val contributionData = nodeCache.contributionData
 
     private val isExtendable = dependencyGraphAnno?.isExtendable() ?: false
@@ -156,6 +155,9 @@ internal class DependencyGraphNodeCache(
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
           if (parameter.isIncludes) {
             val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
+
+            linkDeclarationsInCompilation(graphDeclaration, parameterClass)
+
             if (parameterClass.isAnnotatedWithAny(symbols.classIds.bindingContainerAnnotations)) {
               bindingContainerFields = bindingContainerFields.withSet(i)
             }
@@ -169,6 +171,7 @@ internal class DependencyGraphNodeCache(
           val ctorParams = ctor.parameters()
           populateBindingContainerFields(ctorParams)
           DependencyGraphNode.Creator.Constructor(
+            graphDeclaration,
             graphDeclaration.primaryConstructor!!,
             ctorParams,
             bindingContainerFields,
@@ -215,7 +218,7 @@ internal class DependencyGraphNodeCache(
           // It's a graph-like
           val node =
             bindingStack.withEntry(
-              IrBindingStack.Entry.requestedAt(graphContextKey, creator!!.function)
+              IrBindingStack.Entry.requestedAt(graphContextKey, nonNullCreator.function)
             ) {
               nodeCache.getOrComputeDependencyGraphNode(type, bindingStack, parentTracer)
             }
@@ -404,6 +407,7 @@ internal class DependencyGraphNodeCache(
           .mapNotNullToSet { it.classType.rawTypeOrNull() }
           .let(bindingContainerTransformer::resolveAllBindingContainersCached)
           .onEach { container ->
+            linkDeclarationsInCompilation(graphDeclaration, container.ir)
             // Annotation-included containers may need to be managed directly
             if (container.canBeManaged) {
               managedBindingContainers += container.ir
@@ -415,10 +419,10 @@ internal class DependencyGraphNodeCache(
           it.classType.rawTypeOrNull()?.classId
         }
 
-      dependencyGraphAnno?.scopeClassOrNull()?.let { scope ->
+      for (scope in aggregationScopes) {
         bindingContainers +=
           contributionData
-            .getBindingContainerContributions(scope.classIdOrFail)
+            .getBindingContainerContributions(scope)
             .mapNotNull { bindingContainerTransformer.findContainer(it) }
             .filterNot { it.ir.classId in excludes }
             .onEach { container ->
@@ -443,7 +447,10 @@ internal class DependencyGraphNodeCache(
 
       for (container in mergedContainers) {
         providerFactories += container.providerFactories.values.map { it.typeKey to it }
-        bindsCallables += container.bindsCallables
+        container.bindsMirror?.let { bindsMirror ->
+          bindsCallables += bindsMirror.bindsCallables
+          multibindsCallables += bindsMirror.multibindsCallables
+        }
 
         // Record an IC lookup of the container class
         trackClassLookup(graphDeclaration, container.ir)
@@ -463,6 +470,7 @@ internal class DependencyGraphNodeCache(
           scopes = scopes,
           bindsCallables = bindsCallables,
           bindsFunctions = bindsFunctions.map { it.first },
+          multibindsCallables = multibindsCallables,
           providerFactories = providerFactories,
           accessors = accessors,
           injectors = injectors,
@@ -529,48 +537,6 @@ internal class DependencyGraphNodeCache(
     }
 
     private fun buildExternalGraphOrBindingContainer(): DependencyGraphNode {
-      val accessorsToCheck =
-        if (isGraph) {
-          // It's just an external graph, just read the declared types from it
-          graphDeclaration
-            .metroGraphOrFail // Doesn't cover contributed graphs but they're not visible anyway
-            .allCallableMembers(
-              excludeInheritedMembers = false,
-              excludeCompanionObjectMembers = true,
-            )
-        } else {
-          // Track overridden symbols so that we dedupe merged overrides in the final class
-          val seenSymbols = mutableSetOf<IrSymbol>()
-          supertypes.flatMap { type ->
-            type
-              .rawType()
-              .allCallableMembers(
-                excludeInheritedMembers = false,
-                excludeCompanionObjectMembers = true,
-                functionFilter = { it.symbol !in seenSymbols },
-                propertyFilter = {
-                  val getterSymbol = it.getter?.symbol
-                  getterSymbol != null && getterSymbol !in seenSymbols
-                },
-              )
-              .onEach { seenSymbols += it.ir.overriddenSymbolsSequence() }
-          }
-        }
-
-      // TODO only if annotated @BindingContainer?
-      // TODO need to look up accessors and binds functions
-      if (!isGraph) {
-        providerFactories +=
-          bindingContainerTransformer.factoryClassesFor(
-            graphDeclaration.metroGraphOrNull ?: graphDeclaration
-          )
-      }
-
-      accessors +=
-        accessorsToCheck
-          .filter { it.isAccessorCandidate }
-          .map { it to IrContextualTypeKey.from(it.ir) }
-
       // Read metadata if this is an extendable graph
       val includedGraphNodes = mutableMapOf<IrTypeKey, DependencyGraphNode>()
       var graphProto: DependencyGraphProto? = null
@@ -606,15 +572,6 @@ internal class DependencyGraphNodeCache(
             exitProcessing()
           }
 
-          bindingContainerTransformer
-            .findContainer(graphDeclaration, graphProto = graphProto)
-            ?.let { bindingContainer ->
-              providerFactories +=
-                bindingContainer.providerFactories.values.map { it.typeKey to it }
-
-              bindsCallables += bindingContainer.bindsCallables
-            }
-
           // Read scopes from annotations
           // We copy scope annotations from parents onto this graph if it's extendable so we only
           // need to copy once
@@ -647,6 +604,64 @@ internal class DependencyGraphNodeCache(
         }
       }
 
+      val accessorsToCheck =
+        if (isGraph) {
+          // It's just an external graph, just read the declared types from it
+          graphDeclaration
+            .metroGraphOrFail // Doesn't cover contributed graphs but they're not visible anyway
+            .allCallableMembers(
+              excludeInheritedMembers = false,
+              excludeCompanionObjectMembers = true,
+            )
+        } else {
+          // Track overridden symbols so that we dedupe merged overrides in the final class
+          val seenSymbols = mutableSetOf<IrSymbol>()
+          // TODO single supertype pass
+          supertypes.flatMap { type ->
+            type
+              .rawType()
+              .allCallableMembers(
+                excludeInheritedMembers = false,
+                excludeCompanionObjectMembers = true,
+                functionFilter = { it.symbol !in seenSymbols },
+                propertyFilter = {
+                  val getterSymbol = it.getter?.symbol
+                  getterSymbol != null && getterSymbol !in seenSymbols
+                },
+              )
+              .onEach { seenSymbols += it.ir.overriddenSymbolsSequence() }
+          }
+        }
+
+      accessors +=
+        accessorsToCheck
+          .filter { it.isAccessorCandidate }
+          .map { it to IrContextualTypeKey.from(it.ir) }
+
+      // TODO only if annotated @BindingContainer?
+      // TODO need to look up accessors and binds functions
+      if (isGraph && isExtendable) {
+        // TODO is this duplicating info we already have in the proto?
+        for (type in supertypes) {
+          val declaration = type.classOrNull?.owner ?: continue
+          // Skip the metrograph, it won't have custom nested factories
+          if (declaration == metroGraph) continue
+          val proto = if (declaration == graphDeclaration) graphProto else null
+          bindingContainerTransformer.findContainer(declaration, graphProto = proto)?.let {
+            bindingContainer ->
+            providerFactories += bindingContainer.providerFactories.values.map { it.typeKey to it }
+
+            bindingContainer.bindsMirror?.let { bindsMirror ->
+              bindsCallables += bindsMirror.bindsCallables
+              multibindsCallables += bindsMirror.multibindsCallables
+            }
+          }
+        }
+      } else if (!isGraph) {
+        providerFactories +=
+          bindingContainerTransformer.factoryClassesFor(metroGraph ?: graphDeclaration)
+      }
+
       // TODO split DependencyGraphNode into sealed interface with external/internal variants?
       val dependentNode =
         DependencyGraphNode(
@@ -658,6 +673,7 @@ internal class DependencyGraphNodeCache(
           providerFactories = providerFactories,
           accessors = accessors,
           bindsCallables = bindsCallables,
+          multibindsCallables = multibindsCallables,
           isExternal = true,
           proto = graphProto,
           extendedGraphNodes = extendedGraphNodes,

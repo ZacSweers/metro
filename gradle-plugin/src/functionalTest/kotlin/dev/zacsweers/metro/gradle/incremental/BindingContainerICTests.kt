@@ -1415,4 +1415,294 @@ class BindingContainerICTests : BaseIncrementalCompilationTest() {
     val thirdBuildResult = build(project.rootDir, "compileKotlin")
     assertThat(thirdBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
+
+  @Test
+  fun multibindsOnlyContainerRemoved() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, bindingContainer, target)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(bindingContainers = [MyBindingContainer::class])
+            interface AppGraph {
+              val target: Target
+            }
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            interface MyBindingContainer {
+              @Multibinds(allowEmpty = true)
+              fun provideStrings(): Set<String>
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val strings: Set<String>)
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed with empty set
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Remove the binding
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      interface MyBindingContainer {
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should fail - Set<String> is no longer available
+    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.output)
+      .contains(
+        """
+        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+
+            kotlin.collections.Set<kotlin.String> is injected at
+                [test.AppGraph] test.Target(…, strings)
+            test.Target is requested at
+                [test.AppGraph] test.AppGraph#target
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun multibindsOnlyContainerAdded() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, bindingContainer, target)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(bindingContainers = [MyBindingContainer::class])
+            interface AppGraph {
+              val target: Target
+            }
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            interface MyBindingContainer {
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val strings: Set<String>)
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should fail - Set<String> is not available
+    val firstBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.output)
+      .contains(
+        """
+        Target.kt:7:14 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+
+            kotlin.collections.Set<kotlin.String> is injected at
+                [test.AppGraph] test.Target(…, strings)
+            test.Target is requested at
+                [test.AppGraph] test.AppGraph#target
+        """
+          .trimIndent()
+      )
+
+    // Add the binding
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      interface MyBindingContainer {
+        @Multibinds(allowEmpty = true)
+        fun provideStrings(): Set<String>
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should succeed with empty set
+    val secondBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+  }
+
+  @Test
+  fun multibindsOnlyContainerWithQualifierChanges() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, bindingContainer, target)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(bindingContainers = [MyBindingContainer::class])
+            interface AppGraph {
+              val target: Target
+            }
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            interface MyBindingContainer {
+              @Multibinds(allowEmpty = true)
+              fun provideStrings(): Set<String>
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val strings: Set<String>)
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed with empty set
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Add a qualifier annotation to the multibinds method
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      interface MyBindingContainer {
+        @Named("qualified")
+        @Multibinds(allowEmpty = true)
+        fun provideStrings(): Set<String>
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should fail - unqualified Set<String> is no longer available
+    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.output)
+      .contains(
+        """
+        AppGraph.kt:7:11 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: kotlin.collections.Set<kotlin.String>
+
+            kotlin.collections.Set<kotlin.String> is injected at
+                [test.AppGraph] test.Target(…, strings)
+            test.Target is requested at
+                [test.AppGraph] test.AppGraph#target
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun multibindsOnlyContainerWithAllowEmptyChanges() {
+    val fixture =
+      object : MetroProject() {
+        override fun sources() = listOf(appGraph, bindingContainer, target)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(bindingContainers = [MyBindingContainer::class])
+            interface AppGraph {
+              val target: Target
+            }
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            interface MyBindingContainer {
+              @Multibinds(allowEmpty = true)
+              fun provideStrings(): Set<String>
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(val strings: Set<String>)
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    // First build should succeed with empty set
+    val firstBuildResult = build(project.rootDir, "compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    // Remove allowEmpty
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      interface MyBindingContainer {
+        @Multibinds
+        fun provideStrings(): Set<String>
+      }
+      """
+        .trimIndent(),
+    )
+
+    // Second build should fail - Set is now empty and not allowed
+    val secondBuildResult = buildAndFail(project.rootDir, "compileKotlin")
+    assertThat(secondBuildResult.output)
+      .contains(
+        """
+        MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding 'kotlin.collections.Set<kotlin.String>' was unexpectedly empty.
+
+        If you expect this multibinding to possibly be empty, annotate its declaration with `@Multibinds(allowEmpty = true)`.
+        """
+          .trimIndent()
+      )
+  }
 }

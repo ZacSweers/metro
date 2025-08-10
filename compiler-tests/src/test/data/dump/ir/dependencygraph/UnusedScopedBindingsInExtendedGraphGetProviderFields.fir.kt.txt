@@ -27,16 +27,19 @@ interface AppGraph {
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor
     fun appGraphProvider_metroAccessor(): Provider<AppGraph> {
       return <this>.#appGraphProvider
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor
     fun provideStringProvider_metroAccessor(): Provider<String> {
       return <this>.#provideStringProvider
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor(isInstanceAccessor = true)
     fun thisGraphInstance_metroAccessor(): AppGraph {
       return <this>.#thisGraphInstance
     }
@@ -49,7 +52,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideInt", isPropertyAccessor = false, startOffset = 279, endOffset = 322)
+  @CallableMetadata(callableName = "provideInt", isPropertyAccessor = false, startOffset = 279, endOffset = 322)
   class ProvideInt$$MetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -86,7 +89,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @ProvidesCallableId(callableName = "provideString", isPropertyAccessor = false, startOffset = 117, endOffset = 276)
+  @CallableMetadata(callableName = "provideString", isPropertyAccessor = false, startOffset = 117, endOffset = 276)
   class ProvideString$$MetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {

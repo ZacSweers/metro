@@ -47,16 +47,40 @@ class Base1Impl : Base1, Base2, Base3 {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroContribution(scope = AppScope::class)
   interface $$MetroContributionToAppScope {
-    @IntoSet
-    @Binds
-    abstract fun bindIntoSetAsAsBase2(instance: Base1Impl): Base2
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    abstract class $$BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @IntoSet
+      @CallableMetadata(callableName = "bindIntoSetAsBase2", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      abstract fun bindIntoSetAsBase2_intoset(instance: Base1Impl): Base2
+
+      @Binds
+      @IntoSet
+      @CallableMetadata(callableName = "bindIntoSetAsBase3", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      abstract fun bindIntoSetAsBase3_intoset(instance: Base1Impl): Base3
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsBase1", isPropertyAccessor = false, startOffset = -1, endOffset = -1)
+      abstract fun bindsAsBase1(instance: Base1Impl): Base1
+
+    }
 
     @IntoSet
     @Binds
-    abstract fun bindIntoSetAsAsBase3(instance: Base1Impl): Base3
+    abstract fun bindIntoSetAsBase2(instance: Base1Impl): Base2
+
+    @IntoSet
+    @Binds
+    abstract fun bindIntoSetAsBase3(instance: Base1Impl): Base3
 
     @Binds
-    abstract fun bindsAsAsBase1(instance: Base1Impl): Base1
+    abstract fun bindsAsBase1(instance: Base1Impl): Base1
 
   }
 
@@ -97,18 +121,18 @@ interface ExampleGraph : $$MetroContributionToAppScope {
 
     @IntoSet
     @Binds
-    override fun bindIntoSetAsAsBase2(instance: Base1Impl): Base2 {
+    override fun bindIntoSetAsBase2(instance: Base1Impl): Base2 {
       return error(message = "Never called")
     }
 
     @IntoSet
     @Binds
-    override fun bindIntoSetAsAsBase3(instance: Base1Impl): Base3 {
+    override fun bindIntoSetAsBase3(instance: Base1Impl): Base3 {
       return error(message = "Never called")
     }
 
     @Binds
-    override fun bindsAsAsBase1(instance: Base1Impl): Base1 {
+    override fun bindsAsBase1(instance: Base1Impl): Base1 {
       return error(message = "Never called")
     }
 

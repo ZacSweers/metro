@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.diffplug.gradle.spotless.SpotlessExtensionPredeclare
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import kotlinx.validation.ExperimentalBCVApi
 import org.jetbrains.dokka.gradle.DokkaExtension
@@ -9,6 +10,10 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompilerOptions
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootEnvSpec
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -45,6 +50,17 @@ dokka {
 
 val ktfmtVersion = libs.versions.ktfmt.get()
 
+spotless {
+  predeclareDeps()
+}
+
+configure<SpotlessExtensionPredeclare> {
+  kotlin { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
+  kotlinGradle { ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) } }
+  java { googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true) }
+}
+
+// Configure spotless in subprojects
 allprojects {
   apply(plugin = "com.diffplug.spotless")
   configure<SpotlessExtension> {
@@ -56,7 +72,6 @@ allprojects {
     }
     java {
       target("src/**/*.java")
-      googleJavaFormat(libs.versions.gjf.get()).reorderImports(true).reflowLongStrings(true)
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.java")
@@ -65,7 +80,6 @@ allprojects {
     }
     kotlin {
       target("src/**/*.kt")
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       targetExclude("**/spotless.kt")
@@ -73,7 +87,6 @@ allprojects {
     }
     kotlinGradle {
       target("*.kts")
-      ktfmt(ktfmtVersion).googleStyle().configure { it.setRemoveUnusedImports(true) }
       trimTrailingWhitespace()
       endWithNewline()
       licenseHeaderFile(
@@ -194,3 +207,14 @@ dependencies {
   dokka(project(":interop-dagger"))
   dokka(project(":runtime"))
 }
+
+plugins.withType<YarnPlugin> {
+  the<YarnRootEnvSpec>().apply {
+    version = "1.22.22"
+    yarnLockAutoReplace = true
+    installationDirectory = projectDir
+    ignoreScripts = false
+  }
+}
+
+plugins.withType<NodeJsRootPlugin> { the<NodeJsEnvSpec>().apply { this.version = "24.4.1" } }
