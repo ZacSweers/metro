@@ -51,6 +51,8 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         MetroDirectives.ENABLE_DAGGER_INTEROP in module.directives ||
         MetroDirectives.ENABLE_DAGGER_KSP in module.directives
 
+    val optionDefaults = MetroOptions()
+
     val options =
       MetroOptions(
         enableDaggerRuntimeInterop = MetroDirectives.enableDaggerRuntimeInterop(module.directives),
@@ -62,9 +64,11 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
         enableScopedInjectClassHints =
           MetroDirectives.ENABLE_SCOPED_INJECT_CLASS_HINTS in module.directives,
         shrinkUnusedBindings =
-          module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS) ?: true,
+          module.directives.singleOrZeroValue(MetroDirectives.SHRINK_UNUSED_BINDINGS)
+            ?: optionDefaults.shrinkUnusedBindings,
         chunkFieldInits =
-          module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS) ?: false,
+          module.directives.singleOrZeroValue(MetroDirectives.CHUNK_FIELD_INITS)
+            ?: optionDefaults.chunkFieldInits,
         generateJvmContributionHintsInFir =
           MetroDirectives.GENERATE_JVM_CONTRIBUTION_HINTS_IN_FIR in module.directives,
         publicProviderSeverity =
@@ -72,8 +76,9 @@ class MetroExtensionRegistrarConfigurator(testServices: TestServices) :
             MetroOptions.DiagnosticSeverity.NONE
           } else {
             module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_PROVIDER_SEVERITY)
-              ?: MetroOptions.DiagnosticSeverity.NONE
+              ?: optionDefaults.publicProviderSeverity
           },
+        enableDaggerAnvilInterop = MetroDirectives.WITH_ANVIL in module.directives,
         customGraphAnnotations =
           buildSet {
             if (MetroDirectives.WITH_ANVIL in module.directives) {

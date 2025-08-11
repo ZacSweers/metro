@@ -18,6 +18,7 @@ public interface MetroLogger {
   public enum class Type {
     None,
     FirSupertypeGeneration,
+    FirStatusTransformation,
     FirDeclarationGeneration,
     FirCheckers,
     GraphNodeConstruction,

@@ -37,10 +37,10 @@ internal fun linkDeclarationsInCompilation(
   callingDeclaration: IrDeclaration,
   calleeDeclaration: IrClass,
 ) {
-  context.expectActualTracker.report(
-    expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return,
-    actualFile = callingDeclaration.fileOrNull?.getIoFile() ?: return,
-  )
+  val expectedFile = calleeDeclaration.fileOrNull?.getIoFile() ?: return
+  val actualFile = callingDeclaration.fileOrNull?.getIoFile() ?: return
+  if (expectedFile == actualFile) return
+  context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
 }
 
 /**

@@ -162,7 +162,7 @@ internal enum class MetroOption(val raw: RawMetroOption<*>) {
   CHUNK_FIELD_INITS(
     RawMetroOption.boolean(
       name = "chunk-field-inits",
-      defaultValue = false,
+      defaultValue = true,
       valueDescription = "<true | false>",
       description = "Enable/disable chunking of field initializers in binding graphs.",
       required = false,

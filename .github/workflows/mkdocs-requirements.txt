@@ -1,4 +1,4 @@
-click==8.2.1
+click==8.2.2
 future==1.0.0
 Jinja2==3.1.6
 livereload==2.7.1
@@ -17,4 +17,9 @@ PyYAML==6.0.2
 repackage==0.7.3
 six==1.17.0
 termcolor==3.1.0
-tornado==6.5.1
+tornado==6.5.2
+
+# Imaging dependencies for mkdocs-material social plugin
+# https://squidfunk.github.io/mkdocs-material/plugins/requirements/image-processing/
+cairosvg==2.8.2
+pillow==11.3.0

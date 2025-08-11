@@ -134,11 +134,13 @@ interface ExampleGraph : $$MetroContributionToAppScope {
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor
     fun exampleGraphProvider_metroAccessor(): Provider<ExampleGraph> {
       return <this>.#exampleGraphProvider
     }
 
     @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroAccessor(isInstanceAccessor = true)
     fun thisGraphInstance_metroAccessor(): ExampleGraph {
       return <this>.#thisGraphInstance
     }

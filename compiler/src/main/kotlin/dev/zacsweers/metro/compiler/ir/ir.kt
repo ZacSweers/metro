@@ -106,6 +106,7 @@ import org.jetbrains.kotlin.ir.types.impl.buildSimpleType
 import org.jetbrains.kotlin.ir.types.impl.makeTypeProjection
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
+import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
@@ -116,6 +117,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -1205,8 +1207,18 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
           is IrSimpleType -> {
             val classifier = type.classifier
             if (classifier is IrTypeParameterSymbol) {
-              val substitution = substitutionMap[classifier]
-              substitution?.let { remapType(it) } ?: type
+              substitutionMap[classifier]?.let { substitutedType ->
+                val remapped = remapType(substitutedType)
+                // Preserve nullability
+                when (remapped) {
+                  // Java type args always come with @FlexibleNullability, which we choose to
+                  // interpret as strictly not null
+                  is IrSimpleType if (!type.isWithFlexibleNullability()) -> {
+                    remapped.mergeNullability(type)
+                  }
+                  else -> remapped
+                }
+              } ?: type
             } else if (type.arguments.isEmpty()) {
               type
             } else {
@@ -1356,6 +1368,23 @@ internal fun IrConstructorCall.isExtendable(): Boolean {
   }
 }
 
+internal fun IrConstructorCall.rankValue(): Long {
+  // Although the parameter is defined as an Int, the value we receive here may end up being
+  // an Int or a Long so we need to handle both
+  return getValueArgument(Symbols.Names.rank)?.let { arg ->
+    when (arg) {
+      is IrConst -> {
+        when (val value = arg.value) {
+          is Long -> value
+          is Int -> value.toLong()
+          else -> Long.MIN_VALUE
+        }
+      }
+      else -> Long.MIN_VALUE
+    }
+  } ?: Long.MIN_VALUE
+}
+
 context(context: IrMetroContext)
 internal fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
   if (this == null) return null
@@ -1441,4 +1470,39 @@ internal fun IrAnnotation.allowEmpty(): Boolean {
 context(scope: IrBuilderWithScope)
 internal fun Collection<IrClassReference>.copyToIrVararg() = ifNotEmpty {
   scope.irVararg(first().type, map { value -> value.deepCopyWithSymbols() })
+}
+
+context(scope: IrBuilderWithScope)
+internal fun Collection<IrClass>.toIrVararg() = ifNotEmpty {
+  scope.irVararg(first().defaultType, map { value -> scope.kClassReference(value.symbol) })
+}
+
+context(context: IrPluginContext)
+internal fun IrClass.implicitBoundTypeOrNull(): IrType? {
+  return superTypes
+    .filterNot { it.rawType().classId == context.irBuiltIns.anyClass.owner.classId }
+    .singleOrNull()
+}
+
+// Also check ignoreQualifier for interop after entering interop block to prevent unnecessary
+// checks for non-interop
+context(context: IrPluginContext)
+internal fun IrConstructorCall.bindingTypeOrNull(): Pair<IrType?, Boolean> {
+  // Return a binding defined using Metro's API
+  getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let { bindingType ->
+    // bindingType is actually an annotation
+    return bindingType.typeArguments.getOrNull(0)?.takeUnless {
+      it == context.irBuiltIns.nothingType
+    } to false
+  }
+  // Return a boundType defined using anvil KClass
+  return anvilKClassBoundTypeArgument() to anvilIgnoreQualifier()
+}
+
+internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
+  return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
+}
+
+internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {
+  return getConstBooleanArgumentOrNull(Symbols.Names.ignoreQualifier) ?: false
 }

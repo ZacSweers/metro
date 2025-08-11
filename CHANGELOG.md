@@ -4,10 +4,61 @@ Changelog
 **Unreleased**
 --------------
 
+- **Behavior change**: `chunkFieldInits()` is now enabled by default.
+- **Behavior change**: When adding bindings from extended parent graphs, ignore any that are provided directly in the child graph. Previously Metro only ignored the binding if the binding was itself a graph type.
+- **New**: Add diagnostic reports for (valid) cycles.
+- **Enhancement**: In tracing logs, include the graph name in the "Transform dependency graph" sections.
+- **Enhancement**: Allow contributing annotations on assisted-injected classes.
+- **Enhancement**: Improve dagger interop with `dagger.Lazy` types by allowing `Provider` subtypes to be wrapped too.
+- **Enhancement**: Support `rank` interop on Anvil annotations in contributed graph extensions.
+- **Enhancement**: Support `ignoreQualifier` interop on Anvil annotations in contributed graph extensions.
+- **Enhancement**: Only process contributions to the consuming graph's scopes when processing `rank` replacements in FIR.
+- **Enhancement**: Improve error message for invalid assisted inject bindings to injected target.
+- **Fix**: Don't link expect/actual declarations if they're in the same file.
+- **Fix**: Don't copy map keys over into generated `@Binds` contributions unless it's an `@IntoMap` binding.
+- **Fix**: Fall back to annotation sources if needed when reporting errors with bound types in FIR.
+- **Fix**: Use `MapProviderFactory.builder().build()` for Dagger interop on `Map<Key, Provider<Value>>` types as there is no `MapProviderFactory.empty()`.
+- **Fix**: Don't assume `@ContributesGraphExtension` to have aggregation scopes during graph generation.
+- **Fix**: When extending graphs, ignore bindings of the same type as the inheriting graph.
+- **Fix**: Propagate parent graph empty `@Multibinds` declarations to extensions.
+- **Fix**: Propagate managed binding containers to extension graphs.
+- **Fix**: Propagate transitively included binding containers contributed to contributed graphs (sorry, word soup).
+- **Fix**: Make generated multibinding element IDs stable across compilations.
+- **Fix**: Handle location-less declarations when reporting invalid assisted inject bindings.
+- **Fix**: Don't chunk parent graph validation statements as these must be in the original constructor body.
+- **Fix**: Fix wrong receiver context for chunked field initializers.
+- [internal change] Simplify metadata and just use accessor annotations.
+
+0.5.5
+-----
+
+_2025-08-02_
+
+- **Fix**: Fix Wire shading in native targets.
+
+0.5.4
+-----
+
+_2025-08-01_
+
 - **Enhancement**: Support `excludes`, `bindingContainers`, and `additionalScopes` in `@ContributesGraphExtension`.
 - **Enhancement**: Allow binding containers and regular contributed classes to replace each other in contribution merging.
+- **Enhancement**: Allow `@ElementsIntoSet` on properties.
+- **Enhancement**: Don't run FIR extensions on Java sources.
+- **Fix**: Report incompatible scopes in nested contributed graphs to `MessageCollector` until Kotlin 2.2.20.
+- **Fix**: Report binding issues from externally contributed graphs to `MessageCollector` until Kotlin 2.2.20.
+- **Fix**: Preserve nullability when remapping type parameters.
 - **Fix**: Don't double-add `@ContributesTo` contributions while merging contributed graphs.
 - **Fix**: Check `rawStatus` for overrides when merging contributed supertypes.
+- **Fix**: Correctly extract the element type when creating implicit `Set` multibindings from `@ElementsIntoSet` contributors.
+- **Fix**: Check `additionalScopes` when merging binding containers too.
+- **Fix**: Don't fail if multiple contributing annotations on binding containers match the target scope when aggregating them.
+- **Fix**: Dedupe binding containers during graph node generation.
+- **Fix**: Add a checker for `@Provides` constructor parameters in binding containers.
+- **Fix**: Fix reading repeated external contributed annotations.
+- **Fix**: Filter by matching scopes when merging contributed types with repeated annotations.
+
+Special thanks to [@hossain-khan](https://github.com/hossain-khan), [@gabrielittner](https://github.com/gabrielittner), [@kevinguitar](https://github.com/kevinguitar), [@JoelWilcox](https://github.com/JoelWilcox), and [@martinbonnin](https://github.com/martinbonnin) for contributing to this release!
 
 0.5.3
 -----

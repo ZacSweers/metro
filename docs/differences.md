@@ -18,6 +18,7 @@
     * Empty multibindings are an error by default in Metro. To allow a multibinding to be empty, it must be declared with `@Multibinds(allowEmpty = true)`.
     * Metro graph classes may not directly extend other graph classes. You should use `@Extends` instead in Metro.
       * Dagger technically allows this, but only accessors and injectors cross these boundaries.
+    * Metro prohibits scopes on `@Binds` declarations. Either use `@Provides` or move the scope to the source class type.
 
 === "Kotlin-Inject"
 
@@ -36,6 +37,8 @@
 
     * There is no `rank` in Metro's `@Contributes*` annotations.
         * Note that if Anvil interop is enabled, _its_ `rank` properties are supported in interop.
+    * There is no `ignoreQualifier` in Metro's `@Contributes*` annotations.
+        * Note that if Anvil interop is enabled, _its_ `ignoreQualifier` properties are supported in interop.
     * `@ContributesBinding` uses a `binding` API to support generic bound types. See the [aggregation docs](aggregation.md) for more info.
         * Note that if Anvil interop is enabled, _its_ `boundType` properties are supported in interop.
 

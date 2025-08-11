@@ -97,6 +97,7 @@ internal open class MutableBindingGraph<
     shrinkUnusedBindings: Boolean = true,
     tracer: Tracer = Tracer.NONE,
     onPopulated: () -> Unit = {},
+    onSortedCycle: (List<TypeKey>) -> Unit = {},
     validateBindings:
       (
         bindings: Map<TypeKey, Binding>,
@@ -157,7 +158,7 @@ internal open class MutableBindingGraph<
           } else {
             fullAdjacency.keys
           }
-        sortAndValidate(roots, allKeeps, fullAdjacency, stack, it)
+        sortAndValidate(roots, allKeeps, fullAdjacency, stack, it, onSortedCycle)
       }
 
     tracer.traceNested("Compute binding indices") {
@@ -236,6 +237,7 @@ internal open class MutableBindingGraph<
     fullAdjacency: SortedMap<TypeKey, SortedSet<TypeKey>>,
     stack: BindingStack,
     parentTracer: Tracer,
+    onSortedCycle: (List<TypeKey>) -> Unit,
   ): TopoSortResult<TypeKey> {
     val sortedRootKeys =
       TreeSet<TypeKey>().apply {
@@ -252,6 +254,7 @@ internal open class MutableBindingGraph<
           isDeferrable = { from, to ->
             bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
           },
+          onSortedCycle = onSortedCycle,
           onCycle = { cycle ->
             val fullCycle =
               buildList {

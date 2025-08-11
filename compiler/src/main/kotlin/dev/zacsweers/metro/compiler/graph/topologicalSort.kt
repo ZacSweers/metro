@@ -165,6 +165,7 @@ internal data class TopoSortResult<T>(
  * @param onCycle called with the offending cycle if no deferrable edge
  * @param roots optional set of source roots for computing reachability. If null, all keys will be
  *   kept.
+ * @param onSortedCycle optional callback reporting (sorted) cycles.
  */
 internal fun <V : Comparable<V>> topologicalSort(
   fullAdjacency: SortedMap<V, SortedSet<V>>,
@@ -173,6 +174,7 @@ internal fun <V : Comparable<V>> topologicalSort(
   roots: SortedSet<V>? = null,
   parentTracer: Tracer = Tracer.NONE,
   isImplicitlyDeferrable: (V) -> Boolean = { false },
+  onSortedCycle: (List<V>) -> Unit = {},
 ): TopoSortResult<V> {
   val deferredTypes = mutableSetOf<V>()
 
@@ -238,7 +240,9 @@ internal fun <V : Comparable<V>> topologicalSort(
         } else {
           // Multiple vertices in a cycle - sort them respecting non-deferrable dependencies
           val deferredInScc = component.vertices.filterToSet { it in deferredTypes }
-          sortVerticesInSCC(component.vertices, reachableKeys, isDeferrable, deferredInScc)
+          sortVerticesInSCC(component.vertices, reachableKeys, isDeferrable, deferredInScc).also {
+            onSortedCycle(it)
+          }
         }
       }
     }

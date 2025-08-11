@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.tracing.Tracer
 import dev.zacsweers.metro.compiler.tracing.traceNested
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -27,6 +28,7 @@ import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.fileOrNull
+import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -107,13 +109,19 @@ internal class IrBindingGraph(
     originalQualifier: IrAnnotation?,
     bindingStack: IrBindingStack,
   ): IrBinding.Multibinding {
-    val multibindingType =
+    val multibindingTypeKey =
       when {
         annotations.isIntoSet -> {
-          metroContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
+          val setType = metroContext.irBuiltIns.setClass.typeWith(contextKey.typeKey.type)
+          contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
         }
 
-        annotations.isElementsIntoSet -> contextKey.typeKey.type
+        annotations.isElementsIntoSet -> {
+          val elementType =
+            contextKey.typeKey.type.expectAs<IrSimpleType>().arguments.single().typeOrFail
+          val setType = metroContext.irBuiltIns.setClass.typeWith(elementType)
+          contextKey.typeKey.copy(type = setType, qualifier = originalQualifier)
+        }
         annotations.isIntoMap -> {
           val mapKey =
             annotations.mapKeys.firstOrNull()
@@ -123,21 +131,22 @@ internal class IrBindingGraph(
                 error("Missing @MapKey for @IntoMap function: ${declaration.locationOrNull()}")
               }
           val keyType = mapKeyType(mapKey)
-          metroContext.irBuiltIns.mapClass.typeWith(
-            // MapKey is the key type
-            keyType,
-            // Return type is the value type
-            contextKey.typeKey.type.removeAnnotations(),
-          )
+          val mapType =
+            metroContext.irBuiltIns.mapClass.typeWith(
+              // MapKey is the key type
+              keyType,
+              // Return type is the value type
+              contextKey.typeKey.type.removeAnnotations(),
+            )
+          contextKey.typeKey.copy(type = mapType, qualifier = originalQualifier)
         }
 
         else -> {
-          error("Unrecognized provider: ${declaration.locationOrNull()}")
+          error(
+            "Unrecognized provider: ${declaration.locationOrNull() ?: ("\n" + declaration.dumpKotlinLike())}"
+          )
         }
       }
-
-    val multibindingTypeKey =
-      contextKey.typeKey.copy(type = multibindingType, qualifier = originalQualifier)
 
     var binding = realGraph[multibindingTypeKey]
 
@@ -208,6 +217,13 @@ internal class IrBindingGraph(
             onPopulated = {
               writeDiagnostic("keys-populated-${parentTracer.tag}.txt") {
                 realGraph.bindings.keys.sorted().joinToString("\n")
+              }
+            },
+            onSortedCycle = { elementsInCycle ->
+              writeDiagnostic(
+                "cycle-${parentTracer.tag}-${elementsInCycle[0].render(short = true, includeQualifier = false)}.txt"
+              ) {
+                elementsInCycle.plus(elementsInCycle[0]).joinToString("\n")
               }
             },
             validateBindings = ::validateBindings,
@@ -558,9 +574,18 @@ internal class IrBindingGraph(
             }
           }
         }
-        metroContext.diagnosticReporter
-          .at(declarationToReport)
-          .report(MetroIrErrors.METRO_ERROR, message)
+        // TODO remove messagecollector in 2.2.20
+        if (declarationToReport.origin == Origins.ContributedGraph) {
+          metroContext.messageCollector.report(
+            CompilerMessageSeverity.ERROR,
+            message,
+            declarationToReport.location(),
+          )
+        } else {
+          metroContext.diagnosticReporter
+            .at(declarationToReport)
+            .report(MetroIrErrors.METRO_ERROR, message)
+        }
       }
     }
   }
@@ -573,7 +598,7 @@ internal class IrBindingGraph(
   ) {
     if (binding !is IrBinding.ConstructorInjected || !binding.isAssisted) return
 
-    fun reportInvalidBinding(declaration: IrDeclaration?) {
+    fun reportInvalidBinding(declaration: IrDeclarationWithName?) {
       // Look up the assisted factory as a hint
       val assistedFactory =
         bindings.values.find { it is IrBinding.Assisted && it.target.typeKey == binding.typeKey }
@@ -581,7 +606,7 @@ internal class IrBindingGraph(
       val message = buildString {
         append("[Metro/InvalidBinding] ")
         append(
-          "'${binding.typeKey}' uses assisted injection and cannot be injected directly. You must inject a corresponding @AssistedFactory type instead."
+          "'${binding.typeKey}' uses assisted injection and cannot be injected directly into '${declaration?.fqNameWhenAvailable}'. You must inject a corresponding @AssistedFactory type instead."
         )
         if (assistedFactory != null) {
           appendLine()
@@ -592,9 +617,18 @@ internal class IrBindingGraph(
           )
         }
       }
-      metroContext.diagnosticReporter
-        .at(declaration ?: node.sourceGraph)
-        .report(MetroIrErrors.METRO_ERROR, message)
+      val toReport = declaration ?: node.sourceGraph
+      if (toReport.fileOrNull == null) {
+        metroContext.messageCollector.report(
+          CompilerMessageSeverity.ERROR,
+          message,
+          toReport.locationOrNull(),
+        )
+      } else {
+        metroContext.diagnosticReporter
+          .at(declaration ?: node.sourceGraph)
+          .report(MetroIrErrors.METRO_ERROR, message)
+      }
     }
 
     reverseAdjacency[binding.typeKey]?.let { dependents ->
@@ -603,7 +637,7 @@ internal class IrBindingGraph(
         if (dependentBinding !is IrBinding.Assisted) {
           reportInvalidBinding(
             dependentBinding.parametersByKey[binding.typeKey]?.ir?.takeIf {
-              val location = it.location()
+              val location = it.locationOrNull() ?: return@takeIf false
               location.line != 0 || location.column != 0
             } ?: dependentBinding.reportableDeclaration
           )
