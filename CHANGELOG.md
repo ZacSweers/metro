@@ -27,6 +27,7 @@ Changelog
 - **Fix**: Handle location-less declarations when reporting invalid assisted inject bindings.
 - **Fix**: Don't chunk parent graph validation statements as these must be in the original constructor body.
 - **Fix**: Fix wrong receiver context for chunked field initializers.
+- **Fix**: Fix support for generic private injected constructors.
 - [internal change] Simplify metadata and just use accessor annotations.
 
 0.5.5
